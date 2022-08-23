@@ -28,6 +28,7 @@ use crate::{
     ledger::{vm::VM, Origin, Transition},
     process::{Authorization, Deployment, Execution},
     program::Program,
+    ProgramStorage,
 };
 use console::{
     account::PrivateKey,
@@ -75,8 +76,8 @@ impl<N: Network> Transaction<N> {
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
     /// Initializes a new deployment transaction.
-    pub fn deploy<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn deploy<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         (credits, additional_fee_in_gates): (Record<N, Plaintext<N>>, u64),
@@ -91,8 +92,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn execute_authorization<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -103,8 +104,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction from an authorization and additional fee.
-    pub fn execute_authorization_with_additional_fee<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn execute_authorization_with_additional_fee<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
@@ -124,8 +125,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
-    pub fn execute<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn execute<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
         function_name: Identifier<N>,

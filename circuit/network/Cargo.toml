@@ -24,11 +24,6 @@ version = "0.7.5"
 path = "../types"
 version = "0.7.5"
 
-[dependencies.snarkvm-fields]
-path = "../../fields"
-version = "0.7.5"
-default-features = false
-
 [dev-dependencies.snarkvm-console-types]
 path = "../../console/types"
 version = "0.7.5"

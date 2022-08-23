@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
 
 use core::{fmt, hash};
@@ -28,13 +28,21 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
         ScalarField = Self::ScalarField,
         Coordinates = (Self::BaseField, Self::BaseField),
     >;
-    type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>
-        + MontgomeryParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + SquareRootField + Copy;
     type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger> + Copy;
 
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::BaseField = <Self::Network as console::Environment>::EDWARDS_A;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::BaseField = <Self::Network as console::Environment>::EDWARDS_D;
+
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::BaseField = <Self::Network as console::Environment>::MONTGOMERY_A;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::BaseField = <Self::Network as console::Environment>::MONTGOMERY_B;
+
     /// The maximum number of bytes allowed in a string.
-    const NUM_STRING_BYTES: u32;
+    const MAX_STRING_BYTES: u32 = <Self::Network as console::Environment>::MAX_STRING_BYTES;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField>;

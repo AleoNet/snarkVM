@@ -27,6 +27,7 @@ impl<N: Network> Stack<N> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        caller: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the call stack is not `Evaluate`.
@@ -42,6 +43,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition caller, as a circuit.
+        registers.set_caller_circuit(caller);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
 
@@ -112,7 +115,7 @@ impl<N: Network> Stack<N> {
         );
 
         // Retrieve the function from the program.
-        let function = self.program.get_function(console_request.function_name())?;
+        let function = self.get_function(console_request.function_name())?;
         // Retrieve the number of inputs.
         let num_inputs = function.inputs().len();
         // Ensure the number of inputs matches the number of input statements.
@@ -144,6 +147,11 @@ impl<N: Network> Stack<N> {
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
+
+        // Set the transition caller.
+        registers.set_caller(*console_request.caller());
+        // Set the transition caller, as a circuit.
+        registers.set_caller_circuit(request.caller().clone());
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
@@ -221,6 +229,77 @@ impl<N: Network> Stack<N> {
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Response");
+
+        // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
+        let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
+            || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
+            || matches!(registers.call_stack(), CallStack::Execute(..))
+        {
+            // If this function has the finalize command, then construct the finalize inputs.
+            if let Some(command) = function.finalize_command() {
+                use circuit::ToBits;
+
+                // Ensure the number of inputs is within bounds.
+                ensure!(
+                    command.operands().len() <= N::MAX_INPUTS,
+                    "The 'finalize' command contains too many operands. The maximum number of inputs is {}.",
+                    N::MAX_INPUTS
+                );
+
+                // Initialize a vector for the (console) finalize inputs.
+                let mut console_finalize_inputs = Vec::with_capacity(command.operands().len());
+                // Initialize a vector for the (circuit) finalize input bits.
+                let mut circuit_finalize_input_bits = Vec::with_capacity(command.operands().len());
+
+                // Retrieve the finalize inputs.
+                for operand in command.operands() {
+                    // Retrieve the finalize input.
+                    let value = registers.load_circuit(self, operand)?;
+                    // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
+                    //  See `RegisterTypes::initialize_function_types()` for the same set of checks.
+                    // Ensure the value is a literal (for now).
+                    match value {
+                        circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
+                        circuit::Value::Plaintext(circuit::Plaintext::Interface(..)) => {
+                            bail!(
+                                "'{}/{}' attempts to pass an 'interface' into 'finalize'",
+                                self.program_id(),
+                                function.name()
+                            );
+                        }
+                        circuit::Value::Record(..) => {
+                            bail!(
+                                "'{}/{}' attempts to pass a 'record' into 'finalize'",
+                                self.program_id(),
+                                function.name()
+                            );
+                        }
+                    }
+
+                    // Store the (console) finalize input.
+                    console_finalize_inputs.push(value.eject_value());
+                    // Store the (circuit) finalize input bits.
+                    circuit_finalize_input_bits.extend(value.to_bits_le());
+                }
+
+                // Compute the finalize inputs checksum.
+                let finalize_checksum = A::hash_bhp1024(&circuit_finalize_input_bits);
+                // Inject the finalize inputs checksum as `Mode::Public`.
+                let circuit_checksum = circuit::Field::new(circuit::Mode::Public, finalize_checksum.eject_value());
+                // Enforce the injected checksum matches the original checksum.
+                A::assert(circuit_checksum.is_equal(&finalize_checksum));
+
+                #[cfg(debug_assertions)]
+                Self::log_circuit::<A, _>("Finalize");
+
+                // Return the (console) finalize inputs.
+                Some(console_finalize_inputs)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         use circuit::{ToField, Zero};
 
@@ -342,7 +421,7 @@ impl<N: Network> Stack<N> {
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Construct the transition.
             let transition =
-                Transition::from(&console_request, &response, &output_types, output_registers, proof, *fee)?;
+                Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }

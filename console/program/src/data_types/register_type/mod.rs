@@ -18,7 +18,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{Identifier, Locator, PlaintextType, ValueType};
+use crate::{FinalizeType, Identifier, Locator, PlaintextType, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use enum_index::EnumIndex;
@@ -39,9 +39,20 @@ impl<N: Network> From<ValueType<N>> for RegisterType<N> {
         match value {
             ValueType::Constant(plaintext_type)
             | ValueType::Public(plaintext_type)
-            | ValueType::Private(plaintext_type) => RegisterType::Plaintext(plaintext_type),
-            ValueType::Record(record_name) => RegisterType::Record(record_name),
-            ValueType::ExternalRecord(locator) => RegisterType::ExternalRecord(locator),
+            | ValueType::Private(plaintext_type) => Self::Plaintext(plaintext_type),
+            ValueType::Record(record_name) => Self::Record(record_name),
+            ValueType::ExternalRecord(locator) => Self::ExternalRecord(locator),
+        }
+    }
+}
+
+impl<N: Network> From<FinalizeType<N>> for RegisterType<N> {
+    /// Converts a finalize type to a register type.
+    fn from(value: FinalizeType<N>) -> Self {
+        match value {
+            FinalizeType::Public(plaintext_type) => Self::Plaintext(plaintext_type),
+            FinalizeType::Record(record_name) => Self::Record(record_name),
+            FinalizeType::ExternalRecord(locator) => Self::ExternalRecord(locator),
         }
     }
 }

@@ -409,16 +409,10 @@ impl<'a, P: Fp2Parameters> MulAssign<&'a Self> for Fp2<P> {
     #[inline]
     #[allow(clippy::suspicious_op_assign_impl)]
     fn mul_assign(&mut self, other: &Self) {
-        // Karatsuba multiplication;
-        // Guide to Pairing-based cryprography, Algorithm 5.16.
-        let v0 = self.c0 * other.c0;
-        let v1 = self.c1 * other.c1;
-
-        self.c1 += &self.c0;
-        self.c1 *= &(other.c0 + other.c1);
-        self.c1 -= &v0;
-        self.c1 -= &v1;
-        self.c0 = v0 + P::mul_fp_by_nonresidue(&v1);
+        *self = Self::new(
+            P::Fp::sum_of_products([self.c0, P::mul_fp_by_nonresidue(&self.c1)].iter(), [other.c0, other.c1].iter()),
+            P::Fp::sum_of_products([self.c0, self.c1].iter(), [other.c1, other.c0].iter()),
+        )
     }
 }
 

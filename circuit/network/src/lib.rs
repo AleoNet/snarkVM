@@ -25,7 +25,7 @@ use snarkvm_circuit_types::{environment::Environment, Boolean, Field, Group, Sca
 
 pub trait Aleo: Environment {
     /// The maximum number of field elements in data (must not exceed u16::MAX).
-    const MAX_DATA_SIZE_IN_FIELDS: u32;
+    const MAX_DATA_SIZE_IN_FIELDS: u32 = <Self::Network as console::Network>::MAX_DATA_SIZE_IN_FIELDS;
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self>;
@@ -33,8 +33,8 @@ pub trait Aleo: Environment {
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self>;
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self>;
 
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Field<Self>;
@@ -47,9 +47,6 @@ pub trait Aleo: Environment {
 
     /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
-
-    /// Returns the scalar multiplication on the generator `T` (for tags).
-    fn t_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;

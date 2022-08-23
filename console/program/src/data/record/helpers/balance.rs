@@ -16,15 +16,28 @@
 
 use crate::{Ciphertext, Entry, Literal, Plaintext};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, U64};
+use snarkvm_console_types::{Boolean, Field, U64};
 
 /// A value stored in program data.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum Balance<N: Network, Private: Visibility> {
     /// A publicly-visible value.
     Public(U64<N>),
     /// A private value is encrypted under the account owner's address.
     Private(Private),
+}
+
+impl<N: Network> Deref for Balance<N, Plaintext<N>> {
+    type Target = U64<N>;
+
+    /// Returns the balance as a u64.
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Public(public) => public,
+            Self::Private(Plaintext::Literal(Literal::U64(balance), ..)) => balance,
+            _ => N::halt("Internal error: plaintext deref corrupted in record balance"),
+        }
+    }
 }
 
 impl<N: Network, Private: Visibility> Balance<N, Private> {
@@ -49,15 +62,33 @@ impl<N: Network> Balance<N, Plaintext<N>> {
     }
 }
 
-impl<N: Network> Deref for Balance<N, Plaintext<N>> {
-    type Target = U64<N>;
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Eq for Balance<N, Private> {}
 
-    /// Returns the balance as a u64.
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Public(public) => public,
-            Self::Private(Plaintext::Literal(Literal::U64(balance), ..)) => balance,
-            _ => N::halt("Internal error: plaintext deref corrupted in record balance"),
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> PartialEq for Balance<N, Private> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        *self.is_equal(other)
+    }
+}
+
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Balance<N, Private> {
+    type Output = Boolean<N>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::new(false),
+        }
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::new(true),
         }
     }
 }

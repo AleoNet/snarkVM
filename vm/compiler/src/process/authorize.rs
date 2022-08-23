@@ -27,17 +27,7 @@ impl<N: Network> Process<N> {
         inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Authorization<N>> {
-        // Retrieve the program, function, and input types.
-        let (program, function, input_types, _) = self.get_function_info(program_id, &function_name)?;
-        // Compute the request.
-        let request = Request::sign(private_key, *program.id(), *function.name(), inputs, &input_types, rng)?;
-        // Initialize the authorization.
-        let authorization = Authorization::new(&[request.clone()]);
-        // Construct the authorization from the function.
-        let _response = self
-            .get_stack(program.id())?
-            .execute_function::<A, R>(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
-        // Return the authorization.
-        Ok(authorization)
+        // Authorize the call.
+        self.get_stack(program_id)?.authorize::<A, R>(private_key, function_name, inputs, rng)
     }
 }

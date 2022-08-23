@@ -23,6 +23,7 @@ pub use helpers::{Balance, Owner};
 mod bytes;
 mod decrypt;
 mod encrypt;
+mod equal;
 mod find;
 mod is_owner;
 mod num_randomizers;
@@ -36,12 +37,12 @@ mod to_fields;
 use crate::{Ciphertext, Identifier, Literal, Plaintext, ProgramID};
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Group, Scalar, U64};
+use snarkvm_console_types::{Boolean, Field, Group, Scalar, U64};
 
 use indexmap::IndexMap;
 
 /// A value stored in program record.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Record<N: Network, Private: Visibility> {
     /// The owner of the program record.
     owner: Owner<N, Private>,

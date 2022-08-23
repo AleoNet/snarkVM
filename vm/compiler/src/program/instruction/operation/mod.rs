@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod assert;
+pub use assert::*;
+
 mod call;
 pub use call::*;
 
@@ -25,6 +28,9 @@ pub use commit::*;
 
 mod hash;
 pub use hash::*;
+
+mod is;
+pub use is::*;
 
 mod literals;
 pub use literals::*;
@@ -230,54 +236,6 @@ pub type Inv<N> = UnaryLiteral<N, InvOperation<N>>;
 crate::operation!(
     pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
         Field => Field ("ensure inverse of zero halts"),
-    }
-);
-
-/// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
-pub type IsEqual<N> = BinaryLiteral<N, IsEqualOperation<N>>;
-
-crate::operation!(
-    pub struct IsEqualOperation<console::prelude::Equal, circuit::prelude::Equal, is_equal, "is.eq"> {
-        (Address, Address) => Boolean,
-        (Boolean, Boolean) => Boolean,
-        (Field, Field) => Boolean,
-        (Group, Group) => Boolean,
-        (I8, I8) => Boolean,
-        (I16, I16) => Boolean,
-        (I32, I32) => Boolean,
-        (I64, I64) => Boolean,
-        (I128, I128) => Boolean,
-        (U8, U8) => Boolean,
-        (U16, U16) => Boolean,
-        (U32, U32) => Boolean,
-        (U64, U64) => Boolean,
-        (U128, U128) => Boolean,
-        (Scalar, Scalar) => Boolean,
-        // (StringType, StringType) => Boolean,
-    }
-);
-
-/// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
-pub type IsNotEqual<N> = BinaryLiteral<N, IsNotEqualOperation<N>>;
-
-crate::operation!(
-    pub struct IsNotEqualOperation<console::prelude::Equal, circuit::prelude::Equal, is_not_equal, "is.neq"> {
-        (Address, Address) => Boolean,
-        (Boolean, Boolean) => Boolean,
-        (Field, Field) => Boolean,
-        (Group, Group) => Boolean,
-        (I8, I8) => Boolean,
-        (I16, I16) => Boolean,
-        (I32, I32) => Boolean,
-        (I64, I64) => Boolean,
-        (I128, I128) => Boolean,
-        (U8, U8) => Boolean,
-        (U16, U16) => Boolean,
-        (U32, U32) => Boolean,
-        (U64, U64) => Boolean,
-        (U128, U128) => Boolean,
-        (Scalar, Scalar) => Boolean,
-        // (StringType, StringType) => Boolean,
     }
 );
 

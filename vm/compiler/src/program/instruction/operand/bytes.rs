@@ -21,6 +21,8 @@ impl<N: Network> FromBytes for Operand<N> {
         match u8::read_le(&mut reader) {
             Ok(0) => Ok(Self::Literal(Literal::read_le(&mut reader)?)),
             Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
+            Ok(2) => Ok(Self::ProgramID(ProgramID::read_le(&mut reader)?)),
+            Ok(3) => Ok(Self::Caller),
             Ok(variant) => Err(error(format!("Failed to deserialize operand variant {variant}"))),
             Err(err) => Err(err),
         }
@@ -31,13 +33,18 @@ impl<N: Network> ToBytes for Operand<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Literal(literal) => {
-                u8::write_le(&0u8, &mut writer)?;
+                0u8.write_le(&mut writer)?;
                 literal.write_le(&mut writer)
             }
             Self::Register(register) => {
-                u8::write_le(&1u8, &mut writer)?;
+                1u8.write_le(&mut writer)?;
                 register.write_le(&mut writer)
             }
+            Self::ProgramID(program_id) => {
+                2u8.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)
+            }
+            Self::Caller => 3u8.write_le(&mut writer),
         }
     }
 }

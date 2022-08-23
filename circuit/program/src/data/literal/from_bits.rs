@@ -131,7 +131,7 @@ mod tests {
             check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let range = 0..rng.gen_range(0..Circuit::NUM_STRING_BYTES / 4);
+            let range = 0..rng.gen_range(0..Circuit::MAX_STRING_BYTES / 4);
             let string: String = range.map(|_| rng.gen::<char>()).collect();
             check_serialization(Literal::<Circuit>::String(StringType::new(mode, console::StringType::new(&string))));
         }

@@ -6,6 +6,12 @@ description = "Network console library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "0.7.5"
+default-features = false
+features = [ "crypto_hash" ]
+
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
 version = "0.7.5"
@@ -39,7 +45,7 @@ path = "../../utilities"
 version = "0.7.5"
 
 [dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.61"
 
 [dependencies.itertools]
 version = "0.10.1"

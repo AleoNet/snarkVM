@@ -30,9 +30,9 @@ impl<N: Network> Stack<N> {
         }
 
         // Retrieve the program ID.
-        let program_id = self.program.id();
+        let program_id = self.program_id();
         // Retrieve the function input types.
-        let input_types = self.program.get_function(function_name)?.input_types();
+        let input_types = self.get_function(function_name)?.input_types();
 
         // Initialize a burner private key.
         let burner_private_key = PrivateKey::new(rng)?;
@@ -83,9 +83,8 @@ impl<N: Network> Stack<N> {
         // Synthesize the proving and verifying key.
         let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
         // Insert the proving key.
-        self.insert_proving_key(function_name, proving_key);
+        self.insert_proving_key(function_name, proving_key)?;
         // Insert the verifying key.
-        self.insert_verifying_key(function_name, verifying_key);
-        Ok(())
+        self.insert_verifying_key(function_name, verifying_key)
     }
 }

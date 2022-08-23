@@ -27,8 +27,12 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the ":" from the string.
             let (string, _) = tag(":")(string)?;
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
             // Parse the entry from the string.
             let (string, entry) = Entry::parse(string)?;
             // Return the identifier and entry.
@@ -44,6 +48,8 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the "owner" tag from the string.
         let (string, _) = tag("owner")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
         // Parse the whitespace and comments from the string.
@@ -62,6 +68,8 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the "gates" tag from the string.
         let (string, _) = tag("gates")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
         // Parse the whitespace and comments from the string.
@@ -253,7 +261,6 @@ mod tests {
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
-
         Ok(())
     }
 
@@ -267,6 +274,21 @@ mod tests {
         let expected = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, gates: 99u64.private, foo: 5u8.private }";
         assert!(Plaintext::<CurrentNetwork>::parse(expected).is_err());
 
+        // Entry 'd' contains members with different visibility.
+        let expected = r"{
+    owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
+    gates: 0u64.private,
+    a: true.private,
+    b: 123456789field.private,
+    c: 0group.private,
+    d: {
+        e: true.private,
+        f: 123456789field.public,
+        g: 0group.private
+    },
+    _nonce: 0group.public
+}";
+        assert!(Plaintext::<CurrentNetwork>::parse(expected).is_err());
         Ok(())
     }
 }

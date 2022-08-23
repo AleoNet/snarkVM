@@ -196,7 +196,13 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
             // Evaluate the closure, and load the outputs.
-            substack.evaluate_closure::<A>(&closure, &inputs, registers.call_stack(), registers.tvk()?)?
+            substack.evaluate_closure::<A>(
+                &closure,
+                &inputs,
+                registers.call_stack(),
+                registers.caller()?,
+                registers.tvk()?,
+            )?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {
@@ -255,7 +261,13 @@ impl<N: Network> Call<N> {
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
             // Execute the closure, and load the outputs.
-            substack.execute_closure(&closure, &inputs, registers.call_stack(), registers.tvk_circuit()?)?
+            substack.execute_closure(
+                &closure,
+                &inputs,
+                registers.call_stack(),
+                registers.caller_circuit()?,
+                registers.tvk_circuit()?,
+            )?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {

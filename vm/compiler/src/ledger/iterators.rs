@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /* Transaction */
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.

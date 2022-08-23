@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for Closure<N> {
 
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
-        if num_instructions > N::MAX_FUNCTION_INSTRUCTIONS as u32 {
+        if num_instructions > N::MAX_INSTRUCTIONS as u32 {
             return Err(error(format!("Failed to deserialize a closure: too many instructions ({num_instructions})")));
         }
         let mut instructions = Vec::with_capacity(num_instructions as usize);
@@ -81,7 +81,7 @@ impl<N: Network> ToBytes for Closure<N> {
 
         // Write the number of instructions for the closure.
         let num_instructions = self.instructions.len();
-        match num_instructions <= N::MAX_FUNCTION_INSTRUCTIONS {
+        match num_instructions <= N::MAX_INSTRUCTIONS {
             true => (num_instructions as u32).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }

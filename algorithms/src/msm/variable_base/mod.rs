@@ -98,18 +98,21 @@ mod tests {
 
     #[test]
     fn test_msm() {
-        let mut rng = test_rng();
-        let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1000);
+        use snarkvm_curves::ProjectiveCurve;
+        for msm_size in [1, 5, 10, 50, 100, 500, 1000] {
+            let mut rng = test_rng();
+            let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, msm_size);
 
-        let naive_a = VariableBase::msm_naive(bases.as_slice(), scalars.as_slice());
-        let naive_b = VariableBase::msm_naive_parallel(bases.as_slice(), scalars.as_slice());
-        assert_eq!(naive_a, naive_b);
+            let naive_a = VariableBase::msm_naive(bases.as_slice(), scalars.as_slice()).to_affine();
+            let naive_b = VariableBase::msm_naive_parallel(bases.as_slice(), scalars.as_slice()).to_affine();
+            assert_eq!(naive_a, naive_b, "MSM size: {msm_size}");
 
-        let candidate = standard::msm(bases.as_slice(), scalars.as_slice());
-        assert_eq!(naive_a, candidate);
+            let candidate = standard::msm(bases.as_slice(), scalars.as_slice()).to_affine();
+            assert_eq!(naive_a, candidate, "MSM size: {msm_size}");
 
-        let candidate = batched::msm(bases.as_slice(), scalars.as_slice());
-        assert_eq!(naive_a, candidate);
+            let candidate = batched::msm(bases.as_slice(), scalars.as_slice()).to_affine();
+            assert_eq!(naive_a, candidate, "MSM size: {msm_size}");
+        }
     }
 
     #[cfg(all(feature = "cuda", target_arch = "x86_64"))]

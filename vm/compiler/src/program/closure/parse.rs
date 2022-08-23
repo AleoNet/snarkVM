@@ -34,7 +34,7 @@ impl<N: Network> Parser for Closure<N> {
         let (string, _) = tag(":")(string)?;
 
         // Parse the inputs from the string.
-        let (string, inputs) = many1(Input::parse)(string)?;
+        let (string, inputs) = many0(Input::parse)(string)?;
         // Parse the instructions from the string.
         let (string, instructions) = many1(Instruction::parse)(string)?;
         // Parse the outputs from the string.

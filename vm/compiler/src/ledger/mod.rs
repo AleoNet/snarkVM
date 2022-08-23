@@ -36,6 +36,7 @@ mod vm;
 pub use vm::*;
 
 mod contains;
+mod find;
 mod get;
 mod iterators;
 mod latest;
@@ -66,21 +67,22 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
+#[derive(Copy, Clone, Debug)]
 pub enum RecordsFilter<N: Network> {
-    /// Returns all output records associated with the account.
+    /// Returns all records associated with the account.
     All,
-    /// Returns all output records associated with the account that are **spent**.
-    AllSpent(PrivateKey<N>),
-    /// Returns all output records associated with the account that are **not spent**.
-    AllUnspent(PrivateKey<N>),
-    /// Returns only output records associated with the account that are **spent** with the given graph key.
-    Spent(GraphKey<N>),
-    /// Returns only output records associated with the account that are **not spent** with the given graph key.
-    Unspent(GraphKey<N>),
+    /// Returns only records associated with the account that are **spent** with the graph key.
+    Spent,
+    /// Returns only records associated with the account that are **not spent** with the graph key.
+    Unspent,
+    /// Returns all records associated with the account that are **spent** with the given private key.
+    SlowSpent(PrivateKey<N>),
+    /// Returns all records associated with the account that are **not spent** with the given private key.
+    SlowUnspent(PrivateKey<N>),
 }
 
 #[derive(Clone)]
-pub struct Ledger<N: Network, B: BlockStorage<N>> {
+pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     /// The current block hash.
     current_hash: N::BlockHash,
     /// The current block height.
@@ -101,12 +103,12 @@ pub struct Ledger<N: Network, B: BlockStorage<N>> {
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
     /// The VM state.
-    vm: VM<N>,
+    vm: VM<N, P>,
     // /// The mapping of program IDs to their global state.
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
-impl<N: Network> Ledger<N, BlockMemory<N>> {
+impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
@@ -121,8 +123,10 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
     pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
         // Initialize the block store.
         let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
+        // Initialize the program store.
+        let store = ProgramStore::<N, ProgramMemory<N>>::open()?;
         // Initialize a new VM.
-        let vm = VM::<N>::new()?;
+        let vm = VM::new(store)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -147,19 +151,21 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
     }
 }
 
-impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Initializes the `Ledger` from storage.
     pub fn open() -> Result<Self> {
         // Initialize the block store.
         let blocks = BlockStore::<N, B>::open()?;
+        // Initialize the program store.
+        let store = ProgramStore::open()?;
         // Return the ledger.
-        Self::from(blocks)
+        Self::from(blocks, store)
     }
 
     /// Initializes the `Ledger` from storage.
-    pub fn from(blocks: BlockStore<N, B>) -> Result<Self> {
+    pub fn from(blocks: BlockStore<N, B>, store: ProgramStore<N, P>) -> Result<Self> {
         // Initialize a new VM.
-        let vm = VM::<N>::from(&blocks)?;
+        let vm = VM::<N, P>::from(&blocks, store)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -219,7 +225,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     }
 
     /// Returns the VM.
-    pub fn vm(&self) -> &VM<N> {
+    pub fn vm(&self) -> &VM<N, P> {
         &self.vm
     }
 
@@ -573,8 +579,13 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     }
 
     /// Returns the block tree.
-    pub fn to_block_tree(&self) -> &BlockTree<N> {
+    pub const fn block_tree(&self) -> &BlockTree<N> {
         &self.block_tree
+    }
+
+    /// Returns the memory pool.
+    pub const fn memory_pool(&self) -> &IndexMap<N::TransactionID, Transaction<N>> {
+        &self.memory_pool
     }
 
     /// Returns a state path for the given commitment.
@@ -803,7 +814,7 @@ pub(crate) mod test_helpers {
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>>;
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>, ProgramMemory<CurrentNetwork>>;
 
     pub(crate) fn sample_genesis_private_key() -> PrivateKey<CurrentNetwork> {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
@@ -820,7 +831,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let vm = VM::<CurrentNetwork>::new().unwrap();
+                let vm = crate::ledger::vm::test_helpers::sample_vm();
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng_fixed();
                 // Initialize a new caller.
@@ -858,7 +869,7 @@ pub(crate) mod test_helpers {
 mod tests {
     use super::*;
     use crate::ledger::test_helpers::CurrentLedger;
-    use console::network::Testnet3;
+    use console::{network::Testnet3, program::Value};
     use snarkvm_utilities::test_crypto_rng;
 
     use tracing_test::traced_test;
@@ -875,8 +886,11 @@ mod tests {
         let view_key = ViewKey::try_from(private_key).unwrap();
         let address = Address::try_from(&view_key).unwrap();
 
+        // Initialize the VM.
+        let vm = crate::ledger::vm::test_helpers::sample_vm();
+
         // Create a genesis block.
-        let genesis = Block::genesis(&VM::new().unwrap(), &private_key, rng).unwrap();
+        let genesis = Block::genesis(&vm, &private_key, rng).unwrap();
 
         // Initialize the validators.
         let validators: IndexMap<Address<_>, ()> = [(address, ())].into_iter().collect();
@@ -919,7 +933,11 @@ mod tests {
                 .unwrap();
 
         // Initialize a ledger without the genesis block.
-        let ledger = CurrentLedger::from(BlockStore::<_, BlockMemory<_>>::open().unwrap()).unwrap();
+        let ledger = CurrentLedger::from(
+            BlockStore::<_, BlockMemory<_>>::open().unwrap(),
+            ProgramStore::<_, ProgramMemory<_>>::open().unwrap(),
+        )
+        .unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
@@ -949,7 +967,7 @@ mod tests {
 
     #[test]
     #[traced_test]
-    fn test_ledger_deployment() {
+    fn test_ledger_deploy() {
         let rng = &mut test_crypto_rng();
 
         // Sample the genesis private key.
@@ -980,7 +998,7 @@ mod tests {
 
     #[test]
     #[traced_test]
-    fn test_ledger_execution() {
+    fn test_ledger_execute() {
         let rng = &mut test_crypto_rng();
 
         // Sample the genesis private key.
@@ -1002,5 +1020,61 @@ mod tests {
 
         // Ensure that the ledger cannot add the same transaction.
         assert!(ledger.add_to_memory_pool(transaction).is_err());
+    }
+
+    #[test]
+    #[traced_test]
+    fn test_ledger_execute_many() {
+        let rng = &mut test_crypto_rng();
+
+        // Sample the genesis private key, view key, and address.
+        let private_key = test_helpers::sample_genesis_private_key();
+        let view_key = ViewKey::try_from(private_key).unwrap();
+        let address = Address::try_from(&view_key).unwrap();
+
+        // Initialize the store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        // Create a genesis block.
+        let genesis = Block::genesis(&VM::new(store).unwrap(), &private_key, rng).unwrap();
+        // Initialize the ledger.
+        let mut ledger = Ledger::<_, BlockMemory<_>, _>::new_with_genesis(&genesis, address).unwrap();
+
+        for height in 1..6 {
+            // Fetch the unspent records.
+            let records: Vec<_> = ledger
+                .find_records(&view_key, RecordsFilter::Unspent)
+                .unwrap()
+                .filter(|(_, record)| !record.gates().is_zero())
+                .collect();
+            assert_eq!(records.len(), 1 << (height - 1));
+
+            for (_, record) in records {
+                // Create a new transaction.
+                let transaction = Transaction::execute(
+                    ledger.vm(),
+                    &private_key,
+                    &ProgramID::from_str("credits.aleo").unwrap(),
+                    Identifier::from_str("split").unwrap(),
+                    &[
+                        Value::Record(record.clone()),
+                        Value::from_str(&format!("{}u64", ***record.gates() / 2)).unwrap(),
+                    ],
+                    None,
+                    &mut rand::thread_rng(),
+                )
+                .unwrap();
+                // Add the transaction to the memory pool.
+                ledger.add_to_memory_pool(transaction).unwrap();
+            }
+            assert_eq!(ledger.memory_pool().len(), 1 << (height - 1));
+
+            // Propose the next block.
+            let next_block = ledger.propose_next_block(&private_key, rng).unwrap();
+
+            // Construct a next block.
+            ledger.add_next_block(&next_block).unwrap();
+            assert_eq!(ledger.latest_height(), height);
+            assert_eq!(ledger.latest_hash(), next_block.hash());
+        }
     }
 }

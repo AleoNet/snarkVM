@@ -39,7 +39,8 @@ impl<N: Network> VerifyingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        match Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof) {
+        // Verify the proof.
+        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), self, std::slice::from_ref(&inputs), proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {
@@ -62,7 +63,8 @@ impl<N: Network> VerifyingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        match Marlin::<N>::verify_batch(self, inputs, proof) {
+        // Verify the batch proof.
+        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {

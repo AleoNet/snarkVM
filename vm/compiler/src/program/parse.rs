@@ -22,6 +22,7 @@ impl<N: Network> Parser for Program<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // A helper to parse a program.
         enum P<N: Network> {
+            M(Mapping<N>),
             I(Interface<N>),
             R(RecordType<N>),
             C(Closure<N>),
@@ -47,6 +48,7 @@ impl<N: Network> Parser for Program<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the interface or function from the string.
         let (string, components) = many1(alt((
+            map(Mapping::parse, |mapping| P::<N>::M(mapping)),
             map(Interface::parse, |interface| P::<N>::I(interface)),
             map(RecordType::parse, |record| P::<N>::R(record)),
             map(Closure::parse, |closure| P::<N>::C(closure)),
@@ -68,6 +70,7 @@ impl<N: Network> Parser for Program<N> {
             // Construct the program with the parsed components.
             for component in components.iter() {
                 let result = match component {
+                    P::M(mapping) => program.add_mapping(mapping.clone()),
                     P::I(interface) => program.add_interface(interface.clone()),
                     P::R(record) => program.add_record(record.clone()),
                     P::C(closure) => program.add_closure(closure.clone()),
@@ -144,31 +147,38 @@ impl<N: Network> Display for Program<N> {
 
         for (identifier, definition) in self.identifiers.iter() {
             match definition {
+                ProgramDefinition::Mapping => match self.mappings.get(identifier) {
+                    Some(mapping) => program.push_str(&format!("{mapping}\n\n")),
+                    None => {
+                        eprintln!("Mapping '{}' is not defined.", identifier);
+                        return Err(fmt::Error);
+                    }
+                },
                 ProgramDefinition::Interface => match self.interfaces.get(identifier) {
                     Some(interface) => program.push_str(&format!("{interface}\n\n")),
                     None => {
-                        eprintln!("'{}' is not defined.", identifier);
+                        eprintln!("Interface '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Record => match self.records.get(identifier) {
                     Some(record) => program.push_str(&format!("{record}\n\n")),
                     None => {
-                        eprintln!("'{}' is not defined.", identifier);
+                        eprintln!("Record '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Closure => match self.closures.get(identifier) {
                     Some(closure) => program.push_str(&format!("{closure}\n\n")),
                     None => {
-                        eprintln!("'{}' is not defined.", identifier);
+                        eprintln!("Closure '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Function => match self.functions.get(identifier) {
                     Some(function) => program.push_str(&format!("{function}\n\n")),
                     None => {
-                        eprintln!("'{}' is not defined.", identifier);
+                        eprintln!("Function '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
@@ -209,6 +219,26 @@ function compute:
 
         // Ensure the program contains the interface.
         assert!(program.contains_interface(&Identifier::from_str("message")?));
+        // Ensure the program contains the function.
+        assert!(program.contains_function(&Identifier::from_str("compute")?));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_program_parse_function_zero_inputs() -> Result<()> {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program to_parse.aleo;
+
+function compute:
+    add 1u32 2u32 into r0;
+    output r0 as u32.private;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
         // Ensure the program contains the function.
         assert!(program.contains_function(&Identifier::from_str("compute")?));
 

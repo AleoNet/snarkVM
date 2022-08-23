@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crypto_hash::sha256::sha256,
-    fft::EvaluationDomain,
-    polycommit::kzg10,
-    snark::marlin::{FiatShamirError, FiatShamirRng},
-    Prepare,
-};
+use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
 use hashbrown::HashMap;
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
@@ -498,18 +492,6 @@ pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::Proof<E>>);
 impl<E: PairingEngine> BatchProof<E> {
     pub fn is_hiding(&self) -> bool {
         self.0.iter().any(|c| c.is_hiding())
-    }
-}
-
-impl<E: PairingEngine> BatchProof<E> {
-    pub(crate) fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(
-        &self,
-        fs_rng: &mut S,
-    ) -> Result<(), FiatShamirError> {
-        for proof in self.0.iter() {
-            proof.absorb_into_sponge(fs_rng)?;
-        }
-        Ok(())
     }
 }
 

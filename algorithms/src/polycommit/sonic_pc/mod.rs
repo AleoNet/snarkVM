@@ -16,8 +16,9 @@
 
 use crate::{
     fft::DensePolynomial,
+    msm::variable_base::VariableBase,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
-    snark::marlin::{params::OptimizationType, FiatShamirRng},
+    AlgebraicSponge,
 };
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -50,11 +51,11 @@ pub use polynomial::*;
 /// [al]: https://eprint.iacr.org/2019/601
 /// [marlin]: https://eprint.iacr.org/2019/1047
 #[derive(Clone, Debug)]
-pub struct SonicKZG10<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> {
+pub struct SonicKZG10<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
     _engine: PhantomData<(E, S)>,
 }
 
-impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
+impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     pub fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalParams<E>, PCError> {
         kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::Marlin, true, rng).map_err(Into::into)
     }
@@ -330,7 +331,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 p,
             )
             .unwrap();
-            let challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
+            let challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
             (challenge, p.polynomial().as_dense().unwrap(), r)
         })))
     }
@@ -384,6 +385,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 query_comms.push(*comm);
             }
             let (polynomial, rand) = Self::combine_for_open(ck, query_polys, query_rands, fs_rng)?;
+            let _randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
 
             pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
@@ -410,6 +412,11 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         Commitment<E>: 'a,
     {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect();
+        let batch_check_time = start_timer!(|| format!(
+            "Checking {} commitments at query set of size {}",
+            commitments.len(),
+            query_set.len(),
+        ));
         let mut query_to_labels_map = BTreeMap::new();
 
         for (label, (point_name, point)) in query_set.iter() {
@@ -424,12 +431,6 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut combined_comms = BTreeMap::new();
         let mut combined_witness = E::G1Projective::zero();
         let mut combined_adjusted_witness = E::G1Projective::zero();
-
-        let mut batch_kzg_check_fs_rng = S::new();
-        batch_kzg_check_fs_rng
-            .absorb_nonnative_field_elements(query_set.iter().map(|(_, (_, q))| *q), OptimizationType::Weight);
-        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(values.values().copied(), OptimizationType::Weight);
-        proof.absorb_into_sponge(&mut batch_kzg_check_fs_rng)?;
 
         for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
@@ -459,10 +460,12 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 fs_rng,
             );
 
-            randomizer = batch_kzg_check_fs_rng.squeeze_short_nonnative_field_element()?;
+            randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
         }
 
-        Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk)
+        let result = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
+        end_timer!(batch_check_time);
+        result
     }
 
     pub fn open_combinations<'a>(
@@ -613,7 +616,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     }
 }
 
-impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
+impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     fn combine_polynomials<'a>(
         coeffs_polys_rands: impl IntoIterator<Item = (E::Fr, &'a DensePolynomial<E::Fr>, &'a Randomness<E>)>,
     ) -> (DensePolynomial<E::Fr>, Randomness<E>) {
@@ -635,15 +638,8 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     fn combine_commitments<'a>(
         coeffs_and_comms: impl IntoIterator<Item = (E::Fr, &'a Commitment<E>)>,
     ) -> E::G1Projective {
-        let mut combined_comm = E::G1Projective::zero();
-        for (coeff, comm) in coeffs_and_comms {
-            if coeff.is_one() {
-                combined_comm.add_assign_mixed(&comm.0);
-            } else {
-                combined_comm += &comm.0.mul(coeff);
-            }
-        }
-        combined_comm
+        let (scalars, bases): (Vec<_>, Vec<_>) = coeffs_and_comms.into_iter().map(|(f, c)| (f.into(), c.0)).unzip();
+        VariableBase::msm(&bases, &scalars)
     }
 
     fn normalize_commitments(commitments: Vec<E::G1Projective>) -> impl Iterator<Item = Commitment<E>> {
@@ -652,7 +648,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     }
 }
 
-impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
+impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     #[allow(clippy::too_many_arguments)]
     fn accumulate_elems<'a>(
         combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
@@ -672,7 +668,8 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip_eq(values) {
-            let curr_challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
+            let acc_timer = start_timer!(|| format!("Accumulating {}", labeled_comm.label()));
+            let curr_challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
 
             combined_values += &(value * curr_challenge);
 
@@ -680,30 +677,29 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
-
-            if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(randomizer);
-            }
+            let coeff = randomizer.unwrap_or_else(E::Fr::one) * curr_challenge;
+            let comm_with_challenge: E::G1Projective = comm.0.mul(coeff);
 
             // Accumulate values in the BTreeMap
             *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
+            end_timer!(acc_timer);
         }
 
         // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut adjusted_witness = vk.vk.g.mul(combined_values) - proof.w.mul(point);
+        let mut bases = vec![vk.vk.g, -proof.w];
+        let mut coeffs = vec![combined_values, point];
         if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.vk.gamma_g.mul(random_v);
+            bases.push(vk.vk.gamma_g);
+            coeffs.push(random_v);
         }
-
-        let (witness, adjusted_witness) = if let Some(randomizer) = randomizer {
-            (proof.w.mul(randomizer), adjusted_witness.mul(randomizer))
+        *combined_witness += if let Some(randomizer) = randomizer {
+            coeffs.iter_mut().for_each(|c| *c *= randomizer);
+            proof.w.mul(randomizer)
         } else {
-            (proof.w.to_projective(), adjusted_witness)
+            proof.w.to_projective()
         };
-
-        *combined_witness += witness;
-        *combined_adjusted_witness += adjusted_witness;
+        let coeffs = coeffs.into_iter().map(|c| c.into()).collect::<Vec<_>>();
+        *combined_adjusted_witness += VariableBase::msm(&bases, &coeffs);
         end_timer!(acc_time);
     }
 
@@ -752,17 +748,13 @@ mod tests {
     #![allow(non_camel_case_types)]
 
     use super::{CommitterKey, SonicKZG10};
-    use crate::{
-        crypto_hash::PoseidonSponge,
-        polycommit::test_templates::*,
-        snark::marlin::FiatShamirAlgebraicSpongeRng,
-    };
-    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq};
     use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
 
     use rand::distributions::Distribution;
 
-    type Sponge = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type Sponge = PoseidonSponge<Fq, 2, 1>;
     type PC_Bls12_377 = SonicKZG10<Bls12_377, Sponge>;
 
     #[test]

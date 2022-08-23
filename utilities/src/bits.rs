@@ -148,7 +148,10 @@ macro_rules! impl_bits_for_integer {
             /// Reads `Self` from a boolean array in big-endian order.
             #[inline]
             fn from_bits_be(bits: &[bool]) -> Result<Self> {
-                Self::from_bits_le(&bits.iter().rev().copied().collect::<Vec<_>>())
+                Ok(bits.iter().fold(0, |value, bit| match bit {
+                    true => (value.wrapping_shl(1)) ^ 1,
+                    false => (value.wrapping_shl(1)) ^ 0,
+                }))
             }
         }
     };

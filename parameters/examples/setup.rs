@@ -99,7 +99,7 @@ pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
 
     type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
     type Fr<N> = <N as Environment>::Field;
-    type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
+    type FS<N> = PoseidonSponge<Fq<N>, 2, 1>;
     type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, MarlinHidingMode, [Fr<N>]>;
 
     let timer = std::time::Instant::now();
@@ -129,7 +129,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize an RNG.
     let rng = &mut snarkvm_utilities::test_crypto_rng_fixed();
     // Initialize the process.
-    let process = Process::setup()?;
+    let process = Process::setup::<A, _>(rng)?;
     // Initialize the program.
     let program = Program::<N>::credits()?;
     let program_id = program.id();
@@ -139,9 +139,9 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 
     // Synthesize the 'credits.aleo' function keys.
     for (function_name, _) in program.functions().iter() {
-        let timer = std::time::Instant::now();
-        process.synthesize_key::<A, _>(program_id, function_name, rng)?;
-        println!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
+        // let timer = std::time::Instant::now();
+        // process.synthesize_key::<A, _>(program_id, function_name, rng)?;
+        // println!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
 
         let proving_key = process.get_proving_key(program_id, function_name)?;
         let proving_key_bytes = proving_key.to_bytes_le()?;

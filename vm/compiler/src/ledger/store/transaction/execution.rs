@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    atomic_write_batch,
     cow_to_cloned,
     cow_to_copied,
     ledger::{
@@ -30,6 +31,7 @@ use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
+use std::borrow::Cow;
 
 /// A trait for execution storage.
 pub trait ExecutionStorage<N: Network>: Clone + Sync {
@@ -53,6 +55,123 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
     fn edition_map(&self) -> &Self::EditionMap;
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.edition_map().start_atomic();
+        self.transition_store().start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.id_map().is_atomic_in_progress()
+            || self.reverse_id_map().is_atomic_in_progress()
+            || self.edition_map().is_atomic_in_progress()
+            || self.transition_store().is_atomic_in_progress()
+    }
+
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.id_map().abort_atomic();
+        self.reverse_id_map().abort_atomic();
+        self.edition_map().abort_atomic();
+        self.transition_store().abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) -> Result<()> {
+        self.id_map().finish_atomic()?;
+        self.reverse_id_map().finish_atomic()?;
+        self.edition_map().finish_atomic()?;
+        self.transition_store().finish_atomic()
+    }
+
+    /// Stores the given `execution transaction` pair into storage.
+    fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
+        // Ensure the transaction is a execution.
+        let (transaction_id, execution, optional_additional_fee) = match transaction {
+            Transaction::Deploy(..) => {
+                bail!("Attempted to insert non-execution transaction into execution storage.")
+            }
+            Transaction::Execute(transaction_id, execution, optional_additional_fee) => {
+                (transaction_id, execution, optional_additional_fee)
+            }
+        };
+
+        // Retrieve the edition.
+        let edition = execution.edition();
+        // Retrieve the transitions.
+        let transitions: Vec<_> = execution.clone().into_transitions().collect();
+        // Retrieve the transition IDs.
+        let transition_ids = transitions.iter().map(Transition::id).copied().collect();
+        // Retrieve the optional additional fee ID.
+        let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
+
+        atomic_write_batch!(self, {
+            // Store the transition IDs.
+            self.id_map().insert(*transaction_id, (transition_ids, optional_additional_fee_id))?;
+            // Store the edition.
+            self.edition_map().insert(*transaction_id, edition)?;
+
+            // Store the execution.
+            for transition in transitions {
+                // Store the transition ID.
+                self.reverse_id_map().insert(*transition.id(), *transaction_id)?;
+                // Store the transition.
+                self.transition_store().insert(transition)?;
+            }
+
+            // Store the additional fee, if one exists.
+            if let Some(additional_fee) = optional_additional_fee {
+                // Store the additional fee ID.
+                self.reverse_id_map().insert(*additional_fee.id(), *transaction_id)?;
+                // Store the additional fee transition.
+                self.transition_store().insert(additional_fee.clone())?;
+            }
+
+            Ok(())
+        });
+
+        Ok(())
+    }
+
+    /// Removes the execution transaction for the given `transaction ID`.
+    fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
+        // Retrieve the transition IDs and optional additional fee ID.
+        let (transition_ids, optional_additional_fee_id) = match self.id_map().get(transaction_id)? {
+            Some(ids) => cow_to_cloned!(ids),
+            None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
+        };
+
+        atomic_write_batch!(self, {
+            // Remove the transition IDs.
+            self.id_map().remove(transaction_id)?;
+            // Remove the edition.
+            self.edition_map().remove(transaction_id)?;
+
+            // Remove the execution.
+            for transition_id in transition_ids {
+                // Remove the transition ID.
+                self.reverse_id_map().remove(&transition_id)?;
+                // Remove the transition.
+                self.transition_store().remove(&transition_id)?;
+            }
+
+            // Remove the additional fee ID, if one exists.
+            if let Some(additional_fee_id) = optional_additional_fee_id {
+                // Remove the additional fee ID.
+                self.reverse_id_map().remove(&additional_fee_id)?;
+                // Remove the additional fee transition.
+                self.transition_store().remove(&additional_fee_id)?;
+            }
+
+            Ok(())
+        });
+
+        Ok(())
+    }
 
     /// Returns the transaction ID that contains the given `transition ID`.
     fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
@@ -138,83 +257,6 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
             true => Ok(Some(transaction)),
             false => bail!("Mismatching transaction ID for transaction '{transaction_id}'"),
         }
-    }
-
-    /// Stores the given `execution transaction` pair into storage.
-    fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction is a execution.
-        let (transaction_id, execution, optional_additional_fee) = match transaction {
-            Transaction::Deploy(..) => {
-                bail!("Attempted to insert non-execution transaction into execution storage.")
-            }
-            Transaction::Execute(transaction_id, execution, optional_additional_fee) => {
-                (transaction_id, execution, optional_additional_fee)
-            }
-        };
-
-        // Retrieve the edition.
-        let edition = execution.edition();
-        // Retrieve the transitions.
-        let transitions: Vec<_> = execution.clone().into_transitions().collect();
-        // Retrieve the transition IDs.
-        let transition_ids = transitions.iter().map(Transition::id).copied().collect();
-        // Retrieve the optional additional fee ID.
-        let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
-
-        // Store the transition IDs.
-        self.id_map().insert(*transaction_id, (transition_ids, optional_additional_fee_id))?;
-        // Store the edition.
-        self.edition_map().insert(*transaction_id, edition)?;
-
-        // Store the execution.
-        for transition in transitions {
-            // Store the transition ID.
-            self.reverse_id_map().insert(*transition.id(), *transaction_id)?;
-            // Store the transition.
-            self.transition_store().insert(transition)?;
-        }
-
-        // Store the additional fee, if one exists.
-        if let Some(additional_fee) = optional_additional_fee {
-            // Store the additional fee ID.
-            self.reverse_id_map().insert(*additional_fee.id(), *transaction_id)?;
-            // Store the additional fee transition.
-            self.transition_store().insert(additional_fee.clone())?;
-        }
-
-        Ok(())
-    }
-
-    /// Removes the execution transaction for the given `transaction ID`.
-    fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
-        // Retrieve the transition IDs and optional additional fee ID.
-        let (transition_ids, optional_additional_fee_id) = match self.id_map().get(transaction_id)? {
-            Some(ids) => cow_to_cloned!(ids),
-            None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
-        };
-
-        // Remove the transition IDs.
-        self.id_map().remove(transaction_id)?;
-        // Remove the edition.
-        self.edition_map().remove(transaction_id)?;
-
-        // Remove the execution.
-        for transition_id in transition_ids {
-            // Remove the transition ID.
-            self.reverse_id_map().remove(&transition_id)?;
-            // Remove the transition.
-            self.transition_store().remove(&transition_id)?;
-        }
-
-        // Remove the additional fee ID, if one exists.
-        if let Some(additional_fee_id) = optional_additional_fee_id {
-            // Remove the additional fee ID.
-            self.reverse_id_map().remove(&additional_fee_id)?;
-            // Remove the additional fee transition.
-            self.transition_store().remove(&additional_fee_id)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -307,6 +349,26 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     pub fn transition_store(&self) -> &TransitionStore<N, E::TransitionStorage> {
         self.storage.transition_store()
     }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
+    }
 }
 
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
@@ -354,6 +416,13 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the transaction ID that executed the given `transition ID`.
     pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
         self.storage.find_transaction_id(transition_id)
+    }
+}
+
+impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
+    /// Returns an iterator over the execution transaction IDs, for all executions.
+    pub fn execution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.edition_map().keys()
     }
 }
 

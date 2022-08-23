@@ -213,7 +213,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
         // B = Y1*Y2
         let b = self.y * other.y;
         // C = T1*d*T2
-        let c = P::COEFF_D * self.t * other.x * other.y;
+        let c = P::EDWARDS_D * self.t * other.x * other.y;
         // D = Z1
         let d = self.z;
         // E = (X1+Y1)*(X2+Y2)-A-B
@@ -237,15 +237,42 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
     #[inline]
     #[must_use]
     fn double(&self) -> Self {
-        let mut tmp = *self;
-        tmp += self;
-        tmp
+        let mut result = *self;
+        result.double_in_place();
+        result
     }
 
     #[inline]
     fn double_in_place(&mut self) {
-        let tmp = *self;
-        *self = tmp.double();
+        // See "Twisted Edwards Curves Revisited"
+        // Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
+        // 3.3 Doubling in E^e
+        // Source: https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/doubling/dbl-2008-hwcd
+
+        // A = X1^2
+        let a = self.x.square();
+        // B = Y1^2
+        let b = self.y.square();
+        // C = 2 * Z1^2
+        let c = self.z.square().double();
+        // D = a * A
+        let d = P::mul_by_a(&a);
+        // E = (X1 + Y1)^2 - A - B
+        let e = (self.x + self.y).square() - a - b;
+        // G = D + B
+        let g = d + b;
+        // F = G - C
+        let f = g - c;
+        // H = D - B
+        let h = d - b;
+        // X3 = E * F
+        self.x = e * f;
+        // Y3 = G * H
+        self.y = g * h;
+        // T3 = E * H
+        self.t = e * h;
+        // Z3 = F * G
+        self.z = f * g;
     }
 
     fn to_affine(&self) -> Affine<P> {
@@ -290,7 +317,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for Projective<P> {
         let b = self.y * other.y;
 
         // C = d * t1 * t2
-        let c = P::COEFF_D * self.t * other.t;
+        let c = P::EDWARDS_D * self.t * other.t;
 
         // D = z1 * z2
         let d = self.z * other.z;

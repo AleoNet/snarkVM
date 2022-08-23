@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Parser for ValueType<N> {
-    /// Parses a string into a value type.
+    /// Parses the string into a value type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -36,7 +36,7 @@ impl<N: Network> Parser for ValueType<N> {
 impl<N: Network> FromStr for ValueType<N> {
     type Err = Error;
 
-    /// Returns a value type from a string literal.
+    /// Returns the value type from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {

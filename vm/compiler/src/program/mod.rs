@@ -17,6 +17,8 @@
 mod closure;
 pub use closure::*;
 
+pub mod finalize;
+
 mod function;
 pub use function::*;
 
@@ -25,6 +27,9 @@ pub use import::*;
 
 mod instruction;
 pub use instruction::*;
+
+mod mapping;
+pub use mapping::*;
 
 mod bytes;
 mod parse;
@@ -39,6 +44,8 @@ use indexmap::IndexMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum ProgramDefinition {
+    /// A program mapping.
+    Mapping,
     /// A program interface.
     Interface,
     /// A program record.
@@ -57,6 +64,8 @@ pub struct Program<N: Network> {
     imports: IndexMap<ProgramID<N>, Import<N>>,
     /// A map of identifiers to their program declaration.
     identifiers: IndexMap<Identifier<N>, ProgramDefinition>,
+    /// A map of the declared mappings for the program.
+    mappings: IndexMap<Identifier<N>, Mapping<N>>,
     /// A map of the declared interfaces for the program.
     interfaces: IndexMap<Identifier<N>, Interface<N>>,
     /// A map of the declared record types for the program.
@@ -80,6 +89,7 @@ impl<N: Network> Program<N> {
             id,
             imports: IndexMap::new(),
             identifiers: IndexMap::new(),
+            mappings: IndexMap::new(),
             interfaces: IndexMap::new(),
             records: IndexMap::new(),
             closures: IndexMap::new(),
@@ -156,6 +166,11 @@ function fee:
         &self.imports
     }
 
+    /// Returns the mappings in the program.
+    pub const fn mappings(&self) -> &IndexMap<Identifier<N>, Mapping<N>> {
+        &self.mappings
+    }
+
     /// Returns the closures in the program.
     pub const fn closures(&self) -> &IndexMap<Identifier<N>, Closure<N>> {
         &self.closures
@@ -169,6 +184,11 @@ function fee:
     /// Returns `true` if the program contains an import with the given program ID.
     pub fn contains_import(&self, id: &ProgramID<N>) -> bool {
         self.imports.contains_key(id)
+    }
+
+    /// Returns `true` if the program contains a mapping with the given name.
+    pub fn contains_mapping(&self, name: &Identifier<N>) -> bool {
+        self.mappings.contains_key(name)
     }
 
     /// Returns `true` if the program contains a interface with the given name.
@@ -191,11 +211,23 @@ function fee:
         self.functions.contains_key(name)
     }
 
+    /// Returns the mapping with the given name.
+    pub fn get_mapping(&self, name: &Identifier<N>) -> Result<Mapping<N>> {
+        // Attempt to retrieve the mapping.
+        let mapping = self.mappings.get(name).cloned().ok_or_else(|| anyhow!("Mapping '{name}' is not defined."))?;
+        // Ensure the mapping name matches.
+        ensure!(mapping.name() == name, "Expected mapping '{name}', but found mapping '{}'", mapping.name());
+        // Return the mapping.
+        Ok(mapping)
+    }
+
     /// Returns the interface with the given name.
     pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
         // Attempt to retrieve the interface.
         let interface =
             self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))?;
+        // Ensure the interface name matches.
+        ensure!(interface.name() == name, "Expected interface '{name}', but found interface '{}'", interface.name());
         // Ensure the interface contains members.
         ensure!(!interface.members().is_empty(), "Interface '{name}' is missing members.");
         // Return the interface.
@@ -204,13 +236,20 @@ function fee:
 
     /// Returns the record with the given name.
     pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
-        self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))
+        // Attempt to retrieve the record.
+        let record = self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
+        // Ensure the record name matches.
+        ensure!(record.name() == name, "Expected record '{name}', but found record '{}'", record.name());
+        // Return the record.
+        Ok(record)
     }
 
     /// Returns the closure with the given name.
     pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
         // Attempt to retrieve the closure.
         let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
+        // Ensure the closure name matches.
+        ensure!(closure.name() == name, "Expected closure '{name}', but found closure '{}'", closure.name());
         // Ensure there are input statements in the closure.
         ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
         // Ensure the number of inputs is within the allowed range.
@@ -227,12 +266,12 @@ function fee:
     pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
         // Attempt to retrieve the function.
         let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
-        // Ensure there are input statements in the function.
-        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
+        // Ensure the function name matches.
+        ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
         // Ensure the number of inputs is within the allowed range.
         ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
-        // Ensure there are instructions in the function.
-        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Ensure the number of instructions is within the allowed range.
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
         ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Return the function.
@@ -267,6 +306,34 @@ impl<N: Network> Program<N> {
         // Add the import statement to the program.
         if self.imports.insert(*import.program_id(), import.clone()).is_some() {
             bail!("'{}' already exists in the program.", import.program_id())
+        }
+        Ok(())
+    }
+
+    /// Adds a new mapping to the program.
+    ///
+    /// # Errors
+    /// This method will halt if the mapping name is already in use.
+    /// This method will halt if the mapping name is a reserved opcode or keyword.
+    #[inline]
+    fn add_mapping(&mut self, mapping: Mapping<N>) -> Result<()> {
+        // Retrieve the mapping name.
+        let mapping_name = *mapping.name();
+
+        // Ensure the mapping name is new.
+        ensure!(self.is_unique_name(&mapping_name), "'{mapping_name}' is already in use.");
+        // Ensure the mapping name is not a reserved keyword.
+        ensure!(!Self::is_reserved_keyword(&mapping_name), "'{mapping_name}' is a reserved keyword.");
+        // Ensure the mapping name is not a reserved opcode.
+        ensure!(!Self::is_reserved_opcode(&mapping_name.to_string()), "'{mapping_name}' is a reserved opcode.");
+
+        // Add the mapping name to the identifiers.
+        if self.identifiers.insert(mapping_name, ProgramDefinition::Mapping).is_some() {
+            bail!("'{mapping_name}' already exists in the program.")
+        }
+        // Add the mapping to the program.
+        if self.mappings.insert(mapping_name, mapping).is_some() {
+            bail!("'{mapping_name}' already exists in the program.")
         }
         Ok(())
     }
@@ -445,12 +512,10 @@ impl<N: Network> Program<N> {
         // Ensure the function name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
-        // Ensure there are input statements in the function.
-        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
         // Ensure the number of inputs is within the allowed range.
         ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
-        // Ensure there are instructions in the function.
-        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Ensure the number of instructions is within the allowed range.
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
         ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
 
@@ -507,9 +572,14 @@ impl<N: Network> Program<N> {
         "interface",
         "closure",
         "program",
-        "global",
-        // Reserved (catch all)
         "aleo",
+        "self",
+        "storage",
+        "mapping",
+        "key",
+        "value",
+        // Reserved (catch all)
+        "global",
         "return",
         "break",
         "assert",
@@ -569,7 +639,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Execution, Process};
+    use crate::{CallStack, Execution};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},
@@ -583,6 +653,29 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
+
+    #[test]
+    fn test_program_mapping() -> Result<()> {
+        // Create a new mapping.
+        let mapping = Mapping::<CurrentNetwork>::from_str(
+            r"
+mapping message:
+    key first as field.public;
+    value second as field.public;",
+        )?;
+
+        // Initialize a new program.
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
+
+        // Add the mapping to the program.
+        program.add_mapping(mapping.clone())?;
+        // Ensure the mapping was added.
+        assert!(program.contains_mapping(&Identifier::from_str("message")?));
+        // Ensure the retrieved mapping matches.
+        assert_eq!(mapping, program.get_mapping(&Identifier::from_str("message")?)?);
+
+        Ok(())
+    }
 
     #[test]
     fn test_program_interface() -> Result<()> {
@@ -746,9 +839,7 @@ function swap:
         ];
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Compute the authorization.
         let authorization = {
@@ -814,9 +905,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Compute the authorization.
         let authorization = {
@@ -892,9 +981,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Authorize the function call.
         let authorization = process
@@ -962,17 +1049,13 @@ function compute:
 
         {
             // Construct the process.
-            let mut process = Process::<CurrentNetwork>::load().unwrap();
-            // Add the program to the process.
-            process.add_program(&program).unwrap();
+            let process = crate::process::test_helpers::sample_process(&program);
             // Check that the circuit key can be synthesized.
             process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
         }
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Compute the authorization.
         let authorization = {
@@ -1084,9 +1167,7 @@ function compute:
         let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Authorize the function call.
         let authorization = process

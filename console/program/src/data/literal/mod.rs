@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod bytes;
+mod equal;
 mod from_bits;
 mod parse;
 mod sample;
@@ -29,7 +30,7 @@ use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 
 /// The literal enum represents all supported types in snarkVM.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub enum Literal<N: Network> {
     /// The Aleo address type.
     Address(Address<N>),

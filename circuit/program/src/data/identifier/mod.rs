@@ -17,6 +17,7 @@
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
+mod equal;
 mod from_bits;
 mod from_field;
 mod size_in_bits;
