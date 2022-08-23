@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use std::{env, fs};
+use std::os::raw::c_int;
 use std::path::PathBuf;
 use clap::{Args, StructOpt};
 use snarkvm::prelude::{Parser, Program};
@@ -26,12 +27,20 @@ pub struct ExecuteCli {
     input: Vec<PathBuf>,
 }
 
+#[cfg(feature = "coverage")]
+extern "C" {
+    fn __llvm_profile_write_file() -> c_int;
+}
+
 impl ExecuteCli {
     pub fn run(self) {
         for path in self.input {
             let result = fs::read_to_string(path).unwrap();
             harness(result.as_bytes());
             println!("Execution finished");
+
+            #[cfg(feature = "coverage")]
+            __llvm_profile_write_file();
         }
     }
 }

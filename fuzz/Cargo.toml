@@ -6,6 +6,9 @@ publish = false
 edition = "2018"
 default-run = "libafl"
 
+[features]
+coverage = []
+
 [package.metadata]
 cargo-fuzz = true
 
