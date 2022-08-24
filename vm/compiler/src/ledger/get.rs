@@ -75,6 +75,20 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
     }
 
+    /// Returns the transaction for the given transaction id.
+    pub fn get_transaction_by_hash(&self, hash: &str) -> Result<Transaction<N>> {
+        let transaction_id = match N::TransactionID::from_str(hash) {
+            Ok(transaction_id) => transaction_id,
+            Err(_error) => bail!("Invalid transaction id {hash}"),
+        };
+
+        // Retrieve the transaction.
+        match self.transactions.get_transaction(&transaction_id)? {
+            Some(transaction) => Ok(transaction),
+            None => bail!("Missing transaction for id {hash}"),
+        }
+    }
+
     /// Returns the block signature for the given block height.
     pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
         // Retrieve the block hash.
