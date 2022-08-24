@@ -118,37 +118,6 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
         // Initialize the ledger.
         Self::new_with_genesis(&genesis, address)
     }
-
-    /// Initializes a new instance of `Ledger` with the given genesis block.
-    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
-        // Initialize the block store.
-        let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
-        // Initialize the program store.
-        let store = ProgramStore::<N, ProgramMemory<N>>::open()?;
-        // Initialize a new VM.
-        let vm = VM::new(store)?;
-
-        // Initialize the ledger.
-        let mut ledger = Self {
-            current_hash: Default::default(),
-            current_height: 0,
-            current_round: 0,
-            block_tree: N::merkle_tree_bhp(&[])?,
-            transactions: blocks.transaction_store().clone(),
-            transitions: blocks.transition_store().clone(),
-            blocks,
-            // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(address, ())].into_iter().collect(),
-            vm,
-            memory_pool: Default::default(),
-        };
-
-        // Add the genesis block.
-        ledger.add_next_block(genesis)?;
-
-        // Return the ledger.
-        Ok(ledger)
-    }
 }
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
@@ -221,6 +190,42 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             Ok::<_, Error>(())
         })?;
 
+        Ok(ledger)
+    }
+
+    /// Initializes a new instance of `Ledger` with the given genesis block.
+    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
+        // Initialize the block store.
+        let blocks = BlockStore::<N, B>::open()?;
+        // Initialize the program store.
+        let store = ProgramStore::<N, P>::open()?;
+        // Initialize a new VM.
+        let vm = VM::new(store)?;
+
+        // Ensure that a genesis block doesn't already exist in the block store.
+        if blocks.contains_block_height(0)? {
+            bail!("Genesis block already exists in the ledger.");
+        }
+
+        // Initialize the ledger.
+        let mut ledger = Self {
+            current_hash: Default::default(),
+            current_height: 0,
+            current_round: 0,
+            block_tree: N::merkle_tree_bhp(&[])?,
+            transactions: blocks.transaction_store().clone(),
+            transitions: blocks.transition_store().clone(),
+            blocks,
+            // TODO (howardwu): Update this to retrieve from a validators store.
+            validators: [(address, ())].into_iter().collect(),
+            vm,
+            memory_pool: Default::default(),
+        };
+
+        // Add the genesis block.
+        ledger.add_next_block(genesis)?;
+
+        // Return the ledger.
         Ok(ledger)
     }
 
@@ -1037,7 +1042,7 @@ mod tests {
         // Create a genesis block.
         let genesis = Block::genesis(&VM::new(store).unwrap(), &private_key, rng).unwrap();
         // Initialize the ledger.
-        let mut ledger = Ledger::<_, BlockMemory<_>, _>::new_with_genesis(&genesis, address).unwrap();
+        let mut ledger = Ledger::<_, BlockMemory<_>, ProgramMemory<_>>::new_with_genesis(&genesis, address).unwrap();
 
         for height in 1..6 {
             // Fetch the unspent records.
