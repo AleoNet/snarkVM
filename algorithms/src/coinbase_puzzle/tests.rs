@@ -28,13 +28,12 @@ fn test_coinbase_puzzle() {
     let srs = CoinbasePuzzle::<Bls12_377>::setup(max_degree, &mut rng);
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
-        let (pk, vk) = CoinbasePuzzle::trim(&srs, degree);
+        let product_degree = (1 << (log_degree + 1)) - 1;
+        let (pk, vk) = CoinbasePuzzle::trim(&srs, product_degree);
         let epoch_info = EpochInfo { epoch_number: rng.next_u64() };
-        println!("pk_powers: {:?}", pk.powers_of_beta_g.len());
-        println!("pk.powers(): {:?}", pk.powers().powers_of_beta_g.len());
         let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree);
         for batch_size in 1..10 {
-            let solutions = (1..batch_size)
+            let solutions = (0..batch_size)
                 .map(|_| {
                     let address = Address(<[u8; 32]>::rand(&mut rng));
                     let nonce = u64::rand(&mut rng);
@@ -43,6 +42,9 @@ fn test_coinbase_puzzle() {
                 .collect::<Vec<_>>();
             let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_info, &epoch_challenge, &solutions);
             assert!(CoinbasePuzzle::verify(&vk, &epoch_info, &epoch_challenge, &full_solution));
+            let bad_epoch_info = EpochInfo { epoch_number: rng.next_u64() };
+            let bad_epoch_challenge = CoinbasePuzzle::init_for_epoch(&bad_epoch_info, degree);
+            assert!(!CoinbasePuzzle::verify(&vk, &bad_epoch_info, &bad_epoch_challenge, &full_solution));
         }
     }
 }

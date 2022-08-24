@@ -100,6 +100,14 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
         let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None).unwrap();
         let point = hash_commitment(&commitment);
         let proof = KZG10::open(&pk.powers(), product.as_dense().unwrap(), point, &_rand).unwrap();
+        assert!(!proof.is_hiding());
+
+        #[cfg(debug_assertions)]
+        {
+            let product_eval = product.evaluate(point);
+            assert!(KZG10::check(&pk.vk, &commitment, point, product_eval, &proof).unwrap());
+        }
+
         ProverPuzzleSolution { address: *address, nonce, commitment, proof }
     }
 
@@ -111,6 +119,9 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
     ) -> CombinedPuzzleSolution<E> {
         let (polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
+                if solution.proof.is_hiding() {
+                    return None;
+                }
                 // TODO: check difficulty of solution
                 let polynomial =
                     Self::sample_solution_polynomial(epoch_challenge, epoch_info, &solution.address, solution.nonce);
@@ -146,6 +157,12 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
         epoch_challenge: &EpochChallenge<E>,
         combined_solution: &CombinedPuzzleSolution<E>,
     ) -> bool {
+        if combined_solution.individual_puzzle_solutions.is_empty() {
+            return false;
+        }
+        if combined_solution.proof.is_hiding() {
+            return false;
+        }
         let polynomials: Vec<_> = cfg_iter!(combined_solution.individual_puzzle_solutions)
             .map(|(address, nonce, _)| {
                 // TODO: check difficulty of solution
