@@ -126,8 +126,7 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
     fn apply_mds(&mut self) {
         let mut new_state = State::default();
         new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
-            *new_elem =
-                self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| Field::new(mds_elem) * state_elem).sum();
+            *new_elem = Field::new(E::Field::sum_of_products(self.state.iter().map(|e| e.deref()), mds_row.iter()));
         });
         self.state = new_state;
     }
