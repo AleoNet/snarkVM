@@ -30,8 +30,9 @@ impl<N: Network> TryFrom<Deployment<N>> for DeployRequest<N> {
     type Error = anyhow::Error;
 
     fn try_from(deployment: Deployment<N>) -> Result<Self, Self::Error> {
-        let program_id = deployment.program_id().clone();
+        let program_id = *deployment.program_id();
         let address = program_id.to_address()?;
+
         Ok(Self { deployment, address, program_id })
     }
 }
