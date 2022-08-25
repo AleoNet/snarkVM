@@ -15,28 +15,51 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_compiler::Deployment;
+use snarkvm_console::types::Address;
 use snarkvm_utilities::test_crypto_rng;
 
 use super::*;
 
 pub struct DeployRequest<N: Network> {
     deployment: Deployment<N>,
+    address: Address<N>,
+    program_id: ProgramID<N>,
+}
+
+impl<N: Network> TryFrom<Deployment<N>> for DeployRequest<N> {
+    type Error = anyhow::Error;
+
+    fn try_from(deployment: Deployment<N>) -> Result<Self, Self::Error> {
+        let program_id = deployment.program_id().clone();
+        let address = program_id.to_address()?;
+        Ok(Self { deployment, address, program_id })
+    }
 }
 
 impl<N: Network> DeployRequest<N> {
-    /// Initializes a new deploy request.
-    pub const fn new(deployment: Deployment<N>) -> Self {
-        Self { deployment }
+    /// Sends the request to the given endpoint.
+    pub fn new(deployment: Deployment<N>, address: Address<N>, program_id: ProgramID<N>) -> Self {
+        Self { deployment, address, program_id }
     }
 
     /// Sends the request to the given endpoint.
     pub fn send(&self, endpoint: &str) -> Result<DeployResponse<N>> {
-        Ok(ureq::post(endpoint).send_json(self.deployment())?.into_json()?)
+        Ok(ureq::post(endpoint).send_json(self)?.into_json()?)
     }
 
     /// Returns the program.
     pub const fn deployment(&self) -> &Deployment<N> {
         &self.deployment
+    }
+
+    /// Returns the program address.
+    pub const fn address(&self) -> &Address<N> {
+        &self.address
+    }
+
+    /// Returns the imports.
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        &self.program_id
     }
 }
 
@@ -58,6 +81,10 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
         Ok(Self::new(
             // Retrieve the program.
             serde_json::from_value(request["deployment"].clone()).map_err(de::Error::custom)?,
+            // Retrieve the address of the program.
+            serde_json::from_value(request["address"].clone()).map_err(de::Error::custom)?,
+            // Retrieve the program ID.
+            serde_json::from_value(request["program_id"].clone()).map_err(de::Error::custom)?,
         ))
     }
 }
@@ -121,7 +148,7 @@ impl<N: Network> Package<N> {
         match endpoint {
             Some(ref endpoint) => {
                 // Prepare the request
-                let request = DeployRequest::new(deployment);
+                let request = DeployRequest::try_from(deployment)?;
                 // Load the proving and verifying keys.
                 let response = request.send(endpoint)?;
                 // Ensure the program ID matches.
