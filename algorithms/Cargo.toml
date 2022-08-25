@@ -28,6 +28,12 @@ path = "benches/crypto_hash/poseidon.rs"
 harness = false
 
 [[bench]]
+name = "coinbase_puzzle"
+path = "benches/coinbase_puzzle/coinbase_puzzle.rs"
+harness = false
+required-features = [ "coinbase_puzzle" ]
+
+[[bench]]
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
