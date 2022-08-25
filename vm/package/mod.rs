@@ -16,10 +16,12 @@
 
 mod build;
 mod clean;
+mod deploy;
 mod is_build_required;
 mod run;
 
 pub use build::{BuildRequest, BuildResponse};
+pub use deploy::{DeployRequest, DeployResponse};
 
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
