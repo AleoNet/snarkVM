@@ -82,3 +82,5 @@ pub mod prelude {
     #[cfg(feature = "utilities")]
     pub use crate::utilities::*;
 }
+
+pub(crate) type Aleo = circuit::AleoV0;
