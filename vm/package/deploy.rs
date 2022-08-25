@@ -31,7 +31,7 @@ impl<N: Network> DeployRequest<N> {
 
     /// Sends the request to the given endpoint.
     pub fn send(&self, endpoint: &str) -> Result<DeployResponse<N>> {
-        Ok(ureq::post(endpoint).send_json(self)?.into_json()?)
+        Ok(ureq::post(endpoint).send_json(self.deployment())?.into_json()?)
     }
 
     /// Returns the program.
