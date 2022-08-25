@@ -103,13 +103,11 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
 impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
-        package: &Package<N>,
         endpoint: Option<String>,
-        _offline: bool,
     ) -> Result<()> {
-        println!("⏳ Deploying '{}'...\n", package.program_id().to_string().bold());
+        println!("⏳ Deploying '{}'...\n", self.program_id().to_string().bold());
         // Retrieve the main program.
-        let program = package.program();
+        let program = self.program();
 
         // Retrieve the program ID.
         let program_id = program.id();
