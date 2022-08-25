@@ -42,6 +42,16 @@ where
 pub fn test_rng() -> XorShiftRng {
     // Obtain the initial seed using entropy provided by the OS.
     let seed = StdRng::from_entropy().gen();
+
+    // Print the seed, so it's displayed if any of the tests using `test_rng` fails.
+    println!("rng seed: {}", seed);
+
+    // Use the seed to initialize a fast, non-cryptographic Rng.
+    XorShiftRng::seed_from_u64(seed)
+}
+
+/// A function that can be used in order to reproduce any failing test cases that use `test_rng`.
+pub fn test_rng_seeded(seed: u64) -> XorShiftRng {
     // Use the seed to initialize a fast, non-cryptographic Rng.
     XorShiftRng::seed_from_u64(seed)
 }
