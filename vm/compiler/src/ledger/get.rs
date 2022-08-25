@@ -76,16 +76,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Returns the transaction for the given transaction id.
-    pub fn get_transaction_by_hash(&self, hash: &str) -> Result<Transaction<N>> {
-        let transaction_id = match N::TransactionID::from_str(hash) {
+    pub fn get_transaction(&self, transaction_id_string: &str) -> Result<Transaction<N>> {
+        let transaction_id = match N::TransactionID::from_str(transaction_id_string) {
             Ok(transaction_id) => transaction_id,
-            Err(_error) => bail!("Invalid transaction id {hash}"),
+            Err(_error) => bail!("Invalid transaction id {transaction_id_string}"),
         };
 
         // Retrieve the transaction.
         match self.transactions.get_transaction(&transaction_id)? {
             Some(transaction) => Ok(transaction),
-            None => bail!("Missing transaction for id {hash}"),
+            None => bail!("Missing transaction for id {transaction_id_string}"),
         }
     }
 
