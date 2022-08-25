@@ -531,9 +531,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -554,9 +557,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -581,9 +587,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -604,9 +613,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
