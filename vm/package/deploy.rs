@@ -102,6 +102,7 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
 
 impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
         package: &Package<N>,
         endpoint: Option<String>,
         _offline: bool,
