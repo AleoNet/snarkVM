@@ -568,9 +568,9 @@ mod tests {
 
         literals_a.par_iter().for_each(|literal_a| {
             for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
+                if literal_a.to_type() != literal_b.to_type() {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
                             // Check the operation fails.
                             check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
                         }
@@ -624,9 +624,9 @@ mod tests {
 
         literals_a.par_iter().for_each(|literal_a| {
             for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
+                if literal_a.to_type() != literal_b.to_type() {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
                             // Check the operation fails.
                             check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
                         }
