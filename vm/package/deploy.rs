@@ -105,7 +105,6 @@ impl<N: Network> Package<N> {
         &self,
         endpoint: Option<String>,
     ) -> Result<()> {
-        println!("⏳ Deploying '{}'...\n", self.program_id().to_string().bold());
         // Retrieve the main program.
         let program = self.program();
 
