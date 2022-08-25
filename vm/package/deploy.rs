@@ -131,7 +131,7 @@ impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
-    ) -> Result<()> {
+    ) -> Result<Deployment<N>> {
         // Retrieve the main program.
         let program = self.program();
 
@@ -148,7 +148,7 @@ impl<N: Network> Package<N> {
         match endpoint {
             Some(ref endpoint) => {
                 // Prepare the request
-                let request = DeployRequest::try_from(deployment)?;
+                let request = DeployRequest::try_from(deployment.clone())?;
                 // Load the proving and verifying keys.
                 let response = request.send(endpoint)?;
                 // Ensure the program ID matches.
@@ -157,12 +157,9 @@ impl<N: Network> Package<N> {
                     "Program ID mismatch: {} != {program_id}",
                     response.deployment.program_id()
                 );
+                Ok(deployment)
             }
-            //FIXME correctly manage this case
-            None => {
-                todo!()
-            }
+            None => Ok(deployment),
         }
-        Ok(())
     }
 }
