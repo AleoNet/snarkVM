@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::Deployment;
+use indexmap::map::Keys;
+use snarkvm_compiler::{Deployment, Import};
 use snarkvm_console::types::Address;
 use snarkvm_utilities::test_crypto_rng;
 
@@ -138,24 +139,12 @@ impl<N: Network> Package<N> {
         &self,
         endpoint: Option<String>,
     ) -> Result<()> {
-        // Retrieve the main program.
         let program = self.program();
-
-        // Construct the process.
         let mut process = Process::<N>::load()?;
-
-        let imports_directory = self.imports_directory();
-
-        program.imports().keys().try_for_each(|program_id| {
-            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
-            process.add_program(import_program_file.program())?;
-            Ok::<_, Error>(())
-        })?;
-
+        self.add_imported_programs_to_process(&mut process, program.imports().keys())?;
         if let Some(ref endpoint) = endpoint {
             Self::deploy_program::<A>(&process, program, endpoint)?;
         }
-
         Ok(())
     }
 
@@ -177,5 +166,18 @@ impl<N: Network> Package<N> {
             response.deployment.program_id()
         );
         Ok(())
+    }
+
+    fn add_imported_programs_to_process(
+        &self,
+        process: &mut Process<N>,
+        mut imported_programs: Keys<ProgramID<N>, Import<N>>,
+    ) -> Result<()> {
+        let imports_directory = self.imports_directory();
+        imported_programs.try_for_each(|program_id| {
+            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
+            process.add_program(import_program_file.program())?;
+            Ok::<_, Error>(())
+        })
     }
 }
