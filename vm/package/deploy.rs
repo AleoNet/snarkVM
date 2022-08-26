@@ -139,45 +139,39 @@ impl<N: Network> Package<N> {
         &self,
         endpoint: Option<String>,
     ) -> Result<()> {
+        // Retrieve the program.
         let program = self.program();
+
+        // Load a new process.
         let mut process = Process::<N>::load()?;
-        self.add_imported_programs_to_process(&mut process, program.imports().keys())?;
-        if let Some(ref endpoint) = endpoint {
-            Self::deploy_program::<A>(&process, program, endpoint)?;
-        }
-        Ok(())
-    }
 
-    fn deploy_program<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
-        process: &Process<N>,
-        program: &Program<N>,
-        endpoint: &str,
-    ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
-        let program_id = program.id();
-        let import_deployment = process.deploy::<A, _>(program, rng).unwrap();
-        // Prepare the request
-        let request = DeployRequest::try_from(import_deployment)?;
-        // Load the proving and verifying keys.
-        let response = request.send(endpoint)?;
-        ensure!(
-            response.deployment.program_id() == program_id,
-            "Program ID mismatch: {} != {program_id}",
-            response.deployment.program_id()
-        );
-        Ok(())
-    }
-
-    fn add_imported_programs_to_process(
-        &self,
-        process: &mut Process<N>,
-        mut imported_programs: Keys<ProgramID<N>, Import<N>>,
-    ) -> Result<()> {
+        // Add program imports to the process.
         let imports_directory = self.imports_directory();
-        imported_programs.try_for_each(|program_id| {
+        program.imports().keys().try_for_each(|program_id| {
+            // Open the Aleo program file.
             let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
+            // Add the import program.
             process.add_program(import_program_file.program())?;
             Ok::<_, Error>(())
-        })
+        })?;
+
+        if let Some(ref endpoint) = endpoint {
+            let rng = &mut test_crypto_rng();
+            // Retrieve the program ID.
+            let program_id = program.id();
+            // Deploy program.
+            let import_deployment = process.deploy::<A, _>(program, rng).unwrap();
+            // Prepare the deployment request
+            let request = DeployRequest::try_from(import_deployment)?;
+            // Send the deployment request.
+            let response = request.send(endpoint)?;
+
+            ensure!(
+                response.deployment.program_id() == program_id,
+                "Program ID mismatch: {} != {program_id}",
+                response.deployment.program_id()
+            );
+        }
+        Ok(())
     }
 }
