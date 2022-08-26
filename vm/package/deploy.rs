@@ -160,7 +160,11 @@ impl<N: Network> Package<N> {
         Ok(())
     }
 
-    fn deploy_program<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(process: &Process<N>, program: &Program<N>, endpoint: &str) -> Result<()> {
+    fn deploy_program<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+        process: &Process<N>,
+        program: &Program<N>,
+        endpoint: &str,
+    ) -> Result<()> {
         let rng = &mut test_crypto_rng();
         let program_id = program.id();
         let import_deployment = process.deploy::<A, _>(program, rng).unwrap();
@@ -175,8 +179,12 @@ impl<N: Network> Package<N> {
         );
         Ok(())
     }
-    
-    fn deploy_imported_programs<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(process: &Process<N>, imported_programs: Vec<Program<N>>, endpoint: &str) -> Result<()> {
+
+    fn deploy_imported_programs<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+        process: &Process<N>,
+        imported_programs: Vec<Program<N>>,
+        endpoint: &str,
+    ) -> Result<()> {
         for imported_program in imported_programs {
             Self::deploy_program::<A>(process, &imported_program, endpoint)?;
         }
