@@ -128,7 +128,7 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["deployment"].clone()).map_err(de::Error::custom)?,
         ))
     }
 }
