@@ -505,6 +505,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_assert_eq_fails() {
         use rayon::prelude::*;
 
@@ -561,6 +562,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_assert_neq_fails() {
         use rayon::prelude::*;
 
