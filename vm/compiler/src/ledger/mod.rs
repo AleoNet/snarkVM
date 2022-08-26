@@ -287,6 +287,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
         }
 
+        /* Program */
+
+        // Ensure that the ledger does not already contain the given program ID.
+        if let Transaction::Deploy(_, deployment, _) = &transaction {
+            let program_id = deployment.program_id();
+            if self.contains_program_id(program_id)? {
+                bail!("Program ID '{program_id}' already exists in the ledger")
+            }
+        }
+
         /* Metadata */
 
         // Ensure the ledger does not already contain a given transition public keys.
