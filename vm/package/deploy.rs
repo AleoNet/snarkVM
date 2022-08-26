@@ -142,18 +142,17 @@ impl<N: Network> Package<N> {
         let program = self.program();
 
         // Construct the process.
-        let process = Process::<N>::load()?;
+        let mut process = Process::<N>::load()?;
 
-        // Retrieve the imported programs.
-        let imported_programs = program
-            .imports()
-            .keys()
-            .map(|program_id| process.get_program(program_id).cloned())
-            .collect::<Result<Vec<_>>>()?;
+        let imports_directory = self.imports_directory();
 
-        // Deploy imported programs first.
+        program.imports().keys().try_for_each(|program_id| {
+            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
+            process.add_program(import_program_file.program())?;
+            Ok::<_, Error>(())
+        })?;
+
         if let Some(ref endpoint) = endpoint {
-            Self::deploy_imported_programs::<A>(&process, imported_programs, endpoint)?;
             Self::deploy_program::<A>(&process, program, endpoint)?;
         }
 
@@ -177,17 +176,6 @@ impl<N: Network> Package<N> {
             "Program ID mismatch: {} != {program_id}",
             response.deployment.program_id()
         );
-        Ok(())
-    }
-
-    fn deploy_imported_programs<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
-        process: &Process<N>,
-        imported_programs: Vec<Program<N>>,
-        endpoint: &str,
-    ) -> Result<()> {
-        for imported_program in imported_programs {
-            Self::deploy_program::<A>(process, &imported_program, endpoint)?;
-        }
         Ok(())
     }
 }
