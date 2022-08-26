@@ -68,7 +68,12 @@ impl<N: Network> Serialize for DeployRequest<N> {
     /// Serializes the deploy request into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut request = serializer.serialize_struct("DeployRequest", 1)?;
+        // Serialize the deployment.
         request.serialize_field("deployment", &self.deployment)?;
+        // Serialize the address.
+        request.serialize_field("address", &self.address)?;
+        // Serialize the program id.
+        request.serialize_field("program_id", &self.program_id)?;
         request.end()
     }
 }
@@ -123,7 +128,7 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["deployment"].clone()).map_err(de::Error::custom)?,
         ))
     }
 }
