@@ -624,17 +624,19 @@ mod tests {
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
-        literals_a.par_iter().for_each(|literal_a| {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+        literals_a.par_iter().chunks(8).for_each(|literals_a| {
+            literals_a.iter().for_each(|literal_a| {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+                            }
                         }
                     }
                 }
-            }
+            })
         });
     }
 
