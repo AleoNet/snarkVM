@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use indexmap::map::Keys;
-use snarkvm_compiler::{Deployment, Import};
+use snarkvm_compiler::Deployment;
 use snarkvm_console::types::Address;
 use snarkvm_utilities::test_crypto_rng;
 
@@ -159,7 +158,7 @@ impl<N: Network> Package<N> {
             let rng = &mut test_crypto_rng();
             // Retrieve the program ID.
             let program_id = program.id();
-            // Deploy program.
+            // Deploy the program.
             let import_deployment = process.deploy::<A, _>(program, rng).unwrap();
             // Prepare the deployment request
             let request = DeployRequest::try_from(import_deployment)?;
