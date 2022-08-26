@@ -287,6 +287,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
         }
 
+        /* Program */
+
+        // Ensure that the ledger does not already contain the given program ID.
+        if let Transaction::Deploy(_, deployment, _) = &transaction {
+            let program_id = deployment.program_id();
+            if self.contains_program_id(program_id)? {
+                bail!("Program ID '{program_id}' already exists in the ledger")
+            }
+        }
+
         /* Metadata */
 
         // Ensure the ledger does not already contain a given transition public keys.
@@ -310,6 +320,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        // TODO (raychu86): Add logic to transaction selection from the mempool.
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
 
