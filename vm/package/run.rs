@@ -127,7 +127,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (response, execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -151,7 +151,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (response, execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
