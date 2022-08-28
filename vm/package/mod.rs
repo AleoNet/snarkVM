@@ -225,6 +225,85 @@ function compute:
         // Return the temporary directory and the package.
         (directory, package)
     }
+
+    /// Samples a (temporary) package containing a main program and an imported program.
+    pub(crate) fn sample_package_with_import() -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize a temporary directory.
+        let directory = temp_dir();
+
+        // Initialize the imported program ID.
+        let imported_program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
+        // Initialize the imported program.
+        let imported_program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+program {imported_program_id};
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    amount as u64.private;
+
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function transfer:
+    input r0 as token.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    sub r0.amount r2 into r3;
+    cast r1 0u64 r2 into r4 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
+    output r4 as token.record;
+    output r5 as token.record;"
+        ))
+        .unwrap();
+
+        // Create the imports directory.
+        let imports_directory = directory.join("imports");
+        std::fs::create_dir_all(&imports_directory).unwrap();
+
+        // Write the imported program string to an imports file in the temporary directory.
+        let import_filepath = imports_directory.join(imported_program_id.to_string());
+        let mut file = File::create(&import_filepath).unwrap();
+        file.write_all(imported_program.to_string().as_bytes()).unwrap();
+
+        // Initialize the main program ID.
+        let main_program_id = ProgramID::<CurrentNetwork>::from_str("wallet.aleo").unwrap();
+        // Initialize the main program.
+        let main_program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+import token.aleo;
+
+program {main_program_id};
+
+function transfer:
+    input r0 as token.aleo/token.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    call token.aleo/transfer r0 r1 r2 into r3 r4;
+    output r3 as token.aleo/token.record;
+    output r4 as token.aleo/token.record;"
+        ))
+        .unwrap();
+
+        // Write the main program string to a file in the temporary directory.
+        let main_filepath = directory.join("main.aleo");
+        let mut file = File::create(&main_filepath).unwrap();
+        file.write_all(main_program.to_string().as_bytes()).unwrap();
+
+        // Create the manifest file.
+        let _manifest_file = Manifest::create(&directory, &main_program_id).unwrap();
+
+        // Open the package at the temporary directory.
+        let package = Package::<Testnet3>::open(&directory).unwrap();
+        assert_eq!(package.program_id(), &main_program_id);
+
+        // Return the temporary directory and the package.
+        (directory, package)
+    }
 }
 
 #[cfg(test)]
@@ -236,6 +315,22 @@ mod tests {
 
         // Ensure the imports directory is correct.
         assert_eq!(package.imports_directory(), directory.join("imports"));
+        // Ensure the imports directory does *not* exist, when the package does not contain imports.
+        assert!(!package.imports_directory().exists());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_imports_directory_with_an_import() {
+        // Samples a new package with an import at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+
+        // Ensure the imports directory is correct.
+        assert_eq!(package.imports_directory(), directory.join("imports"));
+        // Ensure the imports directory exists, as the package contains an import.
+        assert!(package.imports_directory().exists());
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -248,6 +343,8 @@ mod tests {
 
         // Ensure the build directory is correct.
         assert_eq!(package.build_directory(), directory.join("build"));
+        // Ensure the build directory does *not* exist, when the package has not been built.
+        assert!(!package.build_directory().exists());
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();

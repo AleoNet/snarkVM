@@ -175,3 +175,49 @@ impl<N: Network> Package<N> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentAleo = snarkvm_circuit::network::AleoV0;
+
+    #[test]
+    fn test_deploy() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Deploy the package.
+        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+
+        // Ensure the deployment edition matches.
+        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+        // Ensure the deployment program ID matches.
+        assert_eq!(package.program().id(), deployment.program_id());
+        // Ensure the deployment program matches.
+        assert_eq!(package.program(), deployment.program());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_deploy_with_import() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+
+        // Deploy the package.
+        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+
+        // Ensure the deployment edition matches.
+        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+        // Ensure the deployment program ID matches.
+        assert_eq!(package.program().id(), deployment.program_id());
+        // Ensure the deployment program matches.
+        assert_eq!(package.program(), deployment.program());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+}
