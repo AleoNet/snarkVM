@@ -129,23 +129,24 @@ impl<N: Network> Package<N> {
     ) -> Result<Deployment<N>> {
         // Retrieve the main program.
         let program = self.program();
-
-        let program_owner_address = self.manifest_file().development_address();
-
-        // Retrieve the program ID.
+        // Retrieve the main program ID.
         let program_id = program.id();
+
+        // Retrieve the Aleo address of the deployment caller.
+        let caller = self.manifest_file().development_address();
 
         // Construct the process.
         let process = Process::<N>::load()?;
         let rng = &mut test_crypto_rng();
 
-        // Make the deploy
+        // Compute the deployment.
         let deployment = process.deploy::<A, _>(program, rng).unwrap();
 
         match endpoint {
             Some(ref endpoint) => {
-                // Prepare the request
-                let request = DeployRequest::new(deployment.clone(), *program_owner_address, *program_id);
+                // Construct the deploy request.
+                let request = DeployRequest::new(deployment.clone(), *caller, *program_id);
+                // Send the deploy request.
                 let response = request.send(endpoint)?;
                 // Ensure the program ID matches.
                 ensure!(
