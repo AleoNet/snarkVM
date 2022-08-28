@@ -348,6 +348,8 @@ mod tests {
         mode_a: &circuit::Mode,
         mode_b: &circuit::Mode,
     ) {
+        println!("Checking '{opcode}' for '{literal_a}.{mode_a}' and '{literal_b}.{mode_b}'");
+
         // Initialize the types.
         let type_a = literal_a.to_type();
         let type_b = literal_b.to_type();

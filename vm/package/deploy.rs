@@ -140,8 +140,7 @@ impl<N: Network> Package<N> {
     ) -> Result<Deployment<N>> {
         // Retrieve the main program.
         let program = self.program();
-
-        // Retrieve the program ID.
+        // Retrieve the main program ID.
         let program_id = program.id();
 
         // Construct the process.
