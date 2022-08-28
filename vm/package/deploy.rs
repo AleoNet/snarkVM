@@ -26,17 +26,6 @@ pub struct DeployRequest<N: Network> {
     program_id: ProgramID<N>,
 }
 
-impl<N: Network> TryFrom<Deployment<N>> for DeployRequest<N> {
-    type Error = anyhow::Error;
-
-    fn try_from(deployment: Deployment<N>) -> Result<Self, Self::Error> {
-        let program_id = *deployment.program_id();
-        let address = program_id.to_address()?;
-
-        Ok(Self { deployment, address, program_id })
-    }
-}
-
 impl<N: Network> DeployRequest<N> {
     /// Sends the request to the given endpoint.
     pub fn new(deployment: Deployment<N>, address: Address<N>, program_id: ProgramID<N>) -> Self {
@@ -67,7 +56,7 @@ impl<N: Network> DeployRequest<N> {
 impl<N: Network> Serialize for DeployRequest<N> {
     /// Serializes the deploy request into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut request = serializer.serialize_struct("DeployRequest", 1)?;
+        let mut request = serializer.serialize_struct("DeployRequest", 3)?;
         // Serialize the deployment.
         request.serialize_field("deployment", &self.deployment)?;
         // Serialize the address.
@@ -140,22 +129,24 @@ impl<N: Network> Package<N> {
     ) -> Result<Deployment<N>> {
         // Retrieve the main program.
         let program = self.program();
-
-        // Retrieve the program ID.
+        // Retrieve the main program ID.
         let program_id = program.id();
+
+        // Retrieve the Aleo address of the deployment caller.
+        let caller = self.manifest_file().development_address();
 
         // Construct the process.
         let process = Process::<N>::load()?;
         let rng = &mut test_crypto_rng();
 
-        // Make the deploy
+        // Compute the deployment.
         let deployment = process.deploy::<A, _>(program, rng).unwrap();
 
         match endpoint {
             Some(ref endpoint) => {
-                // Prepare the request
-                let request = DeployRequest::try_from(deployment.clone())?;
-                // Load the proving and verifying keys.
+                // Construct the deploy request.
+                let request = DeployRequest::new(deployment.clone(), *caller, *program_id);
+                // Send the deploy request.
                 let response = request.send(endpoint)?;
                 // Ensure the program ID matches.
                 ensure!(
