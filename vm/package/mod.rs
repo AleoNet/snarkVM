@@ -177,7 +177,8 @@ impl<N: Network> Package<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use snarkvm_console::network::Testnet3;
+    use snarkvm_console::{account::Address, network::Testnet3, prelude::test_crypto_rng};
+
     use std::{fs::File, io::Write};
 
     type CurrentNetwork = Testnet3;
@@ -202,12 +203,23 @@ program {program_id};
 record token:
     owner as address.private;
     gates as u64.private;
-    token_amount as u64.private;
+    amount as u64.private;
 
-function compute:
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function transfer:
     input r0 as token.record;
-    add.w r0.token_amount r0.token_amount into r1;
-    output r1 as u64.private;"
+    input r1 as address.private;
+    input r2 as u64.private;
+    sub r0.amount r2 into r3;
+    cast r1 0u64 r2 into r4 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
+    output r4 as token.record;
+    output r5 as token.record;"
         );
 
         // Write the program string to a file in the temporary directory.
@@ -303,6 +315,54 @@ function transfer:
 
         // Return the temporary directory and the package.
         (directory, package)
+    }
+
+    /// Samples a candidate input to execute the sample package.
+    pub(crate) fn sample_package_run(
+        program_id: &ProgramID<CurrentNetwork>,
+    ) -> (PrivateKey<CurrentNetwork>, Identifier<CurrentNetwork>, Vec<Value<CurrentNetwork>>) {
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+
+        match program_id.to_string().as_str() {
+            "token.aleo" => {
+                // Sample a random private key.
+                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller = Address::try_from(&private_key).unwrap();
+
+                // Initialize the function name.
+                let function_name = Identifier::from_str("mint").unwrap();
+
+                // Initialize the function inputs.
+                let r0 = Value::from_str(&caller.to_string()).unwrap();
+                let r1 = Value::from_str("100u64").unwrap();
+
+                (private_key, function_name, vec![r0, r1])
+            }
+            "wallet.aleo" => {
+                // Initialize caller 0.
+                let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller0 = Address::try_from(&caller0_private_key).unwrap();
+
+                // Initialize caller 1.
+                let caller1_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller1 = Address::try_from(&caller1_private_key).unwrap();
+
+                // Declare the function name.
+                let function_name = Identifier::from_str("transfer").unwrap();
+
+                // Initialize the function inputs.
+                let r0 = Value::<CurrentNetwork>::from_str(&format!(
+                    "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private, _nonce: 0group.public }}"
+                ))
+                .unwrap();
+                let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
+                let r2 = Value::<CurrentNetwork>::from_str("99u64").unwrap();
+
+                (caller0_private_key, function_name, vec![r0, r1, r2])
+            }
+            _ => panic!("Invalid program ID for sample package (while testing)"),
+        }
     }
 }
 

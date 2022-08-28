@@ -102,3 +102,58 @@ impl<N: Network> Package<N> {
         Ok((response, execution))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use snarkvm_utilities::test_crypto_rng;
+
+    type CurrentAleo = snarkvm_circuit::network::AleoV0;
+
+    #[test]
+    fn test_run() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+        // Sample the function inputs.
+        let (private_key, function_name, inputs) =
+            crate::package::test_helpers::sample_package_run(package.program_id());
+        // Run the program function.
+        let (response, execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_run_with_import() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+        // Sample the function inputs.
+        let (private_key, function_name, inputs) =
+            crate::package::test_helpers::sample_package_run(package.program_id());
+        // Run the program function.
+        let (response, execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+}
