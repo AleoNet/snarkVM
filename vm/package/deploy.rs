@@ -16,7 +16,6 @@
 
 use snarkvm_compiler::Deployment;
 use snarkvm_console::types::Address;
-use snarkvm_utilities::test_crypto_rng;
 
 use super::*;
 
