@@ -142,7 +142,7 @@ impl<N: Network> Package<N> {
         program.imports().keys().try_for_each(|program_id| {
             // TODO (howardwu): Add the following checks:
             //  1) the imported program ID exists *on-chain* (for the given network)
-            //  2) the checksum of the imported program matches the checksum of the program *on-chain*
+            //  2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
             //  3) consensus performs the exact same checks (in `verify_deployment`)
 
             // Open the Aleo program file.

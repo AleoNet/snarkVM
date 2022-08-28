@@ -152,13 +152,6 @@ impl<N: Network> Package<N> {
 
     /// Returns a new process for the package.
     pub fn get_process(&self) -> Result<Process<N>> {
-        // Prepare the build directory.
-        let build_directory = self.build_directory();
-        // Ensure the build directory exists.
-        if !build_directory.exists() {
-            bail!("Build directory does not exist: {}", build_directory.display());
-        }
-
         // Create the process.
         let mut process = Process::load()?;
 
@@ -182,7 +175,7 @@ impl<N: Network> Package<N> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod test_helpers {
     use super::*;
     use snarkvm_console::network::Testnet3;
     use std::{fs::File, io::Write};
@@ -193,15 +186,18 @@ mod tests {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
     }
 
-    #[test]
-    fn test_get_process() {
+    /// Samples a (temporary) package containing a main program.
+    pub(crate) fn sample_package() -> (PathBuf, Package<CurrentNetwork>) {
         // Initialize a temporary directory.
         let directory = temp_dir();
 
+        // Initialize the program ID.
         let program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
 
-        let program_string = r"
-program token.aleo;
+        // Initialize the program.
+        let program_string = format!(
+            "
+program {program_id};
 
 record token:
     owner as address.private;
@@ -211,25 +207,61 @@ record token:
 function compute:
     input r0 as token.record;
     add.w r0.token_amount r0.token_amount into r1;
-    output r1 as u64.private;";
+    output r1 as u64.private;"
+        );
 
         // Write the program string to a file in the temporary directory.
-        let path = directory.join("main.aleo");
-        let mut file = File::create(&path).unwrap();
+        let main_filepath = directory.join("main.aleo");
+        let mut file = File::create(&main_filepath).unwrap();
         file.write_all(program_string.as_bytes()).unwrap();
 
         // Create the manifest file.
         let _manifest_file = Manifest::create(&directory, &program_id).unwrap();
 
-        // Create the build directory.
-        let build_directory = directory.join("build");
-        std::fs::create_dir_all(&build_directory).unwrap();
-
         // Open the package at the temporary directory.
         let package = Package::<Testnet3>::open(&directory).unwrap();
+        assert_eq!(package.program_id(), &program_id);
+
+        // Return the temporary directory and the package.
+        (directory, package)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_imports_directory() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the imports directory is correct.
+        assert_eq!(package.imports_directory(), directory.join("imports"));
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_build_directory() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the build directory is correct.
+        assert_eq!(package.build_directory(), directory.join("build"));
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_get_process() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
 
         // Get the program process and check all instructions.
         assert!(package.get_process().is_ok());
-        assert_eq!(package.program_id(), &program_id);
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
     }
 }

@@ -37,6 +37,13 @@ impl<N: Network> Package<N> {
         // Construct the process.
         let process = self.get_process()?;
 
+        // Prepare the build directory.
+        let build_directory = self.build_directory();
+        // Ensure the build directory exists.
+        if !build_directory.exists() {
+            bail!("Build directory does not exist: {}", build_directory.display());
+        }
+
         // Authorize the function call.
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs, rng)?;
 
