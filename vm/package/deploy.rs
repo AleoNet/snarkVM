@@ -16,7 +16,6 @@
 
 use snarkvm_compiler::Deployment;
 use snarkvm_console::types::Address;
-use snarkvm_utilities::test_crypto_rng;
 
 use super::*;
 
@@ -136,16 +135,32 @@ impl<N: Network> Package<N> {
         let caller = self.manifest_file().development_address();
 
         // Construct the process.
-        let process = Process::<N>::load()?;
-        let rng = &mut test_crypto_rng();
+        let mut process = Process::<N>::load()?;
 
+        // Add program imports to the process.
+        let imports_directory = self.imports_directory();
+        program.imports().keys().try_for_each(|program_id| {
+            // TODO (howardwu): Add the following checks:
+            //  1) the imported program ID exists *on-chain* (for the given network)
+            //  2) the checksum of the imported program matches the checksum of the program *on-chain*
+            //  3) consensus performs the exact same checks (in `verify_deployment`)
+
+            // Open the Aleo program file.
+            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
+            // Add the import program.
+            process.add_program(import_program_file.program())?;
+            Ok::<_, Error>(())
+        })?;
+
+        // Initialize the RNG.
+        let rng = &mut rand::thread_rng();
         // Compute the deployment.
         let deployment = process.deploy::<A, _>(program, rng).unwrap();
 
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
-                let request = DeployRequest::new(deployment.clone(), *caller, *program_id);
+                let request = DeployRequest::new(deployment, *caller, *program_id);
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
                 // Ensure the program ID matches.
@@ -154,7 +169,7 @@ impl<N: Network> Package<N> {
                     "Program ID mismatch: {} != {program_id}",
                     response.deployment.program_id()
                 );
-                Ok(deployment)
+                Ok(response.deployment)
             }
             None => Ok(deployment),
         }
