@@ -18,8 +18,10 @@ use std::{env, fs};
 use std::os::raw::c_int;
 use std::path::PathBuf;
 use clap::{Args, StructOpt};
+use rayon::prelude::IntoParallelRefIterator;
 use snarkvm::prelude::{Parser, Program};
 use snarkvm_fuzz::harness::harness;
+use rayon::iter::ParallelIterator;
 
 #[derive(Debug, Args)]
 pub struct ExecuteCli {
@@ -34,13 +36,18 @@ extern "C" {
 
 impl ExecuteCli {
     pub fn run(self) {
-        for path in self.input {
-            let result = fs::read_to_string(path).unwrap();
-            harness(result.as_bytes());
-            println!("Execution finished");
+        self.input.par_iter().map(|path| {
+            if let Ok(string) = fs::read_to_string(path) {
+                harness(string.as_bytes());
+                println!("Execution finished");
+            }
+        }).count();
+/*
+        for path in self.input.par_iter() {
 
-            #[cfg(feature = "coverage")]
-            __llvm_profile_write_file();
-        }
+
+            //#[cfg(feature = "coverage")]
+            //__llvm_profile_write_file();
+        }*/
     }
 }

@@ -21,6 +21,8 @@ libafl_targets = { version = "0.8.0", features = ["sancov_pcguard_hitcounts", "s
 once_cell = "1.13.0"
 clap = "3.2.16"
 
+rayon = "1.5.3"
+
 [dependencies.snarkvm]
 path = ".."
 features = ["fuzzing"]
