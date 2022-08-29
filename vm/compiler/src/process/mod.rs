@@ -42,6 +42,8 @@ use console::{
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+#[cfg(test)]
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
@@ -114,6 +116,42 @@ impl<N: Network> Process<N> {
             // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
             stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
+        }
+
+        // Add the stack to the process.
+        process.stacks.insert(*program.id(), stack);
+        // Return the process.
+        Ok(process)
+    }
+
+    /// Initializes a new process with a cache of previously used keys. This version is suitable for tests
+    /// (which often use nested loops that keep reusing those), as their deserialization is slow.
+    #[cfg(test)]
+    #[inline]
+    pub fn load_with_cache(cache: &mut HashMap<String, (ProvingKey<N>, VerifyingKey<N>)>) -> Result<Self> {
+        // Initialize the process.
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+
+        // Synthesize the 'credits.aleo' circuit keys.
+        for function_name in program.functions().keys() {
+            // TODO (howardwu): Abstract this into the `Network` trait.
+            // Load the proving and verifying key bytes.
+            let (proving_key, verifying_key) = snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
+                .get(&function_name.to_string())
+                .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
+
+            let (proving_key, verifying_key) = cache.entry(function_name.to_string()).or_insert_with(|| {
+                (ProvingKey::from_bytes_le(proving_key).unwrap(), VerifyingKey::from_bytes_le(verifying_key).unwrap())
+            });
+
+            // Insert the proving and verifying key.
+            stack.insert_proving_key(function_name, proving_key.clone())?;
+            stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
 
         // Add the stack to the process.
