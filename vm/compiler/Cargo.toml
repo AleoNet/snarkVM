@@ -98,9 +98,6 @@ version = "1.3"
 [dev-dependencies.regex]
 version = "1.6"
 
-[dev-dependencies.serial_test]
-version = "0.9"
-
 [dev-dependencies.tracing-test]
 version = "0.2"
 
