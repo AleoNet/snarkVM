@@ -37,6 +37,7 @@ extern "C" {
 impl ExecuteCli {
     pub fn run(self) {
         self.input.par_iter().map(|path| {
+            println!("Executing {:?}", &path);
             if let Ok(string) = fs::read_to_string(path) {
                 harness(string.as_bytes());
                 println!("Execution finished");
