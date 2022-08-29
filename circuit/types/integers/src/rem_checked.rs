@@ -211,9 +211,11 @@ mod tests {
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let name = format!("Rem: {} % {}", first, second);
             check_rem::<I>(&name, first, second, mode_a, mode_b);

@@ -193,7 +193,7 @@ impl<N: Network> ToBytes for ProverFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{test_crypto_rng, FromStr, Parser};
+    use crate::prelude::{FromStr, Parser, TestRng};
     use snarkvm_compiler::Process;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
@@ -234,7 +234,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Sample the proving key.
-        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the proving key.
         let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();

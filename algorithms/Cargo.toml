@@ -178,9 +178,6 @@ version = "0.3.6"
 [dev-dependencies.csv]
 version = "1"
 
-[dev-dependencies.rand_xorshift]
-version = "0.3"
-
 [dev-dependencies.serde]
 version = "1"
 features = [ "derive" ]

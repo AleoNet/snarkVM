@@ -50,10 +50,12 @@ mod tests {
             // Ensure an empty input fails.
             assert!(poseidon.hash_to_group(&[]).is_err());
 
+            let mut rng = TestRng::default();
+
             for _ in 0..ITERATIONS {
                 for num_inputs in 1..8 {
                     // Sample random field elements.
-                    let inputs = (0..num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
+                    let inputs = (0..num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>();
 
                     // Compute the hash to group.
                     let candidate = poseidon.hash_to_group(&inputs)?;

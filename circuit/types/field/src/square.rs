@@ -62,10 +62,10 @@ mod tests {
         });
     }
 
-    fn run_test(mode: Mode) {
+    fn run_test(mode: Mode, rng: &mut TestRng) {
         for i in 0..ITERATIONS {
             // Sample a random element
-            let first = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(rng);
             let a = Field::<Circuit>::new(mode, first);
 
             let name = format!("Square: {}", i);
@@ -85,9 +85,11 @@ mod tests {
 
     #[test]
     fn test_square() {
-        run_test(Mode::Constant);
-        run_test(Mode::Public);
-        run_test(Mode::Private);
+        let mut rng = TestRng::default();
+
+        run_test(Mode::Constant, &mut rng);
+        run_test(Mode::Public, &mut rng);
+        run_test(Mode::Private, &mut rng);
     }
 
     #[test]

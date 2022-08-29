@@ -54,9 +54,11 @@ mod tests {
             let native = console::$poseidon::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $poseidon::<Circuit>::constant(native.clone());
 
+            let rng = &mut TestRng::default();
+
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_fields).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_fields).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
                 // Compute the expected hash.
                 let expected = console::HashToGroup::hash_to_group(&native, &input)?;
                 // Prepare the circuit input.

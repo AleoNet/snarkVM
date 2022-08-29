@@ -19,9 +19,9 @@ extern crate criterion;
 use snarkvm_algorithms::fft::{DensePolynomial, EvaluationDomain};
 use snarkvm_curves::bls12_377::Fr as Bls12_377_Fr;
 use snarkvm_fields::PrimeField;
+use snarkvm_utilities::TestRng;
 
 use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion};
-use rand::{self, thread_rng};
 use std::cmp::min;
 
 /// Degree bounds to benchmark on
@@ -65,7 +65,7 @@ fn setup_bench(c: &mut Criterion, name: &str, bench_fn: fn(&mut Bencher, &usize)
 
 fn create_evaluation_domain<F: PrimeField>(degree: usize) -> (EvaluationDomain<F>, Vec<F>) {
     let domain = EvaluationDomain::new(degree).unwrap();
-    let a = DensePolynomial::<F>::rand(degree - 1, &mut thread_rng()).coeffs().to_vec();
+    let a = DensePolynomial::<F>::rand(degree - 1, &mut TestRng::default()).coeffs().to_vec();
     (domain, a)
 }
 

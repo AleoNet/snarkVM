@@ -38,9 +38,11 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_from_fields() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
             let candidate = Address::<CurrentEnvironment>::from_fields(&expected.to_fields()?)?;
             assert_eq!(expected, candidate);
         }

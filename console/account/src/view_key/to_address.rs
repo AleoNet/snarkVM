@@ -34,9 +34,11 @@ mod tests {
 
     #[test]
     fn test_try_from() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new view key and address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let view_key = ViewKey::try_from(private_key)?;
             let address = Address::try_from(private_key)?;
 

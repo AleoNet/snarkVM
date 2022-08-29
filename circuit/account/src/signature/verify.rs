@@ -48,7 +48,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
     use snarkvm_circuit_types::Group;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -61,7 +61,7 @@ pub(crate) mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
@@ -95,7 +95,7 @@ pub(crate) mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.

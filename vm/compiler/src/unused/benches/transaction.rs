@@ -20,10 +20,9 @@ extern crate criterion;
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 
 use criterion::Criterion;
-use rand::thread_rng;
 
 fn testnet1_coinbase_transaction(c: &mut Criterion) {
-    let rng = &mut thread_rng();
+    let rng = &mut TestRng::default();
 
     let address = Account::<Testnet1>::new(rng).address();
     let amount = AleoAmount::from_aleo(100);
@@ -36,7 +35,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
 }
 
 fn testnet2_coinbase_transaction(c: &mut Criterion) {
-    let rng = &mut thread_rng();
+    let rng = &mut TestRng::default();
 
     let address = Account::<Testnet2>::new(rng).address();
     let amount = AleoAmount::from_aleo(100);

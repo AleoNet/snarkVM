@@ -102,9 +102,11 @@ mod tests {
     }
 
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let name = format!("Eq: {} == {} {}", mode_a, mode_b, i);
             check_equals::<I>(&name, first, second, mode_a, mode_b);

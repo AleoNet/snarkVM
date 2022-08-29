@@ -85,10 +85,7 @@ mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Samples a random signature.
-    pub(super) fn sample_signature(num_fields: u64) -> Signature<CurrentNetwork> {
-        // Initialize an RNG.
-        let rng = &mut test_crypto_rng();
-
+    pub(super) fn sample_signature(num_fields: u64, rng: &mut TestRng) -> Signature<CurrentNetwork> {
         // Sample an address and a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let address = Address::try_from(&private_key).unwrap();
@@ -109,9 +106,11 @@ mod tests {
 
     #[test]
     fn test_from() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let signature = test_helpers::sample_signature(i);
+            let signature = test_helpers::sample_signature(i, &mut rng);
 
             // Check that the signature can be reconstructed from its parts.
             let candidate = Signature::from((signature.challenge(), signature.response(), signature.compute_key()));

@@ -45,7 +45,9 @@ mod tests {
 
     #[test]
     fn test_string() {
-        for expected in test_helpers::sample_requests().into_iter() {
+        let mut rng = TestRng::default();
+
+        for expected in test_helpers::sample_requests(&mut rng).into_iter() {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected).unwrap();
