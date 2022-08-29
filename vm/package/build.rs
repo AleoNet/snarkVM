@@ -153,10 +153,18 @@ impl<N: Network> Package<N> {
         &self,
         endpoint: Option<String>,
     ) -> Result<()> {
+        // Skip the 'build' if the program is already built.
+        if !self.is_build_required::<A>() {
+            return Ok(());
+        }
+
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
         let program_id = program.id();
+
+        #[cfg(feature = "aleo-cli")]
+        println!("⏳ Compiling '{}'...\n", program_id.to_string().bold());
 
         // Prepare the build directory.
         let build_directory = self.build_directory();
@@ -262,6 +270,11 @@ impl<N: Network> Package<N> {
 
         // Lastly, write the AVM file.
         let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
+
+        // Ensure the build directory exists.
+        if !self.build_directory().exists() {
+            bail!("Build directory does not exist: {}", self.build_directory().display());
+        }
 
         Ok(())
     }
