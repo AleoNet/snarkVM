@@ -26,6 +26,8 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use std::sync::Arc;
+
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug)]
 pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
@@ -34,7 +36,7 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
     /// The circuit itself.
-    pub circuit: Circuit<E::Fr, MM>,
+    pub circuit: Arc<Circuit<E::Fr, MM>>,
     /// The committer key for this index, trimmed from the universal SRS.
     pub committer_key: sonic_pc::CommitterKey<E>,
 }
