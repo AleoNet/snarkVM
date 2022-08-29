@@ -3212,8 +3212,8 @@ dependencies = [
  "libafl_targets",
  "libfuzzer-sys",
  "once_cell",
- "rayon",
  "snarkvm",
+ "tokio",
 ]
 
 [[package]]

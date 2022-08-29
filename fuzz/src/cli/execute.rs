@@ -18,10 +18,10 @@ use std::{env, fs};
 use std::os::raw::c_int;
 use std::path::PathBuf;
 use clap::{Args, StructOpt};
-use rayon::prelude::IntoParallelRefIterator;
+use tokio::runtime::Builder;
+use tokio::task::JoinHandle;
 use snarkvm::prelude::{Parser, Program};
 use snarkvm_fuzz::harness::harness;
-use rayon::iter::ParallelIterator;
 
 #[derive(Debug, Args)]
 pub struct ExecuteCli {
@@ -36,19 +36,23 @@ extern "C" {
 
 impl ExecuteCli {
     pub fn run(self) {
-        self.input.par_iter().map(|path| {
-            println!("Executing {:?}", &path);
-            if let Ok(string) = fs::read_to_string(path) {
-                harness(string.as_bytes());
-                println!("Execution finished");
-            }
-        }).count();
-/*
-        for path in self.input.par_iter() {
+        let inputs = self.input;
+        Builder::new_multi_thread()
+            .thread_name("execute")
+            .build()
+            .unwrap()
+            .block_on(async move {
+                let handles: Vec<JoinHandle<()>> = inputs.iter().cloned().map(|path| tokio::spawn(async {
+                    println!("Executing {:?}", &path);
+                    if let Ok(string) = fs::read_to_string(path) {
+                        harness(string.as_bytes());
+                        println!("Execution finished");
+                    }
+                })).collect::<Vec<_>>();
 
-
-            //#[cfg(feature = "coverage")]
-            //__llvm_profile_write_file();
-        }*/
+                for handle in handles {
+                    handle.await.unwrap();
+                }
+            });
     }
 }
