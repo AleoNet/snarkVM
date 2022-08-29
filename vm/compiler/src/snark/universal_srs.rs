@@ -64,6 +64,7 @@ impl<N: Network> ToBytes for UniversalSRS<N> {
 impl<N: Network> Deref for UniversalSRS<N> {
     type Target = marlin::UniversalSRS<N::PairingCurve>;
 
+    #[allow(clippy::let_and_return)]
     fn deref(&self) -> &Self::Target {
         self.srs.get_or_init(|| {
             #[cfg(feature = "aleo-cli")]
