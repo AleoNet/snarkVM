@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_encode_and_decode() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         let mut high_ctr = 0usize;
         let mut low_ctr = 0usize;

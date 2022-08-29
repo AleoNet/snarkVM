@@ -488,7 +488,7 @@ mod tests {
         let opcode = AssertEq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
@@ -515,7 +515,7 @@ mod tests {
         let opcode = AssertEq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
@@ -545,7 +545,7 @@ mod tests {
         let opcode = AssertNeq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
@@ -572,7 +572,7 @@ mod tests {
         let opcode = AssertNeq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);

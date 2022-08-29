@@ -172,9 +172,7 @@ mod test_helpers {
 
     const ITERATIONS: u64 = 1000;
 
-    pub(super) fn sample_requests() -> Vec<Request<CurrentNetwork>> {
-        let rng = &mut test_crypto_rng();
-
+    pub(super) fn sample_requests(rng: &mut TestRng) -> Vec<Request<CurrentNetwork>> {
         (0..ITERATIONS)
             .map(|i| {
                 // Sample a random private key and address.

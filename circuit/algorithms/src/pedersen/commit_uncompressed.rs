@@ -110,13 +110,13 @@ impl<E: Environment, const NUM_BITS: u8>
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
     const NUM_BITS_MULTIPLIER: u8 = 8;
 
-    fn check_commit_uncompressed<const NUM_BITS: u8>(mode: Mode) {
+    fn check_commit_uncompressed<const NUM_BITS: u8>(mode: Mode, rng: &mut TestRng) {
         use console::CommitUncompressed as C;
 
         // Initialize Pedersen.
@@ -125,9 +125,9 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..NUM_BITS).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..NUM_BITS).map(|_| bool::rand(rng)).collect::<Vec<bool>>();
             // Sample a randomizer.
-            let randomizer = Uniform::rand(&mut test_rng());
+            let randomizer = Uniform::rand(rng);
             // Compute the expected commitment.
             let expected = native.commit_uncompressed(&input, &randomizer).expect("Failed to commit native input");
             // Prepare the circuit input.
@@ -163,12 +163,13 @@ mod tests {
         pedersen: &impl CommitUncompressed<Input = Boolean<Circuit>, Randomizer = Scalar<Circuit>, Output = Group<Circuit>>,
         first: C,
         second: C,
+        rng: &mut TestRng,
     ) {
         println!("Checking homomorphic addition on {} + {}", first, second);
 
         // Sample the circuit randomizers.
-        let first_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(&mut test_rng()));
-        let second_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(&mut test_rng()));
+        let first_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(rng));
+        let second_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(rng));
 
         // Compute the expected commitment, by committing them individually and summing their results.
         let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_randomizer);
@@ -186,31 +187,34 @@ mod tests {
     #[test]
     fn test_commit_uncompressed_constant() {
         // Set the number of windows, and modulate the window size.
-        check_commit_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Constant);
-        check_commit_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
-        check_commit_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
-        check_commit_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
-        check_commit_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        let mut rng = TestRng::default();
+        check_commit_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Constant, &mut rng);
+        check_commit_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
+        check_commit_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
+        check_commit_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
+        check_commit_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
     }
 
     #[test]
     fn test_commit_uncompressed_public() {
         // Set the number of windows, and modulate the window size.
-        check_commit_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Public);
-        check_commit_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public);
-        check_commit_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public);
-        check_commit_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public);
-        check_commit_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        let mut rng = TestRng::default();
+        check_commit_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Public, &mut rng);
+        check_commit_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
+        check_commit_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
+        check_commit_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
+        check_commit_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
     }
 
     #[test]
     fn test_commit_uncompressed_private() {
         // Set the number of windows, and modulate the window size.
-        check_commit_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Private);
-        check_commit_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private);
-        check_commit_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private);
-        check_commit_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private);
-        check_commit_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        let mut rng = TestRng::default();
+        check_commit_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Private, &mut rng);
+        check_commit_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
+        check_commit_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
+        check_commit_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
+        check_commit_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
     }
 
     #[test]
@@ -218,26 +222,28 @@ mod tests {
         // Initialize Pedersen64.
         let pedersen = Pedersen64::constant(console::Pedersen64::setup("Pedersen64HomomorphismTest"));
 
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U8::<Circuit>::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
-            let second = U8::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
-            check_homomorphic_addition(&pedersen, first, second);
+            let first = U8::<Circuit>::new(Mode::Private, console::U8::new(u8::rand(&mut rng) >> 1));
+            let second = U8::new(Mode::Private, console::U8::new(u8::rand(&mut rng) >> 1));
+            check_homomorphic_addition(&pedersen, first, second, &mut rng);
 
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U16::<Circuit>::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
-            let second = U16::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
-            check_homomorphic_addition(&pedersen, first, second);
+            let first = U16::<Circuit>::new(Mode::Private, console::U16::new(u16::rand(&mut rng) >> 1));
+            let second = U16::new(Mode::Private, console::U16::new(u16::rand(&mut rng) >> 1));
+            check_homomorphic_addition(&pedersen, first, second, &mut rng);
 
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U32::<Circuit>::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
-            let second = U32::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
-            check_homomorphic_addition(&pedersen, first, second);
+            let first = U32::<Circuit>::new(Mode::Private, console::U32::new(u32::rand(&mut rng) >> 1));
+            let second = U32::new(Mode::Private, console::U32::new(u32::rand(&mut rng) >> 1));
+            check_homomorphic_addition(&pedersen, first, second, &mut rng);
 
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U64::<Circuit>::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
-            let second = U64::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
-            check_homomorphic_addition(&pedersen, first, second);
+            let first = U64::<Circuit>::new(Mode::Private, console::U64::new(u64::rand(&mut rng) >> 1));
+            let second = U64::new(Mode::Private, console::U64::new(u64::rand(&mut rng) >> 1));
+            check_homomorphic_addition(&pedersen, first, second, &mut rng);
         }
     }
 
@@ -250,31 +256,33 @@ mod tests {
                 Output = Group<Circuit>,
             >,
         ) {
+            let mut rng = TestRng::default();
+
             for _ in 0..ITERATIONS {
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U8::<Circuit>::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
-                let second = U8::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
-                check_homomorphic_addition(pedersen, first, second);
+                let first = U8::<Circuit>::new(Mode::Private, console::U8::new(u8::rand(&mut rng) >> 1));
+                let second = U8::new(Mode::Private, console::U8::new(u8::rand(&mut rng) >> 1));
+                check_homomorphic_addition(pedersen, first, second, &mut rng);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U16::<Circuit>::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
-                let second = U16::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
-                check_homomorphic_addition(pedersen, first, second);
+                let first = U16::<Circuit>::new(Mode::Private, console::U16::new(u16::rand(&mut rng) >> 1));
+                let second = U16::new(Mode::Private, console::U16::new(u16::rand(&mut rng) >> 1));
+                check_homomorphic_addition(pedersen, first, second, &mut rng);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U32::<Circuit>::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
-                let second = U32::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
-                check_homomorphic_addition(pedersen, first, second);
+                let first = U32::<Circuit>::new(Mode::Private, console::U32::new(u32::rand(&mut rng) >> 1));
+                let second = U32::new(Mode::Private, console::U32::new(u32::rand(&mut rng) >> 1));
+                check_homomorphic_addition(pedersen, first, second, &mut rng);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U64::<Circuit>::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
-                let second = U64::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
-                check_homomorphic_addition(pedersen, first, second);
+                let first = U64::<Circuit>::new(Mode::Private, console::U64::new(u64::rand(&mut rng) >> 1));
+                let second = U64::new(Mode::Private, console::U64::new(u64::rand(&mut rng) >> 1));
+                check_homomorphic_addition(pedersen, first, second, &mut rng);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U128::<Circuit>::new(Mode::Private, console::U128::new(u128::rand(&mut test_rng()) >> 1));
-                let second = U128::new(Mode::Private, console::U128::new(u128::rand(&mut test_rng()) >> 1));
-                check_homomorphic_addition(pedersen, first, second);
+                let first = U128::<Circuit>::new(Mode::Private, console::U128::new(u128::rand(&mut rng) >> 1));
+                let second = U128::new(Mode::Private, console::U128::new(u128::rand(&mut rng) >> 1));
+                check_homomorphic_addition(pedersen, first, second, &mut rng);
             }
         }
 

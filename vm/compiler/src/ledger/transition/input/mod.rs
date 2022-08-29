@@ -193,16 +193,15 @@ pub(crate) mod test_helpers {
 
     /// Sample the transition inputs.
     pub(crate) fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<CurrentNetwork>)> {
+        let rng = &mut TestRng::default();
+
         // Sample a transition.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         let transition = transaction.transitions().next().unwrap();
 
         // Retrieve the transition ID and input.
         let transition_id = *transition.id();
         let input = transition.inputs().iter().next().unwrap().clone();
-
-        // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
 
         // Sample a random plaintext.
         let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());

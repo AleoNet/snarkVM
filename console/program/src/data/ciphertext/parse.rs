@@ -88,10 +88,12 @@ mod tests {
         assert!(Ciphertext::<CurrentNetwork>::parse(&format!("{CIPHERTEXT_PREFIX}1")).is_err());
         assert!(Ciphertext::<CurrentNetwork>::parse("").is_err());
 
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new ciphertext.
             let ciphertext =
-                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>());
+                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             let expected = format!("{ciphertext}");
             let (remainder, candidate) = Ciphertext::<CurrentNetwork>::parse(&expected).unwrap();
@@ -104,10 +106,11 @@ mod tests {
 
     #[test]
     fn test_string() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new ciphertext.
-            let expected =
-                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>());
+            let expected = Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             // Check the string representation.
             let candidate = format!("{expected}");
@@ -119,10 +122,11 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new ciphertext.
-            let expected =
-                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>());
+            let expected = Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             let candidate = expected.to_string();
             assert_eq!(format!("{expected}"), candidate);

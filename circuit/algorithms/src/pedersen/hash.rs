@@ -53,13 +53,13 @@ impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn Hash<Input = Boolean<E>,
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
     const NUM_BITS_MULTIPLIER: u8 = 8;
 
-    fn check_hash<const NUM_BITS: u8>(mode: Mode) {
+    fn check_hash<const NUM_BITS: u8>(mode: Mode, rng: &mut TestRng) {
         use console::Hash as H;
 
         // Initialize the Pedersen hash.
@@ -68,7 +68,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..NUM_BITS).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..NUM_BITS).map(|_| bool::rand(rng)).collect::<Vec<bool>>();
             // Compute the expected hash.
             let expected = native.hash(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
@@ -99,30 +99,33 @@ mod tests {
     #[test]
     fn test_hash_constant() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Constant);
-        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
-        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
-        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
-        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        let mut rng = TestRng::default();
+        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Constant, &mut rng);
+        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
+        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
+        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
+        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant, &mut rng);
     }
 
     #[test]
     fn test_hash_public() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Public);
-        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public);
-        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public);
-        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public);
-        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        let mut rng = TestRng::default();
+        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Public, &mut rng);
+        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
+        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
+        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
+        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public, &mut rng);
     }
 
     #[test]
     fn test_hash_private() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Private);
-        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private);
-        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private);
-        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private);
-        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        let mut rng = TestRng::default();
+        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Private, &mut rng);
+        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
+        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
+        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
+        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private, &mut rng);
     }
 }

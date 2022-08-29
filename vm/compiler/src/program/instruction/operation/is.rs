@@ -534,7 +534,7 @@ mod tests {
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
@@ -561,7 +561,7 @@ mod tests {
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
@@ -593,7 +593,7 @@ mod tests {
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
@@ -620,7 +620,7 @@ mod tests {
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
 
         // Prepare the test.
         let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);

@@ -104,9 +104,11 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for expected in [
-            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
-            crate::ledger::vm::test_helpers::sample_execution_transaction(),
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(rng),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(rng),
         ]
         .into_iter()
         {
@@ -123,9 +125,11 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for expected in [
-            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
-            crate::ledger::vm::test_helpers::sample_execution_transaction(),
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(rng),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(rng),
         ]
         .into_iter()
         {

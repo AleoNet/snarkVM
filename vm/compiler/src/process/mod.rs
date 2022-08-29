@@ -246,7 +246,7 @@ function compute:
                 let function_name = Identifier::from_str("compute").unwrap();
 
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
+                let rng = &mut TestRng::default();
 
                 // Construct the process.
                 let process = sample_process(&program);
@@ -285,7 +285,7 @@ function compute:
                 let function_name = Identifier::from_str("compute").unwrap();
 
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
+                let rng = &mut TestRng::default();
                 // Initialize a new caller account.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
@@ -355,7 +355,7 @@ mod tests {
         let program = Program::<CurrentNetwork>::credits().unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
@@ -476,7 +476,7 @@ function hello_world:
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
-        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
     }
 
     #[test]
@@ -507,7 +507,7 @@ function hello_world:
         let function_name = Identifier::from_str("initialize").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -602,7 +602,7 @@ function hello_world:
         let function_name = Identifier::from_str("initialize").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -677,7 +677,7 @@ function hello_world:
         let function_name = Identifier::from_str("initialize").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -755,7 +755,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -890,7 +890,7 @@ function transfer:
         process.add_program(&program1).unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Initialize caller 0.
         let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1015,7 +1015,7 @@ finalize compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -1112,7 +1112,7 @@ finalize compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -1223,7 +1223,7 @@ finalize mint_public:
         let function_name = Identifier::from_str("mint_public").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);

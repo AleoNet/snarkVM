@@ -44,9 +44,8 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) {
-        let rng = &mut test_rng();
-
         for i in 0..ITERATIONS {
             // Sample two random elements.
             let a = Address::<Circuit>::from_group(Group::new(mode_a, Uniform::rand(rng)));
@@ -72,9 +71,8 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) {
-        let rng = &mut test_rng();
-
         for i in 0..ITERATIONS {
             // Sample two random elements.
             let a = Address::<Circuit>::from_group(Group::new(mode_a, Uniform::rand(rng)));
@@ -95,27 +93,31 @@ mod tests {
 
     #[test]
     fn test_is_equal() {
-        check_is_equal(Mode::Constant, Mode::Constant, 2, 0, 0, 0);
-        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 5, 7);
-        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 5, 7);
-        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 5, 7);
-        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 5, 7);
-        check_is_equal(Mode::Public, Mode::Public, 0, 0, 5, 7);
-        check_is_equal(Mode::Public, Mode::Private, 0, 0, 5, 7);
-        check_is_equal(Mode::Private, Mode::Public, 0, 0, 5, 7);
-        check_is_equal(Mode::Private, Mode::Private, 0, 0, 5, 7);
+        let mut rng = TestRng::default();
+
+        check_is_equal(Mode::Constant, Mode::Constant, 2, 0, 0, 0, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Public, Mode::Public, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Public, Mode::Private, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Private, Mode::Public, 0, 0, 5, 7, &mut rng);
+        check_is_equal(Mode::Private, Mode::Private, 0, 0, 5, 7, &mut rng);
     }
 
     #[test]
     fn test_is_not_equal() {
-        check_is_not_equal(Mode::Constant, Mode::Constant, 2, 0, 0, 0);
-        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 5, 7);
+        let mut rng = TestRng::default();
+
+        check_is_not_equal(Mode::Constant, Mode::Constant, 2, 0, 0, 0, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 5, 7, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 5, 7, &mut rng);
     }
 }

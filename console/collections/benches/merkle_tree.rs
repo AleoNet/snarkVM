@@ -18,7 +18,7 @@
 extern crate criterion;
 
 use snarkvm_console_network::{
-    prelude::{test_rng, ToBits, Uniform},
+    prelude::{TestRng, ToBits, Uniform},
     Network,
     Testnet3,
 };
@@ -34,12 +34,14 @@ const APPEND_SIZES: &[usize] = &[10, 100, 1000];
 
 /// Generates the specified number of random Merkle tree leaves.
 macro_rules! generate_leaves {
-    ($num_leaves:expr) => {{ (0..$num_leaves).map(|_| Field::<Testnet3>::rand(&mut test_rng()).to_bits_le()).collect::<Vec<_>>() }};
+    ($num_leaves:expr, $rng:expr) => {{ (0..$num_leaves).map(|_| Field::<Testnet3>::rand($rng).to_bits_le()).collect::<Vec<_>>() }};
 }
 
 fn new(c: &mut Criterion) {
+    let mut rng = TestRng::default();
+
     for num_leaves in NUM_LEAVES {
-        let leaves = generate_leaves!(*num_leaves);
+        let leaves = generate_leaves!(*num_leaves, &mut rng);
 
         c.bench_function(&format!("MerkleTree::new ({} leaves)", num_leaves), move |b| {
             b.iter(|| {
@@ -50,11 +52,13 @@ fn new(c: &mut Criterion) {
 }
 
 fn append(c: &mut Criterion) {
+    let mut rng = TestRng::default();
+
     for num_leaves in NUM_LEAVES {
-        let leaves = generate_leaves!(*num_leaves);
+        let leaves = generate_leaves!(*num_leaves, &mut rng);
 
         let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
-        let new_leaf = generate_leaves!(1);
+        let new_leaf = generate_leaves!(1, &mut rng);
 
         c.bench_function(
             &format!("MerkleTree::append (adding single leaf to a tree with {} leaves)", num_leaves),
@@ -70,7 +74,7 @@ fn append(c: &mut Criterion) {
 
         for num_new_leaves in APPEND_SIZES {
             let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
-            let new_leaves = generate_leaves!(*num_new_leaves);
+            let new_leaves = generate_leaves!(*num_new_leaves, &mut rng);
 
             c.bench_function(
                 &format!(

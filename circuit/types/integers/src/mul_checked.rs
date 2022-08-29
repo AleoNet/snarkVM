@@ -284,11 +284,13 @@ mod tests {
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
             //  Is there a better method for sampling arguments?
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
             check_mul::<I>(&name, first, second, mode_a, mode_b);
