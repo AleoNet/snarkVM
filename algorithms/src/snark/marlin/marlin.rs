@@ -134,7 +134,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
         };
 
         let circuit_proving_key = CircuitProvingKey {
-            circuit: index,
+            circuit: Arc::new(index),
             circuit_commitment_randomness,
             circuit_verifying_key: circuit_verifying_key.clone(),
             committer_key,
