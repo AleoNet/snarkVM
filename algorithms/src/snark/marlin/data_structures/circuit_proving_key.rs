@@ -38,7 +38,7 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     /// The circuit itself.
     pub circuit: Arc<Circuit<E::Fr, MM>>,
     /// The committer key for this index, trimmed from the universal SRS.
-    pub committer_key: sonic_pc::CommitterKey<E>,
+    pub committer_key: Arc<sonic_pc::CommitterKey<E>>,
 }
 
 impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitProvingKey<E, MM> {
@@ -57,7 +57,7 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
         let circuit_verifying_key = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
         let circuit_commitment_randomness = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
         let circuit = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
-        let committer_key = FromBytes::read_le(&mut reader)?;
+        let committer_key = Arc::new(FromBytes::read_le(&mut reader)?);
 
         Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })
     }
