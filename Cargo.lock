@@ -2436,7 +2436,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serial_test",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
