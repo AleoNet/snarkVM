@@ -114,7 +114,6 @@ default = [ "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
 wasm = [
-  "snarkvm-algorithms/wasm",
   "reqwest",
   "wasm-bindgen-futures",
   "parking_lot"
