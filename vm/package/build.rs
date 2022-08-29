@@ -276,6 +276,9 @@ impl<N: Network> Package<N> {
             bail!("Build directory does not exist: {}", self.build_directory().display());
         }
 
+        #[cfg(feature = "aleo-cli")]
+        println!();
+
         Ok(())
     }
 }
