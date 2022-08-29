@@ -134,6 +134,9 @@ impl<N: Network> Package<N> {
         // Retrieve the Aleo address of the deployment caller.
         let caller = self.manifest_file().development_address();
 
+        #[cfg(feature = "aleo-cli")]
+        println!("⏳ Deploying '{}'...\n", program_id.to_string().bold());
+
         // Construct the process.
         let mut process = Process::<N>::load()?;
 
