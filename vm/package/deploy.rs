@@ -140,20 +140,18 @@ impl<N: Network> Package<N> {
         // Construct the process.
         let mut process = Process::<N>::load()?;
 
-        // Add program imports to the process.
-        let imports_directory = self.imports_directory();
-        program.imports().keys().try_for_each(|program_id| {
-            // TODO (howardwu): Add the following checks:
-            //  1) the imported program ID exists *on-chain* (for the given network)
-            //  2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
-            //  3) consensus performs the exact same checks (in `verify_deployment`)
+        // TODO (howardwu): Add the following checks:
+        //     1) the imported program ID exists *on-chain* (for the given network)
+        //     2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
+        //     3) consensus performs the exact same checks (in `verify_deployment`)
 
-            // Open the Aleo program file.
-            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
-            // Add the import program.
-            process.add_program(import_program_file.program())?;
-            Ok::<_, Error>(())
-        })?;
+        // TODO: this could be an aux function
+        for import_program in program.imports() {
+            let program = ureq::get(&endpoint.clone().unwrap()).send_json(import_program.0)?.into_json()?;
+            if program.is_none() {
+                bail!("The program {} needs to be deployed before {}", import_program.0, program.id());
+            }
+        }
 
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
