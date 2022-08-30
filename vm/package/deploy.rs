@@ -125,7 +125,7 @@ impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
-    ) -> Result<Deployment<N>> {
+    ) -> Result<Vec<Deployment<N>>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the main program ID.
@@ -154,27 +154,38 @@ impl<N: Network> Package<N> {
             process.add_program(import_program_file.program())?;
             Ok::<_, Error>(())
         })?;
+        process.add_program(program)?;
 
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
         // Compute the deployment.
-        let deployment = process.deploy::<A, _>(program, rng).unwrap();
+        let deployments = process.deploy_with_imports::<A, _>(rng)?;
 
         match endpoint {
             Some(ref endpoint) => {
-                // Construct the deploy request.
-                let request = DeployRequest::new(deployment, *caller, *program_id);
-                // Send the deploy request.
-                let response = request.send(endpoint)?;
-                // Ensure the program ID matches.
-                ensure!(
-                    response.deployment.program_id() == program_id,
-                    "Program ID mismatch: {} != {program_id}",
-                    response.deployment.program_id()
-                );
-                Ok(response.deployment)
+                let mut response_deployments: Vec<Deployment<N>> = Vec::new();
+                for deployment in deployments {
+                    #[cfg(feature = "aleo-cli")]
+                    println!(
+                        "📦 Deploying '{}' to the local development node...\n",
+                        deployment.program().id().to_string().bold()
+                    );
+                    // Construct the deploy request.
+                    let request = DeployRequest::new(deployment, *caller, *program_id);
+                    // Send the deploy request.
+                    let response = request.send(endpoint)?;
+                    #[cfg(feature = "aleo-cli")]
+                    println!(
+                        // TODO: Make the beacon return the transaction ID.
+                        "✅ Deployed '{}'\n",
+                        response.deployment.program().id().to_string().bold(),
+                    );
+                    // Retrieve the deployment.
+                    response_deployments.push(response.deployment);
+                }
+                Ok(response_deployments)
             }
-            None => Ok(deployment),
+            None => Ok(deployments),
         }
     }
 }
@@ -192,7 +203,8 @@ mod tests {
         let (directory, package) = crate::package::test_helpers::sample_package();
 
         // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+        let expected_deployments = package.deploy::<CurrentAleo>(None).unwrap();
+        let deployment = expected_deployments.first().unwrap();
 
         // Ensure the deployment edition matches.
         assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
@@ -211,7 +223,8 @@ mod tests {
         let (directory, package) = crate::package::test_helpers::sample_package_with_import();
 
         // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+        let expected_deployments = package.deploy::<CurrentAleo>(None).unwrap();
+        let deployment = expected_deployments.first().unwrap();
 
         // Ensure the deployment edition matches.
         assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
