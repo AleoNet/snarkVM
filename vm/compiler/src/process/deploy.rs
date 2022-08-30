@@ -30,6 +30,21 @@ impl<N: Network> Process<N> {
         stack.deploy::<A, R>(rng)
     }
 
+    /// Deploys all the programs that are in the process's stacks.
+    #[inline]
+    pub fn deploy_with_imports<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &mut self,
+        rng: &mut R,
+    ) -> Result<Vec<Deployment<N>>> {
+        let mut deployments: Vec<Deployment<N>> = Vec::new();
+        self.stacks.iter().try_for_each(|(_, stack)| {
+            let deployment = stack.deploy::<A, R>(rng)?;
+            deployments.push(deployment);
+            Ok::<_, Error>(())
+        })?;
+        Ok(deployments)
+    }
+
     /// Verifies the given deployment is well-formed.
     #[inline]
     pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
