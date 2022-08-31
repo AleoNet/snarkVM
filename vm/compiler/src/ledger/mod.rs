@@ -594,9 +594,36 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Adds a given address to the validator set.
+    pub fn add_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators().contains_key(&address) {
+            bail!("'{address}' is already in the validator set.")
+        }
+
+        // Insert the address into the validator set.
+        self.validators.insert(address, ());
+        Ok(())
+    }
+
+    /// Removes a given address from the validator set.
+    pub fn remove_validator(&mut self, address: Address<N>) -> Result<()> {
+        if !self.validators().contains_key(&address) {
+            bail!("'{address}' is not in the validator set.")
+        }
+
+        // Remove the address from the validator set.
+        self.validators.remove(&address);
+        Ok(())
+    }
+
     /// Returns the block tree.
     pub const fn block_tree(&self) -> &BlockTree<N> {
         &self.block_tree
+    }
+
+    /// Returns the validator set.
+    pub const fn validators(&self) -> &IndexMap<Address<N>, ()> {
+        &self.validators
     }
 
     /// Returns the memory pool.
