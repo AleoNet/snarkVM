@@ -146,12 +146,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transitions: blocks.transition_store().clone(),
             blocks,
             // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(
-                Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?,
-                (),
-            )]
-            .into_iter()
-            .collect(),
+            validators: [].into_iter().collect(),
             vm,
             memory_pool: Default::default(),
         };
@@ -169,6 +164,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 genesis.height()
             }
         };
+
+        // Add the initial validator.
+        let genesis_block = ledger.get_block(0)?;
+        ledger.add_validator(genesis_block.signature().to_address())?;
 
         // Fetch the latest block.
         let block = ledger.get_block(latest_height)?;
