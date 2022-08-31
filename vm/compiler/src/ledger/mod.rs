@@ -113,10 +113,8 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
-        // Initialize the address.
-        let address = Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?;
         // Initialize the ledger.
-        Self::new_with_genesis(&genesis, address)
+        Self::new_with_genesis(&genesis, genesis.signature().to_address())
     }
 }
 
