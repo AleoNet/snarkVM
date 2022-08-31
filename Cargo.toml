@@ -163,7 +163,7 @@ path = "./vm/compiler"
 version = "0.9.0"
 
 [dependencies.anyhow]
-version = "1.0.62"
+version = "1.0.63"
 optional = true
 
 [dependencies.clap]
