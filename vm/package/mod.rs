@@ -44,10 +44,12 @@ use crate::{
 use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
 
 use anyhow::{bail, ensure, Error, Result};
-use colored::Colorize;
 use core::str::FromStr;
 use rand::{CryptoRng, Rng};
 use std::path::{Path, PathBuf};
+
+#[cfg(feature = "aleo-cli")]
+use colored::Colorize;
 
 pub struct Package<N: Network> {
     /// The program ID.

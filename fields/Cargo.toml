@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-fields"
-version = "0.7.5"
+version = "0.9.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Fields for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,14 +12,20 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.9.0"
 default-features = false
 
 [dependencies.aleo-std]

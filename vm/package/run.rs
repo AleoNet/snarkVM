@@ -20,6 +20,7 @@ impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
     pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
+        endpoint: Option<String>,
         private_key: &PrivateKey<N>,
         function_name: Identifier<N>,
         inputs: &[Value<N>],
@@ -34,22 +35,19 @@ impl<N: Network> Package<N> {
             bail!("Function '{function_name}' does not exist.")
         }
 
+        // Build the package, if the package requires building.
+        self.build::<A>(endpoint)?;
+
+        // Prepare the locator (even if logging is disabled, to sanity check the locator is well-formed).
+        let _locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
+
+        #[cfg(feature = "aleo-cli")]
+        println!("🚀 Executing '{}'...\n", _locator.to_string().bold());
+
         // Construct the process.
         let process = self.get_process()?;
-
-        // Prepare the build directory.
-        let build_directory = self.build_directory();
-        // Ensure the build directory exists.
-        if !build_directory.exists() {
-            bail!("Build directory does not exist: {}", build_directory.display());
-        }
-
         // Authorize the function call.
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs, rng)?;
-
-        // Prepare the locator.
-        let locator = Locator::<N>::from_str(&format!("{}/{}", program_id, function_name))?;
-        println!("🚀 Executing '{}'...\n", locator.to_string().bold());
 
         // Retrieve the program.
         let program = process.get_program(program_id)?;
@@ -127,7 +125,8 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _execution) =
+            package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -151,7 +150,8 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _execution) =
+            package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
