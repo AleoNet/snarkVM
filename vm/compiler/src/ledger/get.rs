@@ -85,8 +85,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     // Returns the program for the given program_id.
-    pub fn get_program(&self, program_id: u32) -> Result<Program<N>> {
-        let program_id = ProgramID::<N>::from_str(&program_id.to_string())?;
+    pub fn get_program(&self, program_id: String) -> Result<Program<N>> {
+        let program_id = ProgramID::<N>::from_str(&program_id)?;
         match self.transactions.get_program(&program_id)? {
             Some(program) => Ok(program),
             None => bail!("Missing program for id {program_id}"),
