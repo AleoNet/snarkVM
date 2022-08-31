@@ -15,6 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuit_types_field::Field;
+
+use core::cmp::Ordering;
 
 impl<E: Environment> Equal<Self> for StringType<E> {
     type Output = Boolean<E>;
@@ -22,12 +25,14 @@ impl<E: Environment> Equal<Self> for StringType<E> {
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
         // Convert each string type into fields.
-        let this = self.to_fields();
-        let that = other.to_fields();
+        let mut this = self.to_fields();
+        let mut that = other.to_fields();
 
-        // Return `false` if the length of the strings are equal.
-        if this.len() != that.len() {
-            return Boolean::constant(false);
+        // If the number of fields is different, right-pad the shorter one with zeros.
+        match this.len().cmp(&that.len()) {
+            Ordering::Equal => {}
+            Ordering::Less => this.resize(that.len(), Field::new(self.mode, console::Field::zero())),
+            Ordering::Greater => that.resize(this.len(), Field::new(other.mode, console::Field::zero())),
         }
 
         // Check if the string contents are equal.
@@ -37,12 +42,14 @@ impl<E: Environment> Equal<Self> for StringType<E> {
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         // Convert each string type into fields.
-        let this = self.to_fields();
-        let that = other.to_fields();
+        let mut this = self.to_fields();
+        let mut that = other.to_fields();
 
-        // Return `true` if the length of the strings are *not* equal.
-        if this.len() != that.len() {
-            return Boolean::constant(true);
+        // If the number of fields is different, right-pad the shorter one with zeros.
+        match this.len().cmp(&that.len()) {
+            Ordering::Equal => {}
+            Ordering::Less => this.resize(that.len(), Field::new(self.mode, console::Field::zero())),
+            Ordering::Greater => that.resize(this.len(), Field::new(other.mode, console::Field::zero())),
         }
 
         // Check if the string contents are *not* equal.
