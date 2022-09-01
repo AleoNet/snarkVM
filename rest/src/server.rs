@@ -193,6 +193,18 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             }
         })
     }
+
+    pub fn ledger(&self) -> Arc<RwLock<Ledger<N, B, P>>> {
+        self.ledger.clone()
+    }
+
+    pub fn ledger_sender(&self) -> &LedgerSender<N> {
+        &self.ledger_sender
+    }
+
+    pub fn handles(&self) -> &Vec<JoinHandle<()>> {
+        &self.handles
+    }
 }
 
 impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
