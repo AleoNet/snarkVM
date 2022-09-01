@@ -23,6 +23,11 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
+[[bench]]
+name = "coinbase_puzzle"
+path = "benches/coinbase_puzzle/coinbase_puzzle.rs"
+harness = false
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
@@ -56,6 +61,10 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0.62"
+
+[dependencies.blake2]
+version = "0.10"
+default-features = false
 
 [dependencies.colored]
 version = "2"
@@ -94,6 +103,9 @@ version = "0.1"
 
 [dev-dependencies.bincode]
 version = "1.3"
+
+[dev-dependencies.criterion]
+version = "0.3"
 
 [dev-dependencies.regex]
 version = "1.6"
