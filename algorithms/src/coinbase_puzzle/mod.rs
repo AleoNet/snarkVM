@@ -14,21 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
-
-use rand::{CryptoRng, Rng};
-use snarkvm_curves::PairingEngine;
-use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::cfg_iter;
-
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-
-use crate::{
-    fft::{DensePolynomial, EvaluationDomain, Polynomial},
-    msm::VariableBase,
-    polycommit::kzg10::{self, Commitment, Randomness, KZG10},
-};
 
 mod data_structures;
 pub use data_structures::*;
@@ -38,6 +25,18 @@ use hash::*;
 
 #[cfg(test)]
 mod tests;
+
+use crate::{
+    fft::{DensePolynomial, EvaluationDomain, Polynomial},
+    msm::VariableBase,
+    polycommit::kzg10::{self, Commitment, Randomness, UniversalParams as SRS, KZG10},
+};
+use snarkvm_curves::PairingEngine;
+use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::cfg_iter;
+
+use rand::{CryptoRng, Rng};
+use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
 
 pub struct CoinbasePuzzle<E: PairingEngine>(PhantomData<E>);
 
@@ -188,6 +187,6 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
         let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
         let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
         let combined_commitment: Commitment<E> = Commitment(combined_commitment.into());
-        KZG10::check(&vk, &combined_commitment, point, combined_eval, &combined_solution.proof).unwrap()
+        KZG10::check(vk, &combined_commitment, point, combined_eval, &combined_solution.proof).unwrap()
     }
 }
