@@ -16,18 +16,13 @@
 
 use crate::{with, LedgerReceiver, LedgerRequest, LedgerSender, OrReject, ServerError};
 
-use snarkvm_compiler::{BlockStorage, Deployment, Ledger, ProgramStorage, RecordsFilter, Transaction};
-use snarkvm_console::{
-    account::ViewKey,
-    prelude::Network,
-    types::{Field, U64},
-};
+use snarkvm_compiler::{BlockStorage, Ledger, ProgramStorage, RecordsFilter, Transaction};
+use snarkvm_console::{account::ViewKey, prelude::Network, types::Field};
 
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use serde_json::json;
 use std::sync::Arc;
 use tokio::{sync::mpsc, task::JoinHandle};
 use warp::{http::StatusCode, reject, reply, Filter, Rejection, Reply};
