@@ -15,15 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
+    fft::{DensePolynomial, EvaluationDomain},
     polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey},
 };
 use snarkvm_curves::PairingEngine;
-use std::{borrow::Cow, collections::BTreeMap};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
-use crate::fft::DensePolynomial;
+use std::{
+    borrow::Cow,
+    collections::BTreeMap,
+    io::{Read, Result as IoResult, Write},
+};
 
-pub use crate::polycommit::kzg10::UniversalParams as SRS;
 pub type VerifyingKey<E> = VerifierKey<E>;
 
 #[derive(Clone, Debug)]
@@ -56,6 +59,26 @@ impl<E: PairingEngine> ProvingKey<E> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct EpochInfo {
+    pub epoch_number: u64,
+}
+
+impl EpochInfo {
+    pub fn to_bytes_le(&self) -> [u8; 8] {
+        self.epoch_number.to_le_bytes()
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Address(pub [u8; 32]);
+
+impl Address {
+    pub fn to_bytes_le(&self) -> [u8; 32] {
+        self.0
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EpochChallenge<E: PairingEngine> {
     pub epoch_polynomial: DensePolynomial<E::Fr>,
@@ -75,28 +98,60 @@ pub struct ProverPuzzleSolution<E: PairingEngine> {
     pub proof: Proof<E>,
 }
 
+impl<E: PairingEngine> ToBytes for ProverPuzzleSolution<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.address.0.write_le(&mut writer)?;
+        self.nonce.write_le(&mut writer)?;
+        self.commitment.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for ProverPuzzleSolution<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let address = Address(FromBytes::read_le(&mut reader)?);
+        let nonce = u64::read_le(&mut reader)?;
+        let commitment = Commitment::read_le(&mut reader)?;
+        let proof = Proof::read_le(&mut reader)?;
+
+        Ok(Self { address, nonce, commitment, proof })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedPuzzleSolution<E: PairingEngine> {
     pub individual_puzzle_solutions: Vec<(Address, u64, Commitment<E>)>,
     pub proof: Proof<E>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct EpochInfo {
-    pub epoch_number: u64,
-}
+impl<E: PairingEngine> ToBytes for CombinedPuzzleSolution<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
 
-impl EpochInfo {
-    pub fn to_bytes_le(&self) -> [u8; 8] {
-        self.epoch_number.to_le_bytes()
+        for individual_puzzle_solution in &self.individual_puzzle_solutions {
+            individual_puzzle_solution.0.0.write_le(&mut writer)?;
+            individual_puzzle_solution.1.write_le(&mut writer)?;
+            individual_puzzle_solution.2.write_le(&mut writer)?;
+        }
+
+        self.proof.write_le(&mut writer)
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Address(pub [u8; 32]);
+impl<E: PairingEngine> FromBytes for CombinedPuzzleSolution<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let individual_puzzle_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
 
-impl Address {
-    pub fn to_bytes_le(&self) -> [u8; 32] {
-        self.0
+        let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
+        for _ in 0..individual_puzzle_solutions_len {
+            let address = Address(FromBytes::read_le(&mut reader)?);
+            let nonce: u64 = FromBytes::read_le(&mut reader)?;
+            let commitment: Commitment<E> = FromBytes::read_le(&mut reader)?;
+            individual_puzzle_solutions.push((address, nonce, commitment));
+        }
+
+        let proof = Proof::read_le(&mut reader)?;
+
+        Ok(Self { individual_puzzle_solutions, proof })
     }
 }
