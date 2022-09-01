@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::{Deployment, Import};
+use snarkvm_compiler::Deployment;
 use snarkvm_console::types::Address;
 
 use super::*;
@@ -145,8 +145,7 @@ impl<N: Network> Package<N> {
         //     2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
         //     3) consensus performs the exact same checks (in `verify_deployment`)
 
-        
-        Self::check_imports(&program, &endpoint)?;
+        Self::check_imports(program, &endpoint)?;
 
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
@@ -173,7 +172,8 @@ impl<N: Network> Package<N> {
 
     fn check_imports(program: &Program<N>, endpoint: &Option<String>) -> Result<()> {
         for import_program in program.imports() {
-            let p: Option<Program<N>> = ureq::get(&endpoint.clone().unwrap()).send_json(import_program.0)?.into_json()?;
+            let p: Option<Program<N>> =
+                ureq::get(&endpoint.clone().unwrap()).send_json(import_program.0)?.into_json()?;
             if p.is_none() {
                 bail!("The program {} needs to be deployed before {}", import_program.0, program.id());
             }
