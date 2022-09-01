@@ -31,7 +31,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition input storage.
-pub trait InputStorage<N: Network>: Clone + Sync {
+pub trait InputStorage<N: Network>: Clone + Sync + Send {
     /// The mapping of `transition ID` to `input IDs`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
     /// The mapping of `input ID` to `transition ID`.
