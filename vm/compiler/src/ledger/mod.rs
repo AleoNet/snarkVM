@@ -113,41 +113,8 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
-        // Initialize the address.
-        let address = Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?;
         // Initialize the ledger.
-        Self::new_with_genesis(&genesis, address)
-    }
-
-    /// Initializes a new instance of `Ledger` with the given genesis block.
-    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
-        // Initialize the block store.
-        let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
-        // Initialize the program store.
-        let store = ProgramStore::<N, ProgramMemory<N>>::open()?;
-        // Initialize a new VM.
-        let vm = VM::new(store)?;
-
-        // Initialize the ledger.
-        let mut ledger = Self {
-            current_hash: Default::default(),
-            current_height: 0,
-            current_round: 0,
-            block_tree: N::merkle_tree_bhp(&[])?,
-            transactions: blocks.transaction_store().clone(),
-            transitions: blocks.transition_store().clone(),
-            blocks,
-            // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(address, ())].into_iter().collect(),
-            vm,
-            memory_pool: Default::default(),
-        };
-
-        // Add the genesis block.
-        ledger.add_next_block(genesis)?;
-
-        // Return the ledger.
-        Ok(ledger)
+        Self::new_with_genesis(&genesis, genesis.signature().to_address())
     }
 }
 
@@ -177,12 +144,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transitions: blocks.transition_store().clone(),
             blocks,
             // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(
-                Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?,
-                (),
-            )]
-            .into_iter()
-            .collect(),
+            validators: Default::default(),
             vm,
             memory_pool: Default::default(),
         };
@@ -200,6 +162,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 genesis.height()
             }
         };
+
+        // Add the initial validator.
+        let genesis_block = ledger.get_block(0)?;
+        ledger.add_validator(genesis_block.signature().to_address())?;
 
         // Fetch the latest block.
         let block = ledger.get_block(latest_height)?;
@@ -221,6 +187,42 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             Ok::<_, Error>(())
         })?;
 
+        Ok(ledger)
+    }
+
+    /// Initializes a new instance of `Ledger` with the given genesis block.
+    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
+        // Initialize the block store.
+        let blocks = BlockStore::<N, B>::open()?;
+        // Initialize the program store.
+        let store = ProgramStore::<N, P>::open()?;
+        // Initialize a new VM.
+        let vm = VM::new(store)?;
+
+        // Ensure that a genesis block doesn't already exist in the block store.
+        if blocks.contains_block_height(0)? {
+            bail!("Genesis block already exists in the ledger.");
+        }
+
+        // Initialize the ledger.
+        let mut ledger = Self {
+            current_hash: Default::default(),
+            current_height: 0,
+            current_round: 0,
+            block_tree: N::merkle_tree_bhp(&[])?,
+            transactions: blocks.transaction_store().clone(),
+            transitions: blocks.transition_store().clone(),
+            blocks,
+            // TODO (howardwu): Update this to retrieve from a validators store.
+            validators: [(address, ())].into_iter().collect(),
+            vm,
+            memory_pool: Default::default(),
+        };
+
+        // Add the genesis block.
+        ledger.add_next_block(genesis)?;
+
+        // Return the ledger.
         Ok(ledger)
     }
 
@@ -282,6 +284,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
         }
 
+        /* Program */
+
+        // Ensure that the ledger does not already contain the given program ID.
+        if let Transaction::Deploy(_, deployment, _) = &transaction {
+            let program_id = deployment.program_id();
+            if self.contains_program_id(program_id)? {
+                bail!("Program ID '{program_id}' already exists in the ledger")
+            }
+        }
+
         /* Metadata */
 
         // Ensure the ledger does not already contain a given transition public keys.
@@ -305,6 +317,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        // TODO (raychu86): Add logic to transaction selection from the mempool.
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
 
@@ -578,9 +591,32 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Adds a given address to the validator set.
+    pub fn add_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators.insert(address, ()).is_some() {
+            bail!("'{address}' is already in the validator set.")
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Removes a given address from the validator set.
+    pub fn remove_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators.remove(&address).is_none() {
+            bail!("'{address}' is not in the validator set.")
+        } else {
+            Ok(())
+        }
+    }
+
     /// Returns the block tree.
     pub const fn block_tree(&self) -> &BlockTree<N> {
         &self.block_tree
+    }
+
+    /// Returns the validator set.
+    pub const fn validators(&self) -> &IndexMap<Address<N>, ()> {
+        &self.validators
     }
 
     /// Returns the memory pool.
@@ -1037,7 +1073,7 @@ mod tests {
         // Create a genesis block.
         let genesis = Block::genesis(&VM::new(store).unwrap(), &private_key, rng).unwrap();
         // Initialize the ledger.
-        let mut ledger = Ledger::<_, BlockMemory<_>, _>::new_with_genesis(&genesis, address).unwrap();
+        let mut ledger = Ledger::<_, BlockMemory<_>, ProgramMemory<_>>::new_with_genesis(&genesis, address).unwrap();
 
         for height in 1..6 {
             // Fetch the unspent records.

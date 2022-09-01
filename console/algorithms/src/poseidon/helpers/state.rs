@@ -44,7 +44,7 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> State<E, RATE, CA
 
 impl<E: Environment, const RATE: usize, const CAPACITY: usize> State<E, RATE, CAPACITY> {
     /// Returns an immutable iterator over the state.
-    pub fn iter(&self) -> impl Iterator<Item = &Field<E>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Field<E>> + Clone {
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 

@@ -59,7 +59,7 @@ impl<N: Network> Package<N> {
             }
         }
 
-        // Package hasn't changed, no need to build
+        // Skip building the package, as it has not changed.
         false
     }
 }
@@ -122,13 +122,13 @@ function compute:
     }
 
     #[test]
-    fn test_build_is_required_for_new_package() {
+    fn test_for_new_package() {
         let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.is_build_required::<Aleo>());
     }
 
     #[test]
-    fn test_build_is_required_when_avm_file_does_not_exist() {
+    fn test_when_avm_file_does_not_exist() {
         let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.build_directory().exists());
         assert!(!AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
@@ -136,13 +136,13 @@ function compute:
     }
 
     #[test]
-    fn test_fail_when_avm_and_package_program_ids_do_not_match() {
+    fn test_fails_when_avm_and_package_program_ids_do_not_match() {
         let package = initialize_unbuilt_package(false);
         assert!(package.is_err());
     }
 
     #[test]
-    fn test_build_is_required_when_prover_and_verifier_files_do_not_exist() {
+    fn test_when_prover_and_verifier_files_do_not_exist() {
         let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.build_directory().exists());
 
@@ -172,7 +172,7 @@ function compute:
     }
 
     #[test]
-    fn test_already_built_package_does_not_require_building() {
+    fn test_prebuilt_package_does_not_rebuild() {
         let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.is_build_required::<Aleo>());
 

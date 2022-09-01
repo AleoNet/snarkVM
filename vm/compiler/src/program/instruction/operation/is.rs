@@ -364,6 +364,8 @@ mod tests {
     ) {
         use circuit::Eject;
 
+        println!("Checking '{opcode}' for '{literal_a}.{mode_a}' and '{literal_b}.{mode_b}'");
+
         // Initialize the types.
         let type_a = literal_a.to_type();
         let type_b = literal_b.to_type();
@@ -531,9 +533,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -548,29 +553,35 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_is_eq_fails() {
         use rayon::prelude::*;
 
         // Initialize the opcode.
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
-        literals_a.par_iter().for_each(|literal_a| {
-            for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+        literals_a.par_iter().chunks(8).for_each(|literals_a| {
+            literals_a.iter().for_each(|literal_a| {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+                            }
                         }
                     }
                 }
-            }
+            })
         });
     }
 
@@ -581,9 +592,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -598,29 +612,35 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_is_neq_fails() {
         use rayon::prelude::*;
 
         // Initialize the opcode.
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
-        literals_a.par_iter().for_each(|literal_a| {
-            for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+        literals_a.par_iter().chunks(8).for_each(|literals_a| {
+            literals_a.iter().for_each(|literal_a| {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+                            }
                         }
                     }
                 }
-            }
+            })
         });
     }
 

@@ -348,6 +348,8 @@ mod tests {
         mode_a: &circuit::Mode,
         mode_b: &circuit::Mode,
     ) {
+        println!("Checking '{opcode}' for '{literal_a}.{mode_a}' and '{literal_b}.{mode_b}'");
+
         // Initialize the types.
         let type_a = literal_a.to_type();
         let type_b = literal_b.to_type();
@@ -485,9 +487,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = AssertEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -502,23 +507,27 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_assert_eq_fails() {
         use rayon::prelude::*;
 
         // Initialize the opcode.
         let opcode = AssertEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         literals_a.par_iter().for_each(|literal_a| {
             for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
+                if literal_a.to_type() != literal_b.to_type() {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
                             // Check the operation fails.
                             check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b);
                         }
@@ -535,9 +544,12 @@ mod tests {
         // Initialize the opcode.
         let opcode = AssertNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -552,23 +564,27 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_assert_neq_fails() {
         use rayon::prelude::*;
 
         // Initialize the opcode.
         let opcode = AssertNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = test_rng();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         literals_a.par_iter().for_each(|literal_a| {
             for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
+                if literal_a.to_type() != literal_b.to_type() {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
                             // Check the operation fails.
                             check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b);
                         }
