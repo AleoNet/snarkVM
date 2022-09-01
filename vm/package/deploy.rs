@@ -130,7 +130,6 @@ impl<N: Network> Package<N> {
         let program = self.program();
         // Retrieve the main program ID.
         let program_id = program.id();
-
         // Retrieve the Aleo address of the deployment caller.
         let caller = self.manifest_file().development_address();
 
