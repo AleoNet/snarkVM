@@ -51,7 +51,7 @@ pub enum TransactionType {
 }
 
 /// A trait for transaction storage.
-pub trait TransactionStorage<N: Network>: Clone + Sync {
+pub trait TransactionStorage<N: Network>: Clone + Sync + Send {
     /// The mapping of `transaction ID` to `transaction type`.
     type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType>;
     /// The deployment storage.

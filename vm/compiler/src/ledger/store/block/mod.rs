@@ -48,7 +48,7 @@ macro_rules! bail_with_block {
 }
 
 /// A trait for block storage.
-pub trait BlockStorage<N: Network>: Clone + Sync {
+pub trait BlockStorage<N: Network>: Clone + Sync + Send {
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
