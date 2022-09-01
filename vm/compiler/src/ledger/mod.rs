@@ -144,7 +144,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transitions: blocks.transition_store().clone(),
             blocks,
             // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [].into_iter().collect(),
+            validators: Default::default(),
             vm,
             memory_pool: Default::default(),
         };
@@ -593,24 +593,20 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Adds a given address to the validator set.
     pub fn add_validator(&mut self, address: Address<N>) -> Result<()> {
-        if self.validators().contains_key(&address) {
+        if self.validators.insert(address, ()).is_some() {
             bail!("'{address}' is already in the validator set.")
+        } else {
+            Ok(())
         }
-
-        // Insert the address into the validator set.
-        self.validators.insert(address, ());
-        Ok(())
     }
 
     /// Removes a given address from the validator set.
     pub fn remove_validator(&mut self, address: Address<N>) -> Result<()> {
-        if !self.validators().contains_key(&address) {
+        if self.validators.remove(&address).is_none() {
             bail!("'{address}' is not in the validator set.")
+        } else {
+            Ok(())
         }
-
-        // Remove the address from the validator set.
-        self.validators.remove(&address);
-        Ok(())
     }
 
     /// Returns the block tree.
