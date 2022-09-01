@@ -42,7 +42,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition storage.
-pub trait TransitionStorage<N: Network>: Clone + Sync {
+pub trait TransitionStorage<N: Network>: Clone + Sync + Send {
     /// The transition program IDs and function names.
     type LocatorMap: for<'a> Map<'a, N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     /// The transition inputs.
