@@ -2283,7 +2283,9 @@ version = "0.9.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "blake2",
  "colored",
+ "criterion",
  "indexmap",
  "once_cell",
  "parking_lot 0.12.1",
