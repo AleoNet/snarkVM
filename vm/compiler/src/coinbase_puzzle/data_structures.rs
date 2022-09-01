@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use console::prelude::{Environment, Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
     polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey},
@@ -27,22 +28,22 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
-pub type CoinbasePuzzleVerifyingKey<E> = VerifierKey<E>;
+pub type CoinbasePuzzleVerifyingKey<N> = VerifierKey<<N as Environment>::PairingCurve>;
 
 #[derive(Clone, Debug)]
-pub struct CoinbasePuzzleProvingKey<E: PairingEngine> {
+pub struct CoinbasePuzzleProvingKey<N: Network> {
     /// The key used to commit to polynomials.
-    pub powers_of_beta_g: Vec<E::G1Affine>,
+    pub powers_of_beta_g: Vec<<N::PairingCurve as PairingEngine>::G1Affine>,
 
     /// The key used to commit to polynomials in Lagrange basis.
-    pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
+    pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<<N::PairingCurve as PairingEngine>::G1Affine>>,
 
-    pub vk: VerifierKey<E>,
+    pub vk: VerifierKey<N::PairingCurve>,
 }
 
-impl<E: PairingEngine> CoinbasePuzzleProvingKey<E> {
+impl<N: Network> CoinbasePuzzleProvingKey<N> {
     /// Obtain powers for the underlying KZG10 construction
-    pub fn powers(&self) -> Powers<E> {
+    pub fn powers(&self) -> Powers<N::PairingCurve> {
         Powers {
             powers_of_beta_g: self.powers_of_beta_g.as_slice().into(),
             powers_of_beta_times_gamma_g: Cow::Owned(vec![]),
@@ -50,7 +51,10 @@ impl<E: PairingEngine> CoinbasePuzzleProvingKey<E> {
     }
 
     /// Obtain elements of the SRS in the lagrange basis powers.
-    pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Option<LagrangeBasis<E>> {
+    pub fn lagrange_basis(
+        &self,
+        domain: EvaluationDomain<<N::PairingCurve as PairingEngine>::Fr>,
+    ) -> Option<LagrangeBasis<N::PairingCurve>> {
         self.lagrange_bases_at_beta_g.get(&domain.size()).map(|basis| LagrangeBasis {
             lagrange_basis_at_beta_g: Cow::Borrowed(basis),
             powers_of_beta_times_gamma_g: Cow::Owned(vec![]),
@@ -80,25 +84,25 @@ impl CoinbasePuzzleAddress {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EpochChallenge<E: PairingEngine> {
-    pub epoch_polynomial: DensePolynomial<E::Fr>,
+pub struct EpochChallenge<N: Network> {
+    pub epoch_polynomial: DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>,
 }
 
-impl<E: PairingEngine> EpochChallenge<E> {
+impl<N: Network> EpochChallenge<N> {
     pub fn degree(&self) -> usize {
         self.epoch_polynomial.degree()
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProverPuzzleSolution<E: PairingEngine> {
+pub struct ProverPuzzleSolution<N: Network> {
     pub address: CoinbasePuzzleAddress,
     pub nonce: u64,
-    pub commitment: Commitment<E>,
-    pub proof: Proof<E>,
+    pub commitment: Commitment<N::PairingCurve>,
+    pub proof: Proof<N::PairingCurve>,
 }
 
-impl<E: PairingEngine> ToBytes for ProverPuzzleSolution<E> {
+impl<N: Network> ToBytes for ProverPuzzleSolution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.address.0.write_le(&mut writer)?;
         self.nonce.write_le(&mut writer)?;
@@ -107,7 +111,7 @@ impl<E: PairingEngine> ToBytes for ProverPuzzleSolution<E> {
     }
 }
 
-impl<E: PairingEngine> FromBytes for ProverPuzzleSolution<E> {
+impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let address = CoinbasePuzzleAddress(FromBytes::read_le(&mut reader)?);
         let nonce = u64::read_le(&mut reader)?;
@@ -119,12 +123,12 @@ impl<E: PairingEngine> FromBytes for ProverPuzzleSolution<E> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CombinedPuzzleSolution<E: PairingEngine> {
-    pub individual_puzzle_solutions: Vec<(CoinbasePuzzleAddress, u64, Commitment<E>)>,
-    pub proof: Proof<E>,
+pub struct CombinedPuzzleSolution<N: Network> {
+    pub individual_puzzle_solutions: Vec<(CoinbasePuzzleAddress, u64, Commitment<N::PairingCurve>)>,
+    pub proof: Proof<N::PairingCurve>,
 }
 
-impl<E: PairingEngine> ToBytes for CombinedPuzzleSolution<E> {
+impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
 
@@ -138,7 +142,7 @@ impl<E: PairingEngine> ToBytes for CombinedPuzzleSolution<E> {
     }
 }
 
-impl<E: PairingEngine> FromBytes for CombinedPuzzleSolution<E> {
+impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let individual_puzzle_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
 
@@ -146,7 +150,7 @@ impl<E: PairingEngine> FromBytes for CombinedPuzzleSolution<E> {
         for _ in 0..individual_puzzle_solutions_len {
             let address = CoinbasePuzzleAddress(FromBytes::read_le(&mut reader)?);
             let nonce: u64 = FromBytes::read_le(&mut reader)?;
-            let commitment: Commitment<E> = FromBytes::read_le(&mut reader)?;
+            let commitment: Commitment<N::PairingCurve> = FromBytes::read_le(&mut reader)?;
             individual_puzzle_solutions.push((address, nonce, commitment));
         }
 
