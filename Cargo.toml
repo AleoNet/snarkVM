@@ -61,6 +61,7 @@ members = [
   "fields",
   "parameters",
   "r1cs",
+  "rest",
   "utilities",
   "utilities/derives",
   "vm/compiler",

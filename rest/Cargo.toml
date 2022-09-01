@@ -1,0 +1,66 @@
+[package]
+name = "snarkvm-rest"
+version = "0.9.0"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "REST server for a decentralized operating system"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-compiler]
+path = "../vm/compiler"
+version = "0.9.0"
+
+[dependencies.snarkvm-console]
+path = "../console"
+version = "0.9.0"
+
+[dependencies.snarkvm-utilities]
+path = "../utilities"
+version = "0.9.0"
+
+[dependencies.anyhow]
+version = "1.0.62"
+
+[dependencies.indexmap]
+version = "1.8.2"
+
+[dependencies.parking_lot]
+version = "0.12"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.serde]
+version = "1"
+
+[dependencies.serde_json]
+version = "1"
+
+[dependencies.tokio]
+version = "1"
+
+[dependencies.tracing]
+version = "0.1"
+
+[dependencies.warp]
+version = "0.3"
+
+[features]
+default = [ ]
