@@ -32,9 +32,9 @@ pub enum InputID<A: Aleo> {
     Public(Field<A>),
     /// The ciphertext hash of the private input.
     Private(Field<A>),
-    /// The `(commitment, gamma, serial_number)` tuple of the record input.
-    Record(Field<A>, Group<A>, Field<A>),
-    /// The commitment of the external record input.
+    /// The `(commitment, gamma, serial_number, tag)` tuple of the record input.
+    Record(Field<A>, Group<A>, Field<A>, Field<A>),
+    /// The hash of the external record input.
     ExternalRecord(Field<A>),
 }
 
@@ -45,17 +45,18 @@ impl<A: Aleo> Inject for InputID<A> {
     /// Initializes the input ID from the given mode and console input ID.
     fn new(_: Mode, input: Self::Primitive) -> Self {
         match input {
-            // Inject the expected hash as `Mode::Constant`.
-            console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
+            // Inject the expected hash as `Mode::Public`.
+            console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Public, field)),
             // Inject the expected hash as `Mode::Public`.
             console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the ciphertext hash as `Mode::Public`.
             console::InputID::Private(field) => Self::Private(Field::new(Mode::Public, field)),
-            // Inject commitment and gamma as `Mode::Private`, and the expected serial number as `Mode::Public`.
-            console::InputID::Record(commitment, gamma, serial_number) => Self::Record(
+            // Inject commitment and gamma as `Mode::Private`, and the expected serial number and tag as `Mode::Public`.
+            console::InputID::Record(commitment, gamma, serial_number, tag) => Self::Record(
                 Field::new(Mode::Private, commitment),
                 Group::new(Mode::Private, gamma),
                 Field::new(Mode::Public, serial_number),
+                Field::new(Mode::Public, tag),
             ),
             // Inject the commitment as `Mode::Public`.
             console::InputID::ExternalRecord(field) => Self::ExternalRecord(Field::new(Mode::Public, field)),
@@ -73,9 +74,11 @@ impl<A: Aleo> Eject for InputID<A> {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
             Self::Private(field) => field.eject_mode(),
-            Self::Record(commitment, gamma, serial_number) => {
-                Mode::combine(commitment.eject_mode(), [gamma.eject_mode(), serial_number.eject_mode()])
-            }
+            Self::Record(commitment, gamma, serial_number, tag) => Mode::combine(commitment.eject_mode(), [
+                gamma.eject_mode(),
+                serial_number.eject_mode(),
+                tag.eject_mode(),
+            ]),
             Self::ExternalRecord(field) => field.eject_mode(),
         }
     }
@@ -86,9 +89,12 @@ impl<A: Aleo> Eject for InputID<A> {
             Self::Constant(field) => console::InputID::Constant(field.eject_value()),
             Self::Public(field) => console::InputID::Public(field.eject_value()),
             Self::Private(field) => console::InputID::Private(field.eject_value()),
-            Self::Record(commitment, gamma, serial_number) => {
-                console::InputID::Record(commitment.eject_value(), gamma.eject_value(), serial_number.eject_value())
-            }
+            Self::Record(commitment, gamma, serial_number, tag) => console::InputID::Record(
+                commitment.eject_value(),
+                gamma.eject_value(),
+                serial_number.eject_value(),
+                tag.eject_value(),
+            ),
             Self::ExternalRecord(field) => console::InputID::ExternalRecord(field.eject_value()),
         }
     }
@@ -103,8 +109,8 @@ impl<A: Aleo> ToFields for InputID<A> {
             InputID::Constant(field) => vec![field.clone()],
             InputID::Public(field) => vec![field.clone()],
             InputID::Private(field) => vec![field.clone()],
-            InputID::Record(commitment, gamma, serial_number) => {
-                vec![commitment.clone(), gamma.to_x_coordinate(), serial_number.clone()]
+            InputID::Record(commitment, gamma, serial_number, tag) => {
+                vec![commitment.clone(), gamma.to_x_coordinate(), serial_number.clone(), tag.clone()]
             }
             InputID::ExternalRecord(field) => vec![field.clone()],
         }
@@ -126,10 +132,14 @@ pub struct Request<A: Aleo> {
     inputs: Vec<Value<A>>,
     /// The signature for the transition.
     signature: Signature<A>,
+    /// The tag secret key.
+    sk_tag: Field<A>,
     /// The transition view key.
     tvk: Field<A>,
     /// The transition secret key.
     tsk: Scalar<A>,
+    /// The transition commitment.
+    tcm: Field<A>,
 }
 
 #[cfg(console)]
@@ -138,6 +148,9 @@ impl<A: Aleo> Inject for Request<A> {
 
     /// Initializes the request from the given mode and console request.
     fn new(mode: Mode, request: Self::Primitive) -> Self {
+        // Inject the transition commitment `tcm` as `Mode::Public`.
+        let tcm = Field::new(Mode::Public, *request.tcm());
+
         // Inject the inputs.
         let inputs = match request
             .input_ids()
@@ -206,8 +219,10 @@ impl<A: Aleo> Inject for Request<A> {
             input_ids: request.input_ids().iter().map(|input_id| InputID::new(Mode::Public, *input_id)).collect(),
             inputs,
             signature: Signature::new(mode, *request.signature()),
+            sk_tag: Field::new(mode, *request.sk_tag()),
             tvk: Field::new(mode, *request.tvk()),
             tsk: Scalar::new(mode, *request.tsk()),
+            tcm,
         }
     }
 }
@@ -248,6 +263,11 @@ impl<A: Aleo> Request<A> {
         &self.signature
     }
 
+    /// Returns the tag secret key.
+    pub const fn sk_tag(&self) -> &Field<A> {
+        &self.sk_tag
+    }
+
     /// Returns the transition view key.
     pub const fn tvk(&self) -> &Field<A> {
         &self.tvk
@@ -256,6 +276,11 @@ impl<A: Aleo> Request<A> {
     /// Returns the transition secret key.
     pub const fn tsk(&self) -> &Scalar<A> {
         &self.tsk
+    }
+
+    /// Returns the transition commitment.
+    pub const fn tcm(&self) -> &Field<A> {
+        &self.tcm
     }
 }
 
@@ -272,8 +297,10 @@ impl<A: Aleo> Eject for Request<A> {
             self.input_ids.eject_mode(),
             self.inputs.eject_mode(),
             self.signature.eject_mode(),
+            self.sk_tag.eject_mode(),
             self.tvk.eject_mode(),
             self.tsk.eject_mode(),
+            self.tcm.eject_mode(),
         ])
     }
 
@@ -287,8 +314,10 @@ impl<A: Aleo> Eject for Request<A> {
             self.input_ids.iter().map(|input_id| input_id.eject_value()).collect(),
             self.inputs.eject_value(),
             self.signature.eject_value(),
+            self.sk_tag.eject_value(),
             self.tvk.eject_value(),
             self.tsk.eject_value(),
+            self.tcm.eject_value(),
         ))
     }
 }

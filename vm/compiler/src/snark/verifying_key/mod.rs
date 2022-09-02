@@ -36,14 +36,22 @@ impl<N: Network> VerifyingKey<N> {
 
     /// Returns `true` if the proof is valid for the given public inputs.
     pub fn verify(&self, function_name: &Identifier<N>, inputs: &[N::Field], proof: &Proof<N>) -> bool {
+        #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
-        match Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof) {
+
+        // Verify the proof.
+        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), self, std::slice::from_ref(&inputs), proof) {
             Ok(is_valid) => {
-                let elapsed = timer.elapsed().as_millis();
-                println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                #[cfg(feature = "aleo-cli")]
+                {
+                    let elapsed = timer.elapsed().as_millis();
+                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                }
+
                 is_valid
             }
             Err(error) => {
+                #[cfg(feature = "aleo-cli")]
                 println!("{}", format!(" • Verifier failed: {error}").dimmed());
                 false
             }
@@ -52,14 +60,22 @@ impl<N: Network> VerifyingKey<N> {
 
     /// Returns `true` if the batch proof is valid for the given public inputs.
     pub fn verify_batch(&self, function_name: &Identifier<N>, inputs: &[&[N::Field]], proof: &Proof<N>) -> bool {
+        #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
-        match Marlin::<N>::verify_batch(self, inputs, proof) {
+
+        // Verify the batch proof.
+        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), self, inputs, proof) {
             Ok(is_valid) => {
-                let elapsed = timer.elapsed().as_millis();
-                println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                #[cfg(feature = "aleo-cli")]
+                {
+                    let elapsed = timer.elapsed().as_millis();
+                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                }
+
                 is_valid
             }
             Err(error) => {
+                #[cfg(feature = "aleo-cli")]
                 println!("{}", format!(" • Verifier failed: {error}").dimmed());
                 false
             }

@@ -43,6 +43,8 @@ pub struct Address<E: Environment> {
 impl<E: Environment> AddressTrait for Address<E> {}
 
 impl<E: Environment> Visibility for Address<E> {
+    type Boolean = Boolean<E>;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         Ok(1)

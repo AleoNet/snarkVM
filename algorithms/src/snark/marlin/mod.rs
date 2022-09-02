@@ -37,10 +37,6 @@ pub use data_structures::*;
 mod errors;
 pub use errors::*;
 
-/// RNGs for the Marlin SNARK.
-pub mod fiat_shamir;
-pub use fiat_shamir::*;
-
 /// Implements the base Marlin zkSNARK proof system.
 mod marlin;
 pub use marlin::*;
@@ -48,16 +44,6 @@ pub use marlin::*;
 /// Specifies the Marlin mode.
 mod mode;
 pub use mode::*;
-
-/// Parameters of non-native field gadget
-///
-/// Sample parameters for non-native field gadgets
-/// - `BaseField`:              the constraint field
-/// - `TargetField`:            the field being simulated
-/// - `num_limbs`:              how many limbs are used
-/// - `bits_per_limb`:          the size of the limbs
-///
-pub mod params;
 
 #[cfg(test)]
 pub mod tests;

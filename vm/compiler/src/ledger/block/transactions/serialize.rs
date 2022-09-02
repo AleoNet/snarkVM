@@ -21,8 +21,10 @@ impl<N: Network> Serialize for Transactions<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transactions = serializer.serialize_struct("Transactions", 1)?;
-                transactions.serialize_field("transactions", &self.transactions.values().collect::<Vec<_>>())?;
+                let mut transactions = serializer.serialize_seq(Some(self.transactions.len()))?;
+                for transaction in self.transactions.values() {
+                    transactions.serialize_element(transaction)?;
+                }
                 transactions.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -35,10 +37,28 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let transactions = serde_json::Value::deserialize(deserializer)?;
-                let transactions: Vec<_> =
-                    serde_json::from_value(transactions["transactions"].clone()).map_err(de::Error::custom)?;
-                Ok(Self::from(&transactions))
+                use core::marker::PhantomData;
+                use serde::de::{SeqAccess, Visitor};
+
+                struct TransactionsDeserializer<N: Network>(PhantomData<N>);
+
+                impl<'de, N: Network> Visitor<'de> for TransactionsDeserializer<N> {
+                    type Value = Vec<Transaction<N>>;
+
+                    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+                        formatter.write_str("Vec<Transaction> sequence.")
+                    }
+
+                    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                        let mut transactions = Vec::new();
+                        while let Some(transaction) = seq.next_element()? {
+                            transactions.push(transaction);
+                        }
+                        Ok(transactions)
+                    }
+                }
+
+                Ok(Self::from(&deserializer.deserialize_seq(TransactionsDeserializer(PhantomData))?))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transactions"),
         }
@@ -48,33 +68,66 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: usize = 100;
 
     #[test]
-    fn test_serde_json() -> Result<()> {
-        for expected in [crate::ledger::vm::test_helpers::sample_genesis_block().transactions().clone()].into_iter() {
+    fn test_serde_json() {
+        let check_serde_json = |expected: Transactions<CurrentNetwork>| {
             // Serialize
             let expected_string = &expected.to_string();
-            let candidate_string = serde_json::to_string(&expected)?;
+            let candidate_string = serde_json::to_string(&expected).unwrap();
 
             // Deserialize
-            assert_eq!(expected, Transactions::from_str(expected_string)?);
-            assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+            assert_eq!(expected, Transactions::from_str(expected_string).unwrap());
+            assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
+        };
+
+        // Check the serialization.
+        check_serde_json(crate::ledger::test_helpers::sample_genesis_block().transactions().clone());
+
+        for transaction in [
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(),
+        ] {
+            for i in 0..ITERATIONS {
+                // Construct the transactions.
+                let expected: Transactions<CurrentNetwork> = vec![transaction.clone(); i].into_iter().collect();
+                // Check the serialization.
+                check_serde_json(expected);
+            }
         }
-        Ok(())
     }
 
     #[test]
-    fn test_bincode() -> Result<()> {
-        for expected in [crate::ledger::vm::test_helpers::sample_genesis_block().transactions().clone()].into_iter() {
+    fn test_bincode() {
+        let check_bincode = |expected: Transactions<CurrentNetwork>| {
             // Serialize
-            let expected_bytes = expected.to_bytes_le()?;
-            let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
             // Deserialize
-            assert_eq!(expected, Transactions::read_le(&expected_bytes[..])?);
-            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
+            assert_eq!(expected, Transactions::read_le(&expected_bytes[..]).unwrap());
+            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
+        };
+
+        // Check the serialization.
+        check_bincode(crate::ledger::test_helpers::sample_genesis_block().transactions().clone());
+
+        for transaction in [
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(),
+        ] {
+            for i in 0..ITERATIONS {
+                // Construct the transactions.
+                let expected: Transactions<CurrentNetwork> = vec![transaction.clone(); i].into_iter().collect();
+                // Check the serialization.
+                check_bincode(expected);
+            }
         }
-        Ok(())
     }
 }

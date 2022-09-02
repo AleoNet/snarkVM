@@ -20,116 +20,51 @@ use console::{
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
 };
 
-use core::marker::PhantomData;
-
-pub trait CommitOperation<N: Network> {
-    /// The opcode of the operation.
-    const OPCODE: Opcode;
-
-    /// Returns the result of committing to the given input and randomizer.
-    fn evaluate(input: Value<N>, randomizer: Value<N>) -> Result<Value<N>>;
-
-    /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute<A: circuit::Aleo<Network = N>>(
-        input: circuit::Value<A>,
-        randomizer: circuit::Value<A>,
-    ) -> Result<circuit::Value<A>>;
-
-    /// Returns the output type from the given input types.
-    fn output_type() -> Result<RegisterType<N>>;
-}
-
 /// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
-pub type CommitBHP256<N> = CommitInstruction<N, BHPCommitOperation<N, 256>>;
+pub type CommitBHP256<N> = CommitInstruction<N, { Committer::BHP256 as u8 }>;
 /// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
-pub type CommitBHP512<N> = CommitInstruction<N, BHPCommitOperation<N, 512>>;
+pub type CommitBHP512<N> = CommitInstruction<N, { Committer::BHP512 as u8 }>;
 /// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
-pub type CommitBHP768<N> = CommitInstruction<N, BHPCommitOperation<N, 768>>;
+pub type CommitBHP768<N> = CommitInstruction<N, { Committer::BHP768 as u8 }>;
 /// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
-pub type CommitBHP1024<N> = CommitInstruction<N, BHPCommitOperation<N, 1024>>;
+pub type CommitBHP1024<N> = CommitInstruction<N, { Committer::BHP1024 as u8 }>;
 
-/// The BHP commitment operation template.
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct BHPCommitOperation<N: Network, const NUM_BITS: u16>(PhantomData<N>);
+/// Pedersen64 is a collision-resistant function that processes inputs in 64-bit chunks.
+pub type CommitPED64<N> = CommitInstruction<N, { Committer::PED64 as u8 }>;
+/// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
+pub type CommitPED128<N> = CommitInstruction<N, { Committer::PED128 as u8 }>;
 
-impl<N: Network, const NUM_BITS: u16> CommitOperation<N> for BHPCommitOperation<N, NUM_BITS> {
-    /// The opcode of the operation.
-    const OPCODE: Opcode = match NUM_BITS {
-        256 => Opcode::Commit("commit.bhp256"),
-        512 => Opcode::Commit("commit.bhp512"),
-        768 => Opcode::Commit("commit.bhp768"),
-        1024 => Opcode::Commit("commit.bhp1024"),
-        _ => panic!("Invalid BHP commit instruction opcode"),
-    };
-
-    /// Returns the result of committing to the given input and randomizer.
-    fn evaluate(input: Value<N>, randomizer: Value<N>) -> Result<Value<N>> {
-        // Retrieve the randomizer.
-        let randomizer = match randomizer {
-            Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
-            _ => bail!("Invalid randomizer type for BHP commit"),
-        };
-        // Compute the commitment.
-        let output = match NUM_BITS {
-            256 => N::commit_bhp256(&input.to_bits_le(), &randomizer)?,
-            512 => N::commit_bhp512(&input.to_bits_le(), &randomizer)?,
-            768 => N::commit_bhp768(&input.to_bits_le(), &randomizer)?,
-            1024 => N::commit_bhp1024(&input.to_bits_le(), &randomizer)?,
-            _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
-        };
-        // Return the output as a stack value.
-        Ok(Value::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default())))
-    }
-
-    /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute<A: circuit::Aleo<Network = N>>(
-        input: circuit::Value<A>,
-        randomizer: circuit::Value<A>,
-    ) -> Result<circuit::Value<A>> {
-        use circuit::ToBits;
-
-        // Retrieve the randomizer.
-        let randomizer = match randomizer {
-            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
-                randomizer
-            }
-            _ => bail!("Invalid randomizer type for BHP commit"),
-        };
-        // Compute the commitment.
-        let output = match NUM_BITS {
-            256 => A::commit_bhp256(&input.to_bits_le(), &randomizer),
-            512 => A::commit_bhp512(&input.to_bits_le(), &randomizer),
-            768 => A::commit_bhp768(&input.to_bits_le(), &randomizer),
-            1024 => A::commit_bhp1024(&input.to_bits_le(), &randomizer),
-            _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
-        };
-        // Return the output as a stack value.
-        Ok(circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default())))
-    }
-
-    /// Returns the output type from the given input types.
-    fn output_type() -> Result<RegisterType<N>> {
-        Ok(RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field)))
-    }
+enum Committer {
+    BHP256,
+    BHP512,
+    BHP768,
+    BHP1024,
+    PED64,
+    PED128,
 }
 
 /// Commits the operand into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct CommitInstruction<N: Network, O: CommitOperation<N>> {
-    /// The operands as `(input, randomizer)`.
+pub struct CommitInstruction<N: Network, const VARIANT: u8> {
+    /// The operand as `input`.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
-    /// PhantomData.
-    _phantom: PhantomData<O>,
 }
 
-impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        O::OPCODE
+        match VARIANT {
+            0 => Opcode::Commit("commit.bhp256"),
+            1 => Opcode::Commit("commit.bhp512"),
+            2 => Opcode::Commit("commit.bhp768"),
+            3 => Opcode::Commit("commit.bhp1024"),
+            4 => Opcode::Commit("commit.ped64"),
+            5 => Opcode::Commit("commit.ped128"),
+            _ => panic!("Invalid 'commit' instruction opcode"),
+        }
     }
 
     /// Returns the operands in the operation.
@@ -148,7 +83,7 @@ impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
@@ -160,14 +95,29 @@ impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
+
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
         // Retrieve the input and randomizer.
         let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
-        // Compute the commitment.
-        let commitment = O::evaluate(input, randomizer)?;
-        // Store the commitment.
-        registers.store(stack, &self.destination, commitment)
+        // Retrieve the randomizer.
+        let randomizer = match randomizer {
+            Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
+            _ => bail!("Invalid randomizer type for the commit evaluation, expected a scalar"),
+        };
+
+        // Commit the input.
+        let output = match VARIANT {
+            0 => Literal::Field(N::commit_bhp256(&input.to_bits_le(), &randomizer)?),
+            1 => Literal::Field(N::commit_bhp512(&input.to_bits_le(), &randomizer)?),
+            2 => Literal::Field(N::commit_bhp768(&input.to_bits_le(), &randomizer)?),
+            3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
+            4 => Literal::Group(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
+            5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
+            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+        };
+        // Store the output.
+        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
 
     /// Executes the instruction.
@@ -177,19 +127,40 @@ impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
+        use circuit::ToBits;
+
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
+
         // Load the operands values.
         let inputs: Vec<_> =
             self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
         // Retrieve the input and randomizer.
         let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
-        // Compute the commitment.
-        let commitment = O::execute(input, randomizer)?;
-        // Store the commitment.
-        registers.store_circuit(stack, &self.destination, commitment)
+        // Retrieve the randomizer.
+        let randomizer = match randomizer {
+            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
+                randomizer
+            }
+            _ => bail!("Invalid randomizer type for the commit execution, expected a scalar"),
+        };
+
+        // Commits the input.
+        let output = match VARIANT {
+            0 => circuit::Literal::Field(A::commit_bhp256(&input.to_bits_le(), &randomizer)),
+            1 => circuit::Literal::Field(A::commit_bhp512(&input.to_bits_le(), &randomizer)),
+            2 => circuit::Literal::Field(A::commit_bhp768(&input.to_bits_le(), &randomizer)),
+            3 => circuit::Literal::Field(A::commit_bhp1024(&input.to_bits_le(), &randomizer)),
+            4 => circuit::Literal::Group(A::commit_ped64(&input.to_bits_le(), &randomizer)),
+            5 => circuit::Literal::Group(A::commit_ped128(&input.to_bits_le(), &randomizer)),
+            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+        };
+        // Convert the output to a stack value.
+        let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
+        // Store the output.
+        registers.store_circuit(stack, &self.destination, output)
     }
 
     /// Returns the output type from the given program and input types.
@@ -206,11 +177,14 @@ impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
-        Ok(vec![O::output_type()?])
+        match VARIANT {
+            0 | 1 | 2 | 3 | 4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+        }
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> Parser for CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> Parser for CommitInstruction<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -233,11 +207,11 @@ impl<N: Network, O: CommitOperation<N>> Parser for CommitInstruction<N, O> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
 
-        Ok((string, Self { operands: vec![first, second], destination, _phantom: PhantomData }))
+        Ok((string, Self { operands: vec![first, second], destination }))
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> FromStr for CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> FromStr for CommitInstruction<N, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -255,14 +229,14 @@ impl<N: Network, O: CommitOperation<N>> FromStr for CommitInstruction<N, O> {
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> Debug for CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> Debug for CommitInstruction<N, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> Display for CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> Display for CommitInstruction<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is 2.
@@ -277,7 +251,7 @@ impl<N: Network, O: CommitOperation<N>> Display for CommitInstruction<N, O> {
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> FromBytes for CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> FromBytes for CommitInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Initialize the vector for the operands.
@@ -290,11 +264,11 @@ impl<N: Network, O: CommitOperation<N>> FromBytes for CommitInstruction<N, O> {
         let destination = Register::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination, _phantom: PhantomData })
+        Ok(Self { operands, destination })
     }
 }
 
-impl<N: Network, O: CommitOperation<N>> ToBytes for CommitInstruction<N, O> {
+impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is 2.

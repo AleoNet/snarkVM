@@ -164,7 +164,7 @@ impl<F: PrimeField> R1CS<F> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_algorithms::SNARK;
+    use snarkvm_algorithms::{AlgebraicSponge, SNARK};
     use snarkvm_circuit::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::ConstraintSynthesizer;
@@ -217,37 +217,29 @@ mod tests {
 
         use snarkvm_algorithms::{
             crypto_hash::PoseidonSponge,
-            snark::marlin::{
-                ahp::AHPForR1CS,
-                fiat_shamir::FiatShamirAlgebraicSpongeRng,
-                MarlinHidingMode,
-                MarlinSNARK,
-            },
+            snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode, MarlinSNARK},
         };
         use snarkvm_curves::bls12_377::{Bls12_377, Fq};
         use snarkvm_utilities::rand::test_crypto_rng;
 
-        type MarlinInst = MarlinSNARK<
-            Bls12_377,
-            FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
-            MarlinHidingMode,
-            [Fr],
-        >;
+        type FS = PoseidonSponge<Fq, 2, 1>;
+        type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
         let rng = &mut test_crypto_rng();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let fs_pp = FS::sample_parameters();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
+        let proof = MarlinInst::prove(&fs_pp, &index_pk, &Circuit, rng).unwrap();
         println!("Called prover");
 
-        assert!(MarlinInst::verify(&index_vk, [*one, *one], &proof).unwrap());
+        assert!(MarlinInst::verify(&fs_pp, &index_vk, [*one, *one], &proof).unwrap());
         println!("Called verifier");
         println!("\nShould not verify (i.e. verifier messages should print below):");
-        assert!(!MarlinInst::verify(&index_vk, [*one, *one + *one], &proof).unwrap());
+        assert!(!MarlinInst::verify(&fs_pp, &index_vk, [*one, *one + *one], &proof).unwrap());
     }
 }

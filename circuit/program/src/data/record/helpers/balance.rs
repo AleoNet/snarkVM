@@ -56,6 +56,19 @@ impl<A: Aleo> Inject for Balance<A, Ciphertext<A>> {
     }
 }
 
+impl<A: Aleo> Deref for Balance<A, Plaintext<A>> {
+    type Target = U64<A>;
+
+    /// Returns the balance as a u64.
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Public(public) => public,
+            Self::Private(Plaintext::Literal(Literal::U64(balance), ..)) => balance,
+            _ => A::halt("Internal error: plaintext deref corrupted in record balance"),
+        }
+    }
+}
+
 impl<A: Aleo, Private: Visibility<A>> Balance<A, Private> {
     /// Returns `true` if `self` is public.
     pub fn is_public(&self) -> Boolean<A> {
@@ -78,15 +91,24 @@ impl<A: Aleo> Balance<A, Plaintext<A>> {
     }
 }
 
-impl<A: Aleo> Deref for Balance<A, Plaintext<A>> {
-    type Target = U64<A>;
+impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Balance<A, Private> {
+    type Output = Boolean<A>;
 
-    /// Returns the balance as a u64.
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Public(public) => public,
-            Self::Private(Plaintext::Literal(Literal::U64(balance), ..)) => balance,
-            _ => A::halt("Internal error: plaintext deref corrupted in record balance"),
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(false),
+        }
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(true),
         }
     }
 }

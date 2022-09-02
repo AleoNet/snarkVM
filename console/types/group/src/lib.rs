@@ -51,6 +51,8 @@ pub struct Group<E: Environment> {
 impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Visibility for Group<E> {
+    type Boolean = Boolean<E>;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         Ok(1)
@@ -59,13 +61,13 @@ impl<E: Environment> Visibility for Group<E> {
 
 impl<E: Environment> Group<E> {
     /// The coefficient A for the twisted Edwards curve equation.
-    pub const EDWARDS_A: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_A);
+    pub const EDWARDS_A: Field<E> = Field::<E>::new(E::EDWARDS_A);
     /// The coefficient D for the twisted Edwards curve equation.
-    pub const EDWARDS_D: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D);
+    pub const EDWARDS_D: Field<E> = Field::<E>::new(E::EDWARDS_D);
     /// The coefficient A for the Montgomery curve equation.
-    pub const MONTGOMERY_A: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_A);
+    pub const MONTGOMERY_A: Field<E> = Field::<E>::new(E::MONTGOMERY_A);
     /// The coefficient B for the Montgomery curve equation.
-    pub const MONTGOMERY_B: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_B);
+    pub const MONTGOMERY_B: Field<E> = Field::<E>::new(E::MONTGOMERY_B);
 
     /// Initializes a new group.
     pub fn new(group: E::Affine) -> Self {

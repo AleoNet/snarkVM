@@ -32,12 +32,15 @@ lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
+    /// The Marlin sponge parameters.
+    pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
+
     /// The balance commitment domain as a constant field element.
     pub static ref BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
-    /// The MAC domain as a constant field element.
-    pub static ref MAC_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricKeyCommitment0");
+    /// The graph key domain as a constant field element.
+    pub static ref GRAPH_KEY_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoGraphKey0");
     /// The randomizer domain as a constant field element.
     pub static ref RANDOMIZER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoRandomizer0");
     /// The balance commitment randomizer domain as a constant field element.
@@ -89,12 +92,20 @@ impl Testnet3 {
 
 impl Environment for Testnet3 {
     type Affine = <Console as Environment>::Affine;
-    type AffineParameters = <Console as Environment>::AffineParameters;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
     type PairingCurve = <Console as Environment>::PairingCurve;
     type Projective = <Console as Environment>::Projective;
     type Scalar = <Console as Environment>::Scalar;
+
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::Field = Console::EDWARDS_A;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::Field = Console::EDWARDS_D;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::Field = Console::MONTGOMERY_A;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::Field = Console::MONTGOMERY_B;
 }
 
 impl Network for Testnet3 {
@@ -114,6 +125,28 @@ impl Network for Testnet3 {
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
 
+    /// Returns the powers of `G`.
+    fn g_powers() -> &'static Vec<Group<Self>> {
+        &GENERATOR_G
+    }
+
+    /// Returns the scalar multiplication on the generator `G`.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
+        GENERATOR_G
+            .iter()
+            .zip_eq(&scalar.to_bits_le())
+            .filter_map(|(base, bit)| match bit {
+                true => Some(base),
+                false => None,
+            })
+            .sum()
+    }
+
+    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
+    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self> {
+        &MARLIN_FS_PARAMETERS
+    }
+
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self> {
         *BCM_DOMAIN
@@ -124,9 +157,9 @@ impl Network for Testnet3 {
         *ENCRYPTION_DOMAIN
     }
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self> {
-        *MAC_DOMAIN
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self> {
+        *GRAPH_KEY_DOMAIN
     }
 
     /// Returns the randomizer domain as a constant field element.
@@ -142,23 +175,6 @@ impl Network for Testnet3 {
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self> {
         *SERIAL_NUMBER_DOMAIN
-    }
-
-    /// Returns the powers of G.
-    fn g_powers() -> &'static Vec<Group<Self>> {
-        &GENERATOR_G
-    }
-
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
-        GENERATOR_G
-            .iter()
-            .zip_eq(&scalar.to_bits_le())
-            .filter_map(|(base, bit)| match bit {
-                true => Some(base),
-                false => None,
-            })
-            .sum()
     }
 
     /// Returns a BHP commitment with an input hasher of 256-bits.

@@ -16,6 +16,7 @@
 
 mod bytes;
 mod decrypt;
+mod equal;
 mod from_bits;
 mod from_fields;
 mod num_randomizers;
@@ -28,11 +29,11 @@ mod to_fields;
 use crate::Plaintext;
 use snarkvm_console_account::ViewKey;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Group};
+use snarkvm_console_types::{Boolean, Field, Group};
 
 use core::ops::Deref;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Ciphertext<N: Network>(Vec<Field<N>>);
 
 impl<N: Network> Deref for Ciphertext<N> {

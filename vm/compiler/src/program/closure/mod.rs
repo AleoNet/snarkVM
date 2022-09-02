@@ -100,18 +100,14 @@ impl<N: Network> Closure<N> {
     /// Adds the given instruction to the closure.
     ///
     /// # Errors
-    /// This method will halt if there are no input statements in memory.
     /// This method will halt if the maximum number of instructions has been reached.
     #[inline]
     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
-        // Ensure there are input statements in memory.
-        ensure!(!self.inputs.is_empty(), "Cannot add instructions before inputs have been added");
-
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
-            self.instructions.len() <= N::MAX_FUNCTION_INSTRUCTIONS,
+            self.instructions.len() <= N::MAX_INSTRUCTIONS,
             "Cannot add more than {} instructions",
-            N::MAX_FUNCTION_INSTRUCTIONS
+            N::MAX_INSTRUCTIONS
         );
 
         // Ensure the destination register is a locator.
@@ -127,12 +123,11 @@ impl<N: Network> Closure<N> {
     /// Adds the output statement to the closure.
     ///
     /// # Errors
-    /// This method will halt if there are no input statements or instructions in memory.
+    /// This method will halt if there are no instructions in memory.
     /// This method will halt if the maximum number of outputs has been reached.
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
-        // Ensure there are input statements and instructions in memory.
-        ensure!(!self.inputs.is_empty(), "Cannot add outputs before inputs have been added");
+        // Ensure there are instructions in memory.
         ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
 
         // Ensure the maximum number of outputs has not been exceeded.

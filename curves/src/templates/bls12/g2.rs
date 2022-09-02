@@ -30,13 +30,8 @@ pub type G2Affine<P> = Affine<<P as Bls12Parameters>::G2Parameters>;
 pub type G2Projective<P> = Projective<<P as Bls12Parameters>::G2Parameters>;
 type CoeffTriplet<T> = (Fp2<T>, Fp2<T>, Fp2<T>);
 
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Clone(bound = "P: Bls12Parameters"),
-    Debug(bound = "P: Bls12Parameters"),
-    PartialEq(bound = "P: Bls12Parameters"),
-    Eq(bound = "P: Bls12Parameters")
-)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct G2Prepared<P: Bls12Parameters> {
     // Stores the coefficients of the line evaluations as calculated in
     // https://eprint.iacr.org/2013/722.pdf
@@ -44,12 +39,7 @@ pub struct G2Prepared<P: Bls12Parameters> {
     pub infinity: bool,
 }
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "P: Bls12Parameters"),
-    Copy(bound = "P: Bls12Parameters"),
-    Debug(bound = "P: Bls12Parameters")
-)]
+#[derive(Copy, Clone, Debug)]
 struct G2HomProjective<P: Bls12Parameters> {
     x: Fp2<P::Fp2Params>,
     y: Fp2<P::Fp2Params>,
@@ -130,7 +120,7 @@ fn doubling_step<B: Bls12Parameters>(r: &mut G2HomProjective<B>, two_inv: &B::Fp
     a.mul_by_fp(two_inv);
     let b = r.y.square();
     let c = r.z.square();
-    let e = B::G2Parameters::COEFF_B * (c.double() + c);
+    let e = B::G2Parameters::WEIERSTRASS_B * (c.double() + c);
     let f = e.double() + e;
     let mut g = b + f;
     g.mul_by_fp(two_inv);

@@ -154,8 +154,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Shl<Integer<E, M>> for Intege
     /// Shifts `self` to the left by `n` bits.
     #[inline]
     fn shl(self, n: Integer<E, M>) -> Self::Output {
+        // Unwrap is safe as we only cast up.
         match self.integer.checked_shl(&n.integer.to_u32().unwrap()) {
-            // Unwrap is safe as we only cast up.
             Some(shifted) => Integer::new(shifted),
             None => E::halt(format!("Failed to shift {self} left by {n} bits")),
         }
@@ -168,8 +168,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Shl<&Integer<E, M>> for Integ
     /// Shifts `self` to the left by `n` bits.
     #[inline]
     fn shl(self, n: &Integer<E, M>) -> Self::Output {
+        // Unwrap is safe as we only cast up.
         match self.integer.checked_shl(&n.integer.to_u32().unwrap()) {
-            // Unwrap is safe as we only cast up.
             Some(shifted) => Integer::new(shifted),
             None => E::halt(format!("Failed to shift {self} left by {n} bits")),
         }
@@ -182,8 +182,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
     /// Shifts `self` to the left by `n` bits.
     #[inline]
     fn shl_checked(&self, n: &Integer<E, M>) -> Self::Output {
+        // Unwrap is safe as we only cast up.
         match self.integer.checked_shl(&n.integer.to_u32().unwrap()) {
-            // Unwrap is safe as we only cast up.
             Some(shifted) => Integer::new(shifted),
             None => E::halt(format!("Failed to shift {self} left by {n} bits")),
         }

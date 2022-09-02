@@ -116,7 +116,7 @@ macro_rules! impl_local {
 
 #[macro_export]
 macro_rules! impl_remote {
-    ($name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $ftype: tt) => {
+    ($name: ident, $remote_url: expr, $local_dir: expr, $fname: tt, $ftype: tt) => {
         pub struct $name;
 
         impl $name {
@@ -301,7 +301,7 @@ macro_rules! impl_remote {
             }
         }
     };
-    ($name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $ftype: tt, $fdegree: tt) => {
+    ($name: ident, $remote_url: expr, $local_dir: expr, $fname: tt, $ftype: tt, $fdegree: tt) => {
         pub struct $name;
 
         impl $name {

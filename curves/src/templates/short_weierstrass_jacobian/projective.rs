@@ -21,24 +21,18 @@ use crate::{
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
 
+use core::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    hash::{Hash, Hasher},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug)]
 pub struct Projective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -77,6 +71,14 @@ impl<P: Parameters> Display for Projective<P> {
         write!(f, "{}", self.to_affine())
     }
 }
+
+impl<P: Parameters> Hash for Projective<P> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_affine().hash(state);
+    }
+}
+
+impl<P: Parameters> Eq for Projective<P> {}
 
 impl<P: Parameters> PartialEq for Projective<P> {
     fn eq(&self, other: &Self) -> bool {
@@ -292,12 +294,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             self.x -= &v.double();
 
             // Y3 = r*(V-X3)-2*Y1*J
-            j *= &self.y; // J = 2*Y1*J
-            j.double_in_place();
-            self.y = v;
-            self.y -= self.x;
-            self.y *= &r;
-            self.y -= &j;
+            self.y = P::BaseField::sum_of_products([r, -self.y.double()].iter(), [(v - self.x), j].iter());
 
             // Z3 = (Z1+H)^2-Z1Z1-HH
             self.z += &h;
@@ -321,7 +318,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             return;
         }
 
-        if P::COEFF_A.is_zero() {
+        if P::WEIERSTRASS_A.is_zero() {
             // A = X1^2
             let mut a = self.x.square();
 
@@ -347,7 +344,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             self.z.double_in_place();
 
             // X3 = F-2*D
-            self.x = f - d - d;
+            self.x = f - d.double();
 
             // Y3 = E*(D-X3)-8*C
             c.double_in_place();
@@ -477,7 +474,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for Projective<P> {
             self.x = r.square() - j - (v.double());
 
             // Y3 = r*(V - X3) - 2*S1*J
-            self.y = r * (v - self.x) - (s1 * j).double();
+            self.y = P::BaseField::sum_of_products([r, -s1.double()].iter(), [(v - self.x), j].iter());
 
             // Z3 = ((Z1+Z2)^2 - Z1Z1 - Z2Z2)*H
             self.z = ((self.z + other.z).square() - z1z1 - z2z2) * h;

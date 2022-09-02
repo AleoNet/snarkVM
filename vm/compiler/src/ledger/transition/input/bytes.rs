@@ -52,12 +52,14 @@ impl<N: Network> FromBytes for Input<N> {
             3 => {
                 // Read the serial number.
                 let serial_number: Field<N> = FromBytes::read_le(&mut reader)?;
+                // Read the tag.
+                let tag: Field<N> = FromBytes::read_le(&mut reader)?;
                 // Read the origin type.
                 let origin_type = u8::read_le(&mut reader)?;
                 // Read the origin.
                 match origin_type {
-                    0 => Self::Record(serial_number, Origin::Commitment(FromBytes::read_le(&mut reader)?)),
-                    1 => Self::Record(serial_number, Origin::StateRoot(FromBytes::read_le(&mut reader)?)),
+                    0 => Self::Record(serial_number, tag, Origin::Commitment(FromBytes::read_le(&mut reader)?)),
+                    1 => Self::Record(serial_number, tag, Origin::StateRoot(FromBytes::read_le(&mut reader)?)),
                     _ => {
                         return Err(error(format!("Failed to decode transition input with origin type {origin_type}")));
                     }
@@ -107,9 +109,10 @@ impl<N: Network> ToBytes for Input<N> {
                     None => false.write_le(&mut writer),
                 }
             }
-            Self::Record(serial_number, origin) => {
+            Self::Record(serial_number, tag, origin) => {
                 (3 as Variant).write_le(&mut writer)?;
                 serial_number.write_le(&mut writer)?;
+                tag.write_le(&mut writer)?;
                 match origin {
                     Origin::Commitment(commitment) => {
                         0u8.write_le(&mut writer)?;
@@ -136,44 +139,13 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u32 = 1000;
-
-    fn check_bytes(expected: Input<CurrentNetwork>) -> Result<()> {
-        // Check the byte representation.
-        let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Input::read_le(&expected_bytes[..])?);
-        Ok(())
-    }
-
     #[test]
-    fn test_bytes() -> Result<()> {
-        let rng = &mut test_rng();
-
-        for _ in 0..ITERATIONS {
-            let plaintext = Plaintext::<CurrentNetwork>::from_str("true")?;
-            let ciphertext =
-                Ciphertext::<CurrentNetwork>::try_from((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<_>>())
-                    .unwrap();
-
-            // Constant
-            check_bytes(Input::<CurrentNetwork>::Constant(Uniform::rand(rng), Some(plaintext.clone())))?;
-            check_bytes(Input::<CurrentNetwork>::Constant(Uniform::rand(rng), None))?;
-
-            // Public
-            check_bytes(Input::<CurrentNetwork>::Public(Uniform::rand(rng), Some(plaintext.clone())))?;
-            check_bytes(Input::<CurrentNetwork>::Public(Uniform::rand(rng), None))?;
-
-            // Private
-            check_bytes(Input::<CurrentNetwork>::Private(Uniform::rand(rng), Some(ciphertext)))?;
-            check_bytes(Input::<CurrentNetwork>::Private(Uniform::rand(rng), None))?;
-
-            // Record
-            check_bytes(Input::<CurrentNetwork>::Record(Uniform::rand(rng), Origin::Commitment(Uniform::rand(rng))))?;
-            check_bytes(Input::<CurrentNetwork>::Record(Uniform::rand(rng), Origin::StateRoot(Uniform::rand(rng))))?;
-
-            // ExternalRecord
-            check_bytes(Input::<CurrentNetwork>::ExternalRecord(Uniform::rand(rng)))?;
+    fn test_bytes() {
+        for (_, expected) in crate::ledger::transition::input::test_helpers::sample_inputs() {
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            assert_eq!(expected, Input::read_le(&expected_bytes[..]).unwrap());
+            assert!(Input::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
-        Ok(())
     }
 }

@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode};
-use snarkvm_fields::{PoseidonParameters, PrimeField};
+use crate::{nonnative_params::*, AlgebraicSponge, DuplexSpongeMode};
+use snarkvm_fields::{FieldParameters, PoseidonParameters, PrimeField, ToConstraintField};
+use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 
 use smallvec::SmallVec;
 use std::{
@@ -37,7 +38,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Default for State<
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAPACITY> {
     /// Returns an immutable iterator over the state.
-    pub fn iter(&self) -> impl Iterator<Item = &F> {
+    pub fn iter(&self) -> impl Iterator<Item = &F> + Clone {
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 
@@ -82,9 +83,9 @@ impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
     /// Evaluate the cryptographic hash function over a list of field elements as input,
     /// and returns the specified number of field elements as output.
     pub fn evaluate_many(&self, input: &[F], num_outputs: usize) -> Vec<F> {
-        let mut sponge = PoseidonSponge::<F, RATE, 1>::new(&self.parameters);
-        sponge.absorb(input);
-        sponge.squeeze(num_outputs).to_vec()
+        let mut sponge = PoseidonSponge::<F, RATE, 1>::new_with_parameters(&self.parameters);
+        sponge.absorb_native_field_elements(input);
+        sponge.squeeze_native_field_elements(num_outputs).to_vec()
     }
 
     /// Evaluate the cryptographic hash function over a non-fixed-length vector,
@@ -114,18 +115,14 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     pub mode: DuplexSpongeMode,
 }
 
-impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
-    fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
+impl<F: PrimeField, const RATE: usize> AlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
+    type Parameters = Arc<PoseidonParameters<F, RATE, 1>>;
+
+    fn sample_parameters() -> Self::Parameters {
         Arc::new(F::default_poseidon_parameters::<RATE>().unwrap())
     }
-}
 
-impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
-    for PoseidonSponge<F, RATE, CAPACITY>
-{
-    type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
-
-    fn new(parameters: &Self::Parameters) -> Self {
+    fn new_with_parameters(parameters: &Self::Parameters) -> Self {
         Self {
             parameters: parameters.clone(),
             state: State::default(),
@@ -133,7 +130,9 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
         }
     }
 
-    fn absorb(&mut self, input: &[F]) {
+    /// Takes in field elements.
+    fn absorb_native_field_elements<T: ToConstraintField<F>>(&mut self, elements: &[T]) {
+        let input = elements.iter().flat_map(|e| e.to_field_elements().unwrap()).collect::<Vec<_>>();
         if !input.is_empty() {
             match self.mode {
                 DuplexSpongeMode::Absorbing { mut next_absorb_index } => {
@@ -141,19 +140,28 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
                         self.permute();
                         next_absorb_index = 0;
                     }
-                    self.absorb_internal(next_absorb_index, input);
+                    self.absorb_internal(next_absorb_index, &input);
                 }
                 DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
                     self.permute();
-                    self.absorb_internal(0, input);
+                    self.absorb_internal(0, &input);
                 }
             }
         }
     }
 
-    fn squeeze(&mut self, num_elements: usize) -> SmallVec<[F; 10]> {
+    /// Takes in field elements.
+    fn absorb_nonnative_field_elements<Target: PrimeField>(&mut self, elements: impl IntoIterator<Item = Target>) {
+        Self::push_elements_to_sponge(self, elements, OptimizationType::Weight);
+    }
+
+    fn squeeze_nonnative_field_elements<Target: PrimeField>(&mut self, num: usize) -> SmallVec<[Target; 10]> {
+        self.get_fe(num, false)
+    }
+
+    fn squeeze_native_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]> {
         if num_elements == 0 {
-            return SmallVec::new();
+            return SmallVec::<[F; 10]>::new();
         }
         let mut output = if num_elements <= 10 {
             smallvec::smallvec_inline![F::zero(); 10]
@@ -178,9 +186,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
         output.truncate(num_elements);
         output
     }
+
+    /// Takes out field elements of 168 bits.
+    fn squeeze_short_nonnative_field_elements<Target: PrimeField>(&mut self, num: usize) -> SmallVec<[Target; 10]> {
+        self.get_fe(num, true)
+    }
 }
 
-impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, RATE, CAPACITY> {
+impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
     #[inline]
     fn apply_ark(&mut self, round_number: usize) {
         for (state_elem, ark_elem) in self.state.iter_mut().zip(&self.parameters.ark[round_number]) {
@@ -190,14 +203,13 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
     #[inline]
     fn apply_s_box(&mut self, is_full_round: bool) {
-        // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
+            // Full rounds apply the S Box (x^alpha) to every element of state
             for elem in self.state.iter_mut() {
                 *elem = elem.pow(&[self.parameters.alpha]);
             }
-        }
-        // Partial rounds apply the S Box (x^alpha) to just the first element of state
-        else {
+        } else {
+            // Partial rounds apply the S Box (x^alpha) to just the first element of state
             self.state[0] = self.state[0].pow(&[self.parameters.alpha]);
         }
     }
@@ -206,7 +218,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     fn apply_mds(&mut self) {
         let mut new_state = State::default();
         new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
-            *new_elem = self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| mds_elem * state_elem).sum::<F>();
+            *new_elem = F::sum_of_products(self.state.iter(), mds_row.iter());
         });
         self.state = new_state;
     }
@@ -307,5 +319,171 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
                 rate_start = 0;
             }
         }
+    }
+
+    /// Compress every two elements if possible.
+    /// Provides a vector of (limb, num_of_additions), both of which are F.
+    pub fn compress_elements<TargetField: PrimeField>(src_limbs: &[(F, F)], ty: OptimizationType) -> Vec<F> {
+        let capacity = F::size_in_bits() - 1;
+        let mut dest_limbs = Vec::<F>::new();
+
+        let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), ty);
+
+        let adjustment_factor_lookup_table = {
+            let mut table = Vec::<F>::new();
+
+            let mut cur = F::one();
+            for _ in 1..=capacity {
+                table.push(cur);
+                cur.double_in_place();
+            }
+
+            table
+        };
+
+        let mut i = 0;
+        let src_len = src_limbs.len();
+        while i < src_len {
+            let first = &src_limbs[i];
+            let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
+
+            let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one());
+            let second_max_bits_per_limb = if let Some(second) = second {
+                params.bits_per_limb + crate::overhead!(second.1 + F::one())
+            } else {
+                0
+            };
+
+            if let Some(second) = second {
+                if first_max_bits_per_limb + second_max_bits_per_limb <= capacity {
+                    let adjustment_factor = &adjustment_factor_lookup_table[second_max_bits_per_limb];
+
+                    dest_limbs.push(first.0 * adjustment_factor + second.0);
+                    i += 2;
+                } else {
+                    dest_limbs.push(first.0);
+                    i += 1;
+                }
+            } else {
+                dest_limbs.push(first.0);
+                i += 1;
+            }
+        }
+
+        dest_limbs
+    }
+
+    /// Convert a `TargetField` element into limbs (not constraints)
+    /// This is an internal function that would be reused by a number of other functions
+    pub fn get_limbs_representations<TargetField: PrimeField>(
+        elem: &TargetField,
+        optimization_type: OptimizationType,
+    ) -> SmallVec<[F; 10]> {
+        Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_repr(), optimization_type)
+    }
+
+    /// Obtain the limbs directly from a big int
+    pub fn get_limbs_representations_from_big_integer<TargetField: PrimeField>(
+        elem: &<TargetField as PrimeField>::BigInteger,
+        optimization_type: OptimizationType,
+    ) -> SmallVec<[F; 10]> {
+        let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), optimization_type);
+
+        // Push the lower limbs first
+        let mut limbs: SmallVec<[F; 10]> = SmallVec::new();
+        let mut cur = *elem;
+        for _ in 0..params.num_limbs {
+            let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
+            let cur_mod_r =
+                <F as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..])
+                    .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
+            limbs.push(F::from_repr(cur_mod_r).unwrap());
+            cur.divn(params.bits_per_limb as u32);
+        }
+
+        // then we reserve, so that the limbs are ``big limb first''
+        limbs.reverse();
+
+        limbs
+    }
+
+    /// Push elements to sponge, treated in the non-native field representations.
+    pub fn push_elements_to_sponge<TargetField: PrimeField>(
+        &mut self,
+        src: impl IntoIterator<Item = TargetField>,
+        ty: OptimizationType,
+    ) {
+        let mut src_limbs = Vec::<(F, F)>::new();
+
+        for elem in src {
+            let limbs = Self::get_limbs_representations(&elem, ty);
+            for limb in limbs.iter() {
+                src_limbs.push((*limb, F::one()));
+                // specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
+            }
+        }
+
+        let dest_limbs = Self::compress_elements::<TargetField>(&src_limbs, ty);
+        self.absorb_native_field_elements(&dest_limbs);
+    }
+
+    /// obtain random bits from hashchain.
+    /// not guaranteed to be uniformly distributed, should only be used in certain situations.
+    pub fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
+        let bits_per_element = F::size_in_bits() - 1;
+        let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
+
+        let src_elements = self.squeeze_native_field_elements(num_elements);
+        let mut dest_bits = Vec::<bool>::with_capacity(num_elements * bits_per_element);
+
+        let skip = (F::Parameters::REPR_SHAVE_BITS + 1) as usize;
+        for elem in src_elements.iter() {
+            // discard the highest bit
+            let elem_bits = elem.to_repr().to_bits_be();
+            dest_bits.extend_from_slice(&elem_bits[skip..]);
+        }
+        dest_bits.truncate(num_bits);
+
+        dest_bits
+    }
+
+    /// obtain random field elements from hashchain.
+    /// not guaranteed to be uniformly distributed, should only be used in certain situations.
+    pub fn get_fe<TargetField: PrimeField>(
+        &mut self,
+        num_elements: usize,
+        outputs_short_elements: bool,
+    ) -> SmallVec<[TargetField; 10]> {
+        let num_bits_per_nonnative = if outputs_short_elements {
+            168
+        } else {
+            TargetField::size_in_bits() - 1 // also omit the highest bit
+        };
+        let bits = self.get_bits(num_bits_per_nonnative * num_elements);
+
+        let mut lookup_table = Vec::<TargetField>::new();
+        let mut cur = TargetField::one();
+        for _ in 0..num_bits_per_nonnative {
+            lookup_table.push(cur);
+            cur.double_in_place();
+        }
+
+        let dest_elements = bits
+            .chunks_exact(num_bits_per_nonnative)
+            .map(|per_nonnative_bits| {
+                // technically, this can be done via BigInterger::from_bits; here, we use this method for consistency with the gadget counterpart
+                let mut res = TargetField::zero();
+
+                for (i, bit) in per_nonnative_bits.iter().rev().enumerate() {
+                    if *bit {
+                        res += &lookup_table[i];
+                    }
+                }
+                res
+            })
+            .collect::<SmallVec<_>>();
+        debug_assert_eq!(dest_elements.len(), num_elements);
+
+        dest_elements
     }
 }

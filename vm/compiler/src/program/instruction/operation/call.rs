@@ -196,7 +196,13 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
             // Evaluate the closure, and load the outputs.
-            substack.evaluate_closure::<A>(&closure, &inputs, registers.call_stack(), registers.tvk()?)?
+            substack.evaluate_closure::<A>(
+                &closure,
+                &inputs,
+                registers.call_stack(),
+                registers.caller()?,
+                registers.tvk()?,
+            )?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {
@@ -255,7 +261,13 @@ impl<N: Network> Call<N> {
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
             // Execute the closure, and load the outputs.
-            substack.execute_closure(&closure, &inputs, registers.call_stack(), registers.tvk_circuit()?)?
+            substack.execute_closure(
+                &closure,
+                &inputs,
+                registers.call_stack(),
+                registers.caller_circuit()?,
+                registers.tvk_circuit()?,
+            )?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {
@@ -370,8 +382,12 @@ impl<N: Network> Call<N> {
 
             // Inject the `caller` (from the request) as `Mode::Private`.
             let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
+            // Inject the `sk_tag` (from the request) as `Mode::Private`.
+            let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
             let tvk = circuit::Field::new(circuit::Mode::Private, *request.tvk());
+            // Inject the `tcm` (from the request) as `Mode::Private`.
+            let tcm = circuit::Field::new(circuit::Mode::Private, *request.tcm());
             // Inject the input IDs (from the request) as `Mode::Public`.
             let input_ids = request
                 .input_ids()
@@ -385,7 +401,9 @@ impl<N: Network> Call<N> {
                 &function.input_types(),
                 &caller,
                 &program_id,
+                &sk_tag,
                 &tvk,
+                &tcm,
             ));
 
             // Inject the outputs as `Mode::Private` (with the output IDs as `Mode::Public`).
@@ -393,6 +411,7 @@ impl<N: Network> Call<N> {
                 &program_id,
                 num_inputs,
                 &tvk,
+                &tcm,
                 response.outputs().to_vec(),
                 &function.output_types(),
             );

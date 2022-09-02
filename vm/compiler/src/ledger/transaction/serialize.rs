@@ -34,7 +34,9 @@ impl<N: Network> Serialize for Transaction<N> {
                     transaction.serialize_field("type", "execute")?;
                     transaction.serialize_field("id", &id)?;
                     transaction.serialize_field("execution", &execution)?;
-                    transaction.serialize_field("additional_fee", &additional_fee)?;
+                    if let Some(additional_fee) = additional_fee {
+                        transaction.serialize_field("additional_fee", &additional_fee)?;
+                    }
                     transaction.end()
                 }
             },
@@ -70,9 +72,13 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         // Retrieve the execution.
                         let execution =
                             serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
-                        // Retrieve the additional fee.
-                        let additional_fee =
-                            serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the additional fee, if it exists.
+                        let additional_fee = match transaction["additional_fee"].as_str() {
+                            Some(additional_fee) => {
+                                Some(serde_json::from_str(additional_fee).map_err(de::Error::custom)?)
+                            }
+                            None => None,
+                        };
                         // Construct the transaction.
                         Transaction::from_execution(execution, additional_fee).map_err(de::Error::custom)?
                     }

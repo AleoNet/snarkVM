@@ -16,6 +16,10 @@
 
 pub mod circuit;
 
+mod bytes;
+mod parse;
+mod serialize;
+
 use crate::ledger::{
     BlockPath,
     HeaderLeaf,
@@ -28,6 +32,7 @@ use crate::ledger::{
 };
 use console::{network::prelude::*, types::Field};
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct StatePath<N: Network> {
     /// The state root.
     state_root: N::StateRoot,
@@ -190,60 +195,5 @@ impl<N: Network> StatePath<N> {
     /// Returns the transition leaf.
     pub const fn transition_leaf(&self) -> &TransitionLeaf<N> {
         &self.transition_leaf
-    }
-}
-
-impl<N: Network> FromBytes for StatePath<N> {
-    /// Reads the path from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let state_root = N::StateRoot::read_le(&mut reader)?;
-        let block_path = BlockPath::read_le(&mut reader)?;
-        let block_hash = N::BlockHash::read_le(&mut reader)?;
-        let previous_block_hash = N::BlockHash::read_le(&mut reader)?;
-        let header_root = Field::read_le(&mut reader)?;
-        let header_path = HeaderPath::read_le(&mut reader)?;
-        let header_leaf = HeaderLeaf::read_le(&mut reader)?;
-        let transactions_path = TransactionsPath::read_le(&mut reader)?;
-        let transaction_id = FromBytes::read_le(&mut reader)?;
-        let transaction_path = FromBytes::read_le(&mut reader)?;
-        let transaction_leaf = FromBytes::read_le(&mut reader)?;
-        let transition_path = FromBytes::read_le(&mut reader)?;
-        let transition_leaf = FromBytes::read_le(&mut reader)?;
-
-        Self::new(
-            state_root,
-            block_path,
-            block_hash,
-            previous_block_hash,
-            header_root,
-            header_path,
-            header_leaf,
-            transactions_path,
-            transaction_id,
-            transaction_path,
-            transaction_leaf,
-            transition_path,
-            transition_leaf,
-        )
-        .map_err(|e| error(e.to_string()))
-    }
-}
-
-impl<N: Network> ToBytes for StatePath<N> {
-    /// Writes the path to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.state_root.write_le(&mut writer)?;
-        self.block_path.write_le(&mut writer)?;
-        self.block_hash.write_le(&mut writer)?;
-        self.previous_block_hash.write_le(&mut writer)?;
-        self.header_root.write_le(&mut writer)?;
-        self.header_path.write_le(&mut writer)?;
-        self.header_leaf.write_le(&mut writer)?;
-        self.transactions_path.write_le(&mut writer)?;
-        self.transaction_id.write_le(&mut writer)?;
-        self.transaction_path.write_le(&mut writer)?;
-        self.transaction_leaf.write_le(&mut writer)?;
-        self.transition_path.write_le(&mut writer)?;
-        self.transition_leaf.write_le(&mut writer)
     }
 }

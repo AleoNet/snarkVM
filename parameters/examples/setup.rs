@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm::{
+    circuit::Aleo,
+    prelude::{Network, Process, Program, Testnet3},
+};
 use snarkvm_algorithms::{
     crypto_hash::sha256::sha256,
     snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
@@ -22,6 +26,7 @@ use snarkvm_algorithms::{
 
 use anyhow::Result;
 use serde_json::{json, Value};
+use snarkvm_utilities::ToBytes;
 use std::{
     fs::File,
     io::{BufWriter, Read, Write},
@@ -81,7 +86,7 @@ pub fn kzg_powers_metadata() {
 }
 
 /// Runs the trial SRS setup. (cargo run --release --example setup trial_srs 524288)
-pub fn trial_srs<N: snarkvm_console::network::Network>(num_gates: usize) -> Result<()> {
+pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
     const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
     const TRIAL_SRS: &str = "universal.srs.trial";
 
@@ -94,7 +99,7 @@ pub fn trial_srs<N: snarkvm_console::network::Network>(num_gates: usize) -> Resu
 
     type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
     type Fr<N> = <N as Environment>::Field;
-    type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
+    type FS<N> = PoseidonSponge<Fq<N>, 2, 1>;
     type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, MarlinHidingMode, [Fr<N>]>;
 
     let timer = std::time::Instant::now();
@@ -119,6 +124,67 @@ pub fn trial_srs<N: snarkvm_console::network::Network>(num_gates: usize) -> Resu
     Ok(())
 }
 
+/// Synthesizes the circuit keys for the credits program. (cargo run --release --example setup credits)
+pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
+    // Initialize an RNG.
+    let rng = &mut snarkvm_utilities::test_crypto_rng_fixed();
+    // Initialize the process.
+    let process = Process::setup::<A, _>(rng)?;
+    // Initialize the program.
+    let program = Program::<N>::credits()?;
+    let program_id = program.id();
+
+    // Initialize a vector for the commands.
+    let mut commands = vec![];
+
+    // Synthesize the 'credits.aleo' function keys.
+    for (function_name, _) in program.functions().iter() {
+        // let timer = std::time::Instant::now();
+        // process.synthesize_key::<A, _>(program_id, function_name, rng)?;
+        // println!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
+
+        let proving_key = process.get_proving_key(program_id, function_name)?;
+        let proving_key_bytes = proving_key.to_bytes_le()?;
+        let proving_key_checksum = checksum(&proving_key_bytes);
+
+        let verifying_key = process.get_verifying_key(program_id, function_name)?;
+        let verifying_key_bytes = verifying_key.to_bytes_le()?;
+        let verifying_key_checksum = checksum(&verifying_key_bytes);
+
+        let metadata = json!({
+            "prover_checksum": proving_key_checksum,
+            "prover_size": proving_key_bytes.len(),
+            "verifier_checksum": verifying_key_checksum,
+            "verifier_size": verifying_key_bytes.len(),
+        });
+
+        println!("{}", serde_json::to_string_pretty(&metadata)?);
+        write_metadata(&format!("{function_name}.metadata"), &metadata)?;
+        write_remote(&format!("{function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
+        write_remote(&format!("{function_name}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
+
+        commands.push(format!(
+            "snarkup upload \"{}\"",
+            versioned_filename(&format!("{function_name}.prover"), &proving_key_checksum)
+        ));
+        commands.push(format!(
+            "snarkup upload \"{}\"",
+            versioned_filename(&format!("{function_name}.verifier"), &verifying_key_checksum)
+        ));
+    }
+
+    // Print the commands.
+    println!("\nNow, run the following commands:\n");
+    println!("snarkup remove provers");
+    println!("snarkup remove verifiers\n");
+    for command in commands {
+        println!("{command}");
+    }
+    println!();
+
+    Ok(())
+}
+
 /// Run the following command to perform a setup.
 /// `cargo run --example setup [parameter] [network]`
 pub fn main() -> Result<()> {
@@ -129,7 +195,8 @@ pub fn main() -> Result<()> {
     }
 
     match args[1].as_str() {
-        "trial_srs" => trial_srs::<snarkvm_console::network::Testnet3>(args[2].as_str().parse::<usize>()?)?,
+        "trial_srs" => trial_srs::<Testnet3>(args[2].as_str().parse::<usize>()?)?,
+        "credits" => credits_program::<Testnet3, snarkvm::circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };
 

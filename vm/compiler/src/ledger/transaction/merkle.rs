@@ -202,7 +202,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the deployment is within the size bounds.
-    pub(super) fn check_deployment_size(deployment: &Deployment<N>) -> Result<()> {
+    pub fn check_deployment_size(deployment: &Deployment<N>) -> Result<()> {
         // Retrieve the program.
         let program = deployment.program();
         // Retrieve the functions.
@@ -228,7 +228,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the execution is within the size bounds.
-    pub(super) fn check_execution_size(execution: &Execution<N>) -> Result<()> {
+    pub fn check_execution_size(execution: &Execution<N>) -> Result<()> {
         // Ensure the number of functions is within the allowed range.
         ensure!(
             execution.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the additional fee.

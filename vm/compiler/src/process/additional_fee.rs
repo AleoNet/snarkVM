@@ -31,25 +31,26 @@ impl<N: Network> Process<N> {
         // Ensure the additional fee has the correct function.
         let function_name = Identifier::from_str("fee")?;
 
-        // Retrieve the program, function, and input types.
-        let (program, function, input_types, _) = self.get_function_info(&program_id, &function_name)?;
+        // Retrieve the input types.
+        let input_types = self.get_program(&program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
         let inputs =
             vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(additional_fee_in_gates)))?];
         // Compute the request.
-        let request = Request::sign(private_key, *program.id(), *function.name(), &inputs, &input_types, rng)?;
+        let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
+        // Construct the call stack.
+        let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self
-            .get_stack(program.id())?
-            .execute_function::<A, R>(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
+        let _response = self.get_stack(&program_id)?.execute_function::<A, R>(call_stack, rng)?;
 
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
         // Prepare the stack.
         let stack = self.get_stack(request.program_id())?;
 
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
@@ -87,11 +88,17 @@ impl<N: Network> Process<N> {
         ensure!(additional_fee.outputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of outputs");
 
         // Ensure each input is valid.
-        if additional_fee.inputs().iter().any(|input| !input.verify()) {
+        if additional_fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(additional_fee.tcm(), index)) {
             bail!("Failed to verify an additional fee input")
         }
         // Ensure each output is valid.
-        if additional_fee.outputs().iter().any(|output| !output.verify()) {
+        let num_inputs = additional_fee.inputs().len();
+        if additional_fee
+            .outputs()
+            .iter()
+            .enumerate()
+            .any(|(index, output)| !output.verify(additional_fee.tcm(), num_inputs + index))
+        {
             bail!("Failed to verify an additional fee output")
         }
 
@@ -102,7 +109,7 @@ impl<N: Network> Process<N> {
         let (tpk_x, tpk_y) = additional_fee.tpk().to_xy_coordinate();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **additional_fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(additional_fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the inputs with the output IDs.

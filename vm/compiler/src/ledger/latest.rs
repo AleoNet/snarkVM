@@ -16,17 +16,7 @@
 
 use super::*;
 
-use std::borrow::Cow;
-
-impl<
-    N: Network,
-    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
-    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
-    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
-{
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns the latest state root.
     pub const fn latest_state_root(&self) -> &Field<N> {
         self.block_tree.root()
@@ -68,7 +58,7 @@ impl<
     }
 
     /// Returns the latest block transactions.
-    pub fn latest_transactions(&self) -> Result<Cow<'_, Transactions<N>>> {
+    pub fn latest_transactions(&self) -> Result<Transactions<N>> {
         self.get_transactions(self.current_height)
     }
 }

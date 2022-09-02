@@ -26,7 +26,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    ledger::{vm::VM, Transaction, Transition},
+    ledger::{vm::VM, Origin, Transaction, Transition},
     process::{Deployment, Execution},
 };
 use console::{
@@ -90,87 +90,6 @@ impl<N: Network> Block<N> {
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
         // Construct the block.
         Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature })
-    }
-
-    /// Returns `true` if the block is well-formed.
-    pub fn verify(&self, vm: &VM<N>) -> bool {
-        // If the block is the genesis block, check that it is valid.
-        if self.header.height() == 0 && !self.is_genesis() {
-            warn!("Invalid genesis block");
-            return false;
-        }
-
-        // Ensure the block header is valid.
-        if !self.header.verify() {
-            warn!("Invalid block header: {:?}", self.header);
-            return false;
-        }
-
-        // Compute the Merkle root of the block header.
-        let header_root = match self.header.to_root() {
-            Ok(root) => root,
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the block header: {error}");
-                return false;
-            }
-        };
-
-        // Check the block hash.
-        match N::hash_bhp1024(&[self.previous_hash.to_bits_le(), header_root.to_bits_le()].concat()) {
-            Ok(candidate_hash) => {
-                // Ensure the block hash matches the one in the block.
-                if candidate_hash != *self.block_hash {
-                    warn!("Block {} ({}) has an incorrect block hash.", self.height(), self.block_hash);
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Unable to compute block hash for block {} ({}): {error}", self.height(), self.block_hash);
-                return false;
-            }
-        };
-
-        // TODO (howardwu): TRIAL - Update this to the validator set.
-        // Ensure the block is signed by an authorized validator.
-        let signer = self.signature.to_address();
-        if signer.to_string() != "aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8" {
-            warn!("Block {} ({}) is signed by an unauthorized validator: {}", self.height(), self.block_hash, signer);
-            return false;
-        }
-
-        // Check the signature.
-        if !self.signature.verify(&signer, &[*self.block_hash]) {
-            warn!("Invalid signature for block {} ({})", self.height(), self.block_hash);
-            return false;
-        }
-
-        // Compute the transactions root.
-        match self.transactions.to_root() {
-            // Ensure the transactions root matches the one in the block header.
-            Ok(root) => {
-                if &root != self.header.transactions_root() {
-                    warn!(
-                        "Block {} ({}) has an incorrect transactions root: expected {}",
-                        self.height(),
-                        self.block_hash,
-                        self.header.transactions_root()
-                    );
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the block transactions: {error}");
-                return false;
-            }
-        };
-
-        // Ensure the transactions are valid.
-        if !self.transactions.verify(vm) {
-            warn!("Block contains invalid transactions: {:?}", self);
-            return false;
-        }
-
-        true
     }
 }
 
@@ -264,33 +183,48 @@ impl<N: Network> Block<N> {
         self.transactions.executions()
     }
 
-    /// Returns an iterator over all executed transitions.
+    /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         self.transactions.transitions()
     }
 
-    /// Returns an iterator over the transition IDs, for all executed transitions.
+    /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
         self.transactions.transition_ids()
     }
 
-    /// Returns an iterator over the transition public keys, for all executed transactions.
+    /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.transition_public_keys()
     }
 
-    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
+    /// Returns an iterator over the origins, for all transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
+        self.transactions.origins()
+    }
+
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.tags()
+    }
+
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.serial_numbers()
     }
 
-    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
+    /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.commitments()
     }
 
-    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.nonces()
+    }
+
+    /// Returns an iterator over the fees, for all transitions.
+    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
+        self.transactions.fees()
     }
 }

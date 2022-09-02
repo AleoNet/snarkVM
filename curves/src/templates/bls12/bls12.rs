@@ -25,7 +25,6 @@ use crate::{
     traits::{ModelParameters, PairingCurve, PairingEngine, ShortWeierstrassParameters},
     AffineCurve,
 };
-use serde::{Deserialize, Serialize};
 use snarkvm_fields::{
     fp6_3over2::Fp6Parameters,
     Field,
@@ -40,14 +39,15 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::marker::PhantomData;
+use core::{fmt::Debug, marker::PhantomData};
+use serde::{Deserialize, Serialize};
 
 pub enum TwistType {
     M,
     D,
 }
 
-pub trait Bls12Parameters: 'static {
+pub trait Bls12Parameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Send + Sync + Sized {
     const X: &'static [u64];
     const X_IS_NEGATIVE: bool;
     const TWIST_TYPE: TwistType;
@@ -70,14 +70,13 @@ pub trait Bls12Parameters: 'static {
     }
 }
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Bls12<P: Bls12Parameters>(PhantomData<fn() -> P>);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Bls12<P: Bls12Parameters>(PhantomData<P>);
 
 type CoeffTriplet<T> = (Fp2<T>, Fp2<T>, Fp2<T>);
 
 impl<P: Bls12Parameters> Bls12<P> {
-    // Evaluate the line function at point p.
+    /// Evaluate the line function at point p.
     fn ell(f: &mut Fp12<P::Fp12Params>, coeffs: &CoeffTriplet<P::Fp2Params>, p: &G1Affine<P>) {
         let mut c0 = coeffs.0;
         let mut c1 = coeffs.1;

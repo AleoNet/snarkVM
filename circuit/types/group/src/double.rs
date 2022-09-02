@@ -26,7 +26,7 @@ impl<E: Environment> Double for Group<E> {
         }
         // Otherwise, compute `self` + `self`.
         else {
-            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
+            let a = Field::constant(console::Field::new(E::EDWARDS_A));
             let two = Field::one().double();
 
             // Compute xy, xx, yy, axx.

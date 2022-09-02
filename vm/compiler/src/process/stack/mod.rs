@@ -14,26 +14,43 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod authorization;
+pub use authorization::*;
+
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod finalize_registers;
+pub use finalize_registers::*;
+
+mod finalize_types;
+pub use finalize_types::*;
+
+mod register_types;
+pub use register_types::*;
+
+mod registers;
+pub use registers::*;
+
+mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
 mod helpers;
 
 use crate::{
-    Authorization,
     CallOperator,
     Certificate,
     Closure,
-    Execution,
     Function,
     Instruction,
-    Opcode,
     Operand,
     Process,
     Program,
     ProvingKey,
-    RegisterTypes,
-    Registers,
     Transition,
     UniversalSRS,
     VerifyingKey,
@@ -54,7 +71,6 @@ use console::{
         ProgramID,
         Record,
         RecordType,
-        Register,
         RegisterType,
         Request,
         Response,
@@ -159,7 +175,9 @@ pub struct Stack<N: Network> {
     /// The mapping of external stacks as `(program ID, stack)`.
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
-    program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    /// The mapping of finalize names to their register types.
+    finalize_types: IndexMap<Identifier<N>, FinalizeTypes<N>>,
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of function name to proving key.
@@ -181,39 +199,18 @@ impl<N: Network> Stack<N> {
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 
-        // Construct the stack for the program.
-        let mut stack = Self {
-            program: program.clone(),
-            external_stacks: Default::default(),
-            program_types: Default::default(),
-            universal_srs: process.universal_srs().clone(),
-            proving_keys: Default::default(),
-            verifying_keys: Default::default(),
-        };
+        // Serialize the program into bytes.
+        let program_bytes = program.to_bytes_le()?;
+        // Ensure the program deserializes from bytes correctly.
+        ensure!(program == &Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
 
-        // Add all of the imports into the stack.
-        for import in program.imports().keys() {
-            // Ensure the program imports all exist in the process already.
-            if !process.contains_program(import) {
-                bail!("Cannot add program '{program_id}' because its import '{import}' must be added first")
-            }
-            // Retrieve the external stack for the import program ID.
-            let external_stack = process.get_stack(import)?;
-            // Add the external stack to the stack.
-            stack.insert_external_stack(external_stack.clone())?;
-        }
-        // Add the program closures to the stack.
-        for closure in program.closures().values() {
-            // Add the closure to the stack.
-            stack.insert_closure(closure)?;
-        }
-        // Add the program functions to the stack.
-        for function in program.functions().values() {
-            // Add the function to the stack.
-            stack.insert_function(function)?;
-        }
+        // Serialize the program into string.
+        let program_string = program.to_string();
+        // Ensure the program deserializes from a string correctly.
+        ensure!(program == &Program::from_str(&program_string)?, "Program string serialization failed");
+
         // Return the stack.
-        Ok(stack)
+        Stack::initialize(process, program)
     }
 
     /// Returns the program.
@@ -269,7 +266,11 @@ impl<N: Network> Stack<N> {
     /// Returns the function with the given function name.
     #[inline]
     pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
-        self.program.get_function(function_name)
+        // Ensure the function exists.
+        match self.program.contains_function(function_name) {
+            true => self.program.get_function(function_name),
+            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
+        }
     }
 
     /// Returns the expected number of calls for the given function name.
@@ -298,7 +299,14 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
-        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+        self.register_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' do not exist"))
+    }
+
+    /// Returns the register types for the given finalize name.
+    #[inline]
+    pub fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>> {
+        // Retrieve the finalize types.
+        self.finalize_types.get(name).ok_or_else(|| anyhow!("Finalize types for '{name}' do not exist"))
     }
 
     /// Returns `true` if the proving key for the given function name exists.
@@ -335,14 +343,30 @@ impl<N: Network> Stack<N> {
 
     /// Inserts the given proving key for the given function name.
     #[inline]
-    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) {
+    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the proving key.
         self.proving_keys.write().insert(*function_name, proving_key);
+        Ok(())
     }
 
     /// Inserts the given verifying key for the given function name.
     #[inline]
-    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) {
+    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the verifying key.
         self.verifying_keys.write().insert(*function_name, verifying_key);
+        Ok(())
     }
 
     /// Removes the proving key for the given function name.
@@ -362,7 +386,7 @@ impl<N: Network> PartialEq for Stack<N> {
     fn eq(&self, other: &Self) -> bool {
         self.program == other.program
             && self.external_stacks == other.external_stacks
-            && self.program_types == other.program_types
+            && self.register_types == other.register_types
     }
 }
 

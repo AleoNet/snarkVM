@@ -27,8 +27,8 @@ impl<E: Environment> Group<E> {
         // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
         //
         {
-            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
-            let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
+            let a = Field::constant(console::Field::new(E::EDWARDS_A));
+            let d = Field::constant(console::Field::new(E::EDWARDS_D));
 
             let x2 = x.square();
             let y2 = y.square();

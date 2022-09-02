@@ -48,14 +48,12 @@ impl<N: Network> Serialize for Input<N> {
                     }
                     input.end()
                 }
-                Self::Record(id, origin) => {
-                    let mut input = serializer.serialize_struct("Input", 2)?;
+                Self::Record(id, tag, origin) => {
+                    let mut input = serializer.serialize_struct("Input", 4)?;
                     input.serialize_field("type", "record")?;
                     input.serialize_field("id", &id)?;
-                    match origin {
-                        Origin::Commitment(commitment) => input.serialize_field("commitment", &commitment)?,
-                        Origin::StateRoot(root) => input.serialize_field("state_root", &root)?,
-                    };
+                    input.serialize_field("tag", &tag)?;
+                    input.serialize_field("origin", &origin)?;
                     input.end()
                 }
                 Self::ExternalRecord(id) => {
@@ -94,35 +92,16 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("record") => {
-                        if let Some(commitment) = input["commitment"].as_str() {
-                            Input::Record(
-                                id,
-                                Origin::Commitment(Field::<N>::from_str(commitment).map_err(de::Error::custom)?),
-                            )
-                        } else if let Some(state_root) = input["state_root"].as_str() {
-                            Input::Record(
-                                id,
-                                Origin::StateRoot(N::StateRoot::from_str(state_root).map_err(|_| {
-                                    de::Error::custom(
-                                        "Failed to deserialize the state root of a transition input record",
-                                    )
-                                })?),
-                            )
-                        } else {
-                            return Err(de::Error::custom("Invalid transition input record origin"));
-                        }
-                    }
+                    Some("record") => Input::Record(
+                        id,
+                        serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["origin"].clone()).map_err(de::Error::custom)?,
+                    ),
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
                 };
-
-                // Ensure the input is well-formed.
-                match input.verify() {
-                    true => Ok(input),
-                    false => Err(error("Transition input verification failed, possible data corruption"))
-                        .map_err(de::Error::custom),
-                }
+                // Return the input.
+                Ok(input)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition input"),
         }
@@ -132,19 +111,6 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
-
-    /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &[
-        "{\"type\":\"constant\",\"id\":\"5field\"}",
-        "{\"type\":\"public\",\"id\":\"0field\"}",
-        "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\", \"commitment\":\"123456789field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\", \"state_root\":\"ar1zhx4kpcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvehdvs\"}",
-        "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
-    ];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
@@ -181,15 +147,15 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        for case in TEST_CASES.iter() {
-            check_serde_json(Input::<CurrentNetwork>::from_str(case).unwrap());
+        for (_, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
+            check_serde_json(input);
         }
     }
 
     #[test]
     fn test_bincode() {
-        for case in TEST_CASES.iter() {
-            check_bincode(Input::<CurrentNetwork>::from_str(case).unwrap());
+        for (_, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
+            check_bincode(input);
         }
     }
 }

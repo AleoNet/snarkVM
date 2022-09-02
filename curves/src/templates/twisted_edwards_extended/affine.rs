@@ -41,15 +41,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    PartialEq(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -136,7 +128,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let x2 = x.square();
         let one = Self::BaseField::one();
         let numerator = P::mul_by_a(&x2) - one;
-        let denominator = P::COEFF_D * x2 - one;
+        let denominator = P::EDWARDS_D * x2 - one;
         let y2 = denominator.inverse().map(|denom| denom * numerator);
         y2.and_then(|y2| y2.sqrt()).map(|y| {
             let negy = -y;
@@ -156,7 +148,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let y2 = y.square();
         let one = Self::BaseField::one();
         let numerator = one - y2;
-        let denominator = P::mul_by_a(&one) - (P::COEFF_D * y2);
+        let denominator = P::mul_by_a(&one) - (P::EDWARDS_D * y2);
         let x2 = denominator.inverse().map(|denom| denom * numerator);
         x2.and_then(|x2| x2.sqrt()).map(|x| {
             let negx = -x;
@@ -206,7 +198,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let y2 = self.y.square();
 
         let lhs = y2 + P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
+        let rhs = P::BaseField::one() + (P::EDWARDS_D * (x2 * y2));
 
         lhs == rhs
     }
@@ -219,11 +211,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
             a.x = (a.x + a.y) * (b.x + b.y) - y1y2 - x1x2;
             a.y = y1y2;
-            if !P::COEFF_A.is_zero() {
+            if !P::EDWARDS_A.is_zero() {
                 a.y -= &P::mul_by_a(&x1x2);
             }
 
-            let dx1x2y1y2 = P::COEFF_D * y1y2 * x1x2;
+            let dx1x2y1y2 = P::EDWARDS_D * y1y2 * x1x2;
 
             let inversion_mul_d = *inversion_tmp * dx1x2y1y2;
 

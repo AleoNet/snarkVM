@@ -16,150 +16,94 @@
 
 use super::*;
 
-use std::borrow::Cow;
-
-impl<
-    N: Network,
-    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
-    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
-    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
-{
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns the block for the given block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-        Block::from(
-            self.get_previous_hash(height)?,
-            *self.get_header(height)?,
-            self.get_transactions(height)?.into_owned(),
-            *self.get_signature(height)?,
-        )
+        // Retrieve the block hash.
+        let block_hash = match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("Block {height} does not exist in storage"),
+        };
+        // Retrieve the block.
+        match self.blocks.get_block(&block_hash)? {
+            Some(block) => Ok(block),
+            None => bail!("Block {height} ('{block_hash}') does not exist in storage"),
+        }
     }
 
     /// Returns the block hash for the given block height.
     pub fn get_hash(&self, height: u32) -> Result<N::BlockHash> {
-        match height.cmp(&self.current_height) {
-            Ordering::Equal => Ok(self.current_hash),
-            Ordering::Less => match self.previous_hashes.get(&(height + 1))? {
-                Some(block_hash) => Ok(*block_hash),
-                None => bail!("Missing block hash for block {height}"),
-            },
-            Ordering::Greater => bail!("Block {height} (given) is greater than the current height"),
+        match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => Ok(block_hash),
+            None => bail!("Missing block hash for block {height}"),
         }
     }
 
     /// Returns the previous block hash for the given block height.
     pub fn get_previous_hash(&self, height: u32) -> Result<N::BlockHash> {
-        match self.previous_hashes.get(&height)? {
-            Some(previous_hash) => Ok(*previous_hash),
+        match self.blocks.get_previous_block_hash(height)? {
+            Some(previous_hash) => Ok(previous_hash),
             None => bail!("Missing previous block hash for block {height}"),
         }
     }
 
     /// Returns the block header for the given block height.
-    pub fn get_header(&self, height: u32) -> Result<Cow<'_, Header<N>>> {
-        match self.headers.get(&height)? {
+    pub fn get_header(&self, height: u32) -> Result<Header<N>> {
+        // Retrieve the block hash.
+        let block_hash = match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("Block {height} does not exist in storage"),
+        };
+        // Retrieve the block header.
+        match self.blocks.get_block_header(&block_hash)? {
             Some(header) => Ok(header),
             None => bail!("Missing block header for block {height}"),
         }
     }
 
     /// Returns the block transactions for the given block height.
-    pub fn get_transactions(&self, height: u32) -> Result<Cow<'_, Transactions<N>>> {
-        match self.transactions.get(&height)? {
+    pub fn get_transactions(&self, height: u32) -> Result<Transactions<N>> {
+        // Retrieve the block hash.
+        let block_hash = match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("Block {height} does not exist in storage"),
+        };
+        // Retrieve the block transaction.
+        match self.blocks.get_block_transactions(&block_hash)? {
             Some(transactions) => Ok(transactions),
             None => bail!("Missing block transactions for block {height}"),
         }
     }
 
-    /// Returns the block signature for the given block height.
-    pub fn get_signature(&self, height: u32) -> Result<Cow<'_, Signature<N>>> {
-        match self.signatures.get(&height)? {
-            Some(signature) => Ok(signature),
-            None => bail!("Missing signature for block {height}"),
+    /// Returns the transaction for the given transaction id.
+    pub fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
+        // Retrieve the transaction.
+        match self.transactions.get_transaction(&transaction_id)? {
+            Some(transaction) => Ok(transaction),
+            None => bail!("Missing transaction for id {transaction_id}"),
         }
     }
 
-    /// Returns the output records that belong to the given view key.
-    pub fn get_output_records<'a>(
-        &'a self,
-        view_key: &'a ViewKey<N>,
-        filter: OutputRecordsFilter<N>,
-    ) -> impl '_ + Iterator<Item = (Field<N>, Record<N, Plaintext<N>>)> {
-        // Derive the address from the view key.
-        let address = view_key.to_address();
+    /// Returns the program for the given program id.
+    pub fn get_program(&self, program_id: ProgramID<N>) -> Result<Program<N>> {
+        match self.transactions.get_program(&program_id)? {
+            Some(program) => Ok(program),
+            None => bail!("Missing program for id {program_id}"),
+        }
+    }
 
-        self.transitions()
-            .flat_map(|ts| match ts {
-                Cow::Borrowed(tn) => Transition::output_records(tn)
-                    .map(|(f, r)| (Cow::Borrowed(f), Cow::Borrowed(r)))
-                    .collect::<Vec<_>>(),
-                Cow::Owned(tn) => Transition::output_records(&tn)
-                    .map(|(f, r)| (Cow::Owned(f.to_owned()), Cow::Owned(r.to_owned())))
-                    .collect::<Vec<_>>(),
-            })
-            .flat_map(move |(commitment, record)| {
-                // A helper method to derive the serial number from the private key and commitment.
-                let serial_number = |private_key: PrivateKey<N>, commitment: Field<N>| -> Result<Field<N>> {
-                    // Compute the generator `H` as `HashToGroup(commitment)`.
-                    let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
-                    // Compute `gamma` as `sk_sig * H`.
-                    let gamma = h * private_key.sk_sig();
-                    // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                    let sn_nonce = N::hash_to_scalar_psd2(&[
-                        N::serial_number_domain(),
-                        gamma.mul_by_cofactor().to_x_coordinate(),
-                    ])?;
-                    // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                    N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)
-                };
-
-                // Determine whether to decrypt this output record (or not), based on the filter.
-                let commitment = match filter {
-                    OutputRecordsFilter::All => *commitment,
-                    OutputRecordsFilter::Spent(private_key) => {
-                        // Derive the serial number.
-                        match serial_number(private_key, *commitment) {
-                            // Determine if the output record is spent.
-                            Ok(serial_number) => match self.contains_serial_number(&serial_number) {
-                                true => *commitment,
-                                false => return None,
-                            },
-                            Err(e) => {
-                                warn!("Failed to derive serial number for output record: {e}");
-                                return None;
-                            }
-                        }
-                    }
-                    OutputRecordsFilter::Unspent(private_key) => {
-                        // Derive the serial number.
-                        match serial_number(private_key, *commitment) {
-                            // Determine if the output record is spent.
-                            Ok(serial_number) => match self.contains_serial_number(&serial_number) {
-                                true => return None,
-                                false => *commitment,
-                            },
-                            Err(e) => {
-                                warn!("Failed to derive serial number for output record: {e}");
-                                return None;
-                            }
-                        }
-                    }
-                };
-
-                // Decrypt the record.
-                match record.is_owner(&address, view_key) {
-                    true => match record.decrypt(view_key) {
-                        Ok(record) => Some((commitment, record)),
-                        Err(e) => {
-                            warn!("Failed to decrypt output record: {e}");
-                            None
-                        }
-                    },
-                    false => None,
-                }
-            })
+    /// Returns the block signature for the given block height.
+    pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
+        // Retrieve the block hash.
+        let block_hash = match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("Block {height} does not exist in storage"),
+        };
+        // Retrieve the block transaction.
+        match self.blocks.get_block_signature(&block_hash)? {
+            Some(signature) => Ok(signature),
+            None => bail!("Missing signature for block {height}"),
+        }
     }
 }
 

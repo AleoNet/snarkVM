@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Request<N> {
     /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
@@ -41,6 +41,12 @@ impl<N: Network> Request<N> {
 
         // Retrieve `sk_sig`.
         let sk_sig = private_key.sk_sig();
+
+        // Derive the view key.
+        let view_key = ViewKey::try_from(private_key)?;
+        // Derive `sk_tag` from the graph key.
+        let sk_tag = GraphKey::try_from(view_key)?.sk_tag();
+
         // Derive the compute key.
         let compute_key = ComputeKey::try_from(private_key)?;
         // Retrieve `pk_sig`.
@@ -59,6 +65,8 @@ impl<N: Network> Request<N> {
         let caller = Address::try_from(compute_key)?;
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
+        // Compute the transition commitment `tcm` as `Hash(tvk)`.
+        let tcm = N::hash_psd2(&[tvk])?;
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
@@ -73,10 +81,10 @@ impl<N: Network> Request<N> {
             .collect::<Vec<_>>(),
         )?;
 
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, function ID, input IDs])`.
-        let mut preimage = Vec::with_capacity(5 + 2 * inputs.len());
-        preimage.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
-        preimage.extend([tvk, function_id]);
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
+        let mut message = Vec::with_capacity(5 + 2 * inputs.len());
+        message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
+        message.extend([tvk, tcm, function_id]);
 
         // Initialize a vector to store the input IDs.
         let mut input_ids = Vec::with_capacity(inputs.len());
@@ -84,25 +92,41 @@ impl<N: Network> Request<N> {
         // Prepare the inputs.
         for (index, (input, input_type)) in inputs.iter().zip_eq(input_types).enumerate() {
             match input_type {
-                // A constant input is hashed to a field element.
+                // A constant input is hashed (using `tcm`) to a field element.
                 ValueType::Constant(..) => {
                     // Ensure the input is a plaintext.
                     ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
+
+                    // Construct the (console) input index as a field element.
+                    let index = Field::from_u16(index as u16);
+                    // Construct the preimage as `(input || tcm || index)`.
+                    let mut preimage = input.to_fields()?;
+                    preimage.push(tcm);
+                    preimage.push(index);
                     // Hash the input to a field element.
-                    let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                    let input_hash = N::hash_psd8(&preimage)?;
+
                     // Add the input hash to the preimage.
-                    preimage.push(input_hash);
+                    message.push(input_hash);
                     // Add the input ID to the inputs.
                     input_ids.push(InputID::Constant(input_hash));
                 }
-                // A public input is hashed to a field element.
+                // A public input is hashed (using `tcm`) to a field element.
                 ValueType::Public(..) => {
                     // Ensure the input is a plaintext.
                     ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
+
+                    // Construct the (console) input index as a field element.
+                    let index = Field::from_u16(index as u16);
+                    // Construct the preimage as `(input || tcm || index)`.
+                    let mut preimage = input.to_fields()?;
+                    preimage.push(tcm);
+                    preimage.push(index);
                     // Hash the input to a field element.
-                    let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                    let input_hash = N::hash_psd8(&preimage)?;
+
                     // Add the input hash to the preimage.
-                    preimage.push(input_hash);
+                    message.push(input_hash);
                     // Add the input ID to the inputs.
                     input_ids.push(InputID::Public(input_hash));
                 }
@@ -110,6 +134,7 @@ impl<N: Network> Request<N> {
                 ValueType::Private(..) => {
                     // Ensure the input is a plaintext.
                     ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
+
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(index as u16);
                     // Compute the input view key as `Hash(tvk || index)`.
@@ -121,9 +146,10 @@ impl<N: Network> Request<N> {
                         Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
                     };
                     // Hash the ciphertext to a field element.
-                    let input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                    let input_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
+
                     // Add the input hash to the preimage.
-                    preimage.push(input_hash);
+                    message.push(input_hash);
                     // Add the input hash to the inputs.
                     input_ids.push(InputID::Private(input_hash));
                 }
@@ -135,6 +161,7 @@ impl<N: Network> Request<N> {
                         // Ensure the input is a record.
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
+
                     // Compute the record commitment.
                     let commitment = record.to_commitment(&program_id, record_name)?;
                     // Ensure the record belongs to the caller.
@@ -150,8 +177,6 @@ impl<N: Network> Request<N> {
                     let h_r = h * r;
                     // Compute `gamma` as `sk_sig * H`.
                     let gamma = h * sk_sig;
-                    // Add `H`, `r * H`, and `gamma` to the preimage.
-                    preimage.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));
 
                     // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
                     let sn_nonce = N::hash_to_scalar_psd2(&[
@@ -161,29 +186,41 @@ impl<N: Network> Request<N> {
                     // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
                     let serial_number =
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
-                    // Add gamma and the serial number to the inputs.
-                    input_ids.push(InputID::Record(commitment, gamma, serial_number));
+
+                    // Compute the tag as `Hash(sk_tag || commitment)`.
+                    let tag = N::hash_psd2(&[sk_tag, commitment])?;
+
+                    // Add (`H`, `r * H`, `gamma`, `tag`) to the preimage.
+                    message.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));
+                    message.push(tag);
+
+                    // Add the input ID.
+                    input_ids.push(InputID::Record(commitment, gamma, serial_number, tag));
                 }
-                // An external record input is committed (using `tvk`) to a field element.
+                // An external record input is hashed (using `tvk`) to a field element.
                 ValueType::ExternalRecord(..) => {
                     // Ensure the input is a record.
                     ensure!(matches!(input, Value::Record(..)), "Expected a record input");
+
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(index as u16);
-                    // Compute the input randomizer as `HashToScalar(tvk || index)`.
-                    let input_randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
-                    // Commit to the input to a field element.
-                    let input_commitment = N::commit_bhp1024(&input.to_bits_le(), &input_randomizer)?;
-                    // Add the input commitment to the preimage.
-                    preimage.push(input_commitment);
-                    // Add the input commitment to the inputs.
-                    input_ids.push(InputID::ExternalRecord(input_commitment));
+                    // Construct the preimage as `(input || tvk || index)`.
+                    let mut preimage = input.to_fields()?;
+                    preimage.push(tvk);
+                    preimage.push(index);
+                    // Hash the input to a field element.
+                    let input_hash = N::hash_psd8(&preimage)?;
+
+                    // Add the input hash to the preimage.
+                    message.push(input_hash);
+                    // Add the input hash to the inputs.
+                    input_ids.push(InputID::ExternalRecord(input_hash));
                 }
             }
         }
 
-        // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, input IDs])`.
-        let challenge = N::hash_to_scalar_psd8(&preimage)?;
+        // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
+        let challenge = N::hash_to_scalar_psd8(&message)?;
         // Compute `response` as `r - challenge * sk_sig`.
         let response = r - challenge * sk_sig;
 
@@ -195,8 +232,10 @@ impl<N: Network> Request<N> {
             input_ids,
             inputs: inputs.to_vec(),
             signature: Signature::from((challenge, response, compute_key)),
+            sk_tag,
             tvk,
             tsk: r,
+            tcm,
         })
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-compiler"
-version = "0.7.5"
+version = "0.9.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Compiler for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,7 +12,13 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
@@ -20,43 +26,43 @@ edition = "2021"
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
-version = "0.7.5"
+version = "0.9.0"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "0.7.5"
+version = "0.9.0"
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-version = "0.7.5"
+version = "0.9.0"
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
-version = "0.7.5"
+version = "0.9.0"
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.7.5"
+version = "0.9.0"
 
 [dependencies.snarkvm-parameters]
 path = "../../parameters"
-version = "0.7.5"
+version = "0.9.0"
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "0.7.5"
+version = "0.9.0"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.62"
 
 [dependencies.colored]
 version = "2"
 
 [dependencies.indexmap]
 version = "1.8"
-features = ["serde", "rayon"]
+features = [ "serde", "rayon" ]
 
 [dependencies.once_cell]
 version = "1.13"
@@ -65,7 +71,7 @@ version = "1.13"
 version = "0.12"
 
 [dependencies.paste]
-version = "1.0.7"
+version = "1.0.8"
 
 [dependencies.rand]
 version = "0.8"
@@ -74,11 +80,14 @@ version = "0.8"
 version = "1"
 optional = true
 
+[dependencies.serde]
+version = "1.0"
+
 [dependencies.serde_json]
 version = "1.0"
 
 [dependencies.time]
-version = "0.3.9"
+version = "0.3.14"
 
 [dependencies.tracing]
 version = "0.1"
@@ -89,6 +98,17 @@ version = "1.3"
 [dev-dependencies.regex]
 version = "1.6"
 
+[dev-dependencies.serial_test]
+version = "0.9"
+
+[dev-dependencies.tracing-test]
+version = "0.2"
+
 [features]
-default = ["parallel"]
-parallel = ["rayon", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]
+default = [ "parallel" ]
+parallel = [
+  "rayon",
+  "snarkvm-fields/parallel",
+  "snarkvm-utilities/parallel"
+]
+aleo-cli = [ ]

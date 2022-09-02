@@ -15,10 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::ProgramStorage;
 
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
-    pub fn genesis<R: Rng + CryptoRng>(vm: &mut VM<N>, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Self> {
+    pub fn genesis<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
+        private_key: &PrivateKey<N>,
+        rng: &mut R,
+    ) -> Result<Self> {
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
         // Prepare the program ID.
@@ -63,7 +68,7 @@ impl<N: Network> Block<N> {
 mod tests {
     #[test]
     fn test_genesis() {
-        let block = crate::ledger::vm::test_helpers::sample_genesis_block();
+        let block = crate::ledger::test_helpers::sample_genesis_block();
         // println!("{}", serde_json::to_string_pretty(&block).unwrap());
         assert!(block.is_genesis());
     }

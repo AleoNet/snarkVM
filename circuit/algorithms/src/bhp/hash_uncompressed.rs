@@ -141,12 +141,12 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_public() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 542, 0, 8592, 8593)
+        check_hash_uncompressed::<32, 48>(Mode::Public, 542, 0, 8662, 8733)
     }
 
     #[test]
     fn test_hash_uncompressed_private() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 542, 0, 8592, 8593)
+        check_hash_uncompressed::<32, 48>(Mode::Private, 542, 0, 8662, 8733)
     }
 
     #[test]
@@ -156,12 +156,12 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_bhp256_public() -> Result<()> {
-        check_hash_uncompressed!(BHP256, Public, 261, (409, 0, 449, 449))
+        check_hash_uncompressed!(BHP256, Public, 261, (409, 0, 453, 457))
     }
 
     #[test]
     fn test_hash_uncompressed_bhp256_private() -> Result<()> {
-        check_hash_uncompressed!(BHP256, Private, 261, (409, 0, 449, 449))
+        check_hash_uncompressed!(BHP256, Private, 261, (409, 0, 453, 457))
     }
 
     #[test]
@@ -171,12 +171,12 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_bhp512_public() -> Result<()> {
-        check_hash_uncompressed!(BHP512, Public, 522, (421, 0, 905, 905))
+        check_hash_uncompressed!(BHP512, Public, 522, (421, 0, 915, 925))
     }
 
     #[test]
     fn test_hash_uncompressed_bhp512_private() -> Result<()> {
-        check_hash_uncompressed!(BHP512, Private, 522, (421, 0, 905, 905))
+        check_hash_uncompressed!(BHP512, Private, 522, (421, 0, 915, 925))
     }
 
     #[test]
@@ -186,12 +186,12 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_bhp768_public() -> Result<()> {
-        check_hash_uncompressed!(BHP768, Public, 783, (459, 0, 1389, 1389))
+        check_hash_uncompressed!(BHP768, Public, 783, (459, 0, 1413, 1437))
     }
 
     #[test]
     fn test_hash_uncompressed_bhp768_private() -> Result<()> {
-        check_hash_uncompressed!(BHP768, Private, 783, (459, 0, 1389, 1389))
+        check_hash_uncompressed!(BHP768, Private, 783, (459, 0, 1413, 1437))
     }
 
     #[test]
@@ -203,24 +203,24 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_bhp1024_public() -> Result<()> {
-        check_hash_uncompressed!(BHP1024, Public, 1043, (429, 0, 1789, 1789))?;
-        check_hash_uncompressed!(BHP1024, Public, 1044, (429, 0, 1789, 1789))?;
-        check_hash_uncompressed!(BHP1024, Public, 1046, (438, 0, 2475, 2476))
+        check_hash_uncompressed!(BHP1024, Public, 1043, (429, 0, 1803, 1817))?;
+        check_hash_uncompressed!(BHP1024, Public, 1044, (429, 0, 1803, 1817))?;
+        check_hash_uncompressed!(BHP1024, Public, 1046, (438, 0, 2493, 2512))
     }
 
     #[test]
     fn test_hash_uncompressed_bhp1024_private() -> Result<()> {
-        check_hash_uncompressed!(BHP1024, Private, 1043, (429, 0, 1789, 1789))?;
-        check_hash_uncompressed!(BHP1024, Private, 1044, (429, 0, 1789, 1789))?;
-        check_hash_uncompressed!(BHP1024, Private, 1046, (438, 0, 2475, 2476))
+        check_hash_uncompressed!(BHP1024, Private, 1043, (429, 0, 1803, 1817))?;
+        check_hash_uncompressed!(BHP1024, Private, 1044, (429, 0, 1803, 1817))?;
+        check_hash_uncompressed!(BHP1024, Private, 1046, (438, 0, 2493, 2512))
     }
 
     #[test]
     fn test_hash_uncompressed_cost_comparison() -> Result<()> {
         // The cost to hash 512 bits for each BHP variant is:
-        check_hash_uncompressed!(BHP256, Private, 512, (422, 0, 1557, 1558))?;
-        check_hash_uncompressed!(BHP512, Private, 512, (421, 0, 890, 890))?;
-        check_hash_uncompressed!(BHP768, Private, 512, (447, 0, 918, 918))?;
-        check_hash_uncompressed!(BHP1024, Private, 512, (417, 0, 883, 883))
+        check_hash_uncompressed!(BHP256, Private, 512, (422, 0, 1567, 1578))?;
+        check_hash_uncompressed!(BHP512, Private, 512, (421, 0, 900, 910))?;
+        check_hash_uncompressed!(BHP768, Private, 512, (447, 0, 936, 954))?;
+        check_hash_uncompressed!(BHP1024, Private, 512, (417, 0, 891, 899))
     }
 }

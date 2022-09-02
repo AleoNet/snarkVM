@@ -54,9 +54,9 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::NUM_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
             let expected_num_bytes = expected.len();
-            assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
+            assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected)).to_bits_le();
 
@@ -74,9 +74,9 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::NUM_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
             let expected_num_bytes = expected.len();
-            assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
+            assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected)).to_bits_be();
 

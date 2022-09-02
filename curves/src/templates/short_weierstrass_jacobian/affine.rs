@@ -41,15 +41,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    PartialEq(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -159,7 +151,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut output = Projective::zero();
-        for i in bits {
+        for i in bits.skip_while(|b| !b) {
             output.double_in_place();
             if i {
                 output.add_assign_mixed(self);
@@ -169,7 +161,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
-        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
+        self.mul_bits(BitIteratorBE::new_without_leading_zeros(P::COFACTOR))
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
@@ -222,7 +214,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
                 let x_sq = b.x.square();
                 b.x -= &b.y; // x - y
                 a.x = b.y.double(); // denominator = 2y
-                a.y = x_sq.double() + x_sq + P::COEFF_A; // numerator = 3x^2 + a
+                a.y = x_sq.double() + x_sq + P::WEIERSTRASS_A; // numerator = 3x^2 + a
                 b.y -= &(a.y * half); // y - (3x^2 + a)/2
                 a.y *= *inversion_tmp; // (3x^2 + a) * tmp
                 *inversion_tmp *= &a.x; // update tmp
@@ -282,7 +274,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new(other.to_repr()))
+        self.mul_bits(BitIteratorBE::new_without_leading_zeros(other.to_repr()))
     }
 }
 

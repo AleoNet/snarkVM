@@ -17,6 +17,8 @@
 use super::*;
 
 impl<N: Network> Visibility for Ciphertext<N> {
+    type Boolean = Boolean<N>;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         // Retrieve the number of field elements.

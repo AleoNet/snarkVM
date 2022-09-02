@@ -24,33 +24,10 @@ impl<N: Network> Process<N> {
         program: &Program<N>,
         rng: &mut R,
     ) -> Result<Deployment<N>> {
-        // Ensure the program contains functions.
-        ensure!(!program.functions().is_empty(), "Program '{}' has no functions", program.id());
-
         // Compute the stack.
         let stack = Stack::new(self, program)?;
-
-        // Initialize a mapping for the bundle.
-        let mut bundle = IndexMap::with_capacity(program.functions().len());
-
-        for function_name in program.functions().keys() {
-            // Synthesize the proving and verifying key.
-            stack.synthesize_key::<A, R>(function_name, rng)?;
-
-            // Retrieve the proving key.
-            let proving_key = stack.get_proving_key(function_name)?;
-            // Retrieve the verifying key.
-            let verifying_key = stack.get_verifying_key(function_name)?;
-
-            // Certify the circuit.
-            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
-
-            // Add the verifying key and certificate to the bundle.
-            bundle.insert(*function_name, (verifying_key, certificate));
-        }
-
         // Return the deployment.
-        Deployment::new(N::EDITION, program.clone(), bundle)
+        stack.deploy::<A, R>(rng)
     }
 
     /// Verifies the given deployment is well-formed.
@@ -60,38 +37,58 @@ impl<N: Network> Process<N> {
         deployment: &Deployment<N>,
         rng: &mut R,
     ) -> Result<()> {
-        // Retrieve the edition.
-        let edition = deployment.edition();
-        // Retrieve the program.
-        let program = deployment.program().clone();
         // Retrieve the program ID.
         let program_id = deployment.program().id();
-
-        // Ensure the edition matches.
-        ensure!(edition == N::EDITION, "Deployed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
         // Ensure the program does not already exist in the process.
         ensure!(!self.contains_program(program_id), "Program '{program_id}' already exists");
-
-        // Check Program //
-
-        // Serialize the program into bytes.
-        let program_bytes = program.to_bytes_le()?;
-        // Ensure the program deserializes from bytes correctly.
-        ensure!(program == Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
-
-        // Serialize the program into string.
-        let program_string = program.to_string();
-        // Ensure the program deserializes from a string correctly.
-        ensure!(program == Program::from_str(&program_string)?, "Program string serialization failed");
-
         // Ensure the program is well-formed, by computing the stack.
-        let stack = Stack::new(self, &program)?;
-
-        // Check Certificates //
-
+        let stack = Stack::new(self, deployment.program())?;
         // Ensure the verifying keys are well-formed and the certificates are valid.
-        stack.verify_deployment::<A, R>(deployment.verifying_keys(), rng)?;
+        stack.verify_deployment::<A, R>(deployment, rng)
+    }
 
+    /// Finalizes the deployment.
+    /// This method assumes the given deployment **is valid**.
+    #[inline]
+    pub fn finalize_deployment<P: ProgramStorage<N>>(
+        &mut self,
+        store: &ProgramStore<N, P>,
+        deployment: &Deployment<N>,
+    ) -> Result<()> {
+        // TODO (howardwu): Make this function atomic.
+        // TODO (howardwu): Check the program ID and all mappings don't exist in the 'store'. (add this to verify_deployment too)
+
+        // Compute the program stack.
+        let stack = Stack::new(self, deployment.program())?;
+        // Insert the verifying keys.
+        for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
+            stack.insert_verifying_key(function_name, verifying_key.clone())?;
+        }
+
+        // Retrieve the program ID.
+        let program_id = deployment.program_id();
+        // Iterate through the program mappings.
+        for mapping in deployment.program().mappings().values() {
+            store.initialize_mapping(program_id, mapping.name())?;
+        }
+
+        // Add the stack to the process.
+        self.stacks.insert(*deployment.program_id(), stack);
+        Ok(())
+    }
+
+    /// Adds the newly-deployed program.
+    /// This method assumes the given deployment **is valid**.
+    #[inline]
+    pub(crate) fn load_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
+        // Compute the program stack.
+        let stack = Stack::new(self, deployment.program())?;
+        // Insert the verifying keys.
+        for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
+            stack.insert_verifying_key(function_name, verifying_key.clone())?;
+        }
+        // Add the stack to the process.
+        self.stacks.insert(*deployment.program_id(), stack);
         Ok(())
     }
 }

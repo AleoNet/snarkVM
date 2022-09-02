@@ -24,6 +24,8 @@ impl<N: Network> Parser for Operand<N> {
         alt((
             map(Literal::parse, |literal| Self::Literal(literal)),
             map(Register::parse, |register| Self::Register(register)),
+            map(tag("self.caller"), |_| Self::Caller),
+            map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
         ))(string)
     }
 }
@@ -61,6 +63,10 @@ impl<N: Network> Display for Operand<N> {
             Self::Literal(literal) => Display::fmt(literal, f),
             // Prints the register, i.e. r0 or r0.owner
             Self::Register(register) => Display::fmt(register, f),
+            // Prints the program ID, i.e. howard.aleo
+            Self::ProgramID(program_id) => Display::fmt(program_id, f),
+            // Prints the caller, i.e. self.caller
+            Self::Caller => write!(f, "self.caller"),
         }
     }
 }
@@ -83,6 +89,12 @@ mod tests {
         let operand = Operand::<CurrentNetwork>::parse("r0.owner").unwrap().1;
         assert_eq!(Operand::Register(Register::from_str("r0.owner")?), operand);
 
+        let operand = Operand::<CurrentNetwork>::parse("howard.aleo").unwrap().1;
+        assert_eq!(Operand::ProgramID(ProgramID::from_str("howard.aleo")?), operand);
+
+        let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
+        assert_eq!(Operand::Caller, operand);
+
         // Sanity check a failure case.
         let (remainder, operand) = Operand::<CurrentNetwork>::parse("1field.private").unwrap();
         assert_eq!(Operand::Literal(Literal::from_str("1field")?), operand);
@@ -101,6 +113,12 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::parse("r0.owner").unwrap().1;
         assert_eq!(format!("{operand}"), "r0.owner");
+
+        let operand = Operand::<CurrentNetwork>::parse("howard.aleo").unwrap().1;
+        assert_eq!(format!("{operand}"), "howard.aleo");
+
+        let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
+        assert_eq!(format!("{operand}"), "self.caller");
     }
 
     #[test]

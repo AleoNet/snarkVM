@@ -159,6 +159,26 @@ fn test_fq_is_half() {
 }
 
 #[test]
+fn test_fr_sum_of_products() {
+    let mut rng = test_rng();
+    for i in [2, 4, 8, 16, 32] {
+        let a = (0..i).map(|_| rng.gen()).collect::<Vec<_>>();
+        let b = (0..i).map(|_| rng.gen()).collect::<Vec<_>>();
+        assert_eq!(Fr::sum_of_products(a.iter(), b.iter()), a.into_iter().zip(b).map(|(a, b)| a * b).sum());
+    }
+}
+
+#[test]
+fn test_fq_sum_of_products() {
+    let mut rng = test_rng();
+    for i in [2, 4, 8, 16, 32] {
+        let a = (0..i).map(|_| rng.gen()).collect::<Vec<_>>();
+        let b = (0..i).map(|_| rng.gen()).collect::<Vec<_>>();
+        assert_eq!(Fq::sum_of_products(a.iter(), b.iter()), a.into_iter().zip(b).map(|(a, b)| a * b).sum());
+    }
+}
+
+#[test]
 fn test_fq_repr_num_bits() {
     let mut a = BigInteger384::from(0);
     assert_eq!(0, a.num_bits());

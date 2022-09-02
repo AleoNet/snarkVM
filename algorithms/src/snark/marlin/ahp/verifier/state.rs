@@ -29,6 +29,7 @@ use snarkvm_fields::PrimeField;
 #[derive(Debug)]
 pub struct State<F: PrimeField, MM: MarlinMode> {
     pub(in crate::snark::marlin) batch_size: usize,
+    pub(crate) input_domain: EvaluationDomain<F>,
     pub(crate) constraint_domain: EvaluationDomain<F>,
     pub(crate) non_zero_a_domain: EvaluationDomain<F>,
     pub(crate) non_zero_b_domain: EvaluationDomain<F>,

@@ -252,40 +252,50 @@ pub trait PairingCurve: AffineCurve {
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult;
 }
 
-pub trait ModelParameters: Send + Sync + 'static + Sized {
+pub trait ModelParameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
     type BaseField: Field + SquareRootField;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
 
 pub trait ShortWeierstrassParameters: ModelParameters {
-    const COEFF_A: Self::BaseField;
-    const COEFF_B: Self::BaseField;
+    /// The coefficient `A` of the short Weierstrass curve.
+    const WEIERSTRASS_A: Self::BaseField;
+    /// The coefficient `B` of the short Weierstrass curve.
+    const WEIERSTRASS_B: Self::BaseField;
+    /// The cofactor of the short Weierstrass curve.
     const COFACTOR: &'static [u64];
+    /// The cofactor inverse of the short Weierstrass curve.
     const COFACTOR_INV: Self::ScalarField;
+    /// The affine generator of the short Weierstrass curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
 
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
-        copy *= &Self::COEFF_A;
+        copy *= &Self::WEIERSTRASS_A;
         copy
     }
 
     #[inline(always)]
     fn add_b(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
-        copy += &Self::COEFF_B;
+        copy += &Self::WEIERSTRASS_B;
         copy
     }
 
     fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
 }
 
-pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
-    const COEFF_A: Self::BaseField;
-    const COEFF_D: Self::BaseField;
+pub trait TwistedEdwardsParameters: ModelParameters {
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::BaseField;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::BaseField;
+    /// The cofactor of the twisted Edwards curve.
     const COFACTOR: &'static [u64];
+    /// The cofactor inverse of the twisted Edwards curve.
     const COFACTOR_INV: Self::ScalarField;
+    /// The affine generator of the twisted Edwards curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
 
     type MontgomeryParameters: MontgomeryParameters<BaseField = Self::BaseField>;
@@ -293,14 +303,16 @@ pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq +
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
-        copy *= &Self::COEFF_A;
+        copy *= &Self::EDWARDS_A;
         copy
     }
 }
 
 pub trait MontgomeryParameters: ModelParameters {
-    const COEFF_A: Self::BaseField;
-    const COEFF_B: Self::BaseField;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::BaseField;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::BaseField;
 
     type TwistedEdwardsParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
 }

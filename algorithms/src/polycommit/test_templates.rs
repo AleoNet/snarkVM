@@ -33,7 +33,7 @@ use crate::{
         sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, LinearCombination},
         PCError,
     },
-    snark::marlin::FiatShamirRng,
+    AlgebraicSponge,
 };
 use itertools::Itertools;
 use snarkvm_curves::PairingEngine;
@@ -56,7 +56,7 @@ struct TestInfo {
     num_equations: Option<usize>,
 }
 
-pub struct TestComponents<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> {
+pub struct TestComponents<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
     pub verification_key: VerifierKey<E>,
     pub commitments: Vec<LabeledCommitment<Commitment<E>>>,
     pub query_set: QuerySet<'static, E::Fr>,
@@ -67,7 +67,7 @@ pub struct TestComponents<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> {
     _sponge: PhantomData<S>,
 }
 
-pub fn bad_degree_bound_test<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>() -> Result<(), PCError> {
+pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -> Result<(), PCError> {
     let rng = &mut test_rng();
     let max_degree = 100;
     let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
@@ -118,7 +118,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>()
     Ok(())
 }
 
-pub fn lagrange_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>()
+pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
 -> Result<Vec<TestComponents<E, S>>, PCError> {
     let num_iters = 10usize;
     let max_degree = 256usize;
@@ -225,7 +225,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
 fn test_template<E, S>(info: TestInfo) -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let TestInfo {
         num_iters,
@@ -343,7 +343,7 @@ where
     Ok(test_components)
 }
 
-fn equation_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
+fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
     info: TestInfo,
 ) -> Result<Vec<TestComponents<E, S>>, PCError> {
     let TestInfo {
@@ -515,7 +515,7 @@ fn equation_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
 pub fn single_poly_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -532,7 +532,7 @@ where
 pub fn linear_poly_degree_bound_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -549,7 +549,7 @@ where
 pub fn single_poly_degree_bound_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -566,7 +566,7 @@ where
 pub fn quadratic_poly_degree_bound_multiple_queries_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -583,7 +583,7 @@ where
 pub fn single_poly_degree_bound_multiple_queries_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -600,7 +600,7 @@ where
 pub fn two_polys_degree_bound_single_query_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -617,7 +617,7 @@ where
 pub fn full_end_to_end_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -634,7 +634,7 @@ where
 pub fn full_end_to_end_equation_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -651,7 +651,7 @@ where
 pub fn single_equation_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -668,7 +668,7 @@ where
 pub fn two_equation_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,
@@ -685,7 +685,7 @@ where
 pub fn two_equation_degree_bound_test<E, S>() -> Result<Vec<TestComponents<E, S>>, PCError>
 where
     E: PairingEngine,
-    S: FiatShamirRng<E::Fr, E::Fq>,
+    S: AlgebraicSponge<E::Fq, 2>,
 {
     let info = TestInfo {
         num_iters: 100,

@@ -22,6 +22,8 @@
 extern crate alloc;
 
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate thiserror;
 
 #[macro_use]

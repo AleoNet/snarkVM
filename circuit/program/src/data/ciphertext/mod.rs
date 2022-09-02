@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod decrypt;
+mod equal;
 mod from_bits;
 mod from_fields;
 mod num_randomizers;
