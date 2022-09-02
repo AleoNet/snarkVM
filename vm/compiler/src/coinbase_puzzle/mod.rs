@@ -26,6 +26,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
+use crate::UniversalSRS;
 use console::{account::Address, prelude::Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
@@ -41,6 +42,9 @@ use rand::{CryptoRng, Rng};
 use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
 
 pub struct CoinbasePuzzle<N: Network>(PhantomData<N>);
+
+// TODO (raychu86): Select the degree properly.
+pub const LOG_DEGREE: usize = 5;
 
 impl<N: Network> CoinbasePuzzle<N> {
     pub fn setup(max_degree: usize, rng: &mut (impl CryptoRng + Rng)) -> Result<SRS<N::PairingCurve>> {
@@ -69,6 +73,16 @@ impl<N: Network> CoinbasePuzzle<N> {
         let pk =
             CoinbasePuzzleProvingKey { powers_of_beta_g, lagrange_bases_at_beta_g: lagrange_basis_map, vk: vk.clone() };
         Ok((pk, vk))
+    }
+
+    /// Load the coinbase puzzle proving and verifying keys.
+    pub fn load() -> Result<(CoinbasePuzzleProvingKey<N>, CoinbasePuzzleVerifyingKey<N>)> {
+        // Load the universal SRS.
+        let universal_srs = UniversalSRS::<N>::load()?;
+
+        let product_degree = (1 << (LOG_DEGREE + 1)) - 1;
+
+        Self::trim(&*universal_srs, product_degree)
     }
 
     pub fn init_for_epoch(epoch_info: &EpochInfo, degree: usize) -> Result<EpochChallenge<N>> {
@@ -116,26 +130,6 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
 
         Ok(ProverPuzzleSolution { address: *address, nonce, commitment, proof })
-    }
-
-    /// Returns `true` if the individual prover puzzle solution is valid.
-    pub fn verify_individual_solution(
-        vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_info: &EpochInfo,
-        epoch_challenge: &EpochChallenge<N>,
-        solution: &ProverPuzzleSolution<N>,
-    ) -> Result<bool> {
-        if solution.proof.is_hiding() {
-            return Ok(false);
-        }
-
-        let polynomial =
-            Self::sample_solution_polynomial(epoch_challenge, epoch_info, &solution.address, solution.nonce)?;
-        let point = hash_commitment(&solution.commitment);
-        let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
-        let polynomial_eval = polynomial.evaluate(point);
-        let product_eval = epoch_challenge_eval * polynomial_eval;
-        Ok(KZG10::check(vk, &solution.commitment, point, product_eval, &solution.proof)?)
     }
 
     pub fn accumulate(
