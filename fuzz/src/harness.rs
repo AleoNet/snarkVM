@@ -24,10 +24,19 @@ use snarkvm::prelude::{circuit, Environment, Input, PrivateKey, test_crypto_rng,
 use std::str::FromStr;
 use arbitrary::Arbitrary;
 
+
+static INSTANCE: OnceCell<VM<FuzzNetwork>> = OnceCell::new();
+
+pub type FuzzNetwork = Testnet3;
+
+pub fn init_vm() -> &'static VM<FuzzNetwork> {
+    INSTANCE.get_or_init(|| VM::<FuzzNetwork>::new().unwrap())
+}
+
 pub fn harness(buf: &[u8]) {
     if let Ok(s) = std::str::from_utf8(buf) {
         let result = panic::catch_unwind(|| {
-            if let Ok(program) = Program::<FuzzNetwork>::from_str(&s) {
+            if let Ok((s, program)) = Program::<FuzzNetwork>::parse(&s) {
                 fuzz_program(program);
             }
         });
@@ -42,22 +51,12 @@ pub fn harness(buf: &[u8]) {
             }
         }
     }
-
-    /*            let mut unstructured = Unstructured::new(buf);
-
-                if let Ok(program) = Program::<CurrentNetwork>::arbitrary(&mut unstructured) {
-
-                } else {
-
-                }*/
 }
 
-static INSTANCE: OnceCell<VM<FuzzNetwork>> = OnceCell::new();
-
-pub type FuzzNetwork = Testnet3;
-
-pub fn init_vm() -> &'static VM<FuzzNetwork> {
-    INSTANCE.get_or_init(|| VM::<FuzzNetwork>::new().unwrap())
+pub fn fuzz_program(program: Program<FuzzNetwork>) {
+    deploy(&program);
+    // TODO: Execution is not working yet
+    // execute(&program);
 }
 
 pub fn deploy(program: &Program<FuzzNetwork>) {
@@ -76,18 +75,17 @@ pub fn execute(program: &Program<FuzzNetwork>) {
     if let Some(f) = program.functions().first() {
         let pkey = PrivateKey::new(rng).unwrap();
 
-        //let inputs = f.1.inputs().iter().map(|_| Input::arbitrary()).collect::<Vec<_>>();
+        // TODO generate data for actually executing a program
+        // let inputs = f.1.inputs().iter().map(|_| Input::arbitrary()).collect::<Vec<_>>();
 
         let inputs = [];
 
         if let Ok(auth) = vm.authorize(&pkey, program.id(), f.0.clone(), &inputs, rng) {
-            vm.execute(auth, rng); // ignore unwrap
+            if let Err(_) = vm.execute(auth, rng){
+                // ignore
+            }
         } else {
             // ignore
         }
     }
-}
-pub fn fuzz_program(program: Program<FuzzNetwork>) {
-    deploy(&program);
-    execute(&program);
 }

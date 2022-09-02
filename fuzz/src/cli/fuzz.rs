@@ -127,26 +127,10 @@ pub struct FuzzCli {
     default_value = "20000"
     )]
     timeout: Duration,
-    /*
-    /// This fuzzer has hard-coded tokens
-    #[clap(
-        parse(from_os_str),
-        short = "x",
-        long,
-        help = "Feed the fuzzer with an user-specified list of tokens (often called \"dictionary\"",
-        name = "TOKENS",
-        multiple = true
-    )]
-    tokens: Vec<PathBuf>,
-    */
 }
 
 impl FuzzCli {
     pub fn fuzz(self) {
-        // Registry the metadata types used in this fuzzer
-        // Needed only on no_std
-        //RegistryBuilder::register::<Tokens>();
-
         let broker_port = self.broker_port;
         let cores = self.cores.clone();
 

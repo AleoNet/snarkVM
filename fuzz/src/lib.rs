@@ -15,12 +15,3 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod harness;
-
-use snarkvm::{compiler::Program, console::network::Testnet3, prelude::test_crypto_rng};
-use snarkvm::prelude::{PrivateKey, VM};
-use std::sync::Once;
-use once_cell::sync::OnceCell;
-use snarkvm::circuit;
-use snarkvm::circuit::Mode;
-use crate::circuit::{AleoV0, Inject};
-

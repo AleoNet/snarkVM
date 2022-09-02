@@ -16,18 +16,15 @@
 
 use fuzz::FuzzCli;
 use execute::ExecuteCli;
-use seed::SeedCli;
 use clap::{self, Parser, StructOpt, Subcommand};
 
 mod execute;
 mod fuzz;
-mod seed;
 
 #[derive(Parser)]
 #[clap(
-name = "libfuzzer_libpng_launcher",
-about = "A libfuzzer-like fuzzer for libpng with llmp-multithreading support and a launcher",
-author = "Andrea Fioraldi <andreafioraldi@gmail.com>, Dominik Maier <domenukk@gmail.com>"
+    name = "snarkVM fuzzer",
+    about = "A fuzzer for snarkVM based on LibAFL",
 )]
 pub struct Cli {
     #[clap(subcommand)]
@@ -36,7 +33,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Seed(SeedCli),
     Execute(ExecuteCli),
     Fuzz(FuzzCli),
 }
@@ -47,9 +43,6 @@ impl Cli {
         match self.command {
             Commands::Fuzz(cli) => {
                 cli.fuzz()
-            }
-            Commands::Seed(cli) => {
-                cli.run();
             }
             Commands::Execute(execute) => {
                 execute.run();

@@ -29,11 +29,6 @@ pub struct ExecuteCli {
     input: Vec<PathBuf>,
 }
 
-#[cfg(feature = "coverage")]
-extern "C" {
-    fn __llvm_profile_write_file() -> c_int;
-}
-
 impl ExecuteCli {
     pub fn run(self) {
         let inputs = self.input;

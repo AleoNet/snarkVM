@@ -7,7 +7,6 @@ edition = "2018"
 default-run = "libafl"
 
 [features]
-coverage = []
 
 [package.metadata]
 cargo-fuzz = true
@@ -17,10 +16,8 @@ libfuzzer-sys = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
 libafl = "0.8.0"
 libafl_targets = { version = "0.8.0", features = ["sancov_pcguard_hitcounts", "sancov_8bit"] }
-
 once_cell = "1.13.0"
 clap = "3.2.16"
-
 tokio = "1.20.1"
 
 [dependencies.snarkvm]
