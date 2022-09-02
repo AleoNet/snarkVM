@@ -33,6 +33,7 @@ use crate::{
         Signature,
         Transactions,
     },
+    CombinedPuzzleSolution,
 };
 use console::network::prelude::*;
 
@@ -65,6 +66,8 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
     type TransitionStorage: TransitionStorage<N>;
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+    /// The mapping of `block hash` to `block coinbase proof`.
+    type CoinbaseProofMap: for<'a> Map<'a, N::BlockHash, CombinedPuzzleSolution<N>>;
 
     /// Initializes the block storage.
     fn open() -> Result<Self>;
@@ -83,6 +86,8 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap;
+    /// Returns the coinbase proof map.
+    fn coinbase_proof_map(&self) -> &Self::CoinbaseProofMap;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -93,6 +98,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         self.reverse_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
         self.signature_map().start_atomic();
+        self.coinbase_proof_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -104,6 +110,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
             || self.reverse_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
             || self.signature_map().is_atomic_in_progress()
+            || self.coinbase_proof_map().is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.
@@ -115,6 +122,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         self.reverse_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
         self.signature_map().abort_atomic();
+        self.coinbase_proof_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -125,7 +133,8 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         self.transactions_map().finish_atomic()?;
         self.reverse_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
-        self.signature_map().finish_atomic()
+        self.signature_map().finish_atomic()?;
+        self.coinbase_proof_map().finish_atomic()
     }
 
     /// Stores the given `block` into storage.
@@ -151,6 +160,9 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
 
             // Store the block signature.
             self.signature_map().insert(block.hash(), *block.signature())?;
+
+            // Store the block coinbase proof.
+            self.coinbase_proof_map().insert(block.hash(), block.coinbase_proof().clone())?;
 
             Ok(())
         });
@@ -192,6 +204,9 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
 
             // Remove the block signature.
             self.signature_map().remove(block_hash)?;
+
+            // Remove the block coinbase proof.
+            self.coinbase_proof_map().remove(block_hash)?;
 
             Ok(())
         });
@@ -270,6 +285,14 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         }
     }
 
+    /// Returns the block coinbase proof for the given `block hash`.
+    fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CombinedPuzzleSolution<N>>> {
+        match self.coinbase_proof_map().get(block_hash)? {
+            Some(coinbase_proof) => Ok(Some(cow_to_cloned!(coinbase_proof))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the block for the given `block hash`.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         // Retrieve the block height.
@@ -303,9 +326,14 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
             Some(signature) => signature,
             None => bail!("Missing signature for block {height} ('{block_hash}')"),
         };
+        // Retrieve the block coinbase proof.
+        let coinbase_proof = match self.get_block_coinbase_proof(block_hash)? {
+            Some(coinbase_proof) => coinbase_proof,
+            None => bail!("Missing coinbase proof for block {height} ('{block_hash}')"),
+        };
 
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transactions, signature)?))
+        Ok(Some(Block::from(previous_hash, header, transactions, signature, coinbase_proof)?))
     }
 }
 
@@ -326,6 +354,8 @@ pub struct BlockMemory<N: Network> {
     transaction_store: TransactionStore<N, TransactionMemory<N>>,
     /// The signature map.
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
+    /// The coinbase proof map.
+    coinbase_proof_map: MemoryMap<N::BlockHash, CombinedPuzzleSolution<N>>,
 }
 
 #[rustfmt::skip]
@@ -338,6 +368,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
+    type CoinbaseProofMap = MemoryMap<N::BlockHash, CombinedPuzzleSolution<N>>;
 
     /// Initializes the block storage.
     fn open() -> Result<Self> {
@@ -354,6 +385,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             reverse_transactions_map: MemoryMap::default(),
             transaction_store,
             signature_map: MemoryMap::default(),
+            coinbase_proof_map: MemoryMap::default(),
         })
     }
 
@@ -390,6 +422,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap {
         &self.signature_map
+    }
+
+    /// Returns the coinbase proof map.
+    fn coinbase_proof_map(&self) -> &Self::CoinbaseProofMap {
+        &self.coinbase_proof_map
     }
 }
 
@@ -481,6 +518,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block signature for the given `block hash`.
     pub fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
         self.storage.get_block_signature(block_hash)
+    }
+
+    /// Returns the block coinbase proof for the given `block hash`.
+    pub fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CombinedPuzzleSolution<N>>> {
+        self.storage.get_block_coinbase_proof(block_hash)
     }
 
     /// Returns the block for the given `block hash`.
