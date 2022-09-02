@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use console::network::Testnet3;
+use console::{account::*, network::Testnet3};
 use snarkvm_utilities::Uniform;
 
 use rand::RngCore;
@@ -35,7 +35,8 @@ fn test_coinbase_puzzle() {
         for batch_size in 1..10 {
             let solutions = (0..batch_size)
                 .map(|_| {
-                    let address = CoinbasePuzzleAddress(<[u8; 32]>::rand(&mut rng));
+                    let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+                    let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
                     CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &address, nonce)
                 })
