@@ -83,6 +83,7 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut T
                 // If we negate the y-coordinate, the point is no longer in the prime-order subgroup,
                 // and so this should error when `validate == Validate::Yes`.
                 a_copy.y = -a.y;
+                a_copy.t = a_copy.x * a_copy.y;
                 let mut serialized = vec![0; buf_size];
                 let mut cursor = Cursor::new(&mut serialized[..]);
                 a_copy.serialize_with_mode(&mut cursor, compress).unwrap();
@@ -132,6 +133,7 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut T
             {
                 let mut a_copy = a;
                 a_copy.y = -a.y;
+                a_copy.t = a_copy.x * a_copy.y;
                 let mut serialized = vec![0; a.uncompressed_size()];
                 let mut cursor = Cursor::new(&mut serialized[..]);
                 a_copy.serialize_uncompressed(&mut cursor).unwrap();
