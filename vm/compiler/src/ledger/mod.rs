@@ -41,7 +41,7 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::program::Program;
+use crate::{program::Program, ProverPuzzleSolution};
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
@@ -102,6 +102,13 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     validators: IndexMap<Address<N>, ()>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
+
+    // TODO (raychu86): Add the coinbase proving/verifying key. (Or unify with a new struct)
+
+    // TODO (raychu86): Make this an IndexMap.
+    /// The memory pool of proposed coinbase puzzle solutions for the current epoch.
+    prover_puzzle_memory_pool: Vec<ProverPuzzleSolution<N>>,
+
     /// The VM state.
     vm: VM<N, P>,
     // /// The mapping of program IDs to their global state.
@@ -147,6 +154,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: Default::default(),
             vm,
             memory_pool: Default::default(),
+            prover_puzzle_memory_pool: Default::default(),
         };
 
         // Fetch the latest height.
@@ -217,6 +225,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: [(address, ())].into_iter().collect(),
             vm,
             memory_pool: Default::default(),
+            prover_puzzle_memory_pool: Default::default(),
         };
 
         // Add the genesis block.
@@ -315,11 +324,28 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Appends the given transaction to the memory pool.
+    pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
+        // Ensure the transaction does not already exist.
+        if self.prover_puzzle_memory_pool.contains(&prover_puzzle_solution) {
+            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment.0);
+        }
+
+        // TODO (raychu86): Ensure that the prover puzzle is valid for the given epoch
+
+        // Insert the prover puzzle to the memory pool.
+        self.prover_puzzle_memory_pool.push(prover_puzzle_solution);
+        Ok(())
+    }
+
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // TODO (raychu86): Add logic to transaction selection from the mempool.
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
+
+        // TODO (raychu86): Accumulate prover puzzle solutions from the mempool.
+        // TODO (raychu86): Add the accumulated coinbase proof to the block.
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
@@ -574,6 +600,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 ledger.memory_pool.remove(transaction_id);
             }
 
+            // TODO (raychu86): Clear the coinbase memory pool of the coinbase proofs
+
             *self = Self {
                 current_hash: ledger.current_hash,
                 current_height: ledger.current_height,
@@ -585,6 +613,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 validators: ledger.validators,
                 vm: ledger.vm,
                 memory_pool: ledger.memory_pool,
+                prover_puzzle_memory_pool: ledger.prover_puzzle_memory_pool,
             };
         }
 
