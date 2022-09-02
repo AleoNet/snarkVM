@@ -217,7 +217,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
         // D = Z1
         let d = self.z;
         // E = (X1+Y1)*(X2+Y2)-A-B
-        let e = (self.x + self.y) * (other.x + other.y) - a - b;
+        let e = P::BaseField::sum_of_products([self.x, other.x].iter(), [self.y, other.y].iter()) - a - b;
         // F = D-C
         let f = d - c;
         // G = D+C
