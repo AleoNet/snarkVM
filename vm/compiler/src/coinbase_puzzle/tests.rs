@@ -25,27 +25,27 @@ fn test_coinbase_puzzle() {
     let max_degree = 1 << 15;
     let mut rng = rand::thread_rng();
 
-    let srs = CoinbasePuzzle::<Testnet3>::setup(max_degree, &mut rng);
+    let srs = CoinbasePuzzle::<Testnet3>::setup(max_degree, &mut rng).unwrap();
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
         let product_degree = (1 << (log_degree + 1)) - 1;
-        let (pk, vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, product_degree);
+        let (pk, vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, product_degree).unwrap();
         let epoch_info = EpochInfo { epoch_number: rng.next_u64() };
-        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree);
+        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree).unwrap();
         for batch_size in 1..10 {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
-                    CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &address, nonce)
+                    CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_info, &epoch_challenge, &solutions);
-            assert!(CoinbasePuzzle::verify(&vk, &epoch_info, &epoch_challenge, &full_solution));
+            let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_info, &epoch_challenge, &solutions).unwrap();
+            assert!(CoinbasePuzzle::verify(&vk, &epoch_info, &epoch_challenge, &full_solution).unwrap());
             let bad_epoch_info = EpochInfo { epoch_number: rng.next_u64() };
-            let bad_epoch_challenge = CoinbasePuzzle::init_for_epoch(&bad_epoch_info, degree);
-            assert!(!CoinbasePuzzle::verify(&vk, &bad_epoch_info, &bad_epoch_challenge, &full_solution));
+            let bad_epoch_challenge = CoinbasePuzzle::init_for_epoch(&bad_epoch_info, degree).unwrap();
+            assert!(!CoinbasePuzzle::verify(&vk, &bad_epoch_info, &bad_epoch_challenge, &full_solution).unwrap());
         }
     }
 }
