@@ -105,6 +105,17 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             None => bail!("Missing signature for block {height}"),
         }
     }
+
+    /// Returns the current epoch info.
+    pub fn get_epoch_info(&self) -> EpochInfo {
+        EpochInfo { epoch_number: self.latest_round().saturating_add(1) }
+    }
+
+    /// Returns the current epoch challenge.
+    pub fn get_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
+        let degree = (1 << LOG_DEGREE) - 1;
+        CoinbasePuzzle::init_for_epoch(&self.get_epoch_info(), degree)
+    }
 }
 
 #[cfg(test)]
