@@ -141,6 +141,7 @@ impl<N: Network> Package<N> {
 
         // Build the package, if the package requires building.
         // TODO: Remove this clone and do things the reasonable way
+        // TODO: Executing before building will fail. We need to handle the build request in snarkOS's server.
         self.build::<A>(endpoint.clone())?;
 
         // Prepare the locator (even if logging is disabled, to sanity check the locator is well-formed).
