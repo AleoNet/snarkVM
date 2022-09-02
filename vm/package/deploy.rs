@@ -85,25 +85,32 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
 
 pub struct DeployResponse<N: Network> {
     deployment: Deployment<N>,
+    transaction_id: String,
 }
 
 impl<N: Network> DeployResponse<N> {
     /// Initializes a new deploy response.
-    pub const fn new(deployment: Deployment<N>) -> Self {
-        Self { deployment }
+    pub const fn new(deployment: Deployment<N>, transaction_id: String) -> Self {
+        Self { deployment, transaction_id }
     }
 
     /// Returns the program ID.
     pub const fn deployment(&self) -> &Deployment<N> {
         &self.deployment
     }
+
+    /// Returns the program ID.
+    pub const fn transaction_id(&self) -> &String {
+        &self.transaction_id
+    }
 }
 
 impl<N: Network> Serialize for DeployResponse<N> {
     /// Serializes the deploy response into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut response = serializer.serialize_struct("DeployResponse", 1)?;
+        let mut response = serializer.serialize_struct("DeployResponse", 2)?;
         response.serialize_field("deployment", &self.deployment)?;
+        response.serialize_field("transaction_id", &self.transaction_id)?;
         response.end()
     }
 }
@@ -117,6 +124,7 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
         Ok(Self::new(
             // Retrieve the program ID.
             serde_json::from_value(response["deployment"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["transaction_id"].clone()).map_err(de::Error::custom)?,
         ))
     }
 }
@@ -125,7 +133,7 @@ impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
-    ) -> Result<Deployment<N>> {
+    ) -> Result<DeployResponse<N>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the main program ID.
@@ -172,9 +180,9 @@ impl<N: Network> Package<N> {
                     "Program ID mismatch: {} != {program_id}",
                     response.deployment.program_id()
                 );
-                Ok(response.deployment)
+                Ok(response)
             }
-            None => Ok(deployment),
+            None => Ok(DeployResponse::new(deployment, "".to_string())),
         }
     }
 }
@@ -192,14 +200,14 @@ mod tests {
         let (directory, package) = crate::package::test_helpers::sample_package();
 
         // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+        let deploy_response = package.deploy::<CurrentAleo>(None).unwrap();
 
         // Ensure the deployment edition matches.
-        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+        assert_eq!(<CurrentNetwork as Network>::EDITION, deploy_response.deployment.edition());
         // Ensure the deployment program ID matches.
-        assert_eq!(package.program().id(), deployment.program_id());
+        assert_eq!(package.program().id(), deploy_response.deployment.program_id());
         // Ensure the deployment program matches.
-        assert_eq!(package.program(), deployment.program());
+        assert_eq!(package.program(), deploy_response.deployment.program());
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -211,14 +219,14 @@ mod tests {
         let (directory, package) = crate::package::test_helpers::sample_package_with_import();
 
         // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+        let deploy_response = package.deploy::<CurrentAleo>(None).unwrap();
 
         // Ensure the deployment edition matches.
-        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+        assert_eq!(<CurrentNetwork as Network>::EDITION, deploy_response.deployment.edition());
         // Ensure the deployment program ID matches.
-        assert_eq!(package.program().id(), deployment.program_id());
+        assert_eq!(package.program().id(), deploy_response.deployment.program_id());
         // Ensure the deployment program matches.
-        assert_eq!(package.program(), deployment.program());
+        assert_eq!(package.program(), deploy_response.deployment.program());
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
