@@ -310,7 +310,7 @@ fn test_isomorphism() {
         (x, y)
     };
 
-    let group = EdwardsAffine::new(x, y);
+    let group = EdwardsAffine::new(x, y, x * y);
 
     println!("{:?}", group);
 

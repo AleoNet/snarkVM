@@ -119,6 +119,7 @@ fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32,
         };
         G::batch_add_loop_2(a, b, &mut inversion_tmp);
     }
+    bases.iter_mut().for_each(|base| base.correct_t_coordinate());
 }
 
 /// If `(j, k)` is the `i`-th entry in `index`, then this method performs one of
