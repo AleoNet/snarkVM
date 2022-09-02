@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ProgramStorage;
+use crate::{coinbase_puzzle::CoinbasePuzzle, EpochInfo, ProgramStorage, LOG_DEGREE};
 
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
@@ -44,8 +44,35 @@ impl<N: Network> Block<N> {
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
+        // Generate a coinbase proof.
+        let coinbase_proof = {
+            let (pk, vk) = CoinbasePuzzle::<N>::load()?;
+
+            let epoch_info = EpochInfo { epoch_number: 0 };
+            let degree = (1 << LOG_DEGREE) - 1;
+            let epoch_challenge = CoinbasePuzzle::<N>::init_for_epoch(&epoch_info, degree)?;
+            let nonce = u64::rand(rng);
+
+            let prover_solution = CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &caller, nonce)?;
+
+            // Ensure the prover solution is valid.
+            if !prover_solution.verify(&vk, &epoch_info, &epoch_challenge)? {
+                bail!("Failed to initialize the genesis coinbase puzzle");
+            }
+
+            let coinbase_proof =
+                CoinbasePuzzle::<N>::accumulate(&pk, &epoch_info, &epoch_challenge, &[prover_solution])?;
+
+            // Ensure the coinbase proof is valid.
+            if !CoinbasePuzzle::<N>::verify(&vk, &epoch_info, &epoch_challenge, &coinbase_proof)? {
+                bail!("Failed to initialize the genesis coinbase puzzle")
+            }
+
+            coinbase_proof
+        };
+
         // Construct the block.
-        let block = Self::new(private_key, previous_hash, header, transactions, rng)?;
+        let block = Self::new(private_key, previous_hash, header, transactions, coinbase_proof, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),

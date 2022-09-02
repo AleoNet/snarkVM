@@ -46,6 +46,7 @@ use crate::{
     CoinbasePuzzle,
     CoinbasePuzzleProvingKey,
     CoinbasePuzzleVerifyingKey,
+    CombinedPuzzleSolution,
     EpochChallenge,
     EpochInfo,
     ProverPuzzleSolution,
@@ -400,7 +401,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         let epoch_info = self.get_epoch_info();
         let epoch_challenge = self.get_epoch_challenge()?;
-        let combined_prover_puzzle_solution = CoinbasePuzzle::accumulate(
+        let coinbase_proof = CoinbasePuzzle::accumulate(
             &self.coinbase_puzzle_proving_key,
             &epoch_info,
             &epoch_challenge,
@@ -432,7 +433,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let header = Header::from(*state_root, transactions.to_root()?, metadata)?;
 
         // Construct the new block.
-        Block::new(private_key, block.hash(), header, transactions, rng)
+        Block::new(private_key, block.hash(), header, transactions, coinbase_proof, rng)
     }
 
     /// Checks the given block is valid next block.

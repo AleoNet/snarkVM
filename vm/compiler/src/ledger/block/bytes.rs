@@ -33,9 +33,11 @@ impl<N: Network> FromBytes for Block<N> {
         let header = FromBytes::read_le(&mut reader)?;
         let transactions = FromBytes::read_le(&mut reader)?;
         let signature = FromBytes::read_le(&mut reader)?;
+        let coinbase_proof = FromBytes::read_le(&mut reader)?;
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transactions, signature).map_err(|e| error(e.to_string()))?;
+        let block = Self::from(previous_hash, header, transactions, signature, coinbase_proof)
+            .map_err(|e| error(e.to_string()))?;
         // Ensure the block hash matches.
         match block_hash == block.hash() {
             true => Ok(block),
@@ -56,7 +58,8 @@ impl<N: Network> ToBytes for Block<N> {
         self.previous_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
         self.transactions.write_le(&mut writer)?;
-        self.signature.write_le(&mut writer)
+        self.signature.write_le(&mut writer)?;
+        self.coinbase_proof.write_le(&mut writer)
     }
 }
 
