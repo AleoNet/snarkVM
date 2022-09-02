@@ -118,6 +118,26 @@ impl<N: Network> CoinbasePuzzle<N> {
         Ok(ProverPuzzleSolution { address: *address, nonce, commitment, proof })
     }
 
+    /// Returns `true` if the individual prover puzzle solution is valid.
+    pub fn verify_individual_solution(
+        vk: &CoinbasePuzzleVerifyingKey<N>,
+        epoch_info: &EpochInfo,
+        epoch_challenge: &EpochChallenge<N>,
+        solution: &ProverPuzzleSolution<N>,
+    ) -> Result<bool> {
+        if solution.proof.is_hiding() {
+            return Ok(false);
+        }
+
+        let polynomial =
+            Self::sample_solution_polynomial(epoch_challenge, epoch_info, &solution.address, solution.nonce)?;
+        let point = hash_commitment(&solution.commitment);
+        let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
+        let polynomial_eval = polynomial.evaluate(point);
+        let product_eval = epoch_challenge_eval * polynomial_eval;
+        Ok(KZG10::check(vk, &solution.commitment, point, product_eval, &solution.proof)?)
+    }
+
     pub fn accumulate(
         pk: &CoinbasePuzzleProvingKey<N>,
         epoch_info: &EpochInfo,

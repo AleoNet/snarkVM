@@ -88,7 +88,7 @@ impl<N: Network> EpochChallenge<N> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProverPuzzleSolution<N: Network> {
     pub address: Address<N>,
     pub nonce: u64,
@@ -116,7 +116,7 @@ impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CombinedPuzzleSolution<N: Network> {
     pub individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
     pub proof: Proof<N::PairingCurve>,
