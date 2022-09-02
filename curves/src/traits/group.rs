@@ -224,6 +224,9 @@ pub trait AffineCurve:
 
     /// Performs the second half of batch addition in-place.
     fn batch_add_loop_2(a: &mut Self, b: Self, inversion_tmp: &mut Self::BaseField);
+
+    /// Sets the `t` coordinate to the correct value.
+    fn correct_t_coordinate(&mut self);
 }
 
 pub trait PairingCurve: AffineCurve {
