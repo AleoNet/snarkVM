@@ -38,7 +38,7 @@ use crate::{
 use itertools::Itertools;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::{rand::test_rng, Uniform};
+use snarkvm_utilities::rand::{TestRng, Uniform};
 
 use rand::{
     distributions::{self, Distribution},
@@ -68,7 +68,7 @@ pub struct TestComponents<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
 }
 
 pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -> Result<(), PCError> {
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
     let max_degree = 100;
     let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
 
@@ -128,7 +128,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
     let max_num_queries = 2usize;
     let mut test_components = Vec::new();
 
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
     let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
 
     for _ in 0..num_iters {
@@ -239,7 +239,7 @@ where
 
     let mut test_components = Vec::new();
 
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
     let supported_degree_bounds = pp.supported_degree_bounds();
@@ -358,7 +358,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
 
     let mut test_components = Vec::new();
 
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
     let supported_degree_bounds = pp.supported_degree_bounds();

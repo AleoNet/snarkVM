@@ -113,9 +113,11 @@ mod tests {
 
     #[test]
     fn test_constant_minus_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
@@ -130,9 +132,11 @@ mod tests {
 
     #[test]
     fn test_constant_minus_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
@@ -147,9 +151,11 @@ mod tests {
 
     #[test]
     fn test_public_minus_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
@@ -164,9 +170,11 @@ mod tests {
 
     #[test]
     fn test_constant_minus_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
@@ -181,9 +189,11 @@ mod tests {
 
     #[test]
     fn test_private_minus_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
@@ -198,9 +208,11 @@ mod tests {
 
     #[test]
     fn test_public_minus_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
@@ -215,9 +227,11 @@ mod tests {
 
     #[test]
     fn test_public_minus_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
@@ -232,9 +246,11 @@ mod tests {
 
     #[test]
     fn test_private_minus_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
@@ -249,9 +265,11 @@ mod tests {
 
     #[test]
     fn test_private_minus_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
@@ -266,9 +284,11 @@ mod tests {
 
     #[test]
     fn test_sub_matches() {
+        let mut rng = TestRng::default();
+
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
-        let b = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut rng);
+        let b = Uniform::rand(&mut rng);
         let expected = a - b;
 
         // Constant

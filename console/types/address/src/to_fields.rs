@@ -36,9 +36,11 @@ mod tests {
 
     #[test]
     fn test_to_fields() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
 
             let candidate = address.to_fields()?;
 

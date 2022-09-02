@@ -214,6 +214,7 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) -> Result<()> {
         use console::HashMany as H;
 
@@ -223,7 +224,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Prepare the preimage.
             let native_input = (0..num_inputs)
-                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut test_rng()))
+                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(rng))
                 .collect::<Vec<_>>();
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
@@ -246,9 +247,11 @@ mod tests {
 
     #[test]
     fn test_hash_many_constant() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for num_inputs in 0..=RATE {
             for num_outputs in 0..=RATE {
-                check_hash_many(Mode::Constant, num_inputs as usize, num_outputs, 1, 0, 0, 0)?;
+                check_hash_many(Mode::Constant, num_inputs as usize, num_outputs, 1, 0, 0, 0, &mut rng)?;
             }
         }
         Ok(())
@@ -256,48 +259,52 @@ mod tests {
 
     #[test]
     fn test_hash_many_public() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for num_outputs in 0..=RATE {
-            check_hash_many(Mode::Public, 0, num_outputs, 1, 0, 0, 0)?;
+            check_hash_many(Mode::Public, 0, num_outputs, 1, 0, 0, 0, &mut rng)?;
         }
         for num_outputs in 1..=RATE {
-            check_hash_many(Mode::Public, 1, num_outputs, 1, 0, 335, 335)?;
-            check_hash_many(Mode::Public, 2, num_outputs, 1, 0, 340, 340)?;
-            check_hash_many(Mode::Public, 3, num_outputs, 1, 0, 345, 345)?;
-            check_hash_many(Mode::Public, 4, num_outputs, 1, 0, 350, 350)?;
-            check_hash_many(Mode::Public, 5, num_outputs, 1, 0, 705, 705)?;
-            check_hash_many(Mode::Public, 6, num_outputs, 1, 0, 705, 705)?;
+            check_hash_many(Mode::Public, 1, num_outputs, 1, 0, 335, 335, &mut rng)?;
+            check_hash_many(Mode::Public, 2, num_outputs, 1, 0, 340, 340, &mut rng)?;
+            check_hash_many(Mode::Public, 3, num_outputs, 1, 0, 345, 345, &mut rng)?;
+            check_hash_many(Mode::Public, 4, num_outputs, 1, 0, 350, 350, &mut rng)?;
+            check_hash_many(Mode::Public, 5, num_outputs, 1, 0, 705, 705, &mut rng)?;
+            check_hash_many(Mode::Public, 6, num_outputs, 1, 0, 705, 705, &mut rng)?;
         }
         for num_outputs in (RATE + 1)..=(RATE * 2) {
-            check_hash_many(Mode::Public, 1, num_outputs, 1, 0, 690, 690)?;
-            check_hash_many(Mode::Public, 2, num_outputs, 1, 0, 695, 695)?;
-            check_hash_many(Mode::Public, 3, num_outputs, 1, 0, 700, 700)?;
-            check_hash_many(Mode::Public, 4, num_outputs, 1, 0, 705, 705)?;
-            check_hash_many(Mode::Public, 5, num_outputs, 1, 0, 1060, 1060)?;
-            check_hash_many(Mode::Public, 6, num_outputs, 1, 0, 1060, 1060)?;
+            check_hash_many(Mode::Public, 1, num_outputs, 1, 0, 690, 690, &mut rng)?;
+            check_hash_many(Mode::Public, 2, num_outputs, 1, 0, 695, 695, &mut rng)?;
+            check_hash_many(Mode::Public, 3, num_outputs, 1, 0, 700, 700, &mut rng)?;
+            check_hash_many(Mode::Public, 4, num_outputs, 1, 0, 705, 705, &mut rng)?;
+            check_hash_many(Mode::Public, 5, num_outputs, 1, 0, 1060, 1060, &mut rng)?;
+            check_hash_many(Mode::Public, 6, num_outputs, 1, 0, 1060, 1060, &mut rng)?;
         }
         Ok(())
     }
 
     #[test]
     fn test_hash_many_private() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for num_outputs in 0..=RATE {
-            check_hash_many(Mode::Private, 0, num_outputs, 1, 0, 0, 0)?;
+            check_hash_many(Mode::Private, 0, num_outputs, 1, 0, 0, 0, &mut rng)?;
         }
         for num_outputs in 1..=RATE {
-            check_hash_many(Mode::Private, 1, num_outputs, 1, 0, 335, 335)?;
-            check_hash_many(Mode::Private, 2, num_outputs, 1, 0, 340, 340)?;
-            check_hash_many(Mode::Private, 3, num_outputs, 1, 0, 345, 345)?;
-            check_hash_many(Mode::Private, 4, num_outputs, 1, 0, 350, 350)?;
-            check_hash_many(Mode::Private, 5, num_outputs, 1, 0, 705, 705)?;
-            check_hash_many(Mode::Private, 6, num_outputs, 1, 0, 705, 705)?;
+            check_hash_many(Mode::Private, 1, num_outputs, 1, 0, 335, 335, &mut rng)?;
+            check_hash_many(Mode::Private, 2, num_outputs, 1, 0, 340, 340, &mut rng)?;
+            check_hash_many(Mode::Private, 3, num_outputs, 1, 0, 345, 345, &mut rng)?;
+            check_hash_many(Mode::Private, 4, num_outputs, 1, 0, 350, 350, &mut rng)?;
+            check_hash_many(Mode::Private, 5, num_outputs, 1, 0, 705, 705, &mut rng)?;
+            check_hash_many(Mode::Private, 6, num_outputs, 1, 0, 705, 705, &mut rng)?;
         }
         for num_outputs in (RATE + 1)..=(RATE * 2) {
-            check_hash_many(Mode::Private, 1, num_outputs, 1, 0, 690, 690)?;
-            check_hash_many(Mode::Private, 2, num_outputs, 1, 0, 695, 695)?;
-            check_hash_many(Mode::Private, 3, num_outputs, 1, 0, 700, 700)?;
-            check_hash_many(Mode::Private, 4, num_outputs, 1, 0, 705, 705)?;
-            check_hash_many(Mode::Private, 5, num_outputs, 1, 0, 1060, 1060)?;
-            check_hash_many(Mode::Private, 6, num_outputs, 1, 0, 1060, 1060)?;
+            check_hash_many(Mode::Private, 1, num_outputs, 1, 0, 690, 690, &mut rng)?;
+            check_hash_many(Mode::Private, 2, num_outputs, 1, 0, 695, 695, &mut rng)?;
+            check_hash_many(Mode::Private, 3, num_outputs, 1, 0, 700, 700, &mut rng)?;
+            check_hash_many(Mode::Private, 4, num_outputs, 1, 0, 705, 705, &mut rng)?;
+            check_hash_many(Mode::Private, 5, num_outputs, 1, 0, 1060, 1060, &mut rng)?;
+            check_hash_many(Mode::Private, 6, num_outputs, 1, 0, 1060, 1060, &mut rng)?;
         }
         Ok(())
     }

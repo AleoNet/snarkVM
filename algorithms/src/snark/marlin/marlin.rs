@@ -783,7 +783,7 @@ pub mod test {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::Field;
     use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use core::ops::MulAssign;
 
@@ -829,7 +829,7 @@ pub mod test {
 
     #[test]
     fn marlin_snark_test() {
-        let mut rng = test_crypto_rng();
+        let mut rng = TestRng::default();
 
         for _ in 0..ITERATIONS {
             // Construct the circuit.

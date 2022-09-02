@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn test_g_scalar_multiply() {
         // Compute G^r.
-        let scalar = Scalar::rand(&mut test_rng());
+        let scalar = Scalar::rand(&mut TestRng::default());
         let group = CurrentNetwork::g_scalar_multiply(&scalar);
         assert_eq!(group, CurrentNetwork::g_powers()[0] * scalar);
     }

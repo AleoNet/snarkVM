@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample an address and a private key.
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_bytes() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample an address and a private key.
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_bits() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample an address and a private key.
