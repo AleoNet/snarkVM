@@ -173,7 +173,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             .sum();
         let combined_product = &combined_polynomial * &epoch_challenge.epoch_polynomial;
         let proof = KZG10::open(&pk.powers(), &combined_product, point, &Randomness::empty())?;
-        Ok(CombinedPuzzleSolution { individual_puzzle_solutions: partial_solutions, proof })
+        Ok(CombinedPuzzleSolution::new(partial_solutions, proof))
     }
 
     pub fn verify(

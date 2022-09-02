@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::coinbase_puzzle::{hash_commitment, CoinbasePuzzle};
-use console::{
-    account::Address,
-    prelude::{Environment, Network},
-};
+use console::{account::Address, prelude::*};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
     polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey, KZG10},
@@ -164,10 +161,19 @@ impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CombinedPuzzleSolution<N: Network> {
     pub individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
     pub proof: Proof<N::PairingCurve>,
+}
+
+impl<N: Network> CombinedPuzzleSolution<N> {
+    pub fn new(
+        individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
+        proof: Proof<N::PairingCurve>,
+    ) -> Self {
+        Self { individual_puzzle_solutions, proof }
+    }
 }
 
 impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
@@ -199,5 +205,86 @@ impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
         let proof = Proof::read_le(&mut reader)?;
 
         Ok(Self { individual_puzzle_solutions, proof })
+    }
+}
+
+impl<N: Network> Serialize for CombinedPuzzleSolution<N> {
+    /// Serializes the CombinedPuzzleSolution to a JSON-string or buffer.
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // match serializer.is_human_readable() {
+        //     true => {
+        //         let mut combined_puzzle_solution = serializer.serialize_struct("CombinedPuzzleSolution", 2)?;
+        //         combined_puzzle_solution
+        //             .serialize_field("individual_puzzle_solutions", &self.individual_puzzle_solutions)?;
+        //         combined_puzzle_solution.serialize_field("proof", &self.proof)?;
+        //         combined_puzzle_solution.end()
+        //     }
+        //     false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        // }
+
+        unimplemented!()
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for CombinedPuzzleSolution<N> {
+    /// Deserializes the CombinedPuzzleSolution from a JSON-string or buffer.
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // match deserializer.is_human_readable() {
+        //     true => {
+        //         let combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
+        //         Ok(Self::new(
+        //             serde_json::from_value(combined_puzzle_solution["individual_puzzle_solutions"].clone())
+        //                 .map_err(de::Error::custom)?,
+        //             serde_json::from_value(combined_puzzle_solution["proof"].clone()).map_err(de::Error::custom)?,
+        //         )
+        //         .map_err(de::Error::custom)?)
+        //     }
+        //     false => {
+        //         FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "combined puzzle solution")
+        //     }
+        // }
+
+        unimplemented!()
+    }
+}
+
+impl<N: Network> FromStr for CombinedPuzzleSolution<N> {
+    type Err = Error;
+
+    /// Initializes the block from a JSON-string.
+    fn from_str(combined_puzzle_solution: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(combined_puzzle_solution)?)
+    }
+}
+
+impl<N: Network> Debug for CombinedPuzzleSolution<N> {
+    /// Prints the CombinedPuzzleSolution as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for CombinedPuzzleSolution<N> {
+    /// Displays the CombinedPuzzleSolution as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serde_json() -> Result<()> {
+        // TODO (raychu86): Implement this.
+        Ok(())
+    }
+
+    #[test]
+    fn test_bincode() -> Result<()> {
+        // TODO (raychu86): Implement this.
+
+        Ok(())
     }
 }
