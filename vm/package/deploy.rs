@@ -144,7 +144,7 @@ impl<N: Network> Package<N> {
         //     2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
         //     3) consensus performs the exact same checks (in `verify_deployment`)
 
-        Self::check_imports(program, &endpoint)?;
+        Self::check_imports(program)?;
 
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
@@ -169,11 +169,10 @@ impl<N: Network> Package<N> {
         }
     }
 
-    fn check_imports(program: &Program<N>, endpoint: &Option<String>) -> Result<()> {
+    fn check_imports(program: &Program<N>) -> Result<()> {
         for import_program in program.imports() {
-            let p: Option<Program<N>> =
-                ureq::get(&endpoint.clone().unwrap()).send_json(import_program.0)?.into_json()?;
-            if p.is_none() {
+            let endpoint = format!("http://localhost/testnet3/program/{}", import_program.0);
+            if let Err(_) = ureq::get(&endpoint).send_json(import_program.0)?.into_json::<String>() {
                 bail!("The program {} needs to be deployed before {}", import_program.0, program.id());
             }
         }
