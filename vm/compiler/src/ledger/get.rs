@@ -84,6 +84,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
     }
 
+    /// Returns the program for the given program id.
+    pub fn get_program(&self, program_id: ProgramID<N>) -> Result<Program<N>> {
+        match self.transactions.get_program(&program_id)? {
+            Some(program) => Ok(program),
+            None => bail!("Missing program for id {program_id}"),
+        }
+    }
+
     /// Returns the block signature for the given block height.
     pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
         // Retrieve the block hash.

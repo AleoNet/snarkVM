@@ -113,10 +113,8 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
-        // Initialize the address.
-        let address = Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?;
         // Initialize the ledger.
-        Self::new_with_genesis(&genesis, address)
+        Self::new_with_genesis(&genesis, genesis.signature().to_address())
     }
 }
 
@@ -146,12 +144,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transitions: blocks.transition_store().clone(),
             blocks,
             // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(
-                Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?,
-                (),
-            )]
-            .into_iter()
-            .collect(),
+            validators: Default::default(),
             vm,
             memory_pool: Default::default(),
         };
@@ -169,6 +162,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 genesis.height()
             }
         };
+
+        // Add the initial validator.
+        let genesis_block = ledger.get_block(0)?;
+        ledger.add_validator(genesis_block.signature().to_address())?;
 
         // Fetch the latest block.
         let block = ledger.get_block(latest_height)?;
@@ -594,9 +591,32 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Adds a given address to the validator set.
+    pub fn add_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators.insert(address, ()).is_some() {
+            bail!("'{address}' is already in the validator set.")
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Removes a given address from the validator set.
+    pub fn remove_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators.remove(&address).is_none() {
+            bail!("'{address}' is not in the validator set.")
+        } else {
+            Ok(())
+        }
+    }
+
     /// Returns the block tree.
     pub const fn block_tree(&self) -> &BlockTree<N> {
         &self.block_tree
+    }
+
+    /// Returns the validator set.
+    pub const fn validators(&self) -> &IndexMap<Address<N>, ()> {
+        &self.validators
     }
 
     /// Returns the memory pool.
