@@ -17,8 +17,7 @@
 extern crate core;
 
 use crate::cli::Cli;
-use clap::parser;
-use clap::{self, Parser, StructOpt, Subcommand};
+use clap::{self, Parser};
 
 mod cli;
 

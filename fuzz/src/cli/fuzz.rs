@@ -15,11 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 
-use clap::{self, StructOpt, Subcommand};
+use clap::{self, StructOpt};
 use core::time::Duration;
 use std::{env, net::SocketAddr, panic, path::PathBuf};
-use std::process::abort;
-use arbitrary::{Arbitrary, Unstructured};
 
 use libafl::{
     bolts::{
@@ -28,10 +26,10 @@ use libafl::{
         launcher::Launcher,
         rands::StdRand,
         shmem::{ShMemProvider, StdShMemProvider},
-        tuples::{tuple_list, Merge},
+        tuples::{tuple_list},
         AsSlice,
     },
-    corpus::{Corpus, InMemoryCorpus, OnDiskCorpus},
+    corpus::{Corpus, OnDiskCorpus},
     events::EventConfig,
     executors::{inprocess::InProcessExecutor, ExitKind, TimeoutExecutor},
     feedback_or, feedback_or_fast,
@@ -39,21 +37,18 @@ use libafl::{
     fuzzer::{Fuzzer, StdFuzzer},
     inputs::{BytesInput, HasTargetBytes},
     monitors::{MultiMonitor, OnDiskTOMLMonitor},
-    mutators::scheduled::{havoc_mutations, tokens_mutations, StdScheduledMutator},
-    mutators::token_mutations::Tokens,
+    mutators::scheduled::{havoc_mutations, StdScheduledMutator},
     observers::{HitcountsMapObserver, StdMapObserver, TimeObserver},
     schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler},
     stages::mutational::StdMutationalStage,
-    state::{HasCorpus, HasMetadata, StdState},
+    state::{HasCorpus, StdState},
     Error,
 };
 use libafl::corpus::CachedOnDiskCorpus;
 use libafl::corpus::ondisk::OnDiskMetadataFormat;
 
 use libafl_targets::{EDGES_MAP, MAX_EDGES_NUM};
-use snarkvm::prelude::{Environment, Parser, Program};
 use snarkvm_fuzz::harness::{harness, init_vm};
-use crate::cli::{Cli, Commands};
 
 /// Parse a millis string to a [`Duration`]. Used for arg parsing.
 fn timeout_from_millis_str(time: &str) -> Result<Duration, Error> {
@@ -61,6 +56,7 @@ fn timeout_from_millis_str(time: &str) -> Result<Duration, Error> {
 }
 
 #[derive(Debug, StructOpt)]
+#[clap(about = "Start fuzzing")]
 pub struct FuzzCli {
     #[clap(
     short,
@@ -237,7 +233,7 @@ impl FuzzCli {
             }
 
             // LibAFL has a panic hook. We are allowing some panics though.
-            panic::set_hook(Box::new(|panic_info| {}));
+            panic::set_hook(Box::new(|_| {}));
 
             fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut restarting_mgr)?;
             Ok(())

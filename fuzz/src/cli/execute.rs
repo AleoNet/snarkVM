@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{env, fs};
-use std::os::raw::c_int;
+use std::{fs};
 use std::path::PathBuf;
-use clap::{Args, StructOpt};
+use clap::{Args};
 use tokio::runtime::Builder;
 use tokio::task::JoinHandle;
-use snarkvm::prelude::{Parser, Program};
 use snarkvm_fuzz::harness::harness;
 
 #[derive(Debug, Args)]
+#[clap(about = "Execute a single test case")]
 pub struct ExecuteCli {
     #[clap(parse(try_from_str), help = "Inputs to run", name = "INPUT")]
     input: Vec<PathBuf>,

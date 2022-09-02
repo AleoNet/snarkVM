@@ -28,7 +28,6 @@ use snarkvm_fields::{PrimeField, SquareRootField};
 use snarkvm_utilities::BigInteger;
 
 use core::{fmt::Debug, hash::Hash};
-use std::process::exit;
 
 pub trait Environment:
     'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync

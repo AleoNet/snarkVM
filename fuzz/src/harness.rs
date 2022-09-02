@@ -20,10 +20,7 @@ use std::process::abort;
 use once_cell::sync::OnceCell;
 use snarkvm::circuit::Parser;
 use snarkvm::compiler::{Program};
-use snarkvm::prelude::{circuit, Environment, Input, PrivateKey, test_crypto_rng, Testnet3, VM};
-use std::str::FromStr;
-use arbitrary::Arbitrary;
-
+use snarkvm::prelude::{PrivateKey, test_crypto_rng, Testnet3, VM};
 
 static INSTANCE: OnceCell<VM<FuzzNetwork>> = OnceCell::new();
 
@@ -36,7 +33,7 @@ pub fn init_vm() -> &'static VM<FuzzNetwork> {
 pub fn harness(buf: &[u8]) {
     if let Ok(s) = std::str::from_utf8(buf) {
         let result = panic::catch_unwind(|| {
-            if let Ok((s, program)) = Program::<FuzzNetwork>::parse(&s) {
+            if let Ok((_s, program)) = Program::<FuzzNetwork>::parse(&s) {
                 fuzz_program(program);
             }
         });

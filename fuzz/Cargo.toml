@@ -4,7 +4,7 @@ version = "0.0.0"
 authors = ["Automatically generated"]
 publish = false
 edition = "2018"
-default-run = "libafl"
+default-run = "snarkvm-fuzzer"
 
 [features]
 
@@ -31,6 +31,6 @@ test = false
 doc = false
 
 [[bin]]
-name = "libafl"
+name = "snarkvm-fuzzer"
 path = "src/main.rs"
 

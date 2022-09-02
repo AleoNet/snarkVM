@@ -16,7 +16,7 @@
 
 use fuzz::FuzzCli;
 use execute::ExecuteCli;
-use clap::{self, Parser, StructOpt, Subcommand};
+use clap::{self, Parser, Subcommand};
 
 mod execute;
 mod fuzz;
