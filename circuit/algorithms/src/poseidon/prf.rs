@@ -37,7 +37,7 @@ impl<E: Environment, const RATE: usize> PRF for Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -52,6 +52,7 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) -> Result<()> {
         use console::PRF as P;
 
@@ -60,11 +61,11 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Prepare the seed.
-            let native_seed = Uniform::rand(&mut test_rng());
+            let native_seed = Uniform::rand(rng);
             let seed = Field::new(mode, native_seed);
 
             // Prepare the preimage.
-            let native_input = (0..num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
+            let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
@@ -84,39 +85,45 @@ mod tests {
 
     #[test]
     fn test_prf_constant() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for num_inputs in 0..=RATE {
-            check_prf(Mode::Constant, num_inputs, 1, 0, 0, 0)?;
+            check_prf(Mode::Constant, num_inputs, 1, 0, 0, 0, &mut rng)?;
         }
         Ok(())
     }
 
     #[test]
     fn test_prf_public() -> Result<()> {
-        check_prf(Mode::Public, 0, 1, 0, 335, 335)?;
-        check_prf(Mode::Public, 1, 1, 0, 340, 340)?;
-        check_prf(Mode::Public, 2, 1, 0, 345, 345)?;
-        check_prf(Mode::Public, 3, 1, 0, 350, 350)?;
-        check_prf(Mode::Public, 4, 1, 0, 705, 705)?;
-        check_prf(Mode::Public, 5, 1, 0, 705, 705)?;
-        check_prf(Mode::Public, 6, 1, 0, 705, 705)?;
-        check_prf(Mode::Public, 7, 1, 0, 705, 705)?;
-        check_prf(Mode::Public, 8, 1, 0, 1060, 1060)?;
-        check_prf(Mode::Public, 9, 1, 0, 1060, 1060)?;
-        check_prf(Mode::Public, 10, 1, 0, 1060, 1060)
+        let mut rng = TestRng::default();
+
+        check_prf(Mode::Public, 0, 1, 0, 335, 335, &mut rng)?;
+        check_prf(Mode::Public, 1, 1, 0, 340, 340, &mut rng)?;
+        check_prf(Mode::Public, 2, 1, 0, 345, 345, &mut rng)?;
+        check_prf(Mode::Public, 3, 1, 0, 350, 350, &mut rng)?;
+        check_prf(Mode::Public, 4, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Public, 5, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Public, 6, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Public, 7, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Public, 8, 1, 0, 1060, 1060, &mut rng)?;
+        check_prf(Mode::Public, 9, 1, 0, 1060, 1060, &mut rng)?;
+        check_prf(Mode::Public, 10, 1, 0, 1060, 1060, &mut rng)
     }
 
     #[test]
     fn test_prf_private() -> Result<()> {
-        check_prf(Mode::Private, 0, 1, 0, 335, 335)?;
-        check_prf(Mode::Private, 1, 1, 0, 340, 340)?;
-        check_prf(Mode::Private, 2, 1, 0, 345, 345)?;
-        check_prf(Mode::Private, 3, 1, 0, 350, 350)?;
-        check_prf(Mode::Private, 4, 1, 0, 705, 705)?;
-        check_prf(Mode::Private, 5, 1, 0, 705, 705)?;
-        check_prf(Mode::Private, 6, 1, 0, 705, 705)?;
-        check_prf(Mode::Private, 7, 1, 0, 705, 705)?;
-        check_prf(Mode::Private, 8, 1, 0, 1060, 1060)?;
-        check_prf(Mode::Private, 9, 1, 0, 1060, 1060)?;
-        check_prf(Mode::Private, 10, 1, 0, 1060, 1060)
+        let mut rng = TestRng::default();
+
+        check_prf(Mode::Private, 0, 1, 0, 335, 335, &mut rng)?;
+        check_prf(Mode::Private, 1, 1, 0, 340, 340, &mut rng)?;
+        check_prf(Mode::Private, 2, 1, 0, 345, 345, &mut rng)?;
+        check_prf(Mode::Private, 3, 1, 0, 350, 350, &mut rng)?;
+        check_prf(Mode::Private, 4, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Private, 5, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Private, 6, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Private, 7, 1, 0, 705, 705, &mut rng)?;
+        check_prf(Mode::Private, 8, 1, 0, 1060, 1060, &mut rng)?;
+        check_prf(Mode::Private, 9, 1, 0, 1060, 1060, &mut rng)?;
+        check_prf(Mode::Private, 10, 1, 0, 1060, 1060, &mut rng)
     }
 }

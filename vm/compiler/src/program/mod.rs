@@ -844,7 +844,7 @@ function swap:
         // Compute the authorization.
         let authorization = {
             // Initialize an RNG.
-            let rng = &mut test_crypto_rng();
+            let rng = &mut TestRng::default();
 
             // Initialize caller private key.
             let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -910,7 +910,7 @@ function compute:
         // Compute the authorization.
         let authorization = {
             // Initialize an RNG.
-            let rng = &mut test_crypto_rng();
+            let rng = &mut TestRng::default();
 
             // Initialize caller private key.
             let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -964,7 +964,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize an RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Initialize caller private key.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1051,7 +1051,7 @@ function compute:
             // Construct the process.
             let process = crate::process::test_helpers::sample_process(&program);
             // Check that the circuit key can be synthesized.
-            process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+            process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
         }
 
         // Construct the process.
@@ -1060,7 +1060,7 @@ function compute:
         // Compute the authorization.
         let authorization = {
             // Initialize an RNG.
-            let rng = &mut test_crypto_rng();
+            let rng = &mut TestRng::default();
 
             // Initialize caller private key.
             let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1108,7 +1108,7 @@ function compute:
         assert_eq!(0, CurrentAleo::num_constraints());
 
         // Initialize an RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
         // Initialize a burner private key.
         let burner_private_key = PrivateKey::new(rng).unwrap();
         // Authorize the function call, with a burner private key.
@@ -1153,7 +1153,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize an RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Initialize caller private key.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();

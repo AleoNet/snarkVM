@@ -215,8 +215,6 @@ mod tests {
     use super::*;
     use crate::{testnet1::Testnet1, testnet2::Testnet2};
 
-    use rand::thread_rng;
-
     #[test]
     fn test_new() {
         let ledger = Ledger::<Testnet1>::new().unwrap();
@@ -228,7 +226,8 @@ mod tests {
 
     #[test]
     fn test_mine_next_block() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
+
         {
             let mut ledger = Ledger::<Testnet1>::new().unwrap();
             let recipient = Account::<Testnet1>::new(rng);

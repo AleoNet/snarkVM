@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon2, BHP512};
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -76,10 +76,12 @@ mod tests {
             let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $hash::<Circuit>::constant(native.clone());
 
+            let mut rng = TestRng::default();
+
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let left = Uniform::rand(&mut test_rng());
-                let right = Uniform::rand(&mut test_rng());
+                let left = Uniform::rand(&mut rng);
+                let right = Uniform::rand(&mut rng);
 
                 // Compute the expected hash.
                 let expected = console::merkle_tree::PathHash::hash_children(&native, &left, &right)?;

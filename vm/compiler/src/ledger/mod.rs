@@ -845,7 +845,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use crate::ledger::Block;
     use console::{account::PrivateKey, network::Testnet3};
-    use snarkvm_utilities::test_crypto_rng_fixed;
+    use snarkvm_utilities::TestRng;
 
     use once_cell::sync::OnceCell;
 
@@ -856,7 +856,7 @@ pub(crate) mod test_helpers {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
         *INSTANCE.get_or_init(|| {
             // Initialize the RNG.
-            let rng = &mut test_crypto_rng_fixed();
+            let rng = &mut TestRng::fixed(1245897092);
             // Initialize a new caller.
             PrivateKey::<CurrentNetwork>::new(rng).unwrap()
         })
@@ -869,7 +869,7 @@ pub(crate) mod test_helpers {
                 // Initialize the VM.
                 let vm = crate::ledger::vm::test_helpers::sample_vm();
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng_fixed();
+                let rng = &mut TestRng::fixed(1245897092);
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
@@ -906,7 +906,7 @@ mod tests {
     use super::*;
     use crate::ledger::test_helpers::CurrentLedger;
     use console::{network::Testnet3, program::Value};
-    use snarkvm_utilities::test_crypto_rng;
+    use snarkvm_utilities::TestRng;
 
     use tracing_test::traced_test;
 
@@ -915,7 +915,7 @@ mod tests {
     #[test]
     fn test_validators() {
         // Initialize an RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the private key, view key, and address.
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1004,7 +1004,7 @@ mod tests {
     #[test]
     #[traced_test]
     fn test_ledger_deploy() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
         let private_key = test_helpers::sample_genesis_private_key();
@@ -1012,7 +1012,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger();
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1035,7 +1035,7 @@ mod tests {
     #[test]
     #[traced_test]
     fn test_ledger_execute() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
         let private_key = test_helpers::sample_genesis_private_key();
@@ -1043,7 +1043,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger();
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1061,7 +1061,7 @@ mod tests {
     #[test]
     #[traced_test]
     fn test_ledger_execute_many() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the genesis private key, view key, and address.
         let private_key = test_helpers::sample_genesis_private_key();
@@ -1096,7 +1096,7 @@ mod tests {
                         Value::from_str(&format!("{}u64", ***record.gates() / 2)).unwrap(),
                     ],
                     None,
-                    &mut rand::thread_rng(),
+                    rng,
                 )
                 .unwrap();
                 // Add the transaction to the memory pool.

@@ -73,13 +73,15 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element `a`.
-            let expected_a = Uniform::rand(&mut test_rng());
+            let expected_a = Uniform::rand(&mut rng);
             let candidate_a = Scalar::<Circuit>::new(mode_a, expected_a);
 
             // Sample a random element `b`.
-            let expected_b = Uniform::rand(&mut test_rng());
+            let expected_b = Uniform::rand(&mut rng);
             let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
 
             // Perform the less than comparison.

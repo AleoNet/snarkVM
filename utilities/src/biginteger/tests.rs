@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{biginteger::*, rand::Uniform};
-
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use crate::{
+    biginteger::*,
+    rand::{TestRng, Uniform},
+};
 
 #[allow(clippy::eq_op)]
 fn biginteger_arithmetic_test<B: BigInteger>(a: B, b: B, zero: B) {
@@ -68,19 +68,16 @@ fn biginteger_bits_test<B: BigInteger>() {
     assert!(thirty_two.get_bit(5), "{:?}", thirty_two);
 }
 
-fn biginteger_bytes_test<B: BigInteger>() {
+fn biginteger_bytes_test<B: BigInteger>(rng: &mut TestRng) {
     let mut bytes = [0u8; 256];
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-    let x: B = Uniform::rand(&mut rng);
+    let x: B = Uniform::rand(rng);
     x.write_le(bytes.as_mut()).unwrap();
     let y = B::read_le(bytes.as_ref()).unwrap();
     assert_eq!(x, y);
 }
 
-fn biginteger_to_string_test<B: BigInteger>() {
+fn biginteger_to_string_test<B: BigInteger>(rng: &mut TestRng) {
     const ITERATIONS: u64 = 1_000_000;
-
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     // Sanity check the integers starting from 0 to ITERATIONS.
     for integer in 0..ITERATIONS {
@@ -102,7 +99,7 @@ fn biginteger_to_string_test<B: BigInteger>() {
 
     // Sample random integers and check they match against num-bigint.
     for _ in 0..ITERATIONS {
-        let candidate: B = Uniform::rand(&mut rng);
+        let candidate: B = Uniform::rand(rng);
         let candidate_hex = format!("{:?}", candidate);
         let reference = num_bigint::BigUint::parse_bytes(candidate_hex.as_bytes(), 16).unwrap();
         assert_eq!(reference.to_str_radix(10), candidate.to_string());
@@ -110,13 +107,14 @@ fn biginteger_to_string_test<B: BigInteger>() {
 }
 
 fn test_biginteger<B: BigInteger>(zero: B) {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
+
     let a: B = Uniform::rand(&mut rng);
     let b: B = Uniform::rand(&mut rng);
     biginteger_arithmetic_test(a, b, zero);
-    biginteger_bytes_test::<B>();
+    biginteger_bytes_test::<B>(&mut rng);
     biginteger_bits_test::<B>();
-    biginteger_to_string_test::<B>();
+    biginteger_to_string_test::<B>(&mut rng);
 }
 
 #[test]

@@ -29,7 +29,7 @@ pub mod sub;
 pub mod ternary;
 
 #[cfg(test)]
-use console::{test_rng, Uniform};
+use console::{TestRng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
@@ -169,10 +169,12 @@ mod tests {
 
     #[test]
     fn test_new() {
+        let mut rng = TestRng::default();
+
         // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             Circuit::scope(&format!("Constant {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
@@ -184,7 +186,7 @@ mod tests {
         // Public variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             Circuit::scope(&format!("Public {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
@@ -196,7 +198,7 @@ mod tests {
         // Private variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             Circuit::scope(&format!("Private {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
@@ -208,9 +210,11 @@ mod tests {
 
     #[test]
     fn test_display() {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             // Constant
             check_display(Mode::Constant, point);
@@ -299,9 +303,11 @@ mod tests {
 
         // Random
 
+        let mut rng = TestRng::default();
+
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let point = Uniform::rand(&mut test_rng());
+                let point = Uniform::rand(&mut rng);
                 let expected = Group::<Circuit>::new(mode, point);
 
                 let (_, candidate) = Group::<Circuit>::parse(&format!("{expected}")).unwrap();
