@@ -45,13 +45,13 @@ use serde::{Deserialize, Serialize};
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
-    // pub t: P::BaseField,
+    pub t: P::BaseField,
 }
 
 impl<P: Parameters> Affine<P> {
     #[inline]
-    pub const fn new(x: P::BaseField, y: P::BaseField) -> Self {
-        Self { x, y }
+    pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
+        Self { x, y, t: x * y }
     }
 }
 
@@ -95,7 +95,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self {
         let (x, y) = coordinates;
-        let point = Self { x, y };
+        let point = Self { x, y, t: x * y };
         assert!(point.is_on_curve());
         point
     }
