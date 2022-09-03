@@ -32,11 +32,16 @@ pub mod string_parser {
         bytes::streaming::{is_not, take_while_m_n},
         character::streaming::{char, multispace1},
         combinator::{map, map_opt, map_res, value, verify},
-        error::{FromExternalError, ParseError},
+        error::{ErrorKind, FromExternalError, ParseError},
         multi::fold_many0,
         sequence::{delimited, preceded},
+        Err::Error,
         IResult,
     };
+
+    /// The list of unsupported "invisible" code points.
+    const UNSUPPORTED_CODE_POINTS: [&str; 9] =
+        ["\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}"];
 
     /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
     /// hexadecimal numerals. We will combine this later with parse_escaped_char
@@ -106,6 +111,13 @@ pub mod string_parser {
 
     /// Parse a non-empty block of text that doesn't include \ or "
     fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+        // Return an error if the literal contains an unsupported code point.
+        for code_point in UNSUPPORTED_CODE_POINTS {
+            if input.contains(code_point) {
+                return Err(Error(E::from_error_kind("String literal contains invalid codepoint", ErrorKind::Char)));
+            }
+        }
+
         // `is_not` parses a string of 0 or more characters that aren't one of the
         // given characters.
         let not_quote_slash = is_not("\"\\");

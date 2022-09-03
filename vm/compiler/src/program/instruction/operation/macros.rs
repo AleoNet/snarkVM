@@ -401,8 +401,11 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
                     for i in 0..8 {
-                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
                             for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                 // Skip this iteration, if this is **not** an invalid operand case.
                                 $(if literal_a.to_type() == console::program::LiteralType::$input {
@@ -438,8 +441,11 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
                     for i in 0..8 {
-                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
                             for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                 // Skip this iteration, if this is **not** an invalid operand case.
                                 $(if literal_a.to_type() == console::program::LiteralType::$input {
@@ -476,9 +482,12 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
                     for i in 0..8 {
-                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                            for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
+                            for literal_b in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
                                 for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                     for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                         // Skip this iteration, if this is **not** an invalid operand case.
@@ -520,9 +529,12 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                        for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                            for literal_c in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
+                    for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
+                        for literal_b in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
+                            for literal_c in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
                                 for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                     for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                         for mode_c in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
@@ -572,6 +584,9 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ $input:lower _ into _ $output:lower>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         console::program::LiteralType::$output,
@@ -584,7 +599,7 @@ mod tests {
                         #[allow(deprecated)]
                         let a = match i {
                             0 => $input::zero(),
-                            1.. => $input::<CurrentNetwork>::rand(&mut test_rng())
+                            1.. => $input::<CurrentNetwork>::rand(&mut rng)
                         };
 
                         // Initialize an indicator whether the operation should succeed or not.
@@ -678,6 +693,9 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         console::program::LiteralType::$output,
@@ -696,9 +714,9 @@ mod tests {
                         #[allow(deprecated)]
                         let (a, b) = match i {
                             0 => ($input_a::zero(), $input_b::zero()),
-                            1 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero()),
-                            2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng())),
-                            3.. => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()))
+                            1 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::zero()),
+                            2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut rng)),
+                            3.. => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng))
                         };
 
                         // Initialize an indicator whether the operation should succeed or not.
@@ -826,6 +844,9 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ $input_c:lower _ into _ $output:lower>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         console::program::LiteralType::$output,
@@ -843,13 +864,13 @@ mod tests {
                         #[allow(deprecated)]
                         let (a, b, c) = match i {
                             0 => ($input_a::zero(), $input_b::zero(), $input_c::zero()),
-                            1 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::zero()),
-                            2 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero(), $input_c::<CurrentNetwork>::rand(&mut test_rng())),
-                            3 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero(), $input_c::zero()),
-                            4 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::<CurrentNetwork>::rand(&mut test_rng())),
-                            5 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::<CurrentNetwork>::zero()),
-                            6 => ($input_a::zero(), $input_b::zero(), $input_c::<CurrentNetwork>::rand(&mut test_rng())),
-                            7.. => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::<CurrentNetwork>::rand(&mut test_rng()))
+                            1 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng), $input_c::zero()),
+                            2 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::zero(), $input_c::<CurrentNetwork>::rand(&mut rng)),
+                            3 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::zero(), $input_c::zero()),
+                            4 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut rng), $input_c::<CurrentNetwork>::rand(&mut rng)),
+                            5 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut rng), $input_c::<CurrentNetwork>::zero()),
+                            6 => ($input_a::zero(), $input_b::zero(), $input_c::<CurrentNetwork>::rand(&mut rng)),
+                            7.. => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng), $input_c::<CurrentNetwork>::rand(&mut rng))
                         };
 
                         // Initialize an indicator whether the operation should succeed or not.

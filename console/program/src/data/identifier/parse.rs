@@ -130,10 +130,12 @@ mod tests {
         assert_eq!("foo_bar", candidate.to_string());
         assert_eq!("-baz", remainder);
 
+        let mut rng = TestRng::default();
+
         // Check random identifiers.
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
@@ -173,9 +175,11 @@ mod tests {
         let candidate = Identifier::<CurrentNetwork>::from_str("foo_bar").unwrap();
         assert_eq!("foo_bar", candidate.to_string());
 
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 

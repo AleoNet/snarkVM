@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-utilities-derives"
-version = "0.7.5"
+version = "0.9.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Canonical serialization for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,7 +12,13 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
@@ -24,13 +30,6 @@ proc-macro = true
 proc-macro2 = "1.0"
 quote = "1.0"
 
-[dependencies.proc-macro-crate]
-version = "1.2"
-
-[dependencies.proc-macro-error]
-version = "1"
-default-features = false
-
-[dependencies.syn]
-version = "1.0"
-features = [ "full" ]
+  [dependencies.syn]
+  version = "1.0"
+  features = [ "full" ]

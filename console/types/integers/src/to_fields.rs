@@ -35,9 +35,11 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_to_fields<I: IntegerType>() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Integer::<CurrentEnvironment, I>::rand(&mut test_rng());
+            let expected = Integer::<CurrentEnvironment, I>::rand(&mut rng);
 
             // Perform the operation.
             let candidate = expected.to_fields()?;

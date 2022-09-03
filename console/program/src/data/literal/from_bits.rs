@@ -110,10 +110,10 @@ mod tests {
 
     #[test]
     fn test_from_bits() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(rng)?;
 
             // Address
             check_serialization(Literal::<CurrentNetwork>::Address(Address::try_from(private_key)?))?;

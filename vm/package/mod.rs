@@ -16,10 +16,12 @@
 
 mod build;
 mod clean;
+mod deploy;
 mod is_build_required;
 mod run;
 
 pub use build::{BuildRequest, BuildResponse};
+pub use deploy::{DeployRequest, DeployResponse};
 
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
@@ -42,10 +44,12 @@ use crate::{
 use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
 
 use anyhow::{bail, ensure, Error, Result};
-use colored::Colorize;
 use core::str::FromStr;
 use rand::{CryptoRng, Rng};
 use std::path::{Path, PathBuf};
+
+#[cfg(feature = "aleo-cli")]
+use colored::Colorize;
 
 pub struct Package<N: Network> {
     /// The program ID.
@@ -150,13 +154,6 @@ impl<N: Network> Package<N> {
 
     /// Returns a new process for the package.
     pub fn get_process(&self) -> Result<Process<N>> {
-        // Prepare the build directory.
-        let build_directory = self.build_directory();
-        // Ensure the build directory exists.
-        if !build_directory.exists() {
-            bail!("Build directory does not exist: {}", build_directory.display());
-        }
-
         // Create the process.
         let mut process = Process::load()?;
 
@@ -180,9 +177,10 @@ impl<N: Network> Package<N> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod test_helpers {
     use super::*;
-    use snarkvm_console::network::Testnet3;
+    use snarkvm_console::{account::Address, network::Testnet3, prelude::TestRng};
+
     use std::{fs::File, io::Write};
 
     type CurrentNetwork = Testnet3;
@@ -191,43 +189,238 @@ mod tests {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
     }
 
-    #[test]
-    fn test_get_process() {
+    /// Samples a (temporary) package containing a main program.
+    pub(crate) fn sample_package() -> (PathBuf, Package<CurrentNetwork>) {
         // Initialize a temporary directory.
         let directory = temp_dir();
 
+        // Initialize the program ID.
         let program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
 
-        let program_string = r"
-program token.aleo;
+        // Initialize the program.
+        let program_string = format!(
+            "
+program {program_id};
 
 record token:
     owner as address.private;
     gates as u64.private;
-    token_amount as u64.private;
+    amount as u64.private;
 
-function compute:
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function transfer:
     input r0 as token.record;
-    add.w r0.token_amount r0.token_amount into r1;
-    output r1 as u64.private;";
+    input r1 as address.private;
+    input r2 as u64.private;
+    sub r0.amount r2 into r3;
+    cast r1 0u64 r2 into r4 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
+    output r4 as token.record;
+    output r5 as token.record;"
+        );
 
         // Write the program string to a file in the temporary directory.
-        let path = directory.join("main.aleo");
-        let mut file = File::create(&path).unwrap();
+        let main_filepath = directory.join("main.aleo");
+        let mut file = File::create(&main_filepath).unwrap();
         file.write_all(program_string.as_bytes()).unwrap();
 
         // Create the manifest file.
         let _manifest_file = Manifest::create(&directory, &program_id).unwrap();
 
-        // Create the build directory.
-        let build_directory = directory.join("build");
-        std::fs::create_dir_all(&build_directory).unwrap();
+        // Open the package at the temporary directory.
+        let package = Package::<Testnet3>::open(&directory).unwrap();
+        assert_eq!(package.program_id(), &program_id);
+
+        // Return the temporary directory and the package.
+        (directory, package)
+    }
+
+    /// Samples a (temporary) package containing a main program and an imported program.
+    pub(crate) fn sample_package_with_import() -> (PathBuf, Package<CurrentNetwork>) {
+        // Initialize a temporary directory.
+        let directory = temp_dir();
+
+        // Initialize the imported program ID.
+        let imported_program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
+        // Initialize the imported program.
+        let imported_program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+program {imported_program_id};
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    amount as u64.private;
+
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function transfer:
+    input r0 as token.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    sub r0.amount r2 into r3;
+    cast r1 0u64 r2 into r4 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
+    output r4 as token.record;
+    output r5 as token.record;"
+        ))
+        .unwrap();
+
+        // Create the imports directory.
+        let imports_directory = directory.join("imports");
+        std::fs::create_dir_all(&imports_directory).unwrap();
+
+        // Write the imported program string to an imports file in the temporary directory.
+        let import_filepath = imports_directory.join(imported_program_id.to_string());
+        let mut file = File::create(&import_filepath).unwrap();
+        file.write_all(imported_program.to_string().as_bytes()).unwrap();
+
+        // Initialize the main program ID.
+        let main_program_id = ProgramID::<CurrentNetwork>::from_str("wallet.aleo").unwrap();
+        // Initialize the main program.
+        let main_program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+import token.aleo;
+
+program {main_program_id};
+
+function transfer:
+    input r0 as token.aleo/token.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    call token.aleo/transfer r0 r1 r2 into r3 r4;
+    output r3 as token.aleo/token.record;
+    output r4 as token.aleo/token.record;"
+        ))
+        .unwrap();
+
+        // Write the main program string to a file in the temporary directory.
+        let main_filepath = directory.join("main.aleo");
+        let mut file = File::create(&main_filepath).unwrap();
+        file.write_all(main_program.to_string().as_bytes()).unwrap();
+
+        // Create the manifest file.
+        let _manifest_file = Manifest::create(&directory, &main_program_id).unwrap();
 
         // Open the package at the temporary directory.
         let package = Package::<Testnet3>::open(&directory).unwrap();
+        assert_eq!(package.program_id(), &main_program_id);
+
+        // Return the temporary directory and the package.
+        (directory, package)
+    }
+
+    /// Samples a candidate input to execute the sample package.
+    pub(crate) fn sample_package_run(
+        program_id: &ProgramID<CurrentNetwork>,
+    ) -> (PrivateKey<CurrentNetwork>, Identifier<CurrentNetwork>, Vec<Value<CurrentNetwork>>) {
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        match program_id.to_string().as_str() {
+            "token.aleo" => {
+                // Sample a random private key.
+                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller = Address::try_from(&private_key).unwrap();
+
+                // Initialize the function name.
+                let function_name = Identifier::from_str("mint").unwrap();
+
+                // Initialize the function inputs.
+                let r0 = Value::from_str(&caller.to_string()).unwrap();
+                let r1 = Value::from_str("100u64").unwrap();
+
+                (private_key, function_name, vec![r0, r1])
+            }
+            "wallet.aleo" => {
+                // Initialize caller 0.
+                let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller0 = Address::try_from(&caller0_private_key).unwrap();
+
+                // Initialize caller 1.
+                let caller1_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller1 = Address::try_from(&caller1_private_key).unwrap();
+
+                // Declare the function name.
+                let function_name = Identifier::from_str("transfer").unwrap();
+
+                // Initialize the function inputs.
+                let r0 = Value::<CurrentNetwork>::from_str(&format!(
+                    "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private, _nonce: 0group.public }}"
+                ))
+                .unwrap();
+                let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
+                let r2 = Value::<CurrentNetwork>::from_str("99u64").unwrap();
+
+                (caller0_private_key, function_name, vec![r0, r1, r2])
+            }
+            _ => panic!("Invalid program ID for sample package (while testing)"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_imports_directory() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the imports directory is correct.
+        assert_eq!(package.imports_directory(), directory.join("imports"));
+        // Ensure the imports directory does *not* exist, when the package does not contain imports.
+        assert!(!package.imports_directory().exists());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_imports_directory_with_an_import() {
+        // Samples a new package with an import at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+
+        // Ensure the imports directory is correct.
+        assert_eq!(package.imports_directory(), directory.join("imports"));
+        // Ensure the imports directory exists, as the package contains an import.
+        assert!(package.imports_directory().exists());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_build_directory() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the build directory is correct.
+        assert_eq!(package.build_directory(), directory.join("build"));
+        // Ensure the build directory does *not* exist, when the package has not been built.
+        assert!(!package.build_directory().exists());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_get_process() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
 
         // Get the program process and check all instructions.
         assert!(package.get_process().is_ok());
-        assert_eq!(package.program_id(), &program_id);
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
     }
 }

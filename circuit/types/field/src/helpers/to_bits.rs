@@ -96,9 +96,11 @@ mod tests {
     fn check_to_bits_le(mode: Mode) {
         let expected_number_of_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Field::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -122,9 +124,11 @@ mod tests {
     fn check_to_bits_be(mode: Mode) {
         let expected_number_of_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Field::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {

@@ -18,7 +18,7 @@ use snarkvm_console::{
     account::{Address, PrivateKey, ViewKey},
     network::Testnet3,
 };
-use snarkvm_utilities::test_crypto_rng;
+use snarkvm_utilities::TestRng;
 
 use core::str::FromStr;
 use wasm_bindgen_test::*;
@@ -43,14 +43,15 @@ fn test_account() {
 
 #[wasm_bindgen_test]
 fn test_account_sign() {
+    let mut rng = TestRng::default();
+
     for _ in 0..ITERATIONS {
         // Sample a new private key and address.
-        let rng = &mut test_crypto_rng();
-        let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
+        let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
         let address = Address::try_from(&private_key).unwrap();
 
         // Sign a message with the account private key.
-        let result = private_key.sign_bytes("hello world!".as_bytes(), rng);
+        let result = private_key.sign_bytes("hello world!".as_bytes(), &mut rng);
         assert!(result.is_ok(), "Failed to generate a signature");
 
         // Verify the signed message.

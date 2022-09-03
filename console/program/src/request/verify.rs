@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
             // Sample a random private key and address.

@@ -46,3 +46,63 @@ impl<N: Network> Package<N> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentAleo = snarkvm_circuit::network::AleoV0;
+
+    #[test]
+    fn test_clean() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Clean the package.
+        Package::<CurrentNetwork>::clean(&directory).unwrap();
+        // Ensure the build directory still does *not* exist.
+        assert!(!package.build_directory().exists());
+
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+        // Clean the package.
+        Package::<CurrentNetwork>::clean(&directory).unwrap();
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_clean_with_import() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Clean the package.
+        Package::<CurrentNetwork>::clean(&directory).unwrap();
+        // Ensure the build directory still does *not* exist.
+        assert!(!package.build_directory().exists());
+
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+        // Clean the package.
+        Package::<CurrentNetwork>::clean(&directory).unwrap();
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+}

@@ -39,20 +39,44 @@ where
 }
 
 /// A fast RNG used **solely** for testing and benchmarking, **not** for any real world purposes.
-pub fn test_rng() -> XorShiftRng {
-    // Obtain the initial seed using entropy provided by the OS.
-    let seed = StdRng::from_entropy().gen();
-    // Use the seed to initialize a fast, non-cryptographic Rng.
-    XorShiftRng::seed_from_u64(seed)
+pub struct TestRng(XorShiftRng);
+
+impl TestRng {
+    pub fn fixed(seed: u64) -> Self {
+        // Print the seed, so it's displayed if any of the tests using `test_rng` fails.
+        println!("\nInitializing 'TestRng' with seed '{seed}'\n");
+
+        // Use the seed to initialize a fast, non-cryptographic Rng.
+        Self(XorShiftRng::seed_from_u64(seed))
+    }
 }
 
-/// A CryptoRNG used **solely** for testing and benchmarking, **not** for any real world purposes.
-pub fn test_crypto_rng() -> StdRng {
-    StdRng::from_entropy()
+impl Default for TestRng {
+    fn default() -> Self {
+        // Obtain the initial seed using entropy provided by the OS.
+        let seed = StdRng::from_entropy().gen();
+
+        // Use it as the basis for the underlying Rng.
+        Self::fixed(seed)
+    }
 }
 
-/// A fixed CryptoRNG used **solely** for **debugging** tests, **not** for any real world purposes.
-pub fn test_crypto_rng_fixed() -> StdRng {
-    let seed = 1245897092u64;
-    StdRng::seed_from_u64(seed)
+impl rand::RngCore for TestRng {
+    fn next_u32(&mut self) -> u32 {
+        self.0.next_u32()
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.0.next_u64()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.0.fill_bytes(dest)
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.0.try_fill_bytes(dest)
+    }
 }
+
+impl rand::CryptoRng for TestRng {}

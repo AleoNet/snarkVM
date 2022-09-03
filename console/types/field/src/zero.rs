@@ -50,9 +50,11 @@ mod tests {
     fn test_is_zero() {
         assert!(Field::<CurrentEnvironment>::zero().is_zero());
 
+        let mut rng = TestRng::default();
+
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let field: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let field: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
             assert!(!field.is_zero());
         }
     }

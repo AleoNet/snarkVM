@@ -28,7 +28,7 @@ impl<N: Network> Visibility for Ciphertext<N> {
             // Return the number of field elements.
             true => match u16::try_from(num_fields) {
                 Ok(num_fields) => Ok(num_fields),
-                Err(_) => bail!("Ciphertext is too large to encode in field elements."),
+                Err(_) => bail!("Number of ciphertext field elements exceeds u16::MAX."),
             },
             false => bail!("Ciphertext is too large to encode in field elements."),
         }

@@ -71,9 +71,11 @@ mod tests {
 
     #[test]
     fn test_double() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let expected = point.double();
 
             // Constant variable
@@ -111,7 +113,7 @@ mod tests {
     #[test]
     fn test_double_matches() {
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut TestRng::default());
         let expected = a + a;
 
         // Constant

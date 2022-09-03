@@ -43,7 +43,7 @@ impl Blake2Xs {
 
         let mut output = vec![];
 
-        let num_rounds = (xof_digest_length + 31) / 32;
+        let num_rounds = xof_digest_length.saturating_add(31) / 32;
         for node_offset in 0..num_rounds {
             // Calculate the digest length for this round.
             let is_final_round = node_offset == num_rounds - 1;

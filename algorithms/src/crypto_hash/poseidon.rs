@@ -206,11 +206,11 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         if is_full_round {
             // Full rounds apply the S Box (x^alpha) to every element of state
             for elem in self.state.iter_mut() {
-                *elem = elem.pow(&[self.parameters.alpha]);
+                *elem = elem.pow([self.parameters.alpha]);
             }
         } else {
             // Partial rounds apply the S Box (x^alpha) to just the first element of state
-            self.state[0] = self.state[0].pow(&[self.parameters.alpha]);
+            self.state[0] = self.state[0].pow([self.parameters.alpha]);
         }
     }
 

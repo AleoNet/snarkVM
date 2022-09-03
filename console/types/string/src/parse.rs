@@ -75,7 +75,7 @@ mod tests {
         // Ensure empty string succeeds.
         assert!(StringType::<CurrentEnvironment>::parse("\"\"").is_ok());
 
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
@@ -90,6 +90,20 @@ mod tests {
             let candidate_recovered = StringType::<CurrentEnvironment>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_unsupported_code_points() -> Result<()> {
+        const UNSUPPORTED_CODE_POINTS: [&str; 9] = [
+            "\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}",
+        ];
+
+        // Ensure that the invalid code point is not allowed in the string.
+        for unsupported_code_point in UNSUPPORTED_CODE_POINTS {
+            assert!(StringType::<CurrentEnvironment>::parse(unsupported_code_point).is_err());
+        }
+
         Ok(())
     }
 }

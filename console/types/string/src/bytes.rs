@@ -60,9 +60,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new string.
-            let expected = StringType::<CurrentEnvironment>::rand(&mut test_rng());
+            let expected = StringType::<CurrentEnvironment>::rand(&mut rng);
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

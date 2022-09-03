@@ -112,7 +112,7 @@ commands:
       - setup_environment:
           cache_key: << parameters.cache_key >>
       - run:
-          no_output_timeout: 30m
+          no_output_timeout: 45m
           command: |
             cd << parameters.workspace_member >>
             cargo test -- --list --format terse | sed 's/: test//' > test_names.txt

@@ -86,55 +86,106 @@ macro_rules! impl_primefield_from_int {
 macro_rules! sqrt_impl {
     ($Self:ident, $P:tt, $self:expr) => {{
         use crate::LegendreSymbol::*;
-        // https://eprint.iacr.org/2012/685.pdf (page 12, algorithm 5)
-        // Actually this is just normal Tonelli-Shanks; since `P::Generator`
-        // is a quadratic non-residue, `P::ROOT_OF_UNITY = P::GENERATOR ^ t`
-        // is also a quadratic non-residue (since `t` is odd).
+        // https://eprint.iacr.org/2020/1407.pdf (page 4, algorithm 1)
         match $self.legendre() {
             Zero => Some(*$self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let mut z = $Self::two_adic_root_of_unity();
-                let mut w = $self.pow($P::T_MINUS_ONE_DIV_TWO);
-                let mut x = w * $self;
-                let mut b = x * w;
+                let n = $P::TWO_ADICITY as u64;
+                // `T` is equivalent to `m` in the paper.
+                let v = $self.pow($P::T_MINUS_ONE_DIV_TWO);
+                let x = *$self * v.square();
 
-                let mut v = $P::TWO_ADICITY as usize;
-                // t = self^t
-                #[cfg(debug_assertions)]
-                {
-                    let mut check = b;
-                    for _ in 0..(v - 1) {
-                        check.square_in_place();
+                let k = ((n - 1) as f64).sqrt().floor() as u64;
+                // It's important that k_2 results in a number which makes `l_minus_one_times_k`
+                // divisible by `k`, because the native arithmetic will not match the field
+                // arithmetic otherwise (native numbers will divide and round down, but field
+                // elements will end up nowhere near the native number).
+                let k_2 = if n % 2 == 0 { k / 2 } else { (n - 1) % k };
+                let k_1 = k - k_2;
+                let l_minus_one_times_k = n - 1 - k_2;
+                let l_minus_one = l_minus_one_times_k / k;
+                let l = l_minus_one + 1;
+                let mut l_s: Vec<u64> = Vec::with_capacity(k as usize);
+                l_s.resize(l_s.len() + k_1 as usize, l_minus_one);
+                l_s.resize(l_s.len() + k_2 as usize, l);
+
+                let mut x_s: Vec<$Self> = Vec::with_capacity(k as usize);
+                let mut l_sum = 0;
+                l_s.iter().take((k as usize) - 1).for_each(|l| {
+                    l_sum += l;
+                    let x = x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)));
+                    x_s.push(x);
+                });
+                x_s.push(x);
+
+                let find = |delta: $Self| -> u64 {
+                    let mut mu = delta;
+                    let mut i = 0;
+                    while mu != -$Self::one() {
+                        mu.square_in_place();
+                        i += 1;
                     }
-                    if !check.is_one() {
-                        panic!("Input is not a square root, but it passed the QR test")
+                    i
+                };
+
+                let eval = |mut delta: $Self| -> u64 {
+                    let mut s = 0u64;
+                    while delta != $Self::one() {
+                        let i = find(delta);
+                        let n_minus_one_minus_i = n - 1 - i;
+                        s += 2u64.pow(n_minus_one_minus_i as u32);
+                        if i > 0 {
+                            delta *= $Self::from_repr($P::POWERS_OF_G[n_minus_one_minus_i as usize])
+                                .expect("precomputed powers of g should always convert properly");
+                        } else {
+                            delta = -delta;
+                        }
                     }
-                }
+                    s
+                };
 
-                while !b.is_one() {
-                    let mut k = 0usize;
+                let calc_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
+                    l_s.iter().take(j).sum::<u64>() + 1 + l_s.iter().skip(i + 1).sum::<u64>()
+                };
 
-                    let mut b2k = b;
-                    while !b2k.is_one() {
-                        // invariant: b2k = b^(2^k) after entering this loop
-                        b2k.square_in_place();
-                        k += 1;
+                let calc_gamma = |i: usize, q_s: &[Vec<bool>], last: bool| -> $Self {
+                    let mut gamma = $Self::one();
+                    if i != 0 {
+                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q_bits, l))| {
+                            let mut kappa = calc_kappa(i, j, &l_s);
+                            if last {
+                                kappa -= 1;
+                            }
+                            q_bits.iter().enumerate().take(*l as usize).for_each(|(k, bit)| {
+                                if *bit {
+                                    gamma *= $Self::from_repr($P::POWERS_OF_G[(kappa as usize) + k])
+                                        .expect("precomputed powers of g should always convert properly");
+                                }
+                            });
+                        });
                     }
+                    gamma
+                };
 
-                    let j = v - k - 1;
-                    w = z;
-                    for _ in 0..j {
-                        w.square_in_place();
-                    }
+                let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
+                let two_to_n_minus_l = 2u64.pow((n - l) as u32);
+                let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
+                x_s.iter().enumerate().for_each(|(i, x)| {
+                    // Calculate g^t.
+                    // This algorithm deviates from the standard description in the paper, and is
+                    // explained in detail in page 6, in section 2.1.
+                    let gamma = calc_gamma(i, &q_s, false);
+                    let alpha = *x * gamma;
+                    q_s.push(
+                        (eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l })
+                            .to_bits_le(),
+                    );
+                });
 
-                    z = w.square();
-                    b *= &z;
-                    x *= &w;
-                    v = k;
-                }
-
-                Some(x)
+                // Calculate g^{t/2}.
+                let gamma = calc_gamma(k as usize, &q_s, true);
+                Some(*$self * v * gamma)
             }
         }
     }};

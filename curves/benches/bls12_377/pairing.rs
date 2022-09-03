@@ -19,18 +19,16 @@ use snarkvm_curves::{
     templates::bls12::{G1Prepared, G2Prepared},
     traits::{PairingCurve, PairingEngine},
 };
-use snarkvm_utilities::rand::Uniform;
+use snarkvm_utilities::rand::{TestRng, Uniform};
 
 use criterion::Criterion;
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
 
 use std::iter;
 
 pub fn bench_pairing_miller_loop(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<(G1Prepared<Bls12_377Parameters>, G2Prepared<Bls12_377Parameters>)> = (0..SAMPLES)
         .map(|_| (G1Affine::from(G1::rand(&mut rng)).prepare(), G2Affine::from(G2::rand(&mut rng)).prepare()))
@@ -49,7 +47,7 @@ pub fn bench_pairing_miller_loop(c: &mut Criterion) {
 pub fn bench_pairing_final_exponentiation(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<Fq12> = (0..SAMPLES)
         .map(|_| (G1Affine::from(G1::rand(&mut rng)).prepare(), G2Affine::from(G2::rand(&mut rng)).prepare()))
@@ -69,7 +67,7 @@ pub fn bench_pairing_final_exponentiation(c: &mut Criterion) {
 pub fn bench_pairing_full(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<(G1, G2)> = (0..SAMPLES).map(|_| (G1::rand(&mut rng), G2::rand(&mut rng))).collect();
 

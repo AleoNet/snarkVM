@@ -242,11 +242,14 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ProvingKey, VerifyingKey};
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
         program::{Literal, LiteralType},
     };
+
+    use std::collections::HashMap;
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
@@ -258,6 +261,7 @@ mod tests {
         type_b: LiteralType,
         mode_a: circuit::Mode,
         mode_b: circuit::Mode,
+        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>)> {
         use crate::{Process, Program};
         use console::program::Identifier;
@@ -288,7 +292,7 @@ mod tests {
         let operands = vec![operand_a, operand_b];
 
         // Initialize the stack.
-        let stack = Stack::new(&Process::load()?, &program)?;
+        let stack = Stack::new(&Process::load_with_cache(cache)?, &program)?;
 
         Ok((stack, operands))
     }
@@ -347,14 +351,17 @@ mod tests {
         literal_b: &Literal<CurrentNetwork>,
         mode_a: &circuit::Mode,
         mode_b: &circuit::Mode,
+        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) {
+        println!("Checking '{opcode}' for '{literal_a}.{mode_a}' and '{literal_b}.{mode_b}'");
+
         // Initialize the types.
         let type_a = literal_a.to_type();
         let type_b = literal_b.to_type();
         assert_eq!(type_a, type_b, "The two literals must be the *same* type for this test");
 
         // Initialize the stack.
-        let (stack, operands) = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b).unwrap();
+        let (stack, operands) = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b, cache).unwrap();
         // Initialize the operation.
         let operation = operation(operands);
 
@@ -464,6 +471,7 @@ mod tests {
         literal_b: &Literal<CurrentNetwork>,
         mode_a: &circuit::Mode,
         mode_b: &circuit::Mode,
+        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) {
         // Initialize the types.
         let type_a = literal_a.to_type();
@@ -471,7 +479,7 @@ mod tests {
         assert_ne!(type_a, type_b, "The two literals must be *different* types for this test");
 
         // If the types mismatch, ensure the stack fails to initialize.
-        let result = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b);
+        let result = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b, cache);
         assert!(
             result.is_err(),
             "Stack should have failed to initialize for: {opcode} {type_a}.{mode_a} {type_b}.{mode_b}"
@@ -485,17 +493,23 @@ mod tests {
         // Initialize the opcode.
         let opcode = AssertEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = TestRng::default();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+
+        // Prepare the key cache.
+        let mut cache = Default::default();
 
         for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
             for mode_a in &modes_a {
                 for mode_b in &modes_b {
                     // Check the operation.
-                    check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b);
+                    check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
                 }
             }
         }
@@ -503,29 +517,33 @@ mod tests {
 
     #[test]
     fn test_assert_eq_fails() {
-        use rayon::prelude::*;
-
         // Initialize the opcode.
         let opcode = AssertEq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = TestRng::default();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
-        literals_a.par_iter().for_each(|literal_a| {
+        // Prepare the key cache.
+        let mut cache = Default::default();
+
+        for literal_a in &literals_a {
             for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
+                if literal_a.to_type() != literal_b.to_type() {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
                             // Check the operation fails.
-                            check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+                            check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
                         }
                     }
                 }
             }
-        });
+        }
     }
 
     #[test]
@@ -535,17 +553,23 @@ mod tests {
         // Initialize the opcode.
         let opcode = AssertNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = TestRng::default();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+
+        // Prepare the key cache.
+        let mut cache = Default::default();
 
         for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
             for mode_a in &modes_a {
                 for mode_b in &modes_b {
                     // Check the operation.
-                    check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b);
+                    check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
                 }
             }
         }
@@ -553,29 +577,33 @@ mod tests {
 
     #[test]
     fn test_assert_neq_fails() {
-        use rayon::prelude::*;
-
         // Initialize the opcode.
         let opcode = AssertNeq::<CurrentNetwork>::opcode();
 
+        // Prepare the rng.
+        let mut rng = TestRng::default();
+
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
-        literals_a.par_iter().for_each(|literal_a| {
+        // Prepare the key cache.
+        let mut cache = Default::default();
+
+        for literal_a in &literals_a {
             for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        if literal_a.to_type() != literal_b.to_type() {
+                if literal_a.to_type() != literal_b.to_type() {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
                             // Check the operation fails.
-                            check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b);
+                            check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
                         }
                     }
                 }
             }
-        });
+        }
     }
 
     #[test]

@@ -27,22 +27,6 @@ pub enum BatchOperation<K: Copy + Clone + PartialEq + Eq + Hash + Send + Sync, V
     Remove(K),
 }
 
-/// A trait to unwrap a `Result` or `Reject`.
-pub trait OrAbort<T> {
-    /// Returns the result if it is successful, otherwise aborts the operation and returns the error.
-    fn or_abort(self, abort: impl FnOnce()) -> Result<T>;
-}
-
-impl<T> OrAbort<T> for Result<T> {
-    /// Returns the result if it is successful, otherwise aborts the operation and returns the error.
-    fn or_abort(self, abort: impl FnOnce()) -> Result<T> {
-        self.map_err(|e| {
-            abort();
-            e
-        })
-    }
-}
-
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
@@ -67,6 +51,13 @@ pub trait Map<
     fn start_atomic(&self);
 
     ///
+    /// Checks whether an atomic operation is currently in progress. This can be done to ensure
+    /// that lower-level operations don't start or finish their individual atomic write batch
+    /// if they are already part of a larger one.
+    ///
+    fn is_atomic_in_progress(&self) -> bool;
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self);
@@ -74,7 +65,7 @@ pub trait Map<
     ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
-    fn finish_atomic(&self);
+    fn finish_atomic(&self) -> Result<()>;
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.
@@ -118,4 +109,39 @@ pub trait MapRead<
     /// Returns an iterator over each value in the map.
     ///
     fn values(&'a self) -> Self::Values;
+}
+
+/// This macro executes the given block of operations as a new atomic write batch IFF there is no
+/// atomic write batch in progress yet. This ensures that complex atomic operations consisting of
+/// multiple lower-level operations - which might also need to be atomic if executed individually -
+/// are executed as a single large atomic operation regardless.
+#[macro_export]
+macro_rules! atomic_write_batch {
+    ($self:expr, $ops:block) => {
+        // Check if an atomic batch write is already in progress. If there isn't one, this means
+        // this operation is a "top-level" one and is the one to start and finalize the batch.
+        let is_part_of_atomic_batch = $self.is_atomic_in_progress();
+
+        // Start an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            $self.start_atomic();
+        }
+
+        // Wrap the operations that should be batched in a closure to be able to abort the entire
+        // write batch if any of them fails.
+        let run_atomic_ops = || -> Result<()> { $ops };
+
+        // Abort the batch if any of the associated operations has failed. It's crucial that there
+        // is an early return (via `?`) here, in order for any higher-level atomic write batch to
+        // also abort, cascading to all the owned storage objects.
+        run_atomic_ops().map_err(|err| {
+            $self.abort_atomic();
+            err
+        })?;
+
+        // Finish an atomic batch write operation IFF it's not already part of a larger one.
+        if !is_part_of_atomic_batch {
+            $self.finish_atomic()?;
+        }
+    };
 }

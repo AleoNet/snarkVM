@@ -38,9 +38,11 @@ mod tests {
 
     #[test]
     fn test_from_field() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
-            let identifier = sample_identifier::<CurrentNetwork>()?;
+            let identifier = sample_identifier::<CurrentNetwork>(&mut rng)?;
             assert_eq!(identifier, Identifier::from_field(&identifier.to_field()?)?);
         }
         Ok(())

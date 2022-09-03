@@ -61,9 +61,11 @@ mod tests {
 
     #[test]
     fn test_from_scalar() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let expected = ViewKey::try_from(private_key)?;
 
             // Check the scalar representation.

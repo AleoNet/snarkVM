@@ -42,9 +42,11 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new graph key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let view_key = ViewKey::try_from(private_key)?;
             let expected = GraphKey::try_from(view_key)?;
 

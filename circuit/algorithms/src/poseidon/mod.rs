@@ -23,7 +23,7 @@ mod prf;
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 #[cfg(test)]
-use snarkvm_utilities::{test_rng, Uniform};
+use snarkvm_utilities::{TestRng, Uniform};
 
 use crate::{Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
 use snarkvm_circuit_types::{environment::prelude::*, Field, Group, Scalar};

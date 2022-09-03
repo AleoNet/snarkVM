@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.7.5"
+version = "0.9.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,7 +12,13 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
@@ -39,28 +45,28 @@ harness = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.5"
+version = "0.9.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
+version = "0.9.0"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.7.5"
+version = "0.9.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.9.0"
 default-features = false
 
 [dependencies.aleo-std]
@@ -70,27 +76,9 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0"
 
-[dependencies.bincode]
-version = "1"
-
 [dependencies.crossbeam-channel]
 version = "0.5"
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
-version = "0.4.43"
-
-[dependencies.derivative]
-version = "2"
-features = [ "use_core" ]
-
-[dependencies.digest]
-version = "0.10"
-
-[dependencies.getrandom]
-version = "0.2"
 optional = true
-features = [ "js" ]
-default-features = false
 
 [dependencies.hashbrown]
 version = "0.12.1"
@@ -103,13 +91,7 @@ version = "0.10.3"
 
 [dependencies.lazy_static]
 version = "1.4"
-
-[dependencies.num_cpus]
-version = "1"
 optional = true
-
-[dependencies.once_cell]
-version = "1.12"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -130,10 +112,6 @@ default-features = false
 version = "1"
 optional = true
 
-[dependencies.reqwest]
-version = "0.11"
-optional = true
-
 [dependencies.rust-gpu-tools]
 version = "0.6.0"
 optional = true
@@ -141,7 +119,7 @@ optional = true
 [dependencies.serde]
 version = "1.0"
 default-features = false
-features = ["derive"]
+features = [ "derive" ]
 
 [dependencies.sha2]
 version = "0.10"
@@ -159,31 +137,20 @@ version = "1.0"
 version = "0.4"
 optional = true
 
-[dev-dependencies.expect-test ]
+[dev-dependencies.expect-test]
 version = "1.1.0"
 
-[dev-dependencies.blake2]
-version = "0.10"
-default-features = false
+[dev-dependencies.bincode]
+version = "1"
 
 [dev-dependencies.criterion]
 version = "0.3.6"
-
-[dev-dependencies.csv]
-version = "1"
-
-[dev-dependencies.rand_xorshift]
-version = "0.3"
-
-[dev-dependencies.serde]
-version = "1"
-features = ["derive"]
 
 [dev-dependencies.serde_json]
 version = "1"
 
 [dev-dependencies.serial_test]
-version = "*"
+version = "0.9"
 
 [features]
 default = [
@@ -194,28 +161,22 @@ default = [
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
-full = [
-  "crypto_hash",
-  "fft",
-  "msm",
-  "polycommit_full",
-  "snark"
-]
+full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
 wasm = [
   "crypto_hash",
   "fft",
   "msm",
   "polycommit_wasm",
   "snark",
-  "getrandom",
   "wasm-bindgen-futures",
-  "reqwest"
 ]
-
-cuda = [ "rust-gpu-tools" ]
-parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
+cuda = [ "crossbeam-channel", "lazy_static", "rust-gpu-tools" ]
+parallel = [
+  "rayon",
+  "snarkvm-fields/parallel",
+  "snarkvm-utilities/parallel"
+]
 profiler = [ "aleo-std/profiler" ]
-
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]

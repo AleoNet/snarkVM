@@ -111,7 +111,7 @@ impl<N: Network> ProverFile<N> {
             // Ensure the path is well-formed.
             Self::check_path(path)?;
             // Remove the file.
-            Ok(fs::remove_file(&path)?)
+            Ok(fs::remove_file(path)?)
         }
     }
 }
@@ -137,7 +137,7 @@ impl<N: Network> ProverFile<N> {
         // Ensure the path is well-formed.
         Self::check_path(file)?;
         // Parse the prover file bytes.
-        let prover = Self::from_bytes_le(&fs::read(&file)?)?;
+        let prover = Self::from_bytes_le(&fs::read(file)?)?;
 
         // Retrieve the file stem.
         let file_stem = file
@@ -169,7 +169,7 @@ impl<N: Network> ProverFile<N> {
         ensure!(self.function_name.to_string() == file_stem, "Function name does not match file stem.");
 
         // Write to the file (overwriting if it already exists).
-        Ok(File::create(&path)?.write_all(&self.to_bytes_le()?)?)
+        Ok(File::create(path)?.write_all(&self.to_bytes_le()?)?)
     }
 }
 
@@ -193,7 +193,7 @@ impl<N: Network> ToBytes for ProverFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{test_crypto_rng, FromStr, Parser};
+    use crate::prelude::{FromStr, Parser, TestRng};
     use snarkvm_compiler::Process;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
@@ -234,7 +234,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Sample the proving key.
-        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the proving key.
         let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();

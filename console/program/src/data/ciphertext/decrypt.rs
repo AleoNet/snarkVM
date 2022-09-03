@@ -59,7 +59,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_encrypt_and_decrypt<N: Network>() -> Result<()> {
+    fn check_encrypt_and_decrypt<N: Network>(rng: &mut TestRng) -> Result<()> {
         // Prepare the plaintext.
         let plaintext_string = r"{
   foo: 5u8,
@@ -89,12 +89,12 @@ mod tests {
         let plaintext = Plaintext::<N>::from_str(plaintext_string)?;
 
         // Sample a random address.
-        let private_key = PrivateKey::<N>::new(&mut test_crypto_rng())?;
+        let private_key = PrivateKey::<N>::new(rng)?;
         let view_key = ViewKey::<N>::try_from(private_key)?;
         let address = Address::<N>::try_from(view_key)?;
 
         // Encrypt the plaintext.
-        let randomizer = Uniform::rand(&mut test_rng());
+        let randomizer = Uniform::rand(rng);
         let ciphertext = plaintext.encrypt(&address, randomizer)?;
 
         // Decrypt the plaintext.
@@ -103,12 +103,12 @@ mod tests {
         Ok(())
     }
 
-    fn check_encrypt_and_decrypt_symmetric<N: Network>() -> Result<()> {
+    fn check_encrypt_and_decrypt_symmetric<N: Network>(rng: &mut TestRng) -> Result<()> {
         // Prepare the plaintext.
-        let plaintext = Plaintext::<N>::from(Literal::Field(Uniform::rand(&mut test_rng())));
+        let plaintext = Plaintext::<N>::from(Literal::Field(Uniform::rand(rng)));
 
         // Encrypt the plaintext.
-        let plaintext_view_key = Uniform::rand(&mut test_rng());
+        let plaintext_view_key = Uniform::rand(rng);
         let ciphertext = plaintext.encrypt_symmetric(plaintext_view_key)?;
         // Decrypt the plaintext.
         assert_eq!(plaintext, ciphertext.decrypt_symmetric(plaintext_view_key)?);
@@ -117,9 +117,11 @@ mod tests {
 
     #[test]
     fn test_encrypt_and_decrypt() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
-            check_encrypt_and_decrypt::<CurrentNetwork>()?;
-            check_encrypt_and_decrypt_symmetric::<CurrentNetwork>()?;
+            check_encrypt_and_decrypt::<CurrentNetwork>(&mut rng)?;
+            check_encrypt_and_decrypt_symmetric::<CurrentNetwork>(&mut rng)?;
         }
         Ok(())
     }

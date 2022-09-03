@@ -38,9 +38,11 @@ mod tests {
     const ITERATIONS: usize = 100;
 
     fn check_from_bits_le() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let expected: Group<CurrentEnvironment> = Uniform::rand(&mut rng);
             let given_bits = expected.to_bits_le();
             assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
@@ -58,9 +60,11 @@ mod tests {
     }
 
     fn check_from_bits_be() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let expected: Group<CurrentEnvironment> = Uniform::rand(&mut rng);
             let given_bits = expected.to_bits_be();
             assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 

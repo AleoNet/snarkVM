@@ -121,7 +121,9 @@ mod tests {
 
     #[test]
     fn test_bytes() {
-        for expected in test_helpers::sample_requests().into_iter() {
+        let mut rng = TestRng::default();
+
+        for expected in test_helpers::sample_requests(&mut rng).into_iter() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Request::read_le(&expected_bytes[..]).unwrap());
