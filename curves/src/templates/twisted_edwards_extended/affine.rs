@@ -260,7 +260,7 @@ impl<P: Parameters> Neg for Affine<P> {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Self::new(-self.x, self.y, -self.x * self.y)
+        Self::new(-self.x, self.y, -self.t)
     }
 }
 
