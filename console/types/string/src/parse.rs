@@ -92,4 +92,18 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn test_parse_unsupported_code_points() -> Result<()> {
+        const UNSUPPORTED_CODE_POINTS: [&str; 9] = [
+            "\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}",
+        ];
+
+        // Ensure that the invalid code point is not allowed in the string.
+        for unsupported_code_point in UNSUPPORTED_CODE_POINTS {
+            assert!(StringType::<CurrentEnvironment>::parse(unsupported_code_point).is_err());
+        }
+
+        Ok(())
+    }
 }
