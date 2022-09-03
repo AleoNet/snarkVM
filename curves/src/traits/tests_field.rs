@@ -306,6 +306,26 @@ pub fn random_sqrt_tonelli_tests<F: PrimeField + SquareRootField>(rng: &mut Test
         // Increment by 1.
         given += &F::one();
     }
+
+    // Start at 1.
+    let mut given = F::one();
+
+    // Linearly check equivalence.
+    for _ in 0..1_000 {
+        // Compute the candidate square root.
+        let candidate_a = given.sqrt();
+        // Compute the Tonelli-Shanks square root.
+        let candidate_b = test_tonelli_shanks(&given);
+
+        // Ensure the two candidate square roots are equivalent.
+        match candidate_a {
+            Some(candidate_a) => assert!(Some(candidate_a) == candidate_b || Some(-candidate_a) == candidate_b),
+            None => assert_eq!(candidate_a, candidate_b),
+        };
+
+        // Decrement by 1.
+        given -= &F::one();
+    }
 }
 
 #[cfg(test)]
