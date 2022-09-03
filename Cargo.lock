@@ -175,15 +175,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
-name = "blake2"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9cf849ee05b2ee5fba5e36f97ff8ec2533916700fc0758d40d92136a42f3388"
-dependencies = [
- "digest 0.10.3",
-]
-
-[[package]]
 name = "blake2s_simd"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -629,7 +620,6 @@ checksum = "f2fb860ca6fafa5552fb6d0e816a69c8e49f0908bf524e30a90d97c85892d506"
 dependencies = [
  "block-buffer 0.10.2",
  "crypto-common",
- "subtle",
 ]
 
 [[package]]
@@ -1587,17 +1577,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
-name = "proc-macro-crate"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eda0fc3b0fb7c975631757e14d9049da17374063edb6ebbcbc54d880d4fe94e9"
-dependencies = [
- "once_cell",
- "thiserror",
- "toml",
-]
-
-[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2191,27 +2170,16 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "bincode",
- "blake2",
  "criterion",
- "crossbeam-channel",
- "csv",
- "curl",
- "derivative",
- "digest 0.10.3",
  "expect-test",
- "getrandom",
  "hashbrown",
  "hex",
  "itertools",
- "lazy_static",
- "num_cpus",
- "once_cell",
  "parking_lot 0.12.1",
  "rand",
  "rand_chacha",
  "rand_core",
  "rayon",
- "reqwest",
  "rust-gpu-tools",
  "serde",
  "serde_json",
@@ -2749,8 +2717,6 @@ dependencies = [
 name = "snarkvm-utilities-derives"
 version = "0.9.0"
 dependencies = [
- "proc-macro-crate",
- "proc-macro-error",
  "proc-macro2 1.0.43",
  "quote 1.0.20",
  "syn 1.0.98",
@@ -2793,12 +2759,6 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
-name = "subtle"
-version = "2.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
