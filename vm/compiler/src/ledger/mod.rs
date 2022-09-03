@@ -347,14 +347,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
-    /// Appends the given transaction to the memory pool.
+    /// Appends the given prover solution to the memory pool.
     pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
-        // Ensure the transaction does not already exist.
-        if self.prover_puzzle_memory_pool.contains(&prover_puzzle_solution) {
-            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment().0);
-        }
-
-        // TODO (raychu86): Ensure that the prover puzzle is valid for the given epoch
         let epoch_info = self.get_epoch_info();
         let epoch_challenge = self.get_epoch_challenge()?;
 
@@ -364,7 +358,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Insert the prover puzzle to the memory pool.
-        self.prover_puzzle_memory_pool.insert(prover_puzzle_solution);
+        if !self.prover_puzzle_memory_pool.insert(prover_puzzle_solution) {
+            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment().0);
+        }
+
         Ok(())
     }
 
