@@ -408,7 +408,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             &prover_solutions,
         )?;
 
-        // TODO (raychu86): Add the accumulated coinbase proof to the block.
+        // TODO (raychu86): Pay out rewards to the provers.
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
