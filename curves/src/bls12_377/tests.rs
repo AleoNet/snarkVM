@@ -69,20 +69,7 @@ use std::{
     ops::{AddAssign, MulAssign, SubAssign},
 };
 
-pub(crate) const ITERATIONS: usize = 5;
-
-#[test]
-fn test_fr_powers_of_g() {
-    let mut powers = Vec::with_capacity((FrParameters::TWO_ADICITY as usize) - 2);
-    let g = Fr::two_adic_root_of_unity().pow(FrParameters::T);
-    let two = Fr::from(2u8);
-    for i in 0..FrParameters::TWO_ADICITY - 1 {
-        powers.push(g.pow(two.pow(Fr::from(i as u64).to_repr()).to_repr()).to_repr());
-    }
-    for power in powers {
-        println!("{:?}", power.as_ref());
-    }
-}
+pub(crate) const ITERATIONS: usize = 10;
 
 #[test]
 fn test_bls12_377_fr() {
@@ -95,19 +82,6 @@ fn test_bls12_377_fr() {
         primefield_test::<Fr>(&mut rng);
         sqrt_field_test(b, &mut rng);
         field_serialization_test::<Fr>(&mut rng);
-    }
-}
-
-#[test]
-fn test_fq_powers_of_g() {
-    let mut powers = Vec::with_capacity((FqParameters::TWO_ADICITY as usize) - 2);
-    let g = Fq::two_adic_root_of_unity().pow(FqParameters::T);
-    let two = Fq::from(2u8);
-    for i in 0..FqParameters::TWO_ADICITY - 1 {
-        powers.push(g.pow(two.pow(Fq::from(i as u64).to_repr()).to_repr()).to_repr());
-    }
-    for power in powers {
-        println!("{:?}", power.as_ref());
     }
 }
 

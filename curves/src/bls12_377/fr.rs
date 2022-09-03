@@ -203,3 +203,30 @@ impl PoseidonDefaultParameters for FrParameters {
         PoseidonDefaultParametersEntry::new(8, 17, 8, 31, 0),
     ];
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_fields::{FftField, Field, PrimeField};
+
+    #[test]
+    fn test_powers_of_g() {
+        let two = Fr::from(2u8);
+
+        // Compute the expected powers of G.
+        let g = Fr::two_adic_root_of_unity().pow(FrParameters::T);
+        let powers = (0..FrParameters::TWO_ADICITY - 1)
+            .map(|i| g.pow(two.pow(Fr::from(i as u64).to_repr()).to_repr()).to_repr())
+            .collect::<Vec<_>>();
+
+        // Ensure the correct number of powers of G are present.
+        assert_eq!(FrParameters::POWERS_OF_G.len() as u64, (FrParameters::TWO_ADICITY - 1) as u64);
+        assert_eq!(FrParameters::POWERS_OF_G.len(), powers.len());
+
+        // Ensure the expected and candidate powers match.
+        for (expected, candidate) in powers.iter().zip(FrParameters::POWERS_OF_G.iter()) {
+            println!("{:?} =?= {:?}", expected, candidate);
+            assert_eq!(expected, candidate);
+        }
+    }
+}
