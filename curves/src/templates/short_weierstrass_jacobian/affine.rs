@@ -252,8 +252,6 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             a.y = lambda * (b.x - a.x) - b.y;
         }
     }
-
-    fn correct_t_coordinate(&mut self) {}
 }
 
 impl<P: Parameters> ToMinimalBits for Affine<P> {

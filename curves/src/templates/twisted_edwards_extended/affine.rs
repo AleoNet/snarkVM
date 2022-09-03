@@ -230,6 +230,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             b.x = Self::BaseField::one() - dx1x2y1y2.square();
 
             *inversion_tmp *= &b.x;
+            b.t = b.x * b.y;
         }
     }
 
@@ -241,12 +242,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             a.x *= *inversion_tmp;
             a.y *= *inversion_tmp;
             *inversion_tmp *= &b.x;
+            a.t = a.x * a.y;
         }
-    }
-
-    /// Sets the `t` coordinate to the correct value.
-    fn correct_t_coordinate(&mut self) {
-        self.t = self.x * self.y;
     }
 }
 
