@@ -30,11 +30,10 @@ use crate::UniversalSRS;
 use console::{account::Address, prelude::Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
-    msm::VariableBase,
-    polycommit::kzg10::{self, Commitment, Randomness, UniversalParams as SRS, KZG10},
+    polycommit::kzg10::{self, Randomness, UniversalParams as SRS, KZG10},
 };
 use snarkvm_curves::PairingEngine;
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::Zero;
 use snarkvm_utilities::{cfg_iter, ToBytes};
 
 use anyhow::{anyhow, bail, Result};
@@ -177,52 +176,5 @@ impl<N: Network> CoinbasePuzzle<N> {
         let combined_product = &combined_polynomial * &epoch_challenge.epoch_polynomial;
         let proof = KZG10::open(&pk.powers(), &combined_product, point, &Randomness::empty())?;
         Ok(CombinedPuzzleSolution::new(partial_solutions, proof))
-    }
-
-    pub fn verify(
-        vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_info: &EpochInfo,
-        epoch_challenge: &EpochChallenge<N>,
-        combined_solution: &CombinedPuzzleSolution<N>,
-    ) -> Result<bool> {
-        if combined_solution.individual_puzzle_solutions.is_empty() {
-            return Ok(false);
-        }
-        if combined_solution.proof.is_hiding() {
-            return Ok(false);
-        }
-        let polynomials: Vec<_> = cfg_iter!(combined_solution.individual_puzzle_solutions)
-            .map(|solution| {
-                // TODO: check difficulty of solution
-                Self::sample_solution_polynomial(epoch_challenge, epoch_info, solution.address(), solution.nonce())
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        // Compute challenges
-        let mut fs_challenges = hash_commitments(
-            combined_solution.individual_puzzle_solutions.iter().map(|solution| *solution.commitment()),
-        );
-
-        let point = match fs_challenges.pop() {
-            Some(point) => point,
-            None => bail!("Missing challenge point"),
-        };
-
-        // Compute combined evaluation
-        let mut combined_eval = cfg_iter!(polynomials)
-            .zip(&fs_challenges)
-            .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |acc, (poly, challenge)| {
-                acc + (poly.evaluate(point) * challenge)
-            })
-            .sum();
-        combined_eval *= &epoch_challenge.epoch_polynomial.evaluate(point);
-
-        // Compute combined commitment
-        let commitments: Vec<_> =
-            cfg_iter!(combined_solution.individual_puzzle_solutions).map(|solution| solution.commitment().0).collect();
-        let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
-        let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
-        let combined_commitment: Commitment<N::PairingCurve> = Commitment(combined_commitment.into());
-        Ok(KZG10::check(vk, &combined_commitment, point, combined_eval, &combined_solution.proof)?)
     }
 }

@@ -117,7 +117,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
                     .collect::<Vec<_>>();
                 let final_puzzle =
                     CoinbasePuzzleInst::accumulate(&pk, &epoch_info, &epoch_challenge, &solutions).unwrap();
-                b.iter(|| CoinbasePuzzleInst::verify(&vk, &epoch_info, &epoch_challenge, &final_puzzle).unwrap())
+                b.iter(|| final_puzzle.verify(&vk, &epoch_info, &epoch_challenge).unwrap())
             });
         }
     }

@@ -64,7 +64,7 @@ impl<N: Network> Block<N> {
                 CoinbasePuzzle::<N>::accumulate(&pk, &epoch_info, &epoch_challenge, &[prover_solution])?;
 
             // Ensure the coinbase proof is valid.
-            if !CoinbasePuzzle::<N>::verify(&vk, &epoch_info, &epoch_challenge, &coinbase_proof)? {
+            if !coinbase_proof.verify(&vk, &epoch_info, &epoch_challenge)? {
                 bail!("Failed to initialize the genesis coinbase puzzle")
             }
 

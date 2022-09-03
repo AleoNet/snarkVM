@@ -25,10 +25,11 @@ pub use partial_prover_solution::*;
 mod prover_solution;
 pub use prover_solution::*;
 
-use crate::coinbase_puzzle::{hash_commitment, CoinbasePuzzle};
+use crate::coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle};
 use console::{account::Address, prelude::*};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
+    msm::VariableBase,
     polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey, KZG10},
 };
 use snarkvm_curves::PairingEngine;
