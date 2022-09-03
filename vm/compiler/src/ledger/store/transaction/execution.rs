@@ -432,8 +432,10 @@ mod tests {
 
     #[test]
     fn test_insert_get_remove() {
+        let rng = &mut TestRng::default();
+
         // Sample the execution transaction.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
@@ -462,8 +464,10 @@ mod tests {
 
     #[test]
     fn test_find_transaction_id() {
+        let rng = &mut TestRng::default();
+
         // Sample the execution transaction.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {

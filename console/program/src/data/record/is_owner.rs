@@ -57,22 +57,17 @@ mod tests {
         view_key: ViewKey<N>,
         owner: Owner<N, Plaintext<N>>,
         gates: Balance<N, Plaintext<N>>,
+        rng: &mut TestRng,
     ) -> Result<()> {
         // Prepare the record.
-        let randomizer = Scalar::rand(&mut test_rng());
+        let randomizer = Scalar::rand(rng);
         let record = Record {
             owner,
             gates,
             data: IndexMap::from_iter(
                 vec![
-                    (
-                        Identifier::from_str("a")?,
-                        Entry::Private(Plaintext::from(Literal::Field(Field::rand(&mut test_rng())))),
-                    ),
-                    (
-                        Identifier::from_str("b")?,
-                        Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(&mut test_rng())))),
-                    ),
+                    (Identifier::from_str("a")?, Entry::Private(Plaintext::from(Literal::Field(Field::rand(rng))))),
+                    (Identifier::from_str("b")?, Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(rng))))),
                 ]
                 .into_iter(),
             ),
@@ -89,7 +84,7 @@ mod tests {
         assert!(ciphertext.is_owner(&address, &view_key));
 
         // Sample a random view key and address.
-        let private_key = PrivateKey::<N>::new(&mut test_crypto_rng())?;
+        let private_key = PrivateKey::<N>::new(rng)?;
         let view_key = ViewKey::try_from(&private_key)?;
         let address = Address::try_from(&private_key)?;
 
@@ -101,31 +96,33 @@ mod tests {
 
     #[test]
     fn test_is_owner() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a view key and address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let view_key = ViewKey::try_from(&private_key)?;
             let address = Address::try_from(&private_key)?;
 
             // Public owner and public gates.
             let owner = Owner::Public(address);
-            let gates = Balance::Public(U64::new(u64::rand(&mut test_rng()) >> 12));
-            check_is_owner::<CurrentNetwork>(view_key, owner, gates)?;
+            let gates = Balance::Public(U64::new(u64::rand(&mut rng) >> 12));
+            check_is_owner::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
 
             // Private owner and public gates.
             let owner = Owner::Private(Plaintext::from(Literal::Address(address)));
-            let gates = Balance::Public(U64::new(u64::rand(&mut test_rng()) >> 12));
-            check_is_owner::<CurrentNetwork>(view_key, owner, gates)?;
+            let gates = Balance::Public(U64::new(u64::rand(&mut rng) >> 12));
+            check_is_owner::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
 
             // Public owner and private gates.
             let owner = Owner::Public(address);
-            let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut test_rng()) >> 12))));
-            check_is_owner::<CurrentNetwork>(view_key, owner, gates)?;
+            let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut rng) >> 12))));
+            check_is_owner::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
 
             // Private owner and private gates.
             let owner = Owner::Private(Plaintext::from(Literal::Address(address)));
-            let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut test_rng()) >> 12))));
-            check_is_owner::<CurrentNetwork>(view_key, owner, gates)?;
+            let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut rng) >> 12))));
+            check_is_owner::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
         }
         Ok(())
     }

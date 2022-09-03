@@ -229,9 +229,11 @@ mod tests {
     fn test_constant_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
             let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
             let num_constant =
@@ -250,9 +252,11 @@ mod tests {
 
     #[test]
     fn test_constant_times_scalar_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Constant, base);
@@ -267,9 +271,11 @@ mod tests {
 
     #[test]
     fn test_constant_times_scalar_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Constant, base);
@@ -287,9 +293,11 @@ mod tests {
     fn test_public_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
             let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
             let num_constant =
@@ -315,9 +323,11 @@ mod tests {
     fn test_private_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
             let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
             let num_constant =
@@ -340,9 +350,11 @@ mod tests {
 
     #[test]
     fn test_public_times_scalar_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Public, base);
@@ -357,9 +369,11 @@ mod tests {
 
     #[test]
     fn test_public_times_scalar_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Public, base);
@@ -374,9 +388,11 @@ mod tests {
 
     #[test]
     fn test_private_times_scalar_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Private, base);
@@ -391,9 +407,11 @@ mod tests {
 
     #[test]
     fn test_private_times_scalar_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Private, base);
@@ -408,9 +426,11 @@ mod tests {
 
     #[test]
     fn test_mul_matches() {
+        let mut rng = TestRng::default();
+
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
-        let b = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut rng);
+        let b = Uniform::rand(&mut rng);
         let expected = a * b;
 
         // Constant

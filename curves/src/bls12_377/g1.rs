@@ -120,7 +120,7 @@ pub const G1_GENERATOR_Y: Fq = field!(
 mod tests {
     use rand::Rng;
     use snarkvm_fields::Field;
-    use snarkvm_utilities::{BitIteratorBE, Uniform};
+    use snarkvm_utilities::{BitIteratorBE, TestRng, Uniform};
 
     use crate::AffineCurve;
 
@@ -128,7 +128,8 @@ mod tests {
 
     #[test]
     fn test_subgroup_membership() {
-        let rng = &mut rand::thread_rng();
+        let rng = &mut TestRng::default();
+
         for _ in 0..1000 {
             let p = G1Affine::rand(rng);
             assert!(Bls12_377G1Parameters::is_in_correct_subgroup_assuming_on_curve(&p));

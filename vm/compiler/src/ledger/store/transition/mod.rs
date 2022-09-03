@@ -797,8 +797,10 @@ mod tests {
 
     #[test]
     fn test_insert_get_remove() {
+        let rng = &mut TestRng::default();
+
         // Sample the transitions.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         let transitions = transaction
             .transitions()
             .chain([crate::process::test_helpers::sample_transition()].iter())

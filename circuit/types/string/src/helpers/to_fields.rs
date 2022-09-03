@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_to_fields_constant() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
         let given: String = (0..Circuit::MAX_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_to_fields_public() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
         let given: String = (0..Circuit::MAX_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_to_fields_private() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
         let given: String = (0..Circuit::MAX_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();

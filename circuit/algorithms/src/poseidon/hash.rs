@@ -44,6 +44,7 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) -> Result<()> {
         use console::Hash as H;
 
@@ -53,7 +54,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Prepare the preimage.
             let native_input = (0..num_inputs)
-                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut test_rng()))
+                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(rng))
                 .collect::<Vec<_>>();
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
@@ -74,39 +75,45 @@ mod tests {
 
     #[test]
     fn test_hash_constant() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for num_inputs in 0..=RATE {
-            check_hash(Mode::Constant, num_inputs, 1, 0, 0, 0)?;
+            check_hash(Mode::Constant, num_inputs, 1, 0, 0, 0, &mut rng)?;
         }
         Ok(())
     }
 
     #[test]
     fn test_hash_public() -> Result<()> {
-        check_hash(Mode::Public, 0, 1, 0, 0, 0)?;
-        check_hash(Mode::Public, 1, 1, 0, 335, 335)?;
-        check_hash(Mode::Public, 2, 1, 0, 340, 340)?;
-        check_hash(Mode::Public, 3, 1, 0, 345, 345)?;
-        check_hash(Mode::Public, 4, 1, 0, 350, 350)?;
-        check_hash(Mode::Public, 5, 1, 0, 705, 705)?;
-        check_hash(Mode::Public, 6, 1, 0, 705, 705)?;
-        check_hash(Mode::Public, 7, 1, 0, 705, 705)?;
-        check_hash(Mode::Public, 8, 1, 0, 705, 705)?;
-        check_hash(Mode::Public, 9, 1, 0, 1060, 1060)?;
-        check_hash(Mode::Public, 10, 1, 0, 1060, 1060)
+        let mut rng = TestRng::default();
+
+        check_hash(Mode::Public, 0, 1, 0, 0, 0, &mut rng)?;
+        check_hash(Mode::Public, 1, 1, 0, 335, 335, &mut rng)?;
+        check_hash(Mode::Public, 2, 1, 0, 340, 340, &mut rng)?;
+        check_hash(Mode::Public, 3, 1, 0, 345, 345, &mut rng)?;
+        check_hash(Mode::Public, 4, 1, 0, 350, 350, &mut rng)?;
+        check_hash(Mode::Public, 5, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Public, 6, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Public, 7, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Public, 8, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Public, 9, 1, 0, 1060, 1060, &mut rng)?;
+        check_hash(Mode::Public, 10, 1, 0, 1060, 1060, &mut rng)
     }
 
     #[test]
     fn test_hash_private() -> Result<()> {
-        check_hash(Mode::Private, 0, 1, 0, 0, 0)?;
-        check_hash(Mode::Private, 1, 1, 0, 335, 335)?;
-        check_hash(Mode::Private, 2, 1, 0, 340, 340)?;
-        check_hash(Mode::Private, 3, 1, 0, 345, 345)?;
-        check_hash(Mode::Private, 4, 1, 0, 350, 350)?;
-        check_hash(Mode::Private, 5, 1, 0, 705, 705)?;
-        check_hash(Mode::Private, 6, 1, 0, 705, 705)?;
-        check_hash(Mode::Private, 7, 1, 0, 705, 705)?;
-        check_hash(Mode::Private, 8, 1, 0, 705, 705)?;
-        check_hash(Mode::Private, 9, 1, 0, 1060, 1060)?;
-        check_hash(Mode::Private, 10, 1, 0, 1060, 1060)
+        let mut rng = TestRng::default();
+
+        check_hash(Mode::Private, 0, 1, 0, 0, 0, &mut rng)?;
+        check_hash(Mode::Private, 1, 1, 0, 335, 335, &mut rng)?;
+        check_hash(Mode::Private, 2, 1, 0, 340, 340, &mut rng)?;
+        check_hash(Mode::Private, 3, 1, 0, 345, 345, &mut rng)?;
+        check_hash(Mode::Private, 4, 1, 0, 350, 350, &mut rng)?;
+        check_hash(Mode::Private, 5, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Private, 6, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Private, 7, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Private, 8, 1, 0, 705, 705, &mut rng)?;
+        check_hash(Mode::Private, 9, 1, 0, 1060, 1060, &mut rng)?;
+        check_hash(Mode::Private, 10, 1, 0, 1060, 1060, &mut rng)
     }
 }
