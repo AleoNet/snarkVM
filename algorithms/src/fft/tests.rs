@@ -198,7 +198,7 @@ fn parallel_fft_consistency() {
         let mut m = 1;
         for _i in 1..=log_n {
             // w_m is 2^i-th root of unity
-            let w_m = omega.pow(&[(n / (2 * m)) as u64]);
+            let w_m = omega.pow([(n / (2 * m)) as u64]);
 
             let mut k = 0;
             while k < n {

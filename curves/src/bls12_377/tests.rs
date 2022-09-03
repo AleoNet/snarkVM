@@ -376,7 +376,7 @@ fn test_fq_pow() {
         // Exponentiate by various small numbers and ensure it consists with repeated
         // multiplication.
         let a = Fq::rand(&mut rng);
-        let target = a.pow(&[i]);
+        let target = a.pow([i]);
         let mut c = Fq::one();
         for _ in 0..i {
             c.mul_assign(&a);
