@@ -259,7 +259,7 @@ pub fn random_sqrt_tonelli_tests<F: PrimeField + SquareRootField>(rng: &mut Test
         assert!(expected_sqrt == candidate_a || expected_sqrt == -candidate_a);
 
         // Compute the Tonelli-Shanks square root.
-        let candidate_b = test_tonelli_shanks(&given).unwrap();
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given).unwrap();
         assert!(expected_sqrt == candidate_b || expected_sqrt == -candidate_b);
 
         // Ensure the two candidate square roots are equivalent.
@@ -280,7 +280,7 @@ pub fn random_sqrt_tonelli_tests<F: PrimeField + SquareRootField>(rng: &mut Test
         assert!(expected_sqrt == candidate_a || expected_sqrt == -candidate_a);
 
         // Compute the Tonelli-Shanks square root.
-        let candidate_b = test_tonelli_shanks(&given).unwrap();
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given).unwrap();
         assert!(expected_sqrt == candidate_b || expected_sqrt == -candidate_b);
 
         // Increment by 1.
@@ -295,7 +295,7 @@ pub fn random_sqrt_tonelli_tests<F: PrimeField + SquareRootField>(rng: &mut Test
         // Compute the candidate square root.
         let candidate_a = given.sqrt();
         // Compute the Tonelli-Shanks square root.
-        let candidate_b = test_tonelli_shanks(&given);
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given);
 
         // Ensure the two candidate square roots are equivalent.
         match candidate_a {
@@ -315,7 +315,7 @@ pub fn random_sqrt_tonelli_tests<F: PrimeField + SquareRootField>(rng: &mut Test
         // Compute the candidate square root.
         let candidate_a = given.sqrt();
         // Compute the Tonelli-Shanks square root.
-        let candidate_b = test_tonelli_shanks(&given);
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given);
 
         // Ensure the two candidate square roots are equivalent.
         match candidate_a {
@@ -353,7 +353,7 @@ pub(crate) fn bench_sqrt<F: PrimeField + SquareRootField>(rng: &mut TestRng) {
 
         // Compute the Tonelli-Shanks square root.
         let timer = std::time::Instant::now();
-        let _candidate_b = test_tonelli_shanks(&given);
+        let _candidate_b = check_tonelli_shanks_sqrt_for_testing(&given);
         let time_b = timer.elapsed().as_nanos();
         profile_b.push(time_b);
     }
@@ -369,8 +369,9 @@ pub(crate) fn bench_sqrt<F: PrimeField + SquareRootField>(rng: &mut TestRng) {
 }
 
 /// Returns the square root using the Tonelli-Shanks algorithm.
+#[cfg(test)]
 #[inline]
-fn test_tonelli_shanks<F: PrimeField + SquareRootField>(field: &F) -> Option<F> {
+fn check_tonelli_shanks_sqrt_for_testing<F: PrimeField + SquareRootField>(field: &F) -> Option<F> {
     use snarkvm_fields::LegendreSymbol::*;
     // https://eprint.iacr.org/2012/685.pdf (page 12, algorithm 5)
     // Actually this is just normal Tonelli-Shanks; since `P::Generator`
