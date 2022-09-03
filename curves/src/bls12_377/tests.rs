@@ -37,6 +37,7 @@ use crate::{
     templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
         tests_field::{
+            bench_sqrt,
             field_serialization_test,
             field_test,
             frobenius_test,
@@ -433,6 +434,20 @@ fn test_fr_sqrt_tonelli() {
     let mut rng = TestRng::default();
 
     random_sqrt_tonelli_tests::<Fr>(&mut rng);
+}
+
+#[test]
+fn test_fq_bench_sqrt() {
+    let mut rng = TestRng::default();
+
+    bench_sqrt::<Fq>(&mut rng);
+}
+
+#[test]
+fn test_fr_bench_sqrt() {
+    let mut rng = TestRng::default();
+
+    bench_sqrt::<Fr>(&mut rng);
 }
 
 #[test]
