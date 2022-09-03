@@ -357,7 +357,7 @@ mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
     use snarkvm_fields::{Field, One, PrimeField};
-    use snarkvm_utilities::rand::{test_rng, Uniform};
+    use snarkvm_utilities::rand::{TestRng, Uniform};
 
     use serial_test::serial;
 
@@ -423,7 +423,7 @@ mod tests {
     }
 
     fn make_tests(count: usize, cardinality: usize) -> Vec<Vec<Fq>> {
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
         let mut inputs = vec![];
         for _ in 0..count {
             let mut out = vec![];
@@ -436,7 +436,7 @@ mod tests {
     }
 
     fn make_projective_tests(count: usize, cardinality: usize) -> Vec<Vec<G1Projective>> {
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
         let mut inputs = vec![];
         for _ in 0..count {
             let mut out = vec![];
@@ -449,7 +449,7 @@ mod tests {
     }
 
     fn make_affine_tests(count: usize, cardinality: usize) -> Vec<Vec<CudaAffine>> {
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
         let mut inputs = vec![];
         for _ in 0..count {
             let mut out = vec![];

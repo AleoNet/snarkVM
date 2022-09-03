@@ -33,7 +33,7 @@ mod tests {
     fn check_to_x_coordinate(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut TestRng::default());
             let candidate = Group::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {

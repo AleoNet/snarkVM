@@ -115,42 +115,42 @@ mod tests {
 
     #[test]
     fn test_to_bits_le_constant() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_bits_le("Constant", &expected.to_bits_le(), &candidate, 251, 0, 0, 0);
     }
 
     #[test]
     fn test_to_bits_be_constant() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_bits_be("Constant", &expected.to_bits_be(), candidate, 251, 0, 0, 0);
     }
 
     #[test]
     fn test_to_bits_le_public() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_bits_le("Public", &expected.to_bits_le(), &candidate, 0, 0, 251, 252);
     }
 
     #[test]
     fn test_to_bits_be_public() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_bits_be("Public", &expected.to_bits_be(), candidate, 0, 0, 251, 252);
     }
 
     #[test]
     fn test_to_bits_le_private() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_bits_le("Private", &expected.to_bits_le(), &candidate, 0, 0, 251, 252);
     }
 
     #[test]
     fn test_to_bits_be_private() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_bits_be("Private", &expected.to_bits_be(), candidate, 0, 0, 251, 252);
     }

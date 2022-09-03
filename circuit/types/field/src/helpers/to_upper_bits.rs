@@ -101,9 +101,11 @@ mod tests {
         let size_in_bytes = (size_in_bits + 7) / 8;
         let num_leading_zero_bits = (size_in_bytes * 8) - size_in_bits;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random unsigned integer.
-            let value: I = Uniform::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut rng);
             let expected = value.to_bits_be();
 
             // Construct the unsigned integer as a field element.

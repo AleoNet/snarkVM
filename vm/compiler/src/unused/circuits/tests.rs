@@ -19,7 +19,6 @@ use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 
 use itertools::Itertools;
-use rand::thread_rng;
 
 fn dpc_execute_circuits_test<N: Network>(
     expected_input_num_constraints: usize,
@@ -27,7 +26,7 @@ fn dpc_execute_circuits_test<N: Network>(
     num_inputs: usize,
     num_outputs: usize,
 ) {
-    let rng = &mut thread_rng();
+    let rng = &mut TestRng::default();
 
     let sender = Account::new(rng);
     let recipient = Account::new(rng);

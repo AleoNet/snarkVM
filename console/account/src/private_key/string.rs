@@ -58,9 +58,11 @@ mod tests {
 
     #[test]
     fn test_string() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new private key.
-            let expected = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
 
             // Check the string representation.
             let candidate = format!("{expected}");

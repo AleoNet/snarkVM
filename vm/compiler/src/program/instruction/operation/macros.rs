@@ -402,7 +402,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     for i in 0..8 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
@@ -442,7 +442,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     for i in 0..8 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
@@ -483,7 +483,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     for i in 0..8 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
@@ -530,7 +530,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
                         for literal_b in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
@@ -585,7 +585,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ $input:lower _ into _ $output:lower>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     // Ensure the expected output type is correct.
                     assert_eq!(
@@ -694,7 +694,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     // Ensure the expected output type is correct.
                     assert_eq!(
@@ -845,7 +845,7 @@ mod tests {
                 #[test]
                 fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ $input_c:lower _ into _ $output:lower>]() -> Result<()> {
                     // Prepare the rng.
-                    let mut rng = test_rng();
+                    let mut rng = TestRng::default();
 
                     // Ensure the expected output type is correct.
                     assert_eq!(

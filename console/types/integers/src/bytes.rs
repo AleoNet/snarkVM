@@ -41,10 +41,10 @@ mod tests {
 
     const ITERATIONS: u64 = 10_000;
 
-    fn check_bytes<I: IntegerType>() -> Result<()> {
+    fn check_bytes<I: IntegerType>(rng: &mut TestRng) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a random integer.
-            let expected: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
+            let expected: Integer<CurrentEnvironment, I> = Uniform::rand(rng);
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
@@ -62,17 +62,19 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        check_bytes::<u8>()?;
-        check_bytes::<u16>()?;
-        check_bytes::<u32>()?;
-        check_bytes::<u64>()?;
-        check_bytes::<u128>()?;
+        let mut rng = TestRng::default();
 
-        check_bytes::<i8>()?;
-        check_bytes::<i16>()?;
-        check_bytes::<i32>()?;
-        check_bytes::<i64>()?;
-        check_bytes::<i128>()?;
+        check_bytes::<u8>(&mut rng)?;
+        check_bytes::<u16>(&mut rng)?;
+        check_bytes::<u32>(&mut rng)?;
+        check_bytes::<u64>(&mut rng)?;
+        check_bytes::<u128>(&mut rng)?;
+
+        check_bytes::<i8>(&mut rng)?;
+        check_bytes::<i16>(&mut rng)?;
+        check_bytes::<i32>(&mut rng)?;
+        check_bytes::<i64>(&mut rng)?;
+        check_bytes::<i128>(&mut rng)?;
 
         Ok(())
     }

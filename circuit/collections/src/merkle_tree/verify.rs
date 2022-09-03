@@ -62,7 +62,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -76,22 +76,20 @@ mod tests {
                 snarkvm_console_algorithms::$lh::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit_leaf_hasher = $lh::<Circuit>::constant(native_leaf_hasher.clone());
 
+            let mut rng = TestRng::default();
+
             // Initialize the path hasher.
             let native_path_hasher =
                 snarkvm_console_algorithms::$ph::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit_path_hasher = $ph::<Circuit>::constant(native_path_hasher.clone());
 
-            let create_leaves = |num_leaves| {
-                (0..num_leaves)
-                    .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>())
-                    .collect::<Vec<_>>()
-            };
-
             for i in 0..ITERATIONS {
                 // Determine the number of leaves.
                 let num_leaves = core::cmp::min(2u128.pow($depth as u32), i);
                 // Compute the leaves.
-                let leaves = create_leaves(num_leaves);
+                let leaves = (0..num_leaves)
+                    .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>())
+                    .collect::<Vec<_>>();
                 // Compute the Merkle tree.
                 let merkle_tree = console::merkle_tree::MerkleTree::<_, _, _, $depth>::new(
                     &native_leaf_hasher,
@@ -130,9 +128,9 @@ mod tests {
 
                     // Initialize an incorrect Merkle leaf.
                     let mut incorrect_leaf = leaf.clone();
-                    let mut incorrect_value = Uniform::rand(&mut test_rng());
+                    let mut incorrect_value = Uniform::rand(&mut rng);
                     while incorrect_value == incorrect_leaf[0].eject_value() {
-                        incorrect_value = Uniform::rand(&mut test_rng());
+                        incorrect_value = Uniform::rand(&mut rng);
                     }
                     incorrect_leaf[0] = Inject::new(Mode::$mode, incorrect_value);
 

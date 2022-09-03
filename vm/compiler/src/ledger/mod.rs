@@ -113,10 +113,8 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
-        // Initialize the address.
-        let address = Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?;
         // Initialize the ledger.
-        Self::new_with_genesis(&genesis, address)
+        Self::new_with_genesis(&genesis, genesis.signature().to_address())
     }
 }
 
@@ -146,12 +144,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transitions: blocks.transition_store().clone(),
             blocks,
             // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(
-                Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?,
-                (),
-            )]
-            .into_iter()
-            .collect(),
+            validators: Default::default(),
             vm,
             memory_pool: Default::default(),
         };
@@ -169,6 +162,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 genesis.height()
             }
         };
+
+        // Add the initial validator.
+        let genesis_block = ledger.get_block(0)?;
+        ledger.add_validator(genesis_block.signature().to_address())?;
 
         // Fetch the latest block.
         let block = ledger.get_block(latest_height)?;
@@ -594,9 +591,32 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Adds a given address to the validator set.
+    pub fn add_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators.insert(address, ()).is_some() {
+            bail!("'{address}' is already in the validator set.")
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Removes a given address from the validator set.
+    pub fn remove_validator(&mut self, address: Address<N>) -> Result<()> {
+        if self.validators.remove(&address).is_none() {
+            bail!("'{address}' is not in the validator set.")
+        } else {
+            Ok(())
+        }
+    }
+
     /// Returns the block tree.
     pub const fn block_tree(&self) -> &BlockTree<N> {
         &self.block_tree
+    }
+
+    /// Returns the validator set.
+    pub const fn validators(&self) -> &IndexMap<Address<N>, ()> {
+        &self.validators
     }
 
     /// Returns the memory pool.
@@ -825,7 +845,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use crate::ledger::Block;
     use console::{account::PrivateKey, network::Testnet3};
-    use snarkvm_utilities::test_crypto_rng_fixed;
+    use snarkvm_utilities::TestRng;
 
     use once_cell::sync::OnceCell;
 
@@ -836,7 +856,7 @@ pub(crate) mod test_helpers {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
         *INSTANCE.get_or_init(|| {
             // Initialize the RNG.
-            let rng = &mut test_crypto_rng_fixed();
+            let rng = &mut TestRng::fixed(1245897092);
             // Initialize a new caller.
             PrivateKey::<CurrentNetwork>::new(rng).unwrap()
         })
@@ -849,7 +869,7 @@ pub(crate) mod test_helpers {
                 // Initialize the VM.
                 let vm = crate::ledger::vm::test_helpers::sample_vm();
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng_fixed();
+                let rng = &mut TestRng::fixed(1245897092);
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
@@ -886,7 +906,7 @@ mod tests {
     use super::*;
     use crate::ledger::test_helpers::CurrentLedger;
     use console::{network::Testnet3, program::Value};
-    use snarkvm_utilities::test_crypto_rng;
+    use snarkvm_utilities::TestRng;
 
     use tracing_test::traced_test;
 
@@ -895,7 +915,7 @@ mod tests {
     #[test]
     fn test_validators() {
         // Initialize an RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the private key, view key, and address.
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -984,7 +1004,7 @@ mod tests {
     #[test]
     #[traced_test]
     fn test_ledger_deploy() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
         let private_key = test_helpers::sample_genesis_private_key();
@@ -992,7 +1012,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger();
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1015,7 +1035,7 @@ mod tests {
     #[test]
     #[traced_test]
     fn test_ledger_execute() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
         let private_key = test_helpers::sample_genesis_private_key();
@@ -1023,7 +1043,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger();
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1041,7 +1061,7 @@ mod tests {
     #[test]
     #[traced_test]
     fn test_ledger_execute_many() {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Sample the genesis private key, view key, and address.
         let private_key = test_helpers::sample_genesis_private_key();
@@ -1076,7 +1096,7 @@ mod tests {
                         Value::from_str(&format!("{}u64", ***record.gates() / 2)).unwrap(),
                     ],
                     None,
-                    &mut rand::thread_rng(),
+                    rng,
                 )
                 .unwrap();
                 // Add the transaction to the memory pool.

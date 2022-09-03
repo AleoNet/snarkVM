@@ -72,7 +72,7 @@ impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
 mod tests {
     use super::*;
     use snarkvm_circuit_network::AleoV0 as Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -85,9 +85,11 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let create_leaves = |num_leaves| {
+        let mut rng = TestRng::default();
+
+        let mut create_leaves = |num_leaves| {
             (0..num_leaves)
-                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut test_rng()).to_bits_le())
+                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut rng).to_bits_le())
                 .collect::<Vec<_>>()
         };
 

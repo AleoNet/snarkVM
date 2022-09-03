@@ -75,7 +75,7 @@ mod tests {
         // Ensure empty string succeeds.
         assert!(StringType::<CurrentEnvironment>::parse("\"\"").is_ok());
 
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.

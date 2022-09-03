@@ -60,7 +60,7 @@ mod tests {
 
     const ITERATIONS: u64 = 1_000;
 
-    fn check_neg(name: &str, mode: Mode) {
+    fn check_neg(name: &str, mode: Mode, rng: &mut TestRng) {
         let check_neg = |given: console::Field<<Circuit as Environment>::Network>| {
             // Compute it's negation.
             let expected = given.neg();
@@ -77,7 +77,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given = Uniform::rand(&mut test_rng());
+            let given = Uniform::rand(rng);
             check_neg(given)
         }
         // Check zero case.
@@ -88,9 +88,11 @@ mod tests {
 
     #[test]
     fn test_neg() {
-        check_neg("Constant", Mode::Constant);
-        check_neg("Public", Mode::Public);
-        check_neg("Private", Mode::Private);
+        let mut rng = TestRng::default();
+
+        check_neg("Constant", Mode::Constant, &mut rng);
+        check_neg("Public", Mode::Public, &mut rng);
+        check_neg("Private", Mode::Private, &mut rng);
     }
 
     #[test]
