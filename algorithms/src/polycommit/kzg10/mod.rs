@@ -173,7 +173,7 @@ impl<E: PairingEngine> KZG10<E> {
 
                 let mut neg_powers_of_beta = vec![];
                 for i in list.iter() {
-                    neg_powers_of_beta.push(beta.pow(&[(max_degree - *i) as u64]).inverse().unwrap());
+                    neg_powers_of_beta.push(beta.pow([(max_degree - *i) as u64]).inverse().unwrap());
                 }
 
                 let window_size = FixedBase::get_mul_window_size(neg_powers_of_beta.len());

@@ -540,7 +540,7 @@ pub fn fft_field_test<F: PrimeField + FftField>() {
     // => t == [(modulus - 1) / 2] * [1 / 2^(s-1)]
     let two_adicity = F::FftParameters::TWO_ADICITY;
     assert!(two_adicity > 0);
-    let two_s_minus_one = F::from(2_u32).pow(&[(two_adicity - 1) as u64]);
+    let two_s_minus_one = F::from(2_u32).pow([(two_adicity - 1) as u64]);
     let trace = modulus_minus_one_div_two * two_s_minus_one.inverse().unwrap();
     assert_eq!(trace, F::from_repr(F::trace()).unwrap());
 

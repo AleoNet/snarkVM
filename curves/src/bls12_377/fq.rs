@@ -191,7 +191,7 @@ impl PoseidonDefaultParameters for FqParameters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_fields::{FftField, Field, PrimeField};
+    use snarkvm_fields::{Field, PrimeField};
 
     #[test]
     fn test_powers_of_g() {

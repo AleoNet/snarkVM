@@ -385,7 +385,7 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
         if x != y {
             (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y)) / (x - y)
         } else {
-            self.size_as_field_element * x.pow(&[(self.size() - 1) as u64])
+            self.size_as_field_element * x.pow([(self.size() - 1) as u64])
         }
     }
 
