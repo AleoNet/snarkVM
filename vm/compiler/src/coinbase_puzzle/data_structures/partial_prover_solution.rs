@@ -148,12 +148,12 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let rng = &mut rand::thread_rng();
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let mut rng = TestRng::default();
+        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(rng), Commitment(rng.gen()));
+        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -169,12 +169,12 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let rng = &mut rand::thread_rng();
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let mut rng = TestRng::default();
+        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(rng), Commitment(rng.gen()));
+        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

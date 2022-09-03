@@ -135,17 +135,17 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let rng = &mut rand::thread_rng();
+        let mut rng = TestRng::default();
 
         // Sample a new combined puzzle solution.
         let mut individual_puzzle_solutions = vec![];
         for _ in 0..rng.gen_range(1..100) {
-            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
             individual_puzzle_solutions.push(PartialProverSolution::new(
                 address,
-                u64::rand(rng),
+                u64::rand(&mut rng),
                 Commitment(rng.gen()),
             ));
         }
@@ -165,17 +165,17 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let rng = &mut rand::thread_rng();
+        let mut rng = TestRng::default();
 
         // Sample a new combined puzzle solution.
         let mut individual_puzzle_solutions = vec![];
         for _ in 0..rng.gen_range(1..100) {
-            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
             individual_puzzle_solutions.push(PartialProverSolution::new(
                 address,
-                u64::rand(rng),
+                u64::rand(&mut rng),
                 Commitment(rng.gen()),
             ));
         }

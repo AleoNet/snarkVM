@@ -176,12 +176,12 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let rng = &mut rand::thread_rng();
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let mut rng = TestRng::default();
+        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(rng), Commitment(rng.gen()));
+        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
         let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
 
         // Serialize
@@ -198,12 +198,12 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let rng = &mut rand::thread_rng();
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let mut rng = TestRng::default();
+        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(rng), Commitment(rng.gen()));
+        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
         let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
 
         // Serialize

@@ -23,7 +23,7 @@ use rand::RngCore;
 #[test]
 fn test_coinbase_puzzle() {
     let max_degree = 1 << 15;
-    let mut rng = rand::thread_rng();
+    let mut rng = TestRng::default();
 
     let srs = CoinbasePuzzle::<Testnet3>::setup(max_degree, &mut rng).unwrap();
     for log_degree in 5..10 {
