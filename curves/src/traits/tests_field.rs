@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{traits::FftParameters, FftField, Field, LegendreSymbol, PrimeField, SquareRootField};
+use snarkvm_fields::{
+    traits::{FftParameters, FieldParameters},
+    FftField,
+    Field,
+    LegendreSymbol,
+    PrimeField,
+    SquareRootField,
+};
 use snarkvm_utilities::{
     io::Cursor,
     rand::TestRng,
@@ -236,6 +243,189 @@ fn random_sqrt_tests<F: SquareRootField>(rng: &mut TestRng) {
     }
 }
 
+pub fn random_sqrt_tonelli_tests<F: PrimeField + SquareRootField>(rng: &mut TestRng) {
+    // Randomly check field elements on the `sqrt` operation.
+    for _ in 0..10_000 {
+        // Sample the expected square root.
+        let expected_sqrt = F::rand(rng);
+
+        // Compute the starting value.
+        let given = expected_sqrt.square();
+        // Ensure the starting value is a quadratic residue.
+        assert_eq!(given.legendre(), LegendreSymbol::QuadraticResidue);
+
+        // Compute the candidate square root.
+        let candidate_a = given.sqrt().unwrap();
+        assert!(expected_sqrt == candidate_a || expected_sqrt == -candidate_a);
+
+        // Compute the Tonelli-Shanks square root.
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given).unwrap();
+        assert!(expected_sqrt == candidate_b || expected_sqrt == -candidate_b);
+
+        // Ensure the two candidate square roots are equivalent.
+        assert!(candidate_a == candidate_b || -candidate_a == candidate_b)
+    }
+
+    // Start at 1.
+    let mut expected_sqrt = F::one();
+
+    // For each iteration, increment the field element by 1 and check the `sqrt` operation.
+    for _ in 0..1_000 {
+        // Compute the starting value.
+        let given = expected_sqrt.square();
+        assert_eq!(given.legendre(), LegendreSymbol::QuadraticResidue);
+
+        // Compute the candidate square root.
+        let candidate_a = given.sqrt().unwrap();
+        assert!(expected_sqrt == candidate_a || expected_sqrt == -candidate_a);
+
+        // Compute the Tonelli-Shanks square root.
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given).unwrap();
+        assert!(expected_sqrt == candidate_b || expected_sqrt == -candidate_b);
+
+        // Increment by 1.
+        expected_sqrt += &F::one();
+    }
+
+    // Start at 1.
+    let mut given = F::one();
+
+    // Linearly check equivalence.
+    for _ in 0..1_000 {
+        // Compute the candidate square root.
+        let candidate_a = given.sqrt();
+        // Compute the Tonelli-Shanks square root.
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given);
+
+        // Ensure the two candidate square roots are equivalent.
+        match candidate_a {
+            Some(candidate_a) => assert!(Some(candidate_a) == candidate_b || Some(-candidate_a) == candidate_b),
+            None => assert_eq!(candidate_a, candidate_b),
+        };
+
+        // Increment by 1.
+        given += &F::one();
+    }
+
+    // Start at 1.
+    let mut given = F::one();
+
+    // Linearly check equivalence.
+    for _ in 0..1_000 {
+        // Compute the candidate square root.
+        let candidate_a = given.sqrt();
+        // Compute the Tonelli-Shanks square root.
+        let candidate_b = check_tonelli_shanks_sqrt_for_testing(&given);
+
+        // Ensure the two candidate square roots are equivalent.
+        match candidate_a {
+            Some(candidate_a) => assert!(Some(candidate_a) == candidate_b || Some(-candidate_a) == candidate_b),
+            None => assert_eq!(candidate_a, candidate_b),
+        };
+
+        // Decrement by 1.
+        given -= &F::one();
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn bench_sqrt<F: PrimeField + SquareRootField>(rng: &mut TestRng) {
+    const ITERATIONS: usize = 100_000;
+
+    let mut profile_a = Vec::with_capacity(ITERATIONS);
+    let mut profile_b = Vec::with_capacity(ITERATIONS);
+
+    // Randomly check the performance of the `sqrt` operation.
+    for _ in 0..ITERATIONS {
+        // Sample the expected square root.
+        let expected_sqrt = F::rand(rng);
+
+        // Compute the starting value.
+        let given = expected_sqrt.square();
+        // Ensure the starting value is a quadratic residue.
+        assert_eq!(given.legendre(), LegendreSymbol::QuadraticResidue);
+
+        // Compute the candidate square root.
+        let timer = std::time::Instant::now();
+        let _candidate_a = given.sqrt();
+        let time_a = timer.elapsed().as_nanos();
+        profile_a.push(time_a);
+
+        // Compute the Tonelli-Shanks square root.
+        let timer = std::time::Instant::now();
+        let _candidate_b = check_tonelli_shanks_sqrt_for_testing(&given);
+        let time_b = timer.elapsed().as_nanos();
+        profile_b.push(time_b);
+    }
+
+    let num_a = profile_a.len() as u128;
+    let num_b = profile_b.len() as u128;
+
+    let avg_time_a = profile_a.into_iter().reduce(|a, b| a.checked_add(b).unwrap()).unwrap() / num_a;
+    let avg_time_b = profile_b.into_iter().reduce(|a, b| a.checked_add(b).unwrap()).unwrap() / num_b;
+
+    println!("{avg_time_a} vs. {avg_time_b} ({}%)", (avg_time_b - avg_time_a) * 100 / avg_time_a);
+    assert!(avg_time_a < avg_time_b);
+}
+
+/// Returns the square root using the Tonelli-Shanks algorithm.
+#[cfg(test)]
+#[inline]
+fn check_tonelli_shanks_sqrt_for_testing<F: PrimeField + SquareRootField>(field: &F) -> Option<F> {
+    use snarkvm_fields::LegendreSymbol::*;
+    // https://eprint.iacr.org/2012/685.pdf (page 12, algorithm 5)
+    // Actually this is just normal Tonelli-Shanks; since `P::Generator`
+    // is a quadratic non-residue, `P::ROOT_OF_UNITY = P::GENERATOR ^ t`
+    // is also a quadratic non-residue (since `t` is odd).
+    match field.legendre() {
+        Zero => Some(*field),
+        QuadraticNonResidue => None,
+        QuadraticResidue => {
+            let mut z = F::two_adic_root_of_unity();
+            let mut w = field.pow(<F as PrimeField>::Parameters::T_MINUS_ONE_DIV_TWO);
+            let mut x = w * field;
+            let mut b = x * w;
+
+            let mut v = <F as FftField>::FftParameters::TWO_ADICITY as usize;
+            // t = self^t
+            #[cfg(debug_assertions)]
+            {
+                let mut check = b;
+                for _ in 0..(v - 1) {
+                    check.square_in_place();
+                }
+                if !check.is_one() {
+                    panic!("Input is not a square root, but it passed the QR test")
+                }
+            }
+
+            while !b.is_one() {
+                let mut k = 0usize;
+
+                let mut b2k = b;
+                while !b2k.is_one() {
+                    // invariant: b2k = b^(2^k) after entering this loop
+                    b2k.square_in_place();
+                    k += 1;
+                }
+
+                let j = v - k - 1;
+                w = z;
+                for _ in 0..j {
+                    w.square_in_place();
+                }
+
+                z = w.square();
+                b *= &z;
+                x *= &w;
+                v = k;
+            }
+
+            Some(x)
+        }
+    }
+}
+
 #[allow(clippy::eq_op)]
 pub fn field_test<F: Field>(a: F, b: F, rng: &mut TestRng) {
     let zero = F::zero();
@@ -350,7 +540,7 @@ pub fn fft_field_test<F: PrimeField + FftField>() {
     // => t == [(modulus - 1) / 2] * [1 / 2^(s-1)]
     let two_adicity = F::FftParameters::TWO_ADICITY;
     assert!(two_adicity > 0);
-    let two_s_minus_one = F::from(2_u32).pow(&[(two_adicity - 1) as u64]);
+    let two_s_minus_one = F::from(2_u32).pow([(two_adicity - 1) as u64]);
     let trace = modulus_minus_one_div_two * two_s_minus_one.inverse().unwrap();
     assert_eq!(trace, F::from_repr(F::trace()).unwrap());
 

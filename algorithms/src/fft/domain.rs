@@ -257,7 +257,7 @@ impl<F: FftField> EvaluationDomain<F> {
     pub fn evaluate_all_lagrange_coefficients(&self, tau: F) -> Vec<F> {
         // Evaluate all Lagrange polynomials
         let size = self.size as usize;
-        let t_size = tau.pow(&[self.size]);
+        let t_size = tau.pow([self.size]);
         let one = F::one();
         if t_size.is_one() {
             let mut u = vec![F::zero(); size];
@@ -299,7 +299,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// This evaluates the vanishing polynomial for this domain at tau.
     /// For multiplicative subgroups, this polynomial is `z(X) = X^self.size - 1`.
     pub fn evaluate_vanishing_polynomial(&self, tau: F) -> F {
-        tau.pow(&[self.size]) - F::one()
+        tau.pow([self.size]) - F::one()
     }
 
     /// Return an iterator over the elements of the domain.
@@ -744,7 +744,7 @@ pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
     let res: Vec<F> = (0..num_cpus_used)
         .into_par_iter()
         .flat_map(|i| {
-            let offset = g.pow(&[(i * num_elem_per_thread) as u64]);
+            let offset = g.pow([(i * num_elem_per_thread) as u64]);
             // Compute the size that this chunks' output should be
             // (num_elem_per_thread, unless there are less than num_elem_per_thread elements remaining)
             let num_elements_to_compute = core::cmp::min(size - i * num_elem_per_thread, num_elem_per_thread);
