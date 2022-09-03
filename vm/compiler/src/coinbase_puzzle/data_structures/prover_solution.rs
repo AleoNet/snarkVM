@@ -170,16 +170,50 @@ impl<N: Network> Display for ProverPuzzleSolution<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use console::{account::PrivateKey, network::Testnet3};
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        // TODO (raychu86): Implement this.
+        let rng = &mut rand::thread_rng();
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let address = Address::try_from(private_key)?;
+
+        // Sample a new prover puzzle solution.
+        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(rng), Commitment(rng.gen()));
+        let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
+
+        // Serialize
+        let expected_string = &expected.to_string();
+        let candidate_string = serde_json::to_string(&expected)?;
+        assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+
+        // Deserialize
+        assert_eq!(expected, ProverPuzzleSolution::from_str(expected_string)?);
+        assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+
         Ok(())
     }
 
     #[test]
     fn test_bincode() -> Result<()> {
-        // TODO (raychu86): Implement this.
+        let rng = &mut rand::thread_rng();
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let address = Address::try_from(private_key)?;
+
+        // Sample a new prover puzzle solution.
+        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(rng), Commitment(rng.gen()));
+        let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
+
+        // Serialize
+        let expected_bytes = expected.to_bytes_le()?;
+        let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
+        assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
+
+        // Deserialize
+        assert_eq!(expected, ProverPuzzleSolution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())
     }
