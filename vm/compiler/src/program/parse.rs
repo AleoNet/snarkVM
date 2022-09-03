@@ -44,8 +44,6 @@ impl<N: Network> Parser for Program<N> {
         // Parse the semicolon ';' keyword from the string.
         let (string, _) = tag(";")(string)?;
 
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the interface or function from the string.
         let (string, components) = many1(alt((
             map(Mapping::parse, |mapping| P::<N>::M(mapping)),

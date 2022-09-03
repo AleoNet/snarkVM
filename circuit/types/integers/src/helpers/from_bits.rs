@@ -63,9 +63,11 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let given_bits = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
@@ -102,9 +104,11 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let given_bits = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 

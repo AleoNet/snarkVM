@@ -76,9 +76,11 @@ mod tests {
 
     #[test]
     fn test_neg_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let point: console::Group<_> = Uniform::rand(&mut rng);
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
@@ -88,9 +90,11 @@ mod tests {
 
     #[test]
     fn test_neg_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let point: console::Group<_> = Uniform::rand(&mut rng);
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Public, point);
@@ -100,9 +104,11 @@ mod tests {
 
     #[test]
     fn test_neg_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let point: console::Group<_> = Uniform::rand(&mut rng);
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Private, point);

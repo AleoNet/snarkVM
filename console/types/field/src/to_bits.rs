@@ -39,9 +39,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_le() {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let field: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let field: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
 
             let candidate = field.to_bits_le();
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), candidate.len());
@@ -54,9 +56,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_be() {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let field: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let field: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
 
             let candidate = field.to_bits_be();
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), candidate.len());

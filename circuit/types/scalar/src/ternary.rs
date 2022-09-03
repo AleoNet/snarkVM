@@ -90,12 +90,14 @@ mod tests {
             )
         };
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             for flag in [true, false] {
                 let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
 
-                let first = Uniform::rand(&mut test_rng());
-                let second = Uniform::rand(&mut test_rng());
+                let first = Uniform::rand(&mut rng);
+                let second = Uniform::rand(&mut rng);
 
                 check_ternary(&name, flag, first, second);
             }

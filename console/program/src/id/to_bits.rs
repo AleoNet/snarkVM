@@ -56,9 +56,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_le() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_name_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_name_field = Field::<CurrentNetwork>::from_bits_le(&expected_name_string.to_bits_le())?;
             let expected_network_field = Field::<CurrentNetwork>::from_bits_le(&"aleo".to_string().to_bits_le())?;
@@ -79,9 +81,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_be() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_name_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_name_field = Field::<CurrentNetwork>::from_bits_le(&expected_name_string.to_bits_le())?;
             let expected_network_field = Field::<CurrentNetwork>::from_bits_le(&"aleo".to_string().to_bits_le())?;

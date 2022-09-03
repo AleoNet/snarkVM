@@ -42,9 +42,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

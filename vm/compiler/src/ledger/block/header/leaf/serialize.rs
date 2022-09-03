@@ -57,8 +57,10 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
+        let mut rng = TestRng::default();
+
         // Sample the leaf.
-        let expected = test_helpers::sample_leaf();
+        let expected = test_helpers::sample_leaf(&mut rng);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -74,8 +76,10 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let mut rng = TestRng::default();
+
         // Sample the leaf.
-        let expected = test_helpers::sample_leaf();
+        let expected = test_helpers::sample_leaf(&mut rng);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

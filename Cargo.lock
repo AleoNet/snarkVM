@@ -108,9 +108,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.62"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1485d4d2cc45e7b201ee3767015c96faa5904387c9d87c6efdd0fb511f12d305"
+checksum = "a26fa4d7e3f2eebadf743988fc8aec9fa9a9e82611acafd77c1462ed6262440a"
 
 [[package]]
 name = "arrayref"
@@ -2210,7 +2210,6 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rand_core",
- "rand_xorshift",
  "rayon",
  "reqwest",
  "rust-gpu-tools",
@@ -2436,7 +2435,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serial_test",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
@@ -2529,7 +2527,6 @@ dependencies = [
  "nom",
  "num-traits",
  "rand",
- "rand_xorshift",
  "serde",
  "snarkvm-curves",
  "snarkvm-fields",
@@ -2651,7 +2648,6 @@ dependencies = [
  "bincode",
  "criterion",
  "rand",
- "rand_xorshift",
  "rustc_version",
  "serde",
  "snarkvm-fields",
@@ -2770,7 +2766,6 @@ version = "0.9.0"
 dependencies = [
  "getrandom",
  "rand",
- "rand_xorshift",
  "serde",
  "snarkvm-console",
  "snarkvm-curves",

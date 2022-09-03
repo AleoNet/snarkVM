@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Ensure empty value fails.
         assert!(Group::<CurrentEnvironment>::parse(Group::<CurrentEnvironment>::type_name()).is_err());
@@ -109,8 +109,10 @@ mod tests {
             assert_eq!(candidate, candidate_recovered);
         }
 
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
-            let element = Uniform::rand(&mut test_rng());
+            let element = Uniform::rand(&mut rng);
 
             check_display::<CurrentEnvironment>(element);
         }

@@ -83,7 +83,7 @@ mod tests {
         Mode,
     };
     use console::{network::Testnet3, program::Identifier};
-    use snarkvm_utilities::rand::test_crypto_rng;
+    use snarkvm_utilities::rand::TestRng;
 
     type CurrentAleo = AleoV0;
     type CurrentNetwork = Testnet3;
@@ -114,7 +114,7 @@ mod tests {
     }
 
     fn test_state_path_verify_num_constraints(mode: Mode, batch_size: usize) {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Initialize a new ledger.
         let ledger = CurrentLedger::new().unwrap();
