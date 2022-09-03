@@ -36,7 +36,14 @@ use crate::{
     },
     templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
-        tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+        tests_field::{
+            field_serialization_test,
+            field_test,
+            frobenius_test,
+            primefield_test,
+            random_sqrt_tonelli_tests,
+            sqrt_field_test,
+        },
         tests_group::*,
         tests_projective::curve_tests,
         AffineCurve,
@@ -412,6 +419,20 @@ fn test_fq_sqrt() {
             assert_eq!(a, tmp);
         }
     }
+}
+
+#[test]
+fn test_fq_sqrt_tonelli() {
+    let mut rng = TestRng::default();
+
+    random_sqrt_tonelli_tests::<Fq>(&mut rng);
+}
+
+#[test]
+fn test_fr_sqrt_tonelli() {
+    let mut rng = TestRng::default();
+
+    random_sqrt_tonelli_tests::<Fr>(&mut rng);
 }
 
 #[test]
