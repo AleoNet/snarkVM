@@ -95,7 +95,9 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self {
         let (x, y, infinity) = coordinates;
-        Self { x, y, infinity }
+        let point = Self { x, y, infinity };
+        assert!(point.is_on_curve());
+        point
     }
 
     #[inline]

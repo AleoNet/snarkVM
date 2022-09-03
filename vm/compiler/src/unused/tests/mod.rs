@@ -31,8 +31,6 @@ use snarkvm_algorithms::{
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWError, PoSWScheme};
 
-use rand::{rngs::ThreadRng, thread_rng};
-
 #[test]
 fn test_posw_terminate() {
     // Construct the block template.
@@ -53,7 +51,7 @@ fn test_posw_terminate() {
         std::thread::sleep(Duration::from_secs(1));
         thread_terminator.store(true, Ordering::SeqCst);
     });
-    let result = Testnet2::posw().mine(&block_template, &AtomicBool::new(true), &mut thread_rng());
+    let result = Testnet2::posw().mine(&block_template, &AtomicBool::new(true), &mut TestRng::default());
 
     assert!(matches!(result, Err(PoSWError::SNARKError(SNARKError::Terminated))));
 }
@@ -91,7 +89,7 @@ fn test_posw_verify_testnet1() {
 fn test_posw_setup_vs_load_weak_sanity_check() {
     let generated_posw: <Testnet2 as Network>::PoSW = {
         // Load the PoSW Marlin parameters.
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         // Run the universal setup.
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(40000, 40000, 60000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(&max_degree, rng).unwrap();

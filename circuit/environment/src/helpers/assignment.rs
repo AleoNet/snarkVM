@@ -284,12 +284,12 @@ mod tests {
             snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode, MarlinSNARK},
         };
         use snarkvm_curves::bls12_377::{Bls12_377, Fq};
-        use snarkvm_utilities::rand::test_crypto_rng;
+        use snarkvm_utilities::rand::TestRng;
 
         type FS = PoseidonSponge<Fq, 2, 1>;
         type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();

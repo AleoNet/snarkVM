@@ -90,7 +90,7 @@ pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
     const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
     const TRIAL_SRS: &str = "universal.srs.trial";
 
-    let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
+    let mut rng = snarkvm_utilities::TestRng::fixed(1245897092);
 
     use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin};
     use snarkvm_console::network::Environment;
@@ -127,7 +127,7 @@ pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
 /// Synthesizes the circuit keys for the credits program. (cargo run --release --example setup credits)
 pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize an RNG.
-    let rng = &mut snarkvm_utilities::test_crypto_rng_fixed();
+    let rng = &mut snarkvm_utilities::TestRng::fixed(1245897092);
     // Initialize the process.
     let process = Process::setup::<A, _>(rng)?;
     // Initialize the program.

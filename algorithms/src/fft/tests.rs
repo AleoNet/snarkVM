@@ -18,11 +18,12 @@ use crate::fft::{domain::*, DensePolynomial};
 use rand::Rng;
 use snarkvm_curves::bls12_377::{Fr, G1Projective};
 use snarkvm_fields::{FftField, Field, One, Zero};
-use snarkvm_utilities::{rand::Uniform, test_rng};
+use snarkvm_utilities::rand::{TestRng, Uniform};
 
 #[test]
 fn vanishing_polynomial_evaluation() {
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
+
     for coeffs in 0..10 {
         let domain = EvaluationDomain::<Fr>::new(coeffs).unwrap();
         let z = domain.vanishing_polynomial();
@@ -69,16 +70,18 @@ fn elements_contents() {
 /// point works.
 #[test]
 fn non_systematic_lagrange_coefficients_test() {
+    let mut rng = TestRng::default();
+
     for domain_dim in 1..10 {
         let domain_size = 1 << domain_dim;
         let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
         // Get random pt + lagrange coefficients
-        let rand_pt = Fr::rand(&mut test_rng());
+        let rand_pt = Fr::rand(&mut rng);
         let lagrange_coeffs = domain.evaluate_all_lagrange_coefficients(rand_pt);
 
         // Sample the random polynomial, evaluate it over the domain and the random
         // point.
-        let rand_poly = DensePolynomial::<Fr>::rand(domain_size - 1, &mut test_rng());
+        let rand_poly = DensePolynomial::<Fr>::rand(domain_size - 1, &mut rng);
         let poly_evals = domain.fft(rand_poly.coeffs());
         let actual_eval = rand_poly.evaluate(rand_pt);
 
@@ -124,7 +127,7 @@ fn test_fft_correctness() {
     // Runs in time O(degree^2)
     let log_degree = 5;
     let degree = 1 << log_degree;
-    let rand_poly = DensePolynomial::<Fr>::rand(degree - 1, &mut test_rng());
+    let rand_poly = DensePolynomial::<Fr>::rand(degree - 1, &mut TestRng::default());
 
     for log_domain_size in log_degree..(log_degree + 2) {
         let domain_size = 1 << log_domain_size;
@@ -195,7 +198,7 @@ fn parallel_fft_consistency() {
         let mut m = 1;
         for _i in 1..=log_n {
             // w_m is 2^i-th root of unity
-            let w_m = omega.pow(&[(n / (2 * m)) as u64]);
+            let w_m = omega.pow([(n / (2 * m)) as u64]);
 
             let mut k = 0;
             while k < n {
@@ -277,7 +280,7 @@ fn parallel_fft_consistency() {
         }
     }
 
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
 
     test_consistency(rng, 10);
 }
@@ -319,7 +322,7 @@ fn fft_composition() {
         }
     }
 
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
 
     test_fft_composition::<Fr, Fr, _>(rng, 10);
     test_fft_composition::<Fr, G1Projective, _>(rng, 10);
@@ -327,7 +330,8 @@ fn fft_composition() {
 
 #[test]
 fn evaluate_over_domain() {
-    let rng = &mut test_rng();
+    let rng = &mut TestRng::default();
+
     for domain_size in (1..10).map(|i| 2usize.pow(i)) {
         let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
         for degree in [domain_size - 2, domain_size - 1, domain_size + 10] {

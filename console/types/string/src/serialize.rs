@@ -47,9 +47,11 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new string.
-            let expected = StringType::<CurrentEnvironment>::rand(&mut test_rng());
+            let expected = StringType::<CurrentEnvironment>::rand(&mut rng);
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -65,9 +67,11 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new string.
-            let expected = StringType::<CurrentEnvironment>::rand(&mut test_rng());
+            let expected = StringType::<CurrentEnvironment>::rand(&mut rng);
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

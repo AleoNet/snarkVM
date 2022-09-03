@@ -32,10 +32,10 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
-    fn check_to_fields<I: IntegerType>(mode: Mode) {
+    fn check_to_fields<I: IntegerType>(mode: Mode, rng: &mut TestRng) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(rng);
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {
@@ -67,81 +67,101 @@ mod tests {
 
     #[test]
     fn test_u8_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = u8;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_i8_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = i8;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_u16_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = u16;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_i16_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = i16;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_u32_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = u32;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_i32_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = i32;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_u64_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = u64;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_i64_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = i64;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_u128_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = u128;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 
     #[test]
     fn test_i128_to_fields() {
+        let mut rng = TestRng::default();
+
         type I = i128;
-        check_to_fields::<I>(Mode::Constant);
-        check_to_fields::<I>(Mode::Public);
-        check_to_fields::<I>(Mode::Private);
+        check_to_fields::<I>(Mode::Constant, &mut rng);
+        check_to_fields::<I>(Mode::Public, &mut rng);
+        check_to_fields::<I>(Mode::Private, &mut rng);
     }
 }

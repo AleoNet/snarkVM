@@ -61,9 +61,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample the leaf.
-            let expected = test_helpers::sample_leaf();
+            let expected = test_helpers::sample_leaf(&mut rng);
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
