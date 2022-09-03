@@ -351,7 +351,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
         // Ensure the transaction does not already exist.
         if self.prover_puzzle_memory_pool.contains(&prover_puzzle_solution) {
-            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment.0);
+            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment().0);
         }
 
         // TODO (raychu86): Ensure that the prover puzzle is valid for the given epoch
@@ -360,7 +360,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Ensure that the prover puzzle is valid for the given epoch.
         if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
-            bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment.0);
+            bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
         }
 
         // Insert the prover puzzle to the memory pool.
@@ -393,7 +393,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
             // Verify the prover solution.
             if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
-                bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment.0);
+                bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
             }
 
             prover_solutions.push(prover_puzzle_solution);

@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod coinbase_proof;
-pub use coinbase_proof::*;
+// TODO (raychu86): Rename all objects to be more intuitive.
+
+mod combined_puzzle_solution;
+pub use combined_puzzle_solution::*;
+
+mod partial_prover_solution;
+pub use partial_prover_solution::*;
 
 mod prover_solution;
 pub use prover_solution::*;

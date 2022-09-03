@@ -18,15 +18,12 @@ use super::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CombinedPuzzleSolution<N: Network> {
-    pub individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
+    pub individual_puzzle_solutions: Vec<PartialProverSolution<N>>,
     pub proof: Proof<N::PairingCurve>,
 }
 
 impl<N: Network> CombinedPuzzleSolution<N> {
-    pub fn new(
-        individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
-        proof: Proof<N::PairingCurve>,
-    ) -> Self {
+    pub fn new(individual_puzzle_solutions: Vec<PartialProverSolution<N>>, proof: Proof<N::PairingCurve>) -> Self {
         Self { individual_puzzle_solutions, proof }
     }
 }
@@ -36,9 +33,7 @@ impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
         (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
 
         for individual_puzzle_solution in &self.individual_puzzle_solutions {
-            individual_puzzle_solution.0.write_le(&mut writer)?;
-            individual_puzzle_solution.1.write_le(&mut writer)?;
-            individual_puzzle_solution.2.write_le(&mut writer)?;
+            individual_puzzle_solution.write_le(&mut writer)?;
         }
 
         self.proof.write_le(&mut writer)
@@ -51,10 +46,8 @@ impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
 
         let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
         for _ in 0..individual_puzzle_solutions_len {
-            let address: Address<N> = FromBytes::read_le(&mut reader)?;
-            let nonce: u64 = FromBytes::read_le(&mut reader)?;
-            let commitment: Commitment<N::PairingCurve> = FromBytes::read_le(&mut reader)?;
-            individual_puzzle_solutions.push((address, nonce, commitment));
+            let individual_puzzle_solution: PartialProverSolution<N> = FromBytes::read_le(&mut reader)?;
+            individual_puzzle_solutions.push(individual_puzzle_solution);
         }
 
         let proof = Proof::read_le(&mut reader)?;
@@ -66,40 +59,47 @@ impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
 impl<N: Network> Serialize for CombinedPuzzleSolution<N> {
     /// Serializes the CombinedPuzzleSolution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // match serializer.is_human_readable() {
-        //     true => {
-        //         let mut combined_puzzle_solution = serializer.serialize_struct("CombinedPuzzleSolution", 2)?;
-        //         combined_puzzle_solution
-        //             .serialize_field("individual_puzzle_solutions", &self.individual_puzzle_solutions)?;
-        //         combined_puzzle_solution.serialize_field("proof", &self.proof)?;
-        //         combined_puzzle_solution.end()
-        //     }
-        //     false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
-        // }
-
-        unimplemented!()
+        match serializer.is_human_readable() {
+            true => {
+                let mut combined_puzzle_solution = serializer.serialize_struct("CombinedPuzzleSolution", 3)?;
+                combined_puzzle_solution
+                    .serialize_field("individual_puzzle_solutions", &self.individual_puzzle_solutions)?;
+                combined_puzzle_solution.serialize_field("proof.w", &self.proof.w)?;
+                if let Some(random_v) = &self.proof.random_v {
+                    combined_puzzle_solution.serialize_field("proof.random_v", &random_v)?;
+                }
+                combined_puzzle_solution.end()
+            }
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        }
     }
 }
 
 impl<'de, N: Network> Deserialize<'de> for CombinedPuzzleSolution<N> {
     /// Deserializes the CombinedPuzzleSolution from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        // match deserializer.is_human_readable() {
-        //     true => {
-        //         let combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
-        //         Ok(Self::new(
-        //             serde_json::from_value(combined_puzzle_solution["individual_puzzle_solutions"].clone())
-        //                 .map_err(de::Error::custom)?,
-        //             serde_json::from_value(combined_puzzle_solution["proof"].clone()).map_err(de::Error::custom)?,
-        //         )
-        //         .map_err(de::Error::custom)?)
-        //     }
-        //     false => {
-        //         FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "combined puzzle solution")
-        //     }
-        // }
-
-        unimplemented!()
+        match deserializer.is_human_readable() {
+            true => {
+                let combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
+                Ok(Self::new(
+                    serde_json::from_value(combined_puzzle_solution["individual_puzzle_solutions"].clone())
+                        .map_err(de::Error::custom)?,
+                    Proof {
+                        w: serde_json::from_value(combined_puzzle_solution["proof.w"].clone())
+                            .map_err(de::Error::custom)?,
+                        random_v: match combined_puzzle_solution.get("proof.random_v") {
+                            Some(random_v) => {
+                                Some(serde_json::from_value(random_v.clone()).map_err(de::Error::custom)?)
+                            }
+                            None => None,
+                        },
+                    },
+                ))
+            }
+            false => {
+                FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "combined puzzle solution")
+            }
+        }
     }
 }
 

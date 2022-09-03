@@ -129,7 +129,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             assert!(KZG10::check(&pk.vk, &commitment, point, product_eval, &proof)?);
         }
 
-        Ok(ProverPuzzleSolution { address: *address, nonce, commitment, proof })
+        Ok(ProverPuzzleSolution::new(PartialProverSolution::new(*address, nonce, commitment), proof))
     }
 
     pub fn accumulate(
@@ -145,23 +145,26 @@ impl<N: Network> CoinbasePuzzle<N> {
                 }
                 // TODO: check difficulty of solution and handle unwrap
                 let polynomial =
-                    Self::sample_solution_polynomial(epoch_challenge, epoch_info, &solution.address, solution.nonce)
+                    Self::sample_solution_polynomial(epoch_challenge, epoch_info, solution.address(), solution.nonce())
                         .unwrap();
-                let point = hash_commitment(&solution.commitment);
+                let point = hash_commitment(solution.commitment());
                 let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
                 let polynomial_eval = polynomial.evaluate(point);
                 let product_eval = epoch_challenge_eval * polynomial_eval;
                 let check_result =
-                    KZG10::check(&pk.vk, &solution.commitment, point, product_eval, &solution.proof).ok();
+                    KZG10::check(&pk.vk, solution.commitment(), point, product_eval, &solution.proof).ok();
                 if let Some(true) = check_result {
-                    Some((polynomial, (solution.address, solution.nonce, solution.commitment)))
+                    Some((
+                        polynomial,
+                        PartialProverSolution::new(*solution.address(), solution.nonce(), *solution.commitment()),
+                    ))
                 } else {
                     None
                 }
             })
             .unzip();
 
-        let mut fs_challenges = hash_commitments(partial_solutions.iter().map(|(_, _, c)| *c));
+        let mut fs_challenges = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()));
         let point = match fs_challenges.pop() {
             Some(point) => point,
             None => bail!("Missing challenge point"),
@@ -189,15 +192,17 @@ impl<N: Network> CoinbasePuzzle<N> {
             return Ok(false);
         }
         let polynomials: Vec<_> = cfg_iter!(combined_solution.individual_puzzle_solutions)
-            .map(|(address, nonce, _)| {
+            .map(|solution| {
                 // TODO: check difficulty of solution
-                Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, *nonce)
+                Self::sample_solution_polynomial(epoch_challenge, epoch_info, solution.address(), solution.nonce())
             })
             .collect::<Result<Vec<_>>>()?;
 
         // Compute challenges
-        let mut fs_challenges =
-            hash_commitments(combined_solution.individual_puzzle_solutions.iter().map(|(_, _, c)| *c));
+        let mut fs_challenges = hash_commitments(
+            combined_solution.individual_puzzle_solutions.iter().map(|solution| *solution.commitment()),
+        );
+
         let point = match fs_challenges.pop() {
             Some(point) => point,
             None => bail!("Missing challenge point"),
@@ -214,7 +219,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         // Compute combined commitment
         let commitments: Vec<_> =
-            cfg_iter!(combined_solution.individual_puzzle_solutions).map(|(_, _, c)| c.0).collect();
+            cfg_iter!(combined_solution.individual_puzzle_solutions).map(|solution| solution.commitment().0).collect();
         let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
         let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
         let combined_commitment: Commitment<N::PairingCurve> = Commitment(combined_commitment.into());
