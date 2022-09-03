@@ -502,3 +502,30 @@ impl PoseidonDefaultParameters for FqParameters {
         PoseidonDefaultParametersEntry::new(8, 5, 8, 57, 0),
     ];
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_fields::{FftField, Field, PrimeField};
+
+    #[test]
+    fn test_powers_of_g() {
+        let two = Fq::from(2u8);
+
+        // Compute the expected powers of G.
+        let g = Fq::two_adic_root_of_unity().pow(FqParameters::T);
+        let powers = (0..FqParameters::TWO_ADICITY - 1)
+            .map(|i| g.pow(two.pow(Fq::from(i as u64).to_repr()).to_repr()).to_repr())
+            .collect::<Vec<_>>();
+
+        // Ensure the correct number of powers of G are present.
+        assert_eq!(FqParameters::POWERS_OF_G.len() as u64, (FqParameters::TWO_ADICITY - 1) as u64);
+        assert_eq!(FqParameters::POWERS_OF_G.len(), powers.len());
+
+        // Ensure the expected and candidate powers match.
+        for (expected, candidate) in powers.iter().zip(FqParameters::POWERS_OF_G.iter()) {
+            println!("{:?} =?= {:?}", expected, candidate);
+            assert_eq!(expected, candidate);
+        }
+    }
+}
