@@ -111,7 +111,7 @@ impl<N: Network> VerifierFile<N> {
             // Ensure the path is well-formed.
             Self::check_path(path)?;
             // Remove the file.
-            Ok(fs::remove_file(&path)?)
+            Ok(fs::remove_file(path)?)
         }
     }
 }
@@ -137,7 +137,7 @@ impl<N: Network> VerifierFile<N> {
         // Ensure the path is well-formed.
         Self::check_path(file)?;
         // Parse the verifier file bytes.
-        let verifier = Self::from_bytes_le(&fs::read(&file)?)?;
+        let verifier = Self::from_bytes_le(&fs::read(file)?)?;
 
         // Retrieve the file stem.
         let file_stem = file
@@ -169,7 +169,7 @@ impl<N: Network> VerifierFile<N> {
         ensure!(self.function_name.to_string() == file_stem, "Function name does not match file stem.");
 
         // Write to the file (overwriting if it already exists).
-        Ok(File::create(&path)?.write_all(&self.to_bytes_le()?)?)
+        Ok(File::create(path)?.write_all(&self.to_bytes_le()?)?)
     }
 }
 
