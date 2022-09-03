@@ -19,7 +19,7 @@ categories = [
   "wasm",
   "web-programming"
 ]
-include = [ "Cargo.toml", "snarkvm", "README.md", "LICENSE.md" ]
+include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
