@@ -191,14 +191,14 @@ impl PoseidonDefaultParameters for FqParameters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_fields::{Field, PrimeField};
+    use snarkvm_fields::{FftField, Field, PrimeField};
 
     #[test]
     fn test_powers_of_g() {
         let two = Fq::from(2u8);
 
         // Compute the expected powers of G.
-        let g = Fq::from_repr(FqParameters::GENERATOR).unwrap().pow(FqParameters::T);
+        let g = Fq::two_adic_root_of_unity();
         let powers = (0..FqParameters::TWO_ADICITY - 1)
             .map(|i| g.pow(two.pow(Fq::from(i as u64).to_repr()).to_repr()).to_repr())
             .collect::<Vec<_>>();
