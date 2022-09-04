@@ -14,68 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{with, LedgerReceiver, LedgerRequest, LedgerSender, OrReject, ServerError};
+use super::*;
 
-use snarkvm_compiler::{BlockStorage, Ledger, ProgramStorage, RecordsFilter, Transaction};
-use snarkvm_console::{account::ViewKey, prelude::Network, types::Field};
-
-use anyhow::Result;
-use core::marker::PhantomData;
-use indexmap::IndexMap;
-use parking_lot::RwLock;
-use std::sync::Arc;
-use tokio::{sync::mpsc, task::JoinHandle};
-use warp::{http::StatusCode, reject, reply, Filter, Rejection, Reply};
-
-/// A server for the ledger.
-pub struct Server<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
-    /// The ledger.
-    ledger: Arc<RwLock<Ledger<N, B, P>>>,
-    /// The ledger sender.
-    ledger_sender: LedgerSender<N>,
-    /// The server handles.
-    handles: Vec<JoinHandle<()>>,
-    /// PhantomData.
-    _phantom: PhantomData<N>,
-}
-
-impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
-    /// Initializes a new instance of the server.
-    pub fn start(
-        ledger: Arc<RwLock<Ledger<N, B, P>>>,
-        additional_routes: Option<impl Filter<Extract = impl Reply, Error = Rejection> + Clone + Sync + Send + 'static>,
-    ) -> Result<(Self, LedgerReceiver<N>)> {
-        // Initialize a channel to send requests to the ledger.
-        let (ledger_sender, ledger_receiver) = mpsc::channel(64);
-
-        // Initialize a vector for the server handles.
-        let mut handles = Vec::new();
-
-        // Initialize the routes.
-        let routes = Self::routes(ledger.clone(), ledger_sender.clone());
-
-        // Spawn the server.
-        handles.push(tokio::spawn(async move {
-            let addr = ([0, 0, 0, 0], 80);
-
-            // Start the server with optional additional routes.
-            match additional_routes {
-                Some(additional_routes) => {
-                    warp::serve(routes.or(additional_routes)).run(addr).await;
-                }
-                None => {
-                    warp::serve(routes).run(addr).await;
-                }
-            }
-        }));
-
-        let server = Self { ledger, ledger_sender, handles, _phantom: PhantomData };
-
-        Ok((server, ledger_receiver))
-    }
-
+impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Rest<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
-    fn routes(
+    pub fn routes(
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
         ledger_sender: LedgerSender<N>,
     ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
@@ -170,44 +113,9 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .or(get_transaction)
             .or(transaction_broadcast)
     }
-
-    /// Initializes a ledger handler.
-    pub fn start_handler(
-        &mut self,
-        ledger: Arc<RwLock<Ledger<N, B, P>>>,
-        mut ledger_receiver: LedgerReceiver<N>,
-    ) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            while let Some(request) = ledger_receiver.recv().await {
-                match request {
-                    LedgerRequest::TransactionBroadcast(transaction) => {
-                        let transaction_id = transaction.id();
-                        match ledger.write().add_to_memory_pool(transaction) {
-                            Ok(()) => trace!("✉️ Added transaction '{transaction_id}' to the memory pool"),
-                            Err(error) => {
-                                warn!("⚠️ Failed to add transaction '{transaction_id}' to the memory pool: {error}")
-                            }
-                        }
-                    }
-                };
-            }
-        })
-    }
-
-    pub fn ledger(&self) -> Arc<RwLock<Ledger<N, B, P>>> {
-        self.ledger.clone()
-    }
-
-    pub fn ledger_sender(&self) -> &LedgerSender<N> {
-        &self.ledger_sender
-    }
-
-    pub fn handles(&self) -> &Vec<JoinHandle<()>> {
-        &self.handles
-    }
 }
 
-impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
+impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Rest<N, B, P> {
     /// Returns the latest block height.
     async fn latest_height(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().latest_height()))
@@ -289,7 +197,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Send the transaction to the ledger.
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transaction)).await {
             Ok(()) => Ok("OK"),
-            Err(error) => Err(reject::custom(ServerError::Request(format!("{error}")))),
+            Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
         }
     }
 }
