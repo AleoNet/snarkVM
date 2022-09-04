@@ -64,7 +64,7 @@ impl<N: Network> FromStr for Identifier<N> {
         // unwrap is safe because we max_bytes will never be more than 255 for our fields.
         Ok(Self(
             Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?,
-            u8::try_from(identifier.len()).or_halt_with::<N, _>("Identifier `from_str` exceeds maximum length"),
+            u8::try_from(identifier.len()).or_halt_with::<N>("Identifier `from_str` exceeds maximum length"),
         ))
     }
 }

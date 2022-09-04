@@ -34,7 +34,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                     let mut bits_le = vec![false, true]; // Variant bits.
                     bits_le.extend(
                         u8::try_from(interface.len())
-                            .or_halt_with::<N, _>("Plaintext interface length exceeds u8::MAX")
+                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
                             .to_bits_le(),
                     );
                     for (identifier, value) in interface {
@@ -43,7 +43,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                         bits_le.extend(identifier.to_bits_le());
                         bits_le.extend(
                             u16::try_from(value_bits.len())
-                                .or_halt_with::<N, _>("Plaintext member exceeds u16::MAX bits")
+                                .or_halt_with::<N>("Plaintext member exceeds u16::MAX bits")
                                 .to_bits_le(),
                         );
                         bits_le.extend(value_bits);
@@ -71,7 +71,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                     let mut bits_be = vec![false, true]; // Variant bits.
                     bits_be.extend(
                         u8::try_from(interface.len())
-                            .or_halt_with::<N, _>("Plaintext interface length exceeds u8::MAX")
+                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
                             .to_bits_be(),
                     );
                     for (identifier, value) in interface {
@@ -80,7 +80,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                         bits_be.extend(identifier.to_bits_be());
                         bits_be.extend(
                             u16::try_from(value_bits.len())
-                                .or_halt_with::<N, _>("Plaintext member exceeds u16::MAX bits")
+                                .or_halt_with::<N>("Plaintext member exceeds u16::MAX bits")
                                 .to_bits_be(),
                         );
                         bits_be.extend(value_bits);

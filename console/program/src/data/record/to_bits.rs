@@ -31,7 +31,7 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
         let mut bits_le = self.owner.to_bits_le();
         bits_le.extend(self.gates.to_bits_le());
         bits_le.extend(
-            u32::try_from(data_bits_le.len()).or_halt_with::<N, _>("Record data exceeds u32::MAX bits").to_bits_le(),
+            u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le(),
         );
         bits_le.extend(data_bits_le);
         bits_le.extend(self.nonce.to_bits_le());
@@ -52,7 +52,7 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
         let mut bits_be = self.owner.to_bits_be();
         bits_be.extend(self.gates.to_bits_be());
         bits_be.extend(
-            u32::try_from(data_bits_be.len()).or_halt_with::<N, _>("Record data exceeds u32::MAX bits").to_bits_be(),
+            u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be(),
         );
         bits_be.extend(data_bits_be);
         bits_be.extend(self.nonce.to_bits_be());
@@ -75,7 +75,7 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
         let mut bits_le = self.owner.to_bits_le();
         bits_le.extend(self.gates.to_bits_le());
         bits_le.extend(
-            u32::try_from(data_bits_le.len()).or_halt_with::<N, _>("Record data exceeds u32::MAX bits").to_bits_le(),
+            u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le(),
         );
         bits_le.extend(data_bits_le);
         bits_le.extend(self.nonce.to_bits_le());
@@ -96,7 +96,7 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
         let mut bits_be = self.owner.to_bits_be();
         bits_be.extend(self.gates.to_bits_be());
         bits_be.extend(
-            u32::try_from(data_bits_be.len()).or_halt_with::<N, _>("Record data exceeds u32::MAX bits").to_bits_be(),
+            u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be(),
         );
         bits_be.extend(data_bits_be);
         bits_be.extend(self.nonce.to_bits_be());

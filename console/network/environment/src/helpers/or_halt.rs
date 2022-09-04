@@ -22,7 +22,7 @@ pub trait OrHalt<T> {
     fn or_halt<E: Environment>(self) -> T;
 
     /// Returns the result if it is successful, otherwise halts with the message.
-    fn or_halt_with<E: Environment, S: Into<String>>(self, msg: S) -> T;
+    fn or_halt_with<E: Environment>(self, msg: &str) -> T;
 }
 
 impl<T, Error: core::fmt::Display> OrHalt<T> for Result<T, Error> {
@@ -35,10 +35,10 @@ impl<T, Error: core::fmt::Display> OrHalt<T> for Result<T, Error> {
     }
 
     /// Returns the result if it is successful, otherwise halts with the message.
-    fn or_halt_with<E: Environment, S: Into<String>>(self, msg: S) -> T {
+    fn or_halt_with<E: Environment>(self, msg: &str) -> T {
         match self {
             Ok(result) => result,
-            Err(error) => E::halt(format!("{}: {error}", msg.into())),
+            Err(error) => E::halt(format!("{msg}: {error}")),
         }
     }
 }

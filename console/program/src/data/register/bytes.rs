@@ -55,7 +55,7 @@ impl<N: Network> ToBytes for Register<N> {
                 u8::write_le(&1u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)?;
                 u16::try_from(identifiers.len())
-                    .or_halt_with::<N, _>("Register path length exceeds u16::MAX")
+                    .or_halt_with::<N>("Register path length exceeds u16::MAX")
                     .write_le(&mut writer)?;
                 identifiers.write_le(&mut writer)
             }
