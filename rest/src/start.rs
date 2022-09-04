@@ -44,7 +44,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         additional_routes: Option<impl Filter<Extract = impl Reply, Error = Rejection> + Clone + Sync + Send + 'static>,
     ) {
         // Initialize the routes.
-        let routes = Self::routes(self.ledger.clone(), self.ledger_sender.clone());
+        let routes = self.routes();
         // Spawn the server.
         self.handles.push(tokio::spawn(async move {
             // Initialize the listening IP.

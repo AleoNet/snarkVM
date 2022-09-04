@@ -19,38 +19,35 @@ use super::*;
 impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
     #[allow(clippy::redundant_clone)]
-    pub fn routes(
-        ledger: Arc<RwLock<Ledger<N, B, P>>>,
-        ledger_sender: LedgerSender<N>,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    pub fn routes(&self) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         // GET /testnet3/latest/height
         let latest_height = warp::get()
             .and(warp::path!("testnet3" / "latest" / "height"))
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::latest_height);
 
         // GET /testnet3/latest/hash
         let latest_hash = warp::get()
             .and(warp::path!("testnet3" / "latest" / "hash"))
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::latest_hash);
 
         // GET /testnet3/latest/block
         let latest_block = warp::get()
             .and(warp::path!("testnet3" / "latest" / "block"))
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::latest_block);
 
         // GET /testnet3/block/{height}
         let get_block = warp::get()
             .and(warp::path!("testnet3" / "block" / u32))
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::get_block);
 
         // GET /testnet3/transactions/{height}
         let get_transactions = warp::get()
             .and(warp::path!("testnet3" / "transactions" / u32))
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::get_transactions);
 
         // GET /testnet3/transaction/{id}
@@ -58,7 +55,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(warp::path!("testnet3" / "transaction" / ..))
             .and(warp::path::param::<N::TransactionID>())
             .and(warp::path::end())
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::get_transaction);
 
         // GET /testnet3/statePath/{commitment}
@@ -66,7 +63,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(warp::path!("testnet3" / "statePath"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::get_state_path);
 
         // GET /testnet3/records/all
@@ -74,7 +71,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(warp::path!("testnet3" / "records" / "all"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::records_all);
 
         // GET /testnet3/records/spent
@@ -82,7 +79,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(warp::path!("testnet3" / "records" / "spent"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::records_spent);
 
         // GET /testnet3/records/unspent
@@ -90,7 +87,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(warp::path!("testnet3" / "records" / "unspent"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
-            .and(with(ledger.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::records_unspent);
 
         // POST /testnet3/transaction/broadcast
@@ -98,7 +95,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(warp::path!("testnet3" / "transaction" / "broadcast"))
             .and(warp::body::content_length_limit(10 * 1024 * 1024))
             .and(warp::body::json())
-            .and(with(ledger_sender))
+            .and(with(self.ledger_sender.clone()))
             .and_then(Self::transaction_broadcast);
 
         // Return the list of routes.
