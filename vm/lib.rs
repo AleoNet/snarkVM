@@ -81,6 +81,8 @@ pub mod prelude {
     pub use crate::console::{account::*, network::*, prelude::*, program::*};
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;
+    #[cfg(feature = "rest")]
+    pub use crate::rest::*;
     #[cfg(feature = "utilities")]
     pub use crate::utilities::*;
 }
