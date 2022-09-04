@@ -172,8 +172,9 @@ default = [
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
-full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
+full = [ "coinbase_puzzle", "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
 wasm = [
+  "coinbase_puzzle",
   "crypto_hash",
   "fft",
   "msm",
