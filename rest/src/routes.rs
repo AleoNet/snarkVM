@@ -145,7 +145,6 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
     async fn records_all(view_key: ViewKey<N>, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
         let records: IndexMap<_, _> = ledger.read().find_records(&view_key, RecordsFilter::All).or_reject()?.collect();
-        println!("Records:\n{:#?}", records);
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
@@ -158,7 +157,6 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Fetch the records using the view key.
         let records =
             ledger.read().find_records(&view_key, RecordsFilter::Spent).or_reject()?.collect::<IndexMap<_, _>>();
-        println!("Records:\n{:#?}", records);
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
@@ -171,7 +169,6 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Fetch the records using the view key.
         let records =
             ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
-        println!("Records:\n{:#?}", records);
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
