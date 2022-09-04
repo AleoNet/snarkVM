@@ -31,7 +31,7 @@ pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> DensePolynomi
             let mut input_with_counter = [0u8; 40];
             input_with_counter[..32].copy_from_slice(&input_hash);
             input_with_counter[32..].copy_from_slice(&i.to_le_bytes());
-            F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&input_with_counter))
+            F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))
         })
         .collect::<Vec<_>>();
     DensePolynomial::from_coefficients_vec(coefficients)
@@ -59,7 +59,7 @@ pub fn hash_commitments<E: PairingEngine>(cms: impl ExactSizeIterator<Item = Com
             let mut input_with_counter = [0u8; 40];
             input_with_counter[..32].copy_from_slice(&cm_hash);
             input_with_counter[32..].copy_from_slice(&i.to_le_bytes());
-            E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&input_with_counter))
+            E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))
         })
         .collect()
 }
