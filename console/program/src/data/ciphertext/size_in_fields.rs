@@ -26,11 +26,11 @@ impl<N: Network> Visibility for Ciphertext<N> {
         // Ensure the number of field elements does not exceed the maximum allowed size.
         match num_fields <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
             // Return the number of field elements.
-            true => match u16::try_from(num_fields) {
-                Ok(num_fields) => Ok(num_fields),
-                Err(_) => bail!("Number of ciphertext field elements exceeds u16::MAX."),
-            },
-            false => bail!("Ciphertext is too large to encode in field elements."),
+            true => Ok(u16::try_from(num_fields).or_halt_with::<N, _>("Ciphertext exceeds u16::MAX field elements.")),
+            false => bail!(
+                "Ciphertext is too large to encode in field elements (cannot exceed {}).",
+                N::MAX_DATA_SIZE_IN_FIELDS
+            ),
         }
     }
 }
