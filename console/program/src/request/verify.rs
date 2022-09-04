@@ -95,7 +95,8 @@ impl<N: Network> Request<N> {
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
 
                         // Construct the (console) input index as a field element.
-                        let index = Field::from_u16(u16::try_from(index).unwrap());
+                        let index =
+                            Field::from_u16(u16::try_from(index).or_halt_with::<N, _>("Input index exceeds u16"));
                         // Construct the preimage as `(input || tcm || index)`.
                         let mut preimage = input.to_fields()?;
                         preimage.push(self.tcm);
@@ -114,7 +115,8 @@ impl<N: Network> Request<N> {
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
 
                         // Construct the (console) input index as a field element.
-                        let index = Field::from_u16(u16::try_from(index).unwrap());
+                        let index =
+                            Field::from_u16(u16::try_from(index).or_halt_with::<N, _>("Input index exceeds u16"));
                         // Construct the preimage as `(input || tcm || index)`.
                         let mut preimage = input.to_fields()?;
                         preimage.push(self.tcm);
@@ -206,7 +208,8 @@ impl<N: Network> Request<N> {
                         ensure!(matches!(input, Value::Record(..)), "Expected a record input");
 
                         // Construct the (console) input index as a field element.
-                        let index = Field::from_u16(u16::try_from(index).unwrap());
+                        let index =
+                            Field::from_u16(u16::try_from(index).or_halt_with::<N, _>("Input index exceeds u16"));
                         // Construct the preimage as `(input || tvk || index)`.
                         let mut preimage = input.to_fields()?;
                         preimage.push(self.tvk);
