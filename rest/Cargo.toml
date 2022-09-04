@@ -48,6 +48,3 @@ version = "0.1"
 
 [dependencies.warp]
 version = "0.3"
-
-[features]
-default = [ ]
