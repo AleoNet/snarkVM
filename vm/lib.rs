@@ -45,6 +45,8 @@ pub use snarkvm_gadgets as gadgets;
 pub use snarkvm_parameters as parameters;
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs as r1cs;
+#[cfg(feature = "rest")]
+pub use snarkvm_rest as rest;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
 
