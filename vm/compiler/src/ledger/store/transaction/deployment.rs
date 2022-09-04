@@ -38,7 +38,7 @@ use indexmap::IndexMap;
 use std::borrow::Cow;
 
 /// A trait for deployment storage.
-pub trait DeploymentStorage<N: Network>: Clone + Sync {
+pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `transaction ID` to `program ID`.
     type IDMap: for<'a> Map<'a, N::TransactionID, ProgramID<N>>;
     /// The mapping of `program ID` to `edition`.
