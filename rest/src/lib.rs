@@ -51,16 +51,17 @@ pub enum LedgerRequest<N: Network> {
 }
 
 /// A REST API server for the ledger.
+#[derive(Clone)]
 pub struct Server<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     /// The ledger.
     ledger: Arc<RwLock<Ledger<N, B, P>>>,
     /// The ledger sender.
     ledger_sender: LedgerSender<N>,
     /// The server handles.
-    handles: Vec<JoinHandle<()>>,
+    handles: Vec<Arc<JoinHandle<()>>>,
 }
 
-impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Returns the ledger.
     pub fn ledger(&self) -> Arc<RwLock<Ledger<N, B, P>>> {
         self.ledger.clone()
@@ -72,7 +73,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
     }
 
     /// Returns the handles.
-    pub fn handles(&self) -> &Vec<JoinHandle<()>> {
+    pub fn handles(&self) -> &Vec<Arc<JoinHandle<()>>> {
         &self.handles
     }
 }

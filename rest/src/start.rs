@@ -46,7 +46,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Initialize the routes.
         let routes = self.routes();
         // Spawn the server.
-        self.handles.push(tokio::spawn(async move {
+        self.handles.push(Arc::new(tokio::spawn(async move {
             // Initialize the listening IP.
             let ip = ([0, 0, 0, 0], 4180);
             println!("\n🌐 Server is running at http://0.0.0.0:{}\n", ip.1);
@@ -55,7 +55,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
                 Some(additional_routes) => warp::serve(routes.or(additional_routes)).run(ip).await,
                 None => warp::serve(routes).run(ip).await,
             }
-        }))
+        })))
     }
 
     /// Initializes the ledger handler.
@@ -63,7 +63,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Prepare the ledger.
         let ledger = self.ledger.clone();
         // Spawn the ledger handler.
-        self.handles.push(tokio::spawn(async move {
+        self.handles.push(Arc::new(tokio::spawn(async move {
             while let Some(request) = ledger_receiver.recv().await {
                 match request {
                     LedgerRequest::TransactionBroadcast(transaction) => {
@@ -79,6 +79,6 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
                     }
                 };
             }
-        }))
+        })))
     }
 }

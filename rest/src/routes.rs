@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
     #[allow(clippy::redundant_clone)]
     pub fn routes(&self) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
@@ -113,7 +113,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
     }
 }
 
-impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Returns the latest block height.
     async fn latest_height(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().latest_height()))
