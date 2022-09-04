@@ -47,7 +47,7 @@ pub enum LedgerRequest<N: Network> {
 }
 
 /// A REST API server for the ledger.
-pub struct Rest<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
+pub struct Server<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     /// The ledger.
     ledger: Arc<RwLock<Ledger<N, B, P>>>,
     /// The ledger sender.
@@ -56,7 +56,7 @@ pub struct Rest<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     handles: Vec<JoinHandle<()>>,
 }
 
-impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Rest<N, B, P> {
+impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
     /// Initializes a new instance of the server.
     pub fn start(
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
