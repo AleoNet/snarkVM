@@ -23,8 +23,10 @@ pub use helpers::*;
 mod routes;
 pub use routes::*;
 
-use crate::{with, OrReject, RestError};
+mod start;
+pub use start::*;
 
+use crate::{with, OrReject, RestError};
 use snarkvm_compiler::{BlockStorage, Ledger, ProgramStorage, RecordsFilter, Transaction};
 use snarkvm_console::{account::ViewKey, prelude::Network, types::Field};
 
@@ -57,60 +59,6 @@ pub struct Server<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
 }
 
 impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
-    /// Initializes a new instance of the server.
-    pub fn start(
-        ledger: Arc<RwLock<Ledger<N, B, P>>>,
-        additional_routes: Option<impl Filter<Extract = impl Reply, Error = Rejection> + Clone + Sync + Send + 'static>,
-    ) -> Result<(Self, LedgerReceiver<N>)> {
-        // Initialize a channel to send requests to the ledger.
-        let (ledger_sender, ledger_receiver) = mpsc::channel(64);
-
-        // Initialize the routes.
-        let routes = Self::routes(ledger.clone(), ledger_sender.clone());
-
-        // Initialize a vector for the server handles.
-        let mut handles = Vec::new();
-
-        // Spawn the server.
-        handles.push(tokio::spawn(async move {
-            // Initialize the listening IP.
-            let ip = ([0, 0, 0, 0], 80);
-            // Start the server, with optional additional routes.
-            match additional_routes {
-                Some(additional_routes) => warp::serve(routes.or(additional_routes)).run(ip).await,
-                None => warp::serve(routes).run(ip).await,
-            }
-        }));
-
-        // Initialize the server.
-        let server = Self { ledger, ledger_sender, handles };
-
-        Ok((server, ledger_receiver))
-    }
-
-    /// Initializes a ledger handler.
-    pub fn start_handler(
-        &mut self,
-        ledger: Arc<RwLock<Ledger<N, B, P>>>,
-        mut ledger_receiver: LedgerReceiver<N>,
-    ) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            while let Some(request) = ledger_receiver.recv().await {
-                match request {
-                    LedgerRequest::TransactionBroadcast(transaction) => {
-                        let transaction_id = transaction.id();
-                        match ledger.write().add_to_memory_pool(transaction) {
-                            Ok(()) => trace!("✉️ Added transaction '{transaction_id}' to the memory pool"),
-                            Err(error) => {
-                                warn!("⚠️ Failed to add transaction '{transaction_id}' to the memory pool: {error}")
-                            }
-                        }
-                    }
-                };
-            }
-        })
-    }
-
     /// Returns the ledger.
     pub fn ledger(&self) -> Arc<RwLock<Ledger<N, B, P>>> {
         self.ledger.clone()
