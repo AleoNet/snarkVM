@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// An enum of error handlers for the server.
-#[derive(Debug)]
-pub enum ServerError {
-    Request(String),
-}
+mod error;
+pub use error::*;
 
-impl warp::reject::Reject for ServerError {}
+mod or_reject;
+pub use or_reject::*;
+
+use warp::Filter;
+
+/// A middleware to include the given item in the handler.
+pub(crate) fn with<T: Clone + Send>(item: T) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || item.clone())
+}
