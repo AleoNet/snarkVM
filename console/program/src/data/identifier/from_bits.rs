@@ -41,7 +41,7 @@ impl<N: Network> FromBits for Identifier<N> {
         let max_bytes = Field::<N>::size_in_data_bits() / 8; // Note: This intentionally rounds down.
         match num_bytes <= max_bytes {
             // Return the identifier.
-            true => Ok(Self(field, u8::try_from(num_bytes).or_halt_with::<N, _>("Invalid identifier byte size"))),
+            true => Ok(Self(field, u8::try_from(num_bytes).or_halt_with::<N>("Invalid identifier byte size"))),
             false => bail!("Identifier exceeds the maximum capacity allowed"),
         }
     }

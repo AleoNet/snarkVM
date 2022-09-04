@@ -64,7 +64,7 @@ pub(crate) mod tests {
         // Recover the field element from the bits.
         let field = Field::<N>::from_bits_le(&string.as_bytes().to_bits_le())?;
         // Return the identifier.
-        Ok(Identifier(field, u8::try_from(string.len()).or_halt_with::<CurrentNetwork, _>("Invalid identifier length")))
+        Ok(Identifier(field, u8::try_from(string.len()).or_halt_with::<CurrentNetwork>("Invalid identifier length")))
     }
 
     /// Samples a random identifier as a string.

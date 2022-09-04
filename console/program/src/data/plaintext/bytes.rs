@@ -63,7 +63,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
 
                 // Write the number of members in the interface.
                 u8::try_from(interface.len())
-                    .or_halt_with::<N, _>("Plaintext interface length exceeds u8::MAX.")
+                    .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX.")
                     .write_le(&mut writer)?;
 
                 // Write each member.
@@ -75,7 +75,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
                     let bytes = member_value.to_bytes_le().map_err(|e| error(e.to_string()))?;
                     // Write the number of bytes.
                     u16::try_from(bytes.len())
-                        .or_halt_with::<N, _>("Plaintext member exceeds u16::MAX bytes.")
+                        .or_halt_with::<N>("Plaintext member exceeds u16::MAX bytes.")
                         .write_le(&mut writer)?;
                     // Write the bytes.
                     bytes.write_le(&mut writer)?;

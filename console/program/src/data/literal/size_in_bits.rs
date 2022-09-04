@@ -40,6 +40,6 @@ impl<N: Network> Literal<N> {
                 None => N::halt("String exceeds usize::MAX bits."),
             },
         };
-        u16::try_from(size).or_halt_with::<N, _>("Literal exceeds u16::MAX bits.")
+        u16::try_from(size).or_halt_with::<N>("Literal exceeds u16::MAX bits.")
     }
 }

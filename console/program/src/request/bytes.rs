@@ -91,7 +91,7 @@ impl<N: Network> ToBytes for Request<N> {
 
         // Write the number of inputs.
         u16::try_from(self.input_ids.len())
-            .or_halt_with::<N, _>("Request inputs length exceeds u16")
+            .or_halt_with::<N>("Request inputs length exceeds u16")
             .write_le(&mut writer)?;
         // Write the input IDs.
         for input_id in &self.input_ids {
