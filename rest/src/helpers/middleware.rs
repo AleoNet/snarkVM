@@ -17,6 +17,6 @@
 use warp::Filter;
 
 /// A middleware to include the given item in the handler.
-pub(crate) fn with<T: Clone + Send>(item: T) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone {
+pub fn with<T: Clone + Send>(item: T) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || item.clone())
 }
