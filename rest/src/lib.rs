@@ -28,7 +28,6 @@ pub use routes::*;
 mod start;
 pub use start::*;
 
-use crate::{with, OrReject, RestError};
 use snarkvm_compiler::{BlockStorage, Ledger, ProgramStorage, RecordsFilter, Transaction};
 use snarkvm_console::{account::ViewKey, prelude::Network, types::Field};
 
