@@ -15,12 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fft::DensePolynomial, polycommit::kzg10::Commitment};
-use blake2::Digest;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, CanonicalSerialize};
+
+use blake2::Digest;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> DensePolynomial<F> {
     let input_hash: [u8; 32] = blake2::Blake2b::digest(input).try_into().unwrap();

@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::RngCore;
+use super::*;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_utilities::Uniform;
 
-use super::*;
+use rand::RngCore;
 
 #[test]
 fn test_coinbase_puzzle() {
