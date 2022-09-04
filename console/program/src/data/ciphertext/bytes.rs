@@ -38,11 +38,11 @@ impl<N: Network> ToBytes for Ciphertext<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of field elements does not exceed the maximum allowed size.
-        if u32::try_from(self.0.len()).unwrap() > N::MAX_DATA_SIZE_IN_FIELDS {
+        if u32::try_from(self.0.len()).or_halt::<N>() > N::MAX_DATA_SIZE_IN_FIELDS || self.0.len() > u16::MAX as usize {
             return Err(error("Ciphertext is too large to encode in field elements."));
         }
         // Write the number of ciphertext field elements.
-        u16::try_from(self.0.len()).unwrap().write_le(&mut writer)?;
+        u16::try_from(self.0.len()).or_halt::<N>().write_le(&mut writer)?;
         // Write the ciphertext field elements.
         self.0.write_le(&mut writer)
     }

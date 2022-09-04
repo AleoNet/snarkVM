@@ -314,16 +314,17 @@ fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
     };
     // Ensure the tree depth is within a u8 range.
     match tree_depth <= u8::MAX as f64 {
-        // Ensure the tree depth is within the depth bound.
         true => {
+            // Convert the tree depth to a u8.
             let tree_depth = tree_depth as u8;
+            // Ensure the tree depth is within the depth bound.
             match tree_depth <= DEPTH {
                 // Return the tree depth.
                 true => Ok(tree_depth),
                 false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
             }
         }
-        false => bail!("Merkle tree depth exceeds maximum size: {}", tree_depth),
+        false => bail!("Merkle tree depth ({tree_depth}) exceeds maximum size ({})", u8::MAX),
     }
 }
 
