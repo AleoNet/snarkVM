@@ -34,7 +34,7 @@ use core::marker::PhantomData;
 use std::borrow::Cow;
 
 /// A trait for execution storage.
-pub trait ExecutionStorage<N: Network>: Clone + Sync + Send {
+pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `transaction ID` to `([transition ID], (optional) transition ID)`.
     type IDMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
     /// The mapping of `transition ID` to `transaction ID`.
