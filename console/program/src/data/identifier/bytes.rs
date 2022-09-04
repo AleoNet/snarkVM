@@ -48,7 +48,7 @@ impl<N: Network> ToBytes for Identifier<N> {
         }
 
         // Write the identifier to a buffer.
-        (string.len() as u8).write_le(&mut writer)?;
+        u8::try_from(string.len()).or_halt_with::<N>("Invalid identifier length").write_le(&mut writer)?;
         string.as_bytes().write_le(&mut writer)
     }
 }

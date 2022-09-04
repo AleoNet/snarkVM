@@ -19,23 +19,27 @@ use super::*;
 impl<N: Network> Literal<N> {
     /// Returns the number of bits of this literal.
     pub fn size_in_bits(&self) -> u16 {
-        match self {
-            Self::Address(..) => Address::<N>::size_in_bits() as u16,
-            Self::Boolean(..) => Boolean::<N>::size_in_bits() as u16,
-            Self::Field(..) => Field::<N>::size_in_bits() as u16,
-            Self::Group(..) => Group::<N>::size_in_bits() as u16,
-            Self::I8(..) => I8::<N>::size_in_bits() as u16,
-            Self::I16(..) => I16::<N>::size_in_bits() as u16,
-            Self::I32(..) => I32::<N>::size_in_bits() as u16,
-            Self::I64(..) => I64::<N>::size_in_bits() as u16,
-            Self::I128(..) => I128::<N>::size_in_bits() as u16,
-            Self::U8(..) => U8::<N>::size_in_bits() as u16,
-            Self::U16(..) => U16::<N>::size_in_bits() as u16,
-            Self::U32(..) => U32::<N>::size_in_bits() as u16,
-            Self::U64(..) => U64::<N>::size_in_bits() as u16,
-            Self::U128(..) => U128::<N>::size_in_bits() as u16,
-            Self::Scalar(..) => Scalar::<N>::size_in_bits() as u16,
-            Self::String(string) => (string.len() * 8) as u16,
-        }
+        let size = match self {
+            Self::Address(..) => Address::<N>::size_in_bits(),
+            Self::Boolean(..) => Boolean::<N>::size_in_bits(),
+            Self::Field(..) => Field::<N>::size_in_bits(),
+            Self::Group(..) => Group::<N>::size_in_bits(),
+            Self::I8(..) => I8::<N>::size_in_bits(),
+            Self::I16(..) => I16::<N>::size_in_bits(),
+            Self::I32(..) => I32::<N>::size_in_bits(),
+            Self::I64(..) => I64::<N>::size_in_bits(),
+            Self::I128(..) => I128::<N>::size_in_bits(),
+            Self::U8(..) => U8::<N>::size_in_bits(),
+            Self::U16(..) => U16::<N>::size_in_bits(),
+            Self::U32(..) => U32::<N>::size_in_bits(),
+            Self::U64(..) => U64::<N>::size_in_bits(),
+            Self::U128(..) => U128::<N>::size_in_bits(),
+            Self::Scalar(..) => Scalar::<N>::size_in_bits(),
+            Self::String(string) => match string.len().checked_mul(8) {
+                Some(size) => size,
+                None => N::halt("String exceeds usize::MAX bits."),
+            },
+        };
+        u16::try_from(size).or_halt_with::<N>("Literal exceeds u16::MAX bits.")
     }
 }

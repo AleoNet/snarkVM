@@ -237,7 +237,7 @@ impl<'a, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
 impl<'a, F: Field> AddAssign<&'a Polynomial<'a, F>> for DensePolynomial<F> {
     fn add_assign(&mut self, other: &'a Polynomial<F>) {
         match other {
-            Polynomial::Sparse(p) => *self += &Self::from(p.to_owned().into_owned()),
+            Polynomial::Sparse(p) => *self += &Self::from(p.clone().into_owned()),
             Polynomial::Dense(p) => *self += p.as_ref(),
         }
     }
@@ -246,7 +246,7 @@ impl<'a, F: Field> AddAssign<&'a Polynomial<'a, F>> for DensePolynomial<F> {
 impl<'a, F: Field> AddAssign<(F, &'a Polynomial<'a, F>)> for DensePolynomial<F> {
     fn add_assign(&mut self, (f, other): (F, &'a Polynomial<F>)) {
         match other {
-            Polynomial::Sparse(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
+            Polynomial::Sparse(p) => *self += (f, &Self::from(p.clone().into_owned())),
             Polynomial::Dense(p) => *self += (f, p.as_ref()),
         }
     }
@@ -575,7 +575,7 @@ mod tests {
             let point: Fr = Fr::from(10u64);
             let mut total = Fr::zero();
             for (i, coeff) in p.coeffs.iter().enumerate() {
-                total += point.pow(&[i as u64]) * coeff;
+                total += point.pow([i as u64]) * coeff;
             }
             assert_eq!(p.evaluate(point), total);
         }

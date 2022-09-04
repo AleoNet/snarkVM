@@ -257,7 +257,7 @@ macro_rules! impl_edwards_curve_serializer {
                 } else {
                     let x = P::BaseField::deserialize_uncompressed(&mut reader)?;
                     let y = P::BaseField::deserialize_uncompressed(&mut reader)?;
-                    Affine::<P>::new(x, y)
+                    Affine::<P>::new(x, y, x * y)
                 };
 
                 if let Validate::Yes = validate {

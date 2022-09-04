@@ -61,7 +61,10 @@ impl<N: Network> FromStr for Identifier<N> {
 
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        Ok(Self(Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?, identifier.len() as u8))
+        Ok(Self(
+            Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?,
+            u8::try_from(identifier.len()).or_halt_with::<N>("Identifier `from_str` exceeds maximum length"),
+        ))
     }
 }
 

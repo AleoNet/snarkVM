@@ -45,19 +45,20 @@ use serde::{Deserialize, Serialize};
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
+    pub t: P::BaseField,
 }
 
 impl<P: Parameters> Affine<P> {
     #[inline]
-    pub const fn new(x: P::BaseField, y: P::BaseField) -> Self {
-        Self { x, y }
+    pub fn new(x: P::BaseField, y: P::BaseField, t: P::BaseField) -> Self {
+        Self { x, y, t }
     }
 }
 
 impl<P: Parameters> Zero for Affine<P> {
     #[inline]
     fn zero() -> Self {
-        Self::new(P::BaseField::zero(), P::BaseField::one())
+        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero())
     }
 
     #[inline]
@@ -94,7 +95,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self {
         let (x, y) = coordinates;
-        let point = Self { x, y };
+        let point = Self { x, y, t: x * y };
         assert!(point.is_on_curve());
         point
     }
@@ -106,7 +107,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
-        Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1)
+        Self::new(
+            P::AFFINE_GENERATOR_COEFFS.0,
+            P::AFFINE_GENERATOR_COEFFS.1,
+            P::AFFINE_GENERATOR_COEFFS.0 * P::AFFINE_GENERATOR_COEFFS.1,
+        )
     }
 
     #[inline]
@@ -133,7 +138,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         y2.and_then(|y2| y2.sqrt()).map(|y| {
             let negy = -y;
             let y = if (y < negy) ^ greatest { y } else { negy };
-            Self::new(x, y)
+            Self::new(x, y, x * y)
         })
     }
 
@@ -153,7 +158,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         x2.and_then(|x2| x2.sqrt()).map(|x| {
             let negx = -x;
             let x = if (x < negx) ^ greatest { x } else { negx };
-            Self::new(x, y)
+            Self::new(x, y, x * y)
         })
     }
 
@@ -225,6 +230,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             b.x = Self::BaseField::one() - dx1x2y1y2.square();
 
             *inversion_tmp *= &b.x;
+            b.t = b.x * b.y;
         }
     }
 
@@ -236,6 +242,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             a.x *= *inversion_tmp;
             a.y *= *inversion_tmp;
             *inversion_tmp *= &b.x;
+            a.t = a.x * a.y;
         }
     }
 }
@@ -250,7 +257,7 @@ impl<P: Parameters> Neg for Affine<P> {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Self::new(-self.x, self.y)
+        Self::new(-self.x, self.y, -self.t)
     }
 }
 
@@ -275,7 +282,7 @@ impl<P: Parameters> FromBytes for Affine<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x = P::BaseField::read_le(&mut reader)?;
         let y = P::BaseField::read_le(&mut reader)?;
-        Ok(Self::new(x, y))
+        Ok(Self::new(x, y, x * y))
     }
 }
 
@@ -300,13 +307,14 @@ impl<P: Parameters> From<Projective<P>> for Affine<P> {
             Affine::zero()
         } else if p.z.is_one() {
             // If Z is one, the point is already normalized.
-            Affine::new(p.x, p.y)
+            Affine::new(p.x, p.y, p.t)
         } else {
             // Z is nonzero, so it must have an inverse in a field.
             let z_inv = p.z.inverse().unwrap();
             let x = p.x * z_inv;
             let y = p.y * z_inv;
-            Affine::new(x, y)
+            let t = p.t * z_inv;
+            Affine::new(x, y, t)
         }
     }
 }
