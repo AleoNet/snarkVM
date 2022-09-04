@@ -68,13 +68,13 @@ mod tests {
 
     #[test]
     fn test_plaintext() -> Result<()> {
+        let mut rng = TestRng::default();
+
         let value = Plaintext::<CurrentNetwork>::from_str("true")?;
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        let value = Plaintext::<CurrentNetwork>::Literal(
-            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
-            OnceCell::new(),
-        );
+        let value =
+            Plaintext::<CurrentNetwork>::Literal(Literal::Field(Field::new(Uniform::rand(&mut rng))), OnceCell::new());
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
         let value = Plaintext::<CurrentNetwork>::Interface(
@@ -84,7 +84,7 @@ mod tests {
                     (
                         Identifier::from_str("b")?,
                         Plaintext::<CurrentNetwork>::Literal(
-                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                             OnceCell::new(),
                         ),
                     ),
@@ -117,7 +117,7 @@ mod tests {
                                                     (
                                                         Identifier::from_str("f")?,
                                                         Plaintext::<CurrentNetwork>::Literal(
-                                                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                                                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                                                             OnceCell::new(),
                                                         ),
                                                     ),
@@ -130,7 +130,7 @@ mod tests {
                                     (
                                         Identifier::from_str("g")?,
                                         Plaintext::<CurrentNetwork>::Literal(
-                                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                                             OnceCell::new(),
                                         ),
                                     ),
@@ -143,7 +143,7 @@ mod tests {
                     (
                         Identifier::from_str("h")?,
                         Plaintext::<CurrentNetwork>::Literal(
-                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                             OnceCell::new(),
                         ),
                     ),

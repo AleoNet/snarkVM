@@ -82,7 +82,7 @@ impl<N: Network> Header<N> {
 mod tests {
     use super::*;
     use console::network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
+    use snarkvm_utilities::TestRng;
 
     type CurrentNetwork = Testnet3;
 
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_merkle() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
             let header = Header::<CurrentNetwork>::from(

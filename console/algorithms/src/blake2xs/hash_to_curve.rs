@@ -42,7 +42,7 @@ impl Blake2Xs {
         let serialized_size = G::prime_subgroup_generator().compressed_size();
 
         // Compute the digest for sampling the generator.
-        let digest = Self::evaluate(input.as_bytes(), serialized_size as u16, "AleoHtC0".as_bytes());
+        let digest = Self::evaluate(input.as_bytes(), u16::try_from(serialized_size).unwrap(), "AleoHtC0".as_bytes());
         debug_assert!(digest.len() == serialized_size); // Attempt to use the digest to derive a generator.
         G::from_random_bytes(&digest).and_then(|g| {
             debug_assert!(g.is_on_curve());

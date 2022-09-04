@@ -60,16 +60,23 @@ impl<N: Network> ToBytes for Plaintext<N> {
             }
             Self::Interface(interface, ..) => {
                 1u8.write_le(&mut writer)?;
+
                 // Write the number of members in the interface.
-                (interface.len() as u16).write_le(&mut writer)?;
+                u16::try_from(interface.len())
+                    .or_halt_with::<N>("Plaintext interface length exceeds u16::MAX.")
+                    .write_le(&mut writer)?;
+
                 // Write each member.
                 for (member_name, member_value) in interface {
                     // Write the member name.
                     member_name.write_le(&mut writer)?;
+
                     // Write the member value (performed in 2 steps to prevent infinite recursion).
                     let bytes = member_value.to_bytes_le().map_err(|e| error(e.to_string()))?;
                     // Write the number of bytes.
-                    (bytes.len() as u16).write_le(&mut writer)?;
+                    u16::try_from(bytes.len())
+                        .or_halt_with::<N>("Plaintext member exceeds u16::MAX bytes.")
+                        .write_le(&mut writer)?;
                     // Write the bytes.
                     bytes.write_le(&mut writer)?;
                 }
@@ -100,10 +107,10 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(rng)?;
 
             // Address
             check_bytes(Plaintext::Literal(

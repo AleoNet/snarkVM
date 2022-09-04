@@ -51,9 +51,11 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new view key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let expected = ViewKey::try_from(private_key)?;
 
             // Serialize
@@ -70,9 +72,11 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new view key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let expected = ViewKey::try_from(private_key)?;
 
             // Serialize

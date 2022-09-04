@@ -134,10 +134,10 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
         };
 
         let circuit_proving_key = CircuitProvingKey {
-            circuit: index,
+            circuit: Arc::new(index),
             circuit_commitment_randomness,
             circuit_verifying_key: circuit_verifying_key.clone(),
-            committer_key,
+            committer_key: Arc::new(committer_key),
         };
 
         end_timer!(index_time);
@@ -783,7 +783,7 @@ pub mod test {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::Field;
     use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use core::ops::MulAssign;
 
@@ -829,7 +829,7 @@ pub mod test {
 
     #[test]
     fn marlin_snark_test() {
-        let mut rng = test_crypto_rng();
+        let mut rng = TestRng::default();
 
         for _ in 0..ITERATIONS {
             // Construct the circuit.

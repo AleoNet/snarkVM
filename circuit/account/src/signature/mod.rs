@@ -82,7 +82,7 @@ impl<A: Aleo> Eject for Signature<A> {
 mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -95,7 +95,7 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Generate a private key, compute key, view key, and address.
         let (private_key, _compute_key, _view_key, _address) = generate_account()?;

@@ -213,7 +213,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
         // B = Y1*Y2
         let b = self.y * other.y;
         // C = T1*d*T2
-        let c = P::EDWARDS_D * self.t * other.x * other.y;
+        let c = P::EDWARDS_D * self.t * other.t;
         // D = Z1
         let d = self.z;
         // E = (X1+Y1)*(X2+Y2)-A-B

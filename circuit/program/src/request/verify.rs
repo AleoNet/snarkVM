@@ -370,7 +370,7 @@ impl<A: Aleo> Request<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::test_crypto_rng;
+    use snarkvm_utilities::TestRng;
 
     use anyhow::Result;
 
@@ -383,7 +383,7 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample a random private key and address.

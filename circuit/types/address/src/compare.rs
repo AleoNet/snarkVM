@@ -85,9 +85,11 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let a = Address::<Circuit>::new(mode_a, console::Address::new(first));
             let b = Address::<Circuit>::new(mode_b, console::Address::new(second));

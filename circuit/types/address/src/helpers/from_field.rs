@@ -47,9 +47,11 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_from_field(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_x_coordinate();
 
             Circuit::scope(&format!("{} {}", mode, i), || {

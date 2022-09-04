@@ -94,9 +94,11 @@ mod tests {
     fn check_to_lower_k_bits_le<I: IntegerType + Unsigned>(
         mode: Mode,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random unsigned integer.
-            let value: I = Uniform::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut rng);
             let expected = value.to_bits_le();
 
             // Construct the unsigned integer as a field element.

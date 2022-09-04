@@ -30,7 +30,7 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
         let bits_le = field.to_bits_le();
 
         // Extract the integer bits from the field element, **without** a carry bit.
-        let (bits_le, zero_bits) = bits_le.split_at(I::BITS as usize);
+        let (bits_le, zero_bits) = bits_le.split_at(Self::size_in_bits());
 
         // Ensure the unused upper bits are all zero.
         ensure!(zero_bits.iter().all(|&bit| !bit), "Failed to convert integer to field: upper bits are not zero");
@@ -50,9 +50,11 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_from_field<I: IntegerType>() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Integer::<CurrentEnvironment, I>::rand(&mut test_rng());
+            let expected = Integer::<CurrentEnvironment, I>::rand(&mut rng);
 
             // Perform the operation.
             let candidate = Integer::from_field(&expected.to_field()?)?;

@@ -50,7 +50,7 @@ impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         match self {
             Sparse(p) => {
-                let p: DensePolynomial<F> = p.to_owned().into_owned().into();
+                let p: DensePolynomial<F> = p.clone().into_owned().into();
                 CanonicalSerialize::serialize_with_mode(&p.coeffs, writer, compress)
             }
             Dense(p) => CanonicalSerialize::serialize_with_mode(&p.coeffs, writer, compress),
@@ -61,7 +61,7 @@ impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
     fn serialized_size(&self, mode: Compress) -> usize {
         match self {
             Sparse(p) => {
-                let p: DensePolynomial<F> = p.to_owned().into_owned().into();
+                let p: DensePolynomial<F> = p.clone().into_owned().into();
                 p.serialized_size(mode)
             }
             Dense(p) => p.serialized_size(mode),

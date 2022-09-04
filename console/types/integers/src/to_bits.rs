@@ -37,10 +37,10 @@ mod tests {
 
     const ITERATIONS: u64 = 10_000;
 
-    fn check_to_bits_le<I: IntegerType>() {
+    fn check_to_bits_le<I: IntegerType>(rng: &mut TestRng) {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
+            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(rng);
 
             let candidate = integer.to_bits_le();
             assert_eq!(Integer::<CurrentEnvironment, I>::size_in_bits(), candidate.len());
@@ -51,10 +51,10 @@ mod tests {
         }
     }
 
-    fn check_to_bits_be<I: IntegerType>() {
+    fn check_to_bits_be<I: IntegerType>(rng: &mut TestRng) {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
+            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(rng);
 
             let candidate = integer.to_bits_be();
             assert_eq!(Integer::<CurrentEnvironment, I>::size_in_bits(), candidate.len());
@@ -67,31 +67,35 @@ mod tests {
 
     #[test]
     fn test_to_bits_le() {
-        check_to_bits_le::<u8>();
-        check_to_bits_le::<u16>();
-        check_to_bits_le::<u32>();
-        check_to_bits_le::<u64>();
-        check_to_bits_le::<u128>();
+        let mut rng = TestRng::default();
 
-        check_to_bits_le::<i8>();
-        check_to_bits_le::<i16>();
-        check_to_bits_le::<i32>();
-        check_to_bits_le::<i64>();
-        check_to_bits_le::<i128>();
+        check_to_bits_le::<u8>(&mut rng);
+        check_to_bits_le::<u16>(&mut rng);
+        check_to_bits_le::<u32>(&mut rng);
+        check_to_bits_le::<u64>(&mut rng);
+        check_to_bits_le::<u128>(&mut rng);
+
+        check_to_bits_le::<i8>(&mut rng);
+        check_to_bits_le::<i16>(&mut rng);
+        check_to_bits_le::<i32>(&mut rng);
+        check_to_bits_le::<i64>(&mut rng);
+        check_to_bits_le::<i128>(&mut rng);
     }
 
     #[test]
     fn test_to_bits_be() {
-        check_to_bits_be::<u8>();
-        check_to_bits_be::<u16>();
-        check_to_bits_be::<u32>();
-        check_to_bits_be::<u64>();
-        check_to_bits_be::<u128>();
+        let mut rng = TestRng::default();
 
-        check_to_bits_be::<i8>();
-        check_to_bits_be::<i16>();
-        check_to_bits_be::<i32>();
-        check_to_bits_be::<i64>();
-        check_to_bits_be::<i128>();
+        check_to_bits_be::<u8>(&mut rng);
+        check_to_bits_be::<u16>(&mut rng);
+        check_to_bits_be::<u32>(&mut rng);
+        check_to_bits_be::<u64>(&mut rng);
+        check_to_bits_be::<u128>(&mut rng);
+
+        check_to_bits_be::<i8>(&mut rng);
+        check_to_bits_be::<i16>(&mut rng);
+        check_to_bits_be::<i32>(&mut rng);
+        check_to_bits_be::<i64>(&mut rng);
+        check_to_bits_be::<i128>(&mut rng);
     }
 }

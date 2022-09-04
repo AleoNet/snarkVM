@@ -61,10 +61,10 @@ mod tests {
 
     const ITERATIONS: u64 = 1_000;
 
-    fn check_square_root(name: &str, mode: Mode) {
+    fn check_square_root(name: &str, mode: Mode, rng: &mut TestRng) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(rng);
             // Compute it's square root, or skip this iteration if it does not natively exist.
             if let Ok(expected) = given.square_root() {
                 let input = Field::<Circuit>::new(mode, given);
@@ -82,8 +82,10 @@ mod tests {
 
     #[test]
     fn test_square_root() {
-        check_square_root("Constant", Mode::Constant);
-        check_square_root("Public", Mode::Public);
-        check_square_root("Private", Mode::Private);
+        let mut rng = TestRng::default();
+
+        check_square_root("Constant", Mode::Constant, &mut rng);
+        check_square_root("Public", Mode::Public, &mut rng);
+        check_square_root("Private", Mode::Private, &mut rng);
     }
 }

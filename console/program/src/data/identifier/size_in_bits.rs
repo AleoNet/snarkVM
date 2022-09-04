@@ -38,9 +38,11 @@ mod tests {
 
     #[test]
     fn test_size_in_bits() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
 
             let candidate = Identifier::<CurrentNetwork>::from_str(&expected_string)?;
             assert_eq!(expected_string.len() * 8, candidate.size_in_bits() as usize);
