@@ -35,8 +35,11 @@ impl<N: Network> Literal<N> {
             Self::U64(..) => U64::<N>::size_in_bits(),
             Self::U128(..) => U128::<N>::size_in_bits(),
             Self::Scalar(..) => Scalar::<N>::size_in_bits(),
-            Self::String(string) => string.len() * 8,
+            Self::String(string) => match string.len().checked_mul(8) {
+                Some(size) => size,
+                None => N::halt("String exceeds usize::MAX bits."),
+            },
         };
-        u16::try_from(size).unwrap()
+        u16::try_from(size).or_halt_with::<N, _>("Literal exceeds u16::MAX bits.")
     }
 }
