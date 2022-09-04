@@ -85,6 +85,7 @@ version = "1.0"
 [dependencies.blake2]
 version = "0.10"
 default-features = false
+optional = true
 
 [dependencies.crossbeam-channel]
 version = "0.5"
@@ -187,6 +188,8 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 profiler = [ "aleo-std/profiler" ]
+
+coinbase_puzzle = [ "blake2", "crypto_hash", "fft", "msm", "polycommit" ]
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]
@@ -194,4 +197,3 @@ polycommit = [ "rand_core", "fft", "msm" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
 snark = [ "crypto_hash", "fft", "msm", "polycommit" ]
-coinbase_puzzle = [ "crypto_hash", "fft", "msm", "polycommit" ]
