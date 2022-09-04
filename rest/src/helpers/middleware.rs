@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod error;
-pub use error::*;
+use warp::Filter;
 
-mod middleware;
-pub use middleware::*;
-
-mod or_reject;
-pub use or_reject::*;
+/// A middleware to include the given item in the handler.
+pub(crate) fn with<T: Clone + Send>(item: T) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || item.clone())
+}
