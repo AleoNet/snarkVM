@@ -46,13 +46,27 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(with(ledger.clone()))
             .and_then(Self::get_block);
 
+        // GET /testnet3/transactions/{height}
+        let get_transactions = warp::get()
+            .and(warp::path!("testnet3" / "transactions" / u32))
+            .and(with(ledger.clone()))
+            .and_then(Self::get_transactions);
+
+        // GET /testnet3/transaction/{id}
+        let get_transaction = warp::get()
+            .and(warp::path!("testnet3" / "transaction" / ..))
+            .and(warp::path::param::<N::TransactionID>())
+            .and(warp::path::end())
+            .and(with(ledger.clone()))
+            .and_then(Self::get_transaction);
+
         // GET /testnet3/statePath/{commitment}
-        let state_path = warp::get()
+        let get_state_path = warp::get()
             .and(warp::path!("testnet3" / "statePath"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(ledger.clone()))
-            .and_then(Self::state_path);
+            .and_then(Self::get_state_path);
 
         // GET /testnet3/records/all
         let records_all = warp::get()
@@ -78,20 +92,6 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .and(with(ledger.clone()))
             .and_then(Self::records_unspent);
 
-        // GET /testnet3/transactions/{height}
-        let get_transactions = warp::get()
-            .and(warp::path!("testnet3" / "transactions" / u32))
-            .and(with(ledger.clone()))
-            .and_then(Self::get_transactions);
-
-        // GET /testnet3/transaction/{id}
-        let get_transaction = warp::get()
-            .and(warp::path!("testnet3" / "transaction" / ..))
-            .and(warp::path::param::<N::TransactionID>())
-            .and(warp::path::end())
-            .and(with(ledger))
-            .and_then(Self::get_transaction);
-
         // POST /testnet3/transaction/broadcast
         let transaction_broadcast = warp::post()
             .and(warp::path!("testnet3" / "transaction" / "broadcast"))
@@ -105,12 +105,12 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             .or(latest_hash)
             .or(latest_block)
             .or(get_block)
-            .or(state_path)
+            .or(get_transactions)
+            .or(get_transaction)
+            .or(get_state_path)
             .or(records_all)
             .or(records_spent)
             .or(records_unspent)
-            .or(get_transactions)
-            .or(get_transaction)
             .or(transaction_broadcast)
     }
 }
@@ -136,8 +136,24 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         Ok(reply::json(&ledger.read().get_block(height).or_reject()?))
     }
 
+    /// Returns the transactions for the given block height.
+    async fn get_transactions(height: u32, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().get_transactions(height).or_reject()?))
+    }
+
+    /// Returns the transaction for the given transaction ID.
+    async fn get_transaction(
+        transaction_id: N::TransactionID,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().get_transaction(transaction_id).or_reject()?))
+    }
+
     /// Returns the state path for the given commitment.
-    async fn state_path(commitment: Field<N>, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
+    async fn get_state_path(
+        commitment: Field<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().to_state_path(&commitment).or_reject()?))
     }
 
@@ -171,19 +187,6 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
-    }
-
-    /// Returns the transactions for the given block height.
-    async fn get_transactions(height: u32, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
-        Ok(reply::json(&ledger.read().get_transactions(height).or_reject()?))
-    }
-
-    /// Returns the transaction for the given transaction ID.
-    async fn get_transaction(
-        transaction_id: N::TransactionID,
-        ledger: Arc<RwLock<Ledger<N, B, P>>>,
-    ) -> Result<impl Reply, Rejection> {
-        Ok(reply::json(&ledger.read().get_transaction(transaction_id).or_reject()?))
     }
 
     /// Broadcasts the transaction to the ledger.
