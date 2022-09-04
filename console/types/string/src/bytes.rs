@@ -43,7 +43,7 @@ impl<E: Environment> ToBytes for StringType<E> {
             return Err(error(format!("String literal exceeds maximum length of {} bytes.", E::MAX_STRING_BYTES)));
         }
         // Write the number of bytes.
-        (self.string.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.string.len()).or_halt_with::<E>("String exceeds u16::MAX bytes").write_le(&mut writer)?;
         // Write the bytes.
         self.string.as_bytes().write_le(&mut writer)
     }
