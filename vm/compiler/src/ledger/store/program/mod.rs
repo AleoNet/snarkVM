@@ -42,7 +42,7 @@ use std::collections::BTreeMap;
 /// // (program_id => (mapping_name => (key => value)))
 /// IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Key, Value>>>
 /// ```
-pub trait ProgramStorage<N: Network>: Clone + Sync + Send {
+pub trait ProgramStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `(program ID, mapping name)` to `mapping ID`.
