@@ -16,6 +16,7 @@
 
 use super::*;
 use console::{account::*, network::Testnet3};
+use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_utilities::Uniform;
 
 use rand::RngCore;

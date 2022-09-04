@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> ToBytes for FinalizeType<N> {
     /// Writes the finalize type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.enum_index() as u8).write_le(&mut writer)?;
+        u8::try_from(self.enum_index()).or_halt_with::<N>("Invalid finalize type variant").write_le(&mut writer)?;
         match self {
             Self::Public(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Record(identifier) => identifier.write_le(&mut writer),

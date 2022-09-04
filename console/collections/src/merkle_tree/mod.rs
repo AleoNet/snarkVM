@@ -59,7 +59,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         ensure!(DEPTH <= 64u8, "Merkle tree depth must be less than or equal to 64");
 
         // Compute the maximum number of leaves.
-        let max_leaves = leaves.len().next_power_of_two();
+        let max_leaves = match leaves.len().checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves,
+            None => bail!("Integer overflow when computing the maximum number of leaves in the Merkle tree"),
+        };
+
         // Compute the number of nodes.
         let num_nodes = max_leaves - 1;
         // Compute the tree size as the maximum number of leaves plus the number of nodes.
@@ -114,7 +118,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     /// Returns a new Merkle tree with the given new leaves appended to it.
     pub fn append(&mut self, new_leaves: &[LH::Leaf]) -> Result<()> {
         // Compute the maximum number of leaves.
-        let max_leaves = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
+        let max_leaves = match (self.number_of_leaves + new_leaves.len()).checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves,
+            None => bail!("Integer overflow when computing the maximum number of leaves in the Merkle tree"),
+        };
         // Compute the number of nodes.
         let num_nodes = max_leaves - 1;
         // Compute the tree size as the maximum number of leaves plus the number of nodes.
@@ -127,7 +134,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Initialize the Merkle tree.
         let mut tree = vec![self.empty_hash; num_nodes];
         // Extend the new Merkle tree with the existing leaf hashes.
-        tree.extend(self.leaf_hashes());
+        tree.extend(self.leaf_hashes()?);
         // Extend the new Merkle tree with the new leaf hashes.
         tree.extend(&self.leaf_hasher.hash_leaves(new_leaves)?);
         // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
@@ -137,7 +144,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         let timer = timer!("while");
 
         // Initialize a precompute index to track the starting index of each precomputed level.
-        let mut precompute_index = self.number_of_leaves.next_power_of_two() - 1;
+        let mut precompute_index = match self.number_of_leaves.checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves - 1,
+            None => bail!("Integer overflow when computing the Merkle tree precompute index"),
+        };
         // Initialize a start index to track the starting index of the current level.
         let mut start_index = num_nodes;
         // Initialize a middle index to separate the precomputed indices from the new indices that need to be computed.
@@ -220,7 +230,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
 
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
-        let start = self.number_of_leaves.next_power_of_two() - 1;
+        let start = match self.number_of_leaves.checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves - 1,
+            None => bail!("Integer overflow when computing the Merkle tree start index"),
+        };
         // Compute the absolute index of the leaf in the Merkle tree.
         let mut index = start + leaf_index;
         // Ensure the leaf index is valid.
@@ -275,34 +288,43 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     }
 
     /// Returns the leaf hashes from the Merkle tree.
-    pub fn leaf_hashes(&self) -> &[LH::Hash] {
+    pub fn leaf_hashes(&self) -> Result<&[LH::Hash]> {
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
-        let start = self.number_of_leaves.next_power_of_two() - 1;
+        let start = match self.number_of_leaves.checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves - 1,
+            None => bail!("Integer overflow when computing the Merkle tree start index"),
+        };
         // Compute the end index (on the right) for the leaf hashes level in the Merkle tree.
         let end = start + self.number_of_leaves;
         // Return the leaf hashes.
-        &self.tree[start..end]
+        Ok(&self.tree[start..end])
     }
 }
 
 /// Returns the depth of the tree, given the size of the tree.
 #[inline]
+#[allow(clippy::cast_possible_truncation)]
 fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
+    let tree_size = u64::try_from(tree_size)?;
     // Ensure the tree size is less than 2^52 (for casting to an f64).
-    let tree_depth = match (tree_size as u64) < 4503599627370496_u64 {
+    let tree_depth = match tree_size < 4503599627370496_u64 {
         // Compute the log2 of the tree size.
         true => (tree_size as f64).log2(),
         false => bail!("Tree size must be less than 2^52"),
     };
     // Ensure the tree depth is within a u8 range.
     match tree_depth <= u8::MAX as f64 {
-        // Ensure the tree depth is within the depth bound.
-        true => match tree_depth as u8 <= DEPTH {
-            // Return the tree depth.
-            true => Ok(tree_depth as u8),
-            false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
-        },
-        false => bail!("Merkle tree depth exceeds maximum size: {}", tree_depth),
+        true => {
+            // Convert the tree depth to a u8.
+            let tree_depth = tree_depth as u8;
+            // Ensure the tree depth is within the depth bound.
+            match tree_depth <= DEPTH {
+                // Return the tree depth.
+                true => Ok(tree_depth),
+                false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
+            }
+        }
+        false => bail!("Merkle tree depth ({tree_depth}) exceeds maximum size ({})", u8::MAX),
     }
 }
 

@@ -145,7 +145,7 @@ mod tests {
                 let next_absorb_index = if absorb % RATE != 0 || absorb == 0 { absorb % RATE } else { RATE };
                 assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{iteration}");
 
-                assert_snapshot("test_sponge", &iteration, sponge.squeeze(squeeze as u16));
+                assert_snapshot("test_sponge", &iteration, sponge.squeeze(u16::try_from(squeeze).unwrap()));
 
                 let next_squeeze_index = if squeeze % RATE != 0 || squeeze == 0 { squeeze % RATE } else { RATE };
                 match squeeze == 0 {

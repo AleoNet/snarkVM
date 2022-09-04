@@ -71,7 +71,7 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
                 "80949648264912719408558363140637477264845294720710499478137287262712535938301461879813459410945",
             )
             .unwrap();
-            debug_assert!(cube_root_of_unity.pow(&[3]).is_one());
+            debug_assert!(cube_root_of_unity.pow([3]).is_one());
             p.x *= cube_root_of_unity;
             p
         };

@@ -68,7 +68,7 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
         // Write the gates.
         self.gates.write_le(&mut writer)?;
         // Write the number of entries in the record data.
-        (self.data.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.data.len()).or_halt_with::<N>("Record length exceeds u16::MAX").write_le(&mut writer)?;
         // Write each entry.
         for (entry_name, entry_value) in &self.data {
             // Write the entry name.
@@ -76,7 +76,9 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
             // Write the entry value (performed in 2 steps to prevent infinite recursion).
             let bytes = entry_value.to_bytes_le().map_err(|e| error(e.to_string()))?;
             // Write the number of bytes.
-            (bytes.len() as u16).write_le(&mut writer)?;
+            u16::try_from(bytes.len())
+                .or_halt_with::<N>("Record entry exceeds u16::MAX bytes")
+                .write_le(&mut writer)?;
             // Write the bytes.
             bytes.write_le(&mut writer)?;
         }

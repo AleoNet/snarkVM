@@ -32,12 +32,20 @@ impl<N: Network> ToBits for Plaintext<N> {
             Self::Interface(interface, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![false, true]; // Variant bits.
-                    bits_le.extend((interface.len() as u8).to_bits_le());
+                    bits_le.extend(
+                        u8::try_from(interface.len())
+                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
+                            .to_bits_le(),
+                    );
                     for (identifier, value) in interface {
                         let value_bits = value.to_bits_le();
                         bits_le.extend(identifier.size_in_bits().to_bits_le());
                         bits_le.extend(identifier.to_bits_le());
-                        bits_le.extend((value_bits.len() as u16).to_bits_le());
+                        bits_le.extend(
+                            u16::try_from(value_bits.len())
+                                .or_halt_with::<N>("Plaintext member exceeds u16::MAX bits")
+                                .to_bits_le(),
+                        );
                         bits_le.extend(value_bits);
                     }
                     bits_le
@@ -61,12 +69,20 @@ impl<N: Network> ToBits for Plaintext<N> {
             Self::Interface(interface, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![false, true]; // Variant bits.
-                    bits_be.extend((interface.len() as u8).to_bits_be());
+                    bits_be.extend(
+                        u8::try_from(interface.len())
+                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
+                            .to_bits_be(),
+                    );
                     for (identifier, value) in interface {
                         let value_bits = value.to_bits_be();
                         bits_be.extend(identifier.size_in_bits().to_bits_be());
                         bits_be.extend(identifier.to_bits_be());
-                        bits_be.extend((value_bits.len() as u16).to_bits_be());
+                        bits_be.extend(
+                            u16::try_from(value_bits.len())
+                                .or_halt_with::<N>("Plaintext member exceeds u16::MAX bits")
+                                .to_bits_be(),
+                        );
                         bits_be.extend(value_bits);
                     }
                     bits_be

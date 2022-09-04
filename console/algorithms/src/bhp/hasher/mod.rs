@@ -24,7 +24,7 @@ use std::sync::Arc;
 
 /// The BHP chunk size (this implementation is for a 3-bit BHP).
 pub(super) const BHP_CHUNK_SIZE: usize = 3;
-pub(super) const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
+pub(super) const BHP_LOOKUP_SIZE: usize = 1 << BHP_CHUNK_SIZE;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hasher is used to process one internal iteration of the BHP hash function.

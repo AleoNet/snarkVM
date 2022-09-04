@@ -28,6 +28,7 @@ use crate::{
         Fq6Parameters,
         FqParameters,
         Fr,
+        FrParameters,
         G1Affine,
         G1Projective,
         G2Affine,
@@ -35,7 +36,15 @@ use crate::{
     },
     templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
-        tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+        tests_field::{
+            bench_sqrt,
+            field_serialization_test,
+            field_test,
+            frobenius_test,
+            primefield_test,
+            random_sqrt_tonelli_tests,
+            sqrt_field_test,
+        },
         tests_group::*,
         tests_projective::curve_tests,
         AffineCurve,
@@ -68,7 +77,7 @@ use std::{
     ops::{AddAssign, MulAssign, SubAssign},
 };
 
-pub(crate) const ITERATIONS: usize = 5;
+pub(crate) const ITERATIONS: usize = 10;
 
 #[test]
 fn test_bls12_377_fr() {
@@ -367,7 +376,7 @@ fn test_fq_pow() {
         // Exponentiate by various small numbers and ensure it consists with repeated
         // multiplication.
         let a = Fq::rand(&mut rng);
-        let target = a.pow(&[i]);
+        let target = a.pow([i]);
         let mut c = Fq::one();
         for _ in 0..i {
             c.mul_assign(&a);
@@ -411,6 +420,34 @@ fn test_fq_sqrt() {
             assert_eq!(a, tmp);
         }
     }
+}
+
+#[test]
+fn test_fq_sqrt_tonelli() {
+    let mut rng = TestRng::default();
+
+    random_sqrt_tonelli_tests::<Fq>(&mut rng);
+}
+
+#[test]
+fn test_fr_sqrt_tonelli() {
+    let mut rng = TestRng::default();
+
+    random_sqrt_tonelli_tests::<Fr>(&mut rng);
+}
+
+#[test]
+fn test_fq_bench_sqrt() {
+    let mut rng = TestRng::default();
+
+    bench_sqrt::<Fq>(&mut rng);
+}
+
+#[test]
+fn test_fr_bench_sqrt() {
+    let mut rng = TestRng::default();
+
+    bench_sqrt::<Fr>(&mut rng);
 }
 
 #[test]

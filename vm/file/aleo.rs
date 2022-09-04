@@ -179,7 +179,7 @@ function hello:
         // Ensure the file name matches the expected file name.
         ensure!(file_name == self.file_name, "File name does not match.");
 
-        Ok(File::create(&path)?.write_all(self.program_string.as_bytes())?)
+        Ok(File::create(path)?.write_all(self.program_string.as_bytes())?)
     }
 
     /// Removes the file at the given path, if it exists.
@@ -193,7 +193,7 @@ function hello:
             // If the path exists, remove it.
             if path.exists() {
                 // Remove the file.
-                fs::remove_file(&path)?;
+                fs::remove_file(path)?;
             }
             Ok(())
         }
@@ -230,7 +230,7 @@ impl<N: Network> AleoFile<N> {
             .to_string();
 
         // Read the program string.
-        let program_string = fs::read_to_string(&file)?;
+        let program_string = fs::read_to_string(file)?;
         // Parse the program string.
         let program = Program::from_str(&program_string)?;
 
