@@ -17,7 +17,7 @@
 use crate::RestError;
 
 use anyhow::Result;
-use warp::{reject, Filter, Rejection};
+use warp::{reject, Rejection};
 
 /// A trait to unwrap a `Result` or `Reject`.
 pub trait OrReject<T> {
