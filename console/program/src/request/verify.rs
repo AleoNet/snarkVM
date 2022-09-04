@@ -133,7 +133,7 @@ impl<N: Network> Request<N> {
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
 
                         // Construct the (console) input index as a field element.
-                        let index = Field::from_u16(u16::try_from(index).unwrap());
+                        let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Compute the input view key as `Hash(tvk || index)`.
                         let input_view_key = N::hash_psd2(&[self.tvk, index])?;
                         // Compute the ciphertext.
