@@ -2157,6 +2157,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-parameters",
  "snarkvm-r1cs",
+ "snarkvm-rest",
  "snarkvm-utilities",
  "tempfile",
  "thiserror",
