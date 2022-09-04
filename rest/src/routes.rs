@@ -18,6 +18,7 @@ use super::*;
 
 impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
+    #[allow(clippy::redundant_clone)]
     pub fn routes(
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
         ledger_sender: LedgerSender<N>,
