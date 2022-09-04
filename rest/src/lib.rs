@@ -65,27 +65,24 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Initialize a channel to send requests to the ledger.
         let (ledger_sender, ledger_receiver) = mpsc::channel(64);
 
-        // Initialize a vector for the server handles.
-        let mut handles = Vec::new();
-
         // Initialize the routes.
         let routes = Self::routes(ledger.clone(), ledger_sender.clone());
 
+        // Initialize a vector for the server handles.
+        let mut handles = Vec::new();
+
         // Spawn the server.
         handles.push(tokio::spawn(async move {
-            let addr = ([0, 0, 0, 0], 80);
-
-            // Start the server with optional additional routes.
+            // Initialize the listening IP.
+            let ip = ([0, 0, 0, 0], 80);
+            // Start the server, with optional additional routes.
             match additional_routes {
-                Some(additional_routes) => {
-                    warp::serve(routes.or(additional_routes)).run(addr).await;
-                }
-                None => {
-                    warp::serve(routes).run(addr).await;
-                }
+                Some(additional_routes) => warp::serve(routes.or(additional_routes)).run(ip).await,
+                None => warp::serve(routes).run(ip).await,
             }
         }));
 
+        // Initialize the server.
         let server = Self { ledger, ledger_sender, handles };
 
         Ok((server, ledger_receiver))
