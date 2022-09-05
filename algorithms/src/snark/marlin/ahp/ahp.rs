@@ -385,7 +385,7 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
         if x != y {
             (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y)) / (x - y)
         } else {
-            self.size_as_field_element * x.pow(&[(self.size() - 1) as u64])
+            self.size_as_field_element * x.pow([(self.size() - 1) as u64])
         }
     }
 
@@ -450,7 +450,7 @@ mod tests {
     use crate::fft::{DensePolynomial, Evaluations};
     use snarkvm_curves::bls12_377::fr::Fr;
     use snarkvm_fields::{One, Zero};
-    use snarkvm_utilities::rand::{test_rng, Uniform};
+    use snarkvm_utilities::rand::{TestRng, Uniform};
 
     #[test]
     fn domain_unnormalized_bivariate_lagrange_poly() {
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn domain_unnormalized_bivariate_lagrange_poly_diff_inputs() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
         for domain_size in 1..10 {
             let domain = EvaluationDomain::<Fr>::new(1 << domain_size).unwrap();
             let x = Fr::rand(rng);
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn domain_unnormalized_bivariate_lagrange_poly_diff_inputs_over_domain() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
         for domain_size in 1..10 {
             let domain = EvaluationDomain::<Fr>::new(1 << domain_size).unwrap();
             let x = Fr::rand(rng);
@@ -495,7 +495,7 @@ mod tests {
 
     #[test]
     fn test_summation() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
         let size = 1 << 4;
         let domain = EvaluationDomain::<Fr>::new(1 << 4).unwrap();
         let size_as_fe = domain.size_as_field_element;
@@ -516,11 +516,13 @@ mod tests {
 
     #[test]
     fn test_alternator_polynomial() {
+        let mut rng = TestRng::default();
+
         for i in 1..10 {
             for j in 1..i {
                 let domain_i = EvaluationDomain::<Fr>::new(1 << i).unwrap();
                 let domain_j = EvaluationDomain::<Fr>::new(1 << j).unwrap();
-                let point = domain_j.sample_element_outside_domain(&mut snarkvm_utilities::test_rng());
+                let point = domain_j.sample_element_outside_domain(&mut rng);
                 let j_elements = domain_j.elements().collect::<Vec<_>>();
                 let slow_selector = {
                     let evals = domain_i

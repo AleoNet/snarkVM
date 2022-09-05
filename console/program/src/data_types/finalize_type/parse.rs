@@ -20,8 +20,6 @@ impl<N: Network> Parser for FinalizeType<N> {
     /// Parses the string into a finalize type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the mode from the string.
         alt((
             map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Public(plaintext_type)),

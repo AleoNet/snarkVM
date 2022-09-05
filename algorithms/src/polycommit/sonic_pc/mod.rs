@@ -750,7 +750,7 @@ mod tests {
     use super::{CommitterKey, SonicKZG10};
     use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq};
-    use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
+    use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
 
     use rand::distributions::Distribution;
 
@@ -759,7 +759,7 @@ mod tests {
 
     #[test]
     fn test_committer_key_serialization() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
         let max_degree = rand::distributions::Uniform::from(8..=64).sample(rng);
         let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
 

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
+#![warn(clippy::cast_possible_truncation)]
 
 mod bitwise;
 mod bytes;
@@ -99,9 +100,11 @@ mod tests {
 
     #[test]
     fn test_deref() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
 
             // Check the group representation.
             let candidate = *expected;

@@ -20,8 +20,6 @@ impl<N: Network> Parser for ValueType<N> {
     /// Parses the string into a value type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the mode from the string.
         alt((
             map(pair(PlaintextType::parse, tag(".constant")), |(plaintext_type, _)| Self::Constant(plaintext_type)),

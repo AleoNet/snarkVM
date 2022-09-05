@@ -154,7 +154,7 @@ impl<A: Aleo> Response<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -169,7 +169,7 @@ mod tests {
     ) -> Result<()> {
         use console::Network;
 
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample a `tvk`.

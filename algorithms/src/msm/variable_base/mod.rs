@@ -83,12 +83,10 @@ mod tests {
     use super::*;
     use snarkvm_curves::bls12_377::{Fr, G1Affine};
     use snarkvm_fields::PrimeField;
-    use snarkvm_utilities::rand::test_rng;
-
-    use rand_xorshift::XorShiftRng;
+    use snarkvm_utilities::rand::TestRng;
 
     fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(
-        rng: &mut XorShiftRng,
+        rng: &mut TestRng,
         size: usize,
     ) -> (Vec<G>, Vec<F::BigInteger>) {
         let bases = (0..size).map(|_| G::rand(rng)).collect::<Vec<_>>();
@@ -100,7 +98,7 @@ mod tests {
     fn test_msm() {
         use snarkvm_curves::ProjectiveCurve;
         for msm_size in [1, 5, 10, 50, 100, 500, 1000] {
-            let mut rng = test_rng();
+            let mut rng = TestRng::default();
             let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, msm_size);
 
             let naive_a = VariableBase::msm_naive(bases.as_slice(), scalars.as_slice()).to_affine();
@@ -118,7 +116,7 @@ mod tests {
     #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
     #[test]
     fn test_msm_cuda() {
-        let mut rng = test_rng();
+        let mut rng = TestRng::default();
         for _ in 0..100 {
             let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << 10);
             let rust = standard::msm(bases.as_slice(), scalars.as_slice());

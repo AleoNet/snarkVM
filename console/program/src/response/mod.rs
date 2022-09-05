@@ -72,7 +72,9 @@ impl<N: Network> Response<N> {
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
 
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
                         // Construct the preimage as `(output || tcm || index)`.
                         let mut preimage = output.to_fields()?;
                         preimage.push(*tcm);
@@ -89,7 +91,9 @@ impl<N: Network> Response<N> {
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
 
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
                         // Construct the preimage as `(output || tcm || index)`.
                         let mut preimage = output.to_fields()?;
                         preimage.push(*tcm);
@@ -105,7 +109,9 @@ impl<N: Network> Response<N> {
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
                         // Compute the output view key as `Hash(tvk || index)`.
                         let output_view_key = N::hash_psd2(&[*tvk, index])?;
                         // Compute the ciphertext.
@@ -150,7 +156,9 @@ impl<N: Network> Response<N> {
                         ensure!(matches!(output, Value::Record(..)), "Expected a record output");
 
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
                         // Construct the preimage as `(output || tvk || index)`.
                         let mut preimage = output.to_fields()?;
                         preimage.push(*tvk);

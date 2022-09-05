@@ -349,9 +349,11 @@ mod tests {
     //     // Initialize the opcode.
     //     let opcode = FinalizeCommand::<CurrentNetwork>::opcode();
     //
+    //     let mut rng = TestRng::default();
+    //
     //     // Prepare the test.
-    //     let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-    //     let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+    //     let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+    //     let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
     //     let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //     let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //
@@ -372,9 +374,11 @@ mod tests {
     //     // Initialize the opcode.
     //     let opcode = FinalizeCommand::<CurrentNetwork>::opcode();
     //
+    //     let mut rng = TestRng::default();
+    //
     //     // Prepare the test.
-    //     let literals_a = crate::sample_literals!(CurrentNetwork, &mut test_rng());
-    //     let literals_b = crate::sample_literals!(CurrentNetwork, &mut test_rng());
+    //     let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+    //     let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
     //     let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //     let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //

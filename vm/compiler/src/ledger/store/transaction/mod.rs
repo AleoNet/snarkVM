@@ -51,7 +51,7 @@ pub enum TransactionType {
 }
 
 /// A trait for transaction storage.
-pub trait TransactionStorage<N: Network>: Clone + Sync {
+pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `transaction ID` to `transaction type`.
     type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType>;
     /// The deployment storage.
@@ -70,6 +70,16 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
     fn deployment_store(&self) -> &DeploymentStore<N, Self::DeploymentStorage>;
     /// Returns the execution store.
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage>;
+    /// Returns the transition store.
+    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
+        debug_assert!(self.deployment_store().dev() == self.execution_store().dev());
+        self.execution_store().transition_store()
+    }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.transition_store().dev()
+    }
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -254,7 +264,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
-        self.storage.execution_store().transition_store()
+        self.storage.transition_store()
     }
 
     /// Starts an atomic batch write operation.
@@ -275,6 +285,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
+    }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
     }
 }
 
@@ -455,15 +470,17 @@ mod tests {
 
     #[test]
     fn test_insert_get_remove() {
+        let rng = &mut TestRng::default();
+
         // Sample the transactions.
         for transaction in [
-            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
-            crate::ledger::vm::test_helpers::sample_execution_transaction(),
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(rng),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(rng),
         ] {
             let transaction_id = transaction.id();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open().unwrap();
+            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
             // Initialize a new transaction store.
             let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
 
@@ -489,8 +506,10 @@ mod tests {
 
     #[test]
     fn test_find_transaction_id() {
+        let rng = &mut TestRng::default();
+
         // Sample the execution transaction.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {
@@ -500,7 +519,7 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::<_, TransitionMemory<_>>::open().unwrap();
+        let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
         // Initialize a new transaction store.
         let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
 

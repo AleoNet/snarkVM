@@ -38,11 +38,11 @@ impl<N: Network> ToBytes for Ciphertext<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of field elements does not exceed the maximum allowed size.
-        if self.0.len() as u32 > N::MAX_DATA_SIZE_IN_FIELDS {
+        if u32::try_from(self.0.len()).or_halt::<N>() > N::MAX_DATA_SIZE_IN_FIELDS || self.0.len() > u16::MAX as usize {
             return Err(error("Ciphertext is too large to encode in field elements."));
         }
         // Write the number of ciphertext field elements.
-        (self.0.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.0.len()).or_halt::<N>().write_le(&mut writer)?;
         // Write the ciphertext field elements.
         self.0.write_le(&mut writer)
     }
@@ -59,10 +59,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new ciphertext.
-            let expected =
-                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>());
+            let expected = Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

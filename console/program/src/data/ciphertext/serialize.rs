@@ -47,10 +47,11 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new ciphertext.
-            let expected =
-                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>());
+            let expected = Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -66,10 +67,11 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new ciphertext.
-            let expected =
-                Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>());
+            let expected = Ciphertext::<CurrentNetwork>((0..100).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>());
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

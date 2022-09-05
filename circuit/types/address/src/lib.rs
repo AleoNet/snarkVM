@@ -24,7 +24,7 @@ mod equal;
 mod ternary;
 
 #[cfg(test)]
-use console::{test_rng, Uniform};
+use console::{TestRng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 

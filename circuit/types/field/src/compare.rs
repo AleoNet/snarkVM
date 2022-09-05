@@ -136,9 +136,11 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);

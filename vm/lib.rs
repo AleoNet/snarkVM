@@ -45,6 +45,8 @@ pub use snarkvm_gadgets as gadgets;
 pub use snarkvm_parameters as parameters;
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs as r1cs;
+#[cfg(feature = "rest")]
+pub use snarkvm_rest as rest;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
 
@@ -79,6 +81,8 @@ pub mod prelude {
     pub use crate::console::{account::*, network::*, prelude::*, program::*};
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;
+    #[cfg(feature = "rest")]
+    pub use crate::rest::*;
     #[cfg(feature = "utilities")]
     pub use crate::utilities::*;
 }

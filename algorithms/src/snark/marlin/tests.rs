@@ -69,7 +69,7 @@ mod marlin {
     use super::*;
     use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_utilities::rand::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::rand::{TestRng, Uniform};
 
     use core::ops::MulAssign;
 
@@ -84,7 +84,7 @@ mod marlin {
             struct $test_struct {}
             impl $test_struct {
                 pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
-                    let rng = &mut snarkvm_utilities::rand::test_crypto_rng();
+                    let rng = &mut snarkvm_utilities::rand::TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
@@ -160,7 +160,7 @@ mod marlin {
                 pub(crate) fn test_serde_json(num_constraints: usize, num_variables: usize) {
                     use std::str::FromStr;
 
-                    let rng = &mut test_crypto_rng();
+                    let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
@@ -187,7 +187,7 @@ mod marlin {
                 pub(crate) fn test_bincode(num_constraints: usize, num_variables: usize) {
                     use snarkvm_utilities::{FromBytes, ToBytes};
 
-                    let rng = &mut test_crypto_rng();
+                    let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
@@ -299,7 +299,7 @@ mod marlin_recursion {
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
-        rand::{test_crypto_rng, Uniform},
+        rand::{TestRng, Uniform},
         FromBytes,
         ToBytes,
     };
@@ -311,7 +311,7 @@ mod marlin_recursion {
     type FS = PoseidonSponge<Fq, 2, 1>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
@@ -341,7 +341,7 @@ mod marlin_recursion {
     }
 
     fn test_serde_json(num_constraints: usize, num_variables: usize) {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
@@ -362,7 +362,7 @@ mod marlin_recursion {
     }
 
     fn test_bincode(num_constraints: usize, num_variables: usize) {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
@@ -436,7 +436,7 @@ mod marlin_recursion {
     // #[test]
     // /// Test on a constraint system that will trigger outlining.
     // fn prove_and_test_outlining() {
-    //     let rng = &mut test_crypto_rng();
+    //     let rng = &mut TestRng::default();
     //
     //     let universal_srs = MarlinInst::universal_setup(150, 150, 150, rng).unwrap();
     //

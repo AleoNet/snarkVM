@@ -42,6 +42,8 @@ use console::{
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+#[cfg(test)]
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
@@ -114,6 +116,42 @@ impl<N: Network> Process<N> {
             // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
             stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
+        }
+
+        // Add the stack to the process.
+        process.stacks.insert(*program.id(), stack);
+        // Return the process.
+        Ok(process)
+    }
+
+    /// Initializes a new process with a cache of previously used keys. This version is suitable for tests
+    /// (which often use nested loops that keep reusing those), as their deserialization is slow.
+    #[cfg(test)]
+    #[inline]
+    pub fn load_with_cache(cache: &mut HashMap<String, (ProvingKey<N>, VerifyingKey<N>)>) -> Result<Self> {
+        // Initialize the process.
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+
+        // Synthesize the 'credits.aleo' circuit keys.
+        for function_name in program.functions().keys() {
+            // TODO (howardwu): Abstract this into the `Network` trait.
+            // Load the proving and verifying key bytes.
+            let (proving_key, verifying_key) = snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
+                .get(&function_name.to_string())
+                .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
+
+            let (proving_key, verifying_key) = cache.entry(function_name.to_string()).or_insert_with(|| {
+                (ProvingKey::from_bytes_le(proving_key).unwrap(), VerifyingKey::from_bytes_le(verifying_key).unwrap())
+            });
+
+            // Insert the proving and verifying key.
+            stack.insert_proving_key(function_name, proving_key.clone())?;
+            stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
 
         // Add the stack to the process.
@@ -246,7 +284,7 @@ function compute:
                 let function_name = Identifier::from_str("compute").unwrap();
 
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
+                let rng = &mut TestRng::default();
 
                 // Construct the process.
                 let process = sample_process(&program);
@@ -285,7 +323,7 @@ function compute:
                 let function_name = Identifier::from_str("compute").unwrap();
 
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
+                let rng = &mut TestRng::default();
                 // Initialize a new caller account.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
@@ -355,7 +393,7 @@ mod tests {
         let program = Program::<CurrentNetwork>::credits().unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
@@ -476,7 +514,7 @@ function hello_world:
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
-        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
     }
 
     #[test]
@@ -507,7 +545,7 @@ function hello_world:
         let function_name = Identifier::from_str("initialize").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -602,7 +640,7 @@ function hello_world:
         let function_name = Identifier::from_str("initialize").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -677,7 +715,7 @@ function hello_world:
         let function_name = Identifier::from_str("initialize").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -755,7 +793,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -890,7 +928,7 @@ function transfer:
         process.add_program(&program1).unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Initialize caller 0.
         let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1015,7 +1053,7 @@ finalize compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -1026,7 +1064,7 @@ finalize compute:
         let mut process = Process::load().unwrap();
 
         // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1112,7 +1150,7 @@ finalize compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -1123,7 +1161,7 @@ finalize compute:
         let mut process = Process::load().unwrap();
 
         // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1223,7 +1261,7 @@ finalize mint_public:
         let function_name = Identifier::from_str("mint_public").unwrap();
 
         // Initialize the RNG.
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
@@ -1234,7 +1272,7 @@ finalize mint_public:
         let mut process = Process::load().unwrap();
 
         // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();

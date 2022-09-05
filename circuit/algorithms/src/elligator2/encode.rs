@@ -108,14 +108,16 @@ impl<E: Environment> Elligator2<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     const ITERATIONS: u64 = 1_000;
 
     fn check_encode(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given = Uniform::rand(&mut test_rng());
+            let given = Uniform::rand(&mut rng);
 
             // Compute the expected native result.
             let (expected, _sign) = console::Elligator2::<<Circuit as Environment>::Network>::encode(&given).unwrap();

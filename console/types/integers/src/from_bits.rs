@@ -35,12 +35,12 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: usize = 100;
 
-    fn check_from_bits_le<I: IntegerType>() -> Result<()> {
+    fn check_from_bits_le<I: IntegerType>(rng: &mut TestRng) -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random value.
-            let expected: I = Uniform::rand(&mut test_rng());
+            let expected: I = Uniform::rand(rng);
 
             let expected = Integer::<CurrentEnvironment, I>::new(expected);
             let given_bits = expected.to_bits_le();
@@ -50,7 +50,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i as usize]].concat();
+            let candidate = vec![given_bits, vec![false; i]].concat();
 
             let candidate = Integer::<CurrentEnvironment, I>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
@@ -59,10 +59,10 @@ mod tests {
         Ok(())
     }
 
-    fn check_from_bits_be<I: IntegerType>() -> Result<()> {
+    fn check_from_bits_be<I: IntegerType>(rng: &mut TestRng) -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random value.
-            let expected: I = Uniform::rand(&mut test_rng());
+            let expected: I = Uniform::rand(rng);
 
             let expected = Integer::<CurrentEnvironment, I>::new(expected);
             let given_bits = expected.to_bits_be();
@@ -72,7 +72,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![vec![false; i as usize], given_bits].concat();
+            let candidate = vec![vec![false; i], given_bits].concat();
 
             let candidate = Integer::<CurrentEnvironment, I>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);
@@ -83,34 +83,38 @@ mod tests {
 
     #[test]
     fn test_from_bits_le() -> Result<()> {
-        check_from_bits_le::<u8>()?;
-        check_from_bits_le::<u16>()?;
-        check_from_bits_le::<u32>()?;
-        check_from_bits_le::<u64>()?;
-        check_from_bits_le::<u128>()?;
+        let mut rng = TestRng::default();
 
-        check_from_bits_le::<i8>()?;
-        check_from_bits_le::<i16>()?;
-        check_from_bits_le::<i32>()?;
-        check_from_bits_le::<i64>()?;
-        check_from_bits_le::<i128>()?;
+        check_from_bits_le::<u8>(&mut rng)?;
+        check_from_bits_le::<u16>(&mut rng)?;
+        check_from_bits_le::<u32>(&mut rng)?;
+        check_from_bits_le::<u64>(&mut rng)?;
+        check_from_bits_le::<u128>(&mut rng)?;
+
+        check_from_bits_le::<i8>(&mut rng)?;
+        check_from_bits_le::<i16>(&mut rng)?;
+        check_from_bits_le::<i32>(&mut rng)?;
+        check_from_bits_le::<i64>(&mut rng)?;
+        check_from_bits_le::<i128>(&mut rng)?;
 
         Ok(())
     }
 
     #[test]
     fn test_from_bits_be() -> Result<()> {
-        check_from_bits_be::<u8>()?;
-        check_from_bits_be::<u16>()?;
-        check_from_bits_be::<u32>()?;
-        check_from_bits_be::<u64>()?;
-        check_from_bits_be::<u128>()?;
+        let mut rng = TestRng::default();
 
-        check_from_bits_be::<i8>()?;
-        check_from_bits_be::<i16>()?;
-        check_from_bits_be::<i32>()?;
-        check_from_bits_be::<i64>()?;
-        check_from_bits_be::<i128>()?;
+        check_from_bits_be::<u8>(&mut rng)?;
+        check_from_bits_be::<u16>(&mut rng)?;
+        check_from_bits_be::<u32>(&mut rng)?;
+        check_from_bits_be::<u64>(&mut rng)?;
+        check_from_bits_be::<u128>(&mut rng)?;
+
+        check_from_bits_be::<i8>(&mut rng)?;
+        check_from_bits_be::<i16>(&mut rng)?;
+        check_from_bits_be::<i32>(&mut rng)?;
+        check_from_bits_be::<i64>(&mut rng)?;
+        check_from_bits_be::<i128>(&mut rng)?;
 
         Ok(())
     }

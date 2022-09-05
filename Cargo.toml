@@ -19,7 +19,7 @@ categories = [
   "wasm",
   "web-programming"
 ]
-include = [ "Cargo.toml", "snarkvm", "README.md", "LICENSE.md" ]
+include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
@@ -61,6 +61,7 @@ members = [
   "fields",
   "parameters",
   "r1cs",
+  "rest",
   "utilities",
   "utilities/derives",
   "vm/compiler",
@@ -85,6 +86,7 @@ full = [
   "fields",
   "parameters",
   "r1cs",
+  "rest",
   "utilities"
 ]
 cli = [
@@ -106,6 +108,7 @@ curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 parameters = [ "snarkvm-parameters" ]
 r1cs = [ "snarkvm-r1cs" ]
+rest = [ "snarkvm-rest" ]
 utilities = [ "snarkvm-utilities" ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
@@ -152,6 +155,11 @@ path = "./r1cs"
 version = "0.9.0"
 optional = true
 
+[dependencies.snarkvm-rest]
+path = "./rest"
+version = "0.9.0"
+optional = true
+
 [dependencies.snarkvm-utilities]
 path = "./utilities"
 version = "0.9.0"
@@ -162,7 +170,7 @@ path = "./vm/compiler"
 version = "0.9.0"
 
 [dependencies.anyhow]
-version = "1.0.62"
+version = "1.0.63"
 optional = true
 
 [dependencies.clap]

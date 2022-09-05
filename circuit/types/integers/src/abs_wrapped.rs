@@ -90,9 +90,11 @@ mod tests {
     }
 
     fn run_test<I: IntegerType + UnwindSafe>(mode: Mode) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             let name = format!("Abs: {} {}", mode, i);
-            let value = Uniform::rand(&mut test_rng());
+            let value = Uniform::rand(&mut rng);
             check_abs::<I>(&name, value, mode);
         }
 

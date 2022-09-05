@@ -22,20 +22,18 @@ use snarkvm_utilities::{
     rand::Uniform,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     Compress,
+    TestRng,
     Validate,
 };
 
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
-
 pub const ITERATIONS: usize = 10;
 
-pub fn sw_tests<P: ShortWeierstrassParameters>() {
-    sw_curve_serialization_test::<P>();
-    sw_from_random_bytes::<P>();
+pub fn sw_tests<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
+    sw_curve_serialization_test::<P>(rng);
+    sw_from_random_bytes::<P>(rng);
 }
 
-pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
+pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
     let modes = [
         (Compress::Yes, Validate::Yes),
         (Compress::No, Validate::No),
@@ -45,10 +43,8 @@ pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
     for (compress, validate) in modes {
         let buf_size = Affine::<P>::zero().serialized_size(compress);
 
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
         for _ in 0..10 {
-            let a = Projective::<P>::rand(&mut rng);
+            let a = Projective::<P>::rand(rng);
             let mut a = a.to_affine();
             {
                 let mut serialized = vec![0; buf_size];
@@ -126,13 +122,11 @@ pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
     }
 }
 
-pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>() {
+pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>(rng: &mut TestRng) {
     let buf_size = Affine::<P>::zero().compressed_size();
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
     for _ in 0..ITERATIONS {
-        let a = Projective::<P>::rand(&mut rng);
+        let a = Projective::<P>::rand(rng);
         let a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];

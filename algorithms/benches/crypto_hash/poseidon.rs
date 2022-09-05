@@ -19,13 +19,12 @@ extern crate criterion;
 
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_curves::bls12_377::Fq;
-use snarkvm_utilities::Uniform;
+use snarkvm_utilities::{TestRng, Uniform};
 
 use criterion::Criterion;
-use rand::thread_rng;
 
 fn sponge_2_1_absorb_4(c: &mut Criterion) {
-    let rng = &mut thread_rng();
+    let rng = &mut TestRng::default();
     let mut sponge = PoseidonSponge::<Fq, 2, 1>::new();
 
     let input = vec![Fq::rand(rng), Fq::rand(rng), Fq::rand(rng), Fq::rand(rng)];
@@ -33,7 +32,7 @@ fn sponge_2_1_absorb_4(c: &mut Criterion) {
 }
 
 fn sponge_2_1_absorb_10(c: &mut Criterion) {
-    let rng = &mut thread_rng();
+    let rng = &mut TestRng::default();
     let mut sponge = PoseidonSponge::<Fq, 2, 1>::new();
 
     let input = vec![Fq::rand(rng); 10];

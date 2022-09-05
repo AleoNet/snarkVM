@@ -41,7 +41,7 @@ impl<N: Network> FromBits for Identifier<N> {
         let max_bytes = Field::<N>::size_in_data_bits() / 8; // Note: This intentionally rounds down.
         match num_bytes <= max_bytes {
             // Return the identifier.
-            true => Ok(Self(field, num_bytes as u8)),
+            true => Ok(Self(field, u8::try_from(num_bytes).or_halt_with::<N>("Invalid identifier byte size"))),
             false => bail!("Identifier exceeds the maximum capacity allowed"),
         }
     }
@@ -64,9 +64,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_le() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
-            let identifier = sample_identifier::<CurrentNetwork>()?;
+            let identifier = sample_identifier::<CurrentNetwork>(&mut rng)?;
             assert_eq!(identifier, Identifier::from_bits_le(&identifier.to_bits_le())?);
         }
         Ok(())
@@ -74,9 +76,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_be() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
-            let identifier = sample_identifier::<CurrentNetwork>()?;
+            let identifier = sample_identifier::<CurrentNetwork>(&mut rng)?;
             assert_eq!(identifier, Identifier::from_bits_be(&identifier.to_bits_be())?);
         }
         Ok(())

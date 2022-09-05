@@ -159,7 +159,7 @@ impl<A: Aleo> From<&Identifier<A>> for LinearCombination<A::BaseField> {
 pub(crate) mod tests {
     use super::*;
     use crate::Circuit;
-    use console::{test_rng, Rng};
+    use console::{Rng, TestRng};
 
     use anyhow::{bail, Result};
     use core::str::FromStr;
@@ -176,7 +176,7 @@ pub(crate) mod tests {
     /// Samples a random identifier as a string.
     pub(crate) fn sample_console_identifier_as_string<A: Aleo>() -> Result<String> {
         // Initialize a test RNG.
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
         // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
         let string = "a".to_string()
             + &rng
