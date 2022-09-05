@@ -170,7 +170,7 @@ impl<N: Network> Package<N> {
             //  1) the imported program ID exists *on-chain* (for the given network)
             //  2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
             //  3) consensus performs the exact same checks (in `verify_deployment`)
-            let endpoint = format!("http://localhost/testnet3/program/{}", import_program.0);
+            let endpoint = format!("https://www.aleo.network/testnet3/program/{}", import_program.0);
             match ureq::get(&endpoint).send_json(import_program.0)?.into_json::<String>() {
                 Ok(p) => {
                     let program = Program::<N>::from_str(&p)?;
