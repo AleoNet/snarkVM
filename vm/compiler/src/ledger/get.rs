@@ -105,6 +105,15 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             None => bail!("Missing signature for block {height}"),
         }
     }
+
+    /// Returns the record for the given `commitment`.
+    ///
+    /// If the record exists, `Ok(Some(record))` is returned.
+    /// If the record was purged, `Ok(None)` is returned.
+    /// If the record does not exist, `Err(error)` is returned.
+    pub fn get_record(&self, commitment: Field<N>) -> Result<Option<Record<N, Ciphertext<N>>>> {
+        self.transitions.get_record(&commitment)
+    }
 }
 
 #[cfg(test)]
