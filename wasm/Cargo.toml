@@ -58,6 +58,10 @@ default-features = false
 version = "0.8"
 default-features = false
 
+[dependencies.rand_xorshift]
+version = "0.3"
+default-features = false
+
 [dependencies.serde]
 version = "1.0.144"
 default-features = false

@@ -106,16 +106,14 @@ mod tests {
         // Check the 1 case.
         check_neg::<I>(&format!("Neg: {} one", mode), -console::Integer::one(), mode);
         // Check random values.
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
-            let value = Uniform::rand(&mut rng);
+            let value = Uniform::rand(&mut test_rng());
             check_neg::<I>(&format!("Neg: {} {}", mode, i), value, mode);
         }
     }
 
     fn assert_unsigned_neg_halts<I: IntegerType + UnwindSafe>(mode: Mode) {
-        let candidate = Integer::<Circuit, I>::new(mode, Uniform::rand(&mut TestRng::default()));
+        let candidate = Integer::<Circuit, I>::new(mode, Uniform::rand(&mut test_rng()));
         let operation = std::panic::catch_unwind(|| candidate.neg());
         assert!(operation.is_err());
     }

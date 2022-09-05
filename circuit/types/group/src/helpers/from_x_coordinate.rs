@@ -44,11 +44,9 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Inject the x-coordinate.
             let x_coordinate = Field::new(mode, point.to_x_coordinate());

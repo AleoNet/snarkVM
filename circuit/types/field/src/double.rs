@@ -50,10 +50,10 @@ mod tests {
 
     const ITERATIONS: u64 = 10_000;
 
-    fn check_double(name: &str, mode: Mode, rng: &mut TestRng) {
+    fn check_double(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given = Uniform::rand(rng);
+            let given = Uniform::rand(&mut test_rng());
             let candidate = Field::<Circuit>::new(mode, given);
 
             Circuit::scope(name, || {
@@ -67,11 +67,9 @@ mod tests {
 
     #[test]
     fn test_double() {
-        let mut rng = TestRng::default();
-
-        check_double("Constant", Mode::Constant, &mut rng);
-        check_double("Public", Mode::Public, &mut rng);
-        check_double("Private", Mode::Private, &mut rng);
+        check_double("Constant", Mode::Constant);
+        check_double("Public", Mode::Public);
+        check_double("Private", Mode::Private);
     }
 
     #[test]

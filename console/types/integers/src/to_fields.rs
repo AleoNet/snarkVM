@@ -35,11 +35,9 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_to_fields<I: IntegerType>() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Integer::<CurrentEnvironment, I>::rand(&mut rng);
+            let expected = Integer::<CurrentEnvironment, I>::rand(&mut test_rng());
 
             // Perform the operation.
             let candidate = expected.to_fields()?;
@@ -49,14 +47,13 @@ mod tests {
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), candidate_bits_le.len());
 
             // Ensure all integer bits match with the expected result.
-            let i_bits = usize::try_from(I::BITS).unwrap();
             let expected_bits = expected.to_bits_le();
-            for (expected_bit, candidate_bit) in expected_bits.iter().zip_eq(&candidate_bits_le[0..i_bits]) {
+            for (expected_bit, candidate_bit) in expected_bits.iter().zip_eq(&candidate_bits_le[0..I::BITS as usize]) {
                 assert_eq!(expected_bit, candidate_bit);
             }
 
             // Ensure all remaining bits are 0.
-            for candidate_bit in &candidate_bits_le[i_bits..] {
+            for candidate_bit in &candidate_bits_le[I::BITS as usize..] {
                 assert!(!candidate_bit);
             }
         }

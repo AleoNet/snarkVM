@@ -53,11 +53,9 @@ mod tests {
     fn test_is_one() {
         assert!(Scalar::<CurrentEnvironment>::one().is_one());
 
-        let mut rng = TestRng::default();
-
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut rng);
+            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!scalar.is_one());
         }
     }

@@ -140,10 +140,7 @@ impl<E: Environment> Div<Scalar<E>> for Scalar<E> {
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: Scalar<E>) -> Self::Output {
-        match other.is_zero() {
-            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
-            false => Scalar::new(self.scalar / other.scalar),
-        }
+        Scalar::new(self.scalar / other.scalar)
     }
 }
 
@@ -153,10 +150,7 @@ impl<E: Environment> Div<&Scalar<E>> for Scalar<E> {
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: &Scalar<E>) -> Self::Output {
-        match other.is_zero() {
-            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
-            false => Scalar::new(self.scalar / other.scalar),
-        }
+        Scalar::new(self.scalar / other.scalar)
     }
 }
 
@@ -164,10 +158,7 @@ impl<E: Environment> DivAssign<Scalar<E>> for Scalar<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: Scalar<E>) {
-        match other.is_zero() {
-            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
-            false => self.scalar /= other.scalar,
-        }
+        self.scalar /= other.scalar;
     }
 }
 
@@ -175,10 +166,7 @@ impl<E: Environment> DivAssign<&Scalar<E>> for Scalar<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: &Scalar<E>) {
-        match other.is_zero() {
-            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
-            false => self.scalar /= other.scalar,
-        }
+        self.scalar /= other.scalar;
     }
 }
 
@@ -264,22 +252,5 @@ impl<'a, E: Environment> Product<&'a Scalar<E>> for Scalar<E> {
     #[inline]
     fn product<I: Iterator<Item = &'a Scalar<E>>>(iter: I) -> Self {
         iter.fold(Scalar::one(), |a, b| a * b)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_console_network_environment::Console;
-
-    type CurrentEnvironment = Console;
-
-    #[test]
-    fn test_div_by_zero_fails() {
-        let one = Scalar::<CurrentEnvironment>::one();
-        let zero = Scalar::<CurrentEnvironment>::zero();
-
-        let result = std::panic::catch_unwind(|| one / zero);
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
     }
 }

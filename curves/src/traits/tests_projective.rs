@@ -16,17 +16,19 @@
 
 use crate::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::Zero;
-use snarkvm_utilities::rand::{TestRng, Uniform};
+use snarkvm_utilities::rand::{test_rng, Uniform};
 
 use std::ops::Mul;
 
 pub const ITERATIONS: usize = 5;
 
-fn random_addition_test<G: ProjectiveCurve>(rng: &mut TestRng) {
+fn random_addition_test<G: ProjectiveCurve>() {
+    let mut rng = test_rng();
+
     for _ in 0..ITERATIONS {
-        let a = G::rand(rng);
-        let b = G::rand(rng);
-        let c = G::rand(rng);
+        let a = G::rand(&mut rng);
+        let b = G::rand(&mut rng);
+        let c = G::rand(&mut rng);
         let a_affine = a.to_affine();
         let b_affine = b.to_affine();
         let c_affine = c.to_affine();
@@ -95,14 +97,16 @@ fn random_addition_test<G: ProjectiveCurve>(rng: &mut TestRng) {
     }
 }
 
-fn random_multiplication_test<G: ProjectiveCurve>(rng: &mut TestRng) {
+fn random_multiplication_test<G: ProjectiveCurve>() {
+    let mut rng = test_rng();
+
     for _ in 0..ITERATIONS {
-        let mut a = G::rand(rng);
-        let mut b = G::rand(rng);
+        let mut a = G::rand(&mut rng);
+        let mut b = G::rand(&mut rng);
         let a_affine = a.to_affine();
         let b_affine = b.to_affine();
 
-        let s = G::ScalarField::rand(rng);
+        let s = G::ScalarField::rand(&mut rng);
 
         // s ( a + b )
         let mut tmp1 = a;
@@ -125,10 +129,12 @@ fn random_multiplication_test<G: ProjectiveCurve>(rng: &mut TestRng) {
     }
 }
 
-fn random_doubling_test<G: ProjectiveCurve>(rng: &mut TestRng) {
+fn random_doubling_test<G: ProjectiveCurve>() {
+    let mut rng = test_rng();
+
     for _ in 0..ITERATIONS {
-        let mut a = G::rand(rng);
-        let mut b = G::rand(rng);
+        let mut a = G::rand(&mut rng);
+        let mut b = G::rand(&mut rng);
 
         // 2(a + b)
         let mut tmp1 = a;
@@ -150,11 +156,13 @@ fn random_doubling_test<G: ProjectiveCurve>(rng: &mut TestRng) {
     }
 }
 
-fn random_negation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
-    for _ in 0..ITERATIONS {
-        let r = G::rand(rng);
+fn random_negation_test<G: ProjectiveCurve>() {
+    let mut rng = test_rng();
 
-        let s = G::ScalarField::rand(rng);
+    for _ in 0..ITERATIONS {
+        let r = G::rand(&mut rng);
+
+        let s = G::ScalarField::rand(&mut rng);
         let sneg = -s;
         assert!((s + sneg).is_zero());
 
@@ -178,9 +186,11 @@ fn random_negation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
     }
 }
 
-fn random_transformation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
+fn random_transformation_test<G: ProjectiveCurve>() {
+    let mut rng = test_rng();
+
     for _ in 0..ITERATIONS {
-        let g = G::rand(rng);
+        let g = G::rand(&mut rng);
         let g_affine = g.to_affine();
         let g_projective = g_affine.to_projective();
         assert_eq!(g, g_projective);
@@ -188,7 +198,7 @@ fn random_transformation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
 
     // Batch normalization
     for _ in 0..10 {
-        let mut v = (0..ITERATIONS).map(|_| G::rand(rng)).collect::<Vec<_>>();
+        let mut v = (0..ITERATIONS).map(|_| G::rand(&mut rng)).collect::<Vec<_>>();
 
         for i in &v {
             assert!(!i.is_normalized());
@@ -198,10 +208,10 @@ fn random_transformation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
         let between = Uniform::from(0..ITERATIONS);
         // Sprinkle in some normalized points
         for _ in 0..5 {
-            v[between.sample(rng)] = G::zero();
+            v[between.sample(&mut rng)] = G::zero();
         }
         for _ in 0..5 {
-            let s = between.sample(rng);
+            let s = between.sample(&mut rng);
             v[s] = v[s].to_affine().to_projective();
         }
 
@@ -216,7 +226,9 @@ fn random_transformation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
     }
 }
 
-pub fn curve_tests<G: ProjectiveCurve>(rng: &mut TestRng) {
+pub fn curve_tests<G: ProjectiveCurve>() {
+    let mut rng = test_rng();
+
     // Negation edge case with zero.
     {
         let z = -G::zero();
@@ -232,7 +244,7 @@ pub fn curve_tests<G: ProjectiveCurve>(rng: &mut TestRng) {
 
     // Addition edge cases with zero
     {
-        let mut r = G::rand(rng);
+        let mut r = G::rand(&mut rng);
         let rcopy = r;
         r.add_assign(G::zero());
         assert_eq!(r, rcopy);
@@ -256,16 +268,16 @@ pub fn curve_tests<G: ProjectiveCurve>(rng: &mut TestRng) {
 
     // Transformations
     {
-        let a = G::rand(rng);
+        let a = G::rand(&mut rng);
         let b = a.to_affine().to_projective();
         let c = a.to_affine().to_projective().to_affine().to_projective();
         assert_eq!(a, b);
         assert_eq!(b, c);
     }
 
-    random_addition_test::<G>(rng);
-    random_multiplication_test::<G>(rng);
-    random_doubling_test::<G>(rng);
-    random_negation_test::<G>(rng);
-    random_transformation_test::<G>(rng);
+    random_addition_test::<G>();
+    random_multiplication_test::<G>();
+    random_doubling_test::<G>();
+    random_negation_test::<G>();
+    random_transformation_test::<G>();
 }

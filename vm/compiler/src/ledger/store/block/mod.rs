@@ -48,7 +48,7 @@ macro_rules! bail_with_block {
 }
 
 /// A trait for block storage.
-pub trait BlockStorage<N: Network>: Clone + Send + Sync {
+pub trait BlockStorage<N: Network>: Clone + Sync {
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
@@ -67,7 +67,7 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open() -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -83,16 +83,6 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap;
-
-    /// Returns the transition store.
-    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
-        self.transaction_store().transition_store()
-    }
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        debug_assert!(self.transaction_store().dev() == self.transition_store().dev());
-        self.transition_store().dev()
-    }
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -350,9 +340,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open() -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(dev)?;
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open()?;
         // Initialize the transaction store.
         let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
         // Return the block storage.
@@ -414,9 +404,9 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open() -> Result<Self> {
         // Initialize the block storage.
-        let storage = B::open(dev)?;
+        let storage = B::open()?;
         // Return the block store.
         Ok(Self { storage, _phantom: PhantomData })
     }
@@ -541,7 +531,7 @@ mod tests {
         let block_hash = block.hash();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<_, BlockMemory<_>>::open().unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -570,7 +560,7 @@ mod tests {
         assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
 
         // Initialize a new block store.
-        let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<_, BlockMemory<_>>::open().unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();

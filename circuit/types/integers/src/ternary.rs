@@ -88,11 +88,9 @@ mod tests {
     use snarkvm_circuit_environment::Circuit;
 
     fn run_test<I: IntegerType>(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
-        let mut rng = TestRng::default();
-
         for flag in &[true, false] {
-            let first = Uniform::rand(&mut rng);
-            let second = Uniform::rand(&mut rng);
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
             let expected = if *flag { first } else { second };
 
             let condition = Boolean::<Circuit>::new(mode_condition, *flag);

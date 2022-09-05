@@ -97,7 +97,7 @@ function compute:
                 assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
                 // Initialize the RNG.
-                let rng = &mut TestRng::default();
+                let rng = &mut test_crypto_rng();
 
                 // Construct the process.
                 let process = Process::load().unwrap();

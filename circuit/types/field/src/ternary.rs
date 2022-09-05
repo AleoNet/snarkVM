@@ -145,10 +145,8 @@ mod tests {
 
     #[test]
     fn test_constant_condition() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Constant
         let expected = second;
@@ -237,10 +235,8 @@ mod tests {
 
     #[test]
     fn test_public_condition_and_constant_inputs() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Constant
         let expected = second;
@@ -259,10 +255,8 @@ mod tests {
 
     #[test]
     fn test_public_condition_and_mixed_inputs() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Public
         let expected = second;
@@ -295,10 +289,8 @@ mod tests {
 
     #[test]
     fn test_private_condition_and_constant_inputs() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Constant
         let expected = second;
@@ -317,10 +309,8 @@ mod tests {
 
     #[test]
     fn test_private_condition_and_mixed_inputs() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Public
         let expected = second;
@@ -353,10 +343,8 @@ mod tests {
 
     #[test]
     fn test_public_condition_and_variable_inputs() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Public : Public
         let expected = second;
@@ -417,10 +405,8 @@ mod tests {
 
     #[test]
     fn test_private_condition_and_variable_inputs() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Public : Public
         let expected = second;

@@ -517,6 +517,8 @@ mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
 
+    use rand::{thread_rng, Rng};
+
     #[test]
     fn test_asert_difficulty_target_simple() {
         let anchor_timestamp = 1640179531i64;
@@ -662,7 +664,7 @@ mod tests {
 
     #[test]
     fn test_asert_difficulty_target_random() {
-        let rng = &mut TestRng::default();
+        let rng = &mut thread_rng();
 
         for _ in 0..1_000_000 {
             let anchor_timestamp = rng.gen_range(0..1_000_000_000_i64);

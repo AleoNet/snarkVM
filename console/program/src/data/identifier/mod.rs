@@ -58,17 +58,19 @@ pub(crate) mod tests {
     const ITERATIONS: usize = 100;
 
     /// Samples a random identifier.
-    pub(crate) fn sample_identifier<N: Network>(rng: &mut TestRng) -> Result<Identifier<N>> {
+    pub(crate) fn sample_identifier<N: Network>() -> Result<Identifier<N>> {
         // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-        let string = sample_identifier_as_string::<N>(rng)?;
+        let string = sample_identifier_as_string::<N>()?;
         // Recover the field element from the bits.
         let field = Field::<N>::from_bits_le(&string.as_bytes().to_bits_le())?;
         // Return the identifier.
-        Ok(Identifier(field, u8::try_from(string.len()).or_halt_with::<CurrentNetwork>("Invalid identifier length")))
+        Ok(Identifier(field, string.len() as u8))
     }
 
     /// Samples a random identifier as a string.
-    pub(crate) fn sample_identifier_as_string<N: Network>(rng: &mut TestRng) -> Result<String> {
+    pub(crate) fn sample_identifier_as_string<N: Network>() -> Result<String> {
+        // Initialize a test RNG.
+        let rng = &mut test_rng();
         // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
         let string = "a".to_string()
             + &rng
@@ -87,11 +89,9 @@ pub(crate) mod tests {
 
     #[test]
     fn test_try_from() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.as_bytes().to_bits_le())?;
 

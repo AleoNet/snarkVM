@@ -31,7 +31,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition input storage.
-pub trait InputStorage<N: Network>: Clone + Send + Sync {
+pub trait InputStorage<N: Network>: Clone + Sync {
     /// The mapping of `transition ID` to `input IDs`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
     /// The mapping of `input ID` to `transition ID`.
@@ -50,7 +50,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self>;
+    fn open() -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -68,9 +68,6 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     fn record_tag_map(&self) -> &Self::RecordTagMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -275,8 +272,6 @@ pub struct InputMemory<N: Network> {
     record_tag: MemoryMap<Field<N>, Field<N>>,
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
-    /// The optional development ID.
-    dev: Option<u16>,
 }
 
 #[rustfmt::skip]
@@ -291,7 +286,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
+    fn open() -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -301,7 +296,6 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
             record: MemoryMap::default(),
             record_tag: MemoryMap::default(),
             external_record: MemoryMap::default(),
-            dev,
         })
     }
 
@@ -344,11 +338,6 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
     }
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
-    }
 }
 
 /// The transition input store.
@@ -372,9 +361,9 @@ pub struct InputStore<N: Network, I: InputStorage<N>> {
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Initializes the transition input store.
-    pub fn open(dev: Option<u16>) -> Result<Self> {
+    pub fn open() -> Result<Self> {
         // Initialize a new transition input storage.
-        let storage = I::open(dev)?;
+        let storage = I::open()?;
         // Return the transition input store.
         Ok(Self {
             constant: storage.constant_map().clone(),
@@ -428,11 +417,6 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
-    }
-
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
     }
 }
 
@@ -555,7 +539,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let input_store = InputMemory::open(None).unwrap();
+            let input_store = InputMemory::open().unwrap();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();
@@ -582,7 +566,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let input_store = InputMemory::open(None).unwrap();
+            let input_store = InputMemory::open().unwrap();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();

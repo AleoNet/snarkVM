@@ -60,11 +60,9 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut rng);
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -89,11 +87,9 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut rng);
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {

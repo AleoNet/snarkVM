@@ -173,7 +173,7 @@ impl<E: PairingEngine> KZG10<E> {
 
                 let mut neg_powers_of_beta = vec![];
                 for i in list.iter() {
-                    neg_powers_of_beta.push(beta.pow([(max_degree - *i) as u64]).inverse().unwrap());
+                    neg_powers_of_beta.push(beta.pow(&[(max_degree - *i) as u64]).inverse().unwrap());
                 }
 
                 let window_size = FixedBase::get_mul_window_size(neg_powers_of_beta.len());
@@ -574,7 +574,7 @@ mod tests {
     #![allow(clippy::needless_borrow)]
     use super::*;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
+    use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
 
     use std::borrow::Cow;
 
@@ -609,7 +609,7 @@ mod tests {
 
     #[test]
     fn test_kzg10_universal_params_serialization() {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
 
         let degree = 4;
         let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
@@ -622,7 +622,7 @@ mod tests {
     }
 
     fn end_to_end_test_template<E: PairingEngine>() -> Result<(), PCError> {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
         for _ in 0..100 {
             let mut degree = 0;
             while degree <= 1 {
@@ -648,7 +648,7 @@ mod tests {
     }
 
     fn linear_polynomial_test_template<E: PairingEngine>() -> Result<(), PCError> {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
         for _ in 0..100 {
             let degree = 50;
             let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
@@ -671,7 +671,7 @@ mod tests {
     }
 
     fn batch_check_test_template<E: PairingEngine>() -> Result<(), PCError> {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
         for _ in 0..10 {
             let mut degree = 0;
             while degree <= 1 {
@@ -722,7 +722,7 @@ mod tests {
 
     #[test]
     fn test_degree_is_too_large() {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
 
         let max_degree = 123;
         let pp = KZG_Bls12_377::setup(max_degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();

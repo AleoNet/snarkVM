@@ -103,7 +103,7 @@ impl<N: Network> Package<N> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_utilities::TestRng;
+    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
@@ -120,7 +120,7 @@ mod tests {
         assert!(package.build_directory().exists());
 
         // Initialize an RNG.
-        let rng = &mut TestRng::default();
+        let rng = &mut test_crypto_rng();
         // Sample the function inputs.
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
@@ -145,7 +145,7 @@ mod tests {
         assert!(package.build_directory().exists());
 
         // Initialize an RNG.
-        let rng = &mut TestRng::default();
+        let rng = &mut test_crypto_rng();
         // Sample the function inputs.
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());

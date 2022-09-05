@@ -26,9 +26,10 @@ use snarkvm_algorithms::{
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::{ops::MulAssign, TestRng, Uniform};
+use snarkvm_utilities::{ops::MulAssign, Uniform};
 
 use criterion::Criterion;
+use rand::{self, thread_rng};
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 type FS = PoseidonSponge<Fq, 2, 1>;
@@ -69,7 +70,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<Constr
 }
 
 fn snark_universal_setup(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
 
     c.bench_function("snark_universal_setup", move |b| {
@@ -80,7 +81,7 @@ fn snark_universal_setup(c: &mut Criterion) {
 }
 
 fn snark_circuit_setup(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
@@ -102,7 +103,7 @@ fn snark_prove(c: &mut Criterion) {
     c.bench_function("snark_prove", move |b| {
         let num_constraints = 100;
         let num_variables = 100;
-        let rng = &mut TestRng::default();
+        let rng = &mut thread_rng();
 
         let x = Fr::rand(rng);
         let y = Fr::rand(rng);
@@ -122,7 +123,7 @@ fn snark_verify(c: &mut Criterion) {
     c.bench_function("snark_verify", move |b| {
         let num_constraints = 100;
         let num_variables = 25;
-        let rng = &mut TestRng::default();
+        let rng = &mut thread_rng();
 
         let x = Fr::rand(rng);
         let y = Fr::rand(rng);
@@ -146,7 +147,7 @@ fn snark_verify(c: &mut Criterion) {
 }
 
 fn snark_certificate_prove(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
@@ -169,7 +170,7 @@ fn snark_certificate_prove(c: &mut Criterion) {
 }
 
 fn snark_certificate_verify(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);

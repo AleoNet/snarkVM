@@ -65,6 +65,10 @@ version = "0.3"
 [dev-dependencies.rand]
 version = "0.8"
 
+[dev-dependencies.rand_xorshift]
+version = "0.3"
+default-features = false
+
 [build-dependencies]
 rustc_version = "0.4"
 

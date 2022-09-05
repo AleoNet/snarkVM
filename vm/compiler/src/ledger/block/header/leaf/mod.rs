@@ -54,7 +54,9 @@ mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    pub(super) fn sample_leaf(rng: &mut TestRng) -> HeaderLeaf<CurrentNetwork> {
+    pub(super) fn sample_leaf() -> HeaderLeaf<CurrentNetwork> {
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
         // Construct a new leaf.
         HeaderLeaf::new(rng.gen(), Uniform::rand(rng))
     }

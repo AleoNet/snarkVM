@@ -93,7 +93,9 @@ mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    pub(super) fn sample_leaf(rng: &mut TestRng) -> TransitionLeaf<CurrentNetwork> {
+    pub(super) fn sample_leaf() -> TransitionLeaf<CurrentNetwork> {
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
         // Construct a new leaf.
         TransitionLeaf::new(
             rng.gen(),

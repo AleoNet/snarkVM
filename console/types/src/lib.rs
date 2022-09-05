@@ -16,7 +16,6 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
-#![warn(clippy::cast_possible_truncation)]
 
 pub use snarkvm_console_network_environment as environment;
 

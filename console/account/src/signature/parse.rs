@@ -88,11 +88,9 @@ mod tests {
         assert!(Signature::<CurrentNetwork>::parse(&format!("{SIGNATURE_PREFIX}1")).is_err());
         assert!(Signature::<CurrentNetwork>::parse("").is_err());
 
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let expected = test_helpers::sample_signature(i, &mut rng);
+            let expected = test_helpers::sample_signature(i);
 
             let expected = format!("{expected}");
             let (remainder, candidate) = Signature::<CurrentNetwork>::parse(&expected).unwrap();
@@ -105,11 +103,9 @@ mod tests {
 
     #[test]
     fn test_string() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let expected = test_helpers::sample_signature(i, &mut rng);
+            let expected = test_helpers::sample_signature(i);
 
             // Check the string representation.
             let candidate = format!("{expected}");
@@ -121,11 +117,9 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let expected = test_helpers::sample_signature(i, &mut rng);
+            let expected = test_helpers::sample_signature(i);
 
             let candidate = expected.to_string();
             assert_eq!(format!("{expected}"), candidate);

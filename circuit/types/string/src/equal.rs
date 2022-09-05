@@ -57,7 +57,9 @@ mod tests {
 
     use rand::Rng;
 
-    fn sample_string(mode: Mode, rng: &mut TestRng) -> StringType<Circuit> {
+    fn sample_string(mode: Mode) -> StringType<Circuit> {
+        let rng = &mut test_rng();
+
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
         let given: String = (0..Circuit::MAX_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
         StringType::<Circuit>::new(mode, console::StringType::new(&given))
@@ -70,11 +72,9 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let mut rng = TestRng::default();
-
         // Sample two strings.
-        let string_a = sample_string(mode, &mut rng);
-        let string_b = sample_string(mode, &mut rng);
+        let string_a = sample_string(mode);
+        let string_b = sample_string(mode);
 
         Circuit::scope(&format!("{}", mode), || {
             let candidate = string_a.is_equal(&string_a);
@@ -99,11 +99,9 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let mut rng = TestRng::default();
-
         // Sample two strings.
-        let string_a = sample_string(mode, &mut rng);
-        let string_b = sample_string(mode, &mut rng);
+        let string_a = sample_string(mode);
+        let string_b = sample_string(mode);
 
         Circuit::scope(&format!("{}", mode), || {
             let candidate = string_a.is_not_equal(&string_b);

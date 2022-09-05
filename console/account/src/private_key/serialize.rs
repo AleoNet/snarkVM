@@ -51,11 +51,9 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a new private key.
-            let expected = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
+            let expected = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -71,11 +69,9 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a new private key.
-            let expected = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
+            let expected = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

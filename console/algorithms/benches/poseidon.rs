@@ -19,13 +19,13 @@ extern crate criterion;
 
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, Poseidon8};
 use snarkvm_console_types::prelude::*;
-use snarkvm_utilities::{TestRng, Uniform};
+use snarkvm_utilities::{test_crypto_rng, Uniform};
 
 use criterion::Criterion;
 type F = Field<Console>;
 
 fn poseidon2(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut test_crypto_rng();
     let hash = Poseidon2::<Console>::setup("Poseidon2").unwrap();
 
     let input = [F::rand(rng), F::rand(rng), F::rand(rng), F::rand(rng)];
@@ -39,7 +39,7 @@ fn poseidon2(c: &mut Criterion) {
 }
 
 fn poseidon4(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut test_crypto_rng();
     let hash = Poseidon4::<Console>::setup("Poseidon4").unwrap();
 
     let input = [F::rand(rng), F::rand(rng), F::rand(rng), F::rand(rng)];
@@ -53,7 +53,7 @@ fn poseidon4(c: &mut Criterion) {
 }
 
 fn poseidon8(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut test_crypto_rng();
     let hash = Poseidon8::<Console>::setup("Poseidon8").unwrap();
 
     let input = [F::rand(rng), F::rand(rng), F::rand(rng), F::rand(rng)];

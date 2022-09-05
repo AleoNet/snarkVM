@@ -182,27 +182,26 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
 #[cfg(test)]
 mod tests {
     use crate::ledger::vm::test_helpers::sample_program;
-    use snarkvm_utilities::TestRng;
+    use snarkvm_utilities::test_crypto_rng;
 
     #[test]
     fn test_verify() {
-        let rng = &mut TestRng::default();
         let vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch a deployment transaction.
-        let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
+        let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
         // Ensure the transaction verifies.
         assert!(vm.verify(&deployment_transaction));
 
         // Fetch a execution transaction.
-        let execution_transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        let execution_transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
         // Ensure the transaction verifies.
         assert!(vm.verify(&execution_transaction));
     }
 
     #[test]
     fn test_verify_deployment() {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_crypto_rng();
         let vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch the program from the deployment.

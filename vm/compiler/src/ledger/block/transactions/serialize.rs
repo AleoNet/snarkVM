@@ -76,8 +76,6 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        let rng = &mut TestRng::default();
-
         let check_serde_json = |expected: Transactions<CurrentNetwork>| {
             // Serialize
             let expected_string = &expected.to_string();
@@ -92,8 +90,8 @@ mod tests {
         check_serde_json(crate::ledger::test_helpers::sample_genesis_block().transactions().clone());
 
         for transaction in [
-            crate::ledger::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::ledger::vm::test_helpers::sample_execution_transaction(rng),
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(),
         ] {
             for i in 0..ITERATIONS {
                 // Construct the transactions.
@@ -106,8 +104,6 @@ mod tests {
 
     #[test]
     fn test_bincode() {
-        let rng = &mut TestRng::default();
-
         let check_bincode = |expected: Transactions<CurrentNetwork>| {
             // Serialize
             let expected_bytes = expected.to_bytes_le().unwrap();
@@ -123,8 +119,8 @@ mod tests {
         check_bincode(crate::ledger::test_helpers::sample_genesis_block().transactions().clone());
 
         for transaction in [
-            crate::ledger::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::ledger::vm::test_helpers::sample_execution_transaction(rng),
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(),
         ] {
             for i in 0..ITERATIONS {
                 // Construct the transactions.

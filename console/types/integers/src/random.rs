@@ -32,16 +32,16 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u64 = 10;
 
-    fn check_random<I: IntegerType>(rng: &mut TestRng) {
+    fn check_random<I: IntegerType>() {
         // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS);
+        let mut set = HashSet::with_capacity(ITERATIONS as usize);
 
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(rng);
+            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
             assert!(!set.contains(&integer));
 
             // Add the new random value to the set.
@@ -51,14 +51,12 @@ mod tests {
 
     #[test]
     fn test_random() {
-        let mut rng = TestRng::default();
+        check_random::<u32>();
+        check_random::<u64>();
+        check_random::<u128>();
 
-        check_random::<u32>(&mut rng);
-        check_random::<u64>(&mut rng);
-        check_random::<u128>(&mut rng);
-
-        check_random::<i32>(&mut rng);
-        check_random::<i64>(&mut rng);
-        check_random::<i128>(&mut rng);
+        check_random::<i32>();
+        check_random::<i64>();
+        check_random::<i128>();
     }
 }

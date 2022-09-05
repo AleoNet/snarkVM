@@ -33,7 +33,7 @@ path = "../../console/network"
 path = "../../utilities"
 
 [dev-dependencies.anyhow]
-version = "1.0.63"
+version = "1.0.62"
 
 [features]
 default = [ "enable_console" ]

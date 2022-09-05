@@ -20,7 +20,6 @@ impl<E: Environment, I: IntegerType> SizeInBits for Integer<E, I> {
     /// Returns the integer size in bits.
     #[inline]
     fn size_in_bits() -> usize {
-        // Note: `unwrap()` is safe as the integer is at most 128 bits.
-        usize::try_from(I::BITS).unwrap()
+        I::BITS as usize
     }
 }

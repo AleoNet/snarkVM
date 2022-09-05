@@ -100,14 +100,12 @@ impl<A: Aleo> From<&Literal<A>> for Plaintext<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{TestRng, Uniform};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
     #[test]
     fn test_plaintext() -> Result<()> {
-        let mut rng = TestRng::default();
-
         let value = Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new());
         assert_eq!(
             value.to_bits_le().eject(),
@@ -115,7 +113,7 @@ mod tests {
         );
 
         let value = Plaintext::<Circuit>::Literal(
-            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
             OnceCell::new(),
         );
         assert_eq!(
@@ -136,7 +134,7 @@ mod tests {
                     (
                         Identifier::new(Mode::Private, "b".try_into()?),
                         Plaintext::<Circuit>::Literal(
-                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
                             OnceCell::new(),
                         ),
                     ),
@@ -189,7 +187,7 @@ mod tests {
                                                         Plaintext::<Circuit>::Literal(
                                                             Literal::Field(Field::new(
                                                                 Mode::Private,
-                                                                Uniform::rand(&mut rng),
+                                                                Uniform::rand(&mut test_rng()),
                                                             )),
                                                             OnceCell::new(),
                                                         ),
@@ -203,7 +201,7 @@ mod tests {
                                     (
                                         Identifier::new(Mode::Private, "g".try_into()?),
                                         Plaintext::<Circuit>::Literal(
-                                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
                                             OnceCell::new(),
                                         ),
                                     ),
@@ -216,7 +214,7 @@ mod tests {
                     (
                         Identifier::new(Mode::Private, "h".try_into()?),
                         Plaintext::<Circuit>::Literal(
-                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
                             OnceCell::new(),
                         ),
                     ),

@@ -74,16 +74,14 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
 #[cfg(test)]
 mod tests {
     use crate::ledger::vm::test_helpers::sample_program;
-    use snarkvm_utilities::TestRng;
+    use snarkvm_utilities::test_crypto_rng;
 
     #[test]
     fn test_finalize() {
-        let rng = &mut TestRng::default();
-
         let mut vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch a deployment transaction.
-        let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
+        let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
 
         // Finalize the transaction.
         vm.finalize(&deployment_transaction).unwrap();
@@ -94,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_finalize_deployment() {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_crypto_rng();
         let mut vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch the program from the deployment.

@@ -32,19 +32,17 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_random() {
         // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS);
-
-        let mut rng = TestRng::default();
+        let mut set = HashSet::with_capacity(ITERATIONS as usize);
 
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut rng);
+            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!set.contains(&scalar));
 
             // Add the new random value to the set.

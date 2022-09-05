@@ -38,7 +38,7 @@ use indexmap::IndexMap;
 use std::borrow::Cow;
 
 /// A trait for deployment storage.
-pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
+pub trait DeploymentStorage<N: Network>: Clone + Sync {
     /// The mapping of `transaction ID` to `program ID`.
     type IDMap: for<'a> Map<'a, N::TransactionID, ProgramID<N>>;
     /// The mapping of `program ID` to `edition`.
@@ -75,11 +75,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn additional_fee_map(&self) -> &Self::AdditionalFeeMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.transition_store().dev()
-    }
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -540,11 +535,6 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
     }
-
-    /// Returns the optional development ID.
-    pub fn dev(&self) -> Option<u16> {
-        self.storage.dev()
-    }
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
@@ -654,14 +644,12 @@ mod tests {
 
     #[test]
     fn test_insert_get_remove() {
-        let rng = &mut TestRng::default();
-
         // Sample the deployment transaction.
-        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
+        let transition_store = TransitionStore::open().unwrap();
         // Initialize a new deployment store.
         let deployment_store = DeploymentMemory::open(transition_store).unwrap();
 
@@ -686,10 +674,8 @@ mod tests {
 
     #[test]
     fn test_find_transaction_id() {
-        let rng = &mut TestRng::default();
-
         // Sample the deployment transaction.
-        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
         let transaction_id = transaction.id();
         let program_id = match transaction {
             Transaction::Deploy(_, ref deployment, _) => *deployment.program_id(),
@@ -697,7 +683,7 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
+        let transition_store = TransitionStore::open().unwrap();
         // Initialize a new deployment store.
         let deployment_store = DeploymentMemory::open(transition_store).unwrap();
 

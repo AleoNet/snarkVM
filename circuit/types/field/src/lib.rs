@@ -35,7 +35,7 @@ pub mod sub;
 pub mod ternary;
 
 #[cfg(test)]
-use console::{TestRng, Uniform};
+use console::{test_rng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
@@ -181,10 +181,8 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let element = Uniform::rand(&mut rng);
+            let element = Uniform::rand(&mut test_rng());
 
             // Constant
             check_display(Mode::Constant, element)?;
@@ -308,11 +306,9 @@ mod tests {
 
         // Random
 
-        let mut rng = TestRng::default();
-
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let value = Uniform::rand(&mut rng);
+                let value = Uniform::rand(&mut test_rng());
                 let expected = Field::<Circuit>::new(mode, value);
 
                 let (_, candidate) = Field::<Circuit>::parse(&format!("{expected}")).unwrap();

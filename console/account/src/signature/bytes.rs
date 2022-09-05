@@ -48,11 +48,9 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let signature = test_helpers::sample_signature(i, &mut rng);
+            let signature = test_helpers::sample_signature(i);
 
             // Check the byte representation.
             let signature_bytes = signature.to_bytes_le()?;

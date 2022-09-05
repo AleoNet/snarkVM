@@ -78,14 +78,12 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
+            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let given_bits = expected.to_bits_le();
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
@@ -93,7 +91,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i]].concat();
+            let candidate = vec![given_bits, vec![false; i as usize]].concat();
 
             let candidate = Field::<CurrentEnvironment>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
@@ -103,11 +101,9 @@ mod tests {
     }
 
     fn check_from_bits_be() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
+            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let given_bits = expected.to_bits_be();
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
@@ -115,7 +111,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![vec![false; i], given_bits].concat();
+            let candidate = vec![vec![false; i as usize], given_bits].concat();
 
             let candidate = Field::<CurrentEnvironment>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);

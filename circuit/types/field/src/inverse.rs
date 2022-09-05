@@ -77,10 +77,10 @@ mod tests {
 
     const ITERATIONS: u64 = 1_000;
 
-    fn check_inverse(name: &str, mode: Mode, rng: &mut TestRng) {
+    fn check_inverse(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(rng);
+            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
             // Compute it's inverse, or skip this iteration if it does not natively exist.
             if let Ok(expected) = given.inverse() {
                 let candidate = Field::<Circuit>::new(mode, given);
@@ -98,11 +98,9 @@ mod tests {
 
     #[test]
     fn test_inverse() {
-        let mut rng = TestRng::default();
-
-        check_inverse("Constant", Mode::Constant, &mut rng);
-        check_inverse("Public", Mode::Public, &mut rng);
-        check_inverse("Private", Mode::Private, &mut rng);
+        check_inverse("Constant", Mode::Constant);
+        check_inverse("Public", Mode::Public);
+        check_inverse("Private", Mode::Private);
     }
 
     #[test]

@@ -28,61 +28,47 @@ use crate::{
     },
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
-use snarkvm_utilities::{
-    rand::{TestRng, Uniform},
-    to_bytes_le,
-    ToBytes,
-};
+use snarkvm_utilities::{rand::Uniform, to_bytes_le, ToBytes};
 
-use rand::Rng;
+use rand::thread_rng;
 
 #[test]
 fn test_edwards_bls12_fr() {
-    let mut rng = TestRng::default();
-
-    let a: Fr = rng.gen();
-    let b: Fr = rng.gen();
-    field_test(a, b, &mut rng);
-    primefield_test::<Fr>(&mut rng);
-    field_serialization_test::<Fr>(&mut rng);
+    let a: Fr = rand::random();
+    let b: Fr = rand::random();
+    field_test(a, b);
+    primefield_test::<Fr>();
+    field_serialization_test::<Fr>();
 }
 
 #[test]
 fn test_edwards_bls12_fq() {
-    let mut rng = TestRng::default();
-
-    let a: Fq = rng.gen();
-    let b: Fq = rng.gen();
-    field_test(a, b, &mut rng);
-    primefield_test::<Fq>(&mut rng);
-    field_serialization_test::<Fq>(&mut rng);
+    let a: Fq = rand::random();
+    let b: Fq = rand::random();
+    field_test(a, b);
+    primefield_test::<Fq>();
+    field_serialization_test::<Fq>();
 }
 
 #[test]
 fn test_projective_curve() {
-    let mut rng = TestRng::default();
-
-    curve_tests::<EdwardsProjective>(&mut rng);
-    edwards_test::<EdwardsParameters>(&mut rng);
+    curve_tests::<EdwardsProjective>();
+    edwards_test::<EdwardsParameters>();
 }
 
 #[test]
 fn test_projective_group() {
-    let mut rng = TestRng::default();
-
     for _i in 0..10 {
-        let a = rng.gen();
-        let b = rng.gen();
-        projective_test::<EdwardsProjective>(a, b, &mut rng);
+        let a = rand::random();
+        let b = rand::random();
+        projective_test::<EdwardsProjective>(a, b);
     }
 }
 
 #[test]
 fn test_affine_group() {
-    let mut rng = TestRng::default();
-
     for _i in 0..10 {
-        let a: EdwardsAffine = rng.gen();
+        let a: EdwardsAffine = rand::random();
         affine_test::<EdwardsAffine>(a);
     }
 }
@@ -96,10 +82,8 @@ fn test_generator() {
 
 #[test]
 fn test_conversion() {
-    let mut rng = TestRng::default();
-
-    let a: EdwardsAffine = rng.gen();
-    let b: EdwardsAffine = rng.gen();
+    let a: EdwardsAffine = rand::random();
+    let b: EdwardsAffine = rand::random();
     assert_eq!(a.to_projective().to_affine(), a);
     assert_eq!(b.to_projective().to_affine(), b);
 }
@@ -112,9 +96,7 @@ fn test_montgomery_conversion() {
 #[test]
 #[allow(clippy::many_single_char_names)]
 fn test_edwards_to_montgomery_point() {
-    let mut rng = TestRng::default();
-
-    let a: EdwardsAffine = rng.gen();
+    let a: EdwardsAffine = rand::random();
     let (x, y) = (a.x, a.y);
 
     // Montgomery element (u, v)
@@ -186,10 +168,10 @@ fn print_montgomery_to_weierstrass_parameters() {
 #[test]
 #[allow(clippy::many_single_char_names)]
 fn test_isomorphism() {
-    let mut rng = TestRng::default();
+    let rng = &mut thread_rng();
 
     // Sample a random Fr element.
-    let fr_element: Fr = Fr::rand(&mut rng);
+    let fr_element: Fr = Fr::rand(rng);
 
     println!("Starting Fr element is - {:?}", fr_element);
 
@@ -310,7 +292,7 @@ fn test_isomorphism() {
         (x, y)
     };
 
-    let group = EdwardsAffine::new(x, y, x * y);
+    let group = EdwardsAffine::new(x, y);
 
     println!("{:?}", group);
 

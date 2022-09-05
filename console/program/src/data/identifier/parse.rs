@@ -61,10 +61,7 @@ impl<N: Network> FromStr for Identifier<N> {
 
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        Ok(Self(
-            Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?,
-            u8::try_from(identifier.len()).or_halt_with::<N>("Identifier `from_str` exceeds maximum length"),
-        ))
+        Ok(Self(Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?, identifier.len() as u8))
     }
 }
 
@@ -129,12 +126,10 @@ mod tests {
         assert_eq!("foo_bar", candidate.to_string());
         assert_eq!("-baz", remainder);
 
-        let mut rng = TestRng::default();
-
         // Check random identifiers.
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
@@ -174,11 +169,9 @@ mod tests {
         let candidate = Identifier::<CurrentNetwork>::from_str("foo_bar").unwrap();
         assert_eq!("foo_bar", candidate.to_string());
 
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 

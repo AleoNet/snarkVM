@@ -447,9 +447,9 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::TestRng;
 
-    use rand::Rng;
+    use rand::{Rng, SeedableRng};
+    use rand_xorshift::XorShiftRng;
 
     const ITERATIONS: usize = 1000;
 
@@ -499,7 +499,7 @@ mod test {
 
     #[test]
     fn test_from_bits_le_to_bytes_le_roundtrip() {
-        let mut rng = TestRng::default();
+        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
         for _ in 0..ITERATIONS {
             let given_bytes: [u8; 32] = rng.gen();

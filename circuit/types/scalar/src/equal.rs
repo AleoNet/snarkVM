@@ -59,10 +59,8 @@ mod tests {
 
     #[test]
     fn test_constant_equals_constant() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -79,10 +77,8 @@ mod tests {
 
     #[test]
     fn test_constant_equals_public() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -99,10 +95,8 @@ mod tests {
 
     #[test]
     fn test_public_equals_constant() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -119,10 +113,8 @@ mod tests {
 
     #[test]
     fn test_public_equals_public() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -139,10 +131,8 @@ mod tests {
 
     #[test]
     fn test_public_equals_private() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -159,10 +149,8 @@ mod tests {
 
     #[test]
     fn test_private_equals_private() {
-        let mut rng = TestRng::default();
-
-        let first = Uniform::rand(&mut rng);
-        let second = Uniform::rand(&mut rng);
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;

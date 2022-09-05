@@ -180,7 +180,7 @@ impl<N: Network> Package<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use snarkvm_console::{account::Address, network::Testnet3, prelude::TestRng};
+    use snarkvm_console::{account::Address, network::Testnet3, prelude::test_crypto_rng};
 
     use std::{fs::File, io::Write};
 
@@ -325,7 +325,7 @@ function transfer:
         program_id: &ProgramID<CurrentNetwork>,
     ) -> (PrivateKey<CurrentNetwork>, Identifier<CurrentNetwork>, Vec<Value<CurrentNetwork>>) {
         // Initialize an RNG.
-        let rng = &mut TestRng::default();
+        let rng = &mut test_crypto_rng();
 
         match program_id.to_string().as_str() {
             "token.aleo" => {

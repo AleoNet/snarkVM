@@ -20,9 +20,10 @@ extern crate criterion;
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
 use criterion::Criterion;
+use rand::thread_rng;
 
 fn account_private_key(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
 
     c.bench_function("account_private_key", move |b| {
         b.iter(|| {
@@ -32,7 +33,7 @@ fn account_private_key(c: &mut Criterion) {
 }
 
 fn account_view_key(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
 
     c.bench_function("account_view_key", move |b| {
         let private_key = PrivateKey::<Testnet2>::new(rng);
@@ -44,7 +45,7 @@ fn account_view_key(c: &mut Criterion) {
 }
 
 fn account_address(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
 
     c.bench_function("account_address", move |b| {
         let private_key = PrivateKey::<Testnet2>::new(rng);

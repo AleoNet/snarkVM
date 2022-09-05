@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
 
         for _ in 0..ITERATIONS {
             // Commitment

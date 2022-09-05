@@ -16,7 +16,7 @@
 
 use crate::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::rand::{TestRng, Uniform};
+use snarkvm_utilities::rand::{test_rng, Uniform};
 
 #[allow(clippy::eq_op)]
 pub fn affine_test<G: AffineCurve>(a: G) {
@@ -35,7 +35,9 @@ pub fn affine_test<G: AffineCurve>(a: G) {
 }
 
 #[allow(clippy::eq_op)]
-pub fn projective_test<G: ProjectiveCurve>(a: G, mut b: G, rng: &mut TestRng) {
+pub fn projective_test<G: ProjectiveCurve>(a: G, mut b: G) {
+    let mut rng = test_rng();
+
     let zero = G::zero();
     let fr_zero = G::ScalarField::zero();
     let fr_one = G::ScalarField::one();
@@ -77,8 +79,8 @@ pub fn projective_test<G: ProjectiveCurve>(a: G, mut b: G, rng: &mut TestRng) {
     b.double_in_place();
     assert_eq!(original_b.double(), b);
 
-    let fr_rand1 = G::ScalarField::rand(rng);
-    let fr_rand2 = G::ScalarField::rand(rng);
+    let fr_rand1 = G::ScalarField::rand(&mut rng);
+    let fr_rand2 = G::ScalarField::rand(&mut rng);
     let a_rand1 = a.mul(fr_rand1);
     let a_rand2 = a.mul(fr_rand2);
     let fr_three = fr_two + fr_rand1;

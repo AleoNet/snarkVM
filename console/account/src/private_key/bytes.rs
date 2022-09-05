@@ -41,11 +41,9 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a new private key.
-            let expected = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
+            let expected = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

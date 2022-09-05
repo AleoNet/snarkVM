@@ -79,11 +79,9 @@ mod tests {
     }
 
     fn run_test<I: IntegerType + Not<Output = I>>(mode: Mode) {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             let name = format!("Not: {} {}", mode, i);
-            let value = Uniform::rand(&mut rng);
+            let value = Uniform::rand(&mut test_rng());
             check_not::<I>(&name, value, mode);
         }
 

@@ -21,7 +21,7 @@ mod equal;
 mod helpers;
 
 #[cfg(test)]
-use console::TestRng;
+use console::test_rng;
 #[cfg(test)]
 use snarkvm_circuit_environment::assert_scope;
 

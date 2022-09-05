@@ -70,7 +70,7 @@ impl<A: Aleo> Literal<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use console::{Rng, TestRng, Uniform};
+    use console::{test_rng, Rng, Uniform};
 
     const ITERATIONS: u32 = 1000;
 
@@ -93,7 +93,7 @@ mod tests {
     }
 
     fn run_serialization_test(mode: Mode) {
-        let rng = &mut TestRng::default();
+        let rng = &mut test_rng();
 
         for _ in 0..ITERATIONS {
             // Address

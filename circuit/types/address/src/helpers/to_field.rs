@@ -47,11 +47,9 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_to_field(mode: Mode) {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut rng);
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
             Circuit::scope(&format!("{} {}", mode, i), || {

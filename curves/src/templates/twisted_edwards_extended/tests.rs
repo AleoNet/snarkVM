@@ -22,13 +22,15 @@ use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     to_bytes_le,
     Compress,
-    TestRng,
     ToBytes,
     Validate,
 };
 
 use crate::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
+
+use rand::SeedableRng;
+use rand_xorshift::XorShiftRng;
 
 pub const ITERATIONS: usize = 10;
 
@@ -46,16 +48,16 @@ where
     assert_eq!(b, P::MontgomeryParameters::MONTGOMERY_B);
 }
 
-pub fn edwards_test<P: TwistedEdwardsParameters>(rng: &mut TestRng)
+pub fn edwards_test<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
-    edwards_curve_serialization_test::<P>(rng);
-    edwards_from_random_bytes::<P>(rng);
-    edwards_from_x_and_y_coordinates::<P>(rng);
+    edwards_curve_serialization_test::<P>();
+    edwards_from_random_bytes::<P>();
+    edwards_from_x_and_y_coordinates::<P>();
 }
 
-pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut TestRng) {
+pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
     let modes = [
         (Compress::Yes, Validate::Yes),
         (Compress::No, Validate::No),
@@ -65,8 +67,10 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut T
     for (compress, validate) in modes {
         let buf_size = Affine::<P>::zero().serialized_size(compress);
 
+        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
         for _ in 0..10 {
-            let a = Projective::<P>::rand(rng);
+            let a = Projective::<P>::rand(&mut rng);
             let a = a.to_affine();
             {
                 let mut serialized = vec![0; buf_size];
@@ -83,7 +87,6 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut T
                 // If we negate the y-coordinate, the point is no longer in the prime-order subgroup,
                 // and so this should error when `validate == Validate::Yes`.
                 a_copy.y = -a.y;
-                a_copy.t = a_copy.x * a_copy.y;
                 let mut serialized = vec![0; buf_size];
                 let mut cursor = Cursor::new(&mut serialized[..]);
                 a_copy.serialize_with_mode(&mut cursor, compress).unwrap();
@@ -133,7 +136,6 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut T
             {
                 let mut a_copy = a;
                 a_copy.y = -a.y;
-                a_copy.t = a_copy.x * a_copy.y;
                 let mut serialized = vec![0; a.uncompressed_size()];
                 let mut cursor = Cursor::new(&mut serialized[..]);
                 a_copy.serialize_uncompressed(&mut cursor).unwrap();
@@ -156,14 +158,16 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>(rng: &mut T
     }
 }
 
-pub fn edwards_from_random_bytes<P: TwistedEdwardsParameters>(rng: &mut TestRng)
+pub fn edwards_from_random_bytes<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
     let buf_size = Affine::<P>::zero().compressed_size();
 
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
     for _ in 0..ITERATIONS {
-        let a = Projective::<P>::rand(rng);
+        let a = Projective::<P>::rand(&mut rng);
         let a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
@@ -178,7 +182,7 @@ where
     }
 
     for _ in 0..ITERATIONS {
-        let biginteger = <<Affine<P> as AffineCurve>::BaseField as PrimeField>::BigInteger::rand(rng);
+        let biginteger = <<Affine<P> as AffineCurve>::BaseField as PrimeField>::BigInteger::rand(&mut rng);
         let mut bytes = to_bytes_le![biginteger].unwrap();
         let mut g = Affine::<P>::from_random_bytes(&bytes);
         while g.is_none() {
@@ -189,12 +193,14 @@ where
     }
 }
 
-pub fn edwards_from_x_and_y_coordinates<P: TwistedEdwardsParameters>(rng: &mut TestRng)
+pub fn edwards_from_x_and_y_coordinates<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
     for _ in 0..ITERATIONS {
-        let a = Projective::<P>::rand(rng);
+        let a = Projective::<P>::rand(&mut rng);
         let a = a.to_affine();
         {
             let x = a.x;

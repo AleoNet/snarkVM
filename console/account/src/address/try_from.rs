@@ -87,11 +87,9 @@ mod tests {
 
     #[test]
     fn test_try_from() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
             let expected = Address::try_from(private_key)?;
 
             // Check the address derived from the compute key.

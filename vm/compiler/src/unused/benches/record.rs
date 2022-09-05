@@ -20,6 +20,7 @@ extern crate criterion;
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
 use criterion::Criterion;
+use rand::{thread_rng, Rng};
 use snarkvm_utilities::Uniform;
 
 fn bench_record_decryption(
@@ -32,7 +33,7 @@ fn bench_record_decryption(
 }
 
 fn record_decrypt_noop(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
     let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
     let address = private_key.to_address();
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
@@ -42,7 +43,7 @@ fn record_decrypt_noop(c: &mut Criterion) {
 }
 
 fn record_decrypt_with_payload(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
     let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
     let address = private_key.to_address();
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
@@ -93,7 +94,7 @@ fn record_decrypt_with_payload_and_program_id(c: &mut Criterion) {
 }
 
 fn record_decrypt_with_incorrect_view_key(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+    let rng = &mut thread_rng();
     let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
     let other_address: Address<Testnet2> = PrivateKey::new(rng).into();

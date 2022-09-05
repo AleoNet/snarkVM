@@ -35,11 +35,9 @@ mod tests {
     const ITERATIONS: u64 = 250;
 
     fn check_mul_by_cofactor(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.div_by_cofactor();
@@ -75,11 +73,9 @@ mod tests {
     /// This test shows that computing `mul_by_cofactor` using doubling is more cost-effective for our specific cofactor.
     #[test]
     fn test_mul_by_cofactor_matches() {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.div_by_cofactor();

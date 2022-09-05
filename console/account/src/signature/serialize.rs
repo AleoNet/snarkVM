@@ -44,11 +44,9 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let expected = test_helpers::sample_signature(i, &mut rng);
+            let expected = test_helpers::sample_signature(i);
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -64,11 +62,9 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let mut rng = TestRng::default();
-
         for i in 0..ITERATIONS {
             // Sample a new signature.
-            let expected = test_helpers::sample_signature(i, &mut rng);
+            let expected = test_helpers::sample_signature(i);
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

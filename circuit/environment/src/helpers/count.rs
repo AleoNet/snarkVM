@@ -172,18 +172,16 @@ impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>
 #[cfg(test)]
 mod test {
     use super::*;
-    use snarkvm_utilities::{TestRng, Uniform};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 1024;
 
     #[test]
     fn test_exact_matches() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement` and candidate value.
-            let value = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let value = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
             let metric = Measurement::Exact(value);
 
             // Check that the metric is only satisfied if the candidate is equal to the value.
@@ -198,12 +196,10 @@ mod test {
 
     #[test]
     fn test_upper_matches() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
-            let upper = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let upper = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
             let metric = Measurement::UpperBound(upper);
 
             // Check that the metric is only satisfied if the candidate is less than upper.
@@ -218,13 +214,11 @@ mod test {
 
     #[test]
     fn test_range_matches() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
-            let first_bound = u32::rand(&mut rng) as u64;
-            let second_bound = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first_bound = u32::rand(&mut test_rng()) as u64;
+            let second_bound = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
             let (metric, lower, upper) = if first_bound <= second_bound {
                 (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
             } else {
@@ -246,12 +240,10 @@ mod test {
 
     #[test]
     fn test_exact_plus_exact() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::Exact(first);
             let b = Measurement::Exact(second);
@@ -268,12 +260,10 @@ mod test {
 
     #[test]
     fn test_exact_plus_upper() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::Exact(first);
             let b = Measurement::UpperBound(second);
@@ -290,12 +280,10 @@ mod test {
 
     #[test]
     fn test_exact_plus_range() {
-        let mut rng = TestRng::default();
-
-        let value = u32::rand(&mut rng) as u64;
-        let first_bound = u32::rand(&mut rng) as u64;
-        let second_bound = u32::rand(&mut rng) as u64;
-        let candidate = u32::rand(&mut rng) as u64;
+        let value = u32::rand(&mut test_rng()) as u64;
+        let first_bound = u32::rand(&mut test_rng()) as u64;
+        let second_bound = u32::rand(&mut test_rng()) as u64;
+        let candidate = u32::rand(&mut test_rng()) as u64;
 
         let a = Measurement::Exact(value);
         let (b, lower, upper) = if first_bound <= second_bound {
@@ -316,12 +304,10 @@ mod test {
 
     #[test]
     fn test_range_plus_exact() {
-        let mut rng = TestRng::default();
-
-        let value = u32::rand(&mut rng) as u64;
-        let first_bound = u32::rand(&mut rng) as u64;
-        let second_bound = u32::rand(&mut rng) as u64;
-        let candidate = u32::rand(&mut rng) as u64;
+        let value = u32::rand(&mut test_rng()) as u64;
+        let first_bound = u32::rand(&mut test_rng()) as u64;
+        let second_bound = u32::rand(&mut test_rng()) as u64;
+        let candidate = u32::rand(&mut test_rng()) as u64;
 
         let (a, lower, upper) = if first_bound <= second_bound {
             (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
@@ -342,14 +328,12 @@ mod test {
 
     #[test]
     fn test_range_plus_range() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let third = u32::rand(&mut rng) as u64;
-            let fourth = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let third = u32::rand(&mut test_rng()) as u64;
+            let fourth = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let (a, first_lower, first_upper) = if first <= second {
                 (Measurement::Range(first, second), first, second)
@@ -375,13 +359,11 @@ mod test {
 
     #[test]
     fn test_range_plus_upper() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let third = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let third = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let (a, lower, upper) = if second <= third {
                 (Measurement::Range(second, third), second, third)
@@ -403,12 +385,10 @@ mod test {
 
     #[test]
     fn test_upper_plus_exact() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::UpperBound(second);
             let b = Measurement::Exact(first);
@@ -425,13 +405,11 @@ mod test {
 
     #[test]
     fn test_upper_plus_range() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let third = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let third = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::UpperBound(first);
             let (b, lower, upper) = if second <= third {
@@ -453,12 +431,10 @@ mod test {
 
     #[test]
     fn test_upper_plus_upper() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let first = u32::rand(&mut rng) as u64;
-            let second = u32::rand(&mut rng) as u64;
-            let candidate = u32::rand(&mut rng) as u64;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::UpperBound(second);
             let b = Measurement::UpperBound(first);
@@ -477,11 +453,9 @@ mod test {
 
     #[test]
     fn test_exact_mul() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let start = u32::rand(&mut rng) as u64;
-            let scalar = u32::rand(&mut rng) as u64;
+            let start = u32::rand(&mut test_rng()) as u64;
+            let scalar = u32::rand(&mut test_rng()) as u64;
 
             let expected = Measurement::Exact(start * scalar);
             let candidate = Measurement::Exact(start) * scalar;
@@ -491,11 +465,9 @@ mod test {
 
     #[test]
     fn test_upper_bound_mul() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let start = u32::rand(&mut rng) as u64;
-            let scalar = u32::rand(&mut rng) as u64;
+            let start = u32::rand(&mut test_rng()) as u64;
+            let scalar = u32::rand(&mut test_rng()) as u64;
 
             let expected = Measurement::UpperBound(start * scalar);
             let candidate = Measurement::UpperBound(start) * scalar;
@@ -505,12 +477,10 @@ mod test {
 
     #[test]
     fn test_range_mul() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
-            let start = u32::rand(&mut rng) as u64;
-            let end = u32::rand(&mut rng) as u64;
-            let scalar = u32::rand(&mut rng) as u64;
+            let start = u32::rand(&mut test_rng()) as u64;
+            let end = u32::rand(&mut test_rng()) as u64;
+            let scalar = u32::rand(&mut test_rng()) as u64;
 
             let expected = Measurement::Range(start * scalar, end * scalar);
             let candidate = Measurement::Range(start, end) * scalar;

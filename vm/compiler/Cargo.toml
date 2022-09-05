@@ -55,7 +55,7 @@ version = "0.9.0"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.63"
+version = "1.0.62"
 
 [dependencies.colored]
 version = "2"
@@ -71,7 +71,7 @@ version = "1.13"
 version = "0.12"
 
 [dependencies.paste]
-version = "1.0.9"
+version = "1.0.8"
 
 [dependencies.rand]
 version = "0.8"
@@ -97,6 +97,9 @@ version = "1.3"
 
 [dev-dependencies.regex]
 version = "1.6"
+
+[dev-dependencies.serial_test]
+version = "0.9"
 
 [dev-dependencies.tracing-test]
 version = "0.2"

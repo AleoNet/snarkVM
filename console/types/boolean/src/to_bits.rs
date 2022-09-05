@@ -39,11 +39,9 @@ mod tests {
 
     #[test]
     fn test_to_bits_le() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let boolean: Boolean<CurrentEnvironment> = Uniform::rand(&mut rng);
+            let boolean: Boolean<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let candidate = boolean.to_bits_le();
             assert_eq!(vec![*boolean], candidate);
@@ -53,11 +51,9 @@ mod tests {
 
     #[test]
     fn test_to_bits_be() {
-        let mut rng = TestRng::default();
-
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let boolean: Boolean<CurrentEnvironment> = Uniform::rand(&mut rng);
+            let boolean: Boolean<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let candidate = boolean.to_bits_be();
             assert_eq!(vec![*boolean], candidate);
