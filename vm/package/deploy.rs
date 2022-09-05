@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_compiler::Deployment;
-use snarkvm_console::{ types::Address };
+use snarkvm_console::types::Address;
 
 use super::*;
 
@@ -177,7 +177,9 @@ impl<N: Network> Package<N> {
                     // Add the import program.
                     process.add_program(&program)?;
                 }
-                Err(_) => { bail!("The program {} needs to be deployed before {}", import_program.0, program.id()); }
+                Err(_) => {
+                    bail!("The program {} needs to be deployed before {}", import_program.0, program.id());
+                }
             }
         }
         Ok(())
