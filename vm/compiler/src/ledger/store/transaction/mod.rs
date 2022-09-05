@@ -70,6 +70,15 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     fn deployment_store(&self) -> &DeploymentStore<N, Self::DeploymentStorage>;
     /// Returns the execution store.
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage>;
+    /// Returns the transition store.
+    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
+        self.execution_store().transition_store()
+    }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.transition_store().dev()
+    }
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -254,7 +263,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
-        self.storage.execution_store().transition_store()
+        self.storage.transition_store()
     }
 
     /// Starts an atomic batch write operation.
@@ -275,6 +284,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
+    }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
     }
 }
 
@@ -465,7 +479,7 @@ mod tests {
             let transaction_id = transaction.id();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open().unwrap();
+            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
             // Initialize a new transaction store.
             let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
 
@@ -504,7 +518,7 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::<_, TransitionMemory<_>>::open().unwrap();
+        let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
         // Initialize a new transaction store.
         let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
 

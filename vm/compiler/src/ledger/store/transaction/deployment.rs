@@ -76,6 +76,11 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.transition_store().dev()
+    }
+
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
         self.id_map().start_atomic();
@@ -535,6 +540,11 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
     }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
+    }
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
@@ -651,7 +661,7 @@ mod tests {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open().unwrap();
+        let transition_store = TransitionStore::open(None).unwrap();
         // Initialize a new deployment store.
         let deployment_store = DeploymentMemory::open(transition_store).unwrap();
 
@@ -687,7 +697,7 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open().unwrap();
+        let transition_store = TransitionStore::open(None).unwrap();
         // Initialize a new deployment store.
         let deployment_store = DeploymentMemory::open(transition_store).unwrap();
 
