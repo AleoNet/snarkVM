@@ -21,6 +21,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
     pub fn start(
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
         additional_routes: Option<impl Filter<Extract = impl Reply, Error = Rejection> + Clone + Sync + Send + 'static>,
+        custom_port: Option<u16>,
     ) -> Result<Self> {
         // Initialize a channel to send requests to the ledger.
         let (ledger_sender, ledger_receiver) = mpsc::channel(64);
@@ -28,7 +29,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         // Initialize the server.
         let mut server = Self { ledger, ledger_sender, handles: vec![] };
         // Spawn the server.
-        server.spawn_server(additional_routes);
+        server.spawn_server(additional_routes, custom_port);
         // Spawn the ledger handler.
         server.spawn_ledger_handler(ledger_receiver);
 
@@ -42,13 +43,17 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
     fn spawn_server(
         &mut self,
         additional_routes: Option<impl Filter<Extract = impl Reply, Error = Rejection> + Clone + Sync + Send + 'static>,
+        custom_port: Option<u16>,
     ) {
         // Initialize the routes.
         let routes = self.routes();
         // Spawn the server.
         self.handles.push(Arc::new(tokio::spawn(async move {
             // Initialize the listening IP.
-            let ip = ([0, 0, 0, 0], 4180);
+            let ip = match custom_port {
+                Some(port) => ([0, 0, 0, 0], port),
+                None => ([0, 0, 0, 0], 80),
+            };
             println!("\n🌐 Server is running at http://0.0.0.0:{}\n", ip.1);
             // Start the server, with optional additional routes.
             match additional_routes {
