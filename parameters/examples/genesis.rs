@@ -26,7 +26,7 @@ use std::{
 
 pub fn generate<N: Network>(private_key: PrivateKey<N>) -> Result<Vec<u8>> {
     // Initialize the program store.
-    let store = ProgramStore::<N, ProgramMemory<N>>::open()?;
+    let store = ProgramStore::<N, ProgramMemory<N>>::open(None)?;
     // Initialize the VM.
     let vm = VM::new(store)?;
     // Create a genesis block.
