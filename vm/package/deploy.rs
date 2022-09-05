@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_compiler::Deployment;
-use snarkvm_console::types::Address;
+use snarkvm_console::{ types::Address };
 
 use super::*;
 
@@ -137,14 +137,9 @@ impl<N: Network> Package<N> {
         println!("⏳ Deploying '{}'...\n", program_id.to_string().bold());
 
         // Construct the process.
-        let process = Process::<N>::load()?;
+        let mut process = Process::<N>::load()?;
 
-        // TODO (howardwu): Add the following checks:
-        //     1) the imported program ID exists *on-chain* (for the given network)
-        //     2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
-        //     3) consensus performs the exact same checks (in `verify_deployment`)
-
-        Self::check_imports(program)?;
+        Self::add_imports_to_process(program, &mut process)?;
 
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
@@ -169,11 +164,20 @@ impl<N: Network> Package<N> {
         }
     }
 
-    fn check_imports(program: &Program<N>) -> Result<()> {
+    fn add_imports_to_process(program: &Program<N>, process: &mut Process<N>) -> Result<()> {
         for import_program in program.imports() {
+            // TODO (howardwu): Add the following checks:
+            //  1) the imported program ID exists *on-chain* (for the given network)
+            //  2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
+            //  3) consensus performs the exact same checks (in `verify_deployment`)
             let endpoint = format!("http://localhost/testnet3/program/{}", import_program.0);
-            if let Err(_) = ureq::get(&endpoint).send_json(import_program.0)?.into_json::<String>() {
-                bail!("The program {} needs to be deployed before {}", import_program.0, program.id());
+            match ureq::get(&endpoint).send_json(import_program.0)?.into_json::<String>() {
+                Ok(p) => {
+                    let program = Program::<N>::from_str(&p)?;
+                    // Add the import program.
+                    process.add_program(&program)?;
+                }
+                Err(_) => { bail!("The program {} needs to be deployed before {}", import_program.0, program.id()); }
             }
         }
         Ok(())
