@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_state_path_verify() {
         // Initialize a new ledger.
-        let ledger = CurrentLedger::new().unwrap();
+        let ledger = CurrentLedger::new(None).unwrap();
 
         construct_state_path_circuit(&ledger, Mode::Public);
     }
@@ -117,7 +117,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Initialize a new ledger.
-        let ledger = CurrentLedger::new().unwrap();
+        let ledger = CurrentLedger::new(None).unwrap();
 
         // Construct the assignments.
         let mut assignments = Vec::with_capacity(batch_size);
