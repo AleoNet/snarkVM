@@ -129,7 +129,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<Execution<N>> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -201,7 +201,7 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (_response, execution) = process.execute::<A, R>(authorization, rng)?;
+        let (execution_response, execution) = process.execute::<A, R>(authorization, rng)?;
 
         let caller = self.manifest_file().development_address();
 
@@ -211,10 +211,9 @@ impl<N: Network> Package<N> {
                 let request = ExecutionRequest::new(execution, *caller, *program_id);
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
-
-                Ok(response.execution)
+                Ok((execution_response, response.execution))
             }
-            None => Ok(execution),
+            None => Ok((execution_response, execution)),
         }
     }
 }
