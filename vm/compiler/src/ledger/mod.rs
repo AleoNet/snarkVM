@@ -110,21 +110,57 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
 
 impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
-    pub fn new() -> Result<Self> {
+    pub fn new(dev: Option<u16>) -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
         // Initialize the ledger.
-        Self::new_with_genesis(&genesis, genesis.signature().to_address())
+        Self::new_with_genesis(&genesis, genesis.signature().to_address(), dev)
     }
 }
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
-    /// Initializes the `Ledger` from storage.
-    pub fn open() -> Result<Self> {
+    /// Initializes a new instance of `Ledger` with the given genesis block.
+    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>, dev: Option<u16>) -> Result<Self> {
         // Initialize the block store.
-        let blocks = BlockStore::<N, B>::open()?;
+        let blocks = BlockStore::<N, B>::open(dev)?;
         // Initialize the program store.
-        let store = ProgramStore::open()?;
+        let store = ProgramStore::<N, P>::open(dev)?;
+        // Initialize a new VM.
+        let vm = VM::new(store)?;
+
+        // Ensure that a genesis block doesn't already exist in the block store.
+        if blocks.contains_block_height(0)? {
+            bail!("Genesis block already exists in the ledger.");
+        }
+
+        // Initialize the ledger.
+        let mut ledger = Self {
+            current_hash: Default::default(),
+            current_height: 0,
+            current_round: 0,
+            block_tree: N::merkle_tree_bhp(&[])?,
+            transactions: blocks.transaction_store().clone(),
+            transitions: blocks.transition_store().clone(),
+            blocks,
+            // TODO (howardwu): Update this to retrieve from a validators store.
+            validators: [(address, ())].into_iter().collect(),
+            vm,
+            memory_pool: Default::default(),
+        };
+
+        // Add the genesis block.
+        ledger.add_next_block(genesis)?;
+
+        // Return the ledger.
+        Ok(ledger)
+    }
+
+    /// Initializes the `Ledger` from storage.
+    pub fn open(dev: Option<u16>) -> Result<Self> {
+        // Initialize the block store.
+        let blocks = BlockStore::<N, B>::open(dev)?;
+        // Initialize the program store.
+        let store = ProgramStore::open(dev)?;
         // Return the ledger.
         Self::from(blocks, store)
     }
@@ -187,42 +223,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             Ok::<_, Error>(())
         })?;
 
-        Ok(ledger)
-    }
-
-    /// Initializes a new instance of `Ledger` with the given genesis block.
-    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
-        // Initialize the block store.
-        let blocks = BlockStore::<N, B>::open()?;
-        // Initialize the program store.
-        let store = ProgramStore::<N, P>::open()?;
-        // Initialize a new VM.
-        let vm = VM::new(store)?;
-
-        // Ensure that a genesis block doesn't already exist in the block store.
-        if blocks.contains_block_height(0)? {
-            bail!("Genesis block already exists in the ledger.");
-        }
-
-        // Initialize the ledger.
-        let mut ledger = Self {
-            current_hash: Default::default(),
-            current_height: 0,
-            current_round: 0,
-            block_tree: N::merkle_tree_bhp(&[])?,
-            transactions: blocks.transaction_store().clone(),
-            transitions: blocks.transition_store().clone(),
-            blocks,
-            // TODO (howardwu): Update this to retrieve from a validators store.
-            validators: [(address, ())].into_iter().collect(),
-            vm,
-            memory_pool: Default::default(),
-        };
-
-        // Add the genesis block.
-        ledger.add_next_block(genesis)?;
-
-        // Return the ledger.
         Ok(ledger)
     }
 
@@ -889,7 +889,7 @@ pub(crate) mod test_helpers {
                 let address = Address::try_from(&private_key).unwrap();
 
                 // Initialize the ledger with the genesis block.
-                let ledger = CurrentLedger::new_with_genesis(&genesis, address).unwrap();
+                let ledger = CurrentLedger::new_with_genesis(&genesis, address, None).unwrap();
                 assert_eq!(0, ledger.latest_height());
                 assert_eq!(genesis.hash(), ledger.latest_hash());
                 assert_eq!(genesis.round(), ledger.latest_round());
@@ -952,7 +952,7 @@ mod tests {
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a ledger with the genesis block.
-        let ledger = CurrentLedger::new().unwrap();
+        let ledger = CurrentLedger::new(None).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
@@ -970,8 +970,8 @@ mod tests {
 
         // Initialize a ledger without the genesis block.
         let ledger = CurrentLedger::from(
-            BlockStore::<_, BlockMemory<_>>::open().unwrap(),
-            ProgramStore::<_, ProgramMemory<_>>::open().unwrap(),
+            BlockStore::<_, BlockMemory<_>>::open(None).unwrap(),
+            ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap(),
         )
         .unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
@@ -980,7 +980,7 @@ mod tests {
         assert_eq!(ledger.latest_block().unwrap(), genesis);
 
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::new_with_genesis(&genesis, address).unwrap();
+        let ledger = CurrentLedger::new_with_genesis(&genesis, address, None).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
@@ -990,7 +990,7 @@ mod tests {
     #[test]
     fn test_state_path() {
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::new().unwrap();
+        let ledger = CurrentLedger::new(None).unwrap();
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
 
@@ -1069,11 +1069,12 @@ mod tests {
         let address = Address::try_from(&view_key).unwrap();
 
         // Initialize the store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
         // Create a genesis block.
         let genesis = Block::genesis(&VM::new(store).unwrap(), &private_key, rng).unwrap();
         // Initialize the ledger.
-        let mut ledger = Ledger::<_, BlockMemory<_>, ProgramMemory<_>>::new_with_genesis(&genesis, address).unwrap();
+        let mut ledger =
+            Ledger::<_, BlockMemory<_>, ProgramMemory<_>>::new_with_genesis(&genesis, address, None).unwrap();
 
         for height in 1..6 {
             // Fetch the unspent records.

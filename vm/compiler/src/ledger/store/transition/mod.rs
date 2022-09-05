@@ -65,7 +65,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
     /// Initializes the transition storage.
-    fn open() -> Result<Self>;
+    fn open(dev: Option<u16>) -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -87,6 +87,9 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
     /// Returns the transition fees.
     fn fee_map(&self) -> &Self::FeeMap;
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16>;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -325,6 +328,8 @@ pub struct TransitionMemory<N: Network> {
     reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
     /// The transition fees.
     fee_map: MemoryMap<N::TransitionID, i64>,
+    /// The optional development ID.
+    dev: Option<u16>,
 }
 
 #[rustfmt::skip]
@@ -341,11 +346,11 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type FeeMap = MemoryMap<N::TransitionID, i64>;
 
     /// Initializes the transition storage.
-    fn open() -> Result<Self> {
+    fn open(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             locator_map: MemoryMap::default(),
-            input_store: InputStore::open()?,
-            output_store: OutputStore::open()?,
+            input_store: InputStore::open(dev)?,
+            output_store: OutputStore::open(dev)?,
             finalize_map: MemoryMap::default(),
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
@@ -353,6 +358,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             tcm_map: MemoryMap::default(),
             reverse_tcm_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
+            dev,
         })
     }
 
@@ -405,6 +411,11 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     fn fee_map(&self) -> &Self::FeeMap {
         &self.fee_map
     }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.dev
+    }
 }
 
 /// The transition store.
@@ -436,9 +447,9 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open() -> Result<Self> {
+    pub fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open()?;
+        let storage = T::open(dev)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),
@@ -500,6 +511,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
+    }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
     }
 }
 
@@ -812,7 +828,7 @@ mod tests {
         assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
 
         // Initialize a new transition store.
-        let transition_store = TransitionMemory::open().unwrap();
+        let transition_store = TransitionMemory::open(None).unwrap();
 
         // Test each transition in isolation.
         for transition in transitions.iter() {
