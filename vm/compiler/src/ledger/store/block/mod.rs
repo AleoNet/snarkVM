@@ -81,15 +81,16 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap;
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
+    /// Returns the signature map.
+    fn signature_map(&self) -> &Self::SignatureMap;
+
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
         self.transaction_store().transition_store()
     }
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap;
-
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16> {
+        debug_assert!(self.transaction_store().dev() == self.transition_store().dev());
         self.transition_store().dev()
     }
 

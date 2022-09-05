@@ -89,7 +89,10 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn fee_map(&self) -> &Self::FeeMap;
 
     /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16>;
+    fn dev(&self) -> Option<u16> {
+        debug_assert!(self.input_store().dev() == self.output_store().dev());
+        self.input_store().dev()
+    }
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -328,8 +331,6 @@ pub struct TransitionMemory<N: Network> {
     reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
     /// The transition fees.
     fee_map: MemoryMap<N::TransitionID, i64>,
-    /// The optional development ID.
-    dev: Option<u16>,
 }
 
 #[rustfmt::skip]
@@ -358,7 +359,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             tcm_map: MemoryMap::default(),
             reverse_tcm_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
-            dev,
         })
     }
 
@@ -410,11 +410,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     /// Returns the transition fees.
     fn fee_map(&self) -> &Self::FeeMap {
         &self.fee_map
-    }
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
     }
 }
 

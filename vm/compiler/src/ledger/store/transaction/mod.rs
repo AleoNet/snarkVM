@@ -72,6 +72,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage>;
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
+        debug_assert!(self.deployment_store().dev() == self.execution_store().dev());
         self.execution_store().transition_store()
     }
 
