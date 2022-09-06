@@ -134,7 +134,7 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ProgramMemory<CurrentNetwork>> {
-        VM::new(ProgramStore::open().unwrap()).unwrap()
+        VM::new(ProgramStore::open(None).unwrap()).unwrap()
     }
 
     pub(crate) fn sample_program() -> Program<CurrentNetwork> {
