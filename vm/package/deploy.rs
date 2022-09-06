@@ -130,36 +130,17 @@ impl<N: Network> Package<N> {
         let program = self.program();
         // Retrieve the main program ID.
         let program_id = program.id();
-
         // Retrieve the Aleo address of the deployment caller.
         let caller = self.manifest_file().development_address();
-
         #[cfg(feature = "aleo-cli")]
         println!("⏳ Deploying '{}'...\n", program_id.to_string().bold());
-
         // Construct the process.
         let mut process = Process::<N>::load()?;
-
-        // Add program imports to the process.
-        let imports_directory = self.imports_directory();
-        program.imports().keys().try_for_each(|program_id| {
-            // TODO (howardwu): Add the following checks:
-            //  1) the imported program ID exists *on-chain* (for the given network)
-            //  2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
-            //  3) consensus performs the exact same checks (in `verify_deployment`)
-
-            // Open the Aleo program file.
-            let import_program_file = AleoFile::open(&imports_directory, program_id, false)?;
-            // Add the import program.
-            process.add_program(import_program_file.program())?;
-            Ok::<_, Error>(())
-        })?;
-
+        Self::add_imports_to_process(program, &mut process)?;
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
         // Compute the deployment.
         let deployment = process.deploy::<A, _>(program, rng).unwrap();
-
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
@@ -177,8 +158,27 @@ impl<N: Network> Package<N> {
             None => Ok(deployment),
         }
     }
+    fn add_imports_to_process(program: &Program<N>, process: &mut Process<N>) -> Result<()> {
+        for import_program in program.imports() {
+            // TODO (howardwu): Add the following checks:
+            //  1) the imported program ID exists *on-chain* (for the given network)
+            //  2) the AVM bytecode of the imported program matches the AVM bytecode of the program *on-chain*
+            //  3) consensus performs the exact same checks (in `verify_deployment`)
+            let endpoint = format!("https://www.aleo.network/testnet3/program/{}", import_program.0);
+            match ureq::get(&endpoint).send_json(import_program.0)?.into_json::<String>() {
+                Ok(p) => {
+                    let program = Program::<N>::from_str(&p)?;
+                    // Add the import program.
+                    process.add_program(&program)?;
+                }
+                Err(_) => {
+                    bail!("The program {} needs to be deployed before {}", import_program.0, program.id());
+                }
+            }
+        }
+        Ok(())
+    }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
