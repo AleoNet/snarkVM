@@ -41,13 +41,18 @@ use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
 pub struct CoinbasePuzzle<E: PairingEngine>(PhantomData<E>);
 
 impl<E: PairingEngine> CoinbasePuzzle<E> {
-    pub fn setup(max_degree: usize, rng: &mut (impl CryptoRng + Rng)) -> SRS<E> {
-        KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::None, false, rng).unwrap()
+    pub fn setup(config: PuzzleConfig, rng: &mut (impl CryptoRng + Rng)) -> SRS<E> {
+        // The SRS needs to be able to supporting commiting to the product of two degree `n`
+        // polynomials.
+        // This means the SRS that supports committing to a polynomial of degree `2n - 1`.
+        KZG10::setup(2 * config.degree - 1, &kzg10::KZG10DegreeBoundsConfig::None, false, rng).unwrap()
     }
 
-    pub fn trim(srs: &SRS<E>, degree: usize) -> (ProvingKey<E>, VerifyingKey<E>) {
-        let powers_of_beta_g = srs.powers_of_beta_g(0, degree + 1).unwrap().to_vec();
-        let domain = EvaluationDomain::new(degree + 1).unwrap();
+    pub fn trim(srs: &SRS<E>, config: PuzzleConfig) -> (ProvingKey<E>, VerifyingKey<E>) {
+        // As above, we need to be able to commit to the product of two degree `n` polynomials.
+        // This means the SRS that supports committing to a polynomial of degree `2n - 1`.
+        let powers_of_beta_g = srs.powers_of_beta_g(0, 2 * config.degree - 1).unwrap().to_vec();
+        let domain = EvaluationDomain::new(config.degree + 1).unwrap();
         let lagrange_basis_at_beta_g = srs.lagrange_basis(domain).unwrap();
 
         let vk = VerifyingKey::<E> {

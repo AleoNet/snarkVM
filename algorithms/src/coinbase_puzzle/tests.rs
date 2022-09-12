@@ -25,11 +25,12 @@ fn test_coinbase_puzzle() {
     let max_degree = 1 << 15;
     let mut rng = rand::thread_rng();
 
-    let srs = CoinbasePuzzle::<Bls12_377>::setup(max_degree, &mut rng);
+    let max_config = PuzzleConfig { degree: max_degree, difficulty: 0 };
+    let srs = CoinbasePuzzle::<Bls12_377>::setup(max_config, &mut rng);
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
-        let product_degree = (1 << (log_degree + 1)) - 1;
-        let (pk, vk) = CoinbasePuzzle::trim(&srs, product_degree);
+        let config = PuzzleConfig { degree, difficulty: 0 };
+        let (pk, vk) = CoinbasePuzzle::trim(&srs, config);
         let epoch_info = EpochInfo { epoch_number: rng.next_u64() };
         let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree);
         for batch_size in 1..10 {

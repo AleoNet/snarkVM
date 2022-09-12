@@ -27,6 +27,12 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PuzzleConfig {
+    pub difficulty: usize,
+    pub degree: usize,
+}
+
 pub type VerifyingKey<E> = VerifierKey<E>;
 
 #[derive(Clone, Debug)]
