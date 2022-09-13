@@ -16,6 +16,7 @@
 
 use super::*;
 
+/// The `get_blocks` query object.
 #[derive(Deserialize, Serialize)]
 struct BlockRange {
     start: u32,
@@ -171,7 +172,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         Ok(reply::json(&ledger.read().get_block(height).or_reject()?))
     }
 
-    /// Returns the block for the given block height.
+    /// Returns the blocks for the given block range.
     async fn get_blocks(
         block_range: BlockRange,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
@@ -185,8 +186,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         }
 
         // Ensure the block range is bounded.
-        const BLOCK_RANGE: u32 = 50;
-        if end_height - start_height >= BLOCK_RANGE {
+        const MAX_BLOCK_RANGE: u32 = 50;
+        if end_height - start_height >= MAX_BLOCK_RANGE {
             return Err(reject::custom(RestError::Request(format!(
                 "Too many blocks requested. Max 50, requested {}",
                 end_height - start_height
