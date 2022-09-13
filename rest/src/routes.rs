@@ -59,6 +59,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_transaction);
 
+        // GET /testnet3/transactions/mempool
+        let get_transactions_mempool = warp::get()
+            .and(warp::path!("testnet3" / "transaction" / "mempool"))
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_transactions_mempool);
+
         // GET /testnet3/program/{id}
         let get_program = warp::get()
             .and(warp::path!("testnet3" / "program" / ..))
@@ -114,6 +120,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(get_block)
             .or(get_transactions)
             .or(get_transaction)
+            .or(get_transactions_mempool)
             .or(get_program)
             .or(get_state_path)
             .or(records_all)
@@ -155,6 +162,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().get_transaction(transaction_id).or_reject()?))
+    }
+
+    /// Returns the transactions in the memory pool.
+    async fn get_transactions_mempool(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().memory_pool()))
     }
 
     /// Returns the program for the given program id.
