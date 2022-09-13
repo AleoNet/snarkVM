@@ -216,7 +216,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
 
     /// Returns the transactions in the memory pool.
     async fn get_transactions_mempool(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
-        Ok(reply::json(&ledger.read().memory_pool()))
+        Ok(reply::json(&ledger.read().memory_pool().values().collect::<Vec<_>>()))
     }
 
     /// Returns the program for the given program id.
