@@ -16,6 +16,12 @@
 
 use super::*;
 
+#[derive(Deserialize, Serialize)]
+struct BlockRange {
+    start: u32,
+    end: u32,
+}
+
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
     #[allow(clippy::redundant_clone)]
@@ -43,6 +49,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::path!("testnet3" / "block" / u32))
             .and(with(self.ledger.clone()))
             .and_then(Self::get_block);
+
+        // GET /testnet3/block?start={start_height}&end={end_height}
+        let get_blocks = warp::get()
+            .and(warp::path!("testnet3" / "blocks"))
+            .and(warp::query::<BlockRange>())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_blocks);
 
         // GET /testnet3/transactions/{height}
         let get_transactions = warp::get()
@@ -123,6 +136,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(latest_hash)
             .or(latest_block)
             .or(get_block)
+            .or(get_blocks)
             .or(get_transactions)
             .or(get_transaction)
             .or(get_transactions_mempool)
@@ -155,6 +169,35 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Returns the block for the given block height.
     async fn get_block(height: u32, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().get_block(height).or_reject()?))
+    }
+
+    /// Returns the block for the given block height.
+    async fn get_blocks(
+        block_range: BlockRange,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        let start_height = block_range.start;
+        let end_height = block_range.end;
+
+        // Ensure the end height is greater than the start height.
+        if start_height > end_height {
+            return Err(reject::custom(RestError::Request("Invalid block range".to_string())));
+        }
+
+        // Ensure the block range is bounded.
+        const BLOCK_RANGE: u32 = 50;
+        if end_height - start_height >= BLOCK_RANGE {
+            return Err(reject::custom(RestError::Request(format!(
+                "Too many blocks requested. Max 50, requested {}",
+                end_height - start_height
+            ))));
+        }
+
+        let blocks = (start_height..end_height)
+            .map(|height| ledger.read().get_block(height).or_reject())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(reply::json(&blocks))
     }
 
     /// Returns the transactions for the given block height.
