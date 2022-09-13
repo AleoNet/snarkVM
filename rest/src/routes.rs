@@ -60,7 +60,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
 
         // GET /testnet3/transactions/mempool
         let get_transactions_mempool = warp::get()
-            .and(warp::path!("testnet3" / "transaction" / "mempool"))
+            .and(warp::path!("testnet3" / "transactions" / "mempool"))
             .and(with(self.ledger.clone()))
             .and_then(Self::get_transactions_mempool);
 
