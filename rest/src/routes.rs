@@ -72,7 +72,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_program);
 
-        // GET /testnet3/transactions/mempool
+        // GET /testnet3/validators
         let get_validators = warp::get()
             .and(warp::path!("testnet3" / "validators"))
             .and(with(self.ledger.clone()))
