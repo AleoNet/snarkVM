@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_console::program::ProgramID;
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
@@ -73,6 +72,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_program);
 
+        // GET /testnet3/transactions/mempool
+        let get_validators = warp::get()
+            .and(warp::path!("testnet3" / "validators"))
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_validators);
+
         // GET /testnet3/statePath/{commitment}
         let get_state_path = warp::get()
             .and(warp::path!("testnet3" / "statePath"))
@@ -122,6 +127,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(get_transaction)
             .or(get_transactions_mempool)
             .or(get_program)
+            .or(get_validators)
             .or(get_state_path)
             .or(records_all)
             .or(records_spent)
@@ -175,6 +181,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().get_program(program_id).or_reject()?))
+    }
+
+    /// Returns the list of current validators.
+    async fn get_validators(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().validators().keys().collect::<Vec<&Address<N>>>()))
     }
 
     /// Returns the state path for the given commitment.

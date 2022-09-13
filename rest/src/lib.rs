@@ -29,7 +29,12 @@ mod start;
 pub use start::*;
 
 use snarkvm_compiler::{BlockStorage, Ledger, ProgramStorage, RecordsFilter, Transaction};
-use snarkvm_console::{account::ViewKey, prelude::Network, types::Field};
+use snarkvm_console::{
+    account::{Address, ViewKey},
+    prelude::Network,
+    program::ProgramID,
+    types::Field,
+};
 
 use anyhow::Result;
 use indexmap::IndexMap;
