@@ -52,7 +52,7 @@ version = "0.4.3"
 version = "1.9"
 
 [dependencies.itertools]
-version = "0.10.3"
+version = "0.10.4"
 
 [dependencies.lazy_static]
 version = "1.4"
