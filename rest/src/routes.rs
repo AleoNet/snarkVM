@@ -219,7 +219,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         Ok(reply::json(&ledger.read().memory_pool().values().collect::<Vec<_>>()))
     }
 
-    /// Returns the program for the given program id.
+    /// Returns the program for the given program ID.
     async fn get_program(
         program_id: ProgramID<N>,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
