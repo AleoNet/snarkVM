@@ -29,11 +29,17 @@ mod start;
 pub use start::*;
 
 use snarkvm_compiler::{BlockStorage, Ledger, ProgramStorage, RecordsFilter, Transaction};
-use snarkvm_console::{account::ViewKey, prelude::Network, types::Field};
+use snarkvm_console::{
+    account::{Address, ViewKey},
+    prelude::Network,
+    program::ProgramID,
+    types::Field,
+};
 
 use anyhow::Result;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::{sync::mpsc, task::JoinHandle};
 use warp::{http::StatusCode, reject, reply, Filter, Rejection, Reply};
