@@ -238,77 +238,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Transaction '{}' already exists in the memory pool.", transaction.id());
         }
 
-        /* Input */
-
-        // Ensure the ledger does not already contain the given input ID.
-        for input_id in transaction.input_ids() {
-            if self.contains_input_id(input_id)? {
-                bail!("Input ID '{input_id}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given serial numbers.
-        for serial_number in transaction.serial_numbers() {
-            if self.contains_serial_number(serial_number)? {
-                bail!("Serial number '{serial_number}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given tag.
-        for tag in transaction.tags() {
-            if self.contains_tag(tag)? {
-                bail!("Tag '{tag}' already exists in the ledger")
-            }
-        }
-
-        /* Output */
-
-        // Ensure the ledger does not already contain the given output ID.
-        for output_id in transaction.output_ids() {
-            if self.contains_output_id(output_id)? {
-                bail!("Output ID '{output_id}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given commitments.
-        for commitment in transaction.commitments() {
-            if self.contains_commitment(commitment)? {
-                bail!("Commitment '{commitment}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given nonces.
-        for nonce in transaction.nonces() {
-            if self.contains_nonce(nonce)? {
-                bail!("Nonce '{nonce}' already exists in the ledger")
-            }
-        }
-
-        /* Program */
-
-        // Ensure that the ledger does not already contain the given program ID.
-        if let Transaction::Deploy(_, deployment, _) = &transaction {
-            let program_id = deployment.program_id();
-            if self.contains_program_id(program_id)? {
-                bail!("Program ID '{program_id}' already exists in the ledger")
-            }
-        }
-
-        /* Metadata */
-
-        // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in transaction.transition_public_keys() {
-            if self.contains_tpk(tpk)? {
-                bail!("Transition public key '{tpk}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given transition commitment.
-        for tcm in transaction.transition_commitments() {
-            if self.contains_tcm(tcm)? {
-                bail!("Transition commitment '{tcm}' already exists in the ledger")
-            }
-        }
+        // Check that the transaction is well formed and unique.
+        self.check_transaction(&transaction)?;
 
         // Insert the transaction to the memory pool.
         self.memory_pool.insert(transaction.id(), transaction);
@@ -710,65 +641,112 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         unimplemented!()
     }
 
-    // /// Checks the given transaction is well formed and unique.
-    // pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
-    //     let transaction_id = transaction.id();
-    //     if self.contains_transaction_id(&transaction_id)? {
-    //         bail!("Transaction '{transaction_id}' already exists in the ledger")
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given transition public keys.
-    //     for tpk in transaction.transition_public_keys() {
-    //         if self.contains_transition_public_key(tpk)? {
-    //             bail!("Transition public key '{tpk}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     // Ensure that the origin are valid.
-    //     for origin in transaction.origins() {
-    //         if !self.contains_origin(origin)? {
-    //             bail!("The given transaction references a non-existent origin {}", &origin)
-    //         }
-    //
-    //         match origin {
-    //             // Check that the commitment exists in the ledger.
-    //             Origin::Commitment(commitment) => {
-    //                 if !self.contains_commitment(commitment)? {
-    //                     bail!("The given transaction references a non-existent commitment {}", &commitment)
-    //                 }
-    //             }
-    //             // TODO (raychu86): Ensure that the state root exists in the ledger.
-    //             // Check that the state root is an existing state root.
-    //             Origin::StateRoot(_state_root) => {
-    //                 bail!("State roots are currently not supported (yet)")
-    //             }
-    //         }
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given serial numbers.
-    //     for serial_number in transaction.serial_numbers() {
-    //         if self.contains_serial_number(serial_number)? {
-    //             bail!("Serial number '{serial_number}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given commitments.
-    //     for commitment in transaction.commitments() {
-    //         if self.contains_commitment(commitment)? {
-    //             bail!("Commitment '{commitment}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given nonces.
-    //     for nonce in transaction.nonces() {
-    //         if self.contains_nonce(nonce)? {
-    //             bail!("Nonce '{nonce}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
-    //
+    /// Checks the given transaction is well formed and unique.
+    pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
+        let transaction_id = transaction.id();
+
+        // Ensure the transaction is valid.
+        if !self.vm.verify(transaction) {
+            bail!("Transaction '{transaction_id}' is invalid")
+        }
+
+        // Ensure the ledger does not already contain the given transaction ID.
+        if self.contains_transaction_id(&transaction_id)? {
+            bail!("Transaction '{transaction_id}' already exists in the ledger")
+        }
+
+        /* Input */
+
+        // Ensure the ledger does not already contain the given input ID.
+        for input_id in transaction.input_ids() {
+            if self.contains_input_id(input_id)? {
+                bail!("Input ID '{input_id}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given serial numbers.
+        for serial_number in transaction.serial_numbers() {
+            if self.contains_serial_number(serial_number)? {
+                bail!("Serial number '{serial_number}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given tag.
+        for tag in transaction.tags() {
+            if self.contains_tag(tag)? {
+                bail!("Tag '{tag}' already exists in the ledger")
+            }
+        }
+
+        // Ensure that the origin are valid.
+        for origin in transaction.origins() {
+            match origin {
+                // Check that the commitment exists in the ledger.
+                Origin::Commitment(commitment) => {
+                    if !self.contains_commitment(commitment)? {
+                        bail!("The given transaction references a non-existent commitment {}", &commitment)
+                    }
+                }
+                // TODO (raychu86): Ensure that the state root exists in the ledger.
+                // Check that the state root is an existing state root.
+                Origin::StateRoot(_state_root) => {
+                    bail!("State roots are currently not supported (yet)")
+                }
+            }
+        }
+
+        /* Output */
+
+        // Ensure the ledger does not already contain the given output ID.
+        for output_id in transaction.output_ids() {
+            if self.contains_output_id(output_id)? {
+                bail!("Output ID '{output_id}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given commitments.
+        for commitment in transaction.commitments() {
+            if self.contains_commitment(commitment)? {
+                bail!("Commitment '{commitment}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given nonces.
+        for nonce in transaction.nonces() {
+            if self.contains_nonce(nonce)? {
+                bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        /* Program */
+
+        // Ensure that the ledger does not already contain the given program ID.
+        if let Transaction::Deploy(_, deployment, _) = &transaction {
+            let program_id = deployment.program_id();
+            if self.contains_program_id(program_id)? {
+                bail!("Program ID '{program_id}' already exists in the ledger")
+            }
+        }
+
+        /* Metadata */
+
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in transaction.transition_public_keys() {
+            if self.contains_tpk(tpk)? {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given transition commitment.
+        for tcm in transaction.transition_commitments() {
+            if self.contains_tcm(tcm)? {
+                bail!("Transition commitment '{tcm}' already exists in the ledger")
+            }
+        }
+
+        Ok(())
+    }
+
     // /// Adds the given transaction to the transaction store.
     // pub fn insert(&mut self, transaction: Transaction<N>) -> Result<()> {
     //     // Check that there are not collisions with existing transactions.
@@ -1028,6 +1006,8 @@ mod tests {
 
         // Ensure that the VM can't re-deploy the same program.
         assert!(ledger.vm.finalize(&transaction).is_err());
+        // Ensure that the ledger deems the same transaction invalid.
+        assert!(ledger.check_transaction(&transaction).is_err());
         // Ensure that the ledger cannot add the same transaction.
         assert!(ledger.add_to_memory_pool(transaction).is_err());
     }
