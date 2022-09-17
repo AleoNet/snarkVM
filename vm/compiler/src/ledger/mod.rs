@@ -248,9 +248,27 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
-        // TODO (raychu86): Add logic to transaction selection from the mempool.
         // Construct the transactions for the block.
-        let transactions = self.memory_pool.values().collect::<Transactions<N>>();
+        let transactions = {
+            // TODO (raychu86): Add more sophisticated logic for transaction selection.
+
+            // Add the transactions from the memory pool that do not have input collisions.
+            let mut transcations = Vec::new();
+            let mut input_ids = Vec::new();
+
+            'outer: for transaction in self.memory_pool.values() {
+                for input_id in transaction.input_ids() {
+                    if input_ids.contains(&input_id) {
+                        continue 'outer;
+                    }
+                }
+
+                transcations.push(transaction);
+                input_ids.extend(transaction.input_ids());
+            }
+
+            transcations.into_iter().collect::<Transactions<N>>()
+        };
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
@@ -448,8 +466,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
-        // Ensure each transaction is well-formed.
-        if !block.transactions().par_iter().all(|(_, transaction)| self.vm.verify(transaction)) {
+        // Ensure each transaction is well-formed and unique.
+        if !block.transactions().par_iter().all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
             bail!("Invalid transaction found in the transactions list");
         }
 
@@ -504,6 +522,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             for transaction_id in block.transaction_ids() {
                 ledger.memory_pool.remove(transaction_id);
             }
+
+            // Clear the memory pool of the transactions that are now invalid.
+            ledger.memory_pool.retain(|_, transaction| self.check_transaction(transaction).is_ok());
 
             *self = Self {
                 current_hash: ledger.current_hash,
@@ -1034,6 +1055,8 @@ mod tests {
         assert_eq!(ledger.latest_height(), 1);
         assert_eq!(ledger.latest_hash(), next_block.hash());
 
+        // Ensure that the ledger deems the same transaction invalid.
+        assert!(ledger.check_transaction(&transaction).is_err());
         // Ensure that the ledger cannot add the same transaction.
         assert!(ledger.add_to_memory_pool(transaction).is_err());
     }
