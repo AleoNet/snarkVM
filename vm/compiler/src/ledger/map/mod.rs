@@ -32,7 +32,7 @@ pub trait Map<
     'a,
     K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Send + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Send + Sync,
->: Clone + MapRead<'a, K, V> + Sync
+>: Clone + MapRead<'a, K, V> + Send + Sync
 {
     ///
     /// Inserts the given key-value pair into the map.

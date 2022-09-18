@@ -118,7 +118,7 @@ mod tests {
         let genesis = Block::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a new ledger.
-        let ledger = CurrentLedger::new().unwrap();
+        let ledger = CurrentLedger::new(None).unwrap();
         // Retrieve the genesis block.
         let candidate = ledger.get_block(0).unwrap();
         // Ensure the genesis block matches.
