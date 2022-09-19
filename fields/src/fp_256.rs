@@ -381,7 +381,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
         // TODO: THIS ISNT CORRECT
         const Q_1: [u64; 4] = [725501752471715840, 4981570305181876225, 0, 0];
         const B_1: [u64; 4] = [725501752471715840, 4981570305181876225, 0, 0];
-        let r_128 = Self::from_repr(BigInteger([0xffffffffffffffff, 0xffffffffffffffff, 0, 0])).unwrap();
+        let r128 = Self::from_repr(BigInteger([0xffffffffffffffff, 0xffffffffffffffff, 0, 0])).unwrap();
 
         let sub_borrow = |a: &mut [u64; 4], b: &[u64; 4]| -> ([u64; 4], i8) {
             let borrow = fa::sbb(&mut a[0], b[0], 0);
@@ -436,12 +436,12 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
         let mut k1_neg = false;
         let mut k2_neg = false;
 
-        if k1 > r_128 {
+        if k1 > r128 {
             k1 = minus_k1;
             k1_neg = true;
         }
 
-        if k2 > r_128 {
+        if k2 > r128 {
             k2 = minus_k2;
             k2_neg = true;
         }
