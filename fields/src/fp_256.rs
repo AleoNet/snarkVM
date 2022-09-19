@@ -438,10 +438,12 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
 
         if k1 > r_128 {
             k1 = minus_k1;
+            k1_neg = true;
         }
 
         if k2 > r_128 {
             k2 = minus_k2;
+            k2_neg = true;
         }
 
         (k1, k2, k1_neg, k2_neg)
