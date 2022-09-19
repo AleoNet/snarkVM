@@ -506,15 +506,53 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
-        let mut res = Self::zero();
-        for i in BitIteratorBE::new_without_leading_zeros(other.to_repr()) {
-            res.double_in_place();
-            if i {
-                res += self;
-            }
-        }
+        // let decomposition = other.decompose();
 
-        res
+        // // Prepare tables.
+        // let mut t_1 = Vec::with_capacity(P::L);
+        // let mut t_2 = Vec::with_capacity(P::L);
+        // let double = self.double();
+        // t_1.push(double);
+        // for i in 1..P::L {
+        //     t_1.push(t_1[i - 1] + double);
+        // }
+
+        // for i in 0..P::L {
+        //     t_2.push(t_1[i].glv_endomorphism());
+        // }
+
+        // // Recode scalars.
+        // let (naf_1, naf_2) = decomposition.wnaf();
+        // let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
+        // let max_len = std::cmp::max(len_naf_1, len_naf_2);
+        // let (acc, p_1) = (Self::zero(), Self::zero());
+        // let naf_add = |table: Vec<Self>, naf: i32| {
+        //     if naf != 0 {
+        //         let naf_abs = naf.abs();
+        //         p_1 = table[(naf_abs >> 1) as usize];
+        //         if naf < 0 {
+        //             p_1 = -p_1;
+        //         }
+        //         acc += p_1;
+        //     }
+        // };
+
+        // for i in (0..max_len - 1).rev() {
+        //     if i < len_naf_1 {
+        //         naf_add(t_1, naf_1[i])
+        //     }
+
+        //     if i < len_naf_2 {
+        //         naf_add(t_2, naf_2[i])
+        //     }
+
+        //     if i != 0 {
+        //         acc.double_in_place();
+        //     }
+        // }
+
+        // acc
+        unimplemented!()
     }
 }
 
