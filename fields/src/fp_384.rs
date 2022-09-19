@@ -435,6 +435,11 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     type Parameters = P;
 
     #[inline]
+    fn decompose(&self) -> (Self, Self, bool, bool) {
+        (Fp384::zero(), Fp384::zero(), false, false)
+    }
+
+    #[inline]
     fn from_repr(r: BigInteger) -> Option<Self> {
         let mut r = Fp384(r, PhantomData);
         if r.is_zero() {
