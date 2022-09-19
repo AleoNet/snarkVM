@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{templates::short_weierstrass_jacobian, PairingEngine};
-use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_fields::{Field, FieldParameters, One, PrimeField, SquareRootField, Zero};
+use snarkvm_utilities::{rand::Uniform, serialize::*, BigInteger384, FromBytes, ToBytes, ToMinimalBits};
 
 use core::{
     fmt::{Debug, Display},
@@ -268,6 +268,43 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     const COFACTOR_INV: Self::ScalarField;
     /// The affine generator of the short Weierstrass curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
+
+    // GLV parameters
+    // /// The scalar multiplication window size.
+    // const GLV_WINDOW_SIZE: usize = 4;
+    // /// The GLV table length.
+    // const L: usize = 1 << (Self::GLV_WINDOW_SIZE - 1);
+    // /// The curve parameter `x`.
+    // /// R / q
+    // /// x^2 - 1
+    // const B_1: Self::ScalarField = Self::X.square() - Self::ScalarField::one();
+    // /// x^2
+    // const B_2: Self::ScalarField = Self::X.square();
+    // const LAMBDA: Self::ScalarField = Self::B_1;
+    // const HALF_R: Self::ScalarField =
+    //     Self::ScalarField::from_repr(<Self::ScalarField as PrimeField>::BigInteger::from(0x8000000000000000)).unwrap();
+    // const R_128: Self::ScalarField =
+    //     Self::ScalarField::from_repr(<Self::ScalarField as PrimeField>::BigInteger::from([
+    //         0xffffffffffffffff,
+    //         0xffffffffffffffff,
+    //         0,
+    //         0,
+    //     ]))
+    //     .unwrap();
+    // const PHI_1: Self::BaseField = Field::from_base_prime_field(
+    //     <Self::BaseField as Field>::BasePrimeField::from_repr(
+    //         <<Self::BaseField as Field>::BasePrimeField as PrimeField>::BigInteger::from([
+    //             9586122913090633729,
+    //             4981570305181876224,
+    //             14262076793150106624,
+    //             7033126720376490667,
+    //             699094806891394796,
+    //             0,
+    //         ]),
+    //     )
+    //     .unwrap(),
+    // );
+    // const PHI_2: Self::BaseField = Self::PHI_1.square();
 
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
