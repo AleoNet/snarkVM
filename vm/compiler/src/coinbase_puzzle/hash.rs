@@ -19,13 +19,14 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, CanonicalSerialize};
 
+use anyhow::Result;
 use blake2::Digest;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> DensePolynomial<F> {
-    let input_hash: [u8; 32] = blake2::Blake2b::digest(input).try_into().unwrap();
+pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> Result<DensePolynomial<F>> {
+    let input_hash: [u8; 32] = blake2::Blake2b::digest(input).try_into()?;
     let coefficients = cfg_into_iter!(0..degree)
         .map(|i| {
             let mut input_with_counter = [0u8; 40];
@@ -34,7 +35,7 @@ pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> DensePolynomi
             F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))
         })
         .collect::<Vec<_>>();
-    DensePolynomial::from_coefficients_vec(coefficients)
+    Ok(DensePolynomial::from_coefficients_vec(coefficients))
 }
 
 pub fn hash_commitment<E: PairingEngine>(cm: &Commitment<E>) -> E::Fr {
