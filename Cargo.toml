@@ -102,7 +102,6 @@ cli = [
 ]
 aleo-cli = [ "snarkvm-compiler/aleo-cli" ]
 algorithms = [ "snarkvm-algorithms" ]
-coinbase_puzzle = [ "snarkvm-algorithms/coinbase_puzzle" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]

@@ -34,12 +34,6 @@ path = "benches/crypto_hash/poseidon.rs"
 harness = false
 
 [[bench]]
-name = "coinbase_puzzle"
-path = "benches/coinbase_puzzle/coinbase_puzzle.rs"
-harness = false
-required-features = [ "coinbase_puzzle" ]
-
-[[bench]]
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
@@ -172,9 +166,8 @@ default = [
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
-full = [ "coinbase_puzzle", "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
+full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
 wasm = [
-  "coinbase_puzzle",
   "crypto_hash",
   "fft",
   "msm",
@@ -190,7 +183,6 @@ parallel = [
 ]
 profiler = [ "aleo-std/profiler" ]
 
-coinbase_puzzle = [ "blake2", "crypto_hash", "fft", "msm", "polycommit" ]
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]
