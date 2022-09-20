@@ -399,7 +399,7 @@ impl<E: PairingEngine> KZG10<E> {
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
-    pub(crate) fn open(
+    pub fn open(
         powers: &Powers<E>,
         polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
