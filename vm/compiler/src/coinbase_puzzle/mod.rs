@@ -29,11 +29,10 @@ mod tests;
 use console::{account::Address, prelude::Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
-    msm::VariableBase,
-    polycommit::kzg10::{self, Commitment, Randomness, UniversalParams as SRS, KZG10},
+    polycommit::kzg10::{self, Randomness, UniversalParams as SRS, KZG10},
 };
 use snarkvm_curves::PairingEngine;
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::Zero;
 use snarkvm_utilities::{cfg_iter, ToBytes};
 
 use anyhow::{anyhow, bail, Result};
