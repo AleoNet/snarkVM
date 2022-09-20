@@ -14,14 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+// TODO (raychu86): Rename all objects to be more intuitive.
+
+mod combined_puzzle_solution;
+pub use combined_puzzle_solution::*;
+
+mod partial_prover_solution;
+pub use partial_prover_solution::*;
+
+mod prover_solution;
+pub use prover_solution::*;
+
+use crate::coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle};
 use console::{account::Address, prelude::*};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey},
+    msm::VariableBase,
+    polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey, KZG10},
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use anyhow::Result;
 use std::{
     borrow::Cow,
     collections::BTreeMap,
@@ -44,7 +58,7 @@ pub struct CoinbasePuzzleProvingKey<N: Network> {
     /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<<N::PairingCurve as PairingEngine>::G1Affine>>,
 
-    pub vk: CoinbasePuzzleVerifyingKey<N>,
+    pub vk: VerifierKey<N::PairingCurve>,
 }
 
 impl<N: Network> CoinbasePuzzleProvingKey<N> {
@@ -72,6 +86,7 @@ impl<N: Network> CoinbasePuzzleProvingKey<N> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct EpochInfo {
     pub epoch_number: u64,
+    // TODO (raychu86): Add additional elements to pin the epoch info to a specific block.
 }
 
 impl EpochInfo {
@@ -88,71 +103,5 @@ pub struct EpochChallenge<N: Network> {
 impl<N: Network> EpochChallenge<N> {
     pub fn degree(&self) -> usize {
         self.epoch_polynomial.degree()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ProverPuzzleSolution<N: Network> {
-    pub address: Address<N>,
-    pub nonce: u64,
-    pub commitment: Commitment<N::PairingCurve>,
-    pub proof: Proof<N::PairingCurve>,
-}
-
-impl<N: Network> ToBytes for ProverPuzzleSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)?;
-        self.nonce.write_le(&mut writer)?;
-        self.commitment.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let address = FromBytes::read_le(&mut reader)?;
-        let nonce = u64::read_le(&mut reader)?;
-        let commitment = Commitment::read_le(&mut reader)?;
-        let proof = Proof::read_le(&mut reader)?;
-
-        Ok(Self { address, nonce, commitment, proof })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct CombinedPuzzleSolution<N: Network> {
-    pub individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
-    pub proof: Proof<N::PairingCurve>,
-}
-
-impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
-
-        for individual_puzzle_solution in &self.individual_puzzle_solutions {
-            individual_puzzle_solution.0.write_le(&mut writer)?;
-            individual_puzzle_solution.1.write_le(&mut writer)?;
-            individual_puzzle_solution.2.write_le(&mut writer)?;
-        }
-
-        self.proof.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let individual_puzzle_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
-
-        let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
-        for _ in 0..individual_puzzle_solutions_len {
-            let address = FromBytes::read_le(&mut reader)?;
-            let nonce: u64 = FromBytes::read_le(&mut reader)?;
-            let commitment: Commitment<N::PairingCurve> = FromBytes::read_le(&mut reader)?;
-            individual_puzzle_solutions.push((address, nonce, commitment));
-        }
-
-        let proof = Proof::read_le(&mut reader)?;
-
-        Ok(Self { individual_puzzle_solutions, proof })
     }
 }
