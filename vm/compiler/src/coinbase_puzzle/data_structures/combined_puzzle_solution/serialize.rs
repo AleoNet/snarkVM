@@ -14,100 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-
 use super::*;
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct CombinedPuzzleSolution<N: Network> {
-    pub individual_puzzle_solutions: Vec<PartialProverSolution<N>>,
-    pub proof: Proof<N::PairingCurve>,
-}
-
-impl<N: Network> CombinedPuzzleSolution<N> {
-    pub fn new(individual_puzzle_solutions: Vec<PartialProverSolution<N>>, proof: Proof<N::PairingCurve>) -> Self {
-        Self { individual_puzzle_solutions, proof }
-    }
-
-    pub fn verify(
-        &self,
-        vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_info: &EpochInfo,
-        epoch_challenge: &EpochChallenge<N>,
-    ) -> Result<bool> {
-        if self.individual_puzzle_solutions.is_empty() {
-            return Ok(false);
-        }
-        if self.proof.is_hiding() {
-            return Ok(false);
-        }
-        let polynomials: Vec<_> = cfg_iter!(self.individual_puzzle_solutions)
-            .map(|solution| {
-                // TODO: check difficulty of solution
-                CoinbasePuzzle::sample_solution_polynomial(
-                    epoch_challenge,
-                    epoch_info,
-                    solution.address(),
-                    solution.nonce(),
-                )
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        // Compute challenges
-        let mut fs_challenges =
-            hash_commitments(self.individual_puzzle_solutions.iter().map(|solution| *solution.commitment()));
-        let point = match fs_challenges.pop() {
-            Some(point) => point,
-            None => bail!("Missing challenge point"),
-        };
-
-        // Compute combined evaluation
-        let mut combined_eval = cfg_iter!(polynomials)
-            .zip(&fs_challenges)
-            .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |acc, (poly, challenge)| {
-                acc + (poly.evaluate(point) * challenge)
-            })
-            .sum();
-        combined_eval *= &epoch_challenge.epoch_polynomial.evaluate(point);
-
-        // Compute combined commitment
-        let commitments: Vec<_> =
-            cfg_iter!(self.individual_puzzle_solutions).map(|solution| solution.commitment().0).collect();
-        let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
-        let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
-        let combined_commitment: Commitment<N::PairingCurve> = Commitment(combined_commitment.into());
-        Ok(KZG10::check(vk, &combined_commitment, point, combined_eval, &self.proof)?)
-    }
-}
-
-impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
-
-        for individual_puzzle_solution in &self.individual_puzzle_solutions {
-            individual_puzzle_solution.write_le(&mut writer)?;
-        }
-
-        self.proof.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let individual_puzzle_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
-
-        let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
-        for _ in 0..individual_puzzle_solutions_len {
-            let individual_puzzle_solution: PartialProverSolution<N> = FromBytes::read_le(&mut reader)?;
-            individual_puzzle_solutions.push(individual_puzzle_solution);
-        }
-
-        let proof = Proof::read_le(&mut reader)?;
-
-        Ok(Self { individual_puzzle_solutions, proof })
-    }
-}
 
 impl<N: Network> Serialize for CombinedPuzzleSolution<N> {
     /// Serializes the CombinedPuzzleSolution to a JSON-string or buffer.
@@ -156,29 +63,6 @@ impl<'de, N: Network> Deserialize<'de> for CombinedPuzzleSolution<N> {
     }
 }
 
-impl<N: Network> FromStr for CombinedPuzzleSolution<N> {
-    type Err = Error;
-
-    /// Initializes the block from a JSON-string.
-    fn from_str(combined_puzzle_solution: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(combined_puzzle_solution)?)
-    }
-}
-
-impl<N: Network> Debug for CombinedPuzzleSolution<N> {
-    /// Prints the CombinedPuzzleSolution as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for CombinedPuzzleSolution<N> {
-    /// Displays the CombinedPuzzleSolution as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,7 +76,7 @@ mod tests {
 
         // Sample a new combined puzzle solution.
         let mut individual_puzzle_solutions = vec![];
-        for _ in 0..rng.gen_range(1..100) {
+        for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
@@ -222,7 +106,7 @@ mod tests {
 
         // Sample a new combined puzzle solution.
         let mut individual_puzzle_solutions = vec![];
-        for _ in 0..rng.gen_range(1..100) {
+        for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
