@@ -26,7 +26,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
-use console::prelude::Network;
+use console::{account::Address, prelude::Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
     msm::VariableBase,
@@ -34,7 +34,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::cfg_iter;
+use snarkvm_utilities::{cfg_iter, ToBytes};
 
 use rand::{CryptoRng, Rng};
 use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
@@ -83,13 +83,13 @@ impl<N: Network> CoinbasePuzzle<N> {
     fn sample_solution_polynomial(
         epoch_challenge: &EpochChallenge<N>,
         epoch_info: &EpochInfo,
-        address: &PlaceholderAddress,
+        address: &Address<N>,
         nonce: u64,
     ) -> DensePolynomial<<N::PairingCurve as PairingEngine>::Fr> {
         let poly_input = {
             let mut bytes = [0u8; 48];
             bytes[..8].copy_from_slice(&epoch_info.to_bytes_le());
-            bytes[8..40].copy_from_slice(&address.to_bytes_le());
+            bytes[8..40].copy_from_slice(&address.to_bytes_le().unwrap());
             bytes[40..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
@@ -100,7 +100,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         pk: &CoinbasePuzzleProvingKey<N>,
         epoch_info: &EpochInfo,
         epoch_challenge: &EpochChallenge<N>,
-        address: &PlaceholderAddress,
+        address: &Address<N>,
         nonce: u64,
     ) -> ProverPuzzleSolution<N> {
         let polynomial = Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, nonce);

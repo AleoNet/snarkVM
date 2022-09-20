@@ -80,15 +80,6 @@ impl EpochInfo {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct PlaceholderAddress(pub [u8; 32]);
-
-impl PlaceholderAddress {
-    pub fn to_bytes_le(&self) -> [u8; 32] {
-        self.0
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EpochChallenge<N: Network> {
     pub epoch_polynomial: DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>,
@@ -102,7 +93,7 @@ impl<N: Network> EpochChallenge<N> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProverPuzzleSolution<N: Network> {
-    pub address: PlaceholderAddress,
+    pub address: Address<N>,
     pub nonce: u64,
     pub commitment: Commitment<N::PairingCurve>,
     pub proof: Proof<N::PairingCurve>,
@@ -110,7 +101,7 @@ pub struct ProverPuzzleSolution<N: Network> {
 
 impl<N: Network> ToBytes for ProverPuzzleSolution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.0.write_le(&mut writer)?;
+        self.address.write_le(&mut writer)?;
         self.nonce.write_le(&mut writer)?;
         self.commitment.write_le(&mut writer)?;
         self.proof.write_le(&mut writer)
@@ -119,7 +110,7 @@ impl<N: Network> ToBytes for ProverPuzzleSolution<N> {
 
 impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let address = PlaceholderAddress(FromBytes::read_le(&mut reader)?);
+        let address = FromBytes::read_le(&mut reader)?;
         let nonce = u64::read_le(&mut reader)?;
         let commitment = Commitment::read_le(&mut reader)?;
         let proof = Proof::read_le(&mut reader)?;
@@ -130,7 +121,7 @@ impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedPuzzleSolution<N: Network> {
-    pub individual_puzzle_solutions: Vec<(PlaceholderAddress, u64, Commitment<N::PairingCurve>)>,
+    pub individual_puzzle_solutions: Vec<(Address<N>, u64, Commitment<N::PairingCurve>)>,
     pub proof: Proof<N::PairingCurve>,
 }
 
@@ -139,7 +130,7 @@ impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
         (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
 
         for individual_puzzle_solution in &self.individual_puzzle_solutions {
-            individual_puzzle_solution.0.0.write_le(&mut writer)?;
+            individual_puzzle_solution.0.write_le(&mut writer)?;
             individual_puzzle_solution.1.write_le(&mut writer)?;
             individual_puzzle_solution.2.write_le(&mut writer)?;
         }
@@ -154,7 +145,7 @@ impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
 
         let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
         for _ in 0..individual_puzzle_solutions_len {
-            let address = PlaceholderAddress(FromBytes::read_le(&mut reader)?);
+            let address = FromBytes::read_le(&mut reader)?;
             let nonce: u64 = FromBytes::read_le(&mut reader)?;
             let commitment: Commitment<N::PairingCurve> = FromBytes::read_le(&mut reader)?;
             individual_puzzle_solutions.push((address, nonce, commitment));

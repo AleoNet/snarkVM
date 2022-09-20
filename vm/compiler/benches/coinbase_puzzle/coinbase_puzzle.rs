@@ -18,18 +18,17 @@
 extern crate criterion;
 
 use console::{account::*, network::Testnet3};
-use snarkvm_compiler::{CoinbasePuzzle, EpochChallenge, EpochInfo, PlaceholderAddress, PuzzleConfig};
+use snarkvm_compiler::{CoinbasePuzzle, EpochChallenge, EpochInfo, PuzzleConfig};
 
 use criterion::Criterion;
 use rand::{self, thread_rng, CryptoRng, RngCore};
-use snarkvm_utilities::Uniform;
 
 type CoinbasePuzzleInst = CoinbasePuzzle<Testnet3>;
 
 fn sample_inputs(
     degree: usize,
     rng: &mut (impl CryptoRng + RngCore),
-) -> (EpochInfo, EpochChallenge<Testnet3>, PlaceholderAddress, u64) {
+) -> (EpochInfo, EpochChallenge<Testnet3>, Address<Testnet3>, u64) {
     let (epoch_info, epoch_challenge) = sample_epoch_info_and_challenge(degree, rng);
     let (address, nonce) = sample_address_and_nonce(rng);
     (epoch_info, epoch_challenge, address, nonce)
@@ -44,8 +43,9 @@ fn sample_epoch_info_and_challenge(
     (epoch_info, epoch_challenge)
 }
 
-fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (PlaceholderAddress, u64) {
-    let address = PlaceholderAddress(<[u8; 32]>::rand(rng));
+fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Testnet3>, u64) {
+    let private_key = PrivateKey::new(rng).unwrap();
+    let address = Address::try_from(private_key).unwrap();
     let nonce = rng.next_u64();
     (address, nonce)
 }
