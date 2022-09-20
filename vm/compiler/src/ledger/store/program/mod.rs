@@ -42,7 +42,7 @@ use std::collections::BTreeMap;
 /// // (program_id => (mapping_name => (key => value)))
 /// IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Key, Value>>>
 /// ```
-pub trait ProgramStorage<N: Network>: Clone + Sync {
+pub trait ProgramStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `(program ID, mapping name)` to `mapping ID`.
@@ -55,7 +55,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     type ValueMap: for<'a> Map<'a, Field<N>, Value<N>>;
 
     /// Initializes the program state storage.
-    fn open() -> Result<Self>;
+    fn open(dev: Option<u16>) -> Result<Self>;
 
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap;
@@ -67,6 +67,9 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     fn key_map(&self) -> &Self::KeyMap;
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap;
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16>;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -510,6 +513,8 @@ pub struct ProgramMemory<N: Network> {
     key_map: MemoryMap<Field<N>, Plaintext<N>>,
     /// The value map.
     value_map: MemoryMap<Field<N>, Value<N>>,
+    /// The optional development ID.
+    dev: Option<u16>,
 }
 
 #[rustfmt::skip]
@@ -521,13 +526,14 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     type ValueMap = MemoryMap<Field<N>, Value<N>>;
 
     /// Initializes the program state storage.
-    fn open() -> Result<Self> {
+    fn open(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             program_id_map: MemoryMap::default(),
             mapping_id_map: MemoryMap::default(),
             key_value_id_map: MemoryMap::default(),
             key_map: MemoryMap::default(),
             value_map: MemoryMap::default(),
+            dev,
         })
     }
 
@@ -555,6 +561,11 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     fn value_map(&self) -> &Self::ValueMap {
         &self.value_map
     }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.dev
+    }
 }
 
 /// The program store.
@@ -568,8 +579,8 @@ pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
 
 impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Initializes the program store.
-    pub fn open() -> Result<Self> {
-        Ok(Self { storage: P::open()?, _phantom: PhantomData })
+    pub fn open(dev: Option<u16>) -> Result<Self> {
+        Ok(Self { storage: P::open(dev)?, _phantom: PhantomData })
     }
 
     /// Initializes a program store from storage.
@@ -642,6 +653,11 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
+    }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
     }
 }
 
@@ -886,7 +902,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open().unwrap();
+        let program_store = ProgramMemory::open(None).unwrap();
         // Check the operations.
         check_initialize_insert_remove(&program_store, program_id, mapping_name);
     }
@@ -898,7 +914,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open().unwrap();
+        let program_store = ProgramMemory::open(None).unwrap();
         // Check the operations.
         check_initialize_update_remove(&program_store, program_id, mapping_name);
     }
@@ -910,7 +926,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open().unwrap();
+        let program_store = ProgramMemory::open(None).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -977,7 +993,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open().unwrap();
+        let program_store = ProgramMemory::open(None).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -1040,7 +1056,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open().unwrap();
+        let program_store = ProgramMemory::open(None).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -1103,7 +1119,7 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open().unwrap();
+        let program_store = ProgramMemory::open(None).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.

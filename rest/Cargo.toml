@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-r1cs"
+name = "snarkvm-rest"
 version = "0.9.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "R1CS for a decentralized virtual machine"
+description = "REST API server for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -23,37 +23,33 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-curves]
-path = "../curves"
+[dependencies.snarkvm-compiler]
+path = "../vm/compiler"
 version = "0.9.0"
-default-features = false
 
-[dependencies.snarkvm-fields]
-path = "../fields"
-version = "0.9.0"
-default-features = false
-
-[dependencies.snarkvm-utilities]
-path = "../utilities"
+[dependencies.snarkvm-console]
+path = "../console"
 version = "0.9.0"
 
 [dependencies.anyhow]
 version = "1.0.64"
 
-[dependencies.cfg-if]
-version = "1.0.0"
-
-[dependencies.fxhash]
-version = "0.2.1"
-
 [dependencies.indexmap]
 version = "1.8.2"
 
-[dependencies.itertools]
-version = "0.10.3"
+[dependencies.parking_lot]
+version = "0.12"
 
-[dependencies.thiserror]
-version = "1.0"
+[dependencies.serde]
+version = "1.0.144"
+default-features = false
+features = [ "derive" ]
 
-[features]
-default = [ ]
+[dependencies.tokio]
+version = "1"
+
+[dependencies.tracing]
+version = "0.1"
+
+[dependencies.warp]
+version = "0.3"

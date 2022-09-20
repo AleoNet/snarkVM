@@ -1064,7 +1064,7 @@ finalize compute:
         let mut process = Process::load().unwrap();
 
         // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1161,7 +1161,7 @@ finalize compute:
         let mut process = Process::load().unwrap();
 
         // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1272,7 +1272,7 @@ finalize mint_public:
         let mut process = Process::load().unwrap();
 
         // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();

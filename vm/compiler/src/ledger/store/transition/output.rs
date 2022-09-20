@@ -28,7 +28,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition output storage.
-pub trait OutputStorage<N: Network>: Clone + Sync {
+pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `transition ID` to `output IDs`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
     /// The mapping of `output ID` to `transition ID`.
@@ -47,7 +47,7 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition output storage.
-    fn open() -> Result<Self>;
+    fn open(dev: Option<u16>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -65,6 +65,9 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
     fn record_nonce_map(&self) -> &Self::RecordNonceMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16>;
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
@@ -312,6 +315,8 @@ pub struct OutputMemory<N: Network> {
     record_nonce: MemoryMap<Group<N>, Field<N>>,
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
+    /// The optional development ID.
+    dev: Option<u16>,
 }
 
 #[rustfmt::skip]
@@ -326,7 +331,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Initializes the transition output storage.
-    fn open() -> Result<Self> {
+    fn open(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             id_map: Default::default(),
             reverse_id_map: Default::default(),
@@ -336,6 +341,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
             record: Default::default(),
             record_nonce: Default::default(),
             external_record: Default::default(),
+            dev,
         })
     }
 
@@ -378,6 +384,11 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
     }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.dev
+    }
 }
 
 /// The transition output store.
@@ -401,9 +412,9 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Initializes the transition output store.
-    pub fn open() -> Result<Self> {
+    pub fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize a new transition output storage.
-        let storage = O::open()?;
+        let storage = O::open(dev)?;
         // Return the transition output store.
         Ok(Self {
             constant: storage.constant_map().clone(),
@@ -457,6 +468,11 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
+    }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
     }
 }
 
@@ -609,7 +625,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in crate::ledger::transition::output::test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let output_store = OutputMemory::open().unwrap();
+            let output_store = OutputMemory::open(None).unwrap();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();
@@ -636,7 +652,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in crate::ledger::transition::output::test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let output_store = OutputMemory::open().unwrap();
+            let output_store = OutputMemory::open(None).unwrap();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();
