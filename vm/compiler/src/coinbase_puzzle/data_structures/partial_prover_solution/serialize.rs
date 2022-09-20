@@ -16,68 +16,6 @@
 
 use super::*;
 
-#[derive(Copy, Clone)]
-pub struct PartialProverSolution<N: Network> {
-    pub address: Address<N>,
-    pub nonce: u64,
-    pub commitment: Commitment<N::PairingCurve>,
-}
-
-impl<N: Network> PartialProverSolution<N> {
-    pub fn new(address: Address<N>, nonce: u64, commitment: Commitment<N::PairingCurve>) -> Self {
-        Self { address, nonce, commitment }
-    }
-
-    pub fn address(&self) -> &Address<N> {
-        &self.address
-    }
-
-    pub fn nonce(&self) -> u64 {
-        self.nonce
-    }
-
-    pub fn commitment(&self) -> &Commitment<N::PairingCurve> {
-        &self.commitment
-    }
-}
-
-impl<N: Network> Eq for PartialProverSolution<N> {}
-
-impl<N: Network> PartialEq for PartialProverSolution<N> {
-    /// Implements the `Eq` trait for the PartialProverSolution.
-    fn eq(&self, other: &Self) -> bool {
-        self.address == other.address && self.nonce == other.nonce && self.commitment == other.commitment
-    }
-}
-
-// TODO (raychu86): Use derive Hash. It seems commitment and proof do not derive it properly.
-impl<N: Network> core::hash::Hash for PartialProverSolution<N> {
-    /// Implements the `Hash` trait for the PartialProverSolution.
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.address.hash(state);
-        self.nonce.hash(state);
-        self.commitment.0.hash(state);
-    }
-}
-
-impl<N: Network> ToBytes for PartialProverSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)?;
-        self.nonce.write_le(&mut writer)?;
-        self.commitment.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> FromBytes for PartialProverSolution<N> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let address: Address<N> = FromBytes::read_le(&mut reader)?;
-        let nonce = u64::read_le(&mut reader)?;
-        let commitment = Commitment::read_le(&mut reader)?;
-
-        Ok(Self { address, nonce, commitment })
-    }
-}
-
 impl<N: Network> Serialize for PartialProverSolution<N> {
     /// Serializes the PartialProverSolution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -113,29 +51,6 @@ impl<'de, N: Network> Deserialize<'de> for PartialProverSolution<N> {
                 FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial prover solution")
             }
         }
-    }
-}
-
-impl<N: Network> FromStr for PartialProverSolution<N> {
-    type Err = Error;
-
-    /// Initializes the PartialProverSolution from a JSON-string.
-    fn from_str(partial_prover_solution: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(partial_prover_solution)?)
-    }
-}
-
-impl<N: Network> Debug for PartialProverSolution<N> {
-    /// Prints the PartialProverSolution as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for PartialProverSolution<N> {
-    /// Displays the PartialProverSolution as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
 
