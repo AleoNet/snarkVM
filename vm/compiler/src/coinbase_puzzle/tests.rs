@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_curves::bls12_377::Bls12_377;
+use console::network::Testnet3;
 use snarkvm_utilities::Uniform;
 
 use rand::RngCore;
@@ -26,11 +26,11 @@ fn test_coinbase_puzzle() {
     let mut rng = rand::thread_rng();
 
     let max_config = PuzzleConfig { degree: max_degree, difficulty: 0 };
-    let srs = CoinbasePuzzle::<Bls12_377>::setup(max_config, &mut rng);
+    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config, &mut rng);
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
         let config = PuzzleConfig { degree, difficulty: 0 };
-        let (pk, vk) = CoinbasePuzzle::trim(&srs, config);
+        let (pk, vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, config);
         let epoch_info = EpochInfo { epoch_number: rng.next_u64() };
         let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree);
         for batch_size in 1..10 {
