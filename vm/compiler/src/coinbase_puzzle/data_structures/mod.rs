@@ -84,14 +84,25 @@ impl<N: Network> CoinbasePuzzleProvingKey<N> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct EpochInfo {
+pub struct EpochInfo<N: Network> {
     pub epoch_number: u64,
-    // TODO (raychu86): Add additional elements to pin the epoch info to a specific block.
+    pub previous_block_hash: N::BlockHash,
 }
 
-impl EpochInfo {
-    pub fn to_bytes_le(&self) -> [u8; 8] {
-        self.epoch_number.to_le_bytes()
+impl<N: Network> FromBytes for EpochInfo<N> {
+    /// Reads the locator from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let epoch_number = FromBytes::read_le(&mut reader)?;
+        let previous_block_hash = FromBytes::read_le(&mut reader)?;
+        Ok(Self { epoch_number, previous_block_hash })
+    }
+}
+
+impl<N: Network> ToBytes for EpochInfo<N> {
+    /// Writes the locator to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.epoch_number.write_le(&mut writer)?;
+        self.previous_block_hash.write_le(&mut writer)
     }
 }
 

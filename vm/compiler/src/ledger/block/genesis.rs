@@ -48,7 +48,7 @@ impl<N: Network> Block<N> {
         let coinbase_proof = {
             let (pk, vk) = CoinbasePuzzle::<N>::load()?;
 
-            let epoch_info = EpochInfo { epoch_number: 0 };
+            let epoch_info = EpochInfo { epoch_number: 0, previous_block_hash: Default::default() };
             let epoch_challenge = CoinbasePuzzle::<N>::init_for_epoch(&epoch_info, FIXED_DEGREE)?;
             let nonce = u64::rand(rng);
 

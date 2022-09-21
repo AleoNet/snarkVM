@@ -87,8 +87,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         Self::trim(&*universal_srs, max_config)
     }
 
-    pub fn init_for_epoch(epoch_info: &EpochInfo, degree: usize) -> Result<EpochChallenge<N>> {
-        let poly_input = &epoch_info.to_bytes_le();
+    pub fn init_for_epoch(epoch_info: &EpochInfo<N>, degree: usize) -> Result<EpochChallenge<N>> {
+        let poly_input = &epoch_info.to_bytes_le()?;
         Ok(EpochChallenge {
             epoch_polynomial: hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(poly_input, degree)?,
         })
@@ -96,15 +96,15 @@ impl<N: Network> CoinbasePuzzle<N> {
 
     fn sample_solution_polynomial(
         epoch_challenge: &EpochChallenge<N>,
-        epoch_info: &EpochInfo,
+        epoch_info: &EpochInfo<N>,
         address: &Address<N>,
         nonce: u64,
     ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
         let poly_input = {
-            let mut bytes = [0u8; 48];
-            bytes[..8].copy_from_slice(&epoch_info.to_bytes_le());
-            bytes[8..40].copy_from_slice(&address.to_bytes_le()?);
-            bytes[40..].copy_from_slice(&nonce.to_le_bytes());
+            let mut bytes = [0u8; 80];
+            bytes[..40].copy_from_slice(&epoch_info.to_bytes_le()?);
+            bytes[40..72].copy_from_slice(&address.to_bytes_le()?);
+            bytes[72..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
         hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree())
@@ -112,7 +112,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
     pub fn prove(
         pk: &CoinbasePuzzleProvingKey<N>,
-        epoch_info: &EpochInfo,
+        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
         address: &Address<N>,
         nonce: u64,
@@ -136,7 +136,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
     pub fn accumulate(
         pk: &CoinbasePuzzleProvingKey<N>,
-        epoch_info: &EpochInfo,
+        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverPuzzleSolution<N>],
     ) -> Result<CombinedPuzzleSolution<N>> {

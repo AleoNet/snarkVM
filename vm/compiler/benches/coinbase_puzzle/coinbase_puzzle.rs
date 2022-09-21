@@ -28,7 +28,7 @@ type CoinbasePuzzleInst = CoinbasePuzzle<Testnet3>;
 fn sample_inputs(
     degree: usize,
     rng: &mut (impl CryptoRng + RngCore),
-) -> (EpochInfo, EpochChallenge<Testnet3>, Address<Testnet3>, u64) {
+) -> (EpochInfo<Testnet3>, EpochChallenge<Testnet3>, Address<Testnet3>, u64) {
     let (epoch_info, epoch_challenge) = sample_epoch_info_and_challenge(degree, rng);
     let (address, nonce) = sample_address_and_nonce(rng);
     (epoch_info, epoch_challenge, address, nonce)
@@ -37,8 +37,8 @@ fn sample_inputs(
 fn sample_epoch_info_and_challenge(
     degree: usize,
     rng: &mut (impl CryptoRng + RngCore),
-) -> (EpochInfo, EpochChallenge<Testnet3>) {
-    let epoch_info = EpochInfo { epoch_number: rng.next_u64() };
+) -> (EpochInfo<Testnet3>, EpochChallenge<Testnet3>) {
+    let epoch_info = EpochInfo { epoch_number: rng.next_u64(), previous_block_hash: Default::default() };
     let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree).unwrap();
     (epoch_info, epoch_challenge)
 }
@@ -72,7 +72,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 5, 1 << 8, 1 << 12] {
+    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 14] {
         c.bench_function(&format!("CoinbasePuzzle::Prove {degree}"), |b| {
             let config = PuzzleConfig { difficulty: 0, degree };
             let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
@@ -135,7 +135,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
 criterion_group! {
     name = coinbase_puzzle;
     config = Criterion::default().sample_size(10);
-    targets = coinbase_puzzle_trim, coinbase_puzzle_prove, coinbase_puzzle_accumulate, coinbase_puzzle_verify,
+    targets = coinbase_puzzle_prove, coinbase_puzzle_verify
 }
 
 criterion_main!(coinbase_puzzle);

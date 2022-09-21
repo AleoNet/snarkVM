@@ -121,8 +121,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Returns the current epoch info.
-    pub fn get_epoch_info(&self) -> EpochInfo {
-        EpochInfo { epoch_number: self.latest_round().saturating_add(1) }
+    pub fn get_epoch_info(&self) -> EpochInfo<N> {
+        EpochInfo { epoch_number: self.latest_round().saturating_add(1), previous_block_hash: self.latest_hash() }
     }
 
     /// Returns the current epoch challenge.

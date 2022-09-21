@@ -35,7 +35,7 @@ impl<N: Network> ProverPuzzleSolution<N> {
     pub fn verify(
         &self,
         vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_info: &EpochInfo,
+        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
     ) -> Result<bool> {
         if self.proof.is_hiding() {
