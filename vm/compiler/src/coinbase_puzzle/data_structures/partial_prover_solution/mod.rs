@@ -19,6 +19,7 @@ mod serialize;
 mod string;
 
 use super::*;
+use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 
 /// The partial prover solution for the coinbase puzzle.
 #[derive(Copy, Clone)]
@@ -43,6 +44,11 @@ impl<N: Network> PartialProverSolution<N> {
 
     pub fn commitment(&self) -> &Commitment<N::PairingCurve> {
         &self.commitment
+    }
+
+    /// Returns the difficulty of the prover solution.
+    pub fn to_difficulty(&self) -> Result<u64> {
+        Ok(sha256d_to_u64(&self.commitment.to_bytes_le()?))
     }
 }
 

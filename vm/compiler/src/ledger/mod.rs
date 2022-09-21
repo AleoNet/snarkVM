@@ -75,7 +75,7 @@ use rayon::prelude::*;
 const BLOCKS_DEPTH: u8 = 32;
 
 // TODO (raychu86): Select the degree properly.
-const FIXED_DEGREE: usize = 5;
+const FIXED_DEGREE: usize = 1 << 12;
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;

@@ -66,6 +66,11 @@ impl<N: Network> ProverPuzzleSolution<N> {
     pub fn proof(&self) -> &Proof<N::PairingCurve> {
         &self.proof
     }
+
+    /// Returns the difficulty of the prover solution.
+    pub fn to_difficulty(&self) -> Result<u64> {
+        self.partial_solution.to_difficulty()
+    }
 }
 
 impl<N: Network> Eq for ProverPuzzleSolution<N> {}
