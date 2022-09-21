@@ -106,6 +106,20 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
     }
 
+    /// Returns the block coinbase proof for the given block height.
+    pub fn get_coinbase_proof(&self, height: u32) -> Result<CombinedPuzzleSolution<N>> {
+        // Retrieve the block hash.
+        let block_hash = match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("Block {height} does not exist in storage"),
+        };
+        // Retrieve the block coinbase proof.
+        match self.blocks.get_block_coinbase_proof(&block_hash)? {
+            Some(coinbase_proof) => Ok(coinbase_proof),
+            None => bail!("Missing coinbase proof for block {height}"),
+        }
+    }
+
     /// Returns the current epoch info.
     pub fn get_epoch_info(&self) -> EpochInfo {
         EpochInfo { epoch_number: self.latest_round().saturating_add(1) }
