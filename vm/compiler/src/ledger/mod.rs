@@ -45,8 +45,14 @@ mod iterators;
 mod latest;
 
 use crate::{
-    program::Program, CoinbasePuzzle, CoinbasePuzzleProvingKey, CoinbasePuzzleVerifyingKey, CombinedPuzzleSolution,
-    EpochChallenge, EpochInfo, ProverPuzzleSolution,
+    program::Program,
+    CoinbasePuzzle,
+    CoinbasePuzzleProvingKey,
+    CoinbasePuzzleVerifyingKey,
+    CombinedPuzzleSolution,
+    EpochChallenge,
+    EpochInfo,
+    ProverPuzzleSolution,
 };
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},

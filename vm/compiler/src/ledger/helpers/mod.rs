@@ -19,18 +19,8 @@
 // TODO (raychu86): Handle downcasting.
 
 pub mod helpers {
-    /// Calculate the anchor reward.
-    pub fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u64>() -> u64 {
-        let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME, 10);
-
-        let numerator = 2 * STARTING_SUPPLY;
-        let denominator = block_height_around_year_10 * (block_height_around_year_10 + 1);
-
-        (numerator as f64 / denominator as f64).floor() as u64
-    }
-
     /// Calculate the staking reward, given the starting supply and anchor time.
-    pub fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u64>() -> u64 {
+    pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u64>() -> u64 {
         // The staking percentage at genesis.
         const STAKING_PERCENTAGE: f64 = 0.025f64; // 2.5%
 
@@ -42,7 +32,7 @@ pub mod helpers {
     }
 
     /// Calculate the coinbase reward for a given block.
-    pub fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+    pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
         num_validators: u64,
         timestamp: u64,
         block_height: u64,
@@ -57,7 +47,7 @@ pub mod helpers {
     }
 
     /// Calculate the coinbase target for the given block height.
-    pub fn coinbase_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+    pub(crate) fn coinbase_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
         previous_coinbase_target: u64,
         num_validators: u64,
         timestamp: u64,
@@ -75,7 +65,7 @@ pub mod helpers {
     }
 
     /// Calculate the minimum prover target for the given block height.
-    pub fn prover_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+    pub(crate) fn prover_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
         previous_prover_target: u64,
         num_validators: u64,
         timestamp: u64,
@@ -90,6 +80,16 @@ pub mod helpers {
         } else {
             ((previous_prover_target as f64) * 2f64.powf(-1f64 * factor)) as u64
         }
+    }
+
+    /// Calculate the anchor reward.
+    pub(crate) fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u64>() -> u64 {
+        let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME, 10);
+
+        let numerator = 2 * STARTING_SUPPLY;
+        let denominator = block_height_around_year_10 * (block_height_around_year_10 + 1);
+
+        (numerator as f64 / denominator as f64).floor() as u64
     }
 
     /// Calculate the factor used in the target adjustment algorithm and coinbase reward.
