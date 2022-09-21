@@ -20,8 +20,8 @@ pub use block::*;
 pub mod map;
 pub use map::*;
 
-mod rewards;
-pub use rewards::*;
+mod helpers;
+pub use helpers::*;
 
 mod state_path;
 pub use state_path::*;
@@ -45,14 +45,8 @@ mod iterators;
 mod latest;
 
 use crate::{
-    program::Program,
-    CoinbasePuzzle,
-    CoinbasePuzzleProvingKey,
-    CoinbasePuzzleVerifyingKey,
-    CombinedPuzzleSolution,
-    EpochChallenge,
-    EpochInfo,
-    ProverPuzzleSolution,
+    program::Program, CoinbasePuzzle, CoinbasePuzzleProvingKey, CoinbasePuzzleVerifyingKey, CombinedPuzzleSolution,
+    EpochChallenge, EpochInfo, ProverPuzzleSolution,
 };
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
@@ -410,7 +404,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             &prover_solutions,
         )?;
 
-        // TODO (raychu86): Pay out rewards to the provers.
+        // TODO (raychu86): Pay out helpers to the provers.
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;

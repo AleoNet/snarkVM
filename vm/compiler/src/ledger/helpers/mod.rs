@@ -18,12 +18,10 @@
 
 // TODO (raychu86): Handle downcasting.
 
-pub struct BlockRewards;
-
-impl BlockRewards {
+pub mod helpers {
     /// Calculate the anchor reward.
     pub fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u64>() -> u64 {
-        let block_height_around_year_10 = Self::estimated_block_height(ANCHOR_TIME, 10);
+        let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME, 10);
 
         let numerator = 2 * STARTING_SUPPLY;
         let denominator = block_height_around_year_10 * (block_height_around_year_10 + 1);
@@ -36,7 +34,7 @@ impl BlockRewards {
         // The staking percentage at genesis.
         const STAKING_PERCENTAGE: f64 = 0.025f64; // 2.5%
 
-        let block_height_around_year_1 = Self::estimated_block_height(ANCHOR_TIME, 1);
+        let block_height_around_year_1 = estimated_block_height(ANCHOR_TIME, 1);
 
         let reward = (STARTING_SUPPLY as f64 * STAKING_PERCENTAGE) / block_height_around_year_1 as f64;
 
@@ -49,51 +47,53 @@ impl BlockRewards {
         timestamp: u64,
         block_height: u64,
     ) -> f64 {
-        let block_height_around_year_10 = Self::estimated_block_height(ANCHOR_TIME, 10);
+        let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME, 10);
 
         let max = std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0);
-        let anchor_reward = Self::anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
-        let factor = Self::factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
+        let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+        let factor = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
 
         (max * anchor_reward) as f64 * 2f64.powf(-1f64 * factor)
     }
 
     /// Calculate the coinbase target for the given block height.
-    fn coinbase_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+    pub fn coinbase_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
         previous_coinbase_target: u64,
         num_validators: u64,
         timestamp: u64,
         block_height: u64,
     ) -> u64 {
-        let factor = Self::factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
+        let factor = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
 
         // TODO (raychu86): Check precision.
 
-        match factor {
-            0.0 => previous_coinbase_target,
-            _ => ((previous_coinbase_target as f64) * 2f64.powf(-1f64 * factor)) as u64,
+        if factor == 0.0 {
+            previous_coinbase_target
+        } else {
+            ((previous_coinbase_target as f64) * 2f64.powf(-1f64 * factor)) as u64
         }
     }
 
     /// Calculate the minimum prover target for the given block height.
-    fn prover_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+    pub fn prover_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
         previous_prover_target: u64,
         num_validators: u64,
         timestamp: u64,
         block_height: u64,
     ) -> u64 {
-        let factor = Self::factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
+        let factor = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
 
         // TODO (raychu86): Check precision.
 
-        match factor {
-            0.0 => previous_prover_target,
-            _ => ((previous_prover_target as f64) * 2f64.powf(-1f64 * factor)) as u64,
+        if factor == 0.0 {
+            previous_prover_target
+        } else {
+            ((previous_prover_target as f64) * 2f64.powf(-1f64 * factor)) as u64
         }
     }
 
     /// Calculate the factor used in the target adjustment algorithm and coinbase reward.
-    fn factor<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+    pub(crate) fn factor<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
         num_validators: u64,
         timestamp: u64,
         block_height: u64,
@@ -105,7 +105,7 @@ impl BlockRewards {
     }
 
     /// Returns the estimated block height after a given number of years for a specific anchor time.
-    fn estimated_block_height(anchor_time: u64, num_years: u32) -> u64 {
+    pub(crate) fn estimated_block_height(anchor_time: u64, num_years: u32) -> u64 {
         const SECONDS_IN_A_YEAR: u64 = 60 * 60 * 24 * 365;
 
         let estimated_blocks_in_a_year = SECONDS_IN_A_YEAR / anchor_time;
@@ -117,6 +117,7 @@ impl BlockRewards {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use helpers::*;
     use snarkvm_utilities::TestRng;
 
     use rand::Rng;
@@ -129,40 +130,40 @@ mod tests {
 
     #[test]
     fn test_anchor_reward() {
-        let reward = BlockRewards::anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+        let reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
         assert_eq!(reward, 4);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = BlockRewards::anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
+        let larger_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = BlockRewards::anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
+        let smaller_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
         assert!(reward > smaller_reward);
     }
 
     #[test]
     fn test_staking_reward() {
-        let reward = BlockRewards::staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+        let reward = staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
         assert_eq!(reward, 11_891_171);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = BlockRewards::staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
+        let larger_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = BlockRewards::staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
+        let smaller_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
         assert!(reward > smaller_reward);
     }
 
     #[test]
     fn test_coinbase_reward() {
-        let estimated_blocks_in_10_years = BlockRewards::estimated_block_height(ANCHOR_TIME, 10);
+        let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME, 10);
 
         let mut block_height = 1;
         let mut timestamp = ANCHOR_TIMESTAMP;
 
-        let mut previous_reward = BlockRewards::coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+        let mut previous_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
             NUM_GATES_PER_CREDIT,
             timestamp,
             block_height,
@@ -172,7 +173,7 @@ mod tests {
         timestamp = ANCHOR_TIMESTAMP + block_height * ANCHOR_TIME;
 
         while block_height < estimated_blocks_in_10_years {
-            let reward = BlockRewards::coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 NUM_GATES_PER_CREDIT,
                 timestamp,
                 block_height,
@@ -187,14 +188,14 @@ mod tests {
 
     #[test]
     fn test_coinbase_reward_after_10_years() {
-        let estimated_blocks_in_10_years = BlockRewards::estimated_block_height(ANCHOR_TIME, 10);
+        let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME, 10);
 
         let mut block_height = estimated_blocks_in_10_years;
 
         for _ in 0..10 {
             let timestamp = ANCHOR_TIMESTAMP + block_height * ANCHOR_TIME;
 
-            let reward = BlockRewards::coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 NUM_GATES_PER_CREDIT,
                 timestamp,
                 block_height,
@@ -214,17 +215,17 @@ mod tests {
         for _ in 0..10 {
             // Factor is 0 when the timestamp is as expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + block_height * ANCHOR_TIME;
-            let f = BlockRewards::factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
+            let f = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
             assert_eq!(f, 0.0);
 
             // Factor greater than 0 when the timestamp is greater than expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + (block_height + 1) * ANCHOR_TIME;
-            let f = BlockRewards::factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
+            let f = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
             assert!(f > 0.0);
 
             // Factor less than 0 when the timestamp is less than expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + (block_height - 1) * ANCHOR_TIME;
-            let f = BlockRewards::factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
+            let f = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
             assert!(f < 0.0);
 
             block_height *= 2;
@@ -244,54 +245,54 @@ mod tests {
         for _ in 0..10 {
             // Targets stay the same when the timestamp is as expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + block_height * ANCHOR_TIME;
-            let coinbase_target = BlockRewards::coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_coinbase_target,
                 num_validators,
                 timestamp,
                 block_height,
             );
-            let prover_target = BlockRewards::prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_prover_target = prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_prover_target,
                 num_validators,
                 timestamp,
                 block_height,
             );
-            assert_eq!(coinbase_target, previous_coinbase_target);
-            assert_eq!(prover_target, previous_prover_target);
+            assert_eq!(new_coinbase_target, previous_coinbase_target);
+            assert_eq!(new_prover_target, previous_prover_target);
 
             // Targets decrease when the timestamp is greater than expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + (block_height + 1) * ANCHOR_TIME;
-            let coinbase_target = BlockRewards::coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_coinbase_target,
                 num_validators,
                 timestamp,
                 block_height,
             );
-            let prover_target = BlockRewards::prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_prover_target = prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_prover_target,
                 num_validators,
                 timestamp,
                 block_height,
             );
-            assert!(coinbase_target < previous_coinbase_target);
-            assert!(prover_target < previous_prover_target);
+            assert!(new_coinbase_target < previous_coinbase_target);
+            assert!(new_prover_target < previous_prover_target);
 
             // Targets increase when the timestamp is less than expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + (block_height - 1) * ANCHOR_TIME;
-            let coinbase_target = BlockRewards::coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_coinbase_target,
                 num_validators,
                 timestamp,
                 block_height,
             );
-            let prover_target = BlockRewards::prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_prover_target = prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_prover_target,
                 num_validators,
                 timestamp,
                 block_height,
             );
-            assert!(coinbase_target > previous_coinbase_target);
-            assert!(prover_target > previous_prover_target);
+            assert!(new_coinbase_target > previous_coinbase_target);
+            assert!(new_prover_target > previous_prover_target);
 
             block_height += 1;
         }
