@@ -148,7 +148,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Return the size of a domain that is large enough for evaluations of a polynomial
     /// having `num_coeffs` coefficients.
     pub fn compute_size_of_domain(num_coeffs: usize) -> Option<usize> {
-        let size = num_coeffs.next_power_of_two();
+        let size = num_coeffs.checked_next_power_of_two()?;
         if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY { Some(size) } else { None }
     }
 
