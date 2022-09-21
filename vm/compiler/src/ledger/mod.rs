@@ -41,7 +41,16 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::program::Program;
+use crate::{
+    program::Program,
+    CoinbasePuzzle,
+    CoinbasePuzzleProvingKey,
+    CoinbasePuzzleVerifyingKey,
+    CombinedPuzzleSolution,
+    EpochChallenge,
+    EpochInfo,
+    ProverPuzzleSolution,
+};
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
@@ -52,8 +61,8 @@ use console::{
 use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
-use indexmap::IndexMap;
-use std::borrow::Cow;
+use indexmap::{IndexMap, IndexSet};
+use std::{borrow::Cow, sync::Arc};
 use time::OffsetDateTime;
 
 #[cfg(feature = "parallel")]
@@ -61,6 +70,9 @@ use rayon::prelude::*;
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
+
+// TODO (raychu86): Select the degree properly.
+const FIXED_DEGREE: usize = 5;
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
@@ -102,6 +114,14 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     validators: IndexMap<Address<N>, ()>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
+
+    /// The coinbase puzzle proving key.
+    coinbase_puzzle_proving_key: Arc<CoinbasePuzzleProvingKey<N>>,
+    /// The coinbase puzzle verifying key.
+    coinbase_puzzle_verifying_key: Arc<CoinbasePuzzleVerifyingKey<N>>,
+    /// The memory pool of proposed coinbase puzzle solutions for the current epoch.
+    prover_puzzle_memory_pool: IndexSet<ProverPuzzleSolution<N>>,
+
     /// The VM state.
     vm: VM<N, P>,
     // /// The mapping of program IDs to their global state.
@@ -133,6 +153,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Genesis block already exists in the ledger.");
         }
 
+        // Load the coinbase puzzle proving and verifying key.
+        let (coinbase_puzzle_proving_key, coinbase_puzzle_verifying_key) = CoinbasePuzzle::<N>::load()
+            .map(|(proving_key, verifying_key)| (Arc::new(proving_key), Arc::new(verifying_key)))?;
+
         // Initialize the ledger.
         let mut ledger = Self {
             current_hash: Default::default(),
@@ -146,6 +170,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: [(address, ())].into_iter().collect(),
             vm,
             memory_pool: Default::default(),
+            coinbase_puzzle_proving_key,
+            coinbase_puzzle_verifying_key,
+            prover_puzzle_memory_pool: Default::default(),
         };
 
         // Add the genesis block.
@@ -170,6 +197,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Initialize a new VM.
         let vm = VM::<N, P>::from(&blocks, store)?;
 
+        // Load the coinbase puzzle proving and verifying key.
+        let (coinbase_puzzle_proving_key, coinbase_puzzle_verifying_key) = CoinbasePuzzle::<N>::load()
+            .map(|(proving_key, verifying_key)| (Arc::new(proving_key), Arc::new(verifying_key)))?;
+
         // Initialize the ledger.
         let mut ledger = Self {
             current_hash: Default::default(),
@@ -183,6 +214,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: Default::default(),
             vm,
             memory_pool: Default::default(),
+            coinbase_puzzle_proving_key,
+            coinbase_puzzle_verifying_key,
+            prover_puzzle_memory_pool: Default::default(),
         };
 
         // Fetch the latest height.
@@ -315,11 +349,65 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Appends the given prover solution to the memory pool.
+    pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
+        let epoch_info = self.get_epoch_info();
+        let epoch_challenge = self.get_epoch_challenge(FIXED_DEGREE)?;
+
+        // Ensure that the prover puzzle is valid for the given epoch.
+        if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
+            bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
+        }
+
+        // Insert the prover puzzle to the memory pool.
+        if !self.prover_puzzle_memory_pool.insert(prover_puzzle_solution) {
+            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment().0);
+        }
+
+        Ok(())
+    }
+
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // TODO (raychu86): Add logic to transaction selection from the mempool.
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
+
+        // Accumulate prover puzzle solutions from the mempool.
+        let mut prover_solutions = self.prover_puzzle_memory_pool.iter().cloned().collect::<Vec<_>>();
+
+        // If there are no prover solutions in the mempool, generate one.
+        if prover_solutions.is_empty() {
+            let epoch_info = self.get_epoch_info();
+            let epoch_challenge = self.get_epoch_challenge(FIXED_DEGREE)?;
+            let nonce = u64::rand(rng);
+            let address = self.get_block(0)?.signature().to_address();
+            let prover_puzzle_solution = CoinbasePuzzle::prove(
+                &self.coinbase_puzzle_proving_key,
+                &epoch_info,
+                &epoch_challenge,
+                &address,
+                nonce,
+            )?;
+
+            // Verify the prover solution.
+            if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
+                bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
+            }
+
+            prover_solutions.push(prover_puzzle_solution);
+        }
+
+        let epoch_info = self.get_epoch_info();
+        let epoch_challenge = self.get_epoch_challenge(FIXED_DEGREE)?;
+        let _coinbase_proof = CoinbasePuzzle::accumulate(
+            &self.coinbase_puzzle_proving_key,
+            &epoch_info,
+            &epoch_challenge,
+            &prover_solutions,
+        )?;
+
+        // TODO (raychu86): Pay out rewards to the provers.
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
@@ -574,6 +662,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 ledger.memory_pool.remove(transaction_id);
             }
 
+            // Clear the coinbase memory pool of the coinbase proofs
+            ledger.prover_puzzle_memory_pool.clear();
+
             *self = Self {
                 current_hash: ledger.current_hash,
                 current_height: ledger.current_height,
@@ -585,6 +676,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 validators: ledger.validators,
                 vm: ledger.vm,
                 memory_pool: ledger.memory_pool,
+                coinbase_puzzle_proving_key: ledger.coinbase_puzzle_proving_key,
+                coinbase_puzzle_verifying_key: ledger.coinbase_puzzle_verifying_key,
+                prover_puzzle_memory_pool: ledger.prover_puzzle_memory_pool,
             };
         }
 

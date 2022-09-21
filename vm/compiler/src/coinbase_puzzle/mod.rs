@@ -26,6 +26,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
+use crate::UniversalSRS;
 use console::{account::Address, prelude::Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
@@ -73,6 +74,17 @@ impl<N: Network> CoinbasePuzzle<N> {
         let pk =
             CoinbasePuzzleProvingKey { powers_of_beta_g, lagrange_bases_at_beta_g: lagrange_basis_map, vk: vk.clone() };
         Ok((pk, vk))
+    }
+
+    /// Load the coinbase puzzle proving and verifying keys.
+    pub fn load() -> Result<(CoinbasePuzzleProvingKey<N>, CoinbasePuzzleVerifyingKey<N>)> {
+        // Load the universal SRS.
+        let universal_srs = UniversalSRS::<N>::load()?;
+
+        let max_degree = 1 << 15;
+        let max_config = PuzzleConfig { degree: max_degree, difficulty: 0 };
+
+        Self::trim(&*universal_srs, max_config)
     }
 
     pub fn init_for_epoch(epoch_info: &EpochInfo, degree: usize) -> Result<EpochChallenge<N>> {

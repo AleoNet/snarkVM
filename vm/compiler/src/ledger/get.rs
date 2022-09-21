@@ -99,11 +99,21 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             Some(block_hash) => block_hash,
             None => bail!("Block {height} does not exist in storage"),
         };
-        // Retrieve the block transaction.
+        // Retrieve the block signature.
         match self.blocks.get_block_signature(&block_hash)? {
             Some(signature) => Ok(signature),
             None => bail!("Missing signature for block {height}"),
         }
+    }
+
+    /// Returns the current epoch info.
+    pub fn get_epoch_info(&self) -> EpochInfo {
+        EpochInfo { epoch_number: self.latest_round().saturating_add(1) }
+    }
+
+    /// Returns the current epoch challenge.
+    pub fn get_epoch_challenge(&self, degree: usize) -> Result<EpochChallenge<N>> {
+        CoinbasePuzzle::init_for_epoch(&self.get_epoch_info(), degree)
     }
 }
 
