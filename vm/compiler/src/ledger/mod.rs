@@ -20,6 +20,9 @@ pub use block::*;
 pub mod map;
 pub use map::*;
 
+mod rewards;
+pub use rewards::*;
+
 mod state_path;
 pub use state_path::*;
 
