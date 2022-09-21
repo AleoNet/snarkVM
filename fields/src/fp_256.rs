@@ -378,8 +378,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
 
     #[inline]
     fn decompose(&self) -> (Self, Self, bool, bool) {
-        // TODO: THIS ISNT CORRECT
-        const Q_1: [u64; 4] = [725501752471715840, 4981570305181876225, 0, 0];
+        const Q_1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
         const B_1: [u64; 4] = [725501752471715840, 4981570305181876225, 0, 0];
         let r128 = Self::from_repr(BigInteger([0xffffffffffffffff, 0xffffffffffffffff, 0, 0])).unwrap();
 
