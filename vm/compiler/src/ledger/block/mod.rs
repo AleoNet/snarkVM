@@ -26,6 +26,7 @@ mod serialize;
 mod string;
 
 use crate::{
+    coinbase_puzzle::CombinedPuzzleSolution,
     ledger::{vm::VM, Origin, Transaction, Transition},
     process::{Deployment, Execution},
 };
@@ -48,6 +49,10 @@ pub struct Block<N: Network> {
     transactions: Transactions<N>,
     /// The signature for this block.
     signature: Signature<N>,
+
+    // TODO (raychu86): Add this into the block hash.
+    /// The coinbase proof.
+    coinbase_proof: CombinedPuzzleSolution<N>,
 }
 
 impl<N: Network> Block<N> {
@@ -57,6 +62,7 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
+        coinbase_proof: CombinedPuzzleSolution<N>,
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the block is not empty.
@@ -70,7 +76,7 @@ impl<N: Network> Block<N> {
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature, coinbase_proof })
     }
 
     /// Initializes a new block from a given previous hash, header, and transactions list.
@@ -79,6 +85,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         transactions: Transactions<N>,
         signature: Signature<N>,
+        coinbase_proof: CombinedPuzzleSolution<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
@@ -88,8 +95,11 @@ impl<N: Network> Block<N> {
         let address = signature.to_address();
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+
+        // TODO (raychu86): Ensure the coinbase proof is valid.
+
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature, coinbase_proof })
     }
 }
 
@@ -107,6 +117,11 @@ impl<N: Network> Block<N> {
     /// Returns the signature.
     pub const fn signature(&self) -> &Signature<N> {
         &self.signature
+    }
+
+    /// Returns the coinbase proof.
+    pub const fn coinbase_proof(&self) -> &CombinedPuzzleSolution<N> {
+        &self.coinbase_proof
     }
 }
 

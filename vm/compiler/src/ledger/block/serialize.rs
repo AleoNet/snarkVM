@@ -21,12 +21,13 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 5)?;
+                let mut block = serializer.serialize_struct("Block", 6)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("transactions", &self.transactions)?;
                 block.serialize_field("signature", &self.signature)?;
+                block.serialize_field("coinbase_proof", &self.coinbase_proof)?;
                 block.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -49,6 +50,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     serde_json::from_value(block["header"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["transactions"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["signature"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["coinbase_proof"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 
