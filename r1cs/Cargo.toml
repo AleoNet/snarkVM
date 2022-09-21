@@ -50,7 +50,7 @@ version = "0.2.1"
 version = "1.8.2"
 
 [dependencies.itertools]
-version = "0.10.3"
+version = "0.10.5"
 
 [dependencies.thiserror]
 version = "1.0"
