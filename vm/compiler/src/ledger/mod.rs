@@ -45,6 +45,7 @@ mod iterators;
 mod latest;
 
 use crate::{
+    ledger::helpers::{coinbase_target, proof_target, proving_reward},
     program::Program,
     CoinbasePuzzle,
     CoinbasePuzzleProvingKey,
@@ -68,12 +69,13 @@ use indexmap::{IndexMap, IndexSet};
 use std::{borrow::Cow, sync::Arc};
 use time::OffsetDateTime;
 
-use crate::ledger::helpers::helpers::{coinbase_target, proof_target};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
+
+// TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
 
 /// The expected time per block in seconds.
 pub const ANCHOR_TIME: u64 = 10;
@@ -88,6 +90,9 @@ const FIXED_DEGREE: usize = 1 << 13;
 const INITIAL_COINBASE_TARGET: u64 = 1_000_000_000_000_000_000;
 /// The initial block proof target.
 const INITIAL_PROOF_TARGET: u64 = 1_000_000_000_000_000;
+
+/// The starting supply of Aleo credits.
+const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
@@ -393,28 +398,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
 
-        // If there are no prover solutions in the mempool, generate one.
-        // if prover_solutions.is_empty() {
-        //     let epoch_info = self.get_epoch_info();
-        //     let epoch_challenge = self.get_epoch_challenge(FIXED_DEGREE)?;
-        //     let nonce = u64::rand(rng);
-        //     let address = self.get_block(0)?.signature().to_address();
-        //     let prover_puzzle_solution = CoinbasePuzzle::prove(
-        //         &self.coinbase_puzzle_proving_key,
-        //         &epoch_info,
-        //         &epoch_challenge,
-        //         &address,
-        //         nonce,
-        //     )?;
-        //
-        //     // Verify the prover solution.
-        //     if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
-        //         bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
-        //     }
-        //
-        //     prover_solutions.push(prover_puzzle_solution);
-        // }
-
         // Select the prover puzzle solutions from the mempool.
         let prover_solutions = self.prover_puzzle_memory_pool.iter().cloned().collect::<Vec<_>>();
         let prover_total = prover_solutions
@@ -437,26 +420,45 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             &prover_solutions,
         )?;
 
-        // TODO (raychu86): Pay the provers.
-
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
         let state_root = self.latest_state_root();
 
+        // Fetch the new round state.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         let new_height = self.latest_height().saturating_add(1);
         let round = block.round().saturating_add(1);
+        let num_validators = self.validators.len() as u64;
 
-        // Establish the new coinbase target and proof target.
+        // TODO (raychu86): Pay the provers.
+        // TODO (raychu86): Separate this out into a separate function.
+        // Calculate the prover rewards.
+        let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            num_validators,
+            u64::try_from(timestamp)?,
+            new_height as u64,
+        );
+
+        // Calculate the rewards for the individual provers
+        let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
+        for prover_puzzle_solution in prover_solutions {
+            let prover_reward: u64 =
+                (proving_reward / 2) * prover_puzzle_solution.to_difficulty_target()? / prover_total;
+            prover_rewards.push((*prover_puzzle_solution.address(), prover_reward));
+        }
+
+        // Construct the new coinbase target.
         let coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
             self.latest_coinbase_target()?,
-            self.validators.len() as u64,
+            num_validators,
             timestamp as u64,
             new_height as u64,
         );
+
+        // Construct the new coinbase target
         let proof_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
             self.latest_proof_target()?,
-            self.validators.len() as u64,
+            num_validators,
             timestamp as u64,
             new_height as u64,
         );
