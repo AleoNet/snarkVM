@@ -84,4 +84,11 @@ impl<N: Network> CombinedPuzzleSolution<N> {
         let combined_commitment: Commitment<N::PairingCurve> = Commitment(combined_commitment.into());
         Ok(KZG10::check(vk, &combined_commitment, point, combined_eval, &self.proof)?)
     }
+
+    pub fn to_cumulative_difficulty_target(&self) -> Result<u64> {
+        self.individual_puzzle_solutions
+            .iter()
+            .map(|prover_puzzle_solution| prover_puzzle_solution.to_difficulty_target())
+            .sum::<Result<u64>>()
+    }
 }
