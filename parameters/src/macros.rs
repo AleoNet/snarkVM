@@ -32,10 +32,7 @@ macro_rules! checksum_error {
 macro_rules! impl_store_and_remote_fetch {
     () => {
         #[cfg(not(feature = "wasm"))]
-        fn store_bytes(
-            buffer: &[u8],
-            file_path: &std::path::Path,
-        ) -> Result<(), $crate::errors::ParameterError> {
+        fn store_bytes(buffer: &[u8], file_path: &std::path::Path) -> Result<(), $crate::errors::ParameterError> {
             use snarkvm_utilities::Write;
 
             #[cfg(not(feature = "no_std_out"))]
@@ -49,7 +46,7 @@ macro_rules! impl_store_and_remote_fetch {
             // Attempt to write the parameter buffer to a file.
             match std::fs::File::create(file_path) {
                 Ok(mut file) => file.write_all(&buffer)?,
-                Err(error) => eprintln!("{}", error)
+                Err(error) => eprintln!("{}", error),
             }
             Ok(())
         }
@@ -64,12 +61,7 @@ macro_rules! impl_store_and_remote_fetch {
                 easy.progress_function(|total_download, current_download, _, _| {
                     let percent = (current_download / total_download) * 100.0;
                     let size_in_megabytes = total_download as u64 / 1_048_576;
-                    print!(
-                        "\r{} - {:.2}% complete ({:#} MB total)",
-                        module_path!(),
-                        percent,
-                        size_in_megabytes
-                    );
+                    print!("\r{} - {:.2}% complete ({:#} MB total)", module_path!(), percent, size_in_megabytes);
                     true
                 })?;
             }
@@ -83,26 +75,22 @@ macro_rules! impl_store_and_remote_fetch {
         }
 
         #[cfg(feature = "wasm")]
-        fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), $crate::errors::ParameterError> {
+        fn remote_fetch(
+            buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>,
+            url: &'static str,
+        ) -> Result<(), $crate::errors::ParameterError> {
             // NOTE(julesdesmit): We spawn a local thread here in order to be
             // able to accommodate the async syntax from reqwest.
             wasm_bindgen_futures::spawn_local(async move {
-                let content = reqwest::get(url)
-                    .await
-                    .unwrap()
-                    .text()
-                    .await
-                    .unwrap();
+                let content = reqwest::get(url).await.unwrap().text().await.unwrap();
 
                 let buffer = buffer.upgrade().unwrap();
-                buffer
-                    .write()
-                    .extend_from_slice(content.as_bytes());
+                buffer.write().extend_from_slice(content.as_bytes());
                 drop(buffer);
             });
             Ok(())
         }
-    }
+    };
 }
 
 macro_rules! impl_load_bytes_logic_local {
@@ -119,7 +107,7 @@ macro_rules! impl_load_bytes_logic_local {
         }
 
         return Ok($buffer.to_vec());
-    }
+    };
 }
 
 macro_rules! impl_load_bytes_logic_remote {
@@ -280,12 +268,17 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
+            impl_store_and_remote_fetch!();
+
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
-                let metadata: serde_json::Value = serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
-                let expected_checksum: String = metadata[concat!($ftype, "_checksum")].as_str().expect("Failed to parse checksum").to_string();
-                let expected_size: usize = metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
+                let metadata: serde_json::Value =
+                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                let expected_checksum: String =
+                    metadata[concat!($ftype, "_checksum")].as_str().expect("Failed to parse checksum").to_string();
+                let expected_size: usize =
+                    metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
 
                 // Construct the versioned filename.
                 let filename = match expected_checksum.get(0..7) {
@@ -293,10 +286,15 @@ macro_rules! impl_remote {
                     _ => format!("{}.{}", $fname, $ftype),
                 };
 
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, metadata, expected_checksum, expected_size);
+                impl_load_bytes_logic_remote!(
+                    $remote_url,
+                    $local_dir,
+                    &filename,
+                    metadata,
+                    expected_checksum,
+                    expected_size
+                );
             }
-
-            impl_store_and_remote_fetch!();
         }
 
         paste::item! {
@@ -311,12 +309,18 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree, ".metadata"));
+            impl_store_and_remote_fetch!();
 
-                let metadata: serde_json::Value = serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
-                let expected_checksum: String = metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
-                let expected_size: usize = metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+                const METADATA: &'static str =
+                    include_str!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree, ".metadata"));
+
+                let metadata: serde_json::Value =
+                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                let expected_checksum: String =
+                    metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
+                let expected_size: usize =
+                    metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
 
                 // Construct the versioned filename.
                 let filename = match expected_checksum.get(0..7) {
@@ -324,10 +328,15 @@ macro_rules! impl_remote {
                     _ => format!("{}.{}.{}", $fname, $ftype, $fdegree),
                 };
 
-                impl_load_bytes_logic_remote!($remote_url, $local_dir, &filename, metadata, expected_checksum, expected_size);
+                impl_load_bytes_logic_remote!(
+                    $remote_url,
+                    $local_dir,
+                    &filename,
+                    metadata,
+                    expected_checksum,
+                    expected_size
+                );
             }
-
-            impl_store_and_remote_fetch!();
         }
 
         paste::item! {
@@ -337,5 +346,5 @@ macro_rules! impl_remote {
                 assert!($name::load_bytes().is_ok());
             }
         }
-    }
+    };
 }
