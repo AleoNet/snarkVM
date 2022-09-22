@@ -283,14 +283,6 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     // const LAMBDA: Self::ScalarField = Self::B_1;
     // const HALF_R: Self::ScalarField =
     //     Self::ScalarField::from_repr(<Self::ScalarField as PrimeField>::BigInteger::from(0x8000000000000000)).unwrap();
-    // const R_128: Self::ScalarField =
-    //     Self::ScalarField::from_repr(<Self::ScalarField as PrimeField>::BigInteger::from([
-    //         0xffffffffffffffff,
-    //         0xffffffffffffffff,
-    //         0,
-    //         0,
-    //     ]))
-    //     .unwrap();
     // const PHI_1: Self::BaseField = Field::from_base_prime_field(
     //     <Self::BaseField as Field>::BasePrimeField::from_repr(
     //         <<Self::BaseField as Field>::BasePrimeField as PrimeField>::BigInteger::from([
