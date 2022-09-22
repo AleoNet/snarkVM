@@ -57,7 +57,7 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
     let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 5, 1 << 8, 1 << 12] {
+    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         c.bench_function(&format!("CoinbasePuzzle::Trim {degree}"), |b| {
             let config = PuzzleConfig { difficulty: 0, degree };
             b.iter(|| CoinbasePuzzleInst::trim(&universal_srs, config).unwrap())
@@ -72,7 +72,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 14] {
+    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         c.bench_function(&format!("CoinbasePuzzle::Prove {degree}"), |b| {
             let config = PuzzleConfig { difficulty: 0, degree };
             let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
@@ -88,7 +88,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let max_degree = 1 << 14;
     let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
-    for degree in [1 << 5, 1 << 8, 1 << 12] {
+    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         for batch_size in 1..5 {
             c.bench_function(&format!("CoinbasePuzzle::Accumulate {batch_size} of {degree}"), |b| {
                 let config = PuzzleConfig { difficulty: 0, degree };
@@ -112,7 +112,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
     let max_degree = 1 << 14;
     let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
-    for degree in [1 << 5, 1 << 8, 1 << 12] {
+    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         for batch_size in 1..5 {
             c.bench_function(&format!("CoinbasePuzzle::Verify {batch_size} of {degree}"), |b| {
                 let config = PuzzleConfig { difficulty: 0, degree };
@@ -135,7 +135,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
 criterion_group! {
     name = coinbase_puzzle;
     config = Criterion::default().sample_size(10);
-    targets = coinbase_puzzle_prove, coinbase_puzzle_verify
+    targets = coinbase_puzzle_trim, coinbase_puzzle_prove, coinbase_puzzle_accumulate, coinbase_puzzle_verify,
 }
 
 criterion_main!(coinbase_puzzle);
