@@ -378,17 +378,12 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
 
     #[inline]
     fn decompose(&self) -> (Self, Self, bool, bool) {
-        const Q_1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
-        const B_1: [u64; 4] = [725501752471715840, 4981570305181876225, 0, 0];
+        const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
+        const Q2: [u64; 4] = [13, 0, 0, 0];
+        let B1 = Self::from_repr(BigInteger([725501752471715840, 4981570305181876225, 0, 0])).unwrap();
+        let B2 = Self::from_repr(BigInteger([725501752471715841, 4981570305181876225, 0, 0])).unwrap();
         let r128 = Self::from_repr(BigInteger([0xffffffffffffffff, 0xffffffffffffffff, 0, 0])).unwrap();
-
-        let sub_borrow = |a: &mut [u64; 4], b: &[u64; 4]| -> ([u64; 4], i8) {
-            let borrow = fa::sbb(&mut a[0], b[0], 0);
-            let borrow = fa::sbb(&mut a[1], b[1], borrow);
-            let borrow = fa::sbb(&mut a[2], b[2], borrow);
-            let borrow = fa::sbb(&mut a[3], b[3], borrow);
-            (*a, borrow as i8)
-        };
+        const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
 
         let mul_short = |a: &[u64; 4], b: &[u64; 4]| -> [u64; 8] {
             // Schoolbook multiplication
@@ -419,29 +414,42 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
             [r0, r1, r2, r3, r4, r5, r6, 0]
         };
 
-        let mut repr = self.to_repr().0;
+        let round = |a: &mut [u64; 8]| -> Self {
+            let mut carry = 0;
+            // NOTE: can the first 4 be omitted?
+            carry = fa::adc(&mut a[0], HALF_R[0], carry);
+            carry = fa::adc(&mut a[1], HALF_R[1], carry);
+            carry = fa::adc(&mut a[2], HALF_R[2], carry);
+            carry = fa::adc(&mut a[3], HALF_R[3], carry);
+            carry = fa::adc(&mut a[4], HALF_R[4], carry);
+            carry = fa::adc(&mut a[5], HALF_R[5], carry);
+            carry = fa::adc(&mut a[6], HALF_R[6], carry);
+            _ = fa::adc(&mut a[7], HALF_R[7], carry);
+            Self::from_repr(BigInteger([a[4], a[5], a[6], a[7]])).unwrap()
+        };
 
-        let b2 = mul_short(&repr, &Q_1);
-        let b2h = [b2[4] + (b2[3] >> 63), b2[5], b2[6], b2[7]];
+        let alpha = |x: &Self, q: &[u64; 4]| -> Self {
+            let mut a = mul_short(&x.to_repr().0, q);
+            round(&mut a)
+        };
 
-        let b1 = mul_short(&b2h, &B_1);
-        let b1l = [b1[0], b1[1], b1[2], b1[3]];
-        let (b1l, s1) = sub_borrow(&mut repr, &b1l);
-        let minus_k1 = Self::from_repr(BigInteger([!b1l[0], !b1l[1], !b1l[2], !b1l[3]])).unwrap() + Self::one();
-        let minus_k2 = Self::from_repr(BigInteger([!b2h[0], !b2h[1], !b2h[2], !b2h[3]])).unwrap() + Self::one();
+        let alpha1 = alpha(self, &Q1);
+        let alpha2 = alpha(self, &Q2);
+        let z1 = alpha1 * B1;
+        let z2 = alpha2 * B2;
 
-        let mut k1 = Self::from_repr(BigInteger(b1l)).unwrap();
-        let mut k2 = Self::from_repr(BigInteger(b2h)).unwrap();
+        let mut k1 = *self - z1 - alpha2;
+        let mut k2 = z2 - alpha1;
         let mut k1_neg = false;
         let mut k2_neg = false;
 
         if k1 > r128 {
-            k1 = minus_k1;
+            k1 = -k1;
             k1_neg = true;
         }
 
         if k2 > r128 {
-            k2 = minus_k2;
+            k2 = -k2;
             k2_neg = true;
         }
 
