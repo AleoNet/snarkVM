@@ -29,6 +29,82 @@ macro_rules! checksum_error {
     };
 }
 
+macro_rules! impl_store_and_remote_fetch {
+    () => {
+        #[cfg(not(feature = "wasm"))]
+        fn store_bytes(
+            buffer: &[u8],
+            file_path: &std::path::Path,
+        ) -> Result<(), $crate::errors::ParameterError> {
+            use snarkvm_utilities::Write;
+
+            #[cfg(not(feature = "no_std_out"))]
+            println!("{} - Storing parameters ({:?})", module_path!(), file_path);
+
+            // Ensure the folders up to the file path all exist.
+            let mut directory_path = file_path.to_path_buf();
+            directory_path.pop();
+            let _ = std::fs::create_dir_all(directory_path)?;
+
+            // Attempt to write the parameter buffer to a file.
+            match std::fs::File::create(file_path) {
+                Ok(mut file) => file.write_all(&buffer)?,
+                Err(error) => eprintln!("{}", error)
+            }
+            Ok(())
+        }
+
+        #[cfg(not(feature = "wasm"))]
+        fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
+            let mut easy = curl::easy::Easy::new();
+            easy.url(url)?;
+            #[cfg(not(feature = "no_std_out"))]
+            {
+                easy.progress(true)?;
+                easy.progress_function(|total_download, current_download, _, _| {
+                    let percent = (current_download / total_download) * 100.0;
+                    let size_in_megabytes = total_download as u64 / 1_048_576;
+                    print!(
+                        "\r{} - {:.2}% complete ({:#} MB total)",
+                        module_path!(),
+                        percent,
+                        size_in_megabytes
+                    );
+                    true
+                })?;
+            }
+
+            let mut transfer = easy.transfer();
+            transfer.write_function(|data| {
+                buffer.extend_from_slice(data);
+                Ok(data.len())
+            })?;
+            Ok(transfer.perform()?)
+        }
+
+        #[cfg(feature = "wasm")]
+        fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), $crate::errors::ParameterError> {
+            // NOTE(julesdesmit): We spawn a local thread here in order to be
+            // able to accommodate the async syntax from reqwest.
+            wasm_bindgen_futures::spawn_local(async move {
+                let content = reqwest::get(url)
+                    .await
+                    .unwrap()
+                    .text()
+                    .await
+                    .unwrap();
+
+                let buffer = buffer.upgrade().unwrap();
+                buffer
+                    .write()
+                    .extend_from_slice(content.as_bytes());
+                drop(buffer);
+            });
+            Ok(())
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! impl_local {
     ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt) => {
@@ -220,77 +296,7 @@ macro_rules! impl_remote {
                 return Ok(buffer)
             }
 
-            #[cfg(not(feature = "wasm"))]
-            fn store_bytes(
-                buffer: &[u8],
-                file_path: &std::path::Path,
-            ) -> Result<(), $crate::errors::ParameterError> {
-                use snarkvm_utilities::Write;
-
-                #[cfg(not(feature = "no_std_out"))]
-                println!("{} - Storing parameters ({:?})", module_path!(), file_path);
-
-                // Ensure the folders up to the file path all exist.
-                let mut directory_path = file_path.to_path_buf();
-                directory_path.pop();
-                let _ = std::fs::create_dir_all(directory_path)?;
-
-                // Attempt to write the parameter buffer to a file.
-                match std::fs::File::create(file_path) {
-                    Ok(mut file) => file.write_all(&buffer)?,
-                    Err(error) => eprintln!("{}", error)
-                }
-                Ok(())
-            }
-
-            #[cfg(not(feature = "wasm"))]
-            fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
-                let mut easy = curl::easy::Easy::new();
-                easy.url(url)?;
-                #[cfg(not(feature = "no_std_out"))]
-                {
-                    easy.progress(true)?;
-                    easy.progress_function(|total_download, current_download, _, _| {
-                        let percent = (current_download / total_download) * 100.0;
-                        let size_in_megabytes = total_download as u64 / 1_048_576;
-                        print!(
-                            "\r{} - {:.2}% complete ({:#} MB total)",
-                            module_path!(),
-                            percent,
-                            size_in_megabytes
-                        );
-                        true
-                    })?;
-                }
-
-                let mut transfer = easy.transfer();
-                transfer.write_function(|data| {
-                    buffer.extend_from_slice(data);
-                    Ok(data.len())
-                })?;
-                Ok(transfer.perform()?)
-            }
-
-            #[cfg(feature = "wasm")]
-            fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), $crate::errors::ParameterError> {
-                // NOTE(julesdesmit): We spawn a local thread here in order to be
-                // able to accommodate the async syntax from reqwest.
-                wasm_bindgen_futures::spawn_local(async move {
-                    let content = reqwest::get(url)
-                        .await
-                        .unwrap()
-                        .text()
-                        .await
-                        .unwrap();
-
-                    let buffer = buffer.upgrade().unwrap();
-                    buffer
-                        .write()
-                        .extend_from_slice(content.as_bytes());
-                    drop(buffer);
-                });
-                Ok(())
-            }
+            impl_store_and_remote_fetch!();
         }
 
         paste::item! {
@@ -405,77 +411,7 @@ macro_rules! impl_remote {
                 return Ok(buffer)
             }
 
-            #[cfg(not(feature = "wasm"))]
-            fn store_bytes(
-                buffer: &[u8],
-                file_path: &std::path::Path,
-            ) -> Result<(), $crate::errors::ParameterError> {
-                use snarkvm_utilities::Write;
-
-                #[cfg(not(feature = "no_std_out"))]
-                println!("{} - Storing parameters ({:?})", module_path!(), file_path);
-
-                // Ensure the folders up to the file path all exist.
-                let mut directory_path = file_path.to_path_buf();
-                directory_path.pop();
-                let _ = std::fs::create_dir_all(directory_path)?;
-
-                // Attempt to write the parameter buffer to a file.
-                match std::fs::File::create(file_path) {
-                    Ok(mut file) => file.write_all(&buffer)?,
-                    Err(error) => eprintln!("{}", error)
-                }
-                Ok(())
-            }
-
-            #[cfg(not(feature = "wasm"))]
-            fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
-                let mut easy = curl::easy::Easy::new();
-                easy.url(url)?;
-                #[cfg(not(feature = "no_std_out"))]
-                {
-                    easy.progress(true)?;
-                    easy.progress_function(|total_download, current_download, _, _| {
-                        let percent = (current_download / total_download) * 100.0;
-                        let size_in_megabytes = total_download as u64 / 1_048_576;
-                        print!(
-                            "\r{} - {:.2}% complete ({:#} MB total)",
-                            module_path!(),
-                            percent,
-                            size_in_megabytes
-                        );
-                        true
-                    })?;
-                }
-
-                let mut transfer = easy.transfer();
-                transfer.write_function(|data| {
-                    buffer.extend_from_slice(data);
-                    Ok(data.len())
-                })?;
-                Ok(transfer.perform()?)
-            }
-
-            #[cfg(feature = "wasm")]
-            fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), $crate::errors::ParameterError> {
-                // NOTE(julesdesmit): We spawn a local thread here in order to be
-                // able to accommodate the async syntax from reqwest.
-                wasm_bindgen_futures::spawn_local(async move {
-                    let content = reqwest::get(url)
-                        .await
-                        .unwrap()
-                        .text()
-                        .await
-                        .unwrap();
-
-                    let buffer = buffer.upgrade().unwrap();
-                    buffer
-                        .write()
-                        .extend_from_slice(content.as_bytes());
-                    drop(buffer);
-                });
-                Ok(())
-            }
+            impl_store_and_remote_fetch!();
         }
 
         paste::item! {
