@@ -17,7 +17,7 @@
 use super::*;
 use crate::{
     coinbase_puzzle::*,
-    ledger::{FIXED_DEGREE, STARTING_SUPPLY},
+    ledger::{COINBASE_PUZZLE_DEGREE, STARTING_SUPPLY},
     ProgramStorage,
 };
 
@@ -53,7 +53,7 @@ impl<N: Network> Block<N> {
             let (pk, vk) = CoinbasePuzzle::<N>::load()?;
 
             let epoch_info = EpochInfo { epoch_number: 0, previous_block_hash: Default::default() };
-            let epoch_challenge = CoinbasePuzzle::<N>::init_for_epoch(&epoch_info, FIXED_DEGREE)?;
+            let epoch_challenge = CoinbasePuzzle::<N>::init_for_epoch(&epoch_info, COINBASE_PUZZLE_DEGREE)?;
             let nonce = u64::rand(rng);
 
             let prover_solution = CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &caller, nonce)?;

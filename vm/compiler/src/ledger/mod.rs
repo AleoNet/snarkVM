@@ -83,8 +83,8 @@ pub const ANCHOR_TIME: u64 = 10;
 /// The fixed timestamp of the genesis block.
 pub const ANCHOR_TIMESTAMP: u64 = 1663718400; // 2022-09-21 00:00:00 UTC
 
-// TODO (raychu86): Select the degree properly.
-const FIXED_DEGREE: usize = 1 << 13;
+/// The coinbase puzzle degree.
+const COINBASE_PUZZLE_DEGREE: usize = 1 << 13;
 
 /// The initial block coinbase target.
 const INITIAL_COINBASE_TARGET: u64 = 1_000_000_000_000_000_000;
@@ -372,7 +372,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the memory pool.
     pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
         let epoch_info = self.latest_epoch_info();
-        let epoch_challenge = self.latest_epoch_challenge(FIXED_DEGREE)?;
+        let epoch_challenge = self.latest_epoch_challenge(COINBASE_PUZZLE_DEGREE)?;
 
         // Ensure that the prover puzzle is less than the proof target.
         if prover_puzzle_solution.to_difficulty_target()? < self.latest_proof_target()? {
@@ -412,7 +412,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Construct the coinbase proof.
         let epoch_info = self.latest_epoch_info();
-        let epoch_challenge = self.latest_epoch_challenge(FIXED_DEGREE)?;
+        let epoch_challenge = self.latest_epoch_challenge(COINBASE_PUZZLE_DEGREE)?;
         let coinbase_proof = CoinbasePuzzle::accumulate(
             &self.coinbase_puzzle_proving_key,
             &epoch_info,
@@ -652,7 +652,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         let coinbase_proof = block.coinbase_proof();
         let epoch_info = EpochInfo { epoch_number: block.round(), previous_block_hash: block.previous_hash() };
-        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, FIXED_DEGREE)?;
+        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, COINBASE_PUZZLE_DEGREE)?;
 
         // Ensure the coinbase proof is valid.
         if !coinbase_proof.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
