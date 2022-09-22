@@ -15,7 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{coinbase_puzzle::*, ledger::FIXED_DEGREE, ProgramStorage};
+use crate::{
+    coinbase_puzzle::*,
+    ledger::{FIXED_DEGREE, STARTING_SUPPLY},
+    ProgramStorage,
+};
 
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
@@ -31,7 +35,7 @@ impl<N: Network> Block<N> {
         // Prepare the function name.
         let function_name = FromStr::from_str("genesis")?;
         // Prepare the function inputs.
-        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str("1_100_000_000_000_000_u64")?];
+        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str(&format!("{STARTING_SUPPLY}_u64"))?];
         // Authorize the call to start.
         let authorization = vm.authorize(private_key, &program_id, function_name, &inputs, rng)?;
         // Execute the genesis function.
