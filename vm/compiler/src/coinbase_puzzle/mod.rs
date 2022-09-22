@@ -82,7 +82,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         let universal_srs = UniversalSRS::<N>::load()?;
 
         let max_degree = 1 << 15;
-        let max_config = PuzzleConfig { degree: max_degree, difficulty: 0 };
+        let max_config = PuzzleConfig { degree: max_degree };
 
         Self::trim(&*universal_srs, max_config)
     }

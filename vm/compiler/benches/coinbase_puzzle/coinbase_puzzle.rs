@@ -54,12 +54,12 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let max_degree = 1 << 14;
-    let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
+    let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
     for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         c.bench_function(&format!("CoinbasePuzzle::Trim {degree}"), |b| {
-            let config = PuzzleConfig { difficulty: 0, degree };
+            let config = PuzzleConfig { degree };
             b.iter(|| CoinbasePuzzleInst::trim(&universal_srs, config).unwrap())
         });
     }
@@ -69,12 +69,12 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let max_degree = 1 << 14;
-    let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
+    let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
     for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         c.bench_function(&format!("CoinbasePuzzle::Prove {degree}"), |b| {
-            let config = PuzzleConfig { difficulty: 0, degree };
+            let config = PuzzleConfig { degree };
             let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
             let (epoch_info, epoch_challenge, address, nonce) = sample_inputs(degree, rng);
             b.iter(|| CoinbasePuzzleInst::prove(&pk, &epoch_info, &epoch_challenge, &address, nonce).unwrap())
@@ -86,12 +86,12 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let max_degree = 1 << 14;
-    let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
+    let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
     for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         for batch_size in 1..5 {
             c.bench_function(&format!("CoinbasePuzzle::Accumulate {batch_size} of {degree}"), |b| {
-                let config = PuzzleConfig { difficulty: 0, degree };
+                let config = PuzzleConfig { degree };
                 let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
                 let (epoch_info, epoch_challenge) = sample_epoch_info_and_challenge(degree, rng);
                 let solutions = (0..batch_size)
@@ -110,12 +110,12 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let max_degree = 1 << 14;
-    let max_config = PuzzleConfig { difficulty: 0, degree: max_degree };
+    let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
     for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
         for batch_size in 1..5 {
             c.bench_function(&format!("CoinbasePuzzle::Verify {batch_size} of {degree}"), |b| {
-                let config = PuzzleConfig { difficulty: 0, degree };
+                let config = PuzzleConfig { degree };
                 let (pk, vk) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
                 let (epoch_info, epoch_challenge) = sample_epoch_info_and_challenge(degree, rng);
                 let solutions = (0..batch_size)

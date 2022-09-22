@@ -44,7 +44,6 @@ use std::{
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PuzzleConfig {
-    pub difficulty: usize,
     pub degree: usize,
 }
 
