@@ -105,6 +105,23 @@ macro_rules! impl_store_and_remote_fetch {
     }
 }
 
+macro_rules! impl_load_bytes_logic_local {
+    ($buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
+        // Ensure the size matches.
+        if $expected_size != $buffer.len() {
+            return Err($crate::errors::ParameterError::SizeMismatch($expected_size, $buffer.len()));
+        }
+
+        // Ensure the checksum matches.
+        let candidate_checksum = checksum!($buffer);
+        if $expected_checksum != candidate_checksum {
+            return checksum_error!($expected_checksum, candidate_checksum);
+        }
+
+        return Ok($buffer.to_vec());
+    }
+}
+
 macro_rules! impl_load_bytes_logic_remote {
     ($remote_url: expr, $local_dir: expr, $filename: expr, $metadata: expr, $expected_checksum: expr, $expected_size: expr) => {
         // Compose the correct file path for the parameter file.
@@ -127,7 +144,6 @@ macro_rules! impl_load_bytes_logic_remote {
                 if #[cfg(not(feature = "wasm"))] {
                     #[cfg(not(feature = "no_std_out"))]
                     println!("{} - Downloading parameters...", module_path!());
-
 
                     let mut buffer = vec![];
                     Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, $filename))?;
@@ -214,18 +230,7 @@ macro_rules! impl_local {
 
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype));
 
-                // Ensure the size matches.
-                if expected_size != buffer.len() {
-                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
-                }
-
-                // Ensure the checksum matches.
-                let candidate_checksum = checksum!(buffer);
-                if expected_checksum != candidate_checksum {
-                    return checksum_error!(expected_checksum, candidate_checksum);
-                }
-
-                return Ok(buffer.to_vec());
+                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
             }
         }
 
@@ -255,18 +260,7 @@ macro_rules! impl_local {
 
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree));
 
-                // Ensure the size matches.
-                if expected_size != buffer.len() {
-                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
-                }
-
-                // Ensure the checksum matches.
-                let candidate_checksum = checksum!(buffer);
-                if expected_checksum != candidate_checksum {
-                    return checksum_error!(expected_checksum, candidate_checksum);
-                }
-
-                return Ok(buffer.to_vec());
+                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
             }
         }
 
