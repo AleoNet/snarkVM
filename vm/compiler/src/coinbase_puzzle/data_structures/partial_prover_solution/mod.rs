@@ -46,8 +46,8 @@ impl<N: Network> PartialProverSolution<N> {
         &self.commitment
     }
 
-    /// Returns the difficulty of the prover solution.
-    pub fn to_difficulty(&self) -> Result<u64> {
+    /// Returns the difficulty target of the prover solution.
+    pub fn to_difficulty_target(&self) -> Result<u64> {
         Ok(sha256d_to_u64(&self.commitment.to_bytes_le()?))
     }
 }

@@ -110,6 +110,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree())
     }
 
+    // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.
     pub fn prove(
         pk: &CoinbasePuzzleProvingKey<N>,
         epoch_info: &EpochInfo<N>,

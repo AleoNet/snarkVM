@@ -67,9 +67,9 @@ impl<N: Network> ProverPuzzleSolution<N> {
         &self.proof
     }
 
-    /// Returns the difficulty of the prover solution.
-    pub fn to_difficulty(&self) -> Result<u64> {
-        self.partial_solution.to_difficulty()
+    /// Returns the difficulty target of the prover solution.
+    pub fn to_difficulty_target(&self) -> Result<u64> {
+        self.partial_solution.to_difficulty_target()
     }
 }
 
