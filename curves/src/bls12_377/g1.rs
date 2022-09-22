@@ -45,6 +45,17 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
         Fr,
         BigInteger256([2013239619100046060, 4201184776506987597, 2526766393982337036, 1114629510922847535,])
     );
+    const PHI_1: Fq = field!(
+        Fq,
+        BigInteger384([
+            0xdacd106da5847973,
+            0xd8fe2454bac2a79a,
+            0x1ada4fd6fd832edc,
+            0xfb9868449d150908,
+            0xd63eb8aeea32285e,
+            0x167d6a36f873fd0,
+        ])
+    );
     /// WEIERSTRASS_A = 0
     const WEIERSTRASS_A: Fq = field!(Fq, BigInteger384([0x0, 0x0, 0x0, 0x0, 0x0, 0x0]));
     /// WEIERSTRASS_B = 1

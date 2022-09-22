@@ -55,6 +55,21 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         Fr,
         BigInteger256([15499857013495546999, 4613531467548868169, 14546778081091178013, 549402535258503313,])
     );
+    const PHI_1: Fq2 = field!(
+        Fq2,
+        field!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
+        field!(
+            Fq,
+            BigInteger384([
+                0xdacd106da5847973,
+                0xd8fe2454bac2a79a,
+                0x1ada4fd6fd832edc,
+                0xfb9868449d150908,
+                0xd63eb8aeea32285e,
+                0x167d6a36f873fd0,
+            ])
+        ),
+    );
     /// WEIERSTRASS_A = [0, 0]
     const WEIERSTRASS_A: Fq2 = field!(Fq2, Bls12_377G1Parameters::WEIERSTRASS_A, Bls12_377G1Parameters::WEIERSTRASS_A,);
     // As per https://eprint.iacr.org/2012/072.pdf,
