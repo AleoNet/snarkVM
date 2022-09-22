@@ -371,8 +371,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Appends the given prover solution to the memory pool.
     pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
-        let epoch_info = self.get_epoch_info();
-        let epoch_challenge = self.get_epoch_challenge(FIXED_DEGREE)?;
+        let epoch_info = self.latest_epoch_info();
+        let epoch_challenge = self.latest_epoch_challenge(FIXED_DEGREE)?;
 
         // Ensure that the prover puzzle is less than the proof target.
         if prover_puzzle_solution.to_difficulty_target()? < self.latest_proof_target()? {
@@ -411,8 +411,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Construct the coinbase proof.
-        let epoch_info = self.get_epoch_info();
-        let epoch_challenge = self.get_epoch_challenge(FIXED_DEGREE)?;
+        let epoch_info = self.latest_epoch_info();
+        let epoch_challenge = self.latest_epoch_challenge(FIXED_DEGREE)?;
         let coinbase_proof = CoinbasePuzzle::accumulate(
             &self.coinbase_puzzle_proving_key,
             &epoch_info,
@@ -646,6 +646,29 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Ensure each transaction is well-formed.
         if !block.transactions().par_iter().all(|(_, transaction)| self.vm.verify(transaction)) {
             bail!("Invalid transaction found in the transactions list");
+        }
+
+        /* Coinbase proof */
+
+        let coinbase_proof = block.coinbase_proof();
+        let epoch_info = EpochInfo { epoch_number: block.round(), previous_block_hash: block.previous_hash() };
+        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, FIXED_DEGREE)?;
+
+        // Ensure the coinbase proof is valid.
+        if !coinbase_proof.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
+            bail!("Invalid coinbase proof: {:?}", coinbase_proof);
+        }
+
+        // Ensure the coinbase proof meets the required coinbase target.
+        if coinbase_proof.to_cumulative_difficulty_target()? < self.latest_coinbase_target()? {
+            bail!("Coinbase proof does not meet the coinbase target");
+        }
+
+        // Ensure that each of the prover solutions meets the required proof target.
+        for prover_solution in &coinbase_proof.individual_puzzle_solutions {
+            if prover_solution.to_difficulty_target()? < self.latest_proof_target()? {
+                bail!("Invalid prover solution found in the coinbase proof");
+            }
         }
 
         /* Fees */
