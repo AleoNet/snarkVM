@@ -380,8 +380,8 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     fn decompose(&self) -> (Self, Self, bool, bool) {
         const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
         const Q2: [u64; 4] = [13, 0, 0, 0];
-        let B1 = Self::from_repr(BigInteger([725501752471715840, 4981570305181876225, 0, 0])).unwrap();
-        let B2 = Self::from_repr(BigInteger([725501752471715841, 4981570305181876225, 0, 0])).unwrap();
+        let b1 = Self::from_repr(BigInteger([725501752471715840, 4981570305181876225, 0, 0])).unwrap();
+        let b2 = Self::from_repr(BigInteger([725501752471715841, 4981570305181876225, 0, 0])).unwrap();
         let r128 = Self::from_repr(BigInteger([0xffffffffffffffff, 0xffffffffffffffff, 0, 0])).unwrap();
         const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
 
@@ -435,8 +435,8 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
 
         let alpha1 = alpha(self, &Q1);
         let alpha2 = alpha(self, &Q2);
-        let z1 = alpha1 * B1;
-        let z2 = alpha2 * B2;
+        let z1 = alpha1 * b1;
+        let z2 = alpha2 * b2;
 
         let mut k1 = *self - z1 - alpha2;
         let mut k2 = z2 - alpha1;

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{templates::short_weierstrass_jacobian, PairingEngine};
-use snarkvm_fields::{Field, FieldParameters, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, BigInteger384, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::{
     fmt::{Debug, Display},

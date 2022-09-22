@@ -19,15 +19,7 @@ use crate::{
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, FieldParameters, One, PrimeField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    rand::Uniform,
-    serialize::*,
-    BigInteger,
-    BigInteger384,
-    FromBytes,
-    ToBytes,
-};
+use snarkvm_utilities::{rand::Uniform, serialize::*, BigInteger, FromBytes, ToBytes};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -550,22 +542,21 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             r
         };
 
-        for i in 0..L {
-            t_2.push(glv_endomorphism(t_1[i]));
-        }
+        t_1.iter().for_each(|e| {
+            t_2.push(glv_endomorphism(*e));
+        });
 
         let to_wnaf = |e: P::ScalarField, w: usize| -> Vec<i32> {
             let mut naf = vec![];
 
             let (window_size, half_size, mask) = (1 << (w + 1), 1 << w, (1 << (w + 1)) - 1);
-            let mut ee = e.clone();
-            let z = P::ScalarField::zero();
+            let mut ee = e;
             while !ee.is_zero() {
                 let ee_repr = ee.to_repr();
                 if !ee_repr.is_even() {
                     let mut naf_sign = (ee_repr.as_ref()[0] as i32) & mask;
                     if naf_sign >= half_size {
-                        naf_sign = naf_sign - window_size;
+                        naf_sign -= window_size;
                     }
                     naf.push(naf_sign);
                     if naf_sign < 0 {
