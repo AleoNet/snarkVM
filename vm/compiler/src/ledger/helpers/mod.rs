@@ -64,9 +64,9 @@ pub mod helpers {
         }
     }
 
-    /// Calculate the minimum prover target for the given block height.
-    pub(crate) fn prover_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
-        previous_prover_target: u64,
+    /// Calculate the minimum proof target for the given block height.
+    pub(crate) fn proof_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
+        previous_proof_target: u64,
         num_validators: u64,
         timestamp: u64,
         block_height: u64,
@@ -76,9 +76,9 @@ pub mod helpers {
         // TODO (raychu86): Check precision.
 
         if factor == 0.0 {
-            previous_prover_target
+            previous_proof_target
         } else {
-            ((previous_prover_target as f64) * 2f64.powf(-1f64 * factor)) as u64
+            ((previous_proof_target as f64) * 2f64.powf(-1f64 * factor)) as u64
         }
     }
 
@@ -251,7 +251,7 @@ mod tests {
                 timestamp,
                 block_height,
             );
-            let new_prover_target = prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_prover_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_prover_target,
                 num_validators,
                 timestamp,
@@ -268,7 +268,7 @@ mod tests {
                 timestamp,
                 block_height,
             );
-            let new_prover_target = prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_prover_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_prover_target,
                 num_validators,
                 timestamp,
@@ -285,7 +285,7 @@ mod tests {
                 timestamp,
                 block_height,
             );
-            let new_prover_target = prover_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+            let new_prover_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_prover_target,
                 num_validators,
                 timestamp,

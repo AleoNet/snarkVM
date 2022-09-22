@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::ledger::{ANCHOR_TIMESTAMP, INITIAL_COINBASE_TARGET, INITIAL_PROOF_TARGET};
 
 impl<N: Network> Metadata<N> {
     /// Initializes the genesis metadata.
@@ -23,9 +24,9 @@ impl<N: Network> Metadata<N> {
         let network = N::ID;
         let round = 0;
         let height = 0;
-        let coinbase_target = u64::MAX;
-        let proof_target = u64::MAX;
-        let timestamp = 0;
+        let coinbase_target = INITIAL_COINBASE_TARGET;
+        let proof_target = INITIAL_PROOF_TARGET;
+        let timestamp = i64::try_from(ANCHOR_TIMESTAMP)?;
 
         // Return the genesis metadata.
         Self::new(network, round, height, coinbase_target, proof_target, timestamp)
