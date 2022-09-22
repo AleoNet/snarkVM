@@ -18,8 +18,16 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, FieldParameters, One, PrimeField, Zero};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    rand::Uniform,
+    serialize::*,
+    BigInteger,
+    BigInteger384,
+    FromBytes,
+    ToBytes,
+};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -506,53 +514,122 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
-        // let decomposition = other.decompose();
+        /// The scalar multiplication window size.
+        const GLV_WINDOW_SIZE: usize = 4;
+        /// The GLV table length.
+        const L: usize = 1 << (GLV_WINDOW_SIZE - 1);
 
-        // // Prepare tables.
-        // let mut t_1 = Vec::with_capacity(P::L);
-        // let mut t_2 = Vec::with_capacity(P::L);
-        // let double = self.double();
-        // t_1.push(double);
-        // for i in 1..P::L {
-        //     t_1.push(t_1[i - 1] + double);
-        // }
+        let decomposition = other.decompose();
 
-        // for i in 0..P::L {
-        //     t_2.push(t_1[i].glv_endomorphism());
-        // }
+        // Prepare tables.
+        let mut t_1 = Vec::with_capacity(L);
+        let mut t_2 = Vec::with_capacity(L);
+        let double = self.double();
+        t_1.push(double);
+        for i in 1..L {
+            t_1.push(t_1[i - 1] + double);
+        }
 
-        // // Recode scalars.
-        // let (naf_1, naf_2) = decomposition.wnaf();
-        // let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
-        // let max_len = std::cmp::max(len_naf_1, len_naf_2);
-        // let (acc, p_1) = (Self::zero(), Self::zero());
-        // let naf_add = |table: Vec<Self>, naf: i32| {
-        //     if naf != 0 {
-        //         let naf_abs = naf.abs();
-        //         p_1 = table[(naf_abs >> 1) as usize];
-        //         if naf < 0 {
-        //             p_1 = -p_1;
-        //         }
-        //         acc += p_1;
-        //     }
-        // };
+        let phi = |b: P::BaseField| -> P::BaseField { b * P::PHI_1 };
 
-        // for i in (0..max_len - 1).rev() {
-        //     if i < len_naf_1 {
-        //         naf_add(t_1, naf_1[i])
-        //     }
+        let glv_endomorphism = |p: Self| -> Self {
+            let t = Affine::from(p);
+            if t.is_zero() {
+                return Self::zero();
+            }
 
-        //     if i < len_naf_2 {
-        //         naf_add(t_2, naf_2[i])
-        //     }
+            let mut r = Self::zero();
+            r.y = t.y;
+            r.x = phi(t.x);
+            r.z = <P::BaseField as Field>::from_base_prime_field(
+                <P::BaseField as Field>::BasePrimeField::from_repr(
+                    <<P::BaseField as Field>::BasePrimeField as PrimeField>::Parameters::R,
+                )
+                .unwrap(),
+            );
+            r
+        };
 
-        //     if i != 0 {
-        //         acc.double_in_place();
-        //     }
-        // }
+        for i in 0..L {
+            t_2.push(glv_endomorphism(t_1[i]));
+        }
 
-        // acc
-        unimplemented!()
+        let to_wnaf = |e: P::ScalarField, w: usize| -> Vec<i32> {
+            let mut naf = vec![];
+
+            let (window_size, half_size, mask) = (1 << (w + 1), 1 << w, (1 << (w + 1)) - 1);
+            let mut ee = e.clone();
+            let z = P::ScalarField::zero();
+            while !ee.is_zero() {
+                let ee_repr = ee.to_repr();
+                if !ee_repr.is_even() {
+                    let mut naf_sign = (ee_repr.as_ref()[0] as i32) & mask;
+                    if naf_sign >= half_size {
+                        naf_sign = naf_sign - window_size;
+                    }
+                    naf.push(naf_sign);
+                    if naf_sign < 0 {
+                        ee += P::ScalarField::from(-naf_sign as u64);
+                    } else {
+                        ee -= P::ScalarField::from(naf_sign as u64);
+                    }
+                } else {
+                    naf.push(0);
+                }
+                let mut ee_repr = ee.to_repr();
+                ee_repr.div2();
+                ee = P::ScalarField::from_repr(ee_repr).unwrap();
+            }
+
+            naf
+        };
+
+        let wnaf = |k1: P::ScalarField, k2: P::ScalarField, s1: bool, s2: bool, w: usize| -> (Vec<i32>, Vec<i32>) {
+            let mut wnaf_1 = to_wnaf(k1, w);
+            let mut wnaf_2 = to_wnaf(k2, w);
+
+            if s1 {
+                wnaf_1.iter_mut().for_each(|e| *e = -*e);
+            }
+            if !s2 {
+                wnaf_2.iter_mut().for_each(|e| *e = -*e);
+            }
+
+            (wnaf_1, wnaf_2)
+        };
+
+        // Recode scalars.
+        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3, GLV_WINDOW_SIZE);
+        let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
+        let max_len = std::cmp::max(len_naf_1, len_naf_2);
+        let (mut acc, mut p_1) = (Self::zero(), Self::zero());
+
+        let naf_add = |table: &Vec<Self>, naf: i32, p_1: &mut Self, acc: &mut Self| {
+            if naf != 0 {
+                let naf_abs = naf.abs();
+                *p_1 = table[(naf_abs >> 1) as usize];
+                if naf < 0 {
+                    *p_1 = p_1.neg();
+                }
+                *acc += p_1;
+            }
+        };
+
+        for i in (0..max_len - 1).rev() {
+            if i < len_naf_1 {
+                naf_add(&t_1, naf_1[i], &mut p_1, &mut acc)
+            }
+
+            if i < len_naf_2 {
+                naf_add(&t_2, naf_2[i], &mut p_1, &mut acc)
+            }
+
+            if i != 0 {
+                acc.double_in_place();
+            }
+        }
+
+        acc
     }
 }
 
