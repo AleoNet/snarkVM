@@ -417,7 +417,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let required_coinbase_difficulty = u64::MAX.saturating_div(self.latest_coinbase_target()?);
         if cumulative_prover_difficulty < required_coinbase_difficulty {
             bail!(
-                "Prover puzzles do not meet the coinbase difficulty target requirement. {}  < {}",
+                "Prover puzzles do not meet the coinbase difficulty target. {} < {}",
                 cumulative_prover_difficulty,
                 required_coinbase_difficulty
             )
@@ -446,7 +446,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
         //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
         {
-            // TODO (raychu86): Separate this out into a separate function.
             // Calculate the prover rewards.
             let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 num_validators,
