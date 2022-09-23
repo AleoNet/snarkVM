@@ -416,7 +416,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Ensure the proofs meet the coinbase target requirements.
         let required_coinbase_difficulty = u64::MAX.saturating_div(self.latest_coinbase_target()?);
         if cumulative_prover_difficulty < required_coinbase_difficulty {
-            bail!("Prover puzzles do not meet the coinbase difficulty target requirement.")
+            bail!(
+                "Prover puzzles do not meet the coinbase difficulty target requirement. {}  < {}",
+                cumulative_prover_difficulty,
+                required_coinbase_difficulty
+            )
         }
 
         // Construct the coinbase proof.
