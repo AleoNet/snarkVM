@@ -78,7 +78,7 @@ const BLOCKS_DEPTH: u8 = 32;
 // TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
 
 /// The expected time per block in seconds.
-pub const ANCHOR_TIME: u64 = 10;
+pub const ANCHOR_TIME: u64 = 15;
 
 /// The fixed timestamp of the genesis block.
 pub const ANCHOR_TIMESTAMP: u64 = 1663718400; // 2022-09-21 00:00:00 UTC
@@ -87,7 +87,7 @@ pub const ANCHOR_TIMESTAMP: u64 = 1663718400; // 2022-09-21 00:00:00 UTC
 const COINBASE_PUZZLE_DEGREE: usize = 1 << 13;
 
 /// The initial block coinbase target.
-const INITIAL_COINBASE_TARGET: u64 = 1_000_000_000_000_000_000;
+const INITIAL_COINBASE_TARGET: u64 = 1_000_000_000_000_000;
 /// The initial block proof target.
 const INITIAL_PROOF_TARGET: u64 = 1_000_000_000_000_000;
 
@@ -372,7 +372,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the memory pool.
     pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
         let epoch_info = self.latest_epoch_info();
-        let epoch_challenge = self.latest_epoch_challenge(COINBASE_PUZZLE_DEGREE)?;
+        let epoch_challenge = self.latest_epoch_challenge()?;
 
         // Ensure that the prover puzzle is less than the proof target.
         if prover_puzzle_solution.to_difficulty_target()? < self.latest_proof_target()? {
@@ -407,12 +407,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Ensure the proofs meet the required coinbase target.
         if prover_total < self.latest_coinbase_target()? {
-            bail!("Prover puzzles do not meet the coinbase difficulty target requirements.")
+            bail!("Prover puzzles do not meet the coinbase difficulty target requirement.")
         }
 
         // Construct the coinbase proof.
         let epoch_info = self.latest_epoch_info();
-        let epoch_challenge = self.latest_epoch_challenge(COINBASE_PUZZLE_DEGREE)?;
+        let epoch_challenge = self.latest_epoch_challenge()?;
         let coinbase_proof = CoinbasePuzzle::accumulate(
             &self.coinbase_puzzle_proving_key,
             &epoch_info,
@@ -430,21 +430,24 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let round = block.round().saturating_add(1);
         let num_validators = self.validators.len() as u64;
 
-        // TODO (raychu86): Pay the provers.
-        // TODO (raychu86): Separate this out into a separate function.
-        // Calculate the prover rewards.
-        let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
-            num_validators,
-            u64::try_from(timestamp)?,
-            new_height as u64,
-        );
+        // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
+        //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
+        {
+            // TODO (raychu86): Separate this out into a separate function.
+            // Calculate the prover rewards.
+            let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+                num_validators,
+                u64::try_from(timestamp)?,
+                new_height as u64,
+            );
 
-        // Calculate the rewards for the individual provers
-        let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
-        for prover_puzzle_solution in prover_solutions {
-            let prover_reward: u64 =
-                (proving_reward / 2) * prover_puzzle_solution.to_difficulty_target()? / prover_total;
-            prover_rewards.push((*prover_puzzle_solution.address(), prover_reward));
+            // Calculate the rewards for the individual provers
+            let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
+            for prover_puzzle_solution in prover_solutions {
+                let prover_reward: u64 =
+                    (proving_reward / 2) * prover_puzzle_solution.to_difficulty_target()? / prover_total;
+                prover_rewards.push((*prover_puzzle_solution.address(), prover_reward));
+            }
         }
 
         // Construct the new coinbase target.
@@ -506,8 +509,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         if block.height() > 0 && block.header().timestamp() <= self.latest_block()?.header().timestamp() {
             bail!("The given block timestamp is before the current timestamp")
         }
-
-        // TODO (raychu86): Add proof and coinbase target verification.
 
         for transaction_id in block.transaction_ids() {
             // Ensure the transaction in the block do not already exist.
@@ -660,13 +661,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Ensure the coinbase proof meets the required coinbase target.
-        if coinbase_proof.to_cumulative_difficulty_target()? < self.latest_coinbase_target()? {
+        if block.height() > 0 && coinbase_proof.to_cumulative_difficulty_target()? < self.latest_coinbase_target()? {
             bail!("Coinbase proof does not meet the coinbase target");
         }
 
         // Ensure that each of the prover solutions meets the required proof target.
         for prover_solution in &coinbase_proof.individual_puzzle_solutions {
-            if prover_solution.to_difficulty_target()? < self.latest_proof_target()? {
+            if block.height() > 0 && prover_solution.to_difficulty_target()? < self.latest_proof_target()? {
                 bail!("Invalid prover solution found in the coinbase proof");
             }
         }
@@ -777,6 +778,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns the memory pool.
     pub const fn memory_pool(&self) -> &IndexMap<N::TransactionID, Transaction<N>> {
         &self.memory_pool
+    }
+
+    /// Returns the coinbase puzzle proving key.
+    pub const fn coinbase_puzzle_proving_key(&self) -> &Arc<CoinbasePuzzleProvingKey<N>> {
+        &self.coinbase_puzzle_proving_key
+    }
+
+    /// Returns the coinbase puzzle verifying key.
+    pub const fn coinbase_puzzle_verifying_key(&self) -> &Arc<CoinbasePuzzleVerifyingKey<N>> {
+        &self.coinbase_puzzle_verifying_key
     }
 
     /// Returns a state path for the given commitment.

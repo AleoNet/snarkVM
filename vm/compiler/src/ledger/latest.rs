@@ -68,7 +68,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Returns the latest epoch challenge.
-    pub fn latest_epoch_challenge(&self, degree: usize) -> Result<EpochChallenge<N>> {
-        CoinbasePuzzle::init_for_epoch(&self.latest_epoch_info(), degree)
+    pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
+        CoinbasePuzzle::init_for_epoch(&self.latest_epoch_info(), COINBASE_PUZZLE_DEGREE)
     }
 }
