@@ -75,7 +75,7 @@ pub use nom::{
     branch::alt,
     bytes::{complete::tag, streaming::take},
     character::complete::{alpha1, alphanumeric1, char, one_of},
-    combinator::{map, map_res, opt, recognize},
+    combinator::{complete, map, map_res, opt, recognize},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::{pair, terminated},
 };
