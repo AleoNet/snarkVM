@@ -31,46 +31,23 @@ dependencies = [
 [[package]]
 name = "aleo-std"
 version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6613c3c045767658f6cc0f5356414ca7814fb936df9197367914e5809e24622a"
+source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
 dependencies = [
- "aleo-std-cpu",
  "aleo-std-profiler",
- "aleo-std-storage",
  "aleo-std-time",
  "aleo-std-timed",
  "aleo-std-timer",
 ]
 
 [[package]]
-name = "aleo-std-cpu"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1dcc739555d14733cbe4756f144b81d64f01843df359189b4d71bd5e521e2ee"
-
-[[package]]
 name = "aleo-std-profiler"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d72acece2832bc2aceeebcbb58f5ea7526c2524ccbbf13229ff1be8bc9ccc15"
-dependencies = [
- "colored",
-]
-
-[[package]]
-name = "aleo-std-storage"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "503e2538d5158b869bc9c30c9754f9a23f4210987008014a9f118db99f22c217"
-dependencies = [
- "dirs",
-]
+version = "0.1.12"
+source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
 
 [[package]]
 name = "aleo-std-time"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7065e071b26763f3e5b1b5a587828227562365bee84fdd2629361ea0a08bfc8d"
+source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
 dependencies = [
  "proc-macro2 0.4.30",
  "quote 0.6.13",
@@ -80,8 +57,7 @@ dependencies = [
 [[package]]
 name = "aleo-std-timed"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6118baab6285accf088b31d5ea5029c37bbf9d98e62b4d8720a0a5a66bc2e427"
+source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
@@ -91,11 +67,7 @@ dependencies = [
 [[package]]
 name = "aleo-std-timer"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5edd669f91f0e6f9fd14aa9489fb64fff760723ee4c73c4e93f721f11aaf62e7"
-dependencies = [
- "colored",
-]
+source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
 
 [[package]]
 name = "ansi_term"
@@ -2397,7 +2369,6 @@ version = "0.9.0"
 dependencies = [
  "anyhow",
  "bincode",
- "colored",
  "indexmap",
  "once_cell",
  "parking_lot 0.12.1",
@@ -2662,8 +2633,9 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sha2",
- "snarkvm",
  "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-compiler",
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-utilities",
