@@ -43,7 +43,7 @@ pub(crate) fn proving_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIMESTAMP:
     let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
     let factor = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
 
-    ((max * anchor_reward) as f64 * 2f64.powf(factor)) as u64
+    ((max * anchor_reward) as f64 * 2f64.powf(-1f64 * factor)) as u64
 }
 
 /// Calculate the coinbase target for the given block height.
@@ -75,11 +75,7 @@ pub(crate) fn proof_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u64>(
 
     // TODO (raychu86): Check precision.
 
-    if factor == 0.0 {
-        previous_proof_target
-    } else {
-        ((previous_proof_target as f64) * 2f64.powf(-1f64 * factor)) as u64
-    }
+    if factor == 0.0 { previous_proof_target } else { ((previous_proof_target as f64) * 2f64.powf(factor)) as u64 }
 }
 
 /// Calculate the anchor reward.
@@ -258,7 +254,7 @@ mod tests {
             assert_eq!(new_coinbase_target, previous_coinbase_target);
             assert_eq!(new_prover_target, previous_prover_target);
 
-            // Targets increase (easier when the timestamp is greater than expected for a given block height.
+            // Targets increase (easier) when the timestamp is greater than expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + (block_height + 1) * ANCHOR_TIME;
             let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_coinbase_target,
