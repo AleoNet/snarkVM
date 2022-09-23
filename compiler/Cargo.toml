@@ -25,32 +25,32 @@ edition = "2021"
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
-path = "../../circuit"
+path = "../circuit"
 version = "0.9.0"
 
 [dependencies.console]
 package = "snarkvm-console"
-path = "../../console"
+path = "../console"
 version = "0.9.0"
 
 [dependencies.snarkvm-algorithms]
-path = "../../algorithms"
+path = "../algorithms"
 version = "0.9.0"
 
 [dependencies.snarkvm-curves]
-path = "../../curves"
+path = "../curves"
 version = "0.9.0"
 
 [dependencies.snarkvm-fields]
-path = "../../fields"
+path = "../fields"
 version = "0.9.0"
 
 [dependencies.snarkvm-parameters]
-path = "../../parameters"
+path = "../parameters"
 version = "0.9.0"
 
 [dependencies.snarkvm-utilities]
-path = "../../utilities"
+path = "../utilities"
 version = "0.9.0"
 default-features = false
 

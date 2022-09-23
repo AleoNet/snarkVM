@@ -42,6 +42,7 @@ members = [
   "circuit/types/integers",
   "circuit/types/scalar",
   "circuit/types/string",
+  "compiler",
   "console",
   "console/account",
   "console/algorithms",
@@ -64,7 +65,6 @@ members = [
   "rest",
   "utilities",
   "utilities/derives",
-  "vm/compiler",
   "wasm"
 ]
 
@@ -166,7 +166,7 @@ version = "0.9.0"
 optional = true
 
 [dependencies.snarkvm-compiler]
-path = "./vm/compiler"
+path = "./compiler"
 version = "0.9.0"
 
 [dependencies.anyhow]
