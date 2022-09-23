@@ -40,12 +40,12 @@ impl<N: Network> Metadata<N> {
             && self.round == 0u64
             // Ensure the height in the genesis block is 0.
             && self.height == 0u32
-            // Ensure the coinbase target in the genesis block is u64::MAX.
-            && self.coinbase_target == u64::MAX
-            // Ensure the proof target in the genesis block is u64::MAX.
-            && self.proof_target == u64::MAX
-            // Ensure the timestamp in the genesis block is 0.
-            && self.timestamp == 0i64
+            // Ensure the coinbase target in the genesis block is `INITIAL_COINBASE_TARGET`.
+            && self.coinbase_target == INITIAL_COINBASE_TARGET
+            // Ensure the proof target in the genesis block is `INITIAL_PROOF_TARGET`.
+            && self.proof_target == INITIAL_PROOF_TARGET
+            // Ensure the timestamp in the genesis block is `ANCHOR_TIMESTAMP`.
+            && self.timestamp == ANCHOR_TIMESTAMP as i64
     }
 }
 
