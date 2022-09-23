@@ -18,6 +18,7 @@
 
 // TODO (raychu86): Handle downcasting.
 
+#[allow(unused)]
 /// Calculate the staking reward, given the starting supply and anchor time.
 pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u64>() -> u64 {
     // The staking percentage at genesis.
@@ -42,7 +43,7 @@ pub(crate) fn proving_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIMESTAMP:
     let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
     let factor = factor::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(num_validators, timestamp, block_height);
 
-    ((max * anchor_reward) as f64 * 2f64.powf(-1f64 * factor)) as u64
+    ((max * anchor_reward) as f64 * 2f64.powf(factor)) as u64
 }
 
 /// Calculate the coinbase target for the given block height.
@@ -59,7 +60,7 @@ pub(crate) fn coinbase_target<const ANCHOR_TIMESTAMP: u64, const ANCHOR_TIME: u6
     if factor == 0.0 {
         previous_coinbase_target
     } else {
-        ((previous_coinbase_target as f64) * 2f64.powf(-1f64 * factor)) as u64
+        ((previous_coinbase_target as f64) * 2f64.powf(factor)) as u64
     }
 }
 
@@ -257,25 +258,8 @@ mod tests {
             assert_eq!(new_coinbase_target, previous_coinbase_target);
             assert_eq!(new_prover_target, previous_prover_target);
 
-            // Targets decrease when the timestamp is greater than expected for a given block height.
+            // Targets increase (easier when the timestamp is greater than expected for a given block height.
             let timestamp = ANCHOR_TIMESTAMP + (block_height + 1) * ANCHOR_TIME;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
-                previous_coinbase_target,
-                num_validators,
-                timestamp,
-                block_height,
-            );
-            let new_prover_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
-                previous_prover_target,
-                num_validators,
-                timestamp,
-                block_height,
-            );
-            assert!(new_coinbase_target < previous_coinbase_target);
-            assert!(new_prover_target < previous_prover_target);
-
-            // Targets increase when the timestamp is less than expected for a given block height.
-            let timestamp = ANCHOR_TIMESTAMP + (block_height - 1) * ANCHOR_TIME;
             let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
                 previous_coinbase_target,
                 num_validators,
@@ -290,6 +274,23 @@ mod tests {
             );
             assert!(new_coinbase_target > previous_coinbase_target);
             assert!(new_prover_target > previous_prover_target);
+
+            // Targets decrease (harder) when the timestamp is less than expected for a given block height.
+            let timestamp = ANCHOR_TIMESTAMP + (block_height - 1) * ANCHOR_TIME;
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+                previous_coinbase_target,
+                num_validators,
+                timestamp,
+                block_height,
+            );
+            let new_prover_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+                previous_prover_target,
+                num_validators,
+                timestamp,
+                block_height,
+            );
+            assert!(new_coinbase_target < previous_coinbase_target);
+            assert!(new_prover_target < previous_prover_target);
 
             block_height += 1;
         }
