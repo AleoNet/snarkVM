@@ -672,8 +672,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Ensure the coinbase proof meets the required coinbase difficulty. The coinbase difficulty is
         // calculated using the coinbase_target.
-        let required_coinbase_difficulty = u64::MAX.saturating_div(self.latest_coinbase_target()?);
-        if block.height() > 0 && coinbase_proof.to_cumulative_difficulty()? < required_coinbase_difficulty {
+        if block.height() > 0
+            && coinbase_proof.to_cumulative_difficulty()? < u64::MAX.saturating_div(self.latest_coinbase_target()?)
+        {
             bail!("Coinbase proof does not meet the coinbase difficulty");
         }
 
