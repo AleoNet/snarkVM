@@ -90,12 +90,15 @@ optional = true
 version = "0.4.43"
 optional = true
 
-[dev-dependencies.snarkvm]
-path = ".."
-
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
 default-features = false
+
+[dev-dependencies.snarkvm-circuit]
+path = "../circuit"
+
+[dev-dependencies.snarkvm-compiler]
+path = "../compiler"
 
 [dev-dependencies.snarkvm-console]
 path = "../console"
