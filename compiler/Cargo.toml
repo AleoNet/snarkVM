@@ -48,6 +48,7 @@ version = "0.9.0"
 [dependencies.snarkvm-parameters]
 path = "../parameters"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
@@ -56,9 +57,6 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0.64"
-
-[dependencies.colored]
-version = "2"
 
 [dependencies.indexmap]
 version = "1.8"

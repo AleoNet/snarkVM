@@ -70,7 +70,8 @@ version = "0.9.0"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.14"
+git = "https://github.com/ljedrz/aleo-std.git"
+branch = "granular_features"
 default-features = false
 
 [dependencies.anyhow]
@@ -170,17 +171,15 @@ wasm = [
   "snark",
   "wasm-bindgen-futures",
 ]
-cuda = [ "crossbeam-channel", "lazy_static", "rust-gpu-tools" ]
 parallel = [
   "rayon",
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
 ]
-profiler = [ "aleo-std/profiler" ]
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]
 polycommit = [ "rand_core", "fft", "msm" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
-polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
+polycommit_full = [ "polycommit", "snarkvm-parameters" ]
 snark = [ "crypto_hash", "fft", "msm", "polycommit" ]

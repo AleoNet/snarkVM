@@ -22,7 +22,8 @@ default-features = false
 features = [ "field", "integers" ]
 
 [dependencies.aleo-std]
-version = "0.1.14"
+git = "https://github.com/ljedrz/aleo-std.git"
+branch = "granular_features"
 default-features = false
 
 [dependencies.rayon]
@@ -38,4 +39,3 @@ version = "0.3.5"
 [features]
 default = [ "parallel" ]
 parallel = [ "rayon" ]
-timer = [ "aleo-std/timer", "aleo-std/timed" ]

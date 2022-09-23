@@ -134,7 +134,7 @@ macro_rules! impl_remote {
                 };
 
                 // Compose the correct file path for the parameter file.
-                let mut file_path = aleo_std::aleo_dir();
+                let mut file_path = std::path::PathBuf::from("~/.aleo");
                 file_path.push($local_dir);
                 file_path.push(&filename);
 
@@ -150,7 +150,7 @@ macro_rules! impl_remote {
 
                     // Load remote file
                     cfg_if::cfg_if! {
-                        if #[cfg(not(feature = "wasm"))] {
+                        if #[cfg(all(not(feature = "wasm"), feature = "remote"))] {
                             #[cfg(not(feature = "no_std_out"))]
                             println!("{} - Downloading parameters...", module_path!());
 
@@ -243,7 +243,7 @@ macro_rules! impl_remote {
                 Ok(())
             }
 
-            #[cfg(not(feature = "wasm"))]
+            #[cfg(all(not(feature = "wasm"), feature = "remote"))]
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
@@ -319,7 +319,7 @@ macro_rules! impl_remote {
                 };
 
                 // Compose the correct file path for the parameter file.
-                let mut file_path = aleo_std::aleo_dir();
+                let mut file_path = std::path::PathBuf::from("~/.aleo");
                 file_path.push($local_dir);
                 file_path.push(&filename);
 
@@ -335,7 +335,7 @@ macro_rules! impl_remote {
 
                     // Load remote file
                     cfg_if::cfg_if! {
-                        if #[cfg(not(feature = "wasm"))] {
+                        if #[cfg(all(not(feature = "wasm"), feature = "remote"))] {
                             #[cfg(not(feature = "no_std_out"))]
                             println!("{} - Downloading parameters...", module_path!());
 
@@ -428,7 +428,7 @@ macro_rules! impl_remote {
                 Ok(())
             }
 
-            #[cfg(not(feature = "wasm"))]
+            #[cfg(all(not(feature = "wasm"), feature = "remote"))]
             fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
