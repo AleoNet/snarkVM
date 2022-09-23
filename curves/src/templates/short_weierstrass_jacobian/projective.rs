@@ -516,29 +516,24 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
         // Prepare tables.
         let mut t_1 = Vec::with_capacity(L);
         let mut t_2 = Vec::with_capacity(L);
-        let double = self.double();
-        t_1.push(double);
+        let double = Affine::from(self.double());
+        t_1.push(self);
         for i in 1..L {
-            t_1.push(t_1[i - 1] + double);
+            t_1.push(t_1[i - 1].add_mixed(&double));
         }
+        Self::batch_normalization(&mut t_1);
+        let mut t_1 = t_1.into_iter().map(|p| Affine::from(p)).collect::<Vec<_>>();
 
         let phi = |b: P::BaseField| -> P::BaseField { b * P::PHI_1 };
 
-        let glv_endomorphism = |p: Self| -> Self {
-            let t = Affine::from(p);
+        let glv_endomorphism = |t: Affine<P>| -> Affine<P> {
             if t.is_zero() {
-                return Self::zero();
+                return t;
             }
 
-            let mut r = Self::zero();
+            let mut r = Affine::zero();
             r.y = t.y;
             r.x = phi(t.x);
-            r.z = <P::BaseField as Field>::from_base_prime_field(
-                <P::BaseField as Field>::BasePrimeField::from_repr(
-                    <<P::BaseField as Field>::BasePrimeField as PrimeField>::Parameters::R,
-                )
-                .unwrap(),
-            );
             r
         };
 
@@ -593,20 +588,20 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
         let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3, GLV_WINDOW_SIZE);
         let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
         let max_len = std::cmp::max(len_naf_1, len_naf_2);
-        let (mut acc, mut p_1) = (Self::zero(), Self::zero());
+        let (mut acc, mut p_1) = (Self::zero(), Affine::zero());
 
-        let naf_add = |table: &Vec<Self>, naf: i32, p_1: &mut Self, acc: &mut Self| {
+        let naf_add = |table: &Vec<Affine<P>>, naf: i32, p_1: &mut Affine<P>, acc: &mut Self| {
             if naf != 0 {
                 let naf_abs = naf.abs();
                 *p_1 = table[(naf_abs >> 1) as usize];
                 if naf < 0 {
                     *p_1 = p_1.neg();
                 }
-                *acc += p_1;
+                acc.add_assign_mixed(&p_1);
             }
         };
 
-        for i in (0..max_len - 1).rev() {
+        for i in (0..max_len).rev() {
             if i < len_naf_1 {
                 naf_add(&t_1, naf_1[i], &mut p_1, &mut acc)
             }
