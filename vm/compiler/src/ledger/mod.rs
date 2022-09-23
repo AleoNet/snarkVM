@@ -85,10 +85,11 @@ pub const ANCHOR_TIMESTAMP: u64 = 1663718400; // 2022-09-21 00:00:00 UTC
 /// The coinbase puzzle degree.
 const COINBASE_PUZZLE_DEGREE: usize = 1 << 13;
 
+// TODO (raychu86): Adjust these values based network expectations.
 /// The initial block coinbase target.
-const INITIAL_COINBASE_TARGET: u64 = 1_000_000_000_000_000;
+const INITIAL_COINBASE_TARGET: u64 = 30_000_000_000_000_000; // Around 30 seconds of a single prover generating proofs.
 /// The initial block proof target.
-const INITIAL_PROOF_TARGET: u64 = 1_000_000_000_000_000;
+const INITIAL_PROOF_TARGET: u64 = 4_600_000_000_000_000_000; // On average 4 attempts to generate a valid proof.
 
 /// The starting supply of Aleo credits.
 const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
