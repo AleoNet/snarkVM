@@ -85,10 +85,16 @@ impl<N: Network> CombinedPuzzleSolution<N> {
         Ok(KZG10::check(vk, &combined_commitment, point, combined_eval, &self.proof)?)
     }
 
-    pub fn to_cumulative_difficulty_target(&self) -> Result<u64> {
-        self.individual_puzzle_solutions
-            .iter()
-            .map(|prover_puzzle_solution| prover_puzzle_solution.to_difficulty_target())
-            .sum::<Result<u64>>()
+    /// Returns the cumulative difficulty of the individual prover solutions.
+    /// NOTE that this is NOT the cumulative difficulty target of the individual prover solutions.
+    pub fn to_cumulative_difficulty(&self) -> Result<u64> {
+        let mut cumulative_difficulty: u64 = 0;
+
+        for solution in &self.individual_puzzle_solutions {
+            let solution_difficulty = u64::MAX.saturating_div(solution.to_difficulty_target()?);
+            cumulative_difficulty = cumulative_difficulty.saturating_add(solution_difficulty);
+        }
+
+        Ok(cumulative_difficulty)
     }
 }
