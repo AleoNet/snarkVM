@@ -17,8 +17,8 @@
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-mod data_structures;
-pub use data_structures::*;
+mod helpers;
+pub use helpers::*;
 
 mod hash;
 use hash::*;

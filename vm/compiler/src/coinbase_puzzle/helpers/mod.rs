@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// TODO (raychu86): Rename all objects to be more intuitive.
-
 mod coinbase_solution;
 pub use coinbase_solution::*;
 

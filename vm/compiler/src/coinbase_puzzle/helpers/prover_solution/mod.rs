@@ -47,6 +47,8 @@ impl<N: Network> ProverSolution<N> {
             return Ok(false);
         }
 
+        // TODO: check difficulty of solution.
+
         // Compute the challenge point.
         let challenge_point = hash_commitment(self.commitment());
 
