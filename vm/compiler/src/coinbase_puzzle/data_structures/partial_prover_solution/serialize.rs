@@ -41,7 +41,7 @@ impl<'de, N: Network> Deserialize<'de> for PartialProverSolution<N> {
                 Ok(Self::new(
                     serde_json::from_value(partial_prover_solution["address"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(partial_prover_solution["nonce"].clone()).map_err(de::Error::custom)?,
-                    Commitment(
+                    PolynomialCommitment(
                         serde_json::from_value(partial_prover_solution["commitment"].clone())
                             .map_err(de::Error::custom)?,
                     ),
@@ -68,7 +68,7 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
+        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -89,7 +89,7 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
+        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

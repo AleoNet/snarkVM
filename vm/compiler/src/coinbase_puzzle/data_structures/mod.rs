@@ -30,7 +30,7 @@ use console::{account::Address, prelude::*};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
     msm::VariableBase,
-    polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey, KZG10},
+    polycommit::kzg10::{LagrangeBasis, PolynomialCommitment, Powers, Proof, VerifierKey, KZG10},
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{FromBytes, ToBytes};

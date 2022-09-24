@@ -53,7 +53,8 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
+        let partial_prover_solution =
+            PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
         let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
 
         // Check the string representation.

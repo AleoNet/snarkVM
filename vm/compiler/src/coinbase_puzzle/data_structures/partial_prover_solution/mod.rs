@@ -26,11 +26,11 @@ use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 pub struct PartialProverSolution<N: Network> {
     pub address: Address<N>,
     pub nonce: u64,
-    pub commitment: Commitment<N::PairingCurve>,
+    pub commitment: PolynomialCommitment<N::PairingCurve>,
 }
 
 impl<N: Network> PartialProverSolution<N> {
-    pub fn new(address: Address<N>, nonce: u64, commitment: Commitment<N::PairingCurve>) -> Self {
+    pub fn new(address: Address<N>, nonce: u64, commitment: PolynomialCommitment<N::PairingCurve>) -> Self {
         Self { address, nonce, commitment }
     }
 
@@ -42,7 +42,7 @@ impl<N: Network> PartialProverSolution<N> {
         self.nonce
     }
 
-    pub fn commitment(&self) -> &Commitment<N::PairingCurve> {
+    pub fn commitment(&self) -> &PolynomialCommitment<N::PairingCurve> {
         &self.commitment
     }
 

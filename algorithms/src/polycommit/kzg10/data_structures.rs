@@ -368,33 +368,33 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
 
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Commitment<E: PairingEngine>(
+pub struct PolynomialCommitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub E::G1Affine,
 );
 
-impl<E: PairingEngine> FromBytes for Commitment<E> {
+impl<E: PairingEngine> FromBytes for PolynomialCommitment<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize Commitment"))
     }
 }
 
-impl<E: PairingEngine> ToBytes for Commitment<E> {
+impl<E: PairingEngine> ToBytes for PolynomialCommitment<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize Commitment"))
     }
 }
 
-impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+impl<E: PairingEngine> ToMinimalBits for PolynomialCommitment<E> {
     fn to_minimal_bits(&self) -> Vec<bool> {
         self.0.to_minimal_bits()
     }
 }
 
-impl<E: PairingEngine> Commitment<E> {
+impl<E: PairingEngine> PolynomialCommitment<E> {
     #[inline]
     pub fn empty() -> Self {
-        Commitment(E::G1Affine::zero())
+        PolynomialCommitment(E::G1Affine::zero())
     }
 
     pub fn has_degree_bound(&self) -> bool {
@@ -406,7 +406,7 @@ impl<E: PairingEngine> Commitment<E> {
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E> {
+impl<E: PairingEngine> ToConstraintField<E::Fq> for PolynomialCommitment<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         self.0.to_field_elements()
     }
@@ -421,7 +421,7 @@ pub struct PreparedCommitment<E: PairingEngine>(
 
 impl<E: PairingEngine> PreparedCommitment<E> {
     /// prepare `PreparedCommitment` from `Commitment`
-    pub fn prepare(comm: &Commitment<E>) -> Self {
+    pub fn prepare(comm: &PolynomialCommitment<E>) -> Self {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
         let mut cur = E::G1Projective::from(comm.0);
 

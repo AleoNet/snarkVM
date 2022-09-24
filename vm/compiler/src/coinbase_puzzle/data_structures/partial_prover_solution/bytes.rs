@@ -28,7 +28,7 @@ impl<N: Network> FromBytes for PartialProverSolution<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let address: Address<N> = FromBytes::read_le(&mut reader)?;
         let nonce = u64::read_le(&mut reader)?;
-        let commitment = Commitment::read_le(&mut reader)?;
+        let commitment = PolynomialCommitment::read_le(&mut reader)?;
 
         Ok(Self { address, nonce, commitment })
     }
@@ -48,7 +48,7 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), Commitment(rng.gen()));
+        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

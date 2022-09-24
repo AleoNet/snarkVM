@@ -83,7 +83,7 @@ mod tests {
             individual_puzzle_solutions.push(PartialProverSolution::new(
                 address,
                 u64::rand(&mut rng),
-                Commitment(rng.gen()),
+                PolynomialCommitment(rng.gen()),
             ));
         }
         let expected = CombinedPuzzleSolution::new(individual_puzzle_solutions, Proof { w: rng.gen(), random_v: None });
@@ -113,7 +113,7 @@ mod tests {
             individual_puzzle_solutions.push(PartialProverSolution::new(
                 address,
                 u64::rand(&mut rng),
-                Commitment(rng.gen()),
+                PolynomialCommitment(rng.gen()),
             ));
         }
         let expected = CombinedPuzzleSolution::new(individual_puzzle_solutions, Proof { w: rng.gen(), random_v: None });

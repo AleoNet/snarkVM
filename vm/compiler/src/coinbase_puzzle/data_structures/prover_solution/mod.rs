@@ -59,7 +59,7 @@ impl<N: Network> ProverPuzzleSolution<N> {
         self.partial_solution.nonce()
     }
 
-    pub fn commitment(&self) -> &Commitment<N::PairingCurve> {
+    pub fn commitment(&self) -> &PolynomialCommitment<N::PairingCurve> {
         self.partial_solution.commitment()
     }
 

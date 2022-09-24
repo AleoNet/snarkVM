@@ -36,7 +36,7 @@ pub type UniversalParams<E> = kzg10::UniversalParams<E>;
 pub type Randomness<E> = kzg10::Randomness<E>;
 
 /// `Commitment` is the commitment for the KZG10 scheme.
-pub type Commitment<E> = kzg10::Commitment<E>;
+pub type Commitment<E> = kzg10::PolynomialCommitment<E>;
 
 /// `PreparedCommitment` is the prepared commitment for the KZG10 scheme.
 pub type PreparedCommitment<E> = kzg10::PreparedCommitment<E>;

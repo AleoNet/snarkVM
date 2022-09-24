@@ -216,7 +216,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
+    ) -> Result<(PolynomialCommitment<E>, Randomness<E>), PCError> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
 
         let commit_time = start_timer!(|| format!(
@@ -273,7 +273,7 @@ impl<E: PairingEngine> KZG10<E> {
         commitment.add_assign_mixed(&random_commitment);
 
         end_timer!(commit_time);
-        Ok((Commitment(commitment.into()), randomness))
+        Ok((PolynomialCommitment(commitment.into()), randomness))
     }
 
     /// Outputs a commitment to `polynomial`.
@@ -283,7 +283,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
+    ) -> Result<(PolynomialCommitment<E>, Randomness<E>), PCError> {
         Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
         assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
 
@@ -329,7 +329,7 @@ impl<E: PairingEngine> KZG10<E> {
         commitment.add_assign_mixed(&random_commitment);
 
         end_timer!(commit_time);
-        Ok((Commitment(commitment.into()), randomness))
+        Ok((PolynomialCommitment(commitment.into()), randomness))
     }
 
     /// Compute witness polynomial.
@@ -420,7 +420,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// committed inside `commitment`.
     pub fn check(
         vk: &VerifierKey<E>,
-        commitment: &Commitment<E>,
+        commitment: &PolynomialCommitment<E>,
         point: E::Fr,
         value: E::Fr,
         proof: &Proof<E>,
@@ -443,7 +443,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// `commitment_i` at `point_i`.
     pub fn batch_check<R: RngCore>(
         vk: &VerifierKey<E>,
-        commitments: &[Commitment<E>],
+        commitments: &[PolynomialCommitment<E>],
         points: &[E::Fr],
         values: &[E::Fr],
         proofs: &[Proof<E>],

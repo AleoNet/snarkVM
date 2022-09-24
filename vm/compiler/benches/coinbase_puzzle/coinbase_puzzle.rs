@@ -53,12 +53,12 @@ fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Te
 fn coinbase_puzzle_trim(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let max_degree = 1 << 14;
+    let max_degree = 1 << 18;
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
-        c.bench_function(&format!("CoinbasePuzzle::Trim {degree}"), |b| {
+    for degree in [1 << 15, 1 << 16, 1 << 17, 1 << 18] {
+        c.bench_function(&format!("CoinbasePuzzle::Trim 2^{}", (degree as f64).log2()), |b| {
             let config = PuzzleConfig { degree };
             b.iter(|| CoinbasePuzzleInst::trim(&universal_srs, config).unwrap())
         });
@@ -72,8 +72,8 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
-        c.bench_function(&format!("CoinbasePuzzle::Prove {degree}"), |b| {
+    for degree in [1 << 15, 1 << 16, 1 << 17, 1 << 18] {
+        c.bench_function(&format!("CoinbasePuzzle::Prove 2^{}", (degree as f64).log2()), |b| {
             let config = PuzzleConfig { degree };
             let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
             let (epoch_info, epoch_challenge, address, nonce) = sample_inputs(degree, rng);
