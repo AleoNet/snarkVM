@@ -19,8 +19,8 @@
 mod combined_puzzle_solution;
 pub use combined_puzzle_solution::*;
 
-mod partial_prover_solution;
-pub use partial_prover_solution::*;
+mod partial_solution;
+pub use partial_solution::*;
 
 mod prover_solution;
 pub use prover_solution::*;

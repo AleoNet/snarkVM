@@ -19,21 +19,21 @@ use super::*;
 impl<N: Network> FromStr for PartialSolution<N> {
     type Err = Error;
 
-    /// Initializes the PartialProverSolution from a JSON-string.
+    /// Initializes the PartialSolution from a JSON-string.
     fn from_str(partial_prover_solution: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(partial_prover_solution)?)
     }
 }
 
 impl<N: Network> Debug for PartialSolution<N> {
-    /// Prints the PartialProverSolution as a JSON-string.
+    /// Prints the PartialSolution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 impl<N: Network> Display for PartialSolution<N> {
-    /// Displays the PartialProverSolution as a JSON-string.
+    /// Displays the PartialSolution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
