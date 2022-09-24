@@ -57,7 +57,7 @@ pub struct SonicKZG10<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
 
 impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     pub fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalParams<E>, PCError> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::Marlin, true, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBounds::Marlin, true, rng).map_err(Into::into)
     }
 
     pub fn trim(
