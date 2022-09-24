@@ -50,18 +50,18 @@ pub use data_structures::*;
 use super::sonic_pc::LabeledPolynomialWithBasis;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum KZG10DegreeBounds {
+pub enum KZGDegreeBounds {
     All,
     Marlin,
     List(Vec<usize>),
     None,
 }
 
-impl KZG10DegreeBounds {
+impl KZGDegreeBounds {
     pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
         match self {
-            KZG10DegreeBounds::All => (0..max_degree).collect(),
-            KZG10DegreeBounds::Marlin => {
+            KZGDegreeBounds::All => (0..max_degree).collect(),
+            KZGDegreeBounds::Marlin => {
                 // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
                 // Consider that we are using radix-2 FFT,
                 // there are only a few possible domain sizes and therefore degree bounds.
@@ -79,8 +79,8 @@ impl KZG10DegreeBounds {
 
                 radix_2_possible_domain_sizes
             }
-            KZG10DegreeBounds::List(v) => v.clone(),
-            KZG10DegreeBounds::None => vec![],
+            KZGDegreeBounds::List(v) => v.clone(),
+            KZGDegreeBounds::None => vec![],
         }
     }
 }
@@ -97,7 +97,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// for the polynomial commitment scheme.
     pub fn setup<R: RngCore>(
         max_degree: usize,
-        supported_degree_bounds_config: &KZG10DegreeBounds,
+        supported_degree_bounds_config: &KZGDegreeBounds,
         produce_g2_powers: bool,
         rng: &mut R,
     ) -> Result<UniversalParams<E>, PCError> {
@@ -160,12 +160,12 @@ impl<E: PairingEngine> KZG10<E> {
         let list = supported_degree_bounds_config.get_list::<E::Fr>(max_degree);
 
         let supported_degree_bounds =
-            if *supported_degree_bounds_config != KZG10DegreeBounds::None { list.clone() } else { vec![] };
+            if *supported_degree_bounds_config != KZGDegreeBounds::None { list.clone() } else { vec![] };
 
         // Compute `neg_powers_of_beta_h`.
         let inverse_neg_powers_of_beta_h_time = start_timer!(|| "Generating negative powers of h in G2");
         let inverse_neg_powers_of_beta_h =
-            if produce_g2_powers && *supported_degree_bounds_config != KZG10DegreeBounds::None {
+            if produce_g2_powers && *supported_degree_bounds_config != KZGDegreeBounds::None {
                 let mut map = BTreeMap::<usize, E::G2Affine>::new();
 
                 let mut neg_powers_of_beta = vec![];
@@ -609,7 +609,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let degree = 4;
-        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBounds::None, false, rng).unwrap();
+        let pp = KZG_Bls12_377::setup(degree, &KZGDegreeBounds::None, false, rng).unwrap();
 
         let pp_bytes = pp.to_bytes_le().unwrap();
         let pp_recovered: UniversalParams<Bls12_377> = FromBytes::read_le(&pp_bytes[..]).unwrap();
@@ -625,7 +625,7 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBounds::None, false, rng)?;
+            let pp = KZG10::<E>::setup(degree, &KZGDegreeBounds::None, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, degree);
             let p = DensePolynomial::rand(degree, rng);
             let hiding_bound = Some(1);
@@ -648,7 +648,7 @@ mod tests {
         let rng = &mut TestRng::default();
         for _ in 0..100 {
             let degree = 50;
-            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBounds::None, false, rng)?;
+            let pp = KZG10::<E>::setup(degree, &KZGDegreeBounds::None, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, 2);
             let p = DensePolynomial::rand(1, rng);
             let hiding_bound = Some(1);
@@ -674,7 +674,7 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBounds::None, false, rng)?;
+            let pp = KZG10::<E>::setup(degree, &KZGDegreeBounds::None, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, degree);
 
             let mut comms = Vec::new();
@@ -722,7 +722,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let max_degree = 123;
-        let pp = KZG_Bls12_377::setup(max_degree, &KZG10DegreeBounds::None, false, rng).unwrap();
+        let pp = KZG_Bls12_377::setup(max_degree, &KZGDegreeBounds::None, false, rng).unwrap();
         let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree);
 
         let p = DensePolynomial::<Fr>::rand(max_degree + 1, rng);

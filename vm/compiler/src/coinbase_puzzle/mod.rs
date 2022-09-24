@@ -46,7 +46,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     pub fn setup(config: PuzzleConfig, rng: &mut (impl CryptoRng + Rng)) -> Result<SRS<N::PairingCurve>> {
         // The SRS must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS supports committing to a polynomial of degree `2n - 1`.
-        Ok(KZG10::setup(2 * config.degree - 1, &kzg10::KZG10DegreeBounds::None, false, rng)?)
+        Ok(KZG10::setup(2 * config.degree - 1, &kzg10::KZGDegreeBounds::None, false, rng)?)
     }
 
     pub fn trim(
