@@ -107,7 +107,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Returns the block coinbase proof for the given block height.
-    pub fn get_coinbase_proof(&self, height: u32) -> Result<CombinedPuzzleSolution<N>> {
+    pub fn get_coinbase_proof(&self, height: u32) -> Result<CoinbaseSolution<N>> {
         // Retrieve the block hash.
         let block_hash = match self.blocks.get_block_hash(height)? {
             Some(block_hash) => block_hash,

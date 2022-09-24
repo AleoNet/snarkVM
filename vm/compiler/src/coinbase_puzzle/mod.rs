@@ -46,7 +46,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     /// Initializes a new `SRS` for the coinbase puzzle.
     pub fn setup<R: Rng + CryptoRng>(config: PuzzleConfig, rng: &mut R) -> Result<SRS<N::PairingCurve>> {
         // The SRS must support committing to the product of two degree `n` polynomials.
-        // Thus, the SRS supports committing to a polynomial of degree `2n - 1`.
+        // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
         Ok(KZG10::setup(2 * config.degree - 1, &kzg10::KZGDegreeBounds::None, false, rng)?)
     }
 
@@ -54,8 +54,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         srs: &SRS<N::PairingCurve>,
         config: PuzzleConfig,
     ) -> Result<(CoinbasePuzzleProvingKey<N>, CoinbasePuzzleVerifyingKey<N>)> {
-        // As above, we need to be able to commit to the product of two degree `n` polynomials.
-        // This means the SRS that supports committing to a polynomial of degree `2n - 1`.
+        // As above, we must support committing to the product of two degree `n` polynomials.
+        // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
         let powers_of_beta_g = srs.powers_of_beta_g(0, 2 * config.degree - 1)?.to_vec();
         let domain = EvaluationDomain::new(config.degree + 1).ok_or_else(|| anyhow!("Invalid degree"))?;
         let lagrange_basis_at_beta_g = srs.lagrange_basis(domain)?;
@@ -140,7 +140,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverPuzzleSolution<N>],
-    ) -> Result<CombinedPuzzleSolution<N>> {
+    ) -> Result<CoinbaseSolution<N>> {
         let (polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
                 if solution.proof.is_hiding() {
@@ -179,6 +179,6 @@ impl<N: Network> CoinbasePuzzle<N> {
             .sum();
         let combined_product = &combined_polynomial * &epoch_challenge.epoch_polynomial;
         let proof = KZG10::open(&pk.powers(), &combined_product, point, &KZGRandomness::empty())?;
-        Ok(CombinedPuzzleSolution::new(partial_solutions, proof))
+        Ok(CoinbaseSolution::new(partial_solutions, proof))
     }
 }

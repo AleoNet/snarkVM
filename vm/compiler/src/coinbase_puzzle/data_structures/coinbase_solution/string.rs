@@ -16,24 +16,24 @@
 
 use super::*;
 
-impl<N: Network> FromStr for CombinedPuzzleSolution<N> {
+impl<N: Network> FromStr for CoinbaseSolution<N> {
     type Err = Error;
 
-    /// Initializes the block from a JSON-string.
-    fn from_str(combined_puzzle_solution: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(combined_puzzle_solution)?)
+    /// Initializes the coinbase solution from a JSON-string.
+    fn from_str(coinbase_solution: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(coinbase_solution)?)
     }
 }
 
-impl<N: Network> Debug for CombinedPuzzleSolution<N> {
-    /// Prints the CombinedPuzzleSolution as a JSON-string.
+impl<N: Network> Debug for CoinbaseSolution<N> {
+    /// Prints the coinbase solution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for CombinedPuzzleSolution<N> {
-    /// Displays the CombinedPuzzleSolution as a JSON-string.
+impl<N: Network> Display for CoinbaseSolution<N> {
+    /// Displays the coinbase solution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
@@ -50,24 +50,19 @@ mod tests {
     fn test_string() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample a new combined puzzle solution.
-        let mut individual_puzzle_solutions = vec![];
+        // Sample a new coinbase solution.
+        let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialSolution::new(
-                address,
-                u64::rand(&mut rng),
-                KZGCommitment(rng.gen()),
-            ));
+            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
         }
-        let expected =
-            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
+        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the string representation.
         let candidate = format!("{expected}");
-        assert_eq!(expected, CombinedPuzzleSolution::from_str(&candidate)?);
+        assert_eq!(expected, CoinbaseSolution::from_str(&candidate)?);
 
         Ok(())
     }

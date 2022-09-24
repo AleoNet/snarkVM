@@ -25,14 +25,14 @@ use super::*;
 
 /// The coinbase puzzle solution constructed by accumulating the individual prover solutions.
 #[derive(Clone, Eq, PartialEq, Hash)]
-pub struct CombinedPuzzleSolution<N: Network> {
-    pub individual_puzzle_solutions: Vec<PartialSolution<N>>,
+pub struct CoinbaseSolution<N: Network> {
+    pub partial_solutions: Vec<PartialSolution<N>>,
     pub proof: KZGProof<N::PairingCurve>,
 }
 
-impl<N: Network> CombinedPuzzleSolution<N> {
-    pub fn new(individual_puzzle_solutions: Vec<PartialSolution<N>>, proof: KZGProof<N::PairingCurve>) -> Self {
-        Self { individual_puzzle_solutions, proof }
+impl<N: Network> CoinbaseSolution<N> {
+    pub fn new(partial_solutions: Vec<PartialSolution<N>>, proof: KZGProof<N::PairingCurve>) -> Self {
+        Self { partial_solutions, proof }
     }
 
     pub fn verify(
@@ -41,13 +41,13 @@ impl<N: Network> CombinedPuzzleSolution<N> {
         epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
     ) -> Result<bool> {
-        if self.individual_puzzle_solutions.is_empty() {
+        if self.partial_solutions.is_empty() {
             return Ok(false);
         }
         if self.proof.is_hiding() {
             return Ok(false);
         }
-        let polynomials: Vec<_> = cfg_iter!(self.individual_puzzle_solutions)
+        let polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
             .map(|solution| {
                 // TODO: check difficulty of solution
                 CoinbasePuzzle::sample_solution_polynomial(
@@ -60,8 +60,7 @@ impl<N: Network> CombinedPuzzleSolution<N> {
             .collect::<Result<Vec<_>>>()?;
 
         // Compute challenges
-        let mut fs_challenges =
-            hash_commitments(self.individual_puzzle_solutions.iter().map(|solution| *solution.commitment()));
+        let mut fs_challenges = hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()));
         let point = match fs_challenges.pop() {
             Some(point) => point,
             None => bail!("Missing challenge point"),
@@ -77,8 +76,7 @@ impl<N: Network> CombinedPuzzleSolution<N> {
         combined_eval *= &epoch_challenge.epoch_polynomial.evaluate(point);
 
         // Compute combined commitment
-        let commitments: Vec<_> =
-            cfg_iter!(self.individual_puzzle_solutions).map(|solution| solution.commitment().0).collect();
+        let commitments: Vec<_> = cfg_iter!(self.partial_solutions).map(|solution| solution.commitment().0).collect();
         let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
         let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
         let combined_commitment: KZGCommitment<N::PairingCurve> = KZGCommitment(combined_commitment.into());
@@ -90,7 +88,7 @@ impl<N: Network> CombinedPuzzleSolution<N> {
     pub fn to_cumulative_difficulty(&self) -> Result<u64> {
         let mut cumulative_difficulty: u64 = 0;
 
-        for solution in &self.individual_puzzle_solutions {
+        for solution in &self.partial_solutions {
             let solution_difficulty = u64::MAX.saturating_div(solution.to_difficulty_target()?);
             cumulative_difficulty = cumulative_difficulty.saturating_add(solution_difficulty);
         }

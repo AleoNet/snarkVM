@@ -26,7 +26,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    coinbase_puzzle::CombinedPuzzleSolution,
+    coinbase_puzzle::CoinbaseSolution,
     ledger::{vm::VM, Origin, Transaction, Transition},
     process::{Deployment, Execution},
 };
@@ -52,7 +52,7 @@ pub struct Block<N: Network> {
 
     // TODO (raychu86): Add this into the block hash.
     /// The coinbase proof.
-    coinbase_proof: CombinedPuzzleSolution<N>,
+    coinbase_proof: CoinbaseSolution<N>,
 }
 
 impl<N: Network> Block<N> {
@@ -62,7 +62,7 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
-        coinbase_proof: CombinedPuzzleSolution<N>,
+        coinbase_proof: CoinbaseSolution<N>,
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the block is not empty.
@@ -85,7 +85,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         transactions: Transactions<N>,
         signature: Signature<N>,
-        coinbase_proof: CombinedPuzzleSolution<N>,
+        coinbase_proof: CoinbaseSolution<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
@@ -120,7 +120,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the coinbase proof.
-    pub const fn coinbase_proof(&self) -> &CombinedPuzzleSolution<N> {
+    pub const fn coinbase_proof(&self) -> &CoinbaseSolution<N> {
         &self.coinbase_proof
     }
 }

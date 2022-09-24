@@ -16,8 +16,8 @@
 
 // TODO (raychu86): Rename all objects to be more intuitive.
 
-mod combined_puzzle_solution;
-pub use combined_puzzle_solution::*;
+mod coinbase_solution;
+pub use coinbase_solution::*;
 
 mod partial_solution;
 pub use partial_solution::*;
@@ -44,6 +44,7 @@ use std::{
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PuzzleConfig {
+    /// The maximum degree of the polynomial.
     pub degree: usize,
 }
 

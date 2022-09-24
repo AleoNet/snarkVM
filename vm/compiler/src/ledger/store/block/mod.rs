@@ -33,7 +33,7 @@ use crate::{
         Signature,
         Transactions,
     },
-    CombinedPuzzleSolution,
+    CoinbaseSolution,
 };
 use console::network::prelude::*;
 
@@ -67,7 +67,7 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
     /// The mapping of `block hash` to `block coinbase proof`.
-    type CoinbaseProofMap: for<'a> Map<'a, N::BlockHash, CombinedPuzzleSolution<N>>;
+    type CoinbaseProofMap: for<'a> Map<'a, N::BlockHash, CoinbaseSolution<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -296,7 +296,7 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Returns the block coinbase proof for the given `block hash`.
-    fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CombinedPuzzleSolution<N>>> {
+    fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         match self.coinbase_proof_map().get(block_hash)? {
             Some(coinbase_proof) => Ok(Some(cow_to_cloned!(coinbase_proof))),
             None => Ok(None),
@@ -365,7 +365,7 @@ pub struct BlockMemory<N: Network> {
     /// The signature map.
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
     /// The coinbase proof map.
-    coinbase_proof_map: MemoryMap<N::BlockHash, CombinedPuzzleSolution<N>>,
+    coinbase_proof_map: MemoryMap<N::BlockHash, CoinbaseSolution<N>>,
 }
 
 #[rustfmt::skip]
@@ -378,7 +378,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
-    type CoinbaseProofMap = MemoryMap<N::BlockHash, CombinedPuzzleSolution<N>>;
+    type CoinbaseProofMap = MemoryMap<N::BlockHash, CoinbaseSolution<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -531,7 +531,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Returns the block coinbase proof for the given `block hash`.
-    pub fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CombinedPuzzleSolution<N>>> {
+    pub fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         self.storage.get_block_coinbase_proof(block_hash)
     }
 

@@ -49,7 +49,7 @@ use crate::{
     CoinbasePuzzle,
     CoinbasePuzzleProvingKey,
     CoinbasePuzzleVerifyingKey,
-    CombinedPuzzleSolution,
+    CoinbaseSolution,
     EpochChallenge,
     EpochInfo,
     ProverPuzzleSolution,
@@ -682,7 +682,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Ensure that each of the prover solutions meets the required proof target.
-        for prover_solution in &coinbase_proof.individual_puzzle_solutions {
+        for prover_solution in &coinbase_proof.partial_solutions {
             if block.height() > 0 && prover_solution.to_difficulty_target()? > self.latest_proof_target()? {
                 bail!("Invalid prover solution found in the coinbase proof");
             }

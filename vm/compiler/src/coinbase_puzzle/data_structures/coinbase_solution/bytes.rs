@@ -16,31 +16,33 @@
 
 use super::*;
 
-impl<N: Network> ToBytes for CombinedPuzzleSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.individual_puzzle_solutions.len() as u32).write_le(&mut writer)?;
-
-        for individual_puzzle_solution in &self.individual_puzzle_solutions {
-            individual_puzzle_solution.write_le(&mut writer)?;
-        }
-
-        self.proof.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
+impl<N: Network> FromBytes for CoinbaseSolution<N> {
+    /// Reads the coinbase solution from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let individual_puzzle_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
+        let partial_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
 
-        let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
-        for _ in 0..individual_puzzle_solutions_len {
+        let mut partial_solutions = Vec::with_capacity(partial_solutions_len as usize);
+        for _ in 0..partial_solutions_len {
             let individual_puzzle_solution: PartialSolution<N> = FromBytes::read_le(&mut reader)?;
-            individual_puzzle_solutions.push(individual_puzzle_solution);
+            partial_solutions.push(individual_puzzle_solution);
         }
 
         let proof = KZGProof::read_le(&mut reader)?;
 
-        Ok(Self { individual_puzzle_solutions, proof })
+        Ok(Self { partial_solutions, proof })
+    }
+}
+
+impl<N: Network> ToBytes for CoinbaseSolution<N> {
+    /// Writes the coinbase solution to the buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.partial_solutions.len() as u32).write_le(&mut writer)?;
+
+        for individual_puzzle_solution in &self.partial_solutions {
+            individual_puzzle_solution.write_le(&mut writer)?;
+        }
+
+        self.proof.write_le(&mut writer)
     }
 }
 
@@ -56,23 +58,18 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample a new combined puzzle solution.
-        let mut individual_puzzle_solutions = vec![];
+        let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialSolution::new(
-                address,
-                u64::rand(&mut rng),
-                KZGCommitment(rng.gen()),
-            ));
+            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
         }
-        let expected =
-            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
+        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, CombinedPuzzleSolution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, CoinbaseSolution::read_le(&expected_bytes[..])?);
         // assert!(CombinedPuzzleSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())

@@ -16,14 +16,13 @@
 
 use super::*;
 
-impl<N: Network> Serialize for CombinedPuzzleSolution<N> {
-    /// Serializes the CombinedPuzzleSolution to a JSON-string or buffer.
+impl<N: Network> Serialize for CoinbaseSolution<N> {
+    /// Serializes the coinbase solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut combined_puzzle_solution = serializer.serialize_struct("CombinedPuzzleSolution", 3)?;
-                combined_puzzle_solution
-                    .serialize_field("individual_puzzle_solutions", &self.individual_puzzle_solutions)?;
+                let mut combined_puzzle_solution = serializer.serialize_struct("CoinbaseSolution", 3)?;
+                combined_puzzle_solution.serialize_field("partial_solutions", &self.partial_solutions)?;
                 combined_puzzle_solution.serialize_field("proof.w", &self.proof.w)?;
                 if let Some(random_v) = &self.proof.random_v {
                     combined_puzzle_solution.serialize_field("proof.random_v", &random_v)?;
@@ -35,14 +34,14 @@ impl<N: Network> Serialize for CombinedPuzzleSolution<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for CombinedPuzzleSolution<N> {
-    /// Deserializes the CombinedPuzzleSolution from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
+    /// Deserializes the coinbase solution from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
                 let combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(combined_puzzle_solution["individual_puzzle_solutions"].clone())
+                    serde_json::from_value(combined_puzzle_solution["partial_solutions"].clone())
                         .map_err(de::Error::custom)?,
                     KZGProof {
                         w: serde_json::from_value(combined_puzzle_solution["proof.w"].clone())
@@ -56,9 +55,7 @@ impl<'de, N: Network> Deserialize<'de> for CombinedPuzzleSolution<N> {
                     },
                 ))
             }
-            false => {
-                FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "combined puzzle solution")
-            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "coinbase solution"),
         }
     }
 }
@@ -75,19 +72,14 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample a new combined puzzle solution.
-        let mut individual_puzzle_solutions = vec![];
+        let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialSolution::new(
-                address,
-                u64::rand(&mut rng),
-                KZGCommitment(rng.gen()),
-            ));
+            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
         }
-        let expected =
-            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
+        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -95,7 +87,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, CombinedPuzzleSolution::from_str(expected_string)?);
+        assert_eq!(expected, CoinbaseSolution::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -106,19 +98,14 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample a new combined puzzle solution.
-        let mut individual_puzzle_solutions = vec![];
+        let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialSolution::new(
-                address,
-                u64::rand(&mut rng),
-                KZGCommitment(rng.gen()),
-            ));
+            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
         }
-        let expected =
-            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
+        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -126,7 +113,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, CombinedPuzzleSolution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, CoinbaseSolution::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())

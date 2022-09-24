@@ -34,15 +34,15 @@ impl<N: Network> PartialSolution<N> {
         Self { address, nonce, commitment }
     }
 
-    pub fn address(&self) -> &Address<N> {
+    pub const fn address(&self) -> &Address<N> {
         &self.address
     }
 
-    pub fn nonce(&self) -> u64 {
+    pub const fn nonce(&self) -> u64 {
         self.nonce
     }
 
-    pub fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
+    pub const fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
         &self.commitment
     }
 
