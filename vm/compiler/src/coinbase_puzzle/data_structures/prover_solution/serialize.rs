@@ -16,12 +16,12 @@
 
 use super::*;
 
-impl<N: Network> Serialize for ProverPuzzleSolution<N> {
-    /// Serializes the ProverPuzzleSolution to a JSON-string or buffer.
+impl<N: Network> Serialize for ProverSolution<N> {
+    /// Serializes the prover solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut prover_puzzle_solution = serializer.serialize_struct("ProverPuzzleSolution", 3)?;
+                let mut prover_puzzle_solution = serializer.serialize_struct("ProverSolution", 3)?;
                 prover_puzzle_solution.serialize_field("partial_solution", &self.partial_solution)?;
                 prover_puzzle_solution.serialize_field("proof.w", &self.proof.w)?;
                 if let Some(random_v) = &self.proof.random_v {
@@ -34,8 +34,8 @@ impl<N: Network> Serialize for ProverPuzzleSolution<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for ProverPuzzleSolution<N> {
-    /// Deserializes the ProverPuzzleSolution from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for ProverSolution<N> {
+    /// Deserializes the prover solution from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
@@ -55,9 +55,7 @@ impl<'de, N: Network> Deserialize<'de> for ProverPuzzleSolution<N> {
                     },
                 ))
             }
-            false => {
-                FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "prover puzzle solution")
-            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "prover solution"),
         }
     }
 }
@@ -76,8 +74,8 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
+        let partial_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -85,7 +83,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, ProverPuzzleSolution::from_str(expected_string)?);
+        assert_eq!(expected, ProverSolution::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -98,8 +96,8 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
+        let partial_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -107,7 +105,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, ProverPuzzleSolution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, ProverSolution::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())

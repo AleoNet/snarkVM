@@ -16,21 +16,23 @@
 
 use super::*;
 
-impl<N: Network> ToBytes for PartialSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)?;
-        self.nonce.write_le(&mut writer)?;
-        self.commitment.write_le(&mut writer)
-    }
-}
-
 impl<N: Network> FromBytes for PartialSolution<N> {
+    /// Reads the partial solution from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let address: Address<N> = FromBytes::read_le(&mut reader)?;
         let nonce = u64::read_le(&mut reader)?;
         let commitment = KZGCommitment::read_le(&mut reader)?;
 
         Ok(Self { address, nonce, commitment })
+    }
+}
+
+impl<N: Network> ToBytes for PartialSolution<N> {
+    /// Writes the partial solution to the buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.address.write_le(&mut writer)?;
+        self.nonce.write_le(&mut writer)?;
+        self.commitment.write_le(&mut writer)
     }
 }
 
@@ -47,7 +49,7 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new partial prover solution.
+        // Sample a new partial solution.
         let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Check the byte representation.

@@ -57,7 +57,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample a new combined puzzle solution.
+        // Sample a new coinbase solution.
         let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
@@ -70,7 +70,7 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, CoinbaseSolution::read_le(&expected_bytes[..])?);
-        // assert!(CombinedPuzzleSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        // assert!(CoinbaseSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }

@@ -20,14 +20,14 @@ mod string;
 
 use super::*;
 
-/// The prover solution for the coinbase puzzle.
+/// The prover solution for the coinbase puzzle from a prover.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct ProverPuzzleSolution<N: Network> {
-    pub partial_solution: PartialSolution<N>,
-    pub proof: KZGProof<N::PairingCurve>,
+pub struct ProverSolution<N: Network> {
+    partial_solution: PartialSolution<N>,
+    proof: KZGProof<N::PairingCurve>,
 }
 
-impl<N: Network> ProverPuzzleSolution<N> {
+impl<N: Network> ProverSolution<N> {
     pub fn new(partial_solution: PartialSolution<N>, proof: KZGProof<N::PairingCurve>) -> Self {
         Self { partial_solution, proof }
     }

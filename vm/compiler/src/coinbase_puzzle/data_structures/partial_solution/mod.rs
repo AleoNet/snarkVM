@@ -21,32 +21,39 @@ mod string;
 use super::*;
 use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 
-/// The partial prover solution for the coinbase puzzle.
+/// The partial solution for the coinbase puzzle from a prover.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct PartialSolution<N: Network> {
+    /// The address of the prover.
     address: Address<N>,
+    /// The nonce for the solution.
     nonce: u64,
+    /// The commitment for the solution.
     commitment: KZGCommitment<N::PairingCurve>,
 }
 
 impl<N: Network> PartialSolution<N> {
+    /// Initializes a new instance of the partial solution.
     pub fn new(address: Address<N>, nonce: u64, commitment: KZGCommitment<N::PairingCurve>) -> Self {
         Self { address, nonce, commitment }
     }
 
+    /// Returns the address of the prover.
     pub const fn address(&self) -> &Address<N> {
         &self.address
     }
 
+    /// Returns the nonce for the solution.
     pub const fn nonce(&self) -> u64 {
         self.nonce
     }
 
+    /// Returns the commitment for the solution.
     pub const fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
         &self.commitment
     }
 
-    /// Returns the difficulty target of the prover solution.
+    /// Returns the difficulty target of the solution.
     pub fn to_difficulty_target(&self) -> Result<u64> {
         Ok(sha256d_to_u64(&self.commitment.to_bytes_le()?))
     }

@@ -52,7 +52,7 @@ use crate::{
     CoinbaseSolution,
     EpochChallenge,
     EpochInfo,
-    ProverPuzzleSolution,
+    ProverSolution,
 };
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
@@ -140,7 +140,7 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     /// The coinbase puzzle verifying key.
     coinbase_puzzle_verifying_key: Arc<CoinbasePuzzleVerifyingKey<N>>,
     /// The memory pool of proposed coinbase puzzle solutions for the current epoch.
-    prover_puzzle_memory_pool: IndexSet<ProverPuzzleSolution<N>>,
+    prover_puzzle_memory_pool: IndexSet<ProverSolution<N>>,
 
     /// The VM state.
     vm: VM<N, P>,
@@ -370,7 +370,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Appends the given prover solution to the memory pool.
-    pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverPuzzleSolution<N>) -> Result<()> {
+    pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverSolution<N>) -> Result<()> {
         let epoch_info = self.latest_epoch_info();
         let epoch_challenge = self.latest_epoch_challenge()?;
 

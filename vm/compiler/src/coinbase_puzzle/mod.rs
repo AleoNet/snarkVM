@@ -117,7 +117,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         epoch_challenge: &EpochChallenge<N>,
         address: &Address<N>,
         nonce: u64,
-    ) -> Result<ProverPuzzleSolution<N>> {
+    ) -> Result<ProverSolution<N>> {
         let polynomial = Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, nonce)?;
 
         let product = Polynomial::from(&polynomial * &epoch_challenge.epoch_polynomial);
@@ -132,18 +132,18 @@ impl<N: Network> CoinbasePuzzle<N> {
             assert!(KZG10::check(&pk.vk, &commitment, point, product_eval, &proof)?);
         }
 
-        Ok(ProverPuzzleSolution::new(PartialSolution::new(*address, nonce, commitment), proof))
+        Ok(ProverSolution::new(PartialSolution::new(*address, nonce, commitment), proof))
     }
 
     pub fn accumulate(
         pk: &CoinbasePuzzleProvingKey<N>,
         epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
-        prover_solutions: &[ProverPuzzleSolution<N>],
+        prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {
         let (polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
-                if solution.proof.is_hiding() {
+                if solution.proof().is_hiding() {
                     return None;
                 }
                 // TODO: check difficulty of solution and handle unwrap

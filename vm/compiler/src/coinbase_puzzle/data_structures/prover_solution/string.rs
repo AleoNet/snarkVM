@@ -16,24 +16,24 @@
 
 use super::*;
 
-impl<N: Network> FromStr for ProverPuzzleSolution<N> {
+impl<N: Network> FromStr for ProverSolution<N> {
     type Err = Error;
 
-    /// Initializes the ProverPuzzleSolution from a JSON-string.
+    /// Initializes the prover solution from a JSON-string.
     fn from_str(partial_prover_solution: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(partial_prover_solution)?)
     }
 }
 
-impl<N: Network> Debug for ProverPuzzleSolution<N> {
-    /// Prints the ProverPuzzleSolution as a JSON-string.
+impl<N: Network> Debug for ProverSolution<N> {
+    /// Prints the prover solution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for ProverPuzzleSolution<N> {
-    /// Displays the ProverPuzzleSolution as a JSON-string.
+impl<N: Network> Display for ProverSolution<N> {
+    /// Displays the prover solution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
@@ -53,12 +53,12 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
+        let partial_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the string representation.
         let candidate = format!("{expected}");
-        assert_eq!(expected, ProverPuzzleSolution::from_str(&candidate)?);
+        assert_eq!(expected, ProverSolution::from_str(&candidate)?);
 
         Ok(())
     }

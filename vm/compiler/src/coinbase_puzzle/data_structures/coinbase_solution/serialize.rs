@@ -71,7 +71,7 @@ mod tests {
     fn test_serde_json() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample a new combined puzzle solution.
+        // Sample a new coinbase solution.
         let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
@@ -97,7 +97,7 @@ mod tests {
     fn test_bincode() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample a new combined puzzle solution.
+        // Sample a new coinbase solution.
         let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;

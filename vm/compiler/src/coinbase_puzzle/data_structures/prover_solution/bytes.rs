@@ -16,19 +16,21 @@
 
 use super::*;
 
-impl<N: Network> ToBytes for ProverPuzzleSolution<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.partial_solution.write_le(&mut writer)?;
-        self.proof.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
+impl<N: Network> FromBytes for ProverSolution<N> {
+    /// Reads the prover solution from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let partial_solution: PartialSolution<N> = FromBytes::read_le(&mut reader)?;
         let proof = KZGProof::read_le(&mut reader)?;
 
         Ok(Self { partial_solution, proof })
+    }
+}
+
+impl<N: Network> ToBytes for ProverSolution<N> {
+    /// Writes the prover solution to the buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.partial_solution.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)
     }
 }
 
@@ -46,13 +48,13 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover solution.
-        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
+        let partial_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, ProverPuzzleSolution::read_le(&expected_bytes[..])?);
-        assert!(ProverPuzzleSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, ProverSolution::read_le(&expected_bytes[..])?);
+        assert!(ProverSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         //
         Ok(())
     }

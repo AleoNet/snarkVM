@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Serialize for PartialSolution<N> {
-    /// Serializes the PartialProverSolution to a JSON-string or buffer.
+    /// Serializes the partial solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
@@ -33,7 +33,7 @@ impl<N: Network> Serialize for PartialSolution<N> {
 }
 
 impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
-    /// Deserializes the PartialProverSolution from a JSON-string or buffer.
+    /// Deserializes the partial solution from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
@@ -47,9 +47,7 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
                     ),
                 ))
             }
-            false => {
-                FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial prover solution")
-            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial solution"),
         }
     }
 }
@@ -67,7 +65,7 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new partial prover solution.
+        // Sample a new partial solution.
         let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Serialize
@@ -88,7 +86,7 @@ mod tests {
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
         let address = Address::try_from(private_key)?;
 
-        // Sample a new partial prover solution.
+        // Sample a new partial solution.
         let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Serialize
