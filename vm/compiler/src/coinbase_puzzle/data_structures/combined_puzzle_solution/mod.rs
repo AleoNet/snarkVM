@@ -24,7 +24,7 @@ use rayon::prelude::*;
 use super::*;
 
 /// The coinbase puzzle solution constructed by accumulating the individual prover solutions.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct CombinedPuzzleSolution<N: Network> {
     pub individual_puzzle_solutions: Vec<PartialSolution<N>>,
     pub proof: KZGProof<N::PairingCurve>,

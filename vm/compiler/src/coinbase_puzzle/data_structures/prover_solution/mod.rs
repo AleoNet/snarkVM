@@ -21,7 +21,7 @@ mod string;
 use super::*;
 
 /// The prover solution for the coinbase puzzle.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct ProverPuzzleSolution<N: Network> {
     pub partial_solution: PartialSolution<N>,
     pub proof: KZGProof<N::PairingCurve>,
@@ -70,24 +70,5 @@ impl<N: Network> ProverPuzzleSolution<N> {
     /// Returns the difficulty target of the prover solution.
     pub fn to_difficulty_target(&self) -> Result<u64> {
         self.partial_solution.to_difficulty_target()
-    }
-}
-
-impl<N: Network> Eq for ProverPuzzleSolution<N> {}
-
-impl<N: Network> PartialEq for ProverPuzzleSolution<N> {
-    /// Implements the `Eq` trait for the ProverPuzzleSolution.
-    fn eq(&self, other: &Self) -> bool {
-        self.partial_solution == other.partial_solution && self.proof == other.proof
-    }
-}
-
-// TODO (raychu86): Use derive Hash. It seems commitment and proof do not derive it properly.
-impl<N: Network> core::hash::Hash for ProverPuzzleSolution<N> {
-    /// Implements the `Hash` trait for the ProverPuzzleSolution.
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.partial_solution.hash(state);
-        self.proof.w.hash(state);
-        self.proof.random_v.hash(state);
     }
 }
