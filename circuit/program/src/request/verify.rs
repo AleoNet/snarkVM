@@ -142,13 +142,13 @@ impl<A: Aleo> Request<A> {
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                        let h_r = (gamma * challenge) + (&h * response);
+                        let h_r = (gamma.deref() * challenge) + (&h * response);
 
                         // Compute the tag as `Hash(sk_tag, commitment)`.
                         let candidate_tag = A::hash_psd2(&[self.sk_tag.clone(), candidate_commitment.clone()]);
 
                         // Add (`H`, `r * H`, `gamma`, `tag`) to the message.
-                        message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
+                        message.extend([h, h_r, *gamma.clone()].iter().map(|point| point.to_x_coordinate()));
                         message.push(candidate_tag.clone());
 
                         // Ensure the candidate serial number matches the expected serial number.
