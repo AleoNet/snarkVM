@@ -23,12 +23,12 @@ use super::*;
 /// The prover solution for the coinbase puzzle.
 #[derive(Copy, Clone)]
 pub struct ProverPuzzleSolution<N: Network> {
-    pub partial_solution: PartialProverSolution<N>,
-    pub proof: Proof<N::PairingCurve>,
+    pub partial_solution: PartialSolution<N>,
+    pub proof: KZGProof<N::PairingCurve>,
 }
 
 impl<N: Network> ProverPuzzleSolution<N> {
-    pub fn new(partial_solution: PartialProverSolution<N>, proof: Proof<N::PairingCurve>) -> Self {
+    pub fn new(partial_solution: PartialSolution<N>, proof: KZGProof<N::PairingCurve>) -> Self {
         Self { partial_solution, proof }
     }
 
@@ -59,11 +59,11 @@ impl<N: Network> ProverPuzzleSolution<N> {
         self.partial_solution.nonce()
     }
 
-    pub fn commitment(&self) -> &PolynomialCommitment<N::PairingCurve> {
+    pub fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
         self.partial_solution.commitment()
     }
 
-    pub fn proof(&self) -> &Proof<N::PairingCurve> {
+    pub fn proof(&self) -> &KZGProof<N::PairingCurve> {
         &self.proof
     }
 

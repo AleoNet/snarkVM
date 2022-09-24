@@ -56,13 +56,14 @@ mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialProverSolution::new(
+            individual_puzzle_solutions.push(PartialSolution::new(
                 address,
                 u64::rand(&mut rng),
-                PolynomialCommitment(rng.gen()),
+                KZGCommitment(rng.gen()),
             ));
         }
-        let expected = CombinedPuzzleSolution::new(individual_puzzle_solutions, Proof { w: rng.gen(), random_v: None });
+        let expected =
+            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the string representation.
         let candidate = format!("{expected}");

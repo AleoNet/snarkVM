@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> ToBytes for PartialProverSolution<N> {
+impl<N: Network> ToBytes for PartialSolution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.address.write_le(&mut writer)?;
         self.nonce.write_le(&mut writer)?;
@@ -24,11 +24,11 @@ impl<N: Network> ToBytes for PartialProverSolution<N> {
     }
 }
 
-impl<N: Network> FromBytes for PartialProverSolution<N> {
+impl<N: Network> FromBytes for PartialSolution<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let address: Address<N> = FromBytes::read_le(&mut reader)?;
         let nonce = u64::read_le(&mut reader)?;
-        let commitment = PolynomialCommitment::read_le(&mut reader)?;
+        let commitment = KZGCommitment::read_le(&mut reader)?;
 
         Ok(Self { address, nonce, commitment })
     }
@@ -48,12 +48,12 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
+        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, PartialProverSolution::read_le(&expected_bytes[..])?);
-        assert!(PartialProverSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
+        assert!(PartialSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         //
         Ok(())
     }

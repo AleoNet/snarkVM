@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> FromStr for PartialProverSolution<N> {
+impl<N: Network> FromStr for PartialSolution<N> {
     type Err = Error;
 
     /// Initializes the PartialProverSolution from a JSON-string.
@@ -25,14 +25,14 @@ impl<N: Network> FromStr for PartialProverSolution<N> {
     }
 }
 
-impl<N: Network> Debug for PartialProverSolution<N> {
+impl<N: Network> Debug for PartialSolution<N> {
     /// Prints the PartialProverSolution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for PartialProverSolution<N> {
+impl<N: Network> Display for PartialSolution<N> {
     /// Displays the PartialProverSolution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
@@ -53,11 +53,11 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover puzzle solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
+        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Check the string representation.
         let candidate = format!("{expected}");
-        assert_eq!(expected, PartialProverSolution::from_str(&candidate)?);
+        assert_eq!(expected, PartialSolution::from_str(&candidate)?);
 
         Ok(())
     }

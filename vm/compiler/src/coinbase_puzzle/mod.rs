@@ -30,7 +30,7 @@ use crate::UniversalSRS;
 use console::{account::Address, prelude::Network};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
-    polycommit::kzg10::{self, Randomness, UniversalParams as SRS, KZG10},
+    polycommit::kzg10::{self, KZGRandomness, UniversalParams as SRS, KZG10},
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::Zero;
@@ -131,7 +131,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             assert!(KZG10::check(&pk.vk, &commitment, point, product_eval, &proof)?);
         }
 
-        Ok(ProverPuzzleSolution::new(PartialProverSolution::new(*address, nonce, commitment), proof))
+        Ok(ProverPuzzleSolution::new(PartialSolution::new(*address, nonce, commitment), proof))
     }
 
     pub fn accumulate(
@@ -158,7 +158,7 @@ impl<N: Network> CoinbasePuzzle<N> {
                 if let Some(true) = check_result {
                     Some((
                         polynomial,
-                        PartialProverSolution::new(*solution.address(), solution.nonce(), *solution.commitment()),
+                        PartialSolution::new(*solution.address(), solution.nonce(), *solution.commitment()),
                     ))
                 } else {
                     None
@@ -177,7 +177,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             .fold(DensePolynomial::zero, |acc, (poly, challenge)| &acc + &(poly * challenge))
             .sum();
         let combined_product = &combined_polynomial * &epoch_challenge.epoch_polynomial;
-        let proof = KZG10::open(&pk.powers(), &combined_product, point, &Randomness::empty())?;
+        let proof = KZG10::open(&pk.powers(), &combined_product, point, &KZGRandomness::empty())?;
         Ok(CombinedPuzzleSolution::new(partial_solutions, proof))
     }
 }

@@ -26,12 +26,12 @@ use super::*;
 /// The coinbase puzzle solution constructed by accumulating the individual prover solutions.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CombinedPuzzleSolution<N: Network> {
-    pub individual_puzzle_solutions: Vec<PartialProverSolution<N>>,
-    pub proof: Proof<N::PairingCurve>,
+    pub individual_puzzle_solutions: Vec<PartialSolution<N>>,
+    pub proof: KZGProof<N::PairingCurve>,
 }
 
 impl<N: Network> CombinedPuzzleSolution<N> {
-    pub fn new(individual_puzzle_solutions: Vec<PartialProverSolution<N>>, proof: Proof<N::PairingCurve>) -> Self {
+    pub fn new(individual_puzzle_solutions: Vec<PartialSolution<N>>, proof: KZGProof<N::PairingCurve>) -> Self {
         Self { individual_puzzle_solutions, proof }
     }
 
@@ -81,8 +81,7 @@ impl<N: Network> CombinedPuzzleSolution<N> {
             cfg_iter!(self.individual_puzzle_solutions).map(|solution| solution.commitment().0).collect();
         let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
         let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
-        let combined_commitment: PolynomialCommitment<N::PairingCurve> =
-            PolynomialCommitment(combined_commitment.into());
+        let combined_commitment: KZGCommitment<N::PairingCurve> = KZGCommitment(combined_commitment.into());
         Ok(KZG10::check(vk, &combined_commitment, point, combined_eval, &self.proof)?)
     }
 

@@ -22,15 +22,15 @@ use super::*;
 use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 
 /// The partial prover solution for the coinbase puzzle.
-#[derive(Copy, Clone)]
-pub struct PartialProverSolution<N: Network> {
-    pub address: Address<N>,
-    pub nonce: u64,
-    pub commitment: PolynomialCommitment<N::PairingCurve>,
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct PartialSolution<N: Network> {
+    address: Address<N>,
+    nonce: u64,
+    commitment: KZGCommitment<N::PairingCurve>,
 }
 
-impl<N: Network> PartialProverSolution<N> {
-    pub fn new(address: Address<N>, nonce: u64, commitment: PolynomialCommitment<N::PairingCurve>) -> Self {
+impl<N: Network> PartialSolution<N> {
+    pub fn new(address: Address<N>, nonce: u64, commitment: KZGCommitment<N::PairingCurve>) -> Self {
         Self { address, nonce, commitment }
     }
 
@@ -42,31 +42,12 @@ impl<N: Network> PartialProverSolution<N> {
         self.nonce
     }
 
-    pub fn commitment(&self) -> &PolynomialCommitment<N::PairingCurve> {
+    pub fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
         &self.commitment
     }
 
     /// Returns the difficulty target of the prover solution.
     pub fn to_difficulty_target(&self) -> Result<u64> {
         Ok(sha256d_to_u64(&self.commitment.to_bytes_le()?))
-    }
-}
-
-impl<N: Network> Eq for PartialProverSolution<N> {}
-
-impl<N: Network> PartialEq for PartialProverSolution<N> {
-    /// Implements the `Eq` trait for the PartialProverSolution.
-    fn eq(&self, other: &Self) -> bool {
-        self.address == other.address && self.nonce == other.nonce && self.commitment == other.commitment
-    }
-}
-
-// TODO (raychu86): Use derive Hash. It seems commitment and proof do not derive it properly.
-impl<N: Network> core::hash::Hash for PartialProverSolution<N> {
-    /// Implements the `Hash` trait for the PartialProverSolution.
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.address.hash(state);
-        self.nonce.hash(state);
-        self.commitment.0.hash(state);
     }
 }

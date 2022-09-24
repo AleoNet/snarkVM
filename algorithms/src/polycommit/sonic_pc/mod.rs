@@ -295,7 +295,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                         a.1 += (E::Fr::one(), &b.1);
                         a
                     });
-                let comm = kzg10::PolynomialCommitment(comm.to_affine());
+                let comm = kzg10::KZGCommitment(comm.to_affine());
 
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
@@ -644,7 +644,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     fn normalize_commitments(commitments: Vec<E::G1Projective>) -> impl Iterator<Item = Commitment<E>> {
         let comms = E::G1Projective::batch_normalization_into_affine(commitments);
-        comms.into_iter().map(|c| kzg10::PolynomialCommitment(c))
+        comms.into_iter().map(|c| kzg10::KZGCommitment(c))
     }
 }
 
@@ -658,7 +658,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         point: E::Fr,
         values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
+        proof: &kzg10::KZGProof<E>,
         randomizer: Option<E::Fr>,
         fs_rng: &mut S,
     ) {

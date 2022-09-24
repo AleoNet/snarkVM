@@ -216,7 +216,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(PolynomialCommitment<E>, Randomness<E>), PCError> {
+    ) -> Result<(KZGCommitment<E>, KZGRandomness<E>), PCError> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
 
         let commit_time = start_timer!(|| format!(
@@ -246,13 +246,13 @@ impl<E: PairingEngine> KZG10<E> {
                 .sum(),
         };
 
-        let mut randomness = Randomness::empty();
+        let mut randomness = KZGRandomness::empty();
         if let Some(hiding_degree) = hiding_bound {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
                 start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
 
-            randomness = Randomness::rand(hiding_degree, false, &mut rng);
+            randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
             Self::check_hiding_bound(
                 randomness.blinding_polynomial.degree(),
                 powers.powers_of_beta_times_gamma_g.len(),
@@ -273,7 +273,7 @@ impl<E: PairingEngine> KZG10<E> {
         commitment.add_assign_mixed(&random_commitment);
 
         end_timer!(commit_time);
-        Ok((PolynomialCommitment(commitment.into()), randomness))
+        Ok((KZGCommitment(commitment.into()), randomness))
     }
 
     /// Outputs a commitment to `polynomial`.
@@ -283,7 +283,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(PolynomialCommitment<E>, Randomness<E>), PCError> {
+    ) -> Result<(KZGCommitment<E>, KZGRandomness<E>), PCError> {
         Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
         assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
 
@@ -302,13 +302,13 @@ impl<E: PairingEngine> KZG10<E> {
             return Err(PCError::Terminated);
         }
 
-        let mut randomness = Randomness::empty();
+        let mut randomness = KZGRandomness::empty();
         if let Some(hiding_degree) = hiding_bound {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
                 start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
 
-            randomness = Randomness::rand(hiding_degree, false, &mut rng);
+            randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
             Self::check_hiding_bound(
                 randomness.blinding_polynomial.degree(),
                 lagrange_basis.powers_of_beta_times_gamma_g.len(),
@@ -329,7 +329,7 @@ impl<E: PairingEngine> KZG10<E> {
         commitment.add_assign_mixed(&random_commitment);
 
         end_timer!(commit_time);
-        Ok((PolynomialCommitment(commitment.into()), randomness))
+        Ok((KZGCommitment(commitment.into()), randomness))
     }
 
     /// Compute witness polynomial.
@@ -341,7 +341,7 @@ impl<E: PairingEngine> KZG10<E> {
     pub fn compute_witness_polynomial(
         polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
-        randomness: &Randomness<E>,
+        randomness: &KZGRandomness<E>,
     ) -> Result<(DensePolynomial<E::Fr>, Option<DensePolynomial<E::Fr>>), PCError> {
         let divisor = DensePolynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
 
@@ -366,10 +366,10 @@ impl<E: PairingEngine> KZG10<E> {
     pub(crate) fn open_with_witness_polynomial(
         powers: &Powers<E>,
         point: E::Fr,
-        randomness: &Randomness<E>,
+        randomness: &KZGRandomness<E>,
         witness_polynomial: &DensePolynomial<E::Fr>,
         hiding_witness_polynomial: Option<&DensePolynomial<E::Fr>>,
-    ) -> Result<Proof<E>, PCError> {
+    ) -> Result<KZGProof<E>, PCError> {
         Self::check_degree_is_too_large(witness_polynomial.degree(), powers.size())?;
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
@@ -392,7 +392,7 @@ impl<E: PairingEngine> KZG10<E> {
             None
         };
 
-        Ok(Proof { w: w.to_affine(), random_v })
+        Ok(KZGProof { w: w.to_affine(), random_v })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
@@ -400,8 +400,8 @@ impl<E: PairingEngine> KZG10<E> {
         powers: &Powers<E>,
         polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
-        rand: &Randomness<E>,
-    ) -> Result<Proof<E>, PCError> {
+        rand: &KZGRandomness<E>,
+    ) -> Result<KZGProof<E>, PCError> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
         let open_time = start_timer!(|| format!("Opening polynomial of degree {}", polynomial.degree()));
 
@@ -420,10 +420,10 @@ impl<E: PairingEngine> KZG10<E> {
     /// committed inside `commitment`.
     pub fn check(
         vk: &VerifierKey<E>,
-        commitment: &PolynomialCommitment<E>,
+        commitment: &KZGCommitment<E>,
         point: E::Fr,
         value: E::Fr,
-        proof: &Proof<E>,
+        proof: &KZGProof<E>,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| "Checking evaluation");
         let mut inner = commitment.0.to_projective() - vk.g.to_projective().mul(value);
@@ -443,10 +443,10 @@ impl<E: PairingEngine> KZG10<E> {
     /// `commitment_i` at `point_i`.
     pub fn batch_check<R: RngCore>(
         vk: &VerifierKey<E>,
-        commitments: &[PolynomialCommitment<E>],
+        commitments: &[KZGCommitment<E>],
         points: &[E::Fr],
         values: &[E::Fr],
-        proofs: &[Proof<E>],
+        proofs: &[KZGProof<E>],
         rng: &mut R,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| format!("Checking {} evaluation proofs", commitments.len()));

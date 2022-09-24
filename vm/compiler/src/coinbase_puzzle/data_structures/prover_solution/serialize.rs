@@ -43,7 +43,7 @@ impl<'de, N: Network> Deserialize<'de> for ProverPuzzleSolution<N> {
                 Ok(Self::new(
                     serde_json::from_value(prover_puzzle_solution["partial_solution"].clone())
                         .map_err(de::Error::custom)?,
-                    Proof {
+                    KZGProof {
                         w: serde_json::from_value(prover_puzzle_solution["proof.w"].clone())
                             .map_err(de::Error::custom)?,
                         random_v: match prover_puzzle_solution.get("proof.random_v") {
@@ -76,9 +76,8 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution =
-            PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
+        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -99,9 +98,8 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover puzzle solution.
-        let partial_prover_solution =
-            PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
+        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

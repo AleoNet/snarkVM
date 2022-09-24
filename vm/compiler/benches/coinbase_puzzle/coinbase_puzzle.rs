@@ -68,7 +68,7 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
 fn coinbase_puzzle_prove(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let max_degree = 1 << 14;
+    let max_degree = 1 << 18;
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
@@ -85,7 +85,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
 fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let max_degree = 1 << 14;
+    let max_degree = 1 << 18;
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
     for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {
@@ -109,7 +109,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
 fn coinbase_puzzle_verify(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    let max_degree = 1 << 14;
+    let max_degree = 1 << 18;
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
     for degree in [1 << 5, 1 << 8, 1 << 12, 1 << 13] {

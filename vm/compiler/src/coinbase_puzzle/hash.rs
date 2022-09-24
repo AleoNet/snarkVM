@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{fft::DensePolynomial, polycommit::kzg10::PolynomialCommitment};
+use snarkvm_algorithms::{fft::DensePolynomial, polycommit::kzg10::KZGCommitment};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, CanonicalSerialize};
@@ -38,14 +38,14 @@ pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> Result<DenseP
     Ok(DensePolynomial::from_coefficients_vec(coefficients))
 }
 
-pub fn hash_commitment<E: PairingEngine>(cm: &PolynomialCommitment<E>) -> E::Fr {
+pub fn hash_commitment<E: PairingEngine>(cm: &KZGCommitment<E>) -> E::Fr {
     let mut bytes = Vec::with_capacity(48);
     // This is faster than compressed serialization that's provided by `ToBytes`.
     cm.serialize_uncompressed(&mut bytes).unwrap();
     E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&bytes))
 }
 
-pub fn hash_commitments<E: PairingEngine>(cms: impl ExactSizeIterator<Item = PolynomialCommitment<E>>) -> Vec<E::Fr> {
+pub fn hash_commitments<E: PairingEngine>(cms: impl ExactSizeIterator<Item = KZGCommitment<E>>) -> Vec<E::Fr> {
     let num_commitments = cms.len();
     let cm_bytes = cms
         .flat_map(|c| {

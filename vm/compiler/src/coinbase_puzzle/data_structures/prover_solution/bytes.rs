@@ -25,8 +25,8 @@ impl<N: Network> ToBytes for ProverPuzzleSolution<N> {
 
 impl<N: Network> FromBytes for ProverPuzzleSolution<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let partial_solution: PartialProverSolution<N> = FromBytes::read_le(&mut reader)?;
-        let proof = Proof::read_le(&mut reader)?;
+        let partial_solution: PartialSolution<N> = FromBytes::read_le(&mut reader)?;
+        let proof = KZGProof::read_le(&mut reader)?;
 
         Ok(Self { partial_solution, proof })
     }
@@ -46,9 +46,8 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new prover solution.
-        let partial_prover_solution =
-            PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
-        let expected = ProverPuzzleSolution::new(partial_prover_solution, Proof { w: rng.gen(), random_v: None });
+        let partial_prover_solution = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        let expected = ProverPuzzleSolution::new(partial_prover_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

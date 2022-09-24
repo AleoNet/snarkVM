@@ -34,11 +34,11 @@ impl<N: Network> FromBytes for CombinedPuzzleSolution<N> {
 
         let mut individual_puzzle_solutions = Vec::with_capacity(individual_puzzle_solutions_len as usize);
         for _ in 0..individual_puzzle_solutions_len {
-            let individual_puzzle_solution: PartialProverSolution<N> = FromBytes::read_le(&mut reader)?;
+            let individual_puzzle_solution: PartialSolution<N> = FromBytes::read_le(&mut reader)?;
             individual_puzzle_solutions.push(individual_puzzle_solution);
         }
 
-        let proof = Proof::read_le(&mut reader)?;
+        let proof = KZGProof::read_le(&mut reader)?;
 
         Ok(Self { individual_puzzle_solutions, proof })
     }
@@ -61,13 +61,14 @@ mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialProverSolution::new(
+            individual_puzzle_solutions.push(PartialSolution::new(
                 address,
                 u64::rand(&mut rng),
-                PolynomialCommitment(rng.gen()),
+                KZGCommitment(rng.gen()),
             ));
         }
-        let expected = CombinedPuzzleSolution::new(individual_puzzle_solutions, Proof { w: rng.gen(), random_v: None });
+        let expected =
+            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

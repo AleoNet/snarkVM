@@ -44,7 +44,7 @@ impl<'de, N: Network> Deserialize<'de> for CombinedPuzzleSolution<N> {
                 Ok(Self::new(
                     serde_json::from_value(combined_puzzle_solution["individual_puzzle_solutions"].clone())
                         .map_err(de::Error::custom)?,
-                    Proof {
+                    KZGProof {
                         w: serde_json::from_value(combined_puzzle_solution["proof.w"].clone())
                             .map_err(de::Error::custom)?,
                         random_v: match combined_puzzle_solution.get("proof.random_v") {
@@ -80,13 +80,14 @@ mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialProverSolution::new(
+            individual_puzzle_solutions.push(PartialSolution::new(
                 address,
                 u64::rand(&mut rng),
-                PolynomialCommitment(rng.gen()),
+                KZGCommitment(rng.gen()),
             ));
         }
-        let expected = CombinedPuzzleSolution::new(individual_puzzle_solutions, Proof { w: rng.gen(), random_v: None });
+        let expected =
+            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -110,13 +111,14 @@ mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let address = Address::try_from(private_key)?;
 
-            individual_puzzle_solutions.push(PartialProverSolution::new(
+            individual_puzzle_solutions.push(PartialSolution::new(
                 address,
                 u64::rand(&mut rng),
-                PolynomialCommitment(rng.gen()),
+                KZGCommitment(rng.gen()),
             ));
         }
-        let expected = CombinedPuzzleSolution::new(individual_puzzle_solutions, Proof { w: rng.gen(), random_v: None });
+        let expected =
+            CombinedPuzzleSolution::new(individual_puzzle_solutions, KZGProof { w: rng.gen(), random_v: None });
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

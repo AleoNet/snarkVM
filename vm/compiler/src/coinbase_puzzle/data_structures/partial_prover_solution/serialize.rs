@@ -16,12 +16,12 @@
 
 use super::*;
 
-impl<N: Network> Serialize for PartialProverSolution<N> {
+impl<N: Network> Serialize for PartialSolution<N> {
     /// Serializes the PartialProverSolution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut partial_prover_solution = serializer.serialize_struct("PartialProverSolution", 3)?;
+                let mut partial_prover_solution = serializer.serialize_struct("PartialSolution", 3)?;
                 partial_prover_solution.serialize_field("address", &self.address)?;
                 partial_prover_solution.serialize_field("nonce", &self.nonce)?;
                 partial_prover_solution.serialize_field("commitment", &self.commitment.0)?;
@@ -32,7 +32,7 @@ impl<N: Network> Serialize for PartialProverSolution<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for PartialProverSolution<N> {
+impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
     /// Deserializes the PartialProverSolution from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
@@ -41,7 +41,7 @@ impl<'de, N: Network> Deserialize<'de> for PartialProverSolution<N> {
                 Ok(Self::new(
                     serde_json::from_value(partial_prover_solution["address"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(partial_prover_solution["nonce"].clone()).map_err(de::Error::custom)?,
-                    PolynomialCommitment(
+                    KZGCommitment(
                         serde_json::from_value(partial_prover_solution["commitment"].clone())
                             .map_err(de::Error::custom)?,
                     ),
@@ -68,7 +68,7 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
+        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -76,7 +76,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, PartialProverSolution::from_str(expected_string)?);
+        assert_eq!(expected, PartialSolution::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -89,7 +89,7 @@ mod tests {
         let address = Address::try_from(private_key)?;
 
         // Sample a new partial prover solution.
-        let expected = PartialProverSolution::new(address, u64::rand(&mut rng), PolynomialCommitment(rng.gen()));
+        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -97,7 +97,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, PartialProverSolution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())
