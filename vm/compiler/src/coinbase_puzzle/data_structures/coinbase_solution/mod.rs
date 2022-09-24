@@ -38,15 +38,19 @@ impl<N: Network> CoinbaseSolution<N> {
     pub fn verify(
         &self,
         vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
+        epoch_info: &EpochInfo<N>,
     ) -> Result<bool> {
+        // Ensure the solution is not empty.
         if self.partial_solutions.is_empty() {
             return Ok(false);
         }
+
+        // Ensure the proof is non-hiding.
         if self.proof.is_hiding() {
             return Ok(false);
         }
+
         let polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
             .map(|solution| {
                 // TODO: check difficulty of solution

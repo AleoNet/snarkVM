@@ -23,51 +23,69 @@ use super::*;
 /// The prover solution for the coinbase puzzle from a prover.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct ProverSolution<N: Network> {
+    /// The core data of the prover solution.
     partial_solution: PartialSolution<N>,
+    /// The proof for the solution.
     proof: KZGProof<N::PairingCurve>,
 }
 
 impl<N: Network> ProverSolution<N> {
+    /// Initializes a new instance of the prover solution.
     pub fn new(partial_solution: PartialSolution<N>, proof: KZGProof<N::PairingCurve>) -> Self {
         Self { partial_solution, proof }
     }
 
+    /// Returns `true` if the prover solution is valid.
     pub fn verify(
         &self,
         vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
+        epoch_info: &EpochInfo<N>,
     ) -> Result<bool> {
+        // Ensure the proof is non-hiding.
         if self.proof.is_hiding() {
             return Ok(false);
         }
 
-        let polynomial =
+        // Compute the challenge point.
+        let challenge_point = hash_commitment(self.commitment());
+
+        // Compute the prover polynomial.
+        let prover_polynomial =
             CoinbasePuzzle::sample_solution_polynomial(epoch_challenge, epoch_info, self.address(), self.nonce())?;
-        let point = hash_commitment(self.commitment());
-        let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
-        let polynomial_eval = polynomial.evaluate(point);
-        let product_eval = epoch_challenge_eval * polynomial_eval;
-        Ok(KZG10::check(vk, self.commitment(), point, product_eval, self.proof())?)
+
+        // Evaluate the epoch and prover polynomials at the challenge point.
+        let epoch_evaluation = epoch_challenge.epoch_polynomial.evaluate(challenge_point);
+        let prover_evaluation = prover_polynomial.evaluate(challenge_point);
+
+        // Compute the claimed value by multiplying the evaluations.
+        let claimed_value = epoch_evaluation * prover_evaluation;
+
+        // Check the KZG proof.
+        Ok(KZG10::check(vk, self.commitment(), challenge_point, claimed_value, self.proof())?)
     }
 
+    /// Returns the address of the prover.
     pub fn address(&self) -> &Address<N> {
         self.partial_solution.address()
     }
 
+    /// Returns the nonce for the solution.
     pub fn nonce(&self) -> u64 {
         self.partial_solution.nonce()
     }
 
+    /// Returns the commitment for the solution.
     pub fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
         self.partial_solution.commitment()
     }
 
+    /// Returns the proof for the solution.
     pub fn proof(&self) -> &KZGProof<N::PairingCurve> {
         &self.proof
     }
 
-    /// Returns the difficulty target of the prover solution.
+    /// Returns the difficulty target of the solution.
     pub fn to_difficulty_target(&self) -> Result<u64> {
         self.partial_solution.to_difficulty_target()
     }

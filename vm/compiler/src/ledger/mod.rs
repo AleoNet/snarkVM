@@ -380,7 +380,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Ensure that the prover puzzle is valid for the given epoch.
-        if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
+        if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_challenge, &epoch_info)? {
             bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
         }
 
@@ -669,7 +669,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, COINBASE_PUZZLE_DEGREE)?;
 
         // Ensure the coinbase proof is valid.
-        if !coinbase_proof.verify(&self.coinbase_puzzle_verifying_key, &epoch_info, &epoch_challenge)? {
+        if !coinbase_proof.verify(&self.coinbase_puzzle_verifying_key, &epoch_challenge, &epoch_info)? {
             bail!("Invalid coinbase proof: {:?}", coinbase_proof);
         }
 
