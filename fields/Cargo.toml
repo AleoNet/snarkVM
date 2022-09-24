@@ -60,7 +60,13 @@ features = [ "derive" ]
 [dependencies.thiserror]
 version = "1.0"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [features]
 default = [ "parallel", "snarkvm-utilities/default" ]
 parallel = [ "rayon", "snarkvm-utilities/parallel" ]
+fuzzing = [ "arbitrary" ]
 profiler = [ "aleo-std/profiler" ]

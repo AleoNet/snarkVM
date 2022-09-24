@@ -48,6 +48,7 @@ use std::{
 
 pub trait Fp384Parameters: FieldParameters<BigInteger = BigInteger> {}
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp384Parameters"),

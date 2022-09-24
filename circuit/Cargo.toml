@@ -23,6 +23,10 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
+[features]
+default = []
+fuzzing = ["snarkvm-circuit-environment/fuzzing", "snarkvm-circuit-types/fuzzing"]
+
 [dependencies.snarkvm-circuit-account]
 path = "./account"
 version = "0.9.0"

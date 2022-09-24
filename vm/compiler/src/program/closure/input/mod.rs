@@ -22,6 +22,7 @@ use console::{
     program::{Register, RegisterType},
 };
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {register_type}`.
 #[derive(Clone, PartialEq, Eq, Hash)]

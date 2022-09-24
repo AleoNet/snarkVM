@@ -30,6 +30,7 @@ use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 
 /// The literal enum represents all supported types in snarkVM.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone)]
 pub enum Literal<N: Network> {
     /// The Aleo address type.

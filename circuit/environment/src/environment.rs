@@ -28,8 +28,16 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
         ScalarField = Self::ScalarField,
         Coordinates = (Self::BaseField, Self::BaseField),
     >;
+    #[cfg(not(feature = "fuzzing"))]
     type BaseField: PrimeField + SquareRootField + Copy;
+    #[cfg(feature = "fuzzing")]
+    type BaseField: PrimeField + SquareRootField + Copy + for<'a> arbitrary::Arbitrary<'a>;
+    #[cfg(not(feature = "fuzzing"))]
     type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger> + Copy;
+    #[cfg(feature = "fuzzing")]
+    type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger>
+        + Copy
+        + for<'a> arbitrary::Arbitrary<'a>;
 
     /// The coefficient `A` of the twisted Edwards curve.
     const EDWARDS_A: Self::BaseField = <Self::Network as console::Environment>::EDWARDS_A;

@@ -101,6 +101,11 @@ version = "1.6"
 [dev-dependencies.tracing-test]
 version = "0.2"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [features]
 default = [ "parallel" ]
 parallel = [
@@ -109,3 +114,4 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 aleo-cli = [ ]
+fuzzing = ["arbitrary", "console/fuzzing", "snarkvm-curves/fuzzing"]

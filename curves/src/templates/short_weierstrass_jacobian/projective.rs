@@ -39,6 +39,19 @@ pub struct Projective<P: Parameters> {
     pub z: P::BaseField,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, P: Parameters> arbitrary::Arbitrary<'a> for Projective<P> {
+    fn arbitrary(_u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        // This implementation skips the fuzzer's input due to an extremely low
+        // probability of producing valid results.
+
+        let mut rng = snarkvm_utilities::test_rng();
+        let projective = Projective::<P>::rand(&mut rng);
+
+        Ok(projective)
+    }
+}
+
 impl<P: Parameters> Projective<P> {
     pub const fn new(x: P::BaseField, y: P::BaseField, z: P::BaseField) -> Self {
         Self { x, y, z }

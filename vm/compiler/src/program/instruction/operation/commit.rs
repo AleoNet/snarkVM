@@ -44,6 +44,7 @@ enum Committer {
 }
 
 /// Commits the operand into the declared type.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CommitInstruction<N: Network, const VARIANT: u8> {
     /// The operand as `input`.

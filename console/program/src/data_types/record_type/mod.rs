@@ -42,6 +42,27 @@ pub struct RecordType<N: Network> {
     entries: IndexMap<Identifier<N>, EntryType<N>>,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for RecordType<N>
+where
+    <N as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let name = <Identifier<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let owner = <PublicOrPrivate as arbitrary::Arbitrary>::arbitrary(u)?;
+        let gates = <PublicOrPrivate as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        let mut entries = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, EntryType<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            entries.insert(k, v);
+        }
+
+        Ok(RecordType { name, owner, gates, entries })
+    }
+}
+
 impl<N: Network> RecordType<N> {
     /// Returns the name of the record type.
     pub const fn name(&self) -> &Identifier<N> {

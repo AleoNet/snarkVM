@@ -31,6 +31,24 @@ pub struct LinearCombination<F: PrimeField> {
     value: F,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, F: PrimeField + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for LinearCombination<F> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let mut terms = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Variable<F>, F)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            terms.insert(k, v);
+        }
+
+        Ok(LinearCombination {
+            constant: <F as arbitrary::Arbitrary>::arbitrary(u)?,
+            terms,
+            value: <F as arbitrary::Arbitrary>::arbitrary(u)?,
+        })
+    }
+}
+
 impl<F: PrimeField> LinearCombination<F> {
     /// Returns the `zero` constant.
     pub(crate) fn zero() -> Self {

@@ -39,6 +39,19 @@ use snarkvm_console_types::{prelude::*, Field};
 #[derive(Copy, Clone)]
 pub struct Identifier<N: Network>(Field<N>, u8); // Number of bytes in the identifier.
 
+#[cfg(feature = "fuzzing")]
+impl<'a, N: Network> arbitrary::Arbitrary<'a> for Identifier<N>
+where
+    <N as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let field = <Field<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let n = <u8 as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        Ok(Identifier(field, n))
+    }
+}
+
 impl<N: Network> TryFrom<&str> for Identifier<N> {
     type Error = Error;
 

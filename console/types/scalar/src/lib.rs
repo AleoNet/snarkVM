@@ -36,6 +36,7 @@ pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Scalar<E: Environment> {
     /// The underlying scalar element.

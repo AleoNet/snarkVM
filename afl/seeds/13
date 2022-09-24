@@ -1,0 +1,12 @@
+import eth.aleo;
+import usdc.aleo;
+
+program swap.aleo;
+
+function swap:
+    input r0 as eth.aleo/eth.record;
+    input r1 as usdc.aleo/usdc.record;
+    call eth.aleo/transfer r0 r1.owner r0.amount into r2 r3;
+    call usdc.aleo/transfer r1 r0.owner r1.amount into r4 r5;
+    output r2 as eth.aleo/eth.record;
+    output r4 as usdc.aleo/usdc.record;

@@ -32,6 +32,7 @@ use core::{fmt::Debug, hash::Hash};
 pub trait Environment:
     'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync
 {
+    #[cfg(not(feature = "fuzzing"))]
     type Affine: AffineCurve<
         Projective = Self::Projective,
         BaseField = Self::Field,
@@ -39,10 +40,20 @@ pub trait Environment:
         Coordinates = (Self::Field, Self::Field),
     >;
     type BigInteger: BigInteger;
+    #[cfg(not(feature = "fuzzing"))]
     type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
+    #[cfg(feature = "fuzzing")]
+    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy + for<'a> arbitrary::Arbitrary<'a>;
     type PairingCurve: PairingEngine<Fr = Self::Field>;
+    #[cfg(not(feature = "fuzzing"))]
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
+    #[cfg(feature = "fuzzing")]
+    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>
+        + for<'a> arbitrary::Arbitrary<'a>;
+    #[cfg(not(feature = "fuzzing"))]
     type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
+    #[cfg(feature = "fuzzing")]
+    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy + for<'a> arbitrary::Arbitrary<'a>;
 
     /// The coefficient `A` of the twisted Edwards curve.
     const EDWARDS_A: Self::Field;
@@ -59,7 +70,8 @@ pub trait Environment:
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
-        panic!("{}", message.into())
+        println!("{}", message.into());
+        panic!("HaltedABC")
     }
 }
 

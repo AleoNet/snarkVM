@@ -31,6 +31,25 @@ pub struct Interface<N: Network> {
     members: IndexMap<Identifier<N>, PlaintextType<N>>,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Interface<N>
+where
+    <N as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let name = <Identifier<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        let mut members = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, PlaintextType<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            members.insert(k, v);
+        }
+
+        Ok(Interface { name, members })
+    }
+}
+
 impl<N: Network> Interface<N> {
     /// Returns the name of the interface.
     #[inline]

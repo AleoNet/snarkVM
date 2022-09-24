@@ -26,6 +26,7 @@ use std::rc::Rc;
 
 pub type Index = u64;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
     Constant(Rc<F>),

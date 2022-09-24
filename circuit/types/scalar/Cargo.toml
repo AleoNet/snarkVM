@@ -24,6 +24,12 @@ version = "0.9.0"
 path = "../field"
 version = "0.9.0"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]
+fuzzing = ["arbitrary"]

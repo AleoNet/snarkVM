@@ -39,6 +39,13 @@ use core::ops::Deref;
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
+#[cfg(feature = "fuzzing")]
+impl<'a, E: Environment> arbitrary::Arbitrary<'a> for Boolean<E> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Boolean(<LinearCombination<E::BaseField> as arbitrary::Arbitrary>::arbitrary(u)?))
+    }
+}
+
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
 #[cfg(console)]

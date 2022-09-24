@@ -26,6 +26,7 @@ use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq = Fp384<FqParameters>;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 pub struct FqParameters;
 
 impl Fp384Parameters for FqParameters {}

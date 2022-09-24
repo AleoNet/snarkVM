@@ -42,6 +42,16 @@ pub struct Field<E: Environment> {
 
 impl<E: Environment> FieldTrait for Field<E> {}
 
+#[cfg(feature = "fuzzing")]
+impl<'a, E: Environment> arbitrary::Arbitrary<'a> for Field<E>
+where
+    <E as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self { field: <E::Field as arbitrary::Arbitrary>::arbitrary(u)? })
+    }
+}
+
 impl<E: Environment> Field<E> {
     /// The field size in bits.
     pub const SIZE_IN_BITS: usize = E::Field::SIZE_IN_BITS;
