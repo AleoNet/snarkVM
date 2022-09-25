@@ -36,12 +36,7 @@ impl<N: Network> ProverSolution<N> {
     }
 
     /// Returns `true` if the prover solution is valid.
-    pub fn verify(
-        &self,
-        vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_challenge: &EpochChallenge<N>,
-        epoch_info: &EpochInfo<N>,
-    ) -> Result<bool> {
+    pub fn verify(&self, vk: &CoinbasePuzzleVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
         // Ensure the proof is non-hiding.
         if self.proof.is_hiding() {
             return Ok(false);
@@ -54,7 +49,7 @@ impl<N: Network> ProverSolution<N> {
 
         // Compute the prover polynomial.
         let prover_polynomial =
-            CoinbasePuzzle::sample_solution_polynomial(epoch_challenge, epoch_info, self.address(), self.nonce())?;
+            CoinbasePuzzle::sample_solution_polynomial(epoch_challenge, self.address(), self.nonce())?;
 
         // Evaluate the epoch and prover polynomials at the challenge point.
         let epoch_evaluation = epoch_challenge.epoch_polynomial.evaluate(challenge_point);

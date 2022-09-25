@@ -35,12 +35,7 @@ impl<N: Network> CoinbaseSolution<N> {
         Self { partial_solutions, proof }
     }
 
-    pub fn verify(
-        &self,
-        vk: &CoinbasePuzzleVerifyingKey<N>,
-        epoch_challenge: &EpochChallenge<N>,
-        epoch_info: &EpochInfo<N>,
-    ) -> Result<bool> {
+    pub fn verify(&self, vk: &CoinbasePuzzleVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
         // Ensure the solution is not empty.
         if self.partial_solutions.is_empty() {
             return Ok(false);
@@ -54,12 +49,7 @@ impl<N: Network> CoinbaseSolution<N> {
         let polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
             .map(|solution| {
                 // TODO: check difficulty of solution
-                CoinbasePuzzle::sample_solution_polynomial(
-                    epoch_challenge,
-                    epoch_info,
-                    solution.address(),
-                    solution.nonce(),
-                )
+                CoinbasePuzzle::sample_solution_polynomial(epoch_challenge, solution.address(), solution.nonce())
             })
             .collect::<Result<Vec<_>>>()?;
 

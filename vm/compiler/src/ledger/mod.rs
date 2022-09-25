@@ -51,7 +51,6 @@ use crate::{
     CoinbasePuzzleVerifyingKey,
     CoinbaseSolution,
     EpochChallenge,
-    EpochInfo,
     ProverSolution,
 };
 use console::{
@@ -83,7 +82,7 @@ pub const ANCHOR_TIME: u64 = 15;
 pub const ANCHOR_TIMESTAMP: u64 = 1663718400; // 2022-09-21 00:00:00 UTC
 
 /// The coinbase puzzle degree.
-const COINBASE_PUZZLE_DEGREE: usize = 1 << 13;
+const COINBASE_PUZZLE_DEGREE: u32 = 1 << 13;
 
 // TODO (raychu86): Adjust these values based network expectations.
 /// The initial block coinbase target.
@@ -371,16 +370,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Appends the given prover solution to the memory pool.
     pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverSolution<N>) -> Result<()> {
-        let epoch_info = self.latest_epoch_info();
-        let epoch_challenge = self.latest_epoch_challenge()?;
-
         // Ensure that the prover puzzle is less than the proof target.
         if prover_puzzle_solution.to_difficulty_target()? > self.latest_proof_target()? {
             bail!("Prover puzzle does not meet the proof difficulty target requirements.")
         }
 
+        // Compute the epoch challenge.
+        let epoch_challenge = self.latest_epoch_challenge()?;
+
         // Ensure that the prover puzzle is valid for the given epoch.
-        if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_challenge, &epoch_info)? {
+        if !prover_puzzle_solution.verify(&self.coinbase_puzzle_verifying_key, &epoch_challenge)? {
             bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
         }
 
@@ -424,14 +423,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Construct the coinbase proof.
-        let epoch_info = self.latest_epoch_info();
         let epoch_challenge = self.latest_epoch_challenge()?;
-        let coinbase_proof = CoinbasePuzzle::accumulate(
-            &self.coinbase_puzzle_proving_key,
-            &epoch_info,
-            &epoch_challenge,
-            &prover_solutions,
-        )?;
+        let coinbase_proof =
+            CoinbasePuzzle::accumulate(&self.coinbase_puzzle_proving_key, &epoch_challenge, &prover_solutions)?;
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
@@ -662,14 +656,15 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Invalid transaction found in the transactions list");
         }
 
-        /* Coinbase proof */
+        /* Coinbase Proof */
 
-        let coinbase_proof = block.coinbase_proof();
-        let epoch_info = EpochInfo { epoch_number: block.round(), previous_block_hash: block.previous_hash() };
-        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, COINBASE_PUZZLE_DEGREE)?;
+        // TODO (howardwu): Update this to be epoch-based, not block-based.
+        // TODO (howardwu): Cache this epoch challenge so it doesn't need to be recomputed each time.
+        let epoch_challenge = EpochChallenge::new(block.round(), block.previous_hash(), COINBASE_PUZZLE_DEGREE)?;
 
         // Ensure the coinbase proof is valid.
-        if !coinbase_proof.verify(&self.coinbase_puzzle_verifying_key, &epoch_challenge, &epoch_info)? {
+        let coinbase_proof = block.coinbase_proof();
+        if !coinbase_proof.verify(&self.coinbase_puzzle_verifying_key, &epoch_challenge)? {
             bail!("Invalid coinbase proof: {:?}", coinbase_proof);
         }
 

@@ -52,22 +52,20 @@ impl<N: Network> Block<N> {
         let coinbase_proof = {
             let (pk, vk) = CoinbasePuzzle::<N>::load()?;
 
-            let epoch_info = EpochInfo { epoch_number: 0, previous_block_hash: Default::default() };
-            let epoch_challenge = CoinbasePuzzle::<N>::init_for_epoch(&epoch_info, COINBASE_PUZZLE_DEGREE)?;
+            let epoch_challenge = EpochChallenge::new(0, Default::default(), COINBASE_PUZZLE_DEGREE)?;
             let nonce = u64::rand(rng);
 
-            let prover_solution = CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &caller, nonce)?;
+            let prover_solution = CoinbasePuzzle::prove(&pk, &epoch_challenge, &caller, nonce)?;
 
             // Ensure the prover solution is valid.
-            if !prover_solution.verify(&vk, &epoch_challenge, &epoch_info)? {
+            if !prover_solution.verify(&vk, &epoch_challenge)? {
                 bail!("Failed to initialize the genesis coinbase puzzle");
             }
 
-            let coinbase_proof =
-                CoinbasePuzzle::<N>::accumulate(&pk, &epoch_info, &epoch_challenge, &[prover_solution])?;
+            let coinbase_proof = CoinbasePuzzle::<N>::accumulate(&pk, &epoch_challenge, &[prover_solution])?;
 
             // Ensure the coinbase proof is valid.
-            if !coinbase_proof.verify(&vk, &epoch_challenge, &epoch_info)? {
+            if !coinbase_proof.verify(&vk, &epoch_challenge)? {
                 bail!("Genesis coinbase puzzle is invalid")
             }
 

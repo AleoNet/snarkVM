@@ -27,26 +27,27 @@ fn test_coinbase_puzzle() {
 
     let max_config = PuzzleConfig { degree: max_degree };
     let srs = CoinbasePuzzle::<Testnet3>::setup(max_config, &mut rng).unwrap();
+
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
         let config = PuzzleConfig { degree };
         let (pk, vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
-        let epoch_info = EpochInfo { epoch_number: rng.next_u64(), previous_block_hash: Default::default() };
-        let epoch_challenge = CoinbasePuzzle::init_for_epoch(&epoch_info, degree).unwrap();
+        let epoch_challenge = EpochChallenge::new(rng.next_u64(), Default::default(), degree).unwrap();
+
         for batch_size in 1..10 {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
-                    CoinbasePuzzle::prove(&pk, &epoch_info, &epoch_challenge, &address, nonce).unwrap()
+                    CoinbasePuzzle::prove(&pk, &epoch_challenge, &address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_info, &epoch_challenge, &solutions).unwrap();
-            assert!(full_solution.verify(&vk, &epoch_challenge, &epoch_info).unwrap());
-            let bad_epoch_info = EpochInfo { epoch_number: rng.next_u64(), previous_block_hash: Default::default() };
-            let bad_epoch_challenge = CoinbasePuzzle::init_for_epoch(&bad_epoch_info, degree).unwrap();
-            assert!(!full_solution.verify(&vk, &bad_epoch_challenge, &bad_epoch_info).unwrap());
+            let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_challenge, &solutions).unwrap();
+            assert!(full_solution.verify(&vk, &epoch_challenge).unwrap());
+
+            let bad_epoch_challenge = EpochChallenge::new(rng.next_u64(), Default::default(), degree).unwrap();
+            assert!(!full_solution.verify(&vk, &bad_epoch_challenge).unwrap());
         }
     }
 }

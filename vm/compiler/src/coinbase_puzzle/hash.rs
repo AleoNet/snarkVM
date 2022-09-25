@@ -25,7 +25,7 @@ use blake2::Digest;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> Result<DensePolynomial<F>> {
+pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: u32) -> Result<DensePolynomial<F>> {
     let input_hash: [u8; 32] = blake2::Blake2b::digest(input).try_into()?;
     let coefficients = cfg_into_iter!(0..degree)
         .map(|i| {

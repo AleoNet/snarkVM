@@ -47,7 +47,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     pub fn setup<R: Rng + CryptoRng>(config: PuzzleConfig, rng: &mut R) -> Result<SRS<N::PairingCurve>> {
         // The SRS must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
-        Ok(KZG10::setup(2 * config.degree - 1, &kzg10::KZGDegreeBounds::None, false, rng)?)
+        Ok(KZG10::setup((2 * config.degree - 1).try_into()?, &kzg10::KZGDegreeBounds::None, false, rng)?)
     }
 
     pub fn trim(
@@ -56,8 +56,8 @@ impl<N: Network> CoinbasePuzzle<N> {
     ) -> Result<(CoinbasePuzzleProvingKey<N>, CoinbasePuzzleVerifyingKey<N>)> {
         // As above, we must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
-        let powers_of_beta_g = srs.powers_of_beta_g(0, 2 * config.degree - 1)?.to_vec();
-        let domain = EvaluationDomain::new(config.degree + 1).ok_or_else(|| anyhow!("Invalid degree"))?;
+        let powers_of_beta_g = srs.powers_of_beta_g(0, (2 * config.degree - 1).try_into()?)?.to_vec();
+        let domain = EvaluationDomain::new((config.degree + 1).try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
         let lagrange_basis_at_beta_g = srs.lagrange_basis(domain)?;
 
         let vk = CoinbasePuzzleVerifyingKey::<N> {
@@ -87,24 +87,16 @@ impl<N: Network> CoinbasePuzzle<N> {
         Self::trim(&*universal_srs, max_config)
     }
 
-    pub fn init_for_epoch(epoch_info: &EpochInfo<N>, degree: usize) -> Result<EpochChallenge<N>> {
-        let poly_input = &epoch_info.to_bytes_le()?;
-        Ok(EpochChallenge {
-            epoch_polynomial: hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(poly_input, degree)?,
-        })
-    }
-
     fn sample_solution_polynomial(
         epoch_challenge: &EpochChallenge<N>,
-        epoch_info: &EpochInfo<N>,
         address: &Address<N>,
         nonce: u64,
     ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
         let poly_input = {
-            let mut bytes = [0u8; 80];
-            bytes[..40].copy_from_slice(&epoch_info.to_bytes_le()?);
-            bytes[40..72].copy_from_slice(&address.to_bytes_le()?);
-            bytes[72..].copy_from_slice(&nonce.to_le_bytes());
+            let mut bytes = [0u8; 112];
+            bytes[..72].copy_from_slice(&epoch_challenge.to_bytes_le()?);
+            bytes[72..104].copy_from_slice(&address.to_bytes_le()?);
+            bytes[104..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
         hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree())
@@ -113,12 +105,11 @@ impl<N: Network> CoinbasePuzzle<N> {
     // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.
     pub fn prove(
         pk: &CoinbasePuzzleProvingKey<N>,
-        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
         address: &Address<N>,
         nonce: u64,
     ) -> Result<ProverSolution<N>> {
-        let polynomial = Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, nonce)?;
+        let polynomial = Self::sample_solution_polynomial(epoch_challenge, address, nonce)?;
 
         let product = Polynomial::from(&polynomial * &epoch_challenge.epoch_polynomial);
         let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None)?;
@@ -137,7 +128,6 @@ impl<N: Network> CoinbasePuzzle<N> {
 
     pub fn accumulate(
         pk: &CoinbasePuzzleProvingKey<N>,
-        epoch_info: &EpochInfo<N>,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {
@@ -148,8 +138,7 @@ impl<N: Network> CoinbasePuzzle<N> {
                 }
                 // TODO: check difficulty of solution and handle unwrap
                 let polynomial =
-                    Self::sample_solution_polynomial(epoch_challenge, epoch_info, solution.address(), solution.nonce())
-                        .unwrap();
+                    Self::sample_solution_polynomial(epoch_challenge, solution.address(), solution.nonce()).unwrap();
                 let point = hash_commitment(solution.commitment());
                 let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
                 let polynomial_eval = polynomial.evaluate(point);

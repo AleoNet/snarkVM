@@ -62,13 +62,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         self.get_transactions(self.current_height)
     }
 
-    /// Returns the latest epoch info.
-    pub fn latest_epoch_info(&self) -> EpochInfo<N> {
-        EpochInfo { epoch_number: self.latest_round().saturating_add(1), previous_block_hash: self.latest_hash() }
-    }
-
     /// Returns the latest epoch challenge.
     pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
-        CoinbasePuzzle::init_for_epoch(&self.latest_epoch_info(), COINBASE_PUZZLE_DEGREE)
+        EpochChallenge::new(self.latest_round().saturating_add(1), self.latest_hash(), COINBASE_PUZZLE_DEGREE)
     }
 }
