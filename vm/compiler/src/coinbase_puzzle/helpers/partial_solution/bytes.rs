@@ -56,7 +56,7 @@ mod tests {
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
         assert!(PartialSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-        //
+
         Ok(())
     }
 }

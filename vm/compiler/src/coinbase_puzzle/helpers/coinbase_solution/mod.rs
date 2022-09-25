@@ -67,7 +67,7 @@ impl<N: Network> CoinbaseSolution<N> {
                 acc + (poly.evaluate(point) * challenge)
             })
             .sum();
-        combined_eval *= &epoch_challenge.epoch_polynomial.evaluate(point);
+        combined_eval *= &epoch_challenge.epoch_polynomial().evaluate(point);
 
         // Compute combined commitment
         let commitments: Vec<_> = cfg_iter!(self.partial_solutions).map(|solution| solution.commitment().0).collect();

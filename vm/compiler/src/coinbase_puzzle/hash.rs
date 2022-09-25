@@ -29,7 +29,7 @@ pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: u32) -> Result<DensePol
     let input_hash: [u8; 32] = blake2::Blake2b::digest(input).try_into()?;
     let coefficients = cfg_into_iter!(0..degree)
         .map(|i| {
-            let mut input_with_counter = [0u8; 40];
+            let mut input_with_counter = [0u8; 36];
             input_with_counter[..32].copy_from_slice(&input_hash);
             input_with_counter[32..].copy_from_slice(&i.to_le_bytes());
             F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))

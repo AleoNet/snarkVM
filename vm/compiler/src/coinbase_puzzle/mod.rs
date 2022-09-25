@@ -94,10 +94,10 @@ impl<N: Network> CoinbasePuzzle<N> {
         nonce: u64,
     ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
         let poly_input = {
-            let mut bytes = [0u8; 112];
-            bytes[..72].copy_from_slice(&epoch_challenge.to_bytes_le()?);
-            bytes[72..104].copy_from_slice(&address.to_bytes_le()?);
-            bytes[104..].copy_from_slice(&nonce.to_le_bytes());
+            let mut bytes = [0u8; 84];
+            bytes[..44].copy_from_slice(&epoch_challenge.to_bytes_le()?);
+            bytes[44..76].copy_from_slice(&address.to_bytes_le()?);
+            bytes[76..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
         hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree())
@@ -112,7 +112,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     ) -> Result<ProverSolution<N>> {
         let polynomial = Self::prover_polynomial(epoch_challenge, address, nonce)?;
 
-        let product = Polynomial::from(&polynomial * &epoch_challenge.epoch_polynomial);
+        let product = Polynomial::from(&polynomial * epoch_challenge.epoch_polynomial());
         let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None)?;
         let point = hash_commitment(&commitment);
         let proof = KZG10::open(&pk.powers(), product.as_dense().unwrap(), point, &_rand)?;
@@ -141,7 +141,7 @@ impl<N: Network> CoinbasePuzzle<N> {
                 let polynomial =
                     Self::prover_polynomial(epoch_challenge, solution.address(), solution.nonce()).unwrap();
                 let point = hash_commitment(solution.commitment());
-                let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
+                let epoch_challenge_eval = epoch_challenge.epoch_polynomial().evaluate(point);
                 let polynomial_eval = polynomial.evaluate(point);
                 let product_eval = epoch_challenge_eval * polynomial_eval;
                 let check_result =
@@ -167,7 +167,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             .zip(fs_challenges)
             .fold(DensePolynomial::zero, |acc, (poly, challenge)| &acc + &(poly * challenge))
             .sum();
-        let combined_product = &combined_polynomial * &epoch_challenge.epoch_polynomial;
+        let combined_product = &combined_polynomial * epoch_challenge.epoch_polynomial();
         let proof = KZG10::open(&pk.powers(), &combined_product, point, &KZGRandomness::empty())?;
         Ok(CoinbaseSolution::new(partial_solutions, proof))
     }
