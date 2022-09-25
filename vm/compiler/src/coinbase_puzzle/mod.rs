@@ -87,7 +87,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         Self::trim(&*universal_srs, max_config)
     }
 
-    fn sample_solution_polynomial(
+    /// Returns the prover polynomial for the coinbase puzzle.
+    fn prover_polynomial(
         epoch_challenge: &EpochChallenge<N>,
         address: &Address<N>,
         nonce: u64,
@@ -109,7 +110,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         address: &Address<N>,
         nonce: u64,
     ) -> Result<ProverSolution<N>> {
-        let polynomial = Self::sample_solution_polynomial(epoch_challenge, address, nonce)?;
+        let polynomial = Self::prover_polynomial(epoch_challenge, address, nonce)?;
 
         let product = Polynomial::from(&polynomial * &epoch_challenge.epoch_polynomial);
         let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None)?;
@@ -138,7 +139,7 @@ impl<N: Network> CoinbasePuzzle<N> {
                 }
                 // TODO: check difficulty of solution and handle unwrap
                 let polynomial =
-                    Self::sample_solution_polynomial(epoch_challenge, solution.address(), solution.nonce()).unwrap();
+                    Self::prover_polynomial(epoch_challenge, solution.address(), solution.nonce()).unwrap();
                 let point = hash_commitment(solution.commitment());
                 let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
                 let polynomial_eval = polynomial.evaluate(point);

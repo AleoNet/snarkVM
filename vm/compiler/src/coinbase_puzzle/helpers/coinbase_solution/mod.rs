@@ -49,7 +49,7 @@ impl<N: Network> CoinbaseSolution<N> {
         let polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
             .map(|solution| {
                 // TODO: check difficulty of solution
-                CoinbasePuzzle::sample_solution_polynomial(epoch_challenge, solution.address(), solution.nonce())
+                CoinbasePuzzle::prover_polynomial(epoch_challenge, solution.address(), solution.nonce())
             })
             .collect::<Result<Vec<_>>>()?;
 

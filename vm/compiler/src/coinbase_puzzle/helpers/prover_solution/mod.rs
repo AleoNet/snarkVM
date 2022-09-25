@@ -48,8 +48,7 @@ impl<N: Network> ProverSolution<N> {
         let challenge_point = hash_commitment(self.commitment());
 
         // Compute the prover polynomial.
-        let prover_polynomial =
-            CoinbasePuzzle::sample_solution_polynomial(epoch_challenge, self.address(), self.nonce())?;
+        let prover_polynomial = CoinbasePuzzle::prover_polynomial(epoch_challenge, self.address(), self.nonce())?;
 
         // Evaluate the epoch and prover polynomials at the challenge point.
         let epoch_evaluation = epoch_challenge.epoch_polynomial.evaluate(challenge_point);
