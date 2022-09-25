@@ -100,7 +100,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             bytes[76..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
-        hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree())
+        hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree()?)
     }
 
     // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.

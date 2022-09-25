@@ -59,16 +59,16 @@ impl<N: Network> EpochChallenge<N> {
     }
 
     /// Returns the degree of the epoch polynomial.
-    pub fn degree(&self) -> u32 {
+    pub fn degree(&self) -> Result<u32> {
         // Retrieve the degree of the epoch polynomial.
         let degree = match self.epoch_polynomial.degree().checked_add(1) {
             Some(degree) => degree,
-            None => N::halt(format!("Epoch polynomial degree ({} + 1) overflows", self.epoch_polynomial.degree())),
+            None => bail!("Epoch polynomial degree ({} + 1) overflows", self.epoch_polynomial.degree()),
         };
         // Cast the degree into a u32.
         match u32::try_from(degree) {
-            Ok(degree) => degree,
-            Err(_) => N::halt(format!("Epoch polynomial degree ({}) is too large", self.epoch_polynomial.degree())),
+            Ok(degree) => Ok(degree),
+            Err(_) => bail!("Epoch polynomial degree ({}) is too large", self.epoch_polynomial.degree()),
         }
     }
 }
