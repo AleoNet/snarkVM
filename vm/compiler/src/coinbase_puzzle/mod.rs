@@ -53,14 +53,14 @@ impl<N: Network> CoinbasePuzzle<N> {
     pub fn trim(
         srs: &SRS<N::PairingCurve>,
         config: PuzzleConfig,
-    ) -> Result<(CoinbasePuzzleProvingKey<N>, CoinbasePuzzleVerifyingKey<N>)> {
+    ) -> Result<(CoinbaseProvingKey<N>, CoinbaseVerifyingKey<N>)> {
         // As above, we must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
         let powers_of_beta_g = srs.powers_of_beta_g(0, (2 * config.degree - 1).try_into()?)?.to_vec();
         let domain = EvaluationDomain::new((config.degree + 1).try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
         let lagrange_basis_at_beta_g = srs.lagrange_basis(domain)?;
 
-        let vk = CoinbasePuzzleVerifyingKey::<N> {
+        let vk = CoinbaseVerifyingKey::<N> {
             g: srs.power_of_beta_g(0)?,
             gamma_g: <N::PairingCurve as PairingEngine>::G1Affine::zero(), // We don't use gamma_g later on since we are not hiding.
             h: srs.h,
@@ -71,13 +71,12 @@ impl<N: Network> CoinbasePuzzle<N> {
         let mut lagrange_basis_map = BTreeMap::new();
         lagrange_basis_map.insert(domain.size(), lagrange_basis_at_beta_g);
 
-        let pk =
-            CoinbasePuzzleProvingKey { powers_of_beta_g, lagrange_bases_at_beta_g: lagrange_basis_map, vk: vk.clone() };
+        let pk = CoinbaseProvingKey { powers_of_beta_g, lagrange_bases_at_beta_g: lagrange_basis_map, vk: vk.clone() };
         Ok((pk, vk))
     }
 
     /// Load the coinbase puzzle proving and verifying keys.
-    pub fn load() -> Result<(CoinbasePuzzleProvingKey<N>, CoinbasePuzzleVerifyingKey<N>)> {
+    pub fn load() -> Result<(CoinbaseProvingKey<N>, CoinbaseVerifyingKey<N>)> {
         // Load the universal SRS.
         let universal_srs = UniversalSRS::<N>::load()?;
 
@@ -105,7 +104,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
     // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.
     pub fn prove(
-        pk: &CoinbasePuzzleProvingKey<N>,
+        pk: &CoinbaseProvingKey<N>,
         epoch_challenge: &EpochChallenge<N>,
         address: &Address<N>,
         nonce: u64,
@@ -128,7 +127,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     }
 
     pub fn accumulate(
-        pk: &CoinbasePuzzleProvingKey<N>,
+        pk: &CoinbaseProvingKey<N>,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {

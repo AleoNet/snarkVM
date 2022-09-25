@@ -49,20 +49,19 @@ pub struct PuzzleConfig {
     pub degree: u32,
 }
 
-pub type CoinbasePuzzleVerifyingKey<N> = VerifierKey<<N as Environment>::PairingCurve>;
+pub type CoinbaseVerifyingKey<N> = VerifierKey<<N as Environment>::PairingCurve>;
 
 #[derive(Clone, Debug)]
-pub struct CoinbasePuzzleProvingKey<N: Network> {
+pub struct CoinbaseProvingKey<N: Network> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<<N::PairingCurve as PairingEngine>::G1Affine>,
-
     /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<<N::PairingCurve as PairingEngine>::G1Affine>>,
-
-    pub vk: CoinbasePuzzleVerifyingKey<N>,
+    /// The verifying key of the coinbase puzzle.
+    pub vk: CoinbaseVerifyingKey<N>,
 }
 
-impl<N: Network> CoinbasePuzzleProvingKey<N> {
+impl<N: Network> CoinbaseProvingKey<N> {
     /// Obtain powers for the underlying KZG10 construction
     pub fn powers(&self) -> Powers<N::PairingCurve> {
         Powers {

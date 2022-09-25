@@ -35,7 +35,7 @@ impl<N: Network> CoinbaseSolution<N> {
         Self { partial_solutions, proof }
     }
 
-    pub fn verify(&self, vk: &CoinbasePuzzleVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
+    pub fn verify(&self, vk: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
         // Ensure the solution is not empty.
         if self.partial_solutions.is_empty() {
             return Ok(false);

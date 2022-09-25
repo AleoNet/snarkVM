@@ -46,10 +46,10 @@ mod latest;
 use crate::{
     ledger::helpers::{coinbase_target, proof_target, proving_reward},
     program::Program,
+    CoinbaseProvingKey,
     CoinbasePuzzle,
-    CoinbasePuzzleProvingKey,
-    CoinbasePuzzleVerifyingKey,
     CoinbaseSolution,
+    CoinbaseVerifyingKey,
     EpochChallenge,
     ProverSolution,
 };
@@ -135,9 +135,9 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
 
     /// The coinbase puzzle proving key.
-    coinbase_puzzle_proving_key: Arc<CoinbasePuzzleProvingKey<N>>,
+    coinbase_puzzle_proving_key: Arc<CoinbaseProvingKey<N>>,
     /// The coinbase puzzle verifying key.
-    coinbase_puzzle_verifying_key: Arc<CoinbasePuzzleVerifyingKey<N>>,
+    coinbase_puzzle_verifying_key: Arc<CoinbaseVerifyingKey<N>>,
     /// The memory pool of proposed coinbase puzzle solutions for the current epoch.
     prover_puzzle_memory_pool: IndexSet<ProverSolution<N>>,
 
@@ -792,12 +792,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Returns the coinbase puzzle proving key.
-    pub const fn coinbase_puzzle_proving_key(&self) -> &Arc<CoinbasePuzzleProvingKey<N>> {
+    pub const fn coinbase_puzzle_proving_key(&self) -> &Arc<CoinbaseProvingKey<N>> {
         &self.coinbase_puzzle_proving_key
     }
 
     /// Returns the coinbase puzzle verifying key.
-    pub const fn coinbase_puzzle_verifying_key(&self) -> &Arc<CoinbasePuzzleVerifyingKey<N>> {
+    pub const fn coinbase_puzzle_verifying_key(&self) -> &Arc<CoinbaseVerifyingKey<N>> {
         &self.coinbase_puzzle_verifying_key
     }
 

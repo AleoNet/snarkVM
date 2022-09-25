@@ -36,7 +36,7 @@ impl<N: Network> ProverSolution<N> {
     }
 
     /// Returns `true` if the prover solution is valid.
-    pub fn verify(&self, vk: &CoinbasePuzzleVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
+    pub fn verify(&self, vk: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
         // Ensure the proof is non-hiding.
         if self.proof.is_hiding() {
             return Ok(false);
