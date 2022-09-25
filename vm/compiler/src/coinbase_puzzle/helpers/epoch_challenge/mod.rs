@@ -17,7 +17,7 @@
 mod bytes;
 
 use super::*;
-use crate::coinbase_puzzle::hash_to_poly;
+use crate::coinbase_puzzle::hash_to_polynomial;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EpochChallenge<N: Network> {
@@ -39,7 +39,7 @@ impl<N: Network> EpochChallenge<N> {
         Ok(EpochChallenge {
             epoch_number,
             epoch_block_hash,
-            epoch_polynomial: hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&input, degree)?,
+            epoch_polynomial: hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, degree)?,
         })
     }
 

@@ -34,7 +34,7 @@ pub struct PartialSolution<N: Network> {
 
 impl<N: Network> PartialSolution<N> {
     /// Initializes a new instance of the partial solution.
-    pub fn new(address: Address<N>, nonce: u64, commitment: KZGCommitment<N::PairingCurve>) -> Self {
+    pub const fn new(address: Address<N>, nonce: u64, commitment: KZGCommitment<N::PairingCurve>) -> Self {
         Self { address, nonce, commitment }
     }
 
@@ -51,6 +51,14 @@ impl<N: Network> PartialSolution<N> {
     /// Returns the commitment for the solution.
     pub const fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
         &self.commitment
+    }
+
+    /// Returns the prover polynomial.
+    pub fn to_prover_polynomial(
+        &self,
+        epoch_challenge: &EpochChallenge<N>,
+    ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
+        CoinbasePuzzle::prover_polynomial(epoch_challenge, self.address(), self.nonce())
     }
 
     /// Returns the difficulty target of the solution.

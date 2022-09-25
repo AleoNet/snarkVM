@@ -27,17 +27,17 @@ use hash::*;
 mod tests;
 
 use crate::UniversalSRS;
-use console::{account::Address, prelude::Network};
+use console::{
+    account::Address,
+    prelude::{anyhow, bail, cfg_iter, ensure, CryptoRng, Network, Result, Rng, ToBytes},
+};
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
     polycommit::kzg10::{self, KZGRandomness, UniversalParams as SRS, KZG10},
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::Zero;
-use snarkvm_utilities::{cfg_iter, ToBytes};
 
-use anyhow::{anyhow, bail, Result};
-use rand::{CryptoRng, Rng};
 use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
 
 pub struct CoinbasePuzzle<N: Network>(PhantomData<N>);
@@ -71,7 +71,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         let mut lagrange_basis_map = BTreeMap::new();
         lagrange_basis_map.insert(domain.size(), lagrange_basis_at_beta_g);
 
-        let pk = CoinbaseProvingKey { powers_of_beta_g, lagrange_bases_at_beta_g: lagrange_basis_map, vk: vk.clone() };
+        let pk = CoinbaseProvingKey {
+            powers_of_beta_g,
+            lagrange_bases_at_beta_g: lagrange_basis_map,
+            verifying_key: vk.clone(),
+        };
         Ok((pk, vk))
     }
 
@@ -86,23 +90,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         Self::trim(&*universal_srs, max_config)
     }
 
-    /// Returns the prover polynomial for the coinbase puzzle.
-    fn prover_polynomial(
-        epoch_challenge: &EpochChallenge<N>,
-        address: &Address<N>,
-        nonce: u64,
-    ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
-        let poly_input = {
-            let mut bytes = [0u8; 84];
-            bytes[..44].copy_from_slice(&epoch_challenge.to_bytes_le()?);
-            bytes[44..76].copy_from_slice(&address.to_bytes_le()?);
-            bytes[76..].copy_from_slice(&nonce.to_le_bytes());
-            bytes
-        };
-        hash_to_poly::<<N::PairingCurve as PairingEngine>::Fr>(&poly_input, epoch_challenge.degree()?)
-    }
-
     // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.
+    /// Returns a prover solution to the coinbase puzzle.
     pub fn prove(
         pk: &CoinbaseProvingKey<N>,
         epoch_challenge: &EpochChallenge<N>,
@@ -113,38 +102,38 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         let product = Polynomial::from(&polynomial * epoch_challenge.epoch_polynomial());
         let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None)?;
-        let point = hash_commitment(&commitment);
+        let point = hash_commitment(&commitment)?;
         let proof = KZG10::open(&pk.powers(), product.as_dense().unwrap(), point, &_rand)?;
         assert!(!proof.is_hiding());
 
         #[cfg(debug_assertions)]
         {
             let product_eval = product.evaluate(point);
-            assert!(KZG10::check(&pk.vk, &commitment, point, product_eval, &proof)?);
+            assert!(KZG10::check(&pk.verifying_key, &commitment, point, product_eval, &proof)?);
         }
 
         Ok(ProverSolution::new(PartialSolution::new(*address, nonce, commitment), proof))
     }
 
+    /// Returns a coinbase solution for the given epoch challenge and prover solutions.
     pub fn accumulate(
         pk: &CoinbaseProvingKey<N>,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {
-        let (polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
+        let (prover_polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
                 if solution.proof().is_hiding() {
                     return None;
                 }
                 // TODO: check difficulty of solution and handle unwrap
-                let polynomial =
-                    Self::prover_polynomial(epoch_challenge, solution.address(), solution.nonce()).unwrap();
-                let point = hash_commitment(solution.commitment());
+                let polynomial = solution.to_prover_polynomial(epoch_challenge).unwrap();
+                let point = hash_commitment(solution.commitment()).unwrap();
                 let epoch_challenge_eval = epoch_challenge.epoch_polynomial().evaluate(point);
                 let polynomial_eval = polynomial.evaluate(point);
                 let product_eval = epoch_challenge_eval * polynomial_eval;
                 let check_result =
-                    KZG10::check(&pk.vk, solution.commitment(), point, product_eval, solution.proof()).ok();
+                    KZG10::check(&pk.verifying_key, solution.commitment(), point, product_eval, solution.proof()).ok();
                 if let Some(true) = check_result {
                     Some((
                         polynomial,
@@ -156,18 +145,49 @@ impl<N: Network> CoinbasePuzzle<N> {
             })
             .unzip();
 
-        let mut fs_challenges = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()));
-        let point = match fs_challenges.pop() {
+        // Compute the challenge points.
+        let mut challenge_points = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()))?;
+        ensure!(challenge_points.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
+
+        // Pop the last challenge point as the accumulator challenge point.
+        let accumulator_point = match challenge_points.pop() {
             Some(point) => point,
-            None => bail!("Missing challenge point"),
+            None => bail!("Missing the accumulator challenge point"),
         };
 
-        let combined_polynomial = cfg_iter!(polynomials)
-            .zip(fs_challenges)
-            .fold(DensePolynomial::zero, |acc, (poly, challenge)| &acc + &(poly * challenge))
+        // Construct the provers polynomial.
+        let provers_polynomial = cfg_iter!(prover_polynomials)
+            .zip(challenge_points)
+            .fold(DensePolynomial::zero, |accumulator, (prover_polynomial, challenge_point)| {
+                &accumulator + &(prover_polynomial * challenge_point)
+            })
             .sum();
-        let combined_product = &combined_polynomial * epoch_challenge.epoch_polynomial();
-        let proof = KZG10::open(&pk.powers(), &combined_product, point, &KZGRandomness::empty())?;
+
+        // Compute the accumulator polynomial.
+        let accumulator_polynomial = &provers_polynomial * epoch_challenge.epoch_polynomial();
+
+        // Compute the accumulator proof.
+        let proof = KZG10::open(&pk.powers(), &accumulator_polynomial, accumulator_point, &KZGRandomness::empty())?;
+
+        // Return the accumulated proof.
         Ok(CoinbaseSolution::new(partial_solutions, proof))
+    }
+}
+
+impl<N: Network> CoinbasePuzzle<N> {
+    /// Returns the prover polynomial for the coinbase puzzle.
+    fn prover_polynomial(
+        epoch_challenge: &EpochChallenge<N>,
+        address: &Address<N>,
+        nonce: u64,
+    ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
+        let input = {
+            let mut bytes = [0u8; 84];
+            bytes[..44].copy_from_slice(&epoch_challenge.to_bytes_le()?);
+            bytes[44..76].copy_from_slice(&address.to_bytes_le()?);
+            bytes[76..].copy_from_slice(&nonce.to_le_bytes());
+            bytes
+        };
+        hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?)
     }
 }

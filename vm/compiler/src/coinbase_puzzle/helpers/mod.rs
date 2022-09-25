@@ -58,7 +58,7 @@ pub struct CoinbaseProvingKey<N: Network> {
     /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<<N::PairingCurve as PairingEngine>::G1Affine>>,
     /// The verifying key of the coinbase puzzle.
-    pub vk: CoinbaseVerifyingKey<N>,
+    pub verifying_key: CoinbaseVerifyingKey<N>,
 }
 
 impl<N: Network> CoinbaseProvingKey<N> {

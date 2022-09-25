@@ -31,11 +31,12 @@ pub struct CoinbaseSolution<N: Network> {
 }
 
 impl<N: Network> CoinbaseSolution<N> {
-    pub fn new(partial_solutions: Vec<PartialSolution<N>>, proof: KZGProof<N::PairingCurve>) -> Self {
+    /// Initializes a new instance of a coinbase solution.
+    pub const fn new(partial_solutions: Vec<PartialSolution<N>>, proof: KZGProof<N::PairingCurve>) -> Self {
         Self { partial_solutions, proof }
     }
 
-    pub fn verify(&self, vk: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
+    pub fn verify(&self, verifying_key: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
         // Ensure the solution is not empty.
         if self.partial_solutions.is_empty() {
             return Ok(false);
@@ -46,35 +47,48 @@ impl<N: Network> CoinbaseSolution<N> {
             return Ok(false);
         }
 
-        let polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
+        // Compute the prover polynomials.
+        let prover_polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
             .map(|solution| {
                 // TODO: check difficulty of solution
-                CoinbasePuzzle::prover_polynomial(epoch_challenge, solution.address(), solution.nonce())
+                solution.to_prover_polynomial(epoch_challenge)
             })
             .collect::<Result<Vec<_>>>()?;
 
-        // Compute challenges
-        let mut fs_challenges = hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()));
-        let point = match fs_challenges.pop() {
+        // Compute the challenge points.
+        let mut challenge_points =
+            hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()))?;
+        ensure!(challenge_points.len() == self.partial_solutions.len() + 1, "Invalid number of challenge points");
+
+        // Pop the last challenge point as the accumulator challenge point.
+        let accumulator_point = match challenge_points.pop() {
             Some(point) => point,
-            None => bail!("Missing challenge point"),
+            None => bail!("Missing the accumulator challenge point"),
         };
 
-        // Compute combined evaluation
-        let mut combined_eval = cfg_iter!(polynomials)
-            .zip(&fs_challenges)
-            .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |acc, (poly, challenge)| {
-                acc + (poly.evaluate(point) * challenge)
+        // Compute the accumulator evaluation.
+        let mut accumulator_evaluation = cfg_iter!(prover_polynomials)
+            .zip(&challenge_points)
+            .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |accumulator, (prover_polynomial, challenge_point)| {
+                accumulator + (prover_polynomial.evaluate(accumulator_point) * challenge_point)
             })
             .sum();
-        combined_eval *= &epoch_challenge.epoch_polynomial().evaluate(point);
+        accumulator_evaluation *= &epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
 
-        // Compute combined commitment
+        // Compute the accumulator commitment.
         let commitments: Vec<_> = cfg_iter!(self.partial_solutions).map(|solution| solution.commitment().0).collect();
-        let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
-        let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
-        let combined_commitment: KZGCommitment<N::PairingCurve> = KZGCommitment(combined_commitment.into());
-        Ok(KZG10::check(vk, &combined_commitment, point, combined_eval, &self.proof)?)
+        let fs_challenges = challenge_points.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
+        let accumulator_commitment =
+            KZGCommitment::<N::PairingCurve>(VariableBase::msm(&commitments, &fs_challenges).into());
+
+        // Return the verification result.
+        Ok(KZG10::check(
+            verifying_key,
+            &accumulator_commitment,
+            accumulator_point,
+            accumulator_evaluation,
+            &self.proof,
+        )?)
     }
 
     /// Returns the cumulative difficulty of the individual prover solutions.
