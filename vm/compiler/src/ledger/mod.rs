@@ -367,24 +367,24 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
-    /// Appends the given prover solution to the memory pool.
-    pub fn add_to_prover_puzzle_memory_pool(&mut self, prover_puzzle_solution: ProverSolution<N>) -> Result<()> {
-        // Ensure that the prover puzzle is less than the proof target.
-        if prover_puzzle_solution.to_difficulty_target()? > self.latest_proof_target()? {
+    /// Appends the given prover solution to the coinbase memory pool.
+    pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
+        // Ensure that the prover solution is greater than the proof target.
+        if prover_solution.to_difficulty_target()? > self.latest_proof_target()? {
             bail!("Prover puzzle does not meet the proof difficulty target requirements.")
         }
 
         // Compute the epoch challenge.
         let epoch_challenge = self.latest_epoch_challenge()?;
 
-        // Ensure that the prover puzzle is valid for the given epoch.
-        if !prover_puzzle_solution.verify(&self.coinbase_verifying_key, &epoch_challenge)? {
-            bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_puzzle_solution.commitment().0);
+        // Ensure that the prover solution is valid for the given epoch.
+        if !prover_solution.verify(&self.coinbase_verifying_key, &epoch_challenge)? {
+            bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_solution.commitment().0);
         }
 
-        // Insert the prover puzzle to the memory pool.
-        if !self.coinbase_memory_pool.insert(prover_puzzle_solution) {
-            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_puzzle_solution.commitment().0);
+        // Insert the prover solution to the memory pool.
+        if !self.coinbase_memory_pool.insert(prover_solution) {
+            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_solution.commitment().0);
         }
 
         Ok(())
@@ -396,7 +396,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
 
-        // Select the prover puzzle solutions from the memory pool.
+        // Select the prover solutions from the memory pool.
         let prover_solutions = self.coinbase_memory_pool.iter().cloned().collect::<Vec<_>>();
 
         // Get the total cumulative difficulty of the prover puzzle solutions.
@@ -791,14 +791,19 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         &self.memory_pool
     }
 
-    /// Returns the coinbase puzzle proving key.
-    pub const fn coinbase_puzzle_proving_key(&self) -> &Arc<CoinbaseProvingKey<N>> {
+    /// Returns the coinbase proving key.
+    pub const fn coinbase_proving_key(&self) -> &Arc<CoinbaseProvingKey<N>> {
         &self.coinbase_proving_key
     }
 
-    /// Returns the coinbase puzzle verifying key.
-    pub const fn coinbase_puzzle_verifying_key(&self) -> &Arc<CoinbaseVerifyingKey<N>> {
+    /// Returns the coinbase verifying key.
+    pub const fn coinbase_verifying_key(&self) -> &Arc<CoinbaseVerifyingKey<N>> {
         &self.coinbase_verifying_key
+    }
+
+    /// Returns the coinbase memory pool.
+    pub const fn coinbase_memory_pool(&self) -> &IndexSet<ProverSolution<N>> {
+        &self.coinbase_memory_pool
     }
 
     /// Returns a state path for the given commitment.

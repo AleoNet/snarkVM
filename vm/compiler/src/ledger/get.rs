@@ -92,6 +92,17 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
     }
 
+    /// Returns the block coinbase proof for the given block height.
+    pub fn get_coinbase_proof(&self, height: u32) -> Result<Option<CoinbaseSolution<N>>> {
+        // Retrieve the block hash.
+        let block_hash = match self.blocks.get_block_hash(height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("Block {height} does not exist in storage"),
+        };
+        // Retrieve the block coinbase proof.
+        self.blocks.get_block_coinbase_proof(&block_hash)
+    }
+
     /// Returns the block signature for the given block height.
     pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
         // Retrieve the block hash.
@@ -103,20 +114,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         match self.blocks.get_block_signature(&block_hash)? {
             Some(signature) => Ok(signature),
             None => bail!("Missing signature for block {height}"),
-        }
-    }
-
-    /// Returns the block coinbase proof for the given block height.
-    pub fn get_coinbase_proof(&self, height: u32) -> Result<CoinbaseSolution<N>> {
-        // Retrieve the block hash.
-        let block_hash = match self.blocks.get_block_hash(height)? {
-            Some(block_hash) => block_hash,
-            None => bail!("Block {height} does not exist in storage"),
-        };
-        // Retrieve the block coinbase proof.
-        match self.blocks.get_block_coinbase_proof(&block_hash)? {
-            Some(coinbase_proof) => Ok(coinbase_proof),
-            None => bail!("Missing coinbase proof for block {height}"),
         }
     }
 }
