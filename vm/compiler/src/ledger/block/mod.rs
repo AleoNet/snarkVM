@@ -47,12 +47,11 @@ pub struct Block<N: Network> {
     header: Header<N>,
     /// The transactions in this block.
     transactions: Transactions<N>,
-    /// The signature for this block.
-    signature: Signature<N>,
-
     // TODO (raychu86): Add this into the block hash.
     /// The coinbase proof.
-    coinbase_proof: CoinbaseSolution<N>,
+    coinbase_proof: Option<CoinbaseSolution<N>>,
+    /// The signature for this block.
+    signature: Signature<N>,
 }
 
 impl<N: Network> Block<N> {
@@ -62,7 +61,7 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
-        coinbase_proof: CoinbaseSolution<N>,
+        coinbase_proof: Option<CoinbaseSolution<N>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the block is not empty.
@@ -76,7 +75,7 @@ impl<N: Network> Block<N> {
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature, coinbase_proof })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })
     }
 
     /// Initializes a new block from a given previous hash, header, and transactions list.
@@ -84,8 +83,8 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
+        coinbase_proof: Option<CoinbaseSolution<N>>,
         signature: Signature<N>,
-        coinbase_proof: CoinbaseSolution<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
@@ -99,7 +98,7 @@ impl<N: Network> Block<N> {
         // TODO (raychu86): Ensure the coinbase proof is valid.
 
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature, coinbase_proof })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })
     }
 }
 
@@ -114,14 +113,14 @@ impl<N: Network> Block<N> {
         self.previous_hash
     }
 
+    /// Returns the coinbase proof.
+    pub const fn coinbase_proof(&self) -> &Option<CoinbaseSolution<N>> {
+        &self.coinbase_proof
+    }
+
     /// Returns the signature.
     pub const fn signature(&self) -> &Signature<N> {
         &self.signature
-    }
-
-    /// Returns the coinbase proof.
-    pub const fn coinbase_proof(&self) -> &CoinbaseSolution<N> {
-        &self.coinbase_proof
     }
 }
 

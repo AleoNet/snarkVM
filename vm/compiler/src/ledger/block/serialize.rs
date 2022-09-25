@@ -26,8 +26,12 @@ impl<N: Network> Serialize for Block<N> {
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("transactions", &self.transactions)?;
+
+                if let Some(coinbase_proof) = &self.coinbase_proof {
+                    block.serialize_field("coinbase_proof", coinbase_proof)?;
+                }
+
                 block.serialize_field("signature", &self.signature)?;
-                block.serialize_field("coinbase_proof", &self.coinbase_proof)?;
                 block.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -49,8 +53,11 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     serde_json::from_value(block["previous_hash"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["header"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["transactions"].clone()).map_err(de::Error::custom)?,
+                    match block["coinbase_proof"].as_str() {
+                        Some(coinbase_proof) => Some(serde_json::from_str(coinbase_proof).map_err(de::Error::custom)?),
+                        None => None,
+                    },
                     serde_json::from_value(block["signature"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["coinbase_proof"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 

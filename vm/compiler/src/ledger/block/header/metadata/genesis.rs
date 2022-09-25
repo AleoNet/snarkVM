@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ledger::{ANCHOR_TIMESTAMP, INITIAL_COINBASE_TARGET, INITIAL_PROOF_TARGET};
+use crate::ledger::{ANCHOR_TIMESTAMP, GENESIS_COINBASE_TARGET, GENESIS_PROOF_TARGET};
 
 impl<N: Network> Metadata<N> {
     /// Initializes the genesis metadata.
@@ -24,8 +24,8 @@ impl<N: Network> Metadata<N> {
         let network = N::ID;
         let round = 0;
         let height = 0;
-        let coinbase_target = INITIAL_COINBASE_TARGET;
-        let proof_target = INITIAL_PROOF_TARGET;
+        let coinbase_target = GENESIS_COINBASE_TARGET;
+        let proof_target = GENESIS_PROOF_TARGET;
         let timestamp = i64::try_from(ANCHOR_TIMESTAMP)?;
 
         // Return the genesis metadata.
@@ -40,10 +40,10 @@ impl<N: Network> Metadata<N> {
             && self.round == 0u64
             // Ensure the height in the genesis block is 0.
             && self.height == 0u32
-            // Ensure the coinbase target in the genesis block is `INITIAL_COINBASE_TARGET`.
-            && self.coinbase_target == INITIAL_COINBASE_TARGET
-            // Ensure the proof target in the genesis block is `INITIAL_PROOF_TARGET`.
-            && self.proof_target == INITIAL_PROOF_TARGET
+            // Ensure the coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
+            && self.coinbase_target == GENESIS_COINBASE_TARGET
+            // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
+            && self.proof_target == GENESIS_PROOF_TARGET
             // Ensure the timestamp in the genesis block is `ANCHOR_TIMESTAMP`.
             && self.timestamp == ANCHOR_TIMESTAMP as i64
     }
@@ -86,8 +86,8 @@ mod tests {
         assert_eq!(metadata.network(), CurrentNetwork::ID);
         assert_eq!(metadata.height(), 0);
         assert_eq!(metadata.round(), 0);
-        assert_eq!(metadata.coinbase_target(), u64::MAX);
-        assert_eq!(metadata.proof_target(), u64::MAX);
-        assert_eq!(metadata.timestamp(), 0);
+        assert_eq!(metadata.coinbase_target(), GENESIS_COINBASE_TARGET);
+        assert_eq!(metadata.proof_target(), GENESIS_PROOF_TARGET);
+        assert_eq!(metadata.timestamp(), ANCHOR_TIMESTAMP as i64);
     }
 }

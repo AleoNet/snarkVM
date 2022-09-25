@@ -80,11 +80,10 @@ impl<N: Network> CoinbasePuzzle<N> {
     }
 
     /// Load the coinbase puzzle proving and verifying keys.
-    pub fn load() -> Result<(CoinbaseProvingKey<N>, CoinbaseVerifyingKey<N>)> {
+    pub fn load(max_degree: u32) -> Result<(CoinbaseProvingKey<N>, CoinbaseVerifyingKey<N>)> {
         // Load the universal SRS.
         let universal_srs = UniversalSRS::<N>::load()?;
 
-        let max_degree = 1 << 15;
         let max_config = PuzzleConfig { degree: max_degree };
 
         Self::trim(&*universal_srs, max_config)
