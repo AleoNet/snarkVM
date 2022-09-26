@@ -93,8 +93,10 @@ mod tests {
 
     #[test]
     fn test_bytes() {
+        let mut rng = TestRng::default();
+
         // Sample a ledger.
-        let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+        let ledger = crate::ledger::test_helpers::sample_genesis_ledger(&mut rng);
 
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
