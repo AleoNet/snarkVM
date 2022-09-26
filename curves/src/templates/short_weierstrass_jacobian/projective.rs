@@ -18,7 +18,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, FieldParameters, One, PrimeField, Zero};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{rand::Uniform, serialize::*, BigInteger, FromBytes, ToBytes};
 
 use core::{
@@ -522,7 +522,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             t_1.push(t_1[i - 1].add_mixed(&double));
         }
         Self::batch_normalization(&mut t_1);
-        let mut t_1 = t_1.into_iter().map(|p| Affine::from(p)).collect::<Vec<_>>();
+        let t_1 = t_1.into_iter().map(|p| Affine::from(p)).collect::<Vec<_>>();
 
         let phi = |b: P::BaseField| -> P::BaseField { b * P::PHI_1 };
 
@@ -588,14 +588,14 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
         let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3, GLV_WINDOW_SIZE);
         let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
         let max_len = std::cmp::max(len_naf_1, len_naf_2);
-        let (mut acc, mut p_1) = (Self::zero(), Affine::zero());
+        let mut acc = Self::zero();
 
-        let naf_add = |table: &Vec<Affine<P>>, naf: i32, p_1: &mut Affine<P>, acc: &mut Self| {
+        let naf_add = |table: &Vec<Affine<P>>, naf: i32, acc: &mut Self| {
             if naf != 0 {
                 let naf_abs = naf.abs();
-                *p_1 = table[(naf_abs >> 1) as usize];
+                let mut p_1 = table[(naf_abs >> 1) as usize];
                 if naf < 0 {
-                    *p_1 = p_1.neg();
+                    p_1 = p_1.neg();
                 }
                 acc.add_assign_mixed(&p_1);
             }
@@ -603,11 +603,11 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
 
         for i in (0..max_len).rev() {
             if i < len_naf_1 {
-                naf_add(&t_1, naf_1[i], &mut p_1, &mut acc)
+                naf_add(&t_1, naf_1[i], &mut acc)
             }
 
             if i < len_naf_2 {
-                naf_add(&t_2, naf_2[i], &mut p_1, &mut acc)
+                naf_add(&t_2, naf_2[i], &mut acc)
             }
 
             if i != 0 {
