@@ -116,7 +116,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// having `num_coeffs` coefficients.
     pub fn new(num_coeffs: usize) -> Option<Self> {
         // Compute the size of our evaluation domain
-        let size = num_coeffs.next_power_of_two() as u64;
+        let size = num_coeffs.checked_next_power_of_two()? as u64;
         let log_size_of_group = size.trailing_zeros();
 
         // libfqfft uses > https://github.com/scipr-lab/libfqfft/blob/e0183b2cef7d4c5deb21a6eaf3fe3b586d738fe0/libfqfft/evaluation_domain/domains/basic_radix2_domain.tcc#L33
