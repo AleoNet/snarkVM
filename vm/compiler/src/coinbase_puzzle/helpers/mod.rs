@@ -29,7 +29,7 @@ pub use prover_solution::*;
 use crate::coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle};
 use console::{account::Address, prelude::*};
 use snarkvm_algorithms::{
-    fft::{DensePolynomial, EvaluationDomain},
+    fft::{domain::FFTPrecomputation, DensePolynomial, EvaluationDomain},
     msm::VariableBase,
     polycommit::kzg10::{KZGCommitment, KZGProof, LagrangeBasis, Powers, VerifierKey, KZG10},
 };
@@ -57,6 +57,10 @@ pub struct CoinbaseProvingKey<N: Network> {
     pub powers_of_beta_g: Vec<<N::PairingCurve as PairingEngine>::G1Affine>,
     /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<<N::PairingCurve as PairingEngine>::G1Affine>>,
+    /// Domain used to compute the product of the epoch polynomial and the prover polynomial.
+    pub product_domain: EvaluationDomain<<N::PairingCurve as PairingEngine>::Fr>,
+    /// Precomputation to speed up FFTs.
+    pub fft_precomputation: FFTPrecomputation<<N::PairingCurve as PairingEngine>::Fr>,
     /// The verifying key of the coinbase puzzle.
     pub verifying_key: CoinbaseVerifyingKey<N>,
 }

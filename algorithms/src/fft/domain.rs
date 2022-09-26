@@ -375,6 +375,15 @@ impl<F: FftField> EvaluationDomain<F> {
         self.fft_helper_in_place_with_pc(x_s, FFTOrder::II, &pc)
     }
 
+    pub fn in_order_fft_with_pc<T: DomainCoeff<F>>(&self, x_s: &[T], pc: &FFTPrecomputation<F>) -> Vec<T> {
+        let mut x_s = x_s.to_vec();
+        if self.size() != x_s.len() {
+            x_s.extend(core::iter::repeat(T::zero()).take(self.size() - x_s.len()));
+        }
+        self.fft_helper_in_place_with_pc(&mut x_s, FFTOrder::II, pc);
+        x_s
+    }
+
     pub(crate) fn in_order_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
         let pc = self.precompute_ifft();
         self.ifft_helper_in_place_with_pc(x_s, FFTOrder::II, &pc);
@@ -778,7 +787,7 @@ impl<F: FftField> Iterator for Elements<F> {
 }
 
 /// An iterator over the elements of the domain.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, CanonicalDeserialize, CanonicalSerialize)]
 pub struct FFTPrecomputation<F: FftField> {
     roots: Vec<F>,
     domain: EvaluationDomain<F>,
@@ -808,7 +817,7 @@ impl<F: FftField> FFTPrecomputation<F> {
 }
 
 /// An iterator over the elements of the domain.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IFFTPrecomputation<F: FftField> {
     inverse_roots: Vec<F>,
     domain: EvaluationDomain<F>,

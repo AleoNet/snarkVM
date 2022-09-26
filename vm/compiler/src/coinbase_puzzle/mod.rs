@@ -33,7 +33,7 @@ use console::{
     program::cfg_into_iter,
 };
 use snarkvm_algorithms::{
-    fft::{DensePolynomial, EvaluationDomain, Polynomial},
+    fft::{DensePolynomial, EvaluationDomain},
     polycommit::kzg10::{self, KZGRandomness, UniversalParams as SRS, KZG10},
 };
 use snarkvm_curves::PairingEngine;
@@ -58,8 +58,10 @@ impl<N: Network> CoinbasePuzzle<N> {
         // As above, we must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
         let powers_of_beta_g = srs.powers_of_beta_g(0, (2 * config.degree - 1).try_into()?)?.to_vec();
-        let domain = EvaluationDomain::new((config.degree + 1).try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
-        let lagrange_basis_at_beta_g = srs.lagrange_basis(domain)?;
+        let product_domain =
+            EvaluationDomain::new((2 * config.degree - 1).try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+        let lagrange_basis_at_beta_g = srs.lagrange_basis(product_domain)?;
+        let fft_precomputation = product_domain.precompute_fft();
 
         let vk = CoinbaseVerifyingKey::<N> {
             g: srs.power_of_beta_g(0)?,
@@ -70,11 +72,13 @@ impl<N: Network> CoinbasePuzzle<N> {
             prepared_beta_h: srs.prepared_beta_h.clone(),
         };
         let mut lagrange_basis_map = BTreeMap::new();
-        lagrange_basis_map.insert(domain.size(), lagrange_basis_at_beta_g);
+        lagrange_basis_map.insert(product_domain.size(), lagrange_basis_at_beta_g);
 
         let pk = CoinbaseProvingKey {
+            product_domain,
             powers_of_beta_g,
             lagrange_bases_at_beta_g: lagrange_basis_map,
+            fft_precomputation,
             verifying_key: vk.clone(),
         };
         Ok((pk, vk))
@@ -100,7 +104,14 @@ impl<N: Network> CoinbasePuzzle<N> {
     ) -> Result<ProverSolution<N>> {
         let polynomial = Self::prover_polynomial(epoch_challenge, address, nonce)?;
 
-        let product = Polynomial::from(&polynomial * epoch_challenge.epoch_polynomial());
+        let product = {
+            let polynomial_evaluations = pk.product_domain.in_order_fft_with_pc(&polynomial, &pk.fft_precomputation);
+            let product_evals = pk.product_domain.mul_polynomials_in_evaluation_domain(
+                &polynomial_evaluations,
+                &epoch_challenge.epoch_polynomial_evals.evaluations,
+            );
+            DensePolynomial::from_coefficients_vec(pk.product_domain.ifft(&product_evals)).into()
+        };
         let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None)?;
         let point = hash_commitment(&commitment)?;
         let proof = KZG10::open(&pk.powers(), product.as_dense().unwrap(), point, &_rand)?;
@@ -152,13 +163,21 @@ impl<N: Network> CoinbasePuzzle<N> {
                 accumulator += &prover_polynomial;
                 accumulator
             })
-            .sum();
+            .sum::<DensePolynomial<_>>();
 
         // Compute the accumulator polynomial.
-        let accumulator_polynomial = &accumulated_prover_polynomial * epoch_challenge.epoch_polynomial();
+        let product_polynomial = {
+            let accumulated_polynomial_evaluations =
+                pk.product_domain.in_order_fft_with_pc(&accumulated_prover_polynomial.coeffs, &pk.fft_precomputation);
+            let product_evals = pk.product_domain.mul_polynomials_in_evaluation_domain(
+                &accumulated_polynomial_evaluations,
+                &epoch_challenge.epoch_polynomial_evals.evaluations,
+            );
+            DensePolynomial::from_coefficients_vec(pk.product_domain.ifft(&product_evals))
+        };
 
         // Compute the accumulator proof.
-        let proof = KZG10::open(&pk.powers(), &accumulator_polynomial, accumulator_point, &KZGRandomness::empty())?;
+        let proof = KZG10::open(&pk.powers(), &product_polynomial, accumulator_point, &KZGRandomness::empty())?;
 
         // Return the accumulated proof.
         Ok(CoinbaseSolution::new(partial_solutions, proof))
