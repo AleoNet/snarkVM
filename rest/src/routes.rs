@@ -117,7 +117,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and_then(Self::records_spent);
 
         // GET /testnet3/records/unspent
-        let records_unspent = warp::get()
+        let records_unspent = warp::post()
             .and(warp::path!("testnet3" / "records" / "unspent"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
@@ -276,8 +276,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let records =
-            ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
+        let records = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .map(|(_commitment, record)| record)
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
