@@ -852,24 +852,20 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
     pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>, ProgramMemory<CurrentNetwork>>;
 
-    pub(crate) fn sample_genesis_private_key() -> PrivateKey<CurrentNetwork> {
+    pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
         *INSTANCE.get_or_init(|| {
-            // Initialize the RNG.
-            let rng = &mut TestRng::fixed(1245897092);
             // Initialize a new caller.
             PrivateKey::<CurrentNetwork>::new(rng).unwrap()
         })
     }
 
-    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
+    pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
         static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
                 let vm = crate::ledger::vm::test_helpers::sample_vm();
-                // Initialize the RNG.
-                let rng = &mut TestRng::fixed(1245897092);
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
@@ -878,14 +874,14 @@ pub(crate) mod test_helpers {
             .clone()
     }
 
-    pub(crate) fn sample_genesis_ledger() -> CurrentLedger {
+    pub(crate) fn sample_genesis_ledger(rng: &mut TestRng) -> CurrentLedger {
         static INSTANCE: OnceCell<CurrentLedger> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Sample the genesis block.
-                let genesis = sample_genesis_block();
+                let genesis = sample_genesis_block(rng);
                 // Sample the genesis address.
-                let private_key = sample_genesis_private_key();
+                let private_key = sample_genesis_private_key(rng);
                 let address = Address::try_from(&private_key).unwrap();
 
                 // Initialize the ledger with the genesis block.
@@ -1007,9 +1003,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger();
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
         let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
@@ -1038,9 +1034,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger();
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
         let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
@@ -1064,7 +1060,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key, view key, and address.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         let view_key = ViewKey::try_from(private_key).unwrap();
         let address = Address::try_from(&view_key).unwrap();
 

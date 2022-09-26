@@ -66,9 +66,13 @@ impl<N: Network> Block<N> {
 
 #[cfg(test)]
 mod tests {
+    use snarkvm_utilities::TestRng;
+
     #[test]
     fn test_genesis() {
-        let block = crate::ledger::test_helpers::sample_genesis_block();
+        let mut rng = TestRng::default();
+
+        let block = crate::ledger::test_helpers::sample_genesis_block(&mut rng);
         // println!("{}", serde_json::to_string_pretty(&block).unwrap());
         assert!(block.is_genesis());
     }
