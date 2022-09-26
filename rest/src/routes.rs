@@ -124,6 +124,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::records_unspent);
 
+        // POST /testnet3/ciphertexts/unspent
+        let ciphertexts_unspent = warp::post()
+            .and(warp::path!("testnet3" / "ciphertexts" / "unspent"))
+            .and(warp::body::content_length_limit(128))
+            .and(warp::body::json())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::ciphertexts_unspent);
+
         // POST /testnet3/transaction/broadcast
         let transaction_broadcast = warp::post()
             .and(warp::path!("testnet3" / "transaction" / "broadcast"))
@@ -148,6 +156,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(records_all)
             .or(records_spent)
             .or(records_unspent)
+            .or(ciphertexts_unspent)
             .or(transaction_broadcast)
     }
 }
@@ -269,6 +278,19 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // Fetch the records using the view key.
         let records =
             ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
+        // Return the records.
+        Ok(reply::with_status(reply::json(&records), StatusCode::OK))
+    }
+
+    /// Returns the unspent records for the given view key.
+    async fn ciphertexts_unspent(
+        view_key: ViewKey<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        // Fetch the records using the view key.
+        let ledger_reader = ledger.read();
+        let records =
+            ledger_reader.find_record_ciphertexts(&view_key, RecordsFilter::Unspent).or_reject()?.map(|(_commitment, record_ciphertext)| record_ciphertext).collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
