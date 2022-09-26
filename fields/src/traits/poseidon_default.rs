@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{serial_batch_inversion_and_mul, PoseidonGrainLFSR, PrimeField};
+#[cfg(feature = "profiler")]
 use aleo_std::{end_timer, start_timer};
 use itertools::Itertools;
 
@@ -51,22 +52,28 @@ pub trait PoseidonDefaultField {
             partial_rounds: u64,
             skip_matrices: u64,
         ) -> Result<(Vec<Vec<F>>, Vec<Vec<F>>)> {
+            #[cfg(feature = "profiler")]
             let lfsr_time = start_timer!(|| "LFSR Init");
             let mut lfsr =
                 PoseidonGrainLFSR::new(false, F::size_in_bits() as u64, (RATE + 1) as u64, full_rounds, partial_rounds);
+            #[cfg(feature = "profiler")]
             end_timer!(lfsr_time);
 
+            #[cfg(feature = "profiler")]
             let ark_time = start_timer!(|| "Constructing ARK");
             let mut ark = Vec::with_capacity((full_rounds + partial_rounds) as usize);
             for _ in 0..(full_rounds + partial_rounds) {
                 ark.push(lfsr.get_field_elements_rejection_sampling(RATE + 1)?);
             }
+            #[cfg(feature = "profiler")]
             end_timer!(ark_time);
 
+            #[cfg(feature = "profiler")]
             let skip_time = start_timer!(|| "Skipping matrices");
             for _ in 0..skip_matrices {
                 let _ = lfsr.get_field_elements_mod_p::<F>(2 * (RATE + 1))?;
             }
+            #[cfg(feature = "profiler")]
             end_timer!(skip_time);
 
             // A qualifying matrix must satisfy the following requirements:
@@ -77,6 +84,7 @@ pub trait PoseidonDefaultField {
             let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1)?;
             let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1)?;
 
+            #[cfg(feature = "profiler")]
             let mds_time = start_timer!(|| "Construct MDS");
             let mut mds_flattened = vec![F::zero(); (RATE + 1) * (RATE + 1)];
             for (x, mds_row_i) in xs.iter().take(RATE + 1).zip_eq(mds_flattened.chunks_mut(RATE + 1)) {
@@ -86,6 +94,7 @@ pub trait PoseidonDefaultField {
             }
             serial_batch_inversion_and_mul(&mut mds_flattened, &F::one());
             let mds = mds_flattened.chunks(RATE + 1).map(|row| row.to_vec()).collect();
+            #[cfg(feature = "profiler")]
             end_timer!(mds_time);
 
             Ok((ark, mds))
