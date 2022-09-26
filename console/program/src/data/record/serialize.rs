@@ -20,7 +20,22 @@ impl<N: Network> Serialize for Record<N, Plaintext<N>> {
     /// Serializes the record plaintext into a string or as bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => serializer.collect_str(self),
+            // true => serializer.collect_str(self),
+            true => {
+                let mut request = serializer.serialize_struct("Record<N, Plaintext<N>>", 3)?;
+                request.serialize_field("owner", &self.owner.to_string())?;
+                request.serialize_field("gates", &self.gates.to_string())?;
+                request.serialize_field(
+                    "data",
+                    &self
+                        .data
+                        .iter()
+                        .map(|(_identifier, entry)| (_identifier.to_string(), entry.to_string()))
+                        .collect::<IndexMap<_, _>>(),
+                )?;
+                request.serialize_field("_nonce", &self.nonce)?;
+                request.end()
+            }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
