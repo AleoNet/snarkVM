@@ -288,8 +288,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     ) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
         let ledger_reader = ledger.read();
-        let records =
-            ledger_reader.find_record_ciphertexts(&view_key, RecordsFilter::Unspent).or_reject()?.map(|(_commitment, record_ciphertext)| record_ciphertext).collect::<Vec<_>>();
+        let records = ledger_reader
+            .find_record_ciphertexts(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .map(|(_commitment, record_ciphertext)| record_ciphertext)
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
