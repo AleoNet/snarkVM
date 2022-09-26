@@ -30,6 +30,7 @@ use crate::UniversalSRS;
 use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, CryptoRng, Network, Result, Rng, ToBytes},
+    program::cfg_into_iter,
 };
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain, Polynomial},
@@ -115,6 +116,9 @@ impl<N: Network> CoinbasePuzzle<N> {
     }
 
     /// Returns a coinbase solution for the given epoch challenge and prover solutions.
+    ///
+    /// # Note
+    /// This method does *not* check that the prover solutions are valid.
     pub fn accumulate(
         pk: &CoinbaseProvingKey<N>,
         epoch_challenge: &EpochChallenge<N>,
@@ -125,45 +129,33 @@ impl<N: Network> CoinbasePuzzle<N> {
                 if solution.proof().is_hiding() {
                     return None;
                 }
-                // TODO: check difficulty of solution and handle unwrap
                 let polynomial = solution.to_prover_polynomial(epoch_challenge).unwrap();
-                let point = hash_commitment(solution.commitment()).unwrap();
-                let epoch_challenge_eval = epoch_challenge.epoch_polynomial().evaluate(point);
-                let polynomial_eval = polynomial.evaluate(point);
-                let product_eval = epoch_challenge_eval * polynomial_eval;
-                let check_result =
-                    KZG10::check(&pk.verifying_key, solution.commitment(), point, product_eval, solution.proof()).ok();
-                if let Some(true) = check_result {
-                    Some((
-                        polynomial,
-                        PartialSolution::new(*solution.address(), solution.nonce(), *solution.commitment()),
-                    ))
-                } else {
-                    None
-                }
+                Some((polynomial, PartialSolution::new(*solution.address(), solution.nonce(), *solution.commitment())))
             })
             .unzip();
 
         // Compute the challenge points.
-        let mut challenge_points = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()))?;
-        ensure!(challenge_points.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
+        let mut challenges = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()))?;
+        ensure!(challenges.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
 
-        // Pop the last challenge point as the accumulator challenge point.
-        let accumulator_point = match challenge_points.pop() {
+        // Pop the last challenge as the accumulator challenge point.
+        let accumulator_point = match challenges.pop() {
             Some(point) => point,
             None => bail!("Missing the accumulator challenge point"),
         };
 
         // Construct the provers polynomial.
-        let provers_polynomial = cfg_iter!(prover_polynomials)
-            .zip(challenge_points)
-            .fold(DensePolynomial::zero, |accumulator, (prover_polynomial, challenge_point)| {
-                &accumulator + &(prover_polynomial * challenge_point)
+        let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials)
+            .zip(challenges)
+            .fold(DensePolynomial::zero, |mut accumulator, (mut prover_polynomial, challenge)| {
+                prover_polynomial *= challenge;
+                accumulator += &prover_polynomial;
+                accumulator
             })
             .sum();
 
         // Compute the accumulator polynomial.
-        let accumulator_polynomial = &provers_polynomial * epoch_challenge.epoch_polynomial();
+        let accumulator_polynomial = &accumulated_prover_polynomial * epoch_challenge.epoch_polynomial();
 
         // Compute the accumulator proof.
         let proof = KZG10::open(&pk.powers(), &accumulator_polynomial, accumulator_point, &KZGRandomness::empty())?;
