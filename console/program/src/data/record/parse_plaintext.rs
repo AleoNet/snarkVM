@@ -154,7 +154,17 @@ impl<N: Network> Debug for Record<N, Plaintext<N>> {
 impl<N: Network> Display for Record<N, Plaintext<N>> {
     /// Prints the record as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.fmt_internal(f, 0)
+        // self.fmt_internal(f, 0)
+        Ok(write!(
+            f,
+            "{{owner: {}, gates: {}, data: {:?}}}",
+            self.owner,
+            self.gates,
+            self.data
+                .iter()
+                .map(|(_identifier, entry)| (_identifier.to_string(), entry.to_string()))
+                .collect::<IndexMap<_, _>>()
+        )?)
     }
 }
 
