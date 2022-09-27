@@ -30,7 +30,7 @@ pub struct EpochChallenge<N: Network> {
     /// The epoch polynomial.
     epoch_polynomial: DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>,
     /// The evaluations of the epoch polynomial over the product domain.
-    pub epoch_polynomial_evals: EvaluationsOnDomain<<N::PairingCurve as PairingEngine>::Fr>,
+    epoch_polynomial_evals: EvaluationsOnDomain<<N::PairingCurve as PairingEngine>::Fr>,
 }
 
 impl<N: Network> EpochChallenge<N> {
@@ -59,6 +59,11 @@ impl<N: Network> EpochChallenge<N> {
     /// Returns the epoch polynomial for the solution.
     pub const fn epoch_polynomial(&self) -> &DensePolynomial<<N::PairingCurve as PairingEngine>::Fr> {
         &self.epoch_polynomial
+    }
+
+    /// Returns the epoch polynomial for the solution.
+    pub const fn epoch_polynomial_evals(&self) -> &EvaluationsOnDomain<<N::PairingCurve as PairingEngine>::Fr> {
+        &self.epoch_polynomial_evals
     }
 
     /// Returns the number of coefficients of the epoch polynomial.

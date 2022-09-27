@@ -39,7 +39,6 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use anyhow::Result;
 use std::{
     borrow::Cow,
-    collections::BTreeMap,
     io::{Read, Result as IoResult, Write},
 };
 
@@ -56,11 +55,13 @@ pub struct CoinbaseProvingKey<N: Network> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<<N::PairingCurve as PairingEngine>::G1Affine>,
     /// The key used to commit to polynomials in Lagrange basis.
-    pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<<N::PairingCurve as PairingEngine>::G1Affine>>,
+    pub lagrange_basis_at_beta_g: Vec<<N::PairingCurve as PairingEngine>::G1Affine>,
     /// Domain used to compute the product of the epoch polynomial and the prover polynomial.
     pub product_domain: EvaluationDomain<<N::PairingCurve as PairingEngine>::Fr>,
     /// Precomputation to speed up FFTs.
     pub fft_precomputation: FFTPrecomputation<<N::PairingCurve as PairingEngine>::Fr>,
+    /// Elements of the product domain
+    pub product_domain_elements: Vec<<N::PairingCurve as PairingEngine>::Fr>,
     /// The verifying key of the coinbase puzzle.
     pub verifying_key: CoinbaseVerifyingKey<N>,
 }
@@ -75,14 +76,15 @@ impl<N: Network> CoinbaseProvingKey<N> {
     }
 
     /// Obtain elements of the SRS in the lagrange basis powers.
-    pub fn lagrange_basis(
-        &self,
-        domain: EvaluationDomain<<N::PairingCurve as PairingEngine>::Fr>,
-    ) -> Option<LagrangeBasis<N::PairingCurve>> {
-        self.lagrange_bases_at_beta_g.get(&domain.size()).map(|basis| LagrangeBasis {
-            lagrange_basis_at_beta_g: Cow::Borrowed(basis),
+    pub fn lagrange_basis(&self) -> LagrangeBasis<N::PairingCurve> {
+        LagrangeBasis {
+            lagrange_basis_at_beta_g: Cow::Borrowed(self.lagrange_basis_at_beta_g.as_slice()),
             powers_of_beta_times_gamma_g: Cow::Owned(vec![]),
-            domain,
-        })
+            domain: self.product_domain.clone(),
+        }
+    }
+
+    pub fn product_domain_elements(&self) -> &[<N::PairingCurve as PairingEngine>::Fr] {
+        &self.product_domain_elements
     }
 }

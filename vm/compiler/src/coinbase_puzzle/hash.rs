@@ -41,7 +41,7 @@ pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) 
 
 pub fn hash_to_polynomial<F: PrimeField>(input: &[u8], degree: u32) -> Result<DensePolynomial<F>> {
     // Hash the input into coefficients.
-    let coefficients = hash_to_coefficients(input, degree)?;
+    let coefficients = hash_to_coefficients(input, degree + 1)?;
     // Construct the polynomial from the coefficients.
     Ok(DensePolynomial::from_coefficients_vec(coefficients))
 }

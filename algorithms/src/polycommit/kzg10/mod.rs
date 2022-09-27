@@ -29,7 +29,7 @@ use crate::{
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
-use snarkvm_utilities::{cfg_iter, rand::Uniform, BitIteratorBE};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, rand::Uniform, BitIteratorBE};
 
 use core::{
     marker::PhantomData,
@@ -393,6 +393,28 @@ impl<E: PairingEngine> KZG10<E> {
         };
 
         Ok(KZGProof { w: w.to_affine(), random_v })
+    }
+
+    /// On input a polynomial `p` in Lagrange basis, and a point `point`,
+    /// outputs an evaluation proof for the same.
+    pub fn open_lagrange(
+        lagrange_basis: &LagrangeBasis<E>,
+        domain_elements: &[E::Fr],
+        evaluations: &[E::Fr],
+        point: E::Fr,
+        evaluation_at_point: E::Fr,
+    ) -> Result<KZGProof<E>, PCError> {
+        Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
+        assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
+        let mut divisor_evals = cfg_iter!(domain_elements).map(|&e| e - point).collect::<Vec<_>>();
+        snarkvm_fields::batch_inversion(&mut divisor_evals);
+        cfg_iter_mut!(divisor_evals).zip(evaluations).for_each(|(divisor_eval, &eval)| {
+            *divisor_eval *= eval - evaluation_at_point;
+        });
+        let (witness_comm, _) =
+            Self::commit_lagrange(lagrange_basis, &divisor_evals, None, &AtomicBool::new(false), None)?;
+
+        Ok(KZGProof { w: witness_comm.0, random_v: None })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
