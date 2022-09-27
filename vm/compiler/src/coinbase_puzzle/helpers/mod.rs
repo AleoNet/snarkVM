@@ -80,7 +80,7 @@ impl<N: Network> CoinbaseProvingKey<N> {
         LagrangeBasis {
             lagrange_basis_at_beta_g: Cow::Borrowed(self.lagrange_basis_at_beta_g.as_slice()),
             powers_of_beta_times_gamma_g: Cow::Owned(vec![]),
-            domain: self.product_domain.clone(),
+            domain: self.product_domain,
         }
     }
 
