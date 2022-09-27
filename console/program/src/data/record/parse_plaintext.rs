@@ -157,13 +157,14 @@ impl<N: Network> Display for Record<N, Plaintext<N>> {
         // self.fmt_internal(f, 0)
         Ok(write!(
             f,
-            "{{owner: {}, gates: {}, data: {:?}}}",
+            "{{owner: {}, gates: {}, data: {:?}, _nonce: {}}}",
             self.owner,
             self.gates,
             self.data
                 .iter()
                 .map(|(_identifier, entry)| (_identifier.to_string(), entry.to_string()))
-                .collect::<IndexMap<_, _>>()
+                .collect::<IndexMap<_, _>>(),
+            self.nonce
         )?)
     }
 }
