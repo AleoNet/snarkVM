@@ -157,7 +157,7 @@ impl<N: Network> Display for Record<N, Plaintext<N>> {
         // self.fmt_internal(f, 0)
         Ok(write!(
             f,
-            "{{owner: {}, gates: {}, data: {:?}, _nonce: {}}}",
+            "{{owner: {}, gates: {}, data: {:?}, _nonce: {}.public}}",
             self.owner,
             self.gates,
             self.data
