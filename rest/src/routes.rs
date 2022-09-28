@@ -15,12 +15,37 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_console::{
+    account::PrivateKey,
+    prelude::{de, Deserializer},
+    program::{Identifier, Value},
+};
+
+use std::str::FromStr;
 
 /// The `get_blocks` query object.
 #[derive(Deserialize, Serialize)]
 struct BlockRange {
     start: u32,
     end: u32,
+}
+
+struct CreateTransferQuery<N: Network>(PrivateKey<N>, Address<N>, u64);
+
+impl<'de, N: Network> Deserialize<'de> for CreateTransferQuery<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Parse the request from a string into a value.
+        let request = serde_json::Value::deserialize(deserializer)?;
+        // Recover the leaf.
+        Ok(Self(
+            // Retrieve the program.
+            serde_json::from_value(request["from"].clone()).map_err(de::Error::custom)?,
+            // Retrieve the address of the program.
+            serde_json::from_value(request["to"].clone()).map_err(de::Error::custom)?,
+            // Retrieve the program ID.
+            serde_json::from_value(request["amount"].clone()).map_err(de::Error::custom)?,
+        ))
+    }
 }
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
