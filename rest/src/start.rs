@@ -45,6 +45,7 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
         additional_routes: Option<impl Filter<Extract = impl Reply, Error = Rejection> + Clone + Sync + Send + 'static>,
         custom_port: Option<u16>,
     ) {
+        let cors = warp::cors().allow_any_origin().allow_methods(vec!["GET"]);
         // Initialize the routes.
         let routes = self.routes();
         // Spawn the server.
@@ -57,8 +58,8 @@ impl<N: Network, B: 'static + BlockStorage<N>, P: 'static + ProgramStorage<N>> S
             println!("\n🌐 Server is running at http://0.0.0.0:{}\n", ip.1);
             // Start the server, with optional additional routes.
             match additional_routes {
-                Some(additional_routes) => warp::serve(routes.or(additional_routes)).run(ip).await,
-                None => warp::serve(routes).run(ip).await,
+                Some(additional_routes) => warp::serve(routes.or(additional_routes).with(cors)).run(ip).await,
+                None => warp::serve(routes.with(cors)).run(ip).await,
             }
         })))
     }
