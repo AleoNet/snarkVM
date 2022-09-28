@@ -15,12 +15,43 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_console::{
+    account::PrivateKey,
+    prelude::{de, Deserializer, Zero},
+    program::{Identifier, Value},
+};
+
+use std::str::FromStr;
 
 /// The `get_blocks` query object.
 #[derive(Deserialize, Serialize)]
 struct BlockRange {
     start: u32,
     end: u32,
+}
+
+struct TransferData<N: Network> {
+    from: PrivateKey<N>,
+    to: Address<N>,
+    amount: u64,
+}
+
+impl<N: Network> TransferData<N> {
+    fn new(from: PrivateKey<N>, to: Address<N>, amount: u64) -> Self {
+        Self { from, to, amount }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for TransferData<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let request = serde_json::Value::deserialize(deserializer)?;
+
+        Ok(Self::new(
+            serde_json::from_value(request["from"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["to"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["amount"].clone()).map_err(de::Error::custom)?,
+        ))
+    }
 }
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
@@ -140,6 +171,15 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger_sender.clone()))
             .and_then(Self::transaction_broadcast);
 
+        // POST /testnet3/transfer
+        let create_transfer = warp::post()
+            .and(warp::path!("testnet3" / "transfer"))
+            .and(warp::body::content_length_limit(10 * 1024 * 1024))
+            .and(warp::body::json())
+            .and(with(self.ledger.clone()))
+            .and(with(self.ledger_sender.clone()))
+            .and_then(Self::create_transfer);
+
         // Return the list of routes.
         latest_height
             .or(latest_hash)
@@ -157,6 +197,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(records_unspent)
             .or(ciphertexts_unspent)
             .or(transaction_broadcast)
+            .or(create_transfer)
     }
 }
 
@@ -309,6 +350,53 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // Send the transaction to the ledger.
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transaction)).await {
             Ok(()) => Ok("OK"),
+            Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
+        }
+    }
+
+    /// Creates a transfer transaction.
+    async fn create_transfer(
+        query: TransferData<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+        ledger_sender: LedgerSender<N>,
+    ) -> Result<impl Reply, Rejection> {
+        let from = query.from;
+        let to = query.to;
+        let amount = query.amount;
+        let view_key = ViewKey::try_from(from).or_reject()?;
+
+        // TODO: This solution introduces a race condition because the same
+        // record could be found twice to use. Doing this the right way doesn't
+        // work because RwLockReadGuard does not implement the Send trait and
+        // thus cannot be sent between threads safely.
+
+        let (_, max_credits_record) = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .filter(|(_, record)| !record.gates().is_zero())
+            .max_by(|(_, record_a), (_, record_b)| (**record_a.gates()).cmp(&**record_b.gates()))
+            .or_reject()?;
+
+        let transfer_transaction = Transaction::execute(
+            ledger.read().vm(),
+            &from,
+            &ProgramID::from_str("credits.aleo").or_reject()?,
+            Identifier::from_str("transfer").or_reject()?,
+            &[
+                Value::Record(max_credits_record),
+                Value::from_str(&format!("{to}")).or_reject()?,
+                Value::from_str(&format!("{amount}u64")).or_reject()?,
+            ],
+            None,
+            &mut rand::thread_rng(),
+        )
+        .or_reject()?;
+
+        let transaction_id = transfer_transaction.id();
+
+        match ledger_sender.send(LedgerRequest::TransactionBroadcast(transfer_transaction)).await {
+            Ok(()) => Ok(reply::with_status(reply::json(&transaction_id), StatusCode::OK)),
             Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
         }
     }
