@@ -348,4 +348,42 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
         }
     }
+
+    /// Creates a transfer transaction.
+    async fn create_transfer(
+        query: CreateTransferQuery<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+        ledger_sender: LedgerSender<N>,
+    ) -> Result<impl Reply, Rejection> {
+        let CreateTransferQuery::<N>(from, to, amount) = query;
+        let view_key = ViewKey::try_from(from).or_reject()?;
+
+        // TODO: This solution introduces a race condition because the same
+        // record could be found twice to use. Doing this the right way doesn't
+        // work because RwLockReadGuard does not implement the Send trait and
+        // thus cannot be sent between threads safely.
+
+        let records =
+            ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
+
+        let transfer_transaction = Transaction::execute(
+            ledger.read().vm(),
+            &from,
+            &ProgramID::from_str("credits.aleo").or_reject()?,
+            Identifier::from_str("transfer").or_reject()?,
+            &[
+                Value::Record(records.values().next().unwrap().clone()),
+                Value::from_str(&format!("{to}")).or_reject()?,
+                Value::from_str(&format!("{amount}u64")).or_reject()?,
+            ],
+            None,
+            &mut rand::thread_rng(),
+        )
+        .or_reject()?;
+
+        match ledger_sender.send(LedgerRequest::TransactionBroadcast(transfer_transaction)).await {
+            Ok(()) => Ok("OK"),
+            Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
+        }
+    }
 }
