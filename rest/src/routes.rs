@@ -17,7 +17,7 @@
 use super::*;
 use snarkvm_console::{
     account::PrivateKey,
-    prelude::{de, Deserializer},
+    prelude::{de, Deserializer, Zero},
     program::{Identifier, Value},
 };
 
@@ -372,8 +372,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // work because RwLockReadGuard does not implement the Send trait and
         // thus cannot be sent between threads safely.
 
-        let records =
-            ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
+        let (_, max_credits_record) = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .filter(|(_, record)| !record.gates().is_zero())
+            .max_by(|(_, record_a), (_, record_b)| (**record_a.gates()).cmp(&**record_b.gates()))
+            .or_reject()?;
 
         let transfer_transaction = Transaction::execute(
             ledger.read().vm(),
@@ -381,7 +386,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             &ProgramID::from_str("credits.aleo").or_reject()?,
             Identifier::from_str("transfer").or_reject()?,
             &[
-                Value::Record(records.values().next().unwrap().clone()),
+                Value::Record(max_credits_record),
                 Value::from_str(&format!("{to}")).or_reject()?,
                 Value::from_str(&format!("{amount}u64")).or_reject()?,
             ],
