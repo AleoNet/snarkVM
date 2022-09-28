@@ -165,6 +165,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger_sender.clone()))
             .and_then(Self::transaction_broadcast);
 
+        // POST /testnet3/transfer/from={from}&to={to}&amount={amount}
+        let create_transfer = warp::post()
+            .and(warp::path!("testnet3" / "transfer"))
+            .and(warp::query::<CreateTransferQuery<N>>())
+            .and(with(self.ledger.clone()))
+            .and(with(self.ledger_sender.clone()))
+            .and_then(Self::create_transfer);
+
         // Return the list of routes.
         latest_height
             .or(latest_hash)
@@ -182,6 +190,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(records_unspent)
             .or(ciphertexts_unspent)
             .or(transaction_broadcast)
+            .or(create_transfer)
     }
 }
 
