@@ -31,3 +31,10 @@ impl<T> OrReject<T> for anyhow::Result<T> {
         self.map_err(|e| reject::custom(RestError::Request(e.to_string())))
     }
 }
+
+impl<T> OrReject<T> for Option<T> {
+    /// Returns the result if it is successful, otherwise returns a rejection.
+    fn or_reject(self) -> Result<T, Rejection> {
+        self.ok_or_else(|| reject::custom(RestError::Request("".to_string())))
+    }
+}
