@@ -30,14 +30,24 @@ struct BlockRange {
     end: u32,
 }
 
-struct CreateTransferQuery<N: Network>(PrivateKey<N>, Address<N>, u64);
+struct TransferData<N: Network> {
+    from: PrivateKey<N>,
+    to: Address<N>,
+    amount: u64,
+}
 
-impl<'de, N: Network> Deserialize<'de> for CreateTransferQuery<N> {
+impl<N: Network> TransferData<N> {
+    fn new(from: PrivateKey<N>, to: Address<N>, amount: u64) -> Self {
+        Self { from, to, amount }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for TransferData<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
         let request = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
-        Ok(Self(
+        Ok(Self::new(
             // Retrieve the program.
             serde_json::from_value(request["from"].clone()).map_err(de::Error::custom)?,
             // Retrieve the address of the program.
@@ -165,10 +175,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger_sender.clone()))
             .and_then(Self::transaction_broadcast);
 
-        // POST /testnet3/transfer/from={from}&to={to}&amount={amount}
+        // POST /testnet3/transfer
         let create_transfer = warp::post()
             .and(warp::path!("testnet3" / "transfer"))
-            .and(warp::query::<CreateTransferQuery<N>>())
+            .and(warp::body::content_length_limit(10 * 1024 * 1024))
+            .and(warp::body::json())
             .and(with(self.ledger.clone()))
             .and(with(self.ledger_sender.clone()))
             .and_then(Self::create_transfer);
@@ -349,11 +360,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
 
     /// Creates a transfer transaction.
     async fn create_transfer(
-        query: CreateTransferQuery<N>,
+        query: TransferData<N>,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
         ledger_sender: LedgerSender<N>,
     ) -> Result<impl Reply, Rejection> {
-        let CreateTransferQuery::<N>(from, to, amount) = query;
+        let from = query.from;
+        let to = query.to;
+        let amount = query.amount;
         let view_key = ViewKey::try_from(from).or_reject()?;
 
         // TODO: This solution introduces a race condition because the same
