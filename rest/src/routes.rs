@@ -395,8 +395,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         )
         .or_reject()?;
 
+        let transaction_id = transfer_transaction.id();
+
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transfer_transaction)).await {
-            Ok(()) => Ok("OK"),
+            Ok(()) => Ok(reply::with_status(reply::json(&transaction_id), StatusCode::OK)),
             Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
         }
     }
