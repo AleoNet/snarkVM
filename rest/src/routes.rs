@@ -44,15 +44,11 @@ impl<N: Network> TransferData<N> {
 
 impl<'de, N: Network> Deserialize<'de> for TransferData<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        // Parse the request from a string into a value.
         let request = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
+
         Ok(Self::new(
-            // Retrieve the program.
             serde_json::from_value(request["from"].clone()).map_err(de::Error::custom)?,
-            // Retrieve the address of the program.
             serde_json::from_value(request["to"].clone()).map_err(de::Error::custom)?,
-            // Retrieve the program ID.
             serde_json::from_value(request["amount"].clone()).map_err(de::Error::custom)?,
         ))
     }
