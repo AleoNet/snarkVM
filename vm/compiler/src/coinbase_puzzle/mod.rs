@@ -110,23 +110,23 @@ impl<N: Network> CoinbasePuzzle<N> {
     ) -> Result<ProverSolution<N>> {
         let polynomial = Self::prover_polynomial(epoch_challenge, address, nonce)?;
 
-        let product_evals = {
+        let product_evaluations = {
             let polynomial_evaluations = pk.product_domain.in_order_fft_with_pc(&polynomial, &pk.fft_precomputation);
-            let product_evals = pk.product_domain.mul_polynomials_in_evaluation_domain(
+            let product_evaluations = pk.product_domain.mul_polynomials_in_evaluation_domain(
                 &polynomial_evaluations,
-                &epoch_challenge.epoch_polynomial_evals().evaluations,
+                &epoch_challenge.epoch_polynomial_evaluations().evaluations,
             );
-            product_evals
+            product_evaluations
         };
         let (commitment, _rand) =
-            KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evals, None, &AtomicBool::default(), None)?;
+            KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &AtomicBool::default(), None)?;
         let point = hash_commitment(&commitment)?;
         let product_eval_at_point = polynomial.evaluate(point) * epoch_challenge.epoch_polynomial().evaluate(point);
 
         let proof = KZG10::open_lagrange(
             &pk.lagrange_basis(),
             &pk.product_domain_elements,
-            &product_evals,
+            &product_evaluations,
             point,
             product_eval_at_point,
         )?;
@@ -184,7 +184,7 @@ impl<N: Network> CoinbasePuzzle<N> {
                 pk.product_domain.in_order_fft_with_pc(&accumulated_prover_polynomial.coeffs, &pk.fft_precomputation);
             pk.product_domain.mul_polynomials_in_evaluation_domain(
                 &accumulated_polynomial_evaluations,
-                &epoch_challenge.epoch_polynomial_evals().evaluations,
+                &epoch_challenge.epoch_polynomial_evaluations().evaluations,
             )
         };
 
