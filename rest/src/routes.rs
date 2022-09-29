@@ -370,8 +370,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // work because RwLockReadGuard does not implement the Send trait and
         // thus cannot be sent between threads safely.
 
-        let (_, max_credits_record) = ledger
-            .read()
+        let (_, max_credits_record) = ledger_reader
             .find_records(&view_key, RecordsFilter::Unspent)
             .or_reject()?
             .filter(|(_, record)| !record.gates().is_zero())
@@ -379,7 +378,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or_reject()?;
 
         let transfer_transaction = Transaction::execute(
-            ledger.read().vm(),
+            ledger_reader.vm(),
             &from,
             &ProgramID::from_str("credits.aleo").or_reject()?,
             Identifier::from_str("transfer").or_reject()?,
@@ -395,7 +394,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
 
         let transaction_id = transfer_transaction.id();
 
-        match ledger_sender.send(LedgerRequest::TransactionBroadcast(transfer_transaction)).await {
+        match ledger_reader.add_to_memory_pool(transfer_transaction) {
             Ok(()) => Ok(reply::with_status(reply::json(&transaction_id), StatusCode::OK)),
             Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
         }
