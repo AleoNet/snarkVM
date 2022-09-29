@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::Transaction;
+use snarkvm_compiler::{Deployment, Transaction};
 use snarkvm_console::{
     program::{Plaintext, Record},
     types::Address,
@@ -86,19 +86,20 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
     }
 }
 
+// TODO: This struct should contain the transaction itself.
 pub struct DeployResponse<N: Network> {
-    transaction: Transaction<N>,
+    deployment: Deployment<N>,
 }
 
 impl<N: Network> DeployResponse<N> {
     /// Initializes a new deploy response.
-    pub const fn new(transaction: Transaction<N>) -> Self {
-        Self { transaction }
+    pub const fn new(deployment: Deployment<N>) -> Self {
+        Self { deployment }
     }
 
-    /// Returns the deployment transaction.
-    pub const fn transaction(&self) -> &Transaction<N> {
-        &self.transaction
+    /// Returns the deployment deployment.
+    pub const fn deployment(&self) -> &Deployment<N> {
+        &self.deployment
     }
 }
 
@@ -106,7 +107,7 @@ impl<N: Network> Serialize for DeployResponse<N> {
     /// Serializes the deploy response into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut response = serializer.serialize_struct("DeployResponse", 1)?;
-        response.serialize_field("transaction", &self.transaction)?;
+        response.serialize_field("deployment", &self.deployment)?;
         response.end()
     }
 }
@@ -119,7 +120,7 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["transaction"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["deployment"].clone()).map_err(de::Error::custom)?,
         ))
     }
 }
@@ -130,7 +131,7 @@ impl<N: Network> Package<N> {
         endpoint: Option<String>,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-    ) -> Result<Transaction<N>> {
+    ) -> Result<Deployment<N>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the main program ID.
@@ -171,7 +172,8 @@ impl<N: Network> Package<N> {
 
         let (_, additional_fee) = process.execute_additional_fee::<A, _>(private_key, credits, 1, rng)?;
 
-        let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
+        // TODO: This clone will be removed when DeployResponse contain the transaction itself.
+        let deployment_transaction = Transaction::from_deployment(deployment.clone(), additional_fee)?;
 
         serde_json::to_writer(std::fs::File::create("deployment_transaction.json")?, &deployment_transaction)?;
 
@@ -181,9 +183,9 @@ impl<N: Network> Package<N> {
                 let request = DeployRequest::new(deployment_transaction, *caller, *program_id);
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
-                Ok(response.transaction)
+                Ok(response.deployment)
             }
-            None => Ok(deployment_transaction),
+            None => Ok(deployment),
         }
     }
 }
