@@ -44,7 +44,7 @@ pub type AdditionalFee<N> = Transition<N>;
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Deployment<N>, AdditionalFee<N>),
+    Deploy(N::TransactionID, Box<Deployment<N>>, AdditionalFee<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<AdditionalFee<N>>),
 }
@@ -57,7 +57,7 @@ impl<N: Network> Transaction<N> {
         // Compute the transaction ID.
         let id = *Self::deployment_tree(&deployment, &additional_fee)?.root();
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id.into(), deployment, additional_fee))
+        Ok(Self::Deploy(id.into(), Box::new(deployment), additional_fee))
     }
 
     /// Initializes a new execution transaction.

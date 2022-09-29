@@ -177,11 +177,11 @@ function compute:
                 let program = sample_program();
 
                 // Initialize a new caller.
-                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key();
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
                 // Initialize the ledger.
-                let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
 
                 // Fetch the unspent records.
                 let records = ledger
@@ -212,12 +212,12 @@ function compute:
         INSTANCE
             .get_or_init(|| {
                 // Initialize a new caller.
-                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key();
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
 
                 // Initialize the ledger.
-                let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
 
                 // Fetch the unspent records.
                 let records = ledger
