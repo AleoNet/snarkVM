@@ -25,8 +25,6 @@ mod sign;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
 
-use base58::{FromBase58, ToBase58};
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PrivateKey<N: Network> {
     /// The account seed that derives the full private key.
