@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_compiler::Transaction;
-use snarkvm_console::types::Address;
+use snarkvm_console::{
+    program::{Plaintext, Record},
+    types::Address,
+};
 
 use super::*;
 
@@ -125,6 +128,8 @@ impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
     ) -> Result<Transaction<N>> {
         // Retrieve the main program.
         let program = self.program();
@@ -158,9 +163,13 @@ impl<N: Network> Package<N> {
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
         // Compute the deployment.
-        let deployment = process.deploy::<A, _>(program, rng).unwrap();
+        let deployment = process.deploy::<A, _>(program, rng)?;
 
-        let deployment_transaction = Transaction::from_deployment(deployment, None)?;
+        let (_, additional_fee) = process.execute_additional_fee::<A, _>(private_key, credits, 1, rng)?;
+
+        let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
+
+        serde_json::to_writer(std::fs::File::create("deployment_transaction.json")?, &deployment_transaction)?;
 
         match endpoint {
             Some(ref endpoint) => {
@@ -175,50 +184,50 @@ impl<N: Network> Package<N> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    type CurrentNetwork = snarkvm_console::network::Testnet3;
-    type CurrentAleo = snarkvm_circuit::network::AleoV0;
+//     type CurrentNetwork = snarkvm_console::network::Testnet3;
+//     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
-    #[test]
-    fn test_deploy() {
-        // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+//     #[test]
+//     fn test_deploy() {
+//         // Samples a new package at a temporary directory.
+//         let (directory, package) = crate::package::test_helpers::sample_package();
 
-        // Deploy the package.
-        let deployment_transaction = package.deploy::<CurrentAleo>(None).unwrap();
-        if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
-            // Ensure the deployment edition matches.
-            assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-            // Ensure the deployment program ID matches.
-            assert_eq!(package.program().id(), deployment.program_id());
-            // Ensure the deployment program matches.
-            assert_eq!(package.program(), deployment.program());
-        }
+//         // Deploy the package.
+//         let deployment_transaction = package.deploy::<CurrentAleo>(None).unwrap();
+//         if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
+//             // Ensure the deployment edition matches.
+//             assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+//             // Ensure the deployment program ID matches.
+//             assert_eq!(package.program().id(), deployment.program_id());
+//             // Ensure the deployment program matches.
+//             assert_eq!(package.program(), deployment.program());
+//         }
 
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
-    }
+//         // Proactively remove the temporary directory (to conserve space).
+//         std::fs::remove_dir_all(directory).unwrap();
+//     }
 
-    #[test]
-    fn test_deploy_with_import() {
-        // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+//     #[test]
+//     fn test_deploy_with_import() {
+//         // Samples a new package at a temporary directory.
+//         let (directory, package) = crate::package::test_helpers::sample_package_with_import();
 
-        // Deploy the package.
-        let deployment_transaction = package.deploy::<CurrentAleo>(None).unwrap();
-        if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
-            // Ensure the deployment edition matches.
-            assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-            // Ensure the deployment program ID matches.
-            assert_eq!(package.program().id(), deployment.program_id());
-            // Ensure the deployment program matches.
-            assert_eq!(package.program(), deployment.program());
-        }
+//         // Deploy the package.
+//         let deployment_transaction = package.deploy::<CurrentAleo>(None).unwrap();
+//         if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
+//             // Ensure the deployment edition matches.
+//             assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+//             // Ensure the deployment program ID matches.
+//             assert_eq!(package.program().id(), deployment.program_id());
+//             // Ensure the deployment program matches.
+//             assert_eq!(package.program(), deployment.program());
+//         }
 
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
-    }
-}
+//         // Proactively remove the temporary directory (to conserve space).
+//         std::fs::remove_dir_all(directory).unwrap();
+//     }
+// }
