@@ -873,17 +873,32 @@ pub(crate) mod test_helpers {
             .clone()
     }
 
+    pub(crate) fn sample_genesis_block_with_pk(
+        rng: &mut TestRng,
+        private_key: PrivateKey<CurrentNetwork>,
+    ) -> Block<CurrentNetwork> {
+        static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize the VM.
+                let vm = crate::ledger::vm::test_helpers::sample_vm();
+                // Return the block.
+                Block::genesis(&vm, &private_key, rng).unwrap()
+            })
+            .clone()
+    }
+
     pub(crate) fn sample_genesis_ledger(rng: &mut TestRng) -> CurrentLedger {
         static INSTANCE: OnceCell<CurrentLedger> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                // Sample the genesis block.
-                let genesis = sample_genesis_block(rng);
-                // Sample the genesis address.
+                // Sample the genesis private key.
                 let private_key = sample_genesis_private_key(rng);
-                let address = Address::try_from(&private_key).unwrap();
+                // Sample the genesis block.
+                let genesis = sample_genesis_block_with_pk(rng, private_key);
 
-                // Initialize the ledger with the genesis block.
+                // Initialize the ledger with the genesis block and the associated private key.
+                let address = Address::try_from(&private_key).unwrap();
                 let ledger = CurrentLedger::new_with_genesis(&genesis, address, None).unwrap();
                 assert_eq!(0, ledger.latest_height());
                 assert_eq!(genesis.hash(), ledger.latest_hash());
