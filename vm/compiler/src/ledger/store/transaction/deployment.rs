@@ -132,9 +132,9 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Stores the given `deployment transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a deployment.
-        let (transaction_id, deployment, additional_fee) = match transaction {
-            Transaction::Deploy(transaction_id, deployment, additional_fee) => {
-                (transaction_id, deployment, additional_fee)
+        let (transaction_id, deployment, optional_additional_fee) = match transaction {
+            Transaction::Deploy(transaction_id, deployment, optional_additional_fee) => {
+                (transaction_id, deployment, optional_additional_fee)
             }
             Transaction::Execute(..) => {
                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
@@ -178,10 +178,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 self.certificate_map().insert((program_id, *function_name, edition), certificate.clone())?;
             }
 
-            // Store the additional fee ID.
-            self.additional_fee_map().insert(*transaction_id, *additional_fee.id())?;
-            // Store the additional fee transition.
-            self.transition_store().insert(additional_fee.clone())?;
+            // Store the additional fee, if one exists.
+            if let Some(additional_fee) = optional_additional_fee {
+                self.additional_fee_map().insert(*transaction_id, *additional_fee.id())?;
+                // Store the additional fee transition.
+                self.transition_store().insert(additional_fee.clone())?;
+            }
 
             Ok(())
         });
@@ -372,10 +374,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the additional fee transition.
-        match self.transition_store().get_transition(&additional_fee_id)? {
-            Some(transition) => Ok(Some(transition)),
-            None => bail!("Failed to locate the additional fee transition for transaction '{transaction_id}'"),
-        }
+        self.transition_store().get_transition(&additional_fee_id)
     }
 
     /// Returns the transaction for the given `transaction ID`.
@@ -386,10 +385,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the additional fee.
-        let additional_fee = match self.get_additional_fee(transaction_id)? {
-            Some(additional_fee) => additional_fee,
-            None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
-        };
+        let additional_fee = self.get_additional_fee(transaction_id)?;
 
         // Construct the deployment transaction.
         let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;

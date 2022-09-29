@@ -44,14 +44,14 @@ pub type AdditionalFee<N> = Transition<N>;
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Box<Deployment<N>>, AdditionalFee<N>),
+    Deploy(N::TransactionID, Box<Deployment<N>>, Option<AdditionalFee<N>>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<AdditionalFee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn from_deployment(deployment: Deployment<N>, additional_fee: AdditionalFee<N>) -> Result<Self> {
+    pub fn from_deployment(deployment: Deployment<N>, additional_fee: Option<AdditionalFee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
@@ -88,7 +88,7 @@ impl<N: Network> Transaction<N> {
         // Compute the additional fee.
         let (_, additional_fee) = vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?;
         // Initialize the transaction.
-        Self::from_deployment(deployment, additional_fee)
+        Self::from_deployment(deployment, Some(additional_fee))
     }
 
     /// Initializes a new execution transaction from an authorization.
@@ -153,7 +153,7 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
-            Self::Deploy(_, _, additional_fee) => [].iter().chain([Some(additional_fee)].into_iter().flatten()),
+            Self::Deploy(_, _, additional_fee) => [].iter().chain([additional_fee.as_ref()].into_iter().flatten()),
             Self::Execute(_, execution, additional_fee) => {
                 execution.iter().chain([additional_fee.as_ref()].into_iter().flatten())
             }
@@ -240,7 +240,7 @@ impl<N: Network> Transaction<N> {
         }
 
         match self {
-            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
+            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(additional_fee.into_iter()),
             Self::Execute(_, execution, additional_fee) => {
                 IterWrap::Execute(execution.into_transitions().chain(additional_fee))
             }
