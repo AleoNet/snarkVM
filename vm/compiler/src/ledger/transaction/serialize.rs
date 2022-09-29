@@ -26,9 +26,7 @@ impl<N: Network> Serialize for Transaction<N> {
                     transaction.serialize_field("type", "deploy")?;
                     transaction.serialize_field("id", &id)?;
                     transaction.serialize_field("deployment", &deployment)?;
-                    if let Some(additional_fee) = additional_fee {
-                        transaction.serialize_field("additional_fee", &additional_fee)?;
-                    }
+                    transaction.serialize_field("additional_fee", &additional_fee)?;
                     transaction.end()
                 }
                 Self::Execute(id, execution, additional_fee) => {
@@ -64,13 +62,9 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         // Retrieve the deployment.
                         let deployment =
                             serde_json::from_value(transaction["deployment"].clone()).map_err(de::Error::custom)?;
-                        // Retrieve the additional fee, if it exists.
-                        let additional_fee = match transaction["additional_fee"].as_str() {
-                            Some(additional_fee) => {
-                                Some(serde_json::from_str(additional_fee).map_err(de::Error::custom)?)
-                            }
-                            None => None,
-                        };
+                        // Retrieve the additional fee.
+                        let additional_fee =
+                            serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
                         // Construct the transaction.
                         Transaction::from_deployment(deployment, additional_fee).map_err(de::Error::custom)?
                     }
