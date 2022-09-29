@@ -35,18 +35,17 @@ impl<N: Network> Transaction<N> {
         match self {
             Self::Deploy(_, deployment, additional_fee) => {
                 // Check if the ID is the transition ID for the additional fee.
-                if let Some(additional_fee) = additional_fee {
-                    if *id == **additional_fee.id() {
-                        // Return the transaction leaf.
-                        return Ok(TransactionLeaf::new(
-                            0u8,
-                            deployment.program().functions().len() as u16, // The last index.
-                            *additional_fee.program_id(),
-                            *additional_fee.function_name(),
-                            *id,
-                        ));
-                    }
+                if *id == **additional_fee.id() {
+                    // Return the transaction leaf.
+                    return Ok(TransactionLeaf::new(
+                        0u8,
+                        deployment.program().functions().len() as u16, // The last index.
+                        *additional_fee.program_id(),
+                        *additional_fee.function_name(),
+                        *id,
+                    ));
                 }
+
                 // Iterate through the functions in the deployment.
                 for (index, function) in deployment.program().functions().values().enumerate() {
                     // Check if the function ID matches the given ID.
@@ -120,7 +119,7 @@ impl<N: Network> Transaction<N> {
     /// Returns the Merkle tree for the given deployment.
     pub(super) fn deployment_tree(
         deployment: &Deployment<N>,
-        additional_fee: &Option<AdditionalFee<N>>,
+        additional_fee: &AdditionalFee<N>,
     ) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_deployment_size(deployment)?;
@@ -129,48 +128,34 @@ impl<N: Network> Transaction<N> {
         // Retrieve the program.
         let program = deployment.program();
         // Prepare the leaves.
-        let leaves = program.functions().values().enumerate().map(|(index, function)| {
-            // Construct the leaf as (variant || index || program ID || function name || Hash(function)).
-            Ok(TransactionLeaf::new(
-                variant,
-                index as u16,
-                *program.id(),
-                *function.name(),
-                N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?,
-            )
-            .to_bits_le())
-        });
-        let leaves = match additional_fee {
-            Some(additional_fee) => {
-                // Construct the leaf as (variant || index || program ID || function name || transition ID).
-                let leaf: anyhow::Result<Vec<bool>> = Ok(TransactionLeaf::new(
+        let leaves = program
+            .functions()
+            .values()
+            .enumerate()
+            .map(|(index, function)| {
+                // Construct the leaf as (variant || index || program ID || function name || Hash(function)).
+                Ok(TransactionLeaf::new(
+                    variant,
+                    index as u16,
+                    *program.id(),
+                    *function.name(),
+                    N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?,
+                )
+                .to_bits_le())
+            })
+            .chain(
+                [Ok(TransactionLeaf::new(
                     variant,
                     program.functions().len() as u16, // The last index.
                     *additional_fee.program_id(),
                     *additional_fee.function_name(),
                     **additional_fee.id(),
                 )
-                .to_bits_le());
-                // Add the leaf to the leaves.
-                leaves.chain([leaf].into_iter()).collect::<Vec<_>>()
-            }
-            None => leaves.collect::<Vec<_>>(),
-        };
-
-        // FIXME: This is a temporary solution because the following line
-        // N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Result<Vec<_>>>()?)
-        // does not work (and should be the return of this function).
-        let mut l = Vec::new();
-        let _ = leaves.iter().try_for_each(|leaf| match leaf {
-            Ok(leaf) => {
-                l.push(leaf.clone());
-                Ok(())
-            }
-            Err(e) => Err(e),
-        });
-
+                .to_bits_le())]
+                .into_iter(),
+            );
         // Compute the deployment tree.
-        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&l)
+        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Result<Vec<_>>>()?)
     }
 
     /// Returns the Merkle tree for the given execution.

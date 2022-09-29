@@ -72,17 +72,10 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
                     warn!("Invalid transaction size (deployment): {error}");
                     return false;
                 }
-
-                // Verify the additional fee, if it exists.
-                let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => self.verify_additional_fee(additional_fee),
-                    None => true,
-                };
-
                 // Verify the deployment.
                 self.verify_deployment(deployment)
                     // Verify the additional fee.
-                    && check_additional_fee
+                    && self.verify_additional_fee(additional_fee)
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
