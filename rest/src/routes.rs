@@ -177,7 +177,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::body::content_length_limit(10 * 1024 * 1024))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
-            .and(with(self.ledger_sender.clone()))
             .and_then(Self::create_transfer);
 
         // Return the list of routes.
