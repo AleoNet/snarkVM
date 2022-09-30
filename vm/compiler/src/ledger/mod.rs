@@ -44,7 +44,7 @@ mod iterators;
 mod latest;
 
 use crate::{
-    ledger::helpers::{coinbase_target, proof_target, proving_reward},
+    ledger::helpers::{coinbase_reward, coinbase_target, proof_target},
     program::Program,
     CoinbaseProvingKey,
     CoinbasePuzzle,
@@ -446,8 +446,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
         //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
         {
-            // Calculate the prover rewards.
-            let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            // Calculate the coinbase reward.
+            let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
                 block.timestamp(),
                 timestamp,
                 new_height as u64,
@@ -458,7 +458,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             for prover_puzzle_solution in prover_solutions {
                 let prover_difficulty = u64::MAX.saturating_div(prover_puzzle_solution.to_difficulty_target()?);
 
-                let prover_reward: u64 = (proving_reward / 2) * prover_difficulty / cumulative_prover_difficulty;
+                let prover_reward: u64 = (coinbase_reward / 2) * prover_difficulty / cumulative_prover_difficulty;
                 prover_rewards.push((*prover_puzzle_solution.address(), prover_reward));
             }
         }

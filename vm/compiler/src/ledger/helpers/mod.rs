@@ -46,7 +46,7 @@ pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>
 ///     B = Expected time per block.
 ///     N = Number of rounds in an epoch.
 ///
-pub(crate) fn proving_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
+pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
     previous_timestamp: i64,
     timestamp: i64,
     block_height: u64,
@@ -244,14 +244,14 @@ mod tests {
     }
 
     #[test]
-    fn test_proving_reward() {
+    fn test_coinbase_reward() {
         let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME as u64, 10);
 
         let mut block_height = 1;
         let mut previous_timestamp = ANCHOR_TIMESTAMP;
         let mut timestamp = ANCHOR_TIMESTAMP;
 
-        let mut previous_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+        let mut previous_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
             previous_timestamp,
             timestamp,
             block_height,
@@ -261,7 +261,7 @@ mod tests {
         timestamp = ANCHOR_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
 
         while block_height < estimated_blocks_in_10_years {
-            let reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
                 previous_timestamp,
                 timestamp,
                 block_height,
@@ -276,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn test_proving_reward_after_10_years() {
+    fn test_coinbase_reward_after_10_years() {
         let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME as u64, 10);
 
         let mut block_height = estimated_blocks_in_10_years;
@@ -285,7 +285,7 @@ mod tests {
             let timestamp = ANCHOR_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
             let new_timestamp = timestamp + ANCHOR_TIME;
 
-            let reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
                 timestamp,
                 new_timestamp,
                 block_height,
