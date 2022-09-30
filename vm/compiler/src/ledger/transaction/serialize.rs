@@ -77,7 +77,6 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         // Retrieve the additional fee.
                         let additional_fee =
                             serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
-                        eprintln!("additional_fee: {:?}", additional_fee);
                         // Construct the transaction.
                         Transaction::from_execution(execution, Some(additional_fee)).map_err(de::Error::custom)?
                     }
