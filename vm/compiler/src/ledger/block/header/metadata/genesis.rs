@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ledger::{ANCHOR_TIMESTAMP, GENESIS_COINBASE_TARGET, GENESIS_PROOF_TARGET};
+use crate::ledger::{GENESIS_COINBASE_TARGET, GENESIS_PROOF_TARGET, GENESIS_TIMESTAMP};
 
 impl<N: Network> Metadata<N> {
     /// Initializes the genesis metadata.
@@ -26,7 +26,7 @@ impl<N: Network> Metadata<N> {
         let height = 0;
         let coinbase_target = GENESIS_COINBASE_TARGET;
         let proof_target = GENESIS_PROOF_TARGET;
-        let timestamp = i64::try_from(ANCHOR_TIMESTAMP)?;
+        let timestamp = GENESIS_TIMESTAMP;
 
         // Return the genesis metadata.
         Self::new(network, round, height, coinbase_target, proof_target, timestamp)
@@ -45,7 +45,7 @@ impl<N: Network> Metadata<N> {
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
             && self.proof_target == GENESIS_PROOF_TARGET
             // Ensure the timestamp in the genesis block is `ANCHOR_TIMESTAMP`.
-            && self.timestamp == ANCHOR_TIMESTAMP as i64
+            && self.timestamp == GENESIS_TIMESTAMP
     }
 }
 
@@ -88,6 +88,6 @@ mod tests {
         assert_eq!(metadata.round(), 0);
         assert_eq!(metadata.coinbase_target(), GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), GENESIS_PROOF_TARGET);
-        assert_eq!(metadata.timestamp(), ANCHOR_TIMESTAMP as i64);
+        assert_eq!(metadata.timestamp(), GENESIS_TIMESTAMP);
     }
 }

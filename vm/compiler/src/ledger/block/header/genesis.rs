@@ -42,6 +42,7 @@ impl<N: Network> Header<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{GENESIS_COINBASE_TARGET, GENESIS_PROOF_TARGET, GENESIS_TIMESTAMP};
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -79,9 +80,9 @@ mod tests {
         assert_eq!(header.network(), CurrentNetwork::ID);
         assert_eq!(header.height(), 0);
         assert_eq!(header.round(), 0);
-        assert_eq!(header.coinbase_target(), u64::MAX);
-        assert_eq!(header.proof_target(), u64::MAX);
-        assert_eq!(header.timestamp(), 0);
+        assert_eq!(header.coinbase_target(), GENESIS_COINBASE_TARGET);
+        assert_eq!(header.proof_target(), GENESIS_PROOF_TARGET);
+        assert_eq!(header.timestamp(), GENESIS_TIMESTAMP);
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(*header.transactions_root(), Field::zero());
