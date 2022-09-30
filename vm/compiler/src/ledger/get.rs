@@ -61,6 +61,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
     }
 
+    /// Returns the record for the given `commitment`.
+    pub fn get_record(&self, commitment: Field<N>) -> Result<Option<Record<N, Ciphertext<N>>>> {
+        self.transitions.get_record(&commitment)
+    }
+
     /// Returns the block transactions for the given block height.
     pub fn get_transactions(&self, height: u32) -> Result<Transactions<N>> {
         // Retrieve the block hash.

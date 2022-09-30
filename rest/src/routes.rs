@@ -179,6 +179,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::create_transfer);
 
+        // GET /testnet3/ciphertext/{commitment}
+        let get_ciphertext = warp::get()
+            .and(warp::path!("testnet3" / "ciphertext" / ..))
+            .and(warp::path::param::<Field<N>>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_ciphertext);
+
         // Return the list of routes.
         latest_height
             .or(latest_hash)
@@ -197,6 +205,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(ciphertexts_unspent)
             .or(transaction_broadcast)
             .or(create_transfer)
+            .or(get_ciphertext)
     }
 }
 
@@ -395,6 +404,18 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         match ledger_writer.add_to_memory_pool(transfer_transaction) {
             Ok(()) => Ok(reply::with_status(reply::json(&transaction_id), StatusCode::OK)),
             Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
+        }
+    }
+
+    /// Returns the record ciphertext for the given view key.
+    async fn get_ciphertext(
+        commitment: Field<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        if let Some(record_ciphertext) = ledger.read().get_record(commitment).or_reject()? {
+            Ok(reply::with_status(reply::json(&record_ciphertext), StatusCode::OK))
+        } else {
+            Err(warp::reject::not_found())
         }
     }
 }
