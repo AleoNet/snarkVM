@@ -72,15 +72,14 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         // Retrieve the execution.
                         let execution =
                             serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
-                        // Retrieve the additional fee, if it exists.
-                        let additional_fee = match transaction["additional_fee"].as_str() {
-                            Some(additional_fee) => {
-                                Some(serde_json::from_str(additional_fee).map_err(de::Error::custom)?)
-                            }
-                            None => None,
-                        };
+                        // TODO: This is a patch that solves the execution transaction serialization/deserialization issue.
+                        // TODO: Create an issue and add it to the comment.
+                        // Retrieve the additional fee.
+                        let additional_fee =
+                            serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
+                        eprintln!("additional_fee: {:?}", additional_fee);
                         // Construct the transaction.
-                        Transaction::from_execution(execution, additional_fee).map_err(de::Error::custom)?
+                        Transaction::from_execution(execution, Some(additional_fee)).map_err(de::Error::custom)?
                     }
                     _ => return Err(de::Error::custom("Invalid transaction type")),
                 };
