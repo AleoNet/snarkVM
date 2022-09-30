@@ -169,8 +169,6 @@ impl<N: Network> Package<N> {
 
         let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
 
-        serde_json::to_writer(std::fs::File::create("deployment_transaction.json")?, &deployment_transaction)?;
-
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
