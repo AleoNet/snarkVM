@@ -43,6 +43,9 @@ version = "0.12"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.http]
+version = "0.2.8"
+
 [dependencies.serde]
 version = "1.0.144"
 default-features = false
@@ -58,4 +61,4 @@ version = "1"
 version = "0.1"
 
 [dependencies.warp]
-version = "0.3"
+version = "0.3.3"
