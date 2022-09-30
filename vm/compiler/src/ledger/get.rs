@@ -62,7 +62,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Returns the record for the given `commitment`.
-    pub fn get_record(&self, commitment: Field<N>) -> Result<Option<Record<N, Ciphertext<N>>>> {
+    pub fn get_record_ciphertext(&self, commitment: Field<N>) -> Result<Option<Record<N, Ciphertext<N>>>> {
         self.transitions.get_record(&commitment)
     }
 
