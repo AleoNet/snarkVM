@@ -19,7 +19,12 @@
 // TODO (raychu86): Handle downcasting.
 
 #[allow(unused)]
+///
 /// Calculate the staking reward, given the starting supply and anchor time.
+///     R_staking = floor((0.025 * S) / H_Y1)
+///     S = Starting supply.
+///     H_Y1 = Expected block height at year 1.
+///
 pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> u64 {
     // The staking percentage at genesis.
     const STAKING_PERCENTAGE: f64 = 0.025f64; // 2.5%
@@ -31,7 +36,16 @@ pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>
     reward.floor() as u64
 }
 
-/// Calculate the proving reward for a given block.
+///
+/// Calculate the coinbase reward for a given block.
+///     R_coinbase = max(0, H_Y10 - H) * R_anchor * 2^((D - B) / N).
+///     R_anchor = Anchor reward.
+///     H_Y10 = Expected block height at year 10.
+///     H = Current block height.
+///     D = Time elapsed since the previous block.
+///     B = Expected time per block.
+///     N = Number of rounds in an epoch.
+///
 pub(crate) fn proving_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
     previous_timestamp: i64,
     timestamp: i64,
@@ -52,7 +66,12 @@ pub(crate) fn proving_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64,
     }
 }
 
+///
 /// Calculate the anchor reward.
+///     R_anchor = floor((2 * S) / (H_Y10 * (H_Y10 + 1))).
+///     S = Starting supply.
+///     H_Y10 = Expected block height at year 10.
+///
 pub(crate) fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> u64 {
     let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10);
 
@@ -94,10 +113,10 @@ pub fn proof_target(coinbase_target: u64) -> u64 {
 
 ///
 /// Retarget algorithm using fixed point arithmetic from https://www.reference.cash/protocol/forks/2020-11-15-asert.
-///     T_{i+1} = T_i * 2^((S - B) / N).
+///     T_{i+1} = T_i * 2^((D - B) / N).
 ///     T_i = Current target.
+///     D = Time elapsed since the previous block.
 ///     B = Expected time per block.
-///     S = Time elapsed since the previous block.
 ///     N = Number of rounds in an epoch.
 ///
 fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
