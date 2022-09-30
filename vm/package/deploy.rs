@@ -175,8 +175,6 @@ impl<N: Network> Package<N> {
         // TODO: This clone will be removed when DeployResponse contain the transaction itself.
         let deployment_transaction = Transaction::from_deployment(deployment.clone(), additional_fee)?;
 
-        serde_json::to_writer(std::fs::File::create("deployment_transaction.json")?, &deployment_transaction)?;
-
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
