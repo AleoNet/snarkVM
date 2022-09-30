@@ -56,13 +56,10 @@ pub(crate) fn proving_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64,
     let max = std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0);
     let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
 
-    let unadjusted_reward = max * anchor_reward;
-
-    if unadjusted_reward == 0 {
-        0
-    } else {
+    match max * anchor_reward {
+        0 => 0,
         // (max * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / NUM_ROUNDS_IN_EPOCH}
-        retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(unadjusted_reward, previous_timestamp, timestamp, true)
+        reward => retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(reward, previous_timestamp, timestamp, true),
     }
 }
 
