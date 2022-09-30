@@ -20,7 +20,7 @@ use anyhow::Result;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>", setting = clap::AppSettings::ColoredHelp)]
+#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>")]
 pub struct CLI {
     /// Specify the verbosity [options: 0, 1, 2, 3]
     #[clap(default_value = "2", short, long)]
@@ -73,5 +73,17 @@ impl Command {
                 }
             }, // _ => Err(anyhow!("\nUnknown command\n")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // As per the official clap recommendation.
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        CLI::command().debug_assert()
     }
 }
