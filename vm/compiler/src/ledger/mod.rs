@@ -76,18 +76,20 @@ const BLOCKS_DEPTH: u8 = 32;
 // TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
 
 /// The expected time per block in seconds.
-pub const ANCHOR_TIME: u64 = 15;
+pub const ANCHOR_TIME: i64 = 15;
 /// The fixed timestamp of the genesis block.
-pub const ANCHOR_TIMESTAMP: u64 = 1663718400; // 2022-09-21 00:00:00 UTC
+pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+/// The expected number of rounds per epoch (2 hours).
+pub const NUM_ROUNDS_PER_EPOCH: u32 = 480;
 
 /// The coinbase puzzle degree.
 const COINBASE_PUZZLE_DEGREE: u32 = 1 << 13;
 
 // TODO (raychu86): Adjust these values based network expectations.
 /// The genesis block coinbase target.
-const GENESIS_COINBASE_TARGET: u64 = 30_000_000_000_000_000; // Around 30 seconds of a single prover generating proofs.
+pub const GENESIS_COINBASE_TARGET: u64 = 30_000_000_000_000_000; // Around 30 seconds of a single prover generating proofs.
 /// The genesis block proof target.
-const GENESIS_PROOF_TARGET: u64 = 4_600_000_000_000_000_000; // On average 4 attempts to generate a valid proof.
+pub const GENESIS_PROOF_TARGET: u64 = 4_600_000_000_000_000_000; // On average 4 attempts to generate a valid proof.
 
 /// The starting supply of Aleo credits.
 const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
@@ -411,20 +413,26 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             cumulative_difficulty
         };
 
-        // Ensure the proofs meet the coinbase target requirements.
-        let required_coinbase_difficulty = u64::MAX.saturating_div(self.latest_coinbase_target()?);
-        if cumulative_prover_difficulty < required_coinbase_difficulty {
-            bail!(
-                "Prover puzzles do not meet the coinbase difficulty target. {} < {}",
-                cumulative_prover_difficulty,
-                required_coinbase_difficulty
-            )
-        }
-
+        // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let epoch_challenge = self.latest_epoch_challenge()?;
-        let coinbase_proof =
-            Some(CoinbasePuzzle::accumulate(&self.coinbase_proving_key, &epoch_challenge, &prover_solutions)?);
+        let coinbase_proof = if self.current_height > 0 {
+            // Ensure the proofs meet the coinbase target requirements.
+            let required_coinbase_difficulty = u64::MAX.saturating_div(self.latest_coinbase_target()?);
+            if cumulative_prover_difficulty < required_coinbase_difficulty {
+                bail!(
+                    "Prover puzzles do not meet the coinbase difficulty requirement. {} < {}",
+                    cumulative_prover_difficulty,
+                    required_coinbase_difficulty
+                )
+            }
+
+            // Construct the coinbase proof.
+            let epoch_challenge = self.latest_epoch_challenge()?;
+            Some(CoinbasePuzzle::accumulate(&self.coinbase_proving_key, &epoch_challenge, &prover_solutions)?)
+        } else {
+            // The genesis block does not have a coinbase proof.
+            None
+        };
 
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
@@ -434,15 +442,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         let new_height = self.latest_height().saturating_add(1);
         let round = block.round().saturating_add(1);
-        let num_validators = self.validators.len() as u64;
 
         // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
         //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
         {
             // Calculate the prover rewards.
-            let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIMESTAMP, ANCHOR_TIME>(
-                num_validators,
-                u64::try_from(timestamp)?,
+            let proving_reward = proving_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+                block.timestamp(),
+                timestamp,
                 new_height as u64,
             );
 
@@ -457,20 +464,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Construct the new coinbase target.
-        let coinbase_target = coinbase_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
+        let coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
             self.latest_coinbase_target()?,
-            num_validators,
-            timestamp as u64,
-            new_height as u64,
+            block.timestamp(),
+            timestamp,
         );
 
         // Construct the new coinbase target
-        let proof_target = proof_target::<ANCHOR_TIMESTAMP, ANCHOR_TIME>(
-            self.latest_proof_target()?,
-            num_validators,
-            timestamp as u64,
-            new_height as u64,
-        );
+        let proof_target = proof_target(coinbase_target);
 
         // Construct the metadata.
         let metadata = Metadata::new(N::ID, round, new_height, coinbase_target, proof_target, timestamp)?;
