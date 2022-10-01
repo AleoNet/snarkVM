@@ -372,7 +372,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the coinbase memory pool.
     pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
         // Ensure that the prover solution is greater than the proof target.
-        if prover_solution.to_difficulty_target()? > self.latest_proof_target()? {
+        if prover_solution.to_difficulty_target()? < self.latest_proof_target()? {
             bail!("Prover puzzle does not meet the proof difficulty target requirements.")
         }
 
@@ -402,27 +402,25 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let prover_solutions = self.coinbase_memory_pool.iter().cloned().collect::<Vec<_>>();
 
         // Get the total cumulative difficulty of the prover puzzle solutions.
-        let cumulative_prover_difficulty = {
-            let mut cumulative_difficulty: u64 = 0;
+        let cumulative_prover_target = {
+            let mut cumulative_target: u64 = 0;
 
             for solution in &prover_solutions {
-                let solution_difficulty = u64::MAX.saturating_div(solution.to_difficulty_target()?);
-                cumulative_difficulty = cumulative_difficulty.saturating_add(solution_difficulty);
+                cumulative_target = cumulative_target.saturating_add(solution.to_difficulty_target()?);
             }
 
-            cumulative_difficulty
+            cumulative_target
         };
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
         let coinbase_proof = if self.current_height > 0 {
-            // Ensure the proofs meet the coinbase target requirements.
-            let required_coinbase_difficulty = u64::MAX.saturating_div(self.latest_coinbase_target()?);
-            if cumulative_prover_difficulty < required_coinbase_difficulty {
+            // Ensure the proofs meet the coinbase target requirement.
+            if cumulative_prover_target < self.latest_coinbase_target()? {
                 bail!(
                     "Prover puzzles do not meet the coinbase difficulty requirement. {} < {}",
-                    cumulative_prover_difficulty,
-                    required_coinbase_difficulty
+                    cumulative_prover_target,
+                    self.latest_coinbase_target()?
                 )
             }
 
@@ -456,10 +454,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             // Calculate the rewards for the individual provers
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
             for prover_puzzle_solution in prover_solutions {
-                let prover_difficulty = u64::MAX.saturating_div(prover_puzzle_solution.to_difficulty_target()?);
+                let prover_reward = (coinbase_reward as u128 / 2)
+                    .saturating_mul(prover_puzzle_solution.to_difficulty_target()? as u128)
+                    / cumulative_prover_target as u128;
 
-                let prover_reward: u64 = (coinbase_reward / 2) * prover_difficulty / cumulative_prover_difficulty;
-                prover_rewards.push((*prover_puzzle_solution.address(), prover_reward));
+                prover_rewards.push((*prover_puzzle_solution.address(), u64::try_from(prover_reward)?));
             }
         }
 
