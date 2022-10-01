@@ -87,9 +87,9 @@ const COINBASE_PUZZLE_DEGREE: u32 = 1 << 13;
 
 // TODO (raychu86): Adjust these values based network expectations.
 /// The genesis block coinbase target.
-pub const GENESIS_COINBASE_TARGET: u64 = 30_000_000_000_000_000; // Around 30 seconds of a single prover generating proofs.
+pub const GENESIS_COINBASE_TARGET: u64 = 1048576; // 2^20
 /// The genesis block proof target.
-pub const GENESIS_PROOF_TARGET: u64 = 4_600_000_000_000_000_000; // On average 4 attempts to generate a valid proof.
+pub const GENESIS_PROOF_TARGET: u64 = 1024; // 2^10
 
 /// The starting supply of Aleo credits.
 const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
