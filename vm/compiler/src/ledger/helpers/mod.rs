@@ -277,11 +277,22 @@ mod tests {
 
     #[test]
     fn test_coinbase_reward_after_10_years() {
+        let mut rng = TestRng::default();
+
         let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME as u64, 10);
 
-        let mut block_height = estimated_blocks_in_10_years;
+        // Check that block `estimated_blocks_in_10_years` has a reward of 0.
+        let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            ANCHOR_TIMESTAMP,
+            ANCHOR_TIMESTAMP + ANCHOR_TIME,
+            estimated_blocks_in_10_years,
+        );
+        assert_eq!(reward, 0);
 
+        // Check that the subsequent blocks have a reward of 0.
         for _ in 0..ITERATIONS {
+            let block_height: u64 = rng.gen_range(estimated_blocks_in_10_years..estimated_blocks_in_10_years * 10);
+
             let timestamp = ANCHOR_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
             let new_timestamp = timestamp + ANCHOR_TIME;
 
@@ -292,8 +303,6 @@ mod tests {
             );
 
             assert_eq!(reward, 0);
-
-            block_height *= 2;
         }
     }
 
