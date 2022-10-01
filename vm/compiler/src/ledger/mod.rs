@@ -414,22 +414,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let coinbase_proof = if self.current_height > 0 {
-            // Ensure the proofs meet the coinbase target requirement.
-            if cumulative_prover_target < self.latest_coinbase_target()? {
-                bail!(
-                    "Prover puzzles do not meet the coinbase difficulty requirement. {} < {}",
-                    cumulative_prover_target,
-                    self.latest_coinbase_target()?
-                )
-            }
-
-            // Construct the coinbase proof.
+        let coinbase_proof = if cumulative_prover_target < self.latest_coinbase_target()? {
+            None
+        } else {
             let epoch_challenge = self.latest_epoch_challenge()?;
             Some(CoinbasePuzzle::accumulate(&self.coinbase_proving_key, &epoch_challenge, &prover_solutions)?)
-        } else {
-            // The genesis block does not have a coinbase proof.
-            None
         };
 
         // Fetch the latest block and state root.
