@@ -96,8 +96,9 @@ impl<N: Network> CoinbaseSolution<N> {
         let mut cumulative_target: u64 = 0;
 
         for solution in &self.partial_solutions {
-            let solution_target = u64::MAX.saturating_div(solution.to_target()?);
-            cumulative_target = cumulative_target.saturating_add(solution_target);
+            cumulative_target = cumulative_target
+                .checked_add(solution.to_target()?)
+                .ok_or_else(|| anyhow!("Cumulative target overflowed"))?;
         }
 
         Ok(cumulative_target)

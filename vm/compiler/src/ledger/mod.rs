@@ -406,7 +406,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             let mut cumulative_target: u64 = 0;
 
             for solution in &prover_solutions {
-                cumulative_target = cumulative_target.saturating_add(solution.to_target()?);
+                cumulative_target = cumulative_target
+                    .checked_add(solution.to_target()?)
+                    .ok_or_else(|| anyhow!("Cumulative target overflowed"))?;
             }
 
             cumulative_target
