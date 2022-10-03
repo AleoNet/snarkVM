@@ -75,7 +75,7 @@ const BLOCKS_DEPTH: u8 = 32;
 
 // TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
 
-/// The expected time per block in seconds.
+/// The anchor time per block in seconds, which must be greater than the round time per block.
 pub const ANCHOR_TIME: i64 = 20;
 /// The fixed timestamp of the genesis block.
 pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
