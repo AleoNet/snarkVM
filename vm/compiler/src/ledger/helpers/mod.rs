@@ -190,7 +190,7 @@ fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
         }
     };
 
-    // Cap the difficulty target at `u64::MAX` if it has overflowed.
+    // Cap the target at `u64::MAX` if it has overflowed.
     candidate_target = core::cmp::min(candidate_target, u64::MAX as u128);
 
     // Cast the new target down from a u128 to a u64.

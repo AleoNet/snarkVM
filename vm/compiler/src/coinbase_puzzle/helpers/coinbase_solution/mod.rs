@@ -91,16 +91,15 @@ impl<N: Network> CoinbaseSolution<N> {
         )?)
     }
 
-    /// Returns the cumulative difficulty of the individual prover solutions.
-    /// NOTE that this is NOT the cumulative difficulty target of the individual prover solutions.
-    pub fn to_cumulative_difficulty(&self) -> Result<u64> {
-        let mut cumulative_difficulty: u64 = 0;
+    /// Returns the cumulative target of the individual prover solutions.
+    pub fn to_cumulative_target(&self) -> Result<u64> {
+        let mut cumulative_target: u64 = 0;
 
         for solution in &self.partial_solutions {
-            let solution_difficulty = u64::MAX.saturating_div(solution.to_difficulty_target()?);
-            cumulative_difficulty = cumulative_difficulty.saturating_add(solution_difficulty);
+            let solution_target = u64::MAX.saturating_div(solution.to_target()?);
+            cumulative_target = cumulative_target.saturating_add(solution_target);
         }
 
-        Ok(cumulative_difficulty)
+        Ok(cumulative_target)
     }
 }

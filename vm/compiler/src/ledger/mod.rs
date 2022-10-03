@@ -372,8 +372,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the coinbase memory pool.
     pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
         // Ensure that the prover solution is greater than the proof target.
-        if prover_solution.to_difficulty_target()? < self.latest_proof_target()? {
-            bail!("Prover puzzle does not meet the proof difficulty target requirements.")
+        if prover_solution.to_target()? < self.latest_proof_target()? {
+            bail!("Prover puzzle does not meet the proof target requirements.")
         }
 
         // Compute the epoch challenge.
@@ -406,7 +406,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             let mut cumulative_target: u64 = 0;
 
             for solution in &prover_solutions {
-                cumulative_target = cumulative_target.saturating_add(solution.to_difficulty_target()?);
+                cumulative_target = cumulative_target.saturating_add(solution.to_target()?);
             }
 
             cumulative_target
@@ -444,7 +444,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
             for prover_puzzle_solution in prover_solutions {
                 let prover_reward = (coinbase_reward as u128 / 2)
-                    .saturating_mul(prover_puzzle_solution.to_difficulty_target()? as u128)
+                    .saturating_mul(prover_puzzle_solution.to_target()? as u128)
                     / cumulative_prover_target as u128;
 
                 prover_rewards.push((*prover_puzzle_solution.address(), u64::try_from(prover_reward)?));
@@ -656,17 +656,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 bail!("Invalid coinbase proof: {:?}", coinbase_proof);
             }
 
-            // Ensure the coinbase proof meets the required coinbase difficulty.
-            // The coinbase difficulty is calculated using the coinbase_target.
-            if block.height() > 0
-                && coinbase_proof.to_cumulative_difficulty()? < u64::MAX.saturating_div(self.latest_coinbase_target()?)
-            {
-                bail!("Coinbase proof does not meet the coinbase difficulty");
+            // Ensure the coinbase proof meets the required coinbase target.
+            if block.height() > 0 && coinbase_proof.to_cumulative_target()? < self.latest_coinbase_target()? {
+                bail!("Coinbase proof does not meet the coinbase target");
             }
 
             // Ensure that each of the prover solutions meets the required proof target.
             for prover_solution in &coinbase_proof.partial_solutions {
-                if block.height() > 0 && prover_solution.to_difficulty_target()? > self.latest_proof_target()? {
+                if block.height() > 0 && prover_solution.to_target()? < self.latest_proof_target()? {
                     bail!("Invalid prover solution found in the coinbase proof");
                 }
             }

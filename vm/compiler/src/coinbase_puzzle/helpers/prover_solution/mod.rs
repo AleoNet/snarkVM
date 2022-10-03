@@ -89,8 +89,8 @@ impl<N: Network> ProverSolution<N> {
         self.partial_solution.to_prover_polynomial(epoch_challenge)
     }
 
-    /// Returns the difficulty target of the solution.
-    pub fn to_difficulty_target(&self) -> Result<u64> {
-        self.partial_solution.to_difficulty_target()
+    /// Returns the target of the solution.
+    pub fn to_target(&self) -> Result<u64> {
+        self.partial_solution.to_target()
     }
 }
