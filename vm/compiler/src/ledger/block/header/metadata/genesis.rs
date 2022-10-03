@@ -44,7 +44,7 @@ impl<N: Network> Metadata<N> {
             && self.coinbase_target == GENESIS_COINBASE_TARGET
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
             && self.proof_target == GENESIS_PROOF_TARGET
-            // Ensure the timestamp in the genesis block is `ANCHOR_TIMESTAMP`.
+            // Ensure the timestamp in the genesis block is `GENESIS_TIMESTAMP`.
             && self.timestamp == GENESIS_TIMESTAMP
     }
 }
