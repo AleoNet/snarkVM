@@ -16,13 +16,17 @@
 
 use std::{ops::Mul, str::FromStr};
 
-use snarkvm_fields::{field, Field, One, Zero};
-use snarkvm_utilities::biginteger::{BigInteger256, BigInteger384};
+use snarkvm_fields::{field, Field, One, PrimeField, Zero};
+use snarkvm_utilities::{
+    biginteger::{BigInteger256, BigInteger384},
+    BitIteratorBE,
+};
 
 use crate::{
     bls12_377::{Fq, Fr},
     templates::bls12::Bls12Parameters,
     traits::{ModelParameters, ShortWeierstrassParameters},
+    AffineCurve,
     ProjectiveCurve,
 };
 
@@ -87,7 +91,7 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
             p
         };
         let x_square = Fr::from(super::Bls12_377Parameters::X[0]).square();
-        (phi(*p).mul(x_square).add_mixed(p)).is_zero()
+        (phi(*p).mul_bits(BitIteratorBE::new_without_leading_zeros(x_square.to_repr())).add_mixed(p)).is_zero()
     }
 }
 

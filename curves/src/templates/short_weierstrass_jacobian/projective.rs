@@ -512,7 +512,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
         /// The scalar multiplication window size.
         const GLV_WINDOW_SIZE: usize = 4;
 
-        /// The scalar multiplication window size.
+        /// The table size, used for w-ary NAF recoding.
         const TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE + 1);
         const HALF_TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE);
         const MASK_FOR_MOD_TABLE_SIZE: u64 = (TABLE_SIZE as u64) - 1;
@@ -529,9 +529,9 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             t_1.push(t_1[i - 1].add_mixed(&double));
         }
         let t_1 = Self::batch_normalization_into_affine(t_1);
-        let phi = |b: P::BaseField| -> P::BaseField { b * P::PHI_1 };
+        let phi = |b| b * P::PHI_1;
 
-        let glv_endomorphism = |mut t: Affine<P>| -> Affine<P> {
+        let glv_endomorphism = |mut t: Affine<P>| {
             t.x = phi(t.x);
             t
         };
@@ -578,12 +578,6 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             (wnaf_1, wnaf_2)
         };
 
-        // Recode scalars.
-        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3);
-        let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
-        let max_len = std::cmp::max(len_naf_1, len_naf_2);
-        let mut acc = Self::zero();
-
         let naf_add = |table: &Vec<Affine<P>>, naf: i32, acc: &mut Self| {
             if naf != 0 {
                 let mut p_1 = table[(naf.abs() >> 1) as usize];
@@ -594,12 +588,16 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             }
         };
 
+        // Recode scalars.
+        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3);
+        let max_len = naf_1.len().max(naf_2.len());
+        let mut acc = Self::zero();
         for i in (0..max_len).rev() {
-            if i < len_naf_1 {
+            if i < naf_1.len() {
                 naf_add(&t_1, naf_1[i], &mut acc)
             }
 
-            if i < len_naf_2 {
+            if i < naf_2.len() {
                 naf_add(&t_2, naf_2[i], &mut acc)
             }
 
