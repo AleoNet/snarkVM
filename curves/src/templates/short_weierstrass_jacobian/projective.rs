@@ -17,6 +17,7 @@
 use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
+    ModelParameters,
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{rand::Uniform, serialize::*, BigInteger, FromBytes, ToBytes};
@@ -499,6 +500,8 @@ impl<'a, P: Parameters> SubAssign<&'a Self> for Projective<P> {
     }
 }
 
+type ScalarBigInt<P> = <<P as ModelParameters>::ScalarField as PrimeField>::BigInteger;
+
 impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     type Output = Self;
 
@@ -508,6 +511,11 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     fn mul(self, other: P::ScalarField) -> Self {
         /// The scalar multiplication window size.
         const GLV_WINDOW_SIZE: usize = 4;
+
+        /// The scalar multiplication window size.
+        const TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE + 1);
+        const HALF_TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE);
+        const MASK_FOR_MOD_TABLE_SIZE: u64 = (TABLE_SIZE as u64) - 1;
         /// The GLV table length.
         const L: usize = 1 << (GLV_WINDOW_SIZE - 1);
 
@@ -515,64 +523,50 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
 
         // Prepare tables.
         let mut t_1 = Vec::with_capacity(L);
-        let mut t_2 = Vec::with_capacity(L);
         let double = Affine::from(self.double());
         t_1.push(self);
         for i in 1..L {
             t_1.push(t_1[i - 1].add_mixed(&double));
         }
-        Self::batch_normalization(&mut t_1);
-        let t_1 = t_1.into_iter().map(|p| Affine::from(p)).collect::<Vec<_>>();
-
+        let t_1 = Self::batch_normalization_into_affine(t_1);
         let phi = |b: P::BaseField| -> P::BaseField { b * P::PHI_1 };
 
-        let glv_endomorphism = |t: Affine<P>| -> Affine<P> {
-            if t.is_zero() {
-                return t;
-            }
-
-            let mut r = Affine::zero();
-            r.y = t.y;
-            r.x = phi(t.x);
-            r
+        let glv_endomorphism = |mut t: Affine<P>| -> Affine<P> {
+            t.x = phi(t.x);
+            t
         };
 
-        t_1.iter().for_each(|e| {
-            t_2.push(glv_endomorphism(*e));
-        });
+        let t_2 = t_1.iter().copied().map(glv_endomorphism).collect::<Vec<_>>();
 
-        let to_wnaf = |e: P::ScalarField, w: usize| -> Vec<i32> {
+        let mod_signed = |d| {
+            let d_mod_window_size = i64::try_from(d & MASK_FOR_MOD_TABLE_SIZE).unwrap();
+            if d_mod_window_size >= HALF_TABLE_SIZE { d_mod_window_size - TABLE_SIZE } else { d_mod_window_size }
+        };
+        let to_wnaf = |e: P::ScalarField| -> Vec<i32> {
             let mut naf = vec![];
-
-            let (window_size, half_size, mask) = (1 << (w + 1), 1 << w, (1 << (w + 1)) - 1);
-            let mut ee = e;
-            while !ee.is_zero() {
-                let ee_repr = ee.to_repr();
-                if !ee_repr.is_even() {
-                    let mut naf_sign = (ee_repr.as_ref()[0] as i32) & mask;
-                    if naf_sign >= half_size {
-                        naf_sign -= window_size;
-                    }
-                    naf.push(naf_sign);
+            let mut e = e.to_repr();
+            while !e.is_zero() {
+                let next = if e.is_odd() {
+                    let naf_sign = mod_signed(e.as_ref()[0]);
                     if naf_sign < 0 {
-                        ee += P::ScalarField::from(-naf_sign as u64);
+                        e.add_nocarry(&ScalarBigInt::<P>::from(-naf_sign as u64));
                     } else {
-                        ee -= P::ScalarField::from(naf_sign as u64);
+                        e.sub_noborrow(&ScalarBigInt::<P>::from(naf_sign as u64));
                     }
+                    naf_sign.try_into().unwrap()
                 } else {
-                    naf.push(0);
-                }
-                let mut ee_repr = ee.to_repr();
-                ee_repr.div2();
-                ee = P::ScalarField::from_repr(ee_repr).unwrap();
+                    0
+                };
+                naf.push(next);
+                e.div2();
             }
 
             naf
         };
 
-        let wnaf = |k1: P::ScalarField, k2: P::ScalarField, s1: bool, s2: bool, w: usize| -> (Vec<i32>, Vec<i32>) {
-            let mut wnaf_1 = to_wnaf(k1, w);
-            let mut wnaf_2 = to_wnaf(k2, w);
+        let wnaf = |k1: P::ScalarField, k2: P::ScalarField, s1: bool, s2: bool| -> (Vec<i32>, Vec<i32>) {
+            let mut wnaf_1 = to_wnaf(k1);
+            let mut wnaf_2 = to_wnaf(k2);
 
             if s1 {
                 wnaf_1.iter_mut().for_each(|e| *e = -*e);
@@ -585,15 +579,14 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
         };
 
         // Recode scalars.
-        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3, GLV_WINDOW_SIZE);
+        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3);
         let (len_naf_1, len_naf_2) = (naf_1.len(), naf_2.len());
         let max_len = std::cmp::max(len_naf_1, len_naf_2);
         let mut acc = Self::zero();
 
         let naf_add = |table: &Vec<Affine<P>>, naf: i32, acc: &mut Self| {
             if naf != 0 {
-                let naf_abs = naf.abs();
-                let mut p_1 = table[(naf_abs >> 1) as usize];
+                let mut p_1 = table[(naf.abs() >> 1) as usize];
                 if naf < 0 {
                     p_1 = p_1.neg();
                 }
