@@ -111,7 +111,7 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "remote" ]
+default = [ "remote", "aleo-std/storage" ]
 no_std_out = [ ]
 remote = [ "curl" ]
 wasm = [
