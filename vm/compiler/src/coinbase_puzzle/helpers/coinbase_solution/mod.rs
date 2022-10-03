@@ -57,7 +57,7 @@ impl<N: Network> CoinbaseSolution<N> {
 
         // Compute the challenge points.
         let mut challenge_points =
-            hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()))?;
+            hash_commitments::<N>(self.partial_solutions.iter().map(|solution| *solution.commitment()))?;
         ensure!(challenge_points.len() == self.partial_solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge point as the accumulator challenge point.

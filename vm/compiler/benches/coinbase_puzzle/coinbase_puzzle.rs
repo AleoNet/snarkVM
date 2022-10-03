@@ -54,7 +54,8 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
+    for num_coefficients in [1 << 13] {
+        let degree = num_coefficients - 1;
         c.bench_function(&format!("CoinbasePuzzle::Trim 2^{}", (degree as f64).log2()), |b| {
             let config = PuzzleConfig { degree };
             b.iter(|| CoinbasePuzzleInst::trim(&universal_srs, config).unwrap())
@@ -69,7 +70,8 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
+    for num_coefficients in [1 << 13] {
+        let degree = num_coefficients - 1;
         c.bench_function(&format!("CoinbasePuzzle::Prove 2^{}", (degree as f64).log2()), |b| {
             let config = PuzzleConfig { degree };
             let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
@@ -86,7 +88,8 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
+    for num_coefficients in [1 << 13] {
+        let degree = num_coefficients - 1;
         let config = PuzzleConfig { degree };
         let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
@@ -114,7 +117,8 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
+    for num_coefficients in [1 << 13] {
+        let degree = num_coefficients - 1;
         let config = PuzzleConfig { degree };
         let (pk, vk) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);

@@ -157,7 +157,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             .unzip();
 
         // Compute the challenge points.
-        let mut challenges = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()))?;
+        let mut challenges = hash_commitments::<N>(partial_solutions.iter().map(|solution| *solution.commitment()))?;
         ensure!(challenges.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge as the accumulator challenge point.
@@ -216,6 +216,6 @@ impl<N: Network> CoinbasePuzzle<N> {
             bytes[76..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
-        hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?)
+        hash_to_polynomial::<N>(&input, epoch_challenge.degree()?)
     }
 }

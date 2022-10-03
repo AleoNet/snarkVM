@@ -14,34 +14,44 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use console::prelude::{bail, cfg_into_iter, ensure, Result, Zero};
+use console::{prelude::{bail, cfg_into_iter, ensure, Result, Zero, FromBits}, program::Network, types::Field};
 use snarkvm_algorithms::{fft::DensePolynomial, polycommit::kzg10::KZGCommitment};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::CanonicalSerialize;
+use snarkvm_utilities::{CanonicalSerialize, ToBits};
+
 
 use blake2::Digest;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Result<Vec<F>> {
-    // Hash the input.
-    let hash = blake2::Blake2s256::digest(input);
-    // Hash with a counter and return the coefficients.
-    Ok(cfg_into_iter!(0..num_coefficients)
-        .map(|counter| {
-            let mut input_with_counter = [0u8; 36];
-            input_with_counter[..32].copy_from_slice(&hash);
-            input_with_counter[32..].copy_from_slice(&counter.to_le_bytes());
-            F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))
-        })
-        .collect())
+pub fn hash_to_coefficients<N: Network>(input: &[u8], num_coefficients: u32) -> Result<Vec<N::Field>> {
+    const CHUNK_SIZE: u32 = 2;
+    let fields =
+        input.to_bits_le().chunks(N::Field::size_in_data_bits()).map(Field::from_bits_le).collect::<Result<Vec<_>>>()?;
+    if num_coefficients < 1000 || (num_coefficients % CHUNK_SIZE != 0) {
+        Ok(N::hash_many_psd8(&fields, num_coefficients as u16).into_iter().map(|s| *s).collect::<Vec<_>>())
+    } else {
+        // Pack the bits into field elements.
+        let input_hash = N::hash_psd8(&fields)?;
+        let coefficients_per_chunk = num_coefficients / CHUNK_SIZE;
+        let result = cfg_into_iter!(0..CHUNK_SIZE).flat_map(|i| {
+            let hash_input = [input_hash, Field::from_u32(i as u32)];
+            N::hash_many_psd8(&hash_input, coefficients_per_chunk as u16).into_iter().map(|s| *s).collect::<Vec<_>>()
+        }).collect::<Vec<N::Field>>();
+        ensure!(result.len() == num_coefficients as usize, "Did not hash enough coefficients");
+        Ok(result)
+
+    }
+        // Ok(.into_iter().map(|s| *s).collect::<Vec<N::Field>>())
+    // cfg_into_iter!(0..num_coefficients).map(|i| {
+    // }).collect()
 }
 
-pub fn hash_to_polynomial<F: PrimeField>(input: &[u8], degree: u32) -> Result<DensePolynomial<F>> {
+pub fn hash_to_polynomial<N: Network>(input: &[u8], degree: u32) -> Result<DensePolynomial<N::Field>> {
     // Hash the input into coefficients.
-    let coefficients = hash_to_coefficients(input, degree + 1)?;
+    let coefficients = hash_to_coefficients::<N>(input, degree + 1)?;
     // Construct the polynomial from the coefficients.
     Ok(DensePolynomial::from_coefficients_vec(coefficients))
 }
@@ -56,9 +66,9 @@ pub fn hash_commitment<E: PairingEngine>(commitment: &KZGCommitment<E>) -> Resul
     Ok(E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&bytes)))
 }
 
-pub fn hash_commitments<E: PairingEngine>(
-    commitments: impl ExactSizeIterator<Item = KZGCommitment<E>>,
-) -> Result<Vec<E::Fr>> {
+pub fn hash_commitments<N: Network>(
+    commitments: impl ExactSizeIterator<Item = KZGCommitment<N::PairingCurve>>,
+) -> Result<Vec<N::Field>> {
     // Retrieve the number of commitments.
     let num_commitments = match u32::try_from(commitments.len()) {
         Ok(num_commitments) => num_commitments,
@@ -77,5 +87,5 @@ pub fn hash_commitments<E: PairingEngine>(
     ensure!(bytes.len() == 96 * usize::try_from(num_commitments)?, "Invalid commitment byte length for hashing");
 
     // Hash the commitment bytes into coefficients.
-    hash_to_coefficients(&bytes, num_commitments + 1)
+    hash_to_coefficients::<N>(&bytes, num_commitments + 1)
 }
