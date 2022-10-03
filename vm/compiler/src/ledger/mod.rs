@@ -79,7 +79,7 @@ const BLOCKS_DEPTH: u8 = 32;
 pub const ANCHOR_TIME: i64 = 20;
 /// The fixed timestamp of the genesis block.
 pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
-/// The expected number of rounds per epoch (2 hours).
+/// The number of rounds per epoch (2 hours).
 pub const NUM_ROUNDS_PER_EPOCH: u32 = 480;
 
 /// The coinbase puzzle degree.
