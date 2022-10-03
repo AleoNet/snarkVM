@@ -26,7 +26,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
-use crate::UniversalSRS;
+use crate::{UniversalSRS, MAX_NUM_PROOFS};
 use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, CryptoRng, Network, Result, Rng, ToBytes},
@@ -146,6 +146,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {
+        // Check that the number of prover solutions does not exceed `MAX_NUM_PROOFS`.
+        if prover_solutions.len() > MAX_NUM_PROOFS {
+            bail!("Exceeded the number of allowed prover solutions");
+        }
+
         let (prover_polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
                 if solution.proof().is_hiding() {

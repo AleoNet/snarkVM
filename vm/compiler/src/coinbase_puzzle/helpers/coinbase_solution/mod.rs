@@ -42,6 +42,11 @@ impl<N: Network> CoinbaseSolution<N> {
             return Ok(false);
         }
 
+        // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`
+        if self.partial_solutions.len() > MAX_NUM_PROOFS {
+            bail!("Exceeded the number of allowed partial solutions");
+        }
+
         // Ensure the proof is non-hiding.
         if self.proof.is_hiding() {
             return Ok(false);
@@ -93,6 +98,11 @@ impl<N: Network> CoinbaseSolution<N> {
 
     /// Returns the cumulative target of the individual prover solutions.
     pub fn to_cumulative_target(&self) -> Result<u128> {
+        // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`
+        if self.partial_solutions.len() > MAX_NUM_PROOFS {
+            bail!("Exceeded the number of allowed partial solutions");
+        }
+
         let mut cumulative_target: u128 = 0;
 
         for solution in &self.partial_solutions {
