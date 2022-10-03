@@ -186,9 +186,8 @@ polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
 snark = [ "crypto_hash", "fft", "msm", "polycommit" ]
 embedded = [
   "full",
-  "parallel",
-  "snarkvm-curves/default",
+  "snarkvm-curves/embedded",
   "snarkvm-fields/embedded",
-  "snarkvm-r1cs/default",
+  "snarkvm-r1cs/embedded",
   "snarkvm-utilities/embedded"
 ]
