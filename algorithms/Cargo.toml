@@ -184,3 +184,11 @@ polycommit = [ "rand_core", "fft", "msm" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
 snark = [ "crypto_hash", "fft", "msm", "polycommit" ]
+embedded = [
+  "full",
+  "parallel",
+  "snarkvm-curves/default",
+  "snarkvm-fields/embedded",
+  "snarkvm-r1cs/default",
+  "snarkvm-utilities/embedded"
+]
