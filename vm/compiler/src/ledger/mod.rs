@@ -81,6 +81,8 @@ pub const ANCHOR_TIME: i64 = 20;
 pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
 /// The expected number of rounds per epoch (2 hours).
 pub const NUM_ROUNDS_PER_EPOCH: u32 = 480;
+/// The maximum number of prover solutions that can be included per block.
+pub const MAX_NUM_PROOFS: usize = 1_000_000;
 
 /// The coinbase puzzle degree.
 const COINBASE_PUZZLE_DEGREE: u32 = 1 << 13;
@@ -399,15 +401,15 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
 
         // Select the prover solutions from the memory pool.
-        let prover_solutions = self.coinbase_memory_pool.iter().cloned().collect::<Vec<_>>();
+        let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_NUM_PROOFS).cloned().collect::<Vec<_>>();
 
-        // Get the total cumulative difficulty of the prover puzzle solutions.
+        // Get the total cumulative target of the prover puzzle solutions.
         let cumulative_prover_target = {
-            let mut cumulative_target: u64 = 0;
+            let mut cumulative_target: u128 = 0;
 
             for solution in &prover_solutions {
                 cumulative_target = cumulative_target
-                    .checked_add(solution.to_target()?)
+                    .checked_add(solution.to_target()? as u128)
                     .ok_or_else(|| anyhow!("Cumulative target overflowed"))?;
             }
 
@@ -416,7 +418,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let coinbase_proof = if cumulative_prover_target < self.latest_coinbase_target()? {
+        let coinbase_proof = if cumulative_prover_target < self.latest_coinbase_target()? as u128 {
             None
         } else {
             let epoch_challenge = self.latest_epoch_challenge()?;
@@ -654,12 +656,20 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
+            if coinbase_proof.partial_solutions.len() > MAX_NUM_PROOFS {
+                bail!(
+                    "Coinbase proof has exceeded the maximum number of prover solutions. ({} > {})",
+                    coinbase_proof.partial_solutions.len(),
+                    MAX_NUM_PROOFS
+                );
+            }
+
             if !coinbase_proof.verify(&self.coinbase_verifying_key, &epoch_challenge)? {
                 bail!("Invalid coinbase proof: {:?}", coinbase_proof);
             }
 
             // Ensure the coinbase proof meets the required coinbase target.
-            if block.height() > 0 && coinbase_proof.to_cumulative_target()? < self.latest_coinbase_target()? {
+            if block.height() > 0 && coinbase_proof.to_cumulative_target()? < self.latest_coinbase_target()? as u128 {
                 bail!("Coinbase proof does not meet the coinbase target");
             }
 

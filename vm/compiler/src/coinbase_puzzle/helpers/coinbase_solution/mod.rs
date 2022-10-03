@@ -92,12 +92,12 @@ impl<N: Network> CoinbaseSolution<N> {
     }
 
     /// Returns the cumulative target of the individual prover solutions.
-    pub fn to_cumulative_target(&self) -> Result<u64> {
-        let mut cumulative_target: u64 = 0;
+    pub fn to_cumulative_target(&self) -> Result<u128> {
+        let mut cumulative_target: u128 = 0;
 
         for solution in &self.partial_solutions {
             cumulative_target = cumulative_target
-                .checked_add(solution.to_target()?)
+                .checked_add(solution.to_target()? as u128)
                 .ok_or_else(|| anyhow!("Cumulative target overflowed"))?;
         }
 
