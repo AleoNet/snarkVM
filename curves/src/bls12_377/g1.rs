@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{ops::Mul, str::FromStr};
-
 use snarkvm_fields::{field, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{
     biginteger::{BigInteger256, BigInteger384},
