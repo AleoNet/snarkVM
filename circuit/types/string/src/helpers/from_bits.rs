@@ -25,7 +25,7 @@ impl<E: Environment> FromBits for StringType<E> {
         let mode = Mode::combine(bits_le[0].eject_mode(), bits_le.iter().skip(1).map(|bit| bit.eject_mode()));
 
         // Inject the string size in bytes.
-        let size_in_bytes = Self::inject_size_in_bytes(bits_le, mode);
+        let size_in_bytes = Self::inject_size_in_bytes(mode, bits_le);
 
         // Ensure the list of booleans is byte-aligned.
         let num_bits = bits_le.len();
@@ -45,7 +45,7 @@ impl<E: Environment> FromBits for StringType<E> {
         let mode = Mode::combine(bits_be[0].eject_mode(), bits_be.iter().skip(1).map(|bit| bit.eject_mode()));
 
         // Inject the string size in bytes.
-        let size_in_bytes = Self::inject_size_in_bytes(bits_be, mode);
+        let size_in_bytes = Self::inject_size_in_bytes(mode, bits_be);
 
         // Ensure the list of booleans is byte-aligned.
         let num_bits = bits_be.len();
@@ -63,7 +63,7 @@ impl<E: Environment> FromBits for StringType<E> {
 impl<E: Environment> StringType<E> {
     /// Checks the size of the given bits for the given mode, and returns the size (of the string) in bytes.
     /// "Load-bearing witness allocation - Please do not optimize me." - Pratyush :)
-    fn inject_size_in_bytes(bits: &[Boolean<E>], mode: Mode) -> Field<E> {
+    fn inject_size_in_bytes(mode: Mode, bits: &[Boolean<E>]) -> Field<E> {
         // Ensure the bits are byte-aligned.
         if bits.len() % 8 != 0 {
             E::halt("The given bits for the string are not byte-aligned")
