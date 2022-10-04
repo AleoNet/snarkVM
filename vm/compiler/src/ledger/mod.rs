@@ -1286,4 +1286,80 @@ mod tests {
             assert_eq!(ledger.latest_hash(), next_block.hash());
         }
     }
+
+    #[test]
+    #[traced_test]
+    fn test_proof_target() {
+        let rng = &mut TestRng::default();
+
+        // Sample the genesis private key and address.
+        let private_key = test_helpers::sample_genesis_private_key();
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Sample the genesis ledger.
+        let mut ledger = test_helpers::sample_genesis_ledger();
+
+        // Fetch the proof target and epoch challenge for the block.
+        let proof_target = ledger.latest_proof_target().unwrap();
+        let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+
+        for _ in 0..100 {
+            // Generate a prover solution.
+            let prover_solution =
+                CoinbasePuzzle::prove(&ledger.coinbase_proving_key, &epoch_challenge, &address, rng.gen()).unwrap();
+
+            // Check that the prover solution meets the proof target requirement.
+            if prover_solution.to_target().unwrap() > proof_target {
+                assert!(ledger.add_to_coinbase_memory_pool(prover_solution).is_ok())
+            } else {
+                assert!(ledger.add_to_coinbase_memory_pool(prover_solution).is_err())
+            }
+        }
+    }
+
+    #[test]
+    #[traced_test]
+    fn test_cumulative_target() {
+        let rng = &mut TestRng::default();
+
+        // Sample the genesis private key and address.
+        let private_key = test_helpers::sample_genesis_private_key();
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Sample the genesis ledger.
+        let mut ledger = test_helpers::sample_genesis_ledger();
+
+        // Add a transaction to the memory pool.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        ledger.add_to_memory_pool(transaction).unwrap();
+
+        // Ensure that the ledger can't create a block that satisfies the coinbase target.
+        let proposed_block = ledger.propose_next_block(&private_key, rng).unwrap();
+        // Ensure the block does not contain a coinbase proof.
+        assert!(proposed_block.coinbase_proof().is_none());
+
+        // Check that the ledger won't generate a block for a cumulative target that does not meet the requirements.
+        let mut cumulative_target = 0u128;
+        let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+
+        while cumulative_target < ledger.latest_coinbase_target().unwrap() as u128 {
+            // Generate a prover solution.
+            let prover_solution =
+                match CoinbasePuzzle::prove(&ledger.coinbase_proving_key, &epoch_challenge, &address, rng.gen()) {
+                    Ok(prover_solution) => prover_solution,
+                    Err(_) => continue,
+                };
+
+            // Try to add the prover solution to the memory pool.
+            if ledger.add_to_coinbase_memory_pool(prover_solution).is_ok() {
+                // Add to the cumulative target if the prover solution is valid.
+                cumulative_target += prover_solution.to_target().unwrap() as u128;
+            }
+        }
+
+        // Ensure that the ledger can create a block that satisfies the coinbase target.
+        let proposed_block = ledger.propose_next_block(&private_key, rng).unwrap();
+        // Ensure the block contains a coinbase proof.
+        assert!(proposed_block.coinbase_proof().is_some());
+    }
 }
