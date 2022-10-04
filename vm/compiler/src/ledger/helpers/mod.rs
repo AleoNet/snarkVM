@@ -97,7 +97,7 @@ pub fn coinbase_target<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
         previous_coinbase_target,
         previous_block_timestamp,
         block_timestamp,
-        false,
+        true,
     );
 
     core::cmp::max((1u64 << 10).saturating_sub(1), candidate_target)
@@ -323,7 +323,7 @@ mod tests {
             assert_eq!(new_coinbase_target, previous_coinbase_target);
             assert_eq!(new_prover_target, previous_prover_target);
 
-            // Targets increase (easier) when the timestamp is greater than expected.
+            // Targets decrease (easier) when the timestamp is greater than expected.
             let new_timestamp = previous_timestamp + 2 * ANCHOR_TIME;
             let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
                 previous_coinbase_target,
@@ -331,10 +331,10 @@ mod tests {
                 new_timestamp,
             );
             let new_prover_target = proof_target(new_coinbase_target);
-            assert!(new_coinbase_target > previous_coinbase_target);
-            assert!(new_prover_target > previous_prover_target);
+            assert!(new_coinbase_target < previous_coinbase_target);
+            assert!(new_prover_target < previous_prover_target);
 
-            // Targets decrease (harder) when the timestamp is less than expected.
+            // Targets increase (harder) when the timestamp is less than expected.
             let new_timestamp = previous_timestamp + ANCHOR_TIME / 2;
             let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
                 previous_coinbase_target,
@@ -343,8 +343,8 @@ mod tests {
             );
             let new_prover_target = proof_target(new_coinbase_target);
 
-            assert!(new_coinbase_target < previous_coinbase_target);
-            assert!(new_prover_target < previous_prover_target);
+            assert!(new_coinbase_target > previous_coinbase_target);
+            assert!(new_prover_target > previous_prover_target);
         }
     }
 }
