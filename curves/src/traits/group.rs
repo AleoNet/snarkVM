@@ -269,22 +269,7 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     /// The affine generator of the short Weierstrass curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
 
-    // GLV parameters
-    // /// The scalar multiplication window size.
-    // const GLV_WINDOW_SIZE: usize = 4;
-    // /// The GLV table length.
-    // const L: usize = 1 << (Self::GLV_WINDOW_SIZE - 1);
-    // /// The curve parameter `x`.
-    // /// R / q
-    // /// x^2 - 1
-    // const B_1: Self::ScalarField = Self::X.square() - Self::ScalarField::one();
-    // /// x^2
-    // const B_2: Self::ScalarField = Self::X.square();
-    // const LAMBDA: Self::ScalarField = Self::B_1;
-    // const HALF_R: Self::ScalarField =
-    //     Self::ScalarField::from_repr(<Self::ScalarField as PrimeField>::BigInteger::from(0x8000000000000000)).unwrap();
-    const PHI_1: Self::BaseField;
-    // const PHI_2: Self::BaseField = Self::PHI_1.square();
+    const PHI: Self::BaseField;
 
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
@@ -301,6 +286,8 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     }
 
     fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
+
+    fn glv_endomorphism(p: short_weierstrass_jacobian::Affine<Self>) -> short_weierstrass_jacobian::Affine<Self>;
 }
 
 pub trait TwistedEdwardsParameters: ModelParameters {

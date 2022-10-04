@@ -49,7 +49,7 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
         Fr,
         BigInteger256([2013239619100046060, 4201184776506987597, 2526766393982337036, 1114629510922847535,])
     );
-    const PHI_1: Fq = field!(
+    const PHI: Fq = field!(
         Fq,
         BigInteger384([
             0xdacd106da5847973,
@@ -82,12 +82,19 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
 
     fn is_in_correct_subgroup_assuming_on_curve(p: &super::G1Affine) -> bool {
         let phi = |mut p: super::G1Affine| {
-            debug_assert!(Self::PHI_1.pow([3]).is_one());
-            p.x *= Self::PHI_1;
+            debug_assert!(Self::PHI.pow([3]).is_one());
+            p.x *= Self::PHI;
             p
         };
         let x_square = Fr::from(super::Bls12_377Parameters::X[0]).square();
         (phi(*p).mul_bits(BitIteratorBE::new_without_leading_zeros(x_square.to_repr())).add_mixed(p)).is_zero()
+    }
+
+    fn glv_endomorphism(
+        mut p: crate::templates::short_weierstrass_jacobian::Affine<Self>,
+    ) -> crate::templates::short_weierstrass_jacobian::Affine<Self> {
+        p.x *= &Self::PHI;
+        p
     }
 }
 

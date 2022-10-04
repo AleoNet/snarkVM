@@ -55,7 +55,7 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         Fr,
         BigInteger256([15499857013495546999, 4613531467548868169, 14546778081091178013, 549402535258503313,])
     );
-    const PHI_1: Fq2 = field!(
+    const PHI: Fq2 = field!(
         Fq2,
         field!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
         field!(
@@ -103,6 +103,13 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         p: &crate::templates::short_weierstrass_jacobian::Affine<Self>,
     ) -> bool {
         p.mul_bits(BitIteratorBE::new(Self::ScalarField::characteristic())).is_zero()
+    }
+
+    fn glv_endomorphism(
+        mut p: crate::templates::short_weierstrass_jacobian::Affine<Self>,
+    ) -> crate::templates::short_weierstrass_jacobian::Affine<Self> {
+        p.x.mul_by_fp(&Self::PHI.c1);
+        p
     }
 }
 

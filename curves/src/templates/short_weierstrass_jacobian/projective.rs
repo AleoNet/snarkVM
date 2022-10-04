@@ -529,14 +529,8 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             t_1.push(t_1[i - 1].add_mixed(&double));
         }
         let t_1 = Self::batch_normalization_into_affine(t_1);
-        let phi = |b| b * P::PHI_1;
 
-        let glv_endomorphism = |mut t: Affine<P>| {
-            t.x = phi(t.x);
-            t
-        };
-
-        let t_2 = t_1.iter().copied().map(glv_endomorphism).collect::<Vec<_>>();
+        let t_2 = t_1.iter().copied().map(P::glv_endomorphism).collect::<Vec<_>>();
 
         let mod_signed = |d| {
             let d_mod_window_size = i64::try_from(d & MASK_FOR_MOD_TABLE_SIZE).unwrap();
