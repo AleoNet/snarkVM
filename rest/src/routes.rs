@@ -319,8 +319,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let records =
-            ledger.read().find_records(&view_key, RecordsFilter::Spent).or_reject()?.collect::<IndexMap<_, _>>();
+        let records = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::Spent)
+            .or_reject()?
+            .map(|(_commitment, record)| record)
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
