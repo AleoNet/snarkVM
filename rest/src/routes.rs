@@ -30,6 +30,7 @@ struct BlockRange {
     end: u32,
 }
 
+/// The `create_transfer` query object.
 struct TransferData<N: Network> {
     from: PrivateKey<N>,
     to: Address<N>,
