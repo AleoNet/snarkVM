@@ -92,8 +92,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_validators);
 
-        // GET /testnet3/statePath/{commitment}
-        let get_state_path = warp::get()
+        // POST /testnet3/statePath/{commitment}
+        let get_state_path = warp::post()
             .and(warp::path!("testnet3" / "statePath"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
