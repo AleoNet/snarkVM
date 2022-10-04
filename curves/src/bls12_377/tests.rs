@@ -626,20 +626,6 @@ fn test_g1_projective_glv() {
     let affine = point.to_affine();
     assert_eq!(point.mul(scalar), affine.mul(scalar));
     assert_eq!(affine.mul(scalar), affine.mul_bits(BitIteratorBE::new_without_leading_zeros(scalar.to_repr())));
-    // let point = G1Projective::new(Fq::from(2u64), Fq::from(2u64), Fq::from(1u64));
-    // let scalar = Fr::from_repr(BigInteger256([150, 0, 0, 100])).unwrap();
-    // let acc = point * scalar;
-    // let x = Fq::from_repr(BigInteger384([
-    //     7829691328573998628,
-    //     14277141908032039045,
-    //     12498936762639071483,
-    //     4759044196164073388,
-    //     3898951160843530891,
-    //     117220051666006481,
-    // ]))
-    // .unwrap();
-    // println!("{:?}", acc.x);
-    // println!("{:?}", x);
 }
 
 #[test]
