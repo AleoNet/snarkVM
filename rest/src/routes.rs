@@ -100,8 +100,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_state_path);
 
-        // GET /testnet3/records/all
-        let records_all = warp::get()
+        // POST /testnet3/records/all
+        let records_all = warp::post()
             .and(warp::path!("testnet3" / "records" / "all"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
