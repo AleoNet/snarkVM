@@ -31,7 +31,10 @@ pub struct DeployRequest<N: Network> {
 impl<N: Network> DeployRequest<N> {
     /// Sends the request to the given endpoint.
     pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Result<Self> {
-        ensure!(matches!(transaction, Transaction::Deploy(_, _, _)));
+        ensure!(
+            matches!(transaction, Transaction::Deploy(_, _, _)),
+            "Cannot create a deploy request with an execution transaction"
+        );
         Ok(Self { transaction, address, program_id })
     }
 
@@ -98,7 +101,10 @@ pub struct DeployResponse<N: Network> {
 impl<N: Network> DeployResponse<N> {
     /// Initializes a new deploy response.
     pub fn new(transaction: Transaction<N>) -> Result<Self> {
-        ensure!(matches!(transaction, Transaction::Deploy(_, _, _)));
+        ensure!(
+            matches!(transaction, Transaction::Deploy(_, _, _)),
+            "Cannot create a deploy response with an execution transaction"
+        );
         Ok(Self { transaction })
     }
 
