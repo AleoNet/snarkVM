@@ -20,7 +20,7 @@ extern crate criterion;
 use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
 use criterion::Criterion;
-use snarkvm_utilities::Uniform;
+use snarkvm_utilities::{test_rng, Uniform};
 
 fn bench_record_decryption(
     c: &mut Criterion,
@@ -58,7 +58,7 @@ fn record_decrypt_with_payload(c: &mut Criterion) {
 }
 
 fn record_decrypt_with_program_id(c: &mut Criterion) {
-    let mut rng = &mut thread_rng();
+    let mut rng = &mut TestRng::default();
     let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
     let address = private_key.to_address();
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
@@ -70,7 +70,7 @@ fn record_decrypt_with_program_id(c: &mut Criterion) {
 }
 
 fn record_decrypt_with_payload_and_program_id(c: &mut Criterion) {
-    let mut rng = &mut thread_rng();
+    let mut rng = &mut TestRng::default();
     let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
     let address = private_key.to_address();
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));

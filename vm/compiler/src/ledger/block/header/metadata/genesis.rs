@@ -66,18 +66,22 @@ mod tests {
 
     #[test]
     fn test_genesis_metadata_size() {
+        let mut rng = TestRng::default();
+
         // Prepare the expected size.
         let expected_size = get_expected_size::<CurrentNetwork>();
         // Prepare the genesis metadata.
-        let genesis_metadata = *crate::ledger::test_helpers::sample_genesis_block().metadata();
+        let genesis_metadata = *crate::ledger::test_helpers::sample_genesis_block(&mut rng).metadata();
         // Ensure the size of the genesis metadata is correct.
         assert_eq!(expected_size, genesis_metadata.to_bytes_le().unwrap().len());
     }
 
     #[test]
     fn test_genesis_metadata() {
+        let mut rng = TestRng::default();
+
         // Prepare the genesis metadata.
-        let metadata = *crate::ledger::test_helpers::sample_genesis_block().metadata();
+        let metadata = *crate::ledger::test_helpers::sample_genesis_block(&mut rng).metadata();
         // Ensure the metadata is a genesis metadata.
         assert!(metadata.is_genesis());
 

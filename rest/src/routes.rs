@@ -16,6 +16,13 @@
 
 use super::*;
 
+/// The `get_blocks` query object.
+#[derive(Deserialize, Serialize)]
+struct BlockRange {
+    start: u32,
+    end: u32,
+}
+
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
     #[allow(clippy::redundant_clone)]
@@ -44,6 +51,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_block);
 
+        // GET /testnet3/block?start={start_height}&end={end_height}
+        let get_blocks = warp::get()
+            .and(warp::path!("testnet3" / "blocks"))
+            .and(warp::query::<BlockRange>())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_blocks);
+
         // GET /testnet3/transactions/{height}
         let get_transactions = warp::get()
             .and(warp::path!("testnet3" / "transactions" / u32))
@@ -57,6 +71,26 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::path::end())
             .and(with(self.ledger.clone()))
             .and_then(Self::get_transaction);
+
+        // GET /testnet3/transactions/mempool
+        let get_transactions_mempool = warp::get()
+            .and(warp::path!("testnet3" / "transactions" / "mempool"))
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_transactions_mempool);
+
+        // GET /testnet3/program/{id}
+        let get_program = warp::get()
+            .and(warp::path!("testnet3" / "program" / ..))
+            .and(warp::path::param::<ProgramID<N>>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_program);
+
+        // GET /testnet3/validators
+        let get_validators = warp::get()
+            .and(warp::path!("testnet3" / "validators"))
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_validators);
 
         // GET /testnet3/statePath/{commitment}
         let get_state_path = warp::get()
@@ -96,6 +130,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::body::content_length_limit(10 * 1024 * 1024))
             .and(warp::body::json())
             .and(with(self.ledger_sender.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::transaction_broadcast);
 
         // Return the list of routes.
@@ -103,8 +138,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(latest_hash)
             .or(latest_block)
             .or(get_block)
+            .or(get_blocks)
             .or(get_transactions)
             .or(get_transaction)
+            .or(get_transactions_mempool)
+            .or(get_program)
+            .or(get_validators)
             .or(get_state_path)
             .or(records_all)
             .or(records_spent)
@@ -134,6 +173,35 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         Ok(reply::json(&ledger.read().get_block(height).or_reject()?))
     }
 
+    /// Returns the blocks for the given block range.
+    async fn get_blocks(
+        block_range: BlockRange,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        let start_height = block_range.start;
+        let end_height = block_range.end;
+
+        // Ensure the end height is greater than the start height.
+        if start_height > end_height {
+            return Err(reject::custom(RestError::Request("Invalid block range".to_string())));
+        }
+
+        // Ensure the block range is bounded.
+        const MAX_BLOCK_RANGE: u32 = 50;
+        if end_height - start_height >= MAX_BLOCK_RANGE {
+            return Err(reject::custom(RestError::Request(format!(
+                "Too many blocks requested. Max 50, requested {}",
+                end_height - start_height
+            ))));
+        }
+
+        let blocks = (start_height..end_height)
+            .map(|height| ledger.read().get_block(height).or_reject())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(reply::json(&blocks))
+    }
+
     /// Returns the transactions for the given block height.
     async fn get_transactions(height: u32, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().get_transactions(height).or_reject()?))
@@ -145,6 +213,24 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().get_transaction(transaction_id).or_reject()?))
+    }
+
+    /// Returns the transactions in the memory pool.
+    async fn get_transactions_mempool(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().memory_pool().values().collect::<Vec<_>>()))
+    }
+
+    /// Returns the program for the given program ID.
+    async fn get_program(
+        program_id: ProgramID<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().get_program(program_id).or_reject()?))
+    }
+
+    /// Returns the list of current validators.
+    async fn get_validators(ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().validators().keys().collect::<Vec<&Address<N>>>()))
     }
 
     /// Returns the state path for the given commitment.
@@ -191,7 +277,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     async fn transaction_broadcast(
         transaction: Transaction<N>,
         ledger_sender: LedgerSender<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
+        // Validate the transaction.
+        ledger.read().check_transaction(&transaction).or_reject()?;
+
         // Send the transaction to the ledger.
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transaction)).await {
             Ok(()) => Ok("OK"),
