@@ -72,12 +72,12 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         // Retrieve the execution.
                         let execution =
                             serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
-                        // TODO: This is a patch that solves the execution transaction serialization/deserialization issue.
-                        // TODO: Create an issue and add it to the comment.
+                        // TODO: This is a patch that solves the execution transaction serialization/deserialization
+                        // issue. It should be solved when https://github.com/AleoHQ/snarkVM/issues/1132 or
+                        // https://github.com/AleoHQ/snarkVM/issues/1131 are addressed.
                         // Retrieve the additional fee.
                         let additional_fee =
                             serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
-                        eprintln!("additional_fee: {:?}", additional_fee);
                         // Construct the transaction.
                         Transaction::from_execution(execution, Some(additional_fee)).map_err(de::Error::custom)?
                     }
