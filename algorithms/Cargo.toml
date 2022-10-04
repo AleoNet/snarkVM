@@ -95,6 +95,7 @@ optional = true
 
 [dependencies.parking_lot]
 version = "0.12"
+optional = true
 
 [dependencies.rand]
 version = "0.8"
@@ -156,12 +157,13 @@ version = "0.9"
 default = [
   "full",
   "parallel",
+  "parking_lot",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
-full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
+full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark", "parking_lot" ]
 wasm = [
   "crypto_hash",
   "fft",
@@ -169,6 +171,7 @@ wasm = [
   "polycommit_wasm",
   "snark",
   "wasm-bindgen-futures",
+  "parking_lot",
 ]
 cuda = [ "crossbeam-channel", "lazy_static", "rust-gpu-tools" ]
 parallel = [
@@ -185,7 +188,6 @@ polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
 snark = [ "crypto_hash", "fft", "msm", "polycommit" ]
 embedded = [
-  "full",
   "snarkvm-curves/embedded",
   "snarkvm-fields/embedded",
   "snarkvm-r1cs/embedded",
