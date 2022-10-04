@@ -94,7 +94,7 @@ pub const GENESIS_COINBASE_TARGET: u64 = 1048576; // 2^20
 pub const GENESIS_PROOF_TARGET: u64 = 1024; // 2^10
 
 /// The starting supply of Aleo credits.
-const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
+pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;

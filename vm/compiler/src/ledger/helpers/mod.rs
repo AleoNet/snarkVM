@@ -100,7 +100,7 @@ pub fn coinbase_target<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
         false,
     );
 
-    core::cmp::max((2u64.pow(10)).saturating_sub(1), candidate_target)
+    core::cmp::max((1u64 << 10).saturating_sub(1), candidate_target)
 }
 
 /// Calculate the minimum proof target for the given coinbase target.
@@ -202,23 +202,17 @@ fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ledger::{ANCHOR_TIME, GENESIS_TIMESTAMP, NUM_ROUNDS_PER_EPOCH, STARTING_SUPPLY};
     use snarkvm_utilities::TestRng;
 
     use rand::Rng;
-
-    const NUM_GATES_PER_CREDIT: u64 = 1_000_000; // 1 million gates == 1 credit
-    const STARTING_SUPPLY: u64 = 1_000_000_000 * NUM_GATES_PER_CREDIT; // 1 quadrillion gates == 1 billion credits
-
-    const ANCHOR_TIMESTAMP: i64 = 1640179531; // 2019-01-01 00:00:00 UTC
-    const ANCHOR_TIME: i64 = 15; // 15 seconds
-    const NUM_ROUNDS_PER_EPOCH: u32 = 480; // The expected number of rounds per epoch (2 hours).
 
     const ITERATIONS: usize = 1000;
 
     #[test]
     fn test_anchor_reward() {
         let reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
-        assert_eq!(reward, 4);
+        assert_eq!(reward, 8);
 
         // Increasing the anchor time will increase the reward.
         let larger_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
@@ -232,7 +226,7 @@ mod tests {
     #[test]
     fn test_staking_reward() {
         let reward = staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
-        assert_eq!(reward, 11_891_171);
+        assert_eq!(reward, 17_440_385);
 
         // Increasing the anchor time will increase the reward.
         let larger_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
@@ -248,8 +242,8 @@ mod tests {
         let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME as u64, 10);
 
         let mut block_height = 1;
-        let mut previous_timestamp = ANCHOR_TIMESTAMP;
-        let mut timestamp = ANCHOR_TIMESTAMP;
+        let mut previous_timestamp = GENESIS_TIMESTAMP;
+        let mut timestamp = GENESIS_TIMESTAMP;
 
         let mut previous_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
             previous_timestamp,
@@ -258,7 +252,7 @@ mod tests {
         );
 
         block_height *= 2;
-        timestamp = ANCHOR_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
+        timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
 
         while block_height < estimated_blocks_in_10_years {
             let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
@@ -271,7 +265,7 @@ mod tests {
             previous_reward = reward;
             previous_timestamp = timestamp;
             block_height *= 2;
-            timestamp = ANCHOR_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
+            timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
         }
     }
 
@@ -283,8 +277,8 @@ mod tests {
 
         // Check that block `estimated_blocks_in_10_years` has a reward of 0.
         let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
-            ANCHOR_TIMESTAMP,
-            ANCHOR_TIMESTAMP + ANCHOR_TIME,
+            GENESIS_TIMESTAMP,
+            GENESIS_TIMESTAMP + ANCHOR_TIME,
             estimated_blocks_in_10_years,
         );
         assert_eq!(reward, 0);
@@ -293,7 +287,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             let block_height: u64 = rng.gen_range(estimated_blocks_in_10_years..estimated_blocks_in_10_years * 10);
 
-            let timestamp = ANCHOR_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
+            let timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
             let new_timestamp = timestamp + ANCHOR_TIME;
 
             let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
