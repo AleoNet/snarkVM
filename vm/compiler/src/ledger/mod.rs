@@ -82,7 +82,7 @@ pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
 /// The number of rounds per epoch (2 hours).
 pub const NUM_ROUNDS_PER_EPOCH: u32 = 480;
 /// The maximum number of prover solutions that can be included per block.
-pub const MAX_NUM_PROOFS: usize = 1_000_000;
+pub const MAX_NUM_PROOFS: usize = 1 << 20;
 
 /// The coinbase puzzle degree.
 const COINBASE_PUZZLE_DEGREE: u32 = 1 << 13;
