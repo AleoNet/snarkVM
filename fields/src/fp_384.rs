@@ -437,12 +437,12 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     #[inline]
     fn decompose(
         &self,
-        q1: &[u64; 4],
-        q2: &[u64; 4],
-        b1: Self,
-        b2: Self,
-        r128: Self,
-        half_r: &[u64; 8],
+        _q1: &[u64; 4],
+        _q2: &[u64; 4],
+        _b1: Self,
+        _b2: Self,
+        _r128: Self,
+        _half_r: &[u64; 8],
     ) -> (Self, Self, bool, bool) {
         unimplemented!()
     }
