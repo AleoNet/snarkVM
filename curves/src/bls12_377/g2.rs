@@ -37,6 +37,10 @@ impl ModelParameters for Bls12_377G2Parameters {
 impl ShortWeierstrassParameters for Bls12_377G2Parameters {
     /// AFFINE_GENERATOR_COEFFS = (G2_GENERATOR_X, G2_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (G2_GENERATOR_X, G2_GENERATOR_Y);
+    /// B1 = x^2 - 1
+    const B1: Fr = field!(Fr, BigInteger256([725501752471715840, 4981570305181876225, 0, 0]));
+    /// B2 = x^2
+    const B2: Fr = field!(Fr, BigInteger256([725501752471715841, 4981570305181876225, 0, 0]));
     /// COFACTOR =
     /// 7923214915284317143930293550643874566881017850177945424769256759165301436616933228209277966774092486467289478618404761412630691835764674559376407658497
     const COFACTOR: &'static [u64] = &[
@@ -55,6 +59,8 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         Fr,
         BigInteger256([15499857013495546999, 4613531467548868169, 14546778081091178013, 549402535258503313,])
     );
+    /// R128 = 2^256 / 2
+    const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
     const PHI: Fq2 = field!(
         Fq2,
         field!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
@@ -70,6 +76,13 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
             ])
         ),
     );
+    // Decomposition parameters
+    /// Q1 = x^2 * R / q
+    const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
+    /// Q2 = R / q = 13
+    const Q2: [u64; 4] = [13, 0, 0, 0];
+    /// R128 = 2^128 - 1
+    const R128: Fr = field!(Fr, BigInteger256([0xffffffffffffffff, 0xffffffffffffffff, 0, 0]));
     /// WEIERSTRASS_A = [0, 0]
     const WEIERSTRASS_A: Fq2 = field!(Fq2, Bls12_377G1Parameters::WEIERSTRASS_A, Bls12_377G1Parameters::WEIERSTRASS_A,);
     // As per https://eprint.iacr.org/2012/072.pdf,

@@ -39,6 +39,10 @@ impl ModelParameters for Bls12_377G1Parameters {
 impl ShortWeierstrassParameters for Bls12_377G1Parameters {
     /// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (G1_GENERATOR_X, G1_GENERATOR_Y);
+    /// B1 = x^2 - 1
+    const B1: Fr = field!(Fr, BigInteger256([725501752471715840, 4981570305181876225, 0, 0]));
+    /// B2 = x^2
+    const B2: Fr = field!(Fr, BigInteger256([725501752471715841, 4981570305181876225, 0, 0]));
     /// COFACTOR = (x - 1)^2 / 3  = 30631250834960419227450344600217059328
     const COFACTOR: &'static [u64] = &[0x0, 0x170b5d4430000000];
     /// COFACTOR_INV = COFACTOR^{-1} mod r
@@ -47,6 +51,8 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
         Fr,
         BigInteger256([2013239619100046060, 4201184776506987597, 2526766393982337036, 1114629510922847535,])
     );
+    /// R128 = 2^256 / 2
+    const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
     const PHI: Fq = field!(
         Fq,
         BigInteger384([
@@ -58,6 +64,13 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
             0x167d6a36f873fd0,
         ])
     );
+    // Decomposition parameters
+    /// Q1 = x^2 * R / q
+    const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
+    /// Q2 = R / q = 13
+    const Q2: [u64; 4] = [13, 0, 0, 0];
+    /// R128 = 2^128 - 1
+    const R128: Fr = field!(Fr, BigInteger256([0xffffffffffffffff, 0xffffffffffffffff, 0, 0]));
     /// WEIERSTRASS_A = 0
     const WEIERSTRASS_A: Fq = field!(Fq, BigInteger384([0x0, 0x0, 0x0, 0x0, 0x0, 0x0]));
     /// WEIERSTRASS_B = 1

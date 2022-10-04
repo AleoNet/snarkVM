@@ -377,14 +377,15 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     type Parameters = P;
 
     #[inline]
-    fn decompose(&self) -> (Self, Self, bool, bool) {
-        const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
-        const Q2: [u64; 4] = [13, 0, 0, 0];
-        let b1 = Self::from_repr(BigInteger([725501752471715840, 4981570305181876225, 0, 0])).unwrap();
-        let b2 = Self::from_repr(BigInteger([725501752471715841, 4981570305181876225, 0, 0])).unwrap();
-        let r128 = Self::from_repr(BigInteger([0xffffffffffffffff, 0xffffffffffffffff, 0, 0])).unwrap();
-        const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
-
+    fn decompose(
+        &self,
+        q1: &[u64; 4],
+        q2: &[u64; 4],
+        b1: Self,
+        b2: Self,
+        r128: Self,
+        half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool) {
         let mul_short = |a: &[u64; 4], b: &[u64; 4]| -> [u64; 8] {
             // Schoolbook multiplication
             let mut carry = 0;
@@ -417,14 +418,14 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
         let round = |a: &mut [u64; 8]| -> Self {
             let mut carry = 0;
             // NOTE: can the first 4 be omitted?
-            carry = fa::adc(&mut a[0], HALF_R[0], carry);
-            carry = fa::adc(&mut a[1], HALF_R[1], carry);
-            carry = fa::adc(&mut a[2], HALF_R[2], carry);
-            carry = fa::adc(&mut a[3], HALF_R[3], carry);
-            carry = fa::adc(&mut a[4], HALF_R[4], carry);
-            carry = fa::adc(&mut a[5], HALF_R[5], carry);
-            carry = fa::adc(&mut a[6], HALF_R[6], carry);
-            _ = fa::adc(&mut a[7], HALF_R[7], carry);
+            carry = fa::adc(&mut a[0], half_r[0], carry);
+            carry = fa::adc(&mut a[1], half_r[1], carry);
+            carry = fa::adc(&mut a[2], half_r[2], carry);
+            carry = fa::adc(&mut a[3], half_r[3], carry);
+            carry = fa::adc(&mut a[4], half_r[4], carry);
+            carry = fa::adc(&mut a[5], half_r[5], carry);
+            carry = fa::adc(&mut a[6], half_r[6], carry);
+            _ = fa::adc(&mut a[7], half_r[7], carry);
             Self::from_repr(BigInteger([a[4], a[5], a[6], a[7]])).unwrap()
         };
 
@@ -433,8 +434,8 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
             round(&mut a)
         };
 
-        let alpha1 = alpha(self, &Q1);
-        let alpha2 = alpha(self, &Q2);
+        let alpha1 = alpha(self, &q1);
+        let alpha2 = alpha(self, &q2);
         let z1 = alpha1 * b1;
         let z2 = alpha2 * b2;
 

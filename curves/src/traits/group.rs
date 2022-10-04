@@ -271,6 +271,20 @@ pub trait ShortWeierstrassParameters: ModelParameters {
 
     const PHI: Self::BaseField;
 
+    // Decomposition parameters
+    /// Q1 = x^2 * R / q
+    const Q1: [u64; 4];
+    /// Q2 = R / q = 13
+    const Q2: [u64; 4];
+    /// B1 = x^2 - 1
+    const B1: Self::ScalarField;
+    /// B2 = x^2
+    const B2: Self::ScalarField;
+    /// R128 = 2^128 - 1
+    const R128: Self::ScalarField;
+    /// R128 = 2^256 / 2
+    const HALF_R: [u64; 8];
+
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;

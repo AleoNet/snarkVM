@@ -519,7 +519,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
         /// The GLV table length.
         const L: usize = 1 << (GLV_WINDOW_SIZE - 1);
 
-        let decomposition = other.decompose();
+        let decomposition = other.decompose(&P::Q1, &P::Q2, P::B1, P::B2, P::R128, &P::HALF_R);
 
         // Prepare tables.
         let mut t_1 = Vec::with_capacity(L);
