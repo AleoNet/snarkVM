@@ -61,12 +61,12 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         field!(
             Fq,
             BigInteger384([
-                0xdacd106da5847973,
-                0xd8fe2454bac2a79a,
-                0x1ada4fd6fd832edc,
-                0xfb9868449d150908,
-                0xd63eb8aeea32285e,
-                0x167d6a36f873fd0,
+                0x2c766f925a7b8727,
+                0x03d7f6b0253d58b5,
+                0x838ec0deec122131,
+                0xbd5eb3e9f658bb10,
+                0x6942bd126ed3e52e,
+                0x01673786dd04ed6a,
             ])
         ),
     );
