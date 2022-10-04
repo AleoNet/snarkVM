@@ -15,6 +15,7 @@ optional = true
 [dependencies.snarkvm-circuit-environment]
 path = "../../environment"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-boolean]
 path = "../boolean"
@@ -33,5 +34,6 @@ path = "../scalar"
 version = "0.9.0"
 
 [features]
-default = [ "enable_console" ]
+default = [ "enable_console", "snarkvm-circuit-environment/default" ]
 enable_console = [ "console" ]
+embedded = [ "snarkvm-circuit-environment/default" ]

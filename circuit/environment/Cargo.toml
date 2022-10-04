@@ -15,6 +15,8 @@ harness = false
 package = "snarkvm-console-network"
 path = "../../console/network"
 version = "0.9.0"
+default-features = false
+optional = true
 
 [dependencies.snarkvm-circuit-environment-witness]
 path = "./witness"
@@ -71,4 +73,5 @@ path = "../../console/types"
 version = "0.4"
 
 [features]
-default = [ "snarkvm-curves/default", "snarkvm-r1cs/default" ]
+default = [ "snarkvm-curves/default", "snarkvm-r1cs/default", "console/default" ]
+embedded = [ "snarkvm-curves/embedded", "snarkvm-fields/embedded", "snarkvm-r1cs/embedded", "snarkvm-utilities/embedded" ]

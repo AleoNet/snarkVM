@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies.snarkvm-circuit-environment]
 path = "../environment"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-address]
 path = "./address"
@@ -37,3 +38,7 @@ version = "0.9.0"
 [dependencies.snarkvm-circuit-types-string]
 path = "./string"
 version = "0.9.0"
+
+[features]
+default = [ "snarkvm-circuit-environment/default" ]
+embedded = [ "snarkvm-circuit-environment/embedded" ]
