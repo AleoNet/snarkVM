@@ -403,18 +403,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Select the prover solutions from the memory pool.
         let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_NUM_PROOFS).cloned().collect::<Vec<_>>();
 
-        // Get the total cumulative target of the prover puzzle solutions.
-        let cumulative_prover_target = {
-            let mut cumulative_target: u128 = 0;
-
-            for solution in &prover_solutions {
-                cumulative_target = cumulative_target
-                    .checked_add(solution.to_target()? as u128)
-                    .ok_or_else(|| anyhow!("Cumulative target overflowed"))?;
-            }
-
-            cumulative_target
-        };
+        // Compute the total cumulative target of the prover puzzle solutions as a u128.
+        let cumulative_prover_target = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
+            cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
+        })?;
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.

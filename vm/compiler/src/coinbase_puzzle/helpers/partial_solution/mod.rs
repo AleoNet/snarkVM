@@ -63,8 +63,6 @@ impl<N: Network> PartialSolution<N> {
 
     /// Returns the target of the solution.
     pub fn to_target(&self) -> Result<u64> {
-        let hash_to_u64 = sha256d_to_u64(&self.commitment.to_bytes_le()?);
-
-        Ok(u64::MAX / hash_to_u64)
+        Ok(u64::MAX / sha256d_to_u64(&self.commitment.to_bytes_le()?))
     }
 }

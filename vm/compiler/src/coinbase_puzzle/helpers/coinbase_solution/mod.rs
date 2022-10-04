@@ -37,18 +37,14 @@ impl<N: Network> CoinbaseSolution<N> {
     }
 
     pub fn verify(&self, verifying_key: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
-        // Ensure the solution is not empty.
+        // Ensure the coinbase solution is not empty.
         if self.partial_solutions.is_empty() {
             return Ok(false);
         }
 
         // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
         if self.partial_solutions.len() > MAX_NUM_PROOFS {
-            bail!(
-                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
-                self.partial_solutions.len(),
-                MAX_NUM_PROOFS
-            );
+            return Ok(false);
         }
 
         // Ensure the proof is non-hiding.
@@ -102,6 +98,9 @@ impl<N: Network> CoinbaseSolution<N> {
 
     /// Returns the cumulative target of the individual prover solutions.
     pub fn to_cumulative_target(&self) -> Result<u128> {
+        // Ensure the coinbase solution is not empty.
+        ensure!(!self.partial_solutions.is_empty(), "The coinbase solution does not contain any partial solutions");
+
         // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
         if self.partial_solutions.len() > MAX_NUM_PROOFS {
             bail!(
@@ -111,14 +110,9 @@ impl<N: Network> CoinbaseSolution<N> {
             );
         }
 
-        let mut cumulative_target: u128 = 0;
-
-        for solution in &self.partial_solutions {
-            cumulative_target = cumulative_target
-                .checked_add(solution.to_target()? as u128)
-                .ok_or_else(|| anyhow!("Cumulative target overflowed"))?;
-        }
-
-        Ok(cumulative_target)
+        // Compute the cumulative target as a u128.
+        self.partial_solutions.iter().try_fold(0u128, |cumulative, solution| {
+            cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
+        })
     }
 }
