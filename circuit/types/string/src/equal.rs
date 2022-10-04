@@ -110,31 +110,31 @@ mod tests {
 
     #[test]
     fn test_is_equal_constant() -> Result<()> {
-        check_is_equal(Mode::Constant, 8, 0, 0, 0)
+        check_is_equal(Mode::Constant, 9, 0, 0, 0)
     }
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 0, 0, 23, 31)
+        check_is_equal(Mode::Public, 0, 0, 26, 35)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 0, 0, 23, 31)
+        check_is_equal(Mode::Private, 0, 0, 26, 35)
     }
 
     #[test]
     fn test_is_not_equal_constant() -> Result<()> {
-        check_is_not_equal(Mode::Constant, 8, 0, 0, 0)
+        check_is_not_equal(Mode::Constant, 9, 0, 0, 0)
     }
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 0, 0, 23, 31)
+        check_is_not_equal(Mode::Public, 0, 0, 26, 35)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 0, 0, 23, 31)
+        check_is_not_equal(Mode::Private, 0, 0, 26, 35)
     }
 }
