@@ -30,8 +30,12 @@ pub struct ExecutionRequest<N: Network> {
 
 impl<N: Network> ExecutionRequest<N> {
     /// Sends the request to the given endpoint.
-    pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Self {
-        Self { transaction, address, program_id }
+    pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Result<Self> {
+        ensure!(
+            matches!(transaction, Transaction::Execute(_, _, _)),
+            "Cannot create an execution request with an deploy transaction"
+        );
+        Ok(Self { transaction, address, program_id })
     }
 
     /// Sends the request to the given endpoint.
@@ -74,15 +78,19 @@ impl<'de, N: Network> Deserialize<'de> for ExecutionRequest<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
         let request = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
-        Ok(Self::new(
+        // Build the execution request.
+        let execution_request = Self::new(
             // Retrieve the execution transaction.
             serde_json::from_value(request["transaction"].clone()).map_err(de::Error::custom)?,
             // Retrieve the address of the program.
             serde_json::from_value(request["address"].clone()).map_err(de::Error::custom)?,
             // Retrieve the program ID.
             serde_json::from_value(request["program_id"].clone()).map_err(de::Error::custom)?,
-        ))
+        );
+        match execution_request {
+            Ok(execution_request) => Ok(execution_request),
+            Err(error) => Err(de::Error::custom(error.to_string())),
+        }
     }
 }
 
@@ -92,12 +100,16 @@ pub struct ExecuteResponse<N: Network> {
 
 impl<N: Network> ExecuteResponse<N> {
     /// Initializes a new deploy response.
-    pub const fn new(transaction: Transaction<N>) -> Self {
-        Self { transaction }
+    pub fn new(transaction: Transaction<N>) -> Result<Self> {
+        ensure!(
+            matches!(transaction, Transaction::Execute(_, _, _)),
+            "Cannot create an execution response with an deploy transaction"
+        );
+        Ok(Self { transaction })
     }
 
     /// Returns the execution transaction.
-    pub const fn transaction(&self) -> &Transaction<N> {
+    pub fn transaction(&self) -> &Transaction<N> {
         &self.transaction
     }
 }
@@ -116,11 +128,15 @@ impl<'de, N: Network> Deserialize<'de> for ExecuteResponse<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the response from a string into a value.
         let response = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
-        Ok(Self::new(
+        // Build the execution response.
+        let execution_response = Self::new(
             // Retrieve the execution transaction.
             serde_json::from_value(response["transaction"].clone()).map_err(de::Error::custom)?,
-        ))
+        );
+        match execution_response {
+            Ok(execution_response) => Ok(execution_response),
+            Err(error) => Err(de::Error::custom(error.to_string())),
+        }
     }
 }
 
@@ -217,7 +233,7 @@ impl<N: Network> Package<N> {
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
-                let request = ExecutionRequest::new(execution_transaction, *caller, *program_id);
+                let request = ExecutionRequest::new(execution_transaction, *caller, *program_id)?;
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
                 Ok((execution_response, response.transaction))
