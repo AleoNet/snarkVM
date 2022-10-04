@@ -418,10 +418,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         commitment: Field<N>,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
-        if let Some(record_ciphertext) = ledger.read().get_record_ciphertext(commitment).or_reject()? {
-            Ok(reply::with_status(reply::json(&record_ciphertext), StatusCode::OK))
-        } else {
-            Err(warp::reject::not_found())
+        match ledger.read().get_record_ciphertext(commitment).or_reject()? {
+            Some(record_ciphertext) => Ok(reply::with_status(reply::json(&record_ciphertext), StatusCode::OK)),
+            None => Err(warp::reject::not_found()),
         }
     }
 }
