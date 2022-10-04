@@ -404,7 +404,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_NUM_PROOFS).cloned().collect::<Vec<_>>();
 
         // Compute the total cumulative target of the prover puzzle solutions as a u128.
-        let cumulative_prover_target = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
+        let cumulative_prover_target: u128 = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
             cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
         })?;
 
@@ -441,7 +441,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             for prover_puzzle_solution in prover_solutions {
                 let prover_reward = (coinbase_reward as u128 / 2)
                     .saturating_mul(prover_puzzle_solution.to_target()? as u128)
-                    / cumulative_prover_target as u128;
+                    / cumulative_prover_target;
 
                 prover_rewards.push((*prover_puzzle_solution.address(), u64::try_from(prover_reward)?));
             }

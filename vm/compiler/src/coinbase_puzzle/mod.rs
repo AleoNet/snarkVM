@@ -148,7 +148,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     ) -> Result<CoinbaseSolution<N>> {
         // Check that the number of prover solutions does not exceed `MAX_NUM_PROOFS`.
         if prover_solutions.len() > MAX_NUM_PROOFS {
-            bail!("Exceeded the number of allowed prover solutions");
+            bail!("Exceeded the allowed number of prover solutions. ({} > {})", prover_solutions.len(), MAX_NUM_PROOFS);
         }
 
         let (prover_polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
