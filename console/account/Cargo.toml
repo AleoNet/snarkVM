@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies.snarkvm-console-network]
 path = "../network"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-console-types]
 path = "../types"
@@ -31,10 +32,18 @@ default = [
   "graph_key",
   "private_key",
   "signature",
-  "view_key"
+  "view_key",
+  "snarkvm-console-network/default"
 ]
 compute_key = [ "private_key" ]
 graph_key = [ "private_key" ]
 private_key = [ "compute_key" ]
 signature = [ "compute_key" ]
 view_key = [ ]
+embedded = [ 
+  "compute_key",
+  "graph_key",
+  "private_key",
+  "signature",
+  "view_key",
+  "snarkvm-console-network/embedded" ]

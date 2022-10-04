@@ -69,5 +69,5 @@ embedded = [ "snarkvm-algorithms/embedded", "snarkvm-console-algorithms/embedded
 "snarkvm-console-network-environment/default",
 "snarkvm-curves/embedded", 
 "snarkvm-fields/embedded",
-"snarkvm-utilities/embedded",  ]
+"snarkvm-utilities/embedded" ]
 
