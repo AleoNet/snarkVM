@@ -2666,6 +2666,7 @@ name = "snarkvm-rest"
 version = "0.9.0"
 dependencies = [
  "anyhow",
+ "http",
  "indexmap",
  "parking_lot 0.12.1",
  "serde",
