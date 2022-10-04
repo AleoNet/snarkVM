@@ -658,7 +658,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         if let Some(coinbase_proof) = block.coinbase_proof() {
             if coinbase_proof.partial_solutions.len() > MAX_NUM_PROOFS {
                 bail!(
-                    "Coinbase proof has exceeded the maximum number of prover solutions. ({} > {})",
+                    "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
                     coinbase_proof.partial_solutions.len(),
                     MAX_NUM_PROOFS
                 );
