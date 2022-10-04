@@ -85,13 +85,13 @@ pub const NUM_ROUNDS_PER_EPOCH: u32 = 480;
 pub const MAX_NUM_PROOFS: usize = 1 << 20;
 
 /// The coinbase puzzle degree.
-const COINBASE_PUZZLE_DEGREE: u32 = 1 << 13;
+const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1;
 
 // TODO (raychu86): Adjust these values based network expectations.
 /// The genesis block coinbase target.
-pub const GENESIS_COINBASE_TARGET: u64 = 1048576; // 2^20
+pub const GENESIS_COINBASE_TARGET: u64 = 1 << 11; // 2^11
 /// The genesis block proof target.
-pub const GENESIS_PROOF_TARGET: u64 = 1024; // 2^10
+pub const GENESIS_PROOF_TARGET: u64 = 1 << 1; // 2^1
 
 /// The starting supply of Aleo credits.
 pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
