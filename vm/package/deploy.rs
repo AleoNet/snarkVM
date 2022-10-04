@@ -164,9 +164,9 @@ impl<N: Network> Package<N> {
         let rng = &mut rand::thread_rng();
         // Compute the deployment.
         let deployment = process.deploy::<A, _>(program, rng)?;
-
+        // Compute the additional fee.
         let (_, additional_fee) = process.execute_additional_fee::<A, _>(private_key, credits, 1, rng)?;
-
+        // Compute the deployment transaction.
         let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
 
         match endpoint {
