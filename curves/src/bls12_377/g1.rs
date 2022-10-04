@@ -82,12 +82,8 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
 
     fn is_in_correct_subgroup_assuming_on_curve(p: &super::G1Affine) -> bool {
         let phi = |mut p: super::G1Affine| {
-            let cube_root_of_unity = Fq::from_str(
-                "80949648264912719408558363140637477264845294720710499478137287262712535938301461879813459410945",
-            )
-            .unwrap();
-            debug_assert!(cube_root_of_unity.pow([3]).is_one());
-            p.x *= cube_root_of_unity;
+            debug_assert!(Self::PHI_1.pow([3]).is_one());
+            p.x *= Self::PHI_1;
             p
         };
         let x_square = Fr::from(super::Bls12_377Parameters::X[0]).square();
