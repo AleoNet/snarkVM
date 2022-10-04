@@ -303,7 +303,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Returns all of the records for the given view key.
     async fn records_all(view_key: ViewKey<N>, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let records: IndexMap<_, _> = ledger.read().find_records(&view_key, RecordsFilter::All).or_reject()?.collect();
+        let records = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::All)
+            .or_reject()?
+            .map(|(_commitment, record)| record)
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
