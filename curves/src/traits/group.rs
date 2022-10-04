@@ -282,7 +282,7 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     const B2: Self::ScalarField;
     /// R128 = 2^128 - 1
     const R128: Self::ScalarField;
-    /// R128 = 2^256 / 2
+    /// HALF_R = 2^256 / 2
     const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
 
     #[inline(always)]
