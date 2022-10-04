@@ -22,41 +22,21 @@ impl<E: Environment> FromBits for StringType<E> {
     /// Initializes a new string from a list of little-endian bits *with* trailing zeros (to byte-alignment).
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Determine the mode.
-        let mode = Mode::combine(bits_le[0].eject_mode(), bits_le.iter().skip(1).map(|bit| bit.eject_mode()));
-
+        let mode = bits_le.eject_mode();
         // Inject the string size in bytes.
         let size_in_bytes = Self::inject_size_in_bytes(mode, bits_le);
-
-        // Ensure the list of booleans is byte-aligned.
-        let num_bits = bits_le.len();
-        match num_bits % 8 == 0 {
-            true => StringType {
-                mode: bits_le.eject_mode(),
-                bytes: bits_le.chunks(8).map(U8::from_bits_le).collect(),
-                size_in_bytes,
-            },
-            false => E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned")),
-        }
+        // Return the string.
+        StringType { mode, bytes: bits_le.chunks(8).map(U8::from_bits_le).collect(), size_in_bytes }
     }
 
     /// Initializes a new scalar field element from a list of big-endian bits *with* leading zeros (to byte-alignment).
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         // Determine the mode.
-        let mode = Mode::combine(bits_be[0].eject_mode(), bits_be.iter().skip(1).map(|bit| bit.eject_mode()));
-
+        let mode = bits_be.eject_mode();
         // Inject the string size in bytes.
         let size_in_bytes = Self::inject_size_in_bytes(mode, bits_be);
-
-        // Ensure the list of booleans is byte-aligned.
-        let num_bits = bits_be.len();
-        match num_bits % 8 == 0 {
-            true => StringType {
-                mode: bits_be.eject_mode(),
-                bytes: bits_be.chunks(8).map(U8::from_bits_be).collect(),
-                size_in_bytes,
-            },
-            false => E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned")),
-        }
+        // Return the string.
+        StringType { mode, bytes: bits_be.chunks(8).map(U8::from_bits_be).collect(), size_in_bytes }
     }
 }
 
@@ -65,13 +45,14 @@ impl<E: Environment> StringType<E> {
     /// "Load-bearing witness allocation - Please do not optimize me." - Pratyush :)
     fn inject_size_in_bytes(mode: Mode, bits: &[Boolean<E>]) -> Field<E> {
         // Ensure the bits are byte-aligned.
-        if bits.len() % 8 != 0 {
-            E::halt("The given bits for the string are not byte-aligned")
+        let num_bits = bits.len();
+        if num_bits % 8 != 0 {
+            E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned"))
         }
 
         // Cast the number of bytes in the 'string' as a field element.
         let num_bytes =
-            console::Field::from_u32(u32::try_from(bits.len() / 8).unwrap_or_else(|error| E::halt(error.to_string())));
+            console::Field::from_u32(u32::try_from(num_bits / 8).unwrap_or_else(|error| E::halt(error.to_string())));
 
         // Inject the number of bytes as a constant.
         let expected_size_in_bytes = Field::constant(num_bytes);
