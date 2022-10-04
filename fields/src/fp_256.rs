@@ -434,8 +434,8 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
             round(&mut a)
         };
 
-        let alpha1 = alpha(self, &q1);
-        let alpha2 = alpha(self, &q2);
+        let alpha1 = alpha(self, q1);
+        let alpha2 = alpha(self, q2);
         let z1 = alpha1 * b1;
         let z2 = alpha2 * b2;
 
