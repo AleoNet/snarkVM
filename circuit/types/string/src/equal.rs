@@ -25,28 +25,15 @@ impl<E: Environment> Equal<Self> for StringType<E> {
         let this = self.to_fields();
         let that = other.to_fields();
 
-        // Return `false` if the length of the strings are equal.
-        if this.len() != that.len() {
-            return Boolean::constant(false);
-        }
-
-        // Check if the string contents are equal.
-        this.iter().zip_eq(&that).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
+        // Check that the size in bytes of the two strings are equal.
+        self.size_in_bytes.is_equal(&other.size_in_bytes)
+            // Check that the string contents are equal.
+            & this.iter().zip(&that).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        // Convert each string type into fields.
-        let this = self.to_fields();
-        let that = other.to_fields();
-
-        // Return `true` if the length of the strings are *not* equal.
-        if this.len() != that.len() {
-            return Boolean::constant(true);
-        }
-
-        // Check if the string contents are *not* equal.
-        this.iter().zip_eq(&that).fold(Boolean::constant(false), |acc, (a, b)| acc | a.is_not_equal(b))
+        !self.is_equal(other)
     }
 }
 
