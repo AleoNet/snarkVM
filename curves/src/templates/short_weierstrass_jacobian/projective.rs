@@ -572,7 +572,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
             (wnaf_1, wnaf_2)
         };
 
-        let naf_add = |table: &Vec<Affine<P>>, naf: i32, acc: &mut Self| {
+        let naf_add = |table: &[Affine<P>], naf: i32, acc: &mut Self| {
             if naf != 0 {
                 let mut p_1 = table[(naf.abs() >> 1) as usize];
                 if naf < 0 {
