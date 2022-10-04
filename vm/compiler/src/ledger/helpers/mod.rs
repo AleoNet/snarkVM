@@ -124,7 +124,7 @@ fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
 ) -> u64 {
     // Compute the difference in block time elapsed, defined as:
     let mut drift = {
-        // Determine the block time elapsed (in seconds) since the anchor block.
+        // Determine the block time elapsed (in seconds) since the previous block.
         // Note: This operation includes a safety check for a repeat timestamp.
         let block_time_elapsed = core::cmp::max(block_timestamp.saturating_sub(previous_block_timestamp), 1);
 
