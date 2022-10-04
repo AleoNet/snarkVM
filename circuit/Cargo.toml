@@ -40,6 +40,7 @@ version = "0.9.0"
 [dependencies.snarkvm-circuit-environment]
 path = "./environment"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-network]
 path = "./network"
@@ -55,5 +56,5 @@ version = "0.9.0"
 default-features = false
 
 [features]
-default = [ "snarkvm-circuit-account/default", "snarkvm-circuit-algorithms/default", "snarkvm-circuit-types/default" ]
-embedded = [ "snarkvm-circuit-account/embedded", "snarkvm-circuit-algorithms/embedded", "snarkvm-circuit-types/embedded" ]
+default = [ "snarkvm-circuit-account/default", "snarkvm-circuit-algorithms/default", "snarkvm-circuit-environment/default", "snarkvm-circuit-types/default" ]
+embedded = [ "snarkvm-circuit-account/embedded", "snarkvm-circuit-algorithms/embedded", "snarkvm-circuit-environment/embedded", "snarkvm-circuit-types/embedded" ]
