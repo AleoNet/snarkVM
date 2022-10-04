@@ -186,50 +186,59 @@ impl<N: Network> Package<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     type CurrentNetwork = snarkvm_console::network::Testnet3;
-//     type CurrentAleo = snarkvm_circuit::network::AleoV0;
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
-//     #[test]
-//     fn test_deploy() {
-//         // Samples a new package at a temporary directory.
-//         let (directory, package) = crate::package::test_helpers::sample_package();
+    #[test]
+    fn test_deploy() {
+        let (directory, package) = crate::package::test_helpers::sample_package();
+        let private_key = package.manifest_file().development_private_key();
+        let address = Address::try_from(private_key).unwrap();
+        let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
+            "{{ owner: {address}.private, gates: 5u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
 
-//         // Deploy the package.
-//         let deployment_transaction = package.deploy::<CurrentAleo>(None).unwrap();
-//         if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
-//             // Ensure the deployment edition matches.
-//             assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-//             // Ensure the deployment program ID matches.
-//             assert_eq!(package.program().id(), deployment.program_id());
-//             // Ensure the deployment program matches.
-//             assert_eq!(package.program(), deployment.program());
-//         }
+        // Deploy the package.
+        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record).unwrap();
+        if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
+            // Ensure the deployment edition matches.
+            assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+            // Ensure the deployment program ID matches.
+            assert_eq!(package.program().id(), deployment.program_id());
+            // Ensure the deployment program matches.
+            assert_eq!(package.program(), deployment.program());
+        }
 
-//         // Proactively remove the temporary directory (to conserve space).
-//         std::fs::remove_dir_all(directory).unwrap();
-//     }
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 
-//     #[test]
-//     fn test_deploy_with_import() {
-//         // Samples a new package at a temporary directory.
-//         let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+    #[test]
+    fn test_deploy_with_import() {
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let private_key = package.manifest_file().development_private_key();
+        let address = Address::try_from(private_key).unwrap();
+        let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
+            "{{ owner: {address}.private, gates: 5u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
 
-//         // Deploy the package.
-//         let deployment_transaction = package.deploy::<CurrentAleo>(None).unwrap();
-//         if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
-//             // Ensure the deployment edition matches.
-//             assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-//             // Ensure the deployment program ID matches.
-//             assert_eq!(package.program().id(), deployment.program_id());
-//             // Ensure the deployment program matches.
-//             assert_eq!(package.program(), deployment.program());
-//         }
+        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record).unwrap();
+        if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
+            // Ensure the deployment edition matches.
+            assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+            // Ensure the deployment program ID matches.
+            assert_eq!(package.program().id(), deployment.program_id());
+            // Ensure the deployment program matches.
+            assert_eq!(package.program(), deployment.program());
+        }
 
-//         // Proactively remove the temporary directory (to conserve space).
-//         std::fs::remove_dir_all(directory).unwrap();
-//     }
-// }
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+}
