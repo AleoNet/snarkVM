@@ -436,7 +436,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
 
     #[inline]
     fn decompose(&self) -> (Self, Self, bool, bool) {
-        (Self::zero(), Self::zero(), false, false)
+        unimplemented!()
     }
 
     #[inline]
