@@ -73,13 +73,13 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             let (string, (members, mode)) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
-                    return Err(error("Duplicate member in interface"));
+                    return Err(error("Duplicate member in struct"));
                 }
                 // Ensure the members all have the same visibility.
                 let mode = members.iter().map(|(_, _, mode)| mode).dedup().collect::<Vec<_>>();
                 let mode = match mode.len() == 1 {
                     true => *mode[0],
-                    false => return Err(error("Members of interface in entry have different visibilities")),
+                    false => return Err(error("Members of struct in entry have different visibilities")),
                 };
                 // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
                 match members.len() <= N::MAX_DATA_ENTRIES {

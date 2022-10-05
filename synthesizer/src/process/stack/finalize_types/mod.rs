@@ -111,7 +111,7 @@ impl<N: Network> FinalizeTypes<N> {
                     match stack.program().get_interface(interface_name)?.members().get(path_name) {
                         // Update the member type.
                         Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                        None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
+                        None => bail!("'{path_name}' does not exist in struct '{interface_name}'"),
                     }
                 }
                 RegisterType::Record(record_name) => {

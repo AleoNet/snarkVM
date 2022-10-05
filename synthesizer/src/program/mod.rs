@@ -225,11 +225,11 @@ function fee:
     pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
         // Attempt to retrieve the interface.
         let interface =
-            self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))?;
+            self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
         // Ensure the interface name matches.
-        ensure!(interface.name() == name, "Expected interface '{name}', but found interface '{}'", interface.name());
+        ensure!(interface.name() == name, "Expected interface '{name}', but found struct '{}'", interface.name());
         // Ensure the interface contains members.
-        ensure!(!interface.members().is_empty(), "Interface '{name}' is missing members.");
+        ensure!(!interface.members().is_empty(), "Struct '{name}' is missing members.");
         // Return the interface.
         Ok(interface)
     }
@@ -358,7 +358,7 @@ impl<N: Network> Program<N> {
         ensure!(!Self::is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
 
         // Ensure the interface contains members.
-        ensure!(!interface.members().is_empty(), "Interface '{interface_name}' is missing members.");
+        ensure!(!interface.members().is_empty(), "Struct '{interface_name}' is missing members.");
 
         // Ensure all interface members are well-formed.
         // Note: This design ensures cyclic references are not possible.
@@ -371,7 +371,7 @@ impl<N: Network> Program<N> {
                 PlaintextType::Interface(member_identifier) => {
                     // Ensure the member interface name exists in the program.
                     if !self.interfaces.contains_key(member_identifier) {
-                        bail!("'{member_identifier}' in interface '{}' is not defined.", interface_name)
+                        bail!("'{member_identifier}' in struct '{}' is not defined.", interface_name)
                     }
                 }
             }
@@ -424,7 +424,7 @@ impl<N: Network> Program<N> {
                     PlaintextType::Literal(..) => continue,
                     PlaintextType::Interface(identifier) => {
                         if !self.interfaces.contains_key(identifier) {
-                            bail!("Interface '{identifier}' in record '{record_name}' is not defined.")
+                            bail!("Struct '{identifier}' in record '{record_name}' is not defined.")
                         }
                     }
                 },
@@ -569,7 +569,7 @@ impl<N: Network> Program<N> {
         "gates",
         // Program
         "function",
-        "interface",
+        "struct",
         "closure",
         "program",
         "aleo",
@@ -682,7 +682,7 @@ mapping message:
         // Create a new interface.
         let interface = Interface::<CurrentNetwork>::from_str(
             r"
-interface message:
+struct message:
     first as field;
     second as field;",
         )?;
@@ -884,7 +884,7 @@ function swap:
             r"
 program example.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 

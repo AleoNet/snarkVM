@@ -89,7 +89,7 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                 // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
+                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
 
                 // Retrieve the interface and ensure it is defined in the program.
                 let interface = stack.program().get_interface(&interface_name)?;
@@ -108,7 +108,7 @@ impl<N: Network> Cast<N> {
                             plaintext.clone()
                         }
                         // Ensure the interface member is not a record.
-                        Value::Record(..) => bail!("Casting a record into an interface member is illegal"),
+                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
                     };
                     // Append the member to the interface members.
                     members.insert(*member_name, plaintext);
@@ -215,7 +215,7 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                 // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
+                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
 
                 // Retrieve the interface and ensure it is defined in the program.
                 let interface = stack.program().get_interface(&interface_name)?;
@@ -238,7 +238,7 @@ impl<N: Network> Cast<N> {
                         }
                         // Ensure the interface member is not a record.
                         circuit::Value::Record(..) => {
-                            bail!("Casting a record into an interface member is illegal")
+                            bail!("Casting a record into a struct member is illegal")
                         }
                     };
                     // Append the member to the interface members.
@@ -366,16 +366,16 @@ impl<N: Network> Cast<N> {
                         RegisterType::Plaintext(plaintext_type) => {
                             ensure!(
                                 member_type == plaintext_type,
-                                "Interface '{interface_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
+                                "Struct '{interface_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
                             )
                         }
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
-                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
+                            "Struct '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
                         ),
                         // Ensure the input type cannot be an external record (this is unsupported behavior).
                         RegisterType::ExternalRecord(locator) => bail!(
-                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
+                            "Struct '{interface_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
                         ),
                     }
                 }

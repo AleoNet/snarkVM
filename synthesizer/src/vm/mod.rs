@@ -187,7 +187,7 @@ pub(crate) mod test_helpers {
                     r"
 program testing.aleo;
 
-interface message:
+struct message:
     amount as u128;
 
 record token:

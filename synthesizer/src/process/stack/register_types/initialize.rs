@@ -97,7 +97,7 @@ impl<N: Network> RegisterTypes<N> {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Interface(..)) => {
                         bail!(
-                            "'{}/{}' attempts to pass an 'interface' into 'finalize'",
+                            "'{}/{}' attempts to pass a 'struct' into 'finalize'",
                             stack.program_id(),
                             function.name()
                         );
@@ -184,7 +184,7 @@ impl<N: Network> RegisterTypes<N> {
             RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                 // Ensure the interface is defined in the program.
                 if !stack.program().contains_interface(interface_name) {
-                    bail!("Interface '{interface_name}' in '{}' is not defined.", stack.program_id())
+                    bail!("Struct '{interface_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
             RegisterType::Record(identifier) => {
@@ -230,7 +230,7 @@ impl<N: Network> RegisterTypes<N> {
             RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                 // Ensure the interface is defined in the program.
                 if !stack.program().contains_interface(interface_name) {
-                    bail!("Interface '{interface_name}' in '{}' is not defined.", stack.program_id())
+                    bail!("Struct '{interface_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
             RegisterType::Record(identifier) => {
@@ -405,7 +405,7 @@ impl<N: Network> RegisterTypes<N> {
                     RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                         // Ensure the interface name exists in the program.
                         if !stack.program().contains_interface(interface_name) {
-                            bail!("Interface '{interface_name}' is not defined.")
+                            bail!("Struct '{interface_name}' is not defined.")
                         }
                         // Retrieve the interface.
                         let interface = stack.program().get_interface(interface_name)?;

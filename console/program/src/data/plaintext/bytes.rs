@@ -63,7 +63,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
 
                 // Write the number of members in the interface.
                 u16::try_from(interface.len())
-                    .or_halt_with::<N>("Plaintext interface length exceeds u16::MAX.")
+                    .or_halt_with::<N>("Plaintext struct length exceeds u16::MAX.")
                     .write_le(&mut writer)?;
 
                 // Write each member.

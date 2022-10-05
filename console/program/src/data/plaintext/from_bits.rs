@@ -62,7 +62,7 @@ impl<N: Network> FromBits for Plaintext<N> {
                 counter += member_size as usize;
 
                 if members.insert(identifier, value).is_some() {
-                    bail!("Duplicate identifier in interface.");
+                    bail!("Duplicate identifier in struct.");
                 }
             }
 
@@ -125,7 +125,7 @@ impl<N: Network> FromBits for Plaintext<N> {
                 counter += member_size as usize;
 
                 if members.insert(identifier, value).is_some() {
-                    bail!("Duplicate identifier in interface.");
+                    bail!("Duplicate identifier in struct.");
                 }
             }
 

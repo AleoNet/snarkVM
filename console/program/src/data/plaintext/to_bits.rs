@@ -34,7 +34,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                     let mut bits_le = vec![false, true]; // Variant bits.
                     bits_le.extend(
                         u8::try_from(interface.len())
-                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
+                            .or_halt_with::<N>("Plaintext struct length exceeds u8::MAX")
                             .to_bits_le(),
                     );
                     for (identifier, value) in interface {
@@ -71,7 +71,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                     let mut bits_be = vec![false, true]; // Variant bits.
                     bits_be.extend(
                         u8::try_from(interface.len())
-                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
+                            .or_halt_with::<N>("Plaintext struct length exceeds u8::MAX")
                             .to_bits_be(),
                     );
                     for (identifier, value) in interface {

@@ -100,7 +100,7 @@ impl<N: Network> ToBytes for Program<N> {
                         // Write the interface.
                         interface.write_le(&mut writer)?;
                     }
-                    None => return Err(error(format!("Interface '{identifier}' is not defined."))),
+                    None => return Err(error(format!("Struct '{identifier}' is not defined."))),
                 },
                 ProgramDefinition::Record => match self.records.get(identifier) {
                     Some(record) => {

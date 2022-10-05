@@ -210,26 +210,26 @@ impl<N: Network> Stack<N> {
                     }
                 }
                 // If `plaintext` is an interface, this is a mismatch.
-                Plaintext::Interface(..) => bail!("'{plaintext_type}' is invalid: expected literal, found interface"),
+                Plaintext::Interface(..) => bail!("'{plaintext_type}' is invalid: expected literal, found struct"),
             },
             PlaintextType::Interface(interface_name) => {
                 // Ensure the interface name is valid.
-                ensure!(!Program::is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
+                ensure!(!Program::is_reserved_keyword(interface_name), "Struct '{interface_name}' is reserved");
 
                 // Retrieve the interface from the program.
                 let interface = match self.program().get_interface(interface_name) {
                     Ok(interface) => interface,
-                    Err(..) => bail!("Interface '{interface_name}' is not defined in the program"),
+                    Err(..) => bail!("Struct '{interface_name}' is not defined in the program"),
                 };
 
                 // Ensure the interface name matches.
                 if interface.name() != interface_name {
-                    bail!("Expected interface '{interface_name}', found interface '{}'", interface.name())
+                    bail!("Expected struct '{interface_name}', found struct '{}'", interface.name())
                 }
 
                 // Retrieve the interface members.
                 let members = match plaintext {
-                    Plaintext::Literal(..) => bail!("'{interface_name}' is invalid: expected interface, found literal"),
+                    Plaintext::Literal(..) => bail!("'{interface_name}' is invalid: expected struct, found literal"),
                     Plaintext::Interface(members, ..) => members,
                 };
 

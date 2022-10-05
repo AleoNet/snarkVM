@@ -85,7 +85,7 @@ impl<N: Network> Increment<N> {
         // Retrieve the starting value from storage as a literal.
         let start = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
-            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'increment' by an 'interface'"),
+            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'increment' by a 'struct'"),
             Some(Value::Record(..)) => bail!("Cannot 'increment' by a 'record'"),
             // If the key does not exist, set the starting value to 0.
             // Infer the starting type from the increment type.

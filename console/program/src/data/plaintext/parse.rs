@@ -46,7 +46,7 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, members) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
-                    return Err(error("Duplicate member in interface"));
+                    return Err(error("Duplicate member in struct"));
                 }
                 // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
                 match members.len() <= N::MAX_DATA_ENTRIES {

@@ -85,7 +85,7 @@ impl<N: Network> Decrement<N> {
         // Retrieve the starting value from storage as a literal.
         let start = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
-            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'decrement' by an 'interface'"),
+            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'decrement' by a 'struct'"),
             Some(Value::Record(..)) => bail!("Cannot 'decrement' by a 'record'"),
             // If the key does not exist, set the starting value to 0.
             // Infer the starting type from the decrement type.

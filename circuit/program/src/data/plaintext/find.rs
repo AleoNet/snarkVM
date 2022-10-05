@@ -26,7 +26,7 @@ impl<A: Aleo> Plaintext<A> {
 
         match self {
             // Halts if the value is not an interface.
-            Self::Literal(..) => A::halt("Literal is not an interface"),
+            Self::Literal(..) => A::halt("Literal is not a struct"),
             // Retrieve the value of the member (from the value).
             Self::Interface(members, ..) => {
                 // Initialize the members starting from the top-level.
@@ -41,11 +41,11 @@ impl<A: Aleo> Plaintext<A> {
                     if i != path.len() - 1 {
                         match submembers.get(identifier) {
                             // Halts if the member is not an interface.
-                            Some(Self::Literal(..)) => bail!("'{identifier}' must be an interface"),
+                            Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
                             // Retrieve the member and update `submembers` for the next iteration.
                             Some(Self::Interface(members, ..)) => submembers = members,
                             // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in interface"),
+                            None => bail!("Failed to locate member '{identifier}' in struct"),
                         }
                     }
                     // Otherwise, return the final member.
@@ -54,7 +54,7 @@ impl<A: Aleo> Plaintext<A> {
                             // Return the plaintext member.
                             Some(plaintext) => output = Some(plaintext.clone()),
                             // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in interface"),
+                            None => bail!("Failed to locate member '{identifier}' in struct"),
                         }
                     }
                 }
@@ -62,7 +62,7 @@ impl<A: Aleo> Plaintext<A> {
                 // Return the output.
                 match output {
                     Some(output) => Ok(output),
-                    None => A::halt("Failed to locate member in interface from path"),
+                    None => A::halt("Failed to locate member in struct from path"),
                 }
             }
         }

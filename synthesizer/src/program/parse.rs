@@ -155,7 +155,7 @@ impl<N: Network> Display for Program<N> {
                 ProgramDefinition::Interface => match self.interfaces.get(identifier) {
                     Some(interface) => program.push_str(&format!("{interface}\n\n")),
                     None => {
-                        eprintln!("Interface '{}' is not defined.", identifier);
+                        eprintln!("Struct '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
@@ -203,7 +203,7 @@ mod tests {
             r"
 program to_parse.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 
@@ -247,7 +247,7 @@ function compute:
     fn test_program_display() -> Result<()> {
         let expected = r"program to_parse.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 
