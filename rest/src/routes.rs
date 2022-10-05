@@ -169,6 +169,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::body::content_length_limit(10 * 1024 * 1024))
             .and(warp::body::json())
             .and(with(self.ledger_sender.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::transaction_broadcast);
 
         // POST /testnet3/transfer
@@ -345,7 +346,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     async fn transaction_broadcast(
         transaction: Transaction<N>,
         ledger_sender: LedgerSender<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
+        // Validate the transaction.
+        ledger.read().check_transaction(&transaction).or_reject()?;
+
         // Send the transaction to the ledger.
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transaction)).await {
             Ok(()) => Ok("OK"),

@@ -84,13 +84,16 @@ impl<F: PrimeField> ToConstraintField<F> for [u8] {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // Derive the field size in bytes, floored to be conservative.
         let floored_field_size_in_bytes = (F::size_in_data_bits() / 8) as usize;
+        let next_power_of_two = floored_field_size_in_bytes
+            .checked_next_power_of_two()
+            .ok_or(ConstraintFieldError::Message("Field size is too large"))?;
 
         // Pack the bytes into field elements.
         Ok(self
             .chunks(floored_field_size_in_bytes)
             .map(|chunk| {
                 // Before packing, pad the chunk to the next power of two.
-                let mut chunk_vec = vec![0u8; floored_field_size_in_bytes.next_power_of_two()];
+                let mut chunk_vec = vec![0u8; next_power_of_two];
                 chunk_vec[..chunk.len()].copy_from_slice(chunk);
                 F::read_le(&*chunk_vec)
             })
