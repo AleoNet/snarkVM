@@ -74,4 +74,4 @@ version = "0.4"
 
 [features]
 default = [ "snarkvm-curves/default", "snarkvm-r1cs/default", "console/default" ]
-embedded = [ "snarkvm-curves/embedded", "snarkvm-fields/embedded", "snarkvm-r1cs/embedded", "snarkvm-utilities/embedded" ]
+enclave = [ "snarkvm-curves/enclave", "snarkvm-fields/enclave", "snarkvm-r1cs/enclave", "snarkvm-utilities/enclave" ]

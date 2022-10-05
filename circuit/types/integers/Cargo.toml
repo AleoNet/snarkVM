@@ -35,4 +35,4 @@ version = "1"
 [features]
 default = [ "enable_console", "snarkvm-circuit-environment/default" ]
 enable_console = [ "console" ]
-embedded = [ "snarkvm-circuit-environment/embedded" ]
+enclave = [ "snarkvm-circuit-environment/enclave" ]

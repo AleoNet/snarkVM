@@ -46,4 +46,4 @@ version = "1.3"
 
 [features]
 default = [ "snarkvm-console-account/default", "snarkvm-console-network/default" ]
-embedded = [ "snarkvm-console-account/embedded", "snarkvm-console-network/embedded" ]
+enclave = [ "snarkvm-console-account/enclave", "snarkvm-console-network/enclave" ]

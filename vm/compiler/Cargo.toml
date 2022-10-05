@@ -111,4 +111,4 @@ parallel = [
   "snarkvm-parameters/default"
 ]
 aleo-cli = [ "snarkvm-parameters/default" ]
-embedded = [ "snarkvm-utilities/embedded" ]
+enclave = [ "snarkvm-utilities/enclave" ]

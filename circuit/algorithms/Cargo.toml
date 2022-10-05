@@ -35,4 +35,4 @@ version = "1.0.64"
 [features]
 default = [ "enable_console", "snarkvm-circuit-types/default" ]
 enable_console = [ "console" ]
-embedded = [ "snarkvm-circuit-types/embedded", "snarkvm-fields/embedded" ]
+enclave = [ "snarkvm-circuit-types/enclave", "snarkvm-fields/enclave" ]

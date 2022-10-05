@@ -58,9 +58,9 @@ collections = [ "algorithms", "snarkvm-console-collections/default" ]
 network = [ "collections", "snarkvm-console-network/default" ]
 program = [ "network", "snarkvm-console-program/default" ]
 types = [ "snarkvm-console-types" ]
-embedded = [ 
-  "snarkvm-console-account/embedded",
-  "snarkvm-console-algorithms/embedded",
-  "snarkvm-console-collections/embedded",
-  "snarkvm-console-network/embedded",
-  "snarkvm-console-program/embedded" ]
+enclave = [ 
+  "snarkvm-console-account/enclave",
+  "snarkvm-console-algorithms/enclave",
+  "snarkvm-console-collections/enclave",
+  "snarkvm-console-network/enclave",
+  "snarkvm-console-program/enclave" ]

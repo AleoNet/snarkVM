@@ -40,4 +40,4 @@ version = "0.4.0"
 default = [ "parallel", "snarkvm-console-algorithms/default" ]
 parallel = [ "rayon", "snarkvm-console-algorithms/default" ]
 timer = [ "aleo-std/timer", "aleo-std/timed", "snarkvm-console-algorithms/default" ]
-embedded = [ "snarkvm-console-algorithms/embedded" ]
+enclave = [ "snarkvm-console-algorithms/enclave" ]

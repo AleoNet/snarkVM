@@ -40,10 +40,10 @@ graph_key = [ "private_key" ]
 private_key = [ "compute_key" ]
 signature = [ "compute_key" ]
 view_key = [ ]
-embedded = [ 
+enclave = [ 
   "compute_key",
   "graph_key",
   "private_key",
   "signature",
   "view_key",
-  "snarkvm-console-network/embedded" ]
+  "snarkvm-console-network/enclave" ]

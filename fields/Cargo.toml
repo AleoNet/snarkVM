@@ -64,4 +64,4 @@ version = "1.0"
 default = [ "parallel", "snarkvm-utilities/default" ]
 parallel = [ "rayon", "snarkvm-utilities/parallel" ]
 profiler = [ "aleo-std/profiler" ]
-embedded = [ "snarkvm-utilities/embedded" ]
+enclave = [ "snarkvm-utilities/enclave" ]

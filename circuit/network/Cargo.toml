@@ -34,4 +34,4 @@ path = "../../console/types"
 [features]
 default = [ "enable_console", "snarkvm-circuit-algorithms/default", "snarkvm-circuit-collections/default", "snarkvm-circuit-types/default" ]
 enable_console = [ "console/default" ]
-embedded = [ "snarkvm-circuit-algorithms/embedded", "snarkvm-circuit-collections/embedded", "snarkvm-circuit-types/embedded" ]
+enclave = [ "snarkvm-circuit-algorithms/enclave", "snarkvm-circuit-collections/enclave", "snarkvm-circuit-types/enclave" ]

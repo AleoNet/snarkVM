@@ -64,10 +64,10 @@ version = "1.0"
 default = [ "snarkvm-console-algorithms/default", "snarkvm-console-collections/default", 
 "snarkvm-console-network-environment/default",
 "snarkvm-utilities/default" ]
-embedded = [ "snarkvm-algorithms/embedded", "snarkvm-console-algorithms/embedded",  
-"snarkvm-console-collections/embedded",
+enclave = [ "snarkvm-algorithms/enclave", "snarkvm-console-algorithms/enclave",  
+"snarkvm-console-collections/enclave",
 "snarkvm-console-network-environment/default",
-"snarkvm-curves/embedded", 
-"snarkvm-fields/embedded",
-"snarkvm-utilities/embedded" ]
+"snarkvm-curves/enclave", 
+"snarkvm-fields/enclave",
+"snarkvm-utilities/enclave" ]
 

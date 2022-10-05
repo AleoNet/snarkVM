@@ -57,4 +57,4 @@ default-features = false
 
 [features]
 default = [ "snarkvm-circuit-account/default", "snarkvm-circuit-algorithms/default", "snarkvm-circuit-environment/default", "snarkvm-circuit-types/default" ]
-embedded = [ "snarkvm-circuit-account/embedded", "snarkvm-circuit-algorithms/embedded", "snarkvm-circuit-environment/embedded", "snarkvm-circuit-types/embedded" ]
+enclave = [ "snarkvm-circuit-account/enclave", "snarkvm-circuit-algorithms/enclave", "snarkvm-circuit-environment/enclave", "snarkvm-circuit-types/enclave" ]
