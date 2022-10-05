@@ -24,7 +24,7 @@ impl<N: Network> FromStr for ViewKey<N> {
     /// Reads in an account view key from a base58 string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Encode the string into base58.
-        let data = s.from_base58().map_err(|err| anyhow!("{:?}", err))?;
+        let data = bs58::decode(s).into_vec().map_err(|err| anyhow!("{:?}", err))?;
         if data.len() != 39 {
             bail!("Invalid account view key length: found {}, expected 39", data.len())
         } else if data[0..7] != VIEW_KEY_PREFIX {
@@ -43,7 +43,7 @@ impl<N: Network> fmt::Display for ViewKey<N> {
         view_key[0..7].copy_from_slice(&VIEW_KEY_PREFIX);
         self.0.write_le(&mut view_key[7..39]).map_err(|_| fmt::Error)?;
         // Encode the view key into base58.
-        write!(f, "{}", view_key.to_base58())
+        write!(f, "{}", bs58::encode(view_key).into_string())
     }
 }
 

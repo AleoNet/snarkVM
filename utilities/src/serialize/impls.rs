@@ -22,6 +22,8 @@ pub use crate::{
 };
 use crate::{serialize::traits::*, SerializationError};
 
+use bincode::Options;
+
 use std::{borrow::Cow, collections::BTreeMap, marker::PhantomData, rc::Rc, sync::Arc};
 
 impl Valid for bool {
@@ -87,7 +89,11 @@ impl CanonicalDeserialize for String {
         _compress: Compress,
         _validate: Validate,
     ) -> Result<Self, SerializationError> {
-        Ok(bincode::deserialize_from(reader)?)
+        Ok(bincode::DefaultOptions::new()
+            .with_fixint_encoding() // this option is for compatibility with the defaults
+            .allow_trailing_bytes() // so is this
+            .with_limit(10 * 1024)  // a limit to guard against OOMs
+            .deserialize_from(reader)?)
     }
 }
 

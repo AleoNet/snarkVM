@@ -25,7 +25,7 @@ struct BlockRange {
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
-    #[allow(clippy::redundant_clone)]
+    #[allow(clippy::redundant_clone, opaque_hidden_inferred_bound)]
     pub fn routes(&self) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         // GET /testnet3/latest/height
         let latest_height = warp::get()
@@ -130,6 +130,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::body::content_length_limit(10 * 1024 * 1024))
             .and(warp::body::json())
             .and(with(self.ledger_sender.clone()))
+            .and(with(self.ledger.clone()))
             .and_then(Self::transaction_broadcast);
 
         // Return the list of routes.
@@ -224,7 +225,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         program_id: ProgramID<N>,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
-        Ok(reply::json(&ledger.read().get_program(program_id).or_reject()?))
+        let program = if program_id == ProgramID::<N>::from_str("credits.aleo").or_reject()? {
+            Program::<N>::credits().or_reject()?
+        } else {
+            ledger.read().get_program(program_id).or_reject()?
+        };
+
+        Ok(reply::json(&program))
     }
 
     /// Returns the list of current validators.
@@ -276,7 +283,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     async fn transaction_broadcast(
         transaction: Transaction<N>,
         ledger_sender: LedgerSender<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
+        // Validate the transaction.
+        ledger.read().check_transaction(&transaction).or_reject()?;
+
         // Send the transaction to the ledger.
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transaction)).await {
             Ok(()) => Ok("OK"),
