@@ -225,7 +225,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         program_id: ProgramID<N>,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
-        Ok(reply::json(&ledger.read().get_program(program_id).or_reject()?))
+        let program = if program_id == ProgramID::<N>::from_str("credits.aleo").or_reject()? {
+            Program::<N>::credits().or_reject()?
+        } else {
+            ledger.read().get_program(program_id).or_reject()?
+        };
+
+        Ok(reply::json(&program))
     }
 
     /// Returns the list of current validators.
