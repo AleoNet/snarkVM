@@ -144,7 +144,7 @@ version = "1.1.0"
 version = "1"
 
 [dev-dependencies.criterion]
-version = "0.3.6"
+version = "0.4.0"
 
 [dev-dependencies.serde_json]
 version = "1"
