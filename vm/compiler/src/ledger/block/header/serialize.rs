@@ -56,7 +56,9 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        for expected in [*crate::ledger::test_helpers::sample_genesis_block().header()].into_iter() {
+        let mut rng = TestRng::default();
+
+        for expected in [*crate::ledger::test_helpers::sample_genesis_block(&mut rng).header()].into_iter() {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected)?;
@@ -70,7 +72,9 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        for expected in [*crate::ledger::test_helpers::sample_genesis_block().header()].into_iter() {
+        let mut rng = TestRng::default();
+
+        for expected in [*crate::ledger::test_helpers::sample_genesis_block(&mut rng).header()].into_iter() {
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;
             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;

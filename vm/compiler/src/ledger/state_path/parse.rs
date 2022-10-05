@@ -82,12 +82,14 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
+        let mut rng = TestRng::default();
+
         // Ensure type and empty value fails.
         assert!(StatePath::<CurrentNetwork>::parse(&format!("{STATE_PATH_PREFIX}1")).is_err());
         assert!(StatePath::<CurrentNetwork>::parse("").is_err());
 
         // Sample a ledger.
-        let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+        let ledger = crate::ledger::test_helpers::sample_genesis_ledger(&mut rng);
 
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
@@ -110,8 +112,10 @@ mod tests {
 
     #[test]
     fn test_string() -> Result<()> {
+        let mut rng = TestRng::default();
+
         // Sample a ledger.
-        let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+        let ledger = crate::ledger::test_helpers::sample_genesis_ledger(&mut rng);
 
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
@@ -133,8 +137,10 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
+        let mut rng = TestRng::default();
+
         // Sample a ledger.
-        let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+        let ledger = crate::ledger::test_helpers::sample_genesis_ledger(&mut rng);
 
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();

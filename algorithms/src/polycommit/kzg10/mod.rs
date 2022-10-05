@@ -104,8 +104,11 @@ impl<E: PairingEngine> KZG10<E> {
         if max_degree < 1 {
             return Err(PCError::DegreeIsZero);
         }
-        let max_lagrange_size =
-            if max_degree.is_power_of_two() { max_degree } else { max_degree.next_power_of_two() >> 1 };
+        let max_lagrange_size = if max_degree.is_power_of_two() {
+            max_degree
+        } else {
+            max_degree.checked_next_power_of_two().ok_or(PCError::LagrangeBasisSizeIsTooLarge)? >> 1
+        };
 
         if !max_lagrange_size.is_power_of_two() {
             return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
@@ -285,7 +288,10 @@ impl<E: PairingEngine> KZG10<E> {
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(KZGCommitment<E>, KZGRandomness<E>), PCError> {
         Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
-        assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
+        assert_eq!(
+            evaluations.len().checked_next_power_of_two().ok_or(PCError::LagrangeBasisSizeIsTooLarge)?,
+            lagrange_basis.size()
+        );
 
         let commit_time = start_timer!(|| format!(
             "Committing to polynomial of degree {} with hiding_bound: {:?}",

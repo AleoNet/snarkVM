@@ -294,77 +294,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Transaction '{}' already exists in the memory pool.", transaction.id());
         }
 
-        /* Input */
-
-        // Ensure the ledger does not already contain the given input ID.
-        for input_id in transaction.input_ids() {
-            if self.contains_input_id(input_id)? {
-                bail!("Input ID '{input_id}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given serial numbers.
-        for serial_number in transaction.serial_numbers() {
-            if self.contains_serial_number(serial_number)? {
-                bail!("Serial number '{serial_number}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given tag.
-        for tag in transaction.tags() {
-            if self.contains_tag(tag)? {
-                bail!("Tag '{tag}' already exists in the ledger")
-            }
-        }
-
-        /* Output */
-
-        // Ensure the ledger does not already contain the given output ID.
-        for output_id in transaction.output_ids() {
-            if self.contains_output_id(output_id)? {
-                bail!("Output ID '{output_id}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given commitments.
-        for commitment in transaction.commitments() {
-            if self.contains_commitment(commitment)? {
-                bail!("Commitment '{commitment}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given nonces.
-        for nonce in transaction.nonces() {
-            if self.contains_nonce(nonce)? {
-                bail!("Nonce '{nonce}' already exists in the ledger")
-            }
-        }
-
-        /* Program */
-
-        // Ensure that the ledger does not already contain the given program ID.
-        if let Transaction::Deploy(_, deployment, _) = &transaction {
-            let program_id = deployment.program_id();
-            if self.contains_program_id(program_id)? {
-                bail!("Program ID '{program_id}' already exists in the ledger")
-            }
-        }
-
-        /* Metadata */
-
-        // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in transaction.transition_public_keys() {
-            if self.contains_tpk(tpk)? {
-                bail!("Transition public key '{tpk}' already exists in the ledger")
-            }
-        }
-
-        // Ensure the ledger does not already contain a given transition commitment.
-        for tcm in transaction.transition_commitments() {
-            if self.contains_tcm(tcm)? {
-                bail!("Transition commitment '{tcm}' already exists in the ledger")
-            }
-        }
+        // Check that the transaction is well formed and unique.
+        self.check_transaction(&transaction)?;
 
         // Insert the transaction to the memory pool.
         self.memory_pool.insert(transaction.id(), transaction);
@@ -401,9 +332,27 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
-        // TODO (raychu86): Add logic to transaction selection from the mempool.
         // Construct the transactions for the block.
-        let transactions = self.memory_pool.values().collect::<Transactions<N>>();
+        let transactions = {
+            // TODO (raychu86): Add more sophisticated logic for transaction selection.
+
+            // Add the transactions from the memory pool that do not have input collisions.
+            let mut transcations = Vec::new();
+            let mut input_ids = Vec::new();
+
+            'outer: for transaction in self.memory_pool.values() {
+                for input_id in transaction.input_ids() {
+                    if input_ids.contains(&input_id) {
+                        continue 'outer;
+                    }
+                }
+
+                transcations.push(transaction);
+                input_ids.extend(transaction.input_ids());
+            }
+
+            transcations.into_iter().collect::<Transactions<N>>()
+        };
 
         // Select the prover solutions from the memory pool.
         let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_NUM_PROOFS).cloned().collect::<Vec<_>>();
@@ -643,8 +592,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
-        // Ensure each transaction is well-formed.
-        if !block.transactions().par_iter().all(|(_, transaction)| self.vm.verify(transaction)) {
+        // Ensure each transaction is well-formed and unique.
+        if !block.transactions().par_iter().all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
             bail!("Invalid transaction found in the transactions list");
         }
 
@@ -732,10 +681,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 ledger.vm.finalize(transaction)?;
             }
 
-            // Clear the memory pool of these transactions.
-            for transaction_id in block.transaction_ids() {
-                ledger.memory_pool.remove(transaction_id);
-            }
+            // Clear the memory pool of the transactions that are now invalid.
+            ledger.memory_pool.retain(|_, transaction| self.check_transaction(transaction).is_ok());
 
             // Clear the coinbase memory pool of the coinbase proofs if a new epoch has started.
             if block.epoch_number() > self.latest_epoch_number() {
@@ -896,65 +843,112 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         unimplemented!()
     }
 
-    // /// Checks the given transaction is well formed and unique.
-    // pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
-    //     let transaction_id = transaction.id();
-    //     if self.contains_transaction_id(&transaction_id)? {
-    //         bail!("Transaction '{transaction_id}' already exists in the ledger")
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given transition public keys.
-    //     for tpk in transaction.transition_public_keys() {
-    //         if self.contains_transition_public_key(tpk)? {
-    //             bail!("Transition public key '{tpk}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     // Ensure that the origin are valid.
-    //     for origin in transaction.origins() {
-    //         if !self.contains_origin(origin)? {
-    //             bail!("The given transaction references a non-existent origin {}", &origin)
-    //         }
-    //
-    //         match origin {
-    //             // Check that the commitment exists in the ledger.
-    //             Origin::Commitment(commitment) => {
-    //                 if !self.contains_commitment(commitment)? {
-    //                     bail!("The given transaction references a non-existent commitment {}", &commitment)
-    //                 }
-    //             }
-    //             // TODO (raychu86): Ensure that the state root exists in the ledger.
-    //             // Check that the state root is an existing state root.
-    //             Origin::StateRoot(_state_root) => {
-    //                 bail!("State roots are currently not supported (yet)")
-    //             }
-    //         }
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given serial numbers.
-    //     for serial_number in transaction.serial_numbers() {
-    //         if self.contains_serial_number(serial_number)? {
-    //             bail!("Serial number '{serial_number}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given commitments.
-    //     for commitment in transaction.commitments() {
-    //         if self.contains_commitment(commitment)? {
-    //             bail!("Commitment '{commitment}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     // Ensure the ledger does not already contain a given nonces.
-    //     for nonce in transaction.nonces() {
-    //         if self.contains_nonce(nonce)? {
-    //             bail!("Nonce '{nonce}' already exists in the ledger")
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
-    //
+    /// Checks the given transaction is well formed and unique.
+    pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
+        let transaction_id = transaction.id();
+
+        // Ensure the transaction is valid.
+        if !self.vm.verify(transaction) {
+            bail!("Transaction '{transaction_id}' is invalid")
+        }
+
+        // Ensure the ledger does not already contain the given transaction ID.
+        if self.contains_transaction_id(&transaction_id)? {
+            bail!("Transaction '{transaction_id}' already exists in the ledger")
+        }
+
+        /* Input */
+
+        // Ensure the ledger does not already contain the given input ID.
+        for input_id in transaction.input_ids() {
+            if self.contains_input_id(input_id)? {
+                bail!("Input ID '{input_id}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given serial numbers.
+        for serial_number in transaction.serial_numbers() {
+            if self.contains_serial_number(serial_number)? {
+                bail!("Serial number '{serial_number}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given tag.
+        for tag in transaction.tags() {
+            if self.contains_tag(tag)? {
+                bail!("Tag '{tag}' already exists in the ledger")
+            }
+        }
+
+        // Ensure that the origin are valid.
+        for origin in transaction.origins() {
+            match origin {
+                // Check that the commitment exists in the ledger.
+                Origin::Commitment(commitment) => {
+                    if !self.contains_commitment(commitment)? {
+                        bail!("The given transaction references a non-existent commitment {}", &commitment)
+                    }
+                }
+                // TODO (raychu86): Ensure that the state root exists in the ledger.
+                // Check that the state root is an existing state root.
+                Origin::StateRoot(_state_root) => {
+                    bail!("State roots are currently not supported (yet)")
+                }
+            }
+        }
+
+        /* Output */
+
+        // Ensure the ledger does not already contain the given output ID.
+        for output_id in transaction.output_ids() {
+            if self.contains_output_id(output_id)? {
+                bail!("Output ID '{output_id}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given commitments.
+        for commitment in transaction.commitments() {
+            if self.contains_commitment(commitment)? {
+                bail!("Commitment '{commitment}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given nonces.
+        for nonce in transaction.nonces() {
+            if self.contains_nonce(nonce)? {
+                bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        /* Program */
+
+        // Ensure that the ledger does not already contain the given program ID.
+        if let Transaction::Deploy(_, deployment, _) = &transaction {
+            let program_id = deployment.program_id();
+            if self.contains_program_id(program_id)? {
+                bail!("Program ID '{program_id}' already exists in the ledger")
+            }
+        }
+
+        /* Metadata */
+
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in transaction.transition_public_keys() {
+            if self.contains_tpk(tpk)? {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given transition commitment.
+        for tcm in transaction.transition_commitments() {
+            if self.contains_tcm(tcm)? {
+                bail!("Transition commitment '{tcm}' already exists in the ledger")
+            }
+        }
+
+        Ok(())
+    }
+
     // /// Adds the given transaction to the transaction store.
     // pub fn insert(&mut self, transaction: Transaction<N>) -> Result<()> {
     //     // Check that there are not collisions with existing transactions.
@@ -1038,24 +1032,20 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
     pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>, ProgramMemory<CurrentNetwork>>;
 
-    pub(crate) fn sample_genesis_private_key() -> PrivateKey<CurrentNetwork> {
+    pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
         *INSTANCE.get_or_init(|| {
-            // Initialize the RNG.
-            let rng = &mut TestRng::fixed(1245897092);
             // Initialize a new caller.
             PrivateKey::<CurrentNetwork>::new(rng).unwrap()
         })
     }
 
-    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
+    pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
         static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
                 let vm = crate::ledger::vm::test_helpers::sample_vm();
-                // Initialize the RNG.
-                let rng = &mut TestRng::fixed(1245897092);
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
@@ -1064,17 +1054,32 @@ pub(crate) mod test_helpers {
             .clone()
     }
 
-    pub(crate) fn sample_genesis_ledger() -> CurrentLedger {
+    pub(crate) fn sample_genesis_block_with_pk(
+        rng: &mut TestRng,
+        private_key: PrivateKey<CurrentNetwork>,
+    ) -> Block<CurrentNetwork> {
+        static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize the VM.
+                let vm = crate::ledger::vm::test_helpers::sample_vm();
+                // Return the block.
+                Block::genesis(&vm, &private_key, rng).unwrap()
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_genesis_ledger(rng: &mut TestRng) -> CurrentLedger {
         static INSTANCE: OnceCell<CurrentLedger> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
+                // Sample the genesis private key.
+                let private_key = sample_genesis_private_key(rng);
                 // Sample the genesis block.
-                let genesis = sample_genesis_block();
-                // Sample the genesis address.
-                let private_key = sample_genesis_private_key();
-                let address = Address::try_from(&private_key).unwrap();
+                let genesis = sample_genesis_block_with_pk(rng, private_key);
 
-                // Initialize the ledger with the genesis block.
+                // Initialize the ledger with the genesis block and the associated private key.
+                let address = Address::try_from(&private_key).unwrap();
                 let ledger = CurrentLedger::new_with_genesis(&genesis, address, None).unwrap();
                 assert_eq!(0, ledger.latest_height());
                 assert_eq!(genesis.hash(), ledger.latest_hash());
@@ -1193,9 +1198,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger();
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
         let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
@@ -1214,6 +1219,8 @@ mod tests {
 
         // Ensure that the VM can't re-deploy the same program.
         assert!(ledger.vm.finalize(&transaction).is_err());
+        // Ensure that the ledger deems the same transaction invalid.
+        assert!(ledger.check_transaction(&transaction).is_err());
         // Ensure that the ledger cannot add the same transaction.
         assert!(ledger.add_to_memory_pool(transaction).is_err());
     }
@@ -1224,9 +1231,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger();
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
         let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
@@ -1240,6 +1247,8 @@ mod tests {
         assert_eq!(ledger.latest_height(), 1);
         assert_eq!(ledger.latest_hash(), next_block.hash());
 
+        // Ensure that the ledger deems the same transaction invalid.
+        assert!(ledger.check_transaction(&transaction).is_err());
         // Ensure that the ledger cannot add the same transaction.
         assert!(ledger.add_to_memory_pool(transaction).is_err());
     }
@@ -1250,7 +1259,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key, view key, and address.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         let view_key = ViewKey::try_from(private_key).unwrap();
         let address = Address::try_from(&view_key).unwrap();
 
@@ -1307,11 +1316,11 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         let address = Address::try_from(&private_key).unwrap();
 
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger();
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Fetch the proof target and epoch challenge for the block.
         let proof_target = ledger.latest_proof_target().unwrap();
@@ -1337,11 +1346,11 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
-        let private_key = test_helpers::sample_genesis_private_key();
+        let private_key = test_helpers::sample_genesis_private_key(rng);
         let address = Address::try_from(&private_key).unwrap();
 
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger();
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
         let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
