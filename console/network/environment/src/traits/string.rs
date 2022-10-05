@@ -40,8 +40,18 @@ pub mod string_parser {
     };
 
     /// The list of unsupported "invisible" code points.
-    const UNSUPPORTED_CODE_POINTS: [&str; 9] =
-        ["\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}"];
+    /// See [Sanitizer::parse_safe_char] for an explanation.
+    ///
+    /// Instead of using this list to test whether its elements occur in a string literal,
+    /// we should probably rework the string literal parsing code
+    /// to call [Sanitizer::parse_safe_char],
+    /// and remove this list.
+    const UNSUPPORTED_CODE_POINTS: [&str; 39] = [
+        "\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07", "\x08", "\x0b", "\x0c", "\x0e", "\x0f", "\x10",
+        "\x11", "\x12", "\x13", "\x14", "\x15", "\x16", "\x17", "\x18", "\x19", "\x1a", "\x1b", "\x1c", "\x1d", "\x1e",
+        "\x1f", "\x7f", "\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}",
+        "\u{2069}",
+    ];
 
     /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
     /// hexadecimal numerals. We will combine this later with parse_escaped_char
@@ -185,4 +195,24 @@ pub mod string_parser {
         // loop won't accidentally match your closing delimiter!
         delimited(char('"'), build_string, char('"'))(input)
     }
+}
+
+#[test]
+fn test_parse_string() {
+    // to use parse_string_wrapper instead of string_parser::parse_string::<nom::error::VerboseError<&str>> in the tests below:
+    fn parse_string_wrapper(input: &str) -> crate::ParserResult<String> {
+        string_parser::parse_string(input)
+    }
+
+    // tests some correct string literals:
+    assert_eq!(("", String::from("")), parse_string_wrapper("\"\"").unwrap());
+    assert_eq!(("", String::from("abc")), parse_string_wrapper("\"abc\"").unwrap());
+    assert_eq!((" and more", String::from("abc")), parse_string_wrapper("\"abc\" and more").unwrap());
+    assert_eq!(("", String::from("\r")), parse_string_wrapper("\"\r\"").unwrap());
+    assert_eq!(("", String::from("4\u{4141}x\x09")), parse_string_wrapper("\"4\u{4141}x\x09\"").unwrap());
+
+    // test rejection of disallowed characters:
+    assert!(parse_string_wrapper("\"hel\x08lo\"").is_err());
+    assert!(parse_string_wrapper("\"hel\x1flo\"").is_err());
+    assert!(parse_string_wrapper("\"hel\u{2069}lo\"").is_err());
 }

@@ -28,8 +28,6 @@ use crate::PrivateKey;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Scalar};
 
-use base58::{FromBase58, ToBase58};
-
 /// The account view key used to decrypt records and ciphertext.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ViewKey<N: Network>(Scalar<N>);
