@@ -30,8 +30,12 @@ pub struct ExecutionRequest<N: Network> {
 
 impl<N: Network> ExecutionRequest<N> {
     /// Sends the request to the given endpoint.
-    pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Self {
-        Self { transaction, address, program_id }
+    pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Result<Self> {
+        ensure!(
+            matches!(transaction, Transaction::Execute(_, _, _)),
+            "Cannot create an execution request with a deploy transaction"
+        );
+        Ok(Self { transaction, address, program_id })
     }
 
     /// Sends the request to the given endpoint.
@@ -74,15 +78,19 @@ impl<'de, N: Network> Deserialize<'de> for ExecutionRequest<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
         let request = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
-        Ok(Self::new(
+        // Build the execution request.
+        let execution_request = Self::new(
             // Retrieve the execution transaction.
             serde_json::from_value(request["transaction"].clone()).map_err(de::Error::custom)?,
             // Retrieve the address of the program.
             serde_json::from_value(request["address"].clone()).map_err(de::Error::custom)?,
             // Retrieve the program ID.
             serde_json::from_value(request["program_id"].clone()).map_err(de::Error::custom)?,
-        ))
+        );
+        match execution_request {
+            Ok(execution_request) => Ok(execution_request),
+            Err(error) => Err(de::Error::custom(error.to_string())),
+        }
     }
 }
 
@@ -92,12 +100,16 @@ pub struct ExecuteResponse<N: Network> {
 
 impl<N: Network> ExecuteResponse<N> {
     /// Initializes a new deploy response.
-    pub const fn new(transaction: Transaction<N>) -> Self {
-        Self { transaction }
+    pub fn new(transaction: Transaction<N>) -> Result<Self> {
+        ensure!(
+            matches!(transaction, Transaction::Execute(_, _, _)),
+            "Cannot create an execution response with a deploy transaction"
+        );
+        Ok(Self { transaction })
     }
 
     /// Returns the execution transaction.
-    pub const fn transaction(&self) -> &Transaction<N> {
+    pub fn transaction(&self) -> &Transaction<N> {
         &self.transaction
     }
 }
@@ -116,11 +128,15 @@ impl<'de, N: Network> Deserialize<'de> for ExecuteResponse<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the response from a string into a value.
         let response = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
-        Ok(Self::new(
+        // Build the execution response.
+        let execution_response = Self::new(
             // Retrieve the execution transaction.
             serde_json::from_value(response["transaction"].clone()).map_err(de::Error::custom)?,
-        ))
+        );
+        match execution_response {
+            Ok(execution_response) => Ok(execution_response),
+            Err(error) => Err(de::Error::custom(error.to_string())),
+        }
     }
 }
 
@@ -217,7 +233,7 @@ impl<N: Network> Package<N> {
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
-                let request = ExecutionRequest::new(execution_transaction, *caller, *program_id);
+                let request = ExecutionRequest::new(execution_transaction, *caller, *program_id)?;
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
                 Ok((execution_response, response.transaction))
@@ -227,47 +243,100 @@ impl<N: Network> Package<N> {
     }
 }
 
-// TODO: Fix tests
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     type CurrentNetwork = snarkvm_console::network::Testnet3;
-//     type CurrentAleo = snarkvm_circuit::network::AleoV0;
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
+    type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
-//     #[test]
-//     fn test_execute() {
-//         // Samples a new package at a temporary directory.
-//         let (directory, package) = crate::package::test_helpers::sample_package();
+    #[test]
+    fn test_execute() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
 
-//         // Deploy the package.
-//         let (execution_response, execution_transaction) = package.execute::<CurrentAleo>(None).unwrap();
-//         if let Transaction::Execute(_, execution, _) = execution_transaction {
-//             // Ensure the deployment edition matches.
-//             assert_eq!(<CurrentNetwork as Network>::EDITION, execution.edition());
-//             // TODO: check the transitions
-//             // TODO: check the execution response.
-//         }
+        // Initialize caller.
+        let caller_private_key = package.manifest_file().development_private_key();
+        let caller = Address::try_from(caller_private_key).unwrap();
+        let caller_credits = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
 
-//         // Proactively remove the temporary directory (to conserve space).
-//         std::fs::remove_dir_all(directory).unwrap();
-//     }
+        // Initialize the function inputs.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("99u64").unwrap();
 
-//     #[test]
-//     fn test_execute_with_import() {
-//         // Samples a new package at a temporary directory.
-//         let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        // Deploy the package.
+        let (execution_response, execution_transaction) = package
+            .execute::<CurrentAleo, _>(
+                None,
+                caller_private_key,
+                caller_credits,
+                Identifier::from_str("mint").unwrap(),
+                &[r0, r1],
+                &mut rand::thread_rng(),
+            )
+            .unwrap();
+        if let Transaction::Execute(_, execution, Some(_)) = execution_transaction {
+            // Ensure the deployment edition matches.
+            assert_eq!(<CurrentNetwork as Network>::EDITION, execution.edition());
+            // Ensure that the number of outputs is correct.
+            assert_eq!(execution_response.outputs().len(), 1);
+            // Ensure that the execution output is correct.
+            assert!(execution_response.outputs().iter().all(|output| matches!(output, Value::Record(_record))));
+        }
 
-//         // Deploy the package.
-//         let (execution_response, execution_transaction) = package.execute::<CurrentAleo>(None).unwrap();
-//         if let Transaction::Execute(_, execution, _) = execution_transaction {
-//             // Ensure the deployment edition matches.
-//             assert_eq!(<CurrentNetwork as Network>::EDITION, execution.edition());
-//             // TODO: check the transitions
-//             // TODO: check the execution response.
-//         }
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 
-//         // Proactively remove the temporary directory (to conserve space).
-//         std::fs::remove_dir_all(directory).unwrap();
-//     }
-// }
+    #[test]
+    fn test_execute_with_import() {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+
+        // Initialize caller 0.
+        let caller0_private_key = package.manifest_file().development_private_key();
+        let caller0 = Address::try_from(caller0_private_key).unwrap();
+        let caller0_credits = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
+            "{{ owner: {caller0}.private, gates: 5u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
+
+        // Initialize caller 1.
+        let caller1_private_key = PrivateKey::<CurrentNetwork>::new(&mut rand::thread_rng()).unwrap();
+        let caller1 = Address::try_from(&caller1_private_key).unwrap();
+
+        // Initialize the function inputs.
+        let r0 = Value::<CurrentNetwork>::from_str(&format!(
+            "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("99u64").unwrap();
+
+        // Deploy the package.
+        let (execution_response, execution_transaction) = package
+            .execute::<CurrentAleo, _>(
+                None,
+                caller0_private_key,
+                caller0_credits,
+                Identifier::from_str("transfer").unwrap(),
+                &[r0, r1, r2],
+                &mut rand::thread_rng(),
+            )
+            .unwrap();
+        if let Transaction::Execute(_, execution, Some(_)) = execution_transaction {
+            // Ensure the deployment edition matches.
+            assert_eq!(<CurrentNetwork as Network>::EDITION, execution.edition());
+            // Ensure that the number of outputs is correct.
+            assert_eq!(execution_response.outputs().len(), 2);
+            // Ensure that the execution output is correct.
+            assert!(execution_response.outputs().iter().all(|output| matches!(output, Value::Record(_record))));
+        }
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+}
