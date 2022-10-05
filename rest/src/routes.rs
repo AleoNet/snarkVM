@@ -25,7 +25,7 @@ struct BlockRange {
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
-    #[allow(clippy::redundant_clone)]
+    #[allow(clippy::redundant_clone, opaque_hidden_inferred_bound)]
     pub fn routes(&self) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         // GET /testnet3/latest/height
         let latest_height = warp::get()
