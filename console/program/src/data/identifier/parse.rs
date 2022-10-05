@@ -45,7 +45,7 @@ impl<N: Network> FromStr for Identifier<N> {
 
         // Ensure the identifier consists of ASCII letters, ASCII digits, and underscores.
         if identifier.chars().any(|character| !character.is_ascii_alphanumeric() && character != '_') {
-            bail!("Identifier '{identifier}' must consists of letters, digits, and underscores")
+            bail!("Identifier '{identifier}' must consist of letters, digits, and underscores")
         }
 
         // Ensure identifier fits within the data capacity of the base field.
