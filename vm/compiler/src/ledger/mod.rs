@@ -44,7 +44,7 @@ mod iterators;
 mod latest;
 
 use crate::{
-    ledger::helpers::{coinbase_reward, coinbase_target, proof_target},
+    ledger::helpers::{coinbase_reward, coinbase_target, estimated_block_height, proof_target},
     program::Program,
     CoinbaseProvingKey,
     CoinbasePuzzle,
@@ -373,6 +373,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Appends the given prover solution to the coinbase memory pool.
     pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
+        // Ensure that prover solutions are not accepted after 10 years.
+        if self.latest_height() as u64 > estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10) {
+            bail!("Coinbase proofs are no longer accepted after year 10.");
+        }
+
         // Ensure that the prover solution is greater than the proof target.
         if prover_solution.to_target()? < self.latest_proof_target()? {
             bail!("Prover puzzle does not meet the proof target requirements.")
@@ -410,7 +415,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let coinbase_proof = if cumulative_prover_target < self.latest_coinbase_target()? as u128 {
+        let block_height_at_year_10 = estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10);
+        let coinbase_proof = if self.latest_height() as u64 > block_height_at_year_10
+            || cumulative_prover_target < self.latest_coinbase_target()? as u128
+        {
             None
         } else {
             let epoch_challenge = self.latest_epoch_challenge()?;
@@ -648,6 +656,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
+            if block.height() as u64 > estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10) {
+                bail!("Coinbase proofs are no longer accepted after year 10.");
+            }
+
             if coinbase_proof.partial_solutions.len() > MAX_NUM_PROOFS {
                 bail!(
                     "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
