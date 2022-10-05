@@ -111,7 +111,7 @@ pub mod arithmetic {
     #[inline(always)]
     pub fn sbb(a: &mut u64, b: u64, borrow: u64) -> u64 {
         let tmp = (1u128 << 64) + u128::from(*a) - u128::from(b) - u128::from(borrow);
-        let carry = if tmp >> 64 == 0 { 1 } else { 0 };
+        let carry = u64::from(tmp >> 64 == 0);
         *a = tmp as u64;
         carry
     }

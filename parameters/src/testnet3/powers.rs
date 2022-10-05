@@ -148,7 +148,12 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// and updates `Self` in place with the new powers.
     pub fn download_up_to(&mut self, target_degree: usize) -> Result<()> {
         // Initialize the first degree to download.
-        let mut next_degree = std::cmp::max(self.current_degree.next_power_of_two(), DEGREE_16);
+        let mut next_degree = std::cmp::max(
+            self.current_degree
+                .checked_next_power_of_two()
+                .ok_or_else(|| anyhow!("The current degree is too large"))?,
+            DEGREE_16,
+        );
 
         // Determine the degrees to download.
         let mut download_queue = Vec::new();

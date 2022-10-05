@@ -33,7 +33,7 @@ pub enum InputID<A: Aleo> {
     /// The ciphertext hash of the private input.
     Private(Field<A>),
     /// The `(commitment, gamma, serial_number, tag)` tuple of the record input.
-    Record(Field<A>, Group<A>, Field<A>, Field<A>),
+    Record(Field<A>, Box<Group<A>>, Field<A>, Field<A>),
     /// The hash of the external record input.
     ExternalRecord(Field<A>),
 }
@@ -54,7 +54,7 @@ impl<A: Aleo> Inject for InputID<A> {
             // Inject commitment and gamma as `Mode::Private`, and the expected serial number and tag as `Mode::Public`.
             console::InputID::Record(commitment, gamma, serial_number, tag) => Self::Record(
                 Field::new(Mode::Private, commitment),
-                Group::new(Mode::Private, gamma),
+                Box::new(Group::new(Mode::Private, gamma)),
                 Field::new(Mode::Public, serial_number),
                 Field::new(Mode::Public, tag),
             ),
