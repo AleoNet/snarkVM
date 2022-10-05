@@ -87,7 +87,7 @@ version = "1.0"
 version = "1.0"
 
 [dependencies.time]
-version = "0.3.14"
+version = "0.3.15"
 
 [dependencies.tracing]
 version = "0.1"
