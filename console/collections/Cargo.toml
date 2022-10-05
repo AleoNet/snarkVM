@@ -22,7 +22,7 @@ default-features = false
 features = [ "field", "integers" ]
 
 [dependencies.aleo-std]
-version = "0.1.14"
+version = "0.1.15"
 default-features = false
 
 [dependencies.rayon]
