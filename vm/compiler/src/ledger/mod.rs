@@ -725,8 +725,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 ledger.memory_pool.remove(transaction_id);
             }
 
-            // Clear the coinbase memory pool of the coinbase proofs
-            ledger.coinbase_memory_pool.clear();
+            // Clear the coinbase memory pool of the coinbase proofs if a new epoch has started.
+            if block.epoch_number() > self.latest_epoch_number() {
+                ledger.coinbase_memory_pool.clear();
+            }
 
             *self = Self {
                 current_hash: ledger.current_hash,
