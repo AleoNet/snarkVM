@@ -24,9 +24,6 @@ impl<N: Network> FromBits for Identifier<N> {
         // the final step checks the byte-aligned field element is within the data capacity.
         ensure!(bits_le.len() <= Field::<N>::size_in_bits(), "Identifier exceeds the maximum bits allowed");
 
-        // Recover the field element from the bits.
-        let field = Field::<N>::from_bits_le(bits_le)?;
-
         // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
         let bytes = bits_le.chunks(8).map(u8::from_bits_le).collect::<Result<Vec<u8>>>()?;
 
@@ -37,13 +34,8 @@ impl<N: Network> FromBits for Identifier<N> {
             None => bytes.len(),  // No null character found, so the identifier is the full length.
         };
 
-        // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = Field::<N>::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        match num_bytes <= max_bytes {
-            // Return the identifier.
-            true => Ok(Self(field, u8::try_from(num_bytes).or_halt_with::<N>("Invalid identifier byte size"))),
-            false => bail!("Identifier exceeds the maximum capacity allowed"),
-        }
+        // Parse the bytes as a UTF-8 string.
+        Self::from_str(str::from_utf8(&bytes[0..num_bytes])?)
     }
 
     /// Initializes a new identifier from a list of big-endian bits *without* leading zeros.

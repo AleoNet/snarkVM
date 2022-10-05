@@ -26,7 +26,7 @@ mod to_field;
 
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
-use snarkvm_utilities::{FromBits as FB, ToBits as TB};
+use snarkvm_utilities::ToBits as TB;
 
 /// An identifier is an **immutable** UTF-8 string,
 /// represented as a **constant** field element in the circuit.
