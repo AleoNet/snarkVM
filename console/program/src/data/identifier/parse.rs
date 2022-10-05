@@ -37,15 +37,15 @@ impl<N: Network> FromStr for Identifier<N> {
 
     /// Reads in an identifier from a string.
     fn from_str(identifier: &str) -> Result<Self, Self::Err> {
-        // Ensure the identifier is not an empty string, and start with an ASCII letter.
+        // Ensure the identifier is not an empty string, and starts with an ASCII letter.
         match identifier.chars().next() {
             Some(character) => ensure!(character.is_ascii_alphabetic(), "Identifier must start with a letter"),
-            None => bail!("Identifier cannot be an empty string"),
+            None => bail!("Identifier cannot be empty"),
         }
 
-        // Ensure the identifier consists of ASCII letters and underscores.
+        // Ensure the identifier consists of ASCII letters, ASCII digits, and underscores.
         if identifier.chars().any(|character| !character.is_ascii_alphanumeric() && character != '_') {
-            bail!("Identifier '{identifier}' must consists of letters and underscores")
+            bail!("Identifier '{identifier}' must consists of letters, digits, and underscores")
         }
 
         // Ensure identifier fits within the data capacity of the base field.
