@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_compiler::cow_to_cloned;
 use snarkvm_console::{
     account::PrivateKey,
     prelude::{de, Deserializer, Zero},
@@ -351,11 +352,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let ledger_reader = ledger.read();
-        let records = ledger_reader
+        let records = ledger
+            .read()
             .find_record_ciphertexts(&view_key, RecordsFilter::Unspent)
             .or_reject()?
-            .map(|(_commitment, record_ciphertext)| record_ciphertext)
+            .map(|(_commitment, record_ciphertext)| cow_to_cloned!(record_ciphertext))
             .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
