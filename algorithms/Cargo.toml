@@ -177,7 +177,6 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 profiler = [ "aleo-std/profiler" ]
-
 crypto_hash = [ ]
 fft = [ ]
 msm = [ ]
