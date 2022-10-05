@@ -755,4 +755,25 @@ mod tests {
 
         check_parser("call noop", CallOperator::from_str("noop").unwrap(), vec![], vec![])
     }
+
+    #[test]
+    fn test_display() {
+        for expected in [
+            "call foo",
+            "call foo r0",
+            "call foo r0.owner",
+            "call foo r0 r1",
+            "call foo r0.owner r0.gates",
+            "call foo into r0",
+            "call foo into r0 r1",
+            "call foo into r0 r1 r2",
+            "call foo r0 into r1",
+            "call foo r0 r1 into r2",
+            "call foo r0 r1 into r2 r3",
+            "call foo r0 r1 r2 into r3 r4",
+            "call foo r0 r1 r2 into r3 r4 r5",
+        ] {
+            assert_eq!(Call::<CurrentNetwork>::from_str(expected).unwrap().to_string(), expected);
+        }
+    }
 }
