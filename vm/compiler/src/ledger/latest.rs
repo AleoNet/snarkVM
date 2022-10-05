@@ -62,8 +62,41 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         self.get_transactions(self.current_height)
     }
 
+    /// Returns the latest epoch number.
+    pub fn latest_epoch_number(&self) -> u64 {
+        self.current_round / NUM_ROUNDS_PER_EPOCH as u64
+    }
+
     /// Returns the latest epoch challenge.
     pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
-        EpochChallenge::new(self.latest_round().saturating_add(1), self.latest_hash(), COINBASE_PUZZLE_DEGREE)
+        // Get the latest epoch number.
+        let latest_epoch_number = self.latest_epoch_number();
+
+        // Get the epoch's starting round (multiple of `NUM_ROUNDS_PER_EPOCH`).
+        let epoch_starting_round = self.current_round - self.current_round % NUM_ROUNDS_PER_EPOCH as u64;
+
+        // Fetch the epoch block hash (last block of the previous epoch).
+        let epoch_block_hash = match epoch_starting_round {
+            // Return the default block hash for the genesis epoch.
+            0 => Default::default(),
+            // Return the block hash of the block right before the epoch updated.
+            // TODO (raychu86): This needs to be fixed when rounds become decoupled from block heights.
+            //  This should fetch the block hash of the latest valid block before the end of the epoch.
+            round => {
+                let previous_round_number = u32::try_from(round - 1)?;
+
+                let block_hash = self.get_hash(previous_round_number)?;
+
+                // TODO (raychu86): Remove this check if the above TODO is fixed.
+                // Ensure that the height and round number do not deviate.
+                if self.get_header(previous_round_number)?.round() != previous_round_number as u64 {
+                    bail!("Round number does not match the block height")
+                }
+
+                block_hash
+            }
+        };
+
+        EpochChallenge::new(latest_epoch_number, epoch_block_hash, COINBASE_PUZZLE_DEGREE)
     }
 }
