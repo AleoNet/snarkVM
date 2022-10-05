@@ -693,6 +693,22 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
+    const TEST_CASES: &[&str] = &[
+        "call foo",
+        "call foo r0",
+        "call foo r0.owner",
+        "call foo r0 r1",
+        "call foo r0.owner r0.gates",
+        "call foo into r0",
+        "call foo into r0 r1",
+        "call foo into r0 r1 r2",
+        "call foo r0 into r1",
+        "call foo r0 r1 into r2",
+        "call foo r0 r1 into r2 r3",
+        "call foo r0 r1 r2 into r3 r4",
+        "call foo r0 r1 r2 into r3 r4 r5",
+    ];
+
     fn check_parser(
         string: &str,
         expected_operator: CallOperator<CurrentNetwork>,
@@ -758,22 +774,20 @@ mod tests {
 
     #[test]
     fn test_display() {
-        for expected in [
-            "call foo",
-            "call foo r0",
-            "call foo r0.owner",
-            "call foo r0 r1",
-            "call foo r0.owner r0.gates",
-            "call foo into r0",
-            "call foo into r0 r1",
-            "call foo into r0 r1 r2",
-            "call foo r0 into r1",
-            "call foo r0 r1 into r2",
-            "call foo r0 r1 into r2 r3",
-            "call foo r0 r1 r2 into r3 r4",
-            "call foo r0 r1 r2 into r3 r4 r5",
-        ] {
-            assert_eq!(Call::<CurrentNetwork>::from_str(expected).unwrap().to_string(), expected);
+        for expected in TEST_CASES {
+            assert_eq!(Call::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
+        }
+    }
+
+    #[test]
+    fn test_bytes() {
+        for case in TEST_CASES {
+            let expected = Call::<CurrentNetwork>::from_str(case).unwrap();
+
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            assert_eq!(expected, Call::read_le(&expected_bytes[..]).unwrap());
+            assert!(Call::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }
