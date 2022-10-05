@@ -682,7 +682,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
 
             // Clear the memory pool of the transactions that are now invalid.
-            ledger.memory_pool.retain(|_, transaction| self.check_transaction(transaction).is_ok());
+            for (transaction_id, transaction) in self.memory_pool() {
+                if ledger.check_transaction(transaction).is_err() {
+                    ledger.memory_pool.remove(transaction_id);
+                }
+            }
 
             // Clear the coinbase memory pool of the coinbase proofs if a new epoch has started.
             if block.epoch_number() > self.latest_epoch_number() {
