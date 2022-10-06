@@ -146,6 +146,7 @@ impl<N: Network> Package<N> {
         endpoint: Option<String>,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
+        fee: u64,
     ) -> Result<Transaction<N>> {
         // Retrieve the main program.
         let program = self.program();
@@ -181,7 +182,7 @@ impl<N: Network> Package<N> {
         // Compute the deployment.
         let deployment = process.deploy::<A, _>(program, rng)?;
         // Compute the additional fee.
-        let (_, additional_fee) = process.execute_additional_fee::<A, _>(private_key, credits, 1, rng)?;
+        let (_, additional_fee) = process.execute_additional_fee::<A, _>(private_key, credits, fee, rng)?;
         // Compute the deployment transaction.
         let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
 
@@ -214,9 +215,10 @@ mod tests {
             "{{ owner: {address}.private, gates: 5u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
+        let fee = 1u64;
 
         // Deploy the package.
-        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record).unwrap();
+        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record, fee).unwrap();
         if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
             // Ensure the deployment edition matches.
             assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
@@ -236,8 +238,9 @@ mod tests {
             "{{ owner: {address}.private, gates: 5u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
+        let fee = 1u64;
 
-        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record).unwrap();
+        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record, fee).unwrap();
         if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
             // Ensure the deployment edition matches.
             assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
