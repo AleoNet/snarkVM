@@ -69,6 +69,9 @@ default-features = false
 [dependencies.colored]
 version = "2"
 
+[dependencies.fixed]
+version = "1.19.0"
+
 [dependencies.indexmap]
 version = "1.8"
 features = [ "serde", "rayon" ]
