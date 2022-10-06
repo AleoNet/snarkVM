@@ -79,7 +79,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected = rng.sample_string(CurrentEnvironment::MAX_STRING_BYTES / 4);
+            let expected = rng.next_string(CurrentEnvironment::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= CurrentEnvironment::MAX_STRING_BYTES as usize);
 

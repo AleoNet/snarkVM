@@ -73,7 +73,7 @@ impl TestRng {
     /// Note that the randomness of the characters is strictly for **testing** purposes;
     /// also note that the disallowed characters are a small fraction of the total set of characters,
     /// and thus the adjustments rarely occur.
-    pub fn sample_string(&mut self, max_bytes: u32) -> String {
+    pub fn next_string(&mut self, max_bytes: u32, is_fixed_size: bool) -> String {
         /// Adjust an unsafe character.
         ///
         /// As our parser rejects certain potentially unsafe characters (see `Sanitizer::parse_safe_char`),
@@ -114,11 +114,12 @@ impl TestRng {
             if ch == '\\' || ch == '\"' { '0' } else { ch }
         }
 
-        (0..self.gen_range(0..max_bytes))
-            .map(|_| self.gen::<char>())
-            .map(adjust_unsafe_char)
-            .map(adjust_backslash_and_doublequote)
-            .collect()
+        let range = match is_fixed_size {
+            true => 0..max_bytes,
+            false => 0..self.gen_range(0..max_bytes),
+        };
+
+        range.map(|_| self.gen::<char>()).map(adjust_unsafe_char).map(adjust_backslash_and_doublequote).collect()
     }
 }
 

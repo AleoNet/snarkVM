@@ -56,7 +56,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
@@ -81,7 +81,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 

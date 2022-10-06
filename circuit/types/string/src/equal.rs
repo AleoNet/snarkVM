@@ -44,7 +44,7 @@ mod tests {
 
     fn sample_string(mode: Mode, rng: &mut TestRng) -> StringType<Circuit> {
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, true);
         StringType::<Circuit>::new(mode, console::StringType::new(&given))
     }
 

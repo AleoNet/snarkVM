@@ -79,7 +79,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Constant, console::StringType::new(&given));
@@ -91,7 +91,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Public, console::StringType::new(&given));
@@ -103,7 +103,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Private, console::StringType::new(&given));
