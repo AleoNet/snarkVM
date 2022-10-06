@@ -73,6 +73,7 @@ impl<E: Environment> StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
+    use snarkvm_utilities::adjust_char::*;
 
     use rand::Rng;
 
@@ -83,7 +84,11 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4)
+                .map(|_| rng.gen::<char>())
+                .map(adjust_unsafe_char)
+                .map(adjust_backslash_and_doublequote)
+                .collect();
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
@@ -103,7 +108,11 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4)
+                .map(|_| rng.gen::<char>())
+                .map(adjust_unsafe_char)
+                .map(adjust_backslash_and_doublequote)
+                .collect();
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 

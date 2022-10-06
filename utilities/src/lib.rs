@@ -43,6 +43,9 @@ pub use std::{boxed::Box, vec::Vec};
 #[macro_use]
 extern crate thiserror;
 
+pub mod adjust_char;
+pub use adjust_char::*;
+
 pub mod biginteger;
 pub use biginteger::*;
 

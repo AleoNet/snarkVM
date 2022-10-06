@@ -96,6 +96,7 @@ impl<N: Network> Literal<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
+    use snarkvm_utilities::adjust_char::*;
 
     type CurrentNetwork = Testnet3;
 
@@ -147,7 +148,11 @@ mod tests {
             check_serialization(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let string: String = (0..(CurrentNetwork::MAX_STRING_BYTES) / 4).map(|_| rng.gen::<char>()).collect();
+            let string: String = (0..(CurrentNetwork::MAX_STRING_BYTES) / 4)
+                .map(|_| rng.gen::<char>())
+                .map(adjust_unsafe_char)
+                .map(adjust_backslash_and_doublequote)
+                .collect();
             check_serialization(Literal::<CurrentNetwork>::String(StringType::new(&string)))?;
         }
         Ok(())
