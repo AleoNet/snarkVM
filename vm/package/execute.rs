@@ -246,6 +246,7 @@ impl<N: Network> Package<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_utilities::TestRng;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
@@ -253,7 +254,7 @@ mod tests {
     #[test]
     fn test_execute() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (_, package) = crate::package::test_helpers::sample_package();
 
         // Initialize caller.
         let caller_private_key = package.manifest_file().development_private_key();
@@ -275,7 +276,7 @@ mod tests {
                 caller_credits,
                 Identifier::from_str("mint").unwrap(),
                 &[r0, r1],
-                &mut rand::thread_rng(),
+                &mut TestRng::default(),
             )
             .unwrap();
         if let Transaction::Execute(_, execution, Some(_)) = execution_transaction {
@@ -286,15 +287,12 @@ mod tests {
             // Ensure that the execution output is correct.
             assert!(execution_response.outputs().iter().all(|output| matches!(output, Value::Record(_record))));
         }
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
     fn test_execute_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (_, package) = crate::package::test_helpers::sample_package_with_import();
 
         // Initialize caller 0.
         let caller0_private_key = package.manifest_file().development_private_key();
@@ -324,7 +322,7 @@ mod tests {
                 caller0_credits,
                 Identifier::from_str("transfer").unwrap(),
                 &[r0, r1, r2],
-                &mut rand::thread_rng(),
+                &mut TestRng::default(),
             )
             .unwrap();
         if let Transaction::Execute(_, execution, Some(_)) = execution_transaction {
@@ -335,8 +333,5 @@ mod tests {
             // Ensure that the execution output is correct.
             assert!(execution_response.outputs().iter().all(|output| matches!(output, Value::Record(_record))));
         }
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 }
