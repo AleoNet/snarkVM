@@ -33,7 +33,7 @@ impl<N: Network> ExecutionRequest<N> {
     pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Result<Self> {
         ensure!(
             matches!(transaction, Transaction::Execute(_, _, _)),
-            "Cannot create an execution request with a deploy transaction"
+            "Cannot create an execution request with a non-execution transaction"
         );
         Ok(Self { transaction, address, program_id })
     }
@@ -103,7 +103,7 @@ impl<N: Network> ExecuteResponse<N> {
     pub fn new(transaction: Transaction<N>) -> Result<Self> {
         ensure!(
             matches!(transaction, Transaction::Execute(_, _, _)),
-            "Cannot create an execution response with a deploy transaction"
+            "Cannot create an execution response with a non-execution transaction"
         );
         Ok(Self { transaction })
     }
