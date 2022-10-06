@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// TODO (raychu86): Transition out of floating point arithmetic to something more precise.
+use super::*;
 
-// TODO (raychu86): Handle downcasting.
+pub type Target = fixed::types::U88F40;
 
 #[allow(unused)]
 ///
@@ -25,15 +25,18 @@
 ///     S = Starting supply.
 ///     H_Y1 = Expected block height at year 1.
 ///
-pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> u64 {
+pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> Result<u64> {
     // The staking percentage at genesis.
     const STAKING_PERCENTAGE: f64 = 0.025f64; // 2.5%
+    let staking_percentage_fixed = Target::from_num(STAKING_PERCENTAGE);
 
+    // Calculate the estimated block height at year 1.
     let block_height_around_year_1 = estimated_block_height(ANCHOR_TIME as u64, 1);
 
-    let reward = (STARTING_SUPPLY as f64 * STAKING_PERCENTAGE) / block_height_around_year_1 as f64;
+    let reward =
+        (Target::from_num(STARTING_SUPPLY) * staking_percentage_fixed) / Target::from_num(block_height_around_year_1);
 
-    reward.floor() as u64
+    reward.floor().checked_to_num::<u64>().ok_or_else(|| anyhow!("Failed to convert staking reward to u64"))
 }
 
 ///
@@ -50,16 +53,23 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
     previous_timestamp: i64,
     timestamp: i64,
     block_height: u64,
-) -> u64 {
+) -> Result<u64> {
+    // Calculate the estimated block height at year 10.
     let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10);
 
-    let max = std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0);
-    let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+    // Calculate the anchor reward.
+    let max = Target::from_num(std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0));
+    let anchor_reward = Target::from_num(anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>()?);
 
-    match max * anchor_reward {
-        0 => 0,
+    let unadjusted_reward =
+        (max * anchor_reward).checked_to_num::<u64>().ok_or_else(|| anyhow!("Failed to convert reward to u64"))?;
+
+    // Return the adjusted reward.
+    // This must be cast down to a u64 to perform the fixed point retargeting algorithm.
+    match unadjusted_reward {
+        0 => Ok(0),
         // (max * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / NUM_ROUNDS_IN_EPOCH}
-        reward => retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(reward, previous_timestamp, timestamp, true),
+        reward => Ok(retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(reward, previous_timestamp, timestamp, true)),
     }
 }
 
@@ -69,13 +79,14 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
 ///     S = Starting supply.
 ///     H_Y10 = Expected block height at year 10.
 ///
-pub(crate) fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> u64 {
-    let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10);
+pub(crate) fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> Result<u64> {
+    // Calculate the estimated block height at year 10.
+    let block_height_around_year_10 = Target::from_num(estimated_block_height(ANCHOR_TIME as u64, 10));
 
-    let numerator = 2 * STARTING_SUPPLY;
-    let denominator = block_height_around_year_10 * (block_height_around_year_10 + 1);
+    let numerator = Target::from_num(2 * STARTING_SUPPLY);
+    let denominator = block_height_around_year_10 * (block_height_around_year_10 + Target::from_num(1));
 
-    (numerator as f64 / denominator as f64).floor() as u64
+    (numerator / denominator).checked_to_num::<u64>().ok_or_else(|| anyhow!("Failed to convert anchor reward to u64"))
 }
 
 /// Returns the estimated block height after a given number of years for a specific anchor time.
@@ -211,29 +222,29 @@ mod tests {
 
     #[test]
     fn test_anchor_reward() {
-        let reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+        let reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>().unwrap();
         assert_eq!(reward, 8);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
+        let larger_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>().unwrap();
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
+        let smaller_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>().unwrap();
         assert!(reward > smaller_reward);
     }
 
     #[test]
     fn test_staking_reward() {
-        let reward = staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
-        assert_eq!(reward, 17_440_385);
+        let reward = staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>().unwrap();
+        assert_eq!(reward, 17440385);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
+        let larger_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>().unwrap();
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
+        let smaller_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>().unwrap();
         assert!(reward > smaller_reward);
     }
 
@@ -249,7 +260,8 @@ mod tests {
             previous_timestamp,
             timestamp,
             block_height,
-        );
+        )
+        .unwrap();
 
         block_height *= 2;
         timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
@@ -259,7 +271,8 @@ mod tests {
                 previous_timestamp,
                 timestamp,
                 block_height,
-            );
+            )
+            .unwrap();
             assert!(reward <= previous_reward);
 
             previous_reward = reward;
@@ -280,7 +293,8 @@ mod tests {
             GENESIS_TIMESTAMP,
             GENESIS_TIMESTAMP + ANCHOR_TIME,
             estimated_blocks_in_10_years,
-        );
+        )
+        .unwrap();
         assert_eq!(reward, 0);
 
         // Check that the subsequent blocks have a reward of 0.
@@ -294,7 +308,8 @@ mod tests {
                 timestamp,
                 new_timestamp,
                 block_height,
-            );
+            )
+            .unwrap();
 
             assert_eq!(reward, 0);
         }

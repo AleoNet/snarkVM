@@ -391,13 +391,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 block.timestamp(),
                 timestamp,
                 new_height as u64,
-            );
+            )?;
 
             // Calculate the rewards for the individual provers
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
             for prover_puzzle_solution in prover_solutions {
-                let prover_reward = (coinbase_reward as u128 / 2)
-                    .saturating_mul(prover_puzzle_solution.to_target()? as u128)
+                // Prover compensation = 1/2 * coinbase_reward * (prover_target / cumulative_prover_target).
+                let prover_reward = (coinbase_reward as u128)
+                    .checked_mul(prover_puzzle_solution.to_target()? as u128)
+                    .ok_or_else(|| anyhow!("Prover reward overflowed"))?
+                    / 2
                     / cumulative_prover_target;
 
                 prover_rewards.push((*prover_puzzle_solution.address(), u64::try_from(prover_reward)?));
