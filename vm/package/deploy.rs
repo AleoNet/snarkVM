@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_deploy() {
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (_, package) = crate::package::test_helpers::sample_package();
         let private_key = package.manifest_file().development_private_key();
         let address = Address::try_from(private_key).unwrap();
         let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
@@ -225,14 +225,11 @@ mod tests {
             // Ensure the deployment program matches.
             assert_eq!(package.program(), deployment.program());
         }
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
     fn test_deploy_with_import() {
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (_, package) = crate::package::test_helpers::sample_package_with_import();
         let private_key = package.manifest_file().development_private_key();
         let address = Address::try_from(private_key).unwrap();
         let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
@@ -249,8 +246,5 @@ mod tests {
             // Ensure the deployment program matches.
             assert_eq!(package.program(), deployment.program());
         }
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 }
