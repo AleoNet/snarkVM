@@ -37,20 +37,15 @@ impl<N: Network> FromStr for Identifier<N> {
 
     /// Reads in an identifier from a string.
     fn from_str(identifier: &str) -> Result<Self, Self::Err> {
-        // Ensure the identifier is not an empty string, and does not start with a number.
+        // Ensure the identifier is not an empty string, and starts with an ASCII letter.
         match identifier.chars().next() {
-            Some(character) => ensure!(!character.is_numeric(), "Identifier cannot start with a number"),
-            None => bail!("Identifier cannot be an empty string"),
+            Some(character) => ensure!(character.is_ascii_alphabetic(), "Identifier must start with a letter"),
+            None => bail!("Identifier cannot be empty"),
         }
 
-        // Ensure the identifier is alphanumeric and underscores.
-        if identifier.chars().any(|character| !character.is_alphanumeric() && character != '_') {
-            bail!("Identifier '{identifier}' must be alphanumeric and underscores")
-        }
-
-        // Ensure the identifier is not solely underscores.
-        if identifier.chars().all(|character| character == '_') {
-            bail!("Identifier cannot consist solely of underscores")
+        // Ensure the identifier consists of ASCII letters, ASCII digits, and underscores.
+        if identifier.chars().any(|character| !character.is_ascii_alphanumeric() && character != '_') {
+            bail!("Identifier '{identifier}' must consist of letters, digits, and underscores")
         }
 
         // Ensure identifier fits within the data capacity of the base field.
@@ -192,6 +187,9 @@ mod tests {
 
     #[test]
     fn test_from_str_fails() {
+        // Must be non-empty.
+        assert!(Identifier::<CurrentNetwork>::from_str("").is_err());
+
         // Must be alphanumeric or underscore.
         assert!(Identifier::<CurrentNetwork>::from_str("foo_bar~baz").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("foo_bar-baz").is_err());
@@ -209,6 +207,13 @@ mod tests {
         assert!(Identifier::<CurrentNetwork>::from_str("1foo").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("12").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("111").is_err());
+
+        // Must not start with underscore.
+        assert!(Identifier::<CurrentNetwork>::from_str("_foo").is_err());
+
+        // Must be ASCII.
+        assert!(Identifier::<CurrentNetwork>::from_str("\u{03b1}").is_err()); // Greek alpha
+        assert!(Identifier::<CurrentNetwork>::from_str("\u{03b2}").is_err()); // Greek beta
 
         // Must fit within the data capacity of a base field element.
         let identifier = Identifier::<CurrentNetwork>::from_str(

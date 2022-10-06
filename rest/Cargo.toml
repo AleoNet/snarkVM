@@ -23,6 +23,9 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
+[dependencies.http]
+version = "0.2.8"
+
 [dependencies.snarkvm-compiler]
 path = "../vm/compiler"
 version = "0.9.0"
@@ -52,4 +55,4 @@ version = "1"
 version = "0.1"
 
 [dependencies.warp]
-version = "0.3"
+version = "0.3.3"

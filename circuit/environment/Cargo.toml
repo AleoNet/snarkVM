@@ -68,7 +68,7 @@ path = "../../circuit"
 path = "../../console/types"
 
 [dev-dependencies.criterion]
-version = "0.3"
+version = "0.4"
 
 [features]
 default = [ "snarkvm-curves/default", "snarkvm-r1cs/default" ]
