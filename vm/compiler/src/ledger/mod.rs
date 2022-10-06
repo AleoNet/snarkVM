@@ -1336,7 +1336,7 @@ mod tests {
                 CoinbasePuzzle::prove(&ledger.coinbase_proving_key, &epoch_challenge, &address, rng.gen()).unwrap();
 
             // Check that the prover solution meets the proof target requirement.
-            if prover_solution.to_target().unwrap() > proof_target {
+            if prover_solution.to_target().unwrap() >= proof_target {
                 assert!(ledger.add_to_coinbase_memory_pool(prover_solution).is_ok())
             } else {
                 assert!(ledger.add_to_coinbase_memory_pool(prover_solution).is_err())
