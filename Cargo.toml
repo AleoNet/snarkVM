@@ -201,7 +201,7 @@ version = "1"
 optional = true
 
 [dependencies.self_update]
-version = "0.31"
+version = "0.32"
 optional = true
 
 [dependencies.serde_json]
