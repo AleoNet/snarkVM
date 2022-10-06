@@ -302,6 +302,11 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
 
     fn glv_endomorphism(p: short_weierstrass_jacobian::Affine<Self>) -> short_weierstrass_jacobian::Affine<Self>;
+
+    fn mul_projective(
+        p: short_weierstrass_jacobian::Projective<Self>,
+        by: Self::ScalarField,
+    ) -> short_weierstrass_jacobian::Projective<Self>;
 }
 
 pub trait TwistedEdwardsParameters: ModelParameters {

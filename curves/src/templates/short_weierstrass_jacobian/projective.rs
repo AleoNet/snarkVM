@@ -17,10 +17,9 @@
 use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
-    ModelParameters,
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, BigInteger, FromBytes, ToBytes};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -500,8 +499,6 @@ impl<'a, P: Parameters> SubAssign<&'a Self> for Projective<P> {
     }
 }
 
-type ScalarBigInt<P> = <<P as ModelParameters>::ScalarField as PrimeField>::BigInteger;
-
 impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     type Output = Self;
 
@@ -509,98 +506,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
-        /// The scalar multiplication window size.
-        const GLV_WINDOW_SIZE: usize = 4;
-
-        /// The table size, used for w-ary NAF recoding.
-        const TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE + 1);
-        const HALF_TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE);
-        const MASK_FOR_MOD_TABLE_SIZE: u64 = (TABLE_SIZE as u64) - 1;
-        /// The GLV table length.
-        const L: usize = 1 << (GLV_WINDOW_SIZE - 1);
-
-        let decomposition = other.decompose(&P::Q1, &P::Q2, P::B1, P::B2, P::R128, &P::HALF_R);
-
-        // Prepare tables.
-        let mut t_1 = Vec::with_capacity(L);
-        let double = Affine::from(self.double());
-        t_1.push(self);
-        for i in 1..L {
-            t_1.push(t_1[i - 1].add_mixed(&double));
-        }
-        let t_1 = Self::batch_normalization_into_affine(t_1);
-
-        let t_2 = t_1.iter().copied().map(P::glv_endomorphism).collect::<Vec<_>>();
-
-        let mod_signed = |d| {
-            let d_mod_window_size = i64::try_from(d & MASK_FOR_MOD_TABLE_SIZE).unwrap();
-            if d_mod_window_size >= HALF_TABLE_SIZE { d_mod_window_size - TABLE_SIZE } else { d_mod_window_size }
-        };
-        let to_wnaf = |e: P::ScalarField| -> Vec<i32> {
-            let mut naf = vec![];
-            let mut e = e.to_repr();
-            while !e.is_zero() {
-                let next = if e.is_odd() {
-                    let naf_sign = mod_signed(e.as_ref()[0]);
-                    if naf_sign < 0 {
-                        e.add_nocarry(&ScalarBigInt::<P>::from(-naf_sign as u64));
-                    } else {
-                        e.sub_noborrow(&ScalarBigInt::<P>::from(naf_sign as u64));
-                    }
-                    naf_sign.try_into().unwrap()
-                } else {
-                    0
-                };
-                naf.push(next);
-                e.div2();
-            }
-
-            naf
-        };
-
-        let wnaf = |k1: P::ScalarField, k2: P::ScalarField, s1: bool, s2: bool| -> (Vec<i32>, Vec<i32>) {
-            let mut wnaf_1 = to_wnaf(k1);
-            let mut wnaf_2 = to_wnaf(k2);
-
-            if s1 {
-                wnaf_1.iter_mut().for_each(|e| *e = -*e);
-            }
-            if !s2 {
-                wnaf_2.iter_mut().for_each(|e| *e = -*e);
-            }
-
-            (wnaf_1, wnaf_2)
-        };
-
-        let naf_add = |table: &[Affine<P>], naf: i32, acc: &mut Self| {
-            if naf != 0 {
-                let mut p_1 = table[(naf.abs() >> 1) as usize];
-                if naf < 0 {
-                    p_1 = p_1.neg();
-                }
-                acc.add_assign_mixed(&p_1);
-            }
-        };
-
-        // Recode scalars.
-        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3);
-        let max_len = naf_1.len().max(naf_2.len());
-        let mut acc = Self::zero();
-        for i in (0..max_len).rev() {
-            if i < naf_1.len() {
-                naf_add(&t_1, naf_1[i], &mut acc)
-            }
-
-            if i < naf_2.len() {
-                naf_add(&t_2, naf_2[i], &mut acc)
-            }
-
-            if i != 0 {
-                acc.double_in_place();
-            }
-        }
-
-        acc
+        P::mul_projective(self, other)
     }
 }
 
