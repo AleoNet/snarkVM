@@ -2683,7 +2683,6 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-r1cs",
  "snarkvm-utilities",
  "wasm-bindgen",
  "wasm-bindgen-test",
