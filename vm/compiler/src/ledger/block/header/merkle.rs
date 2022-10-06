@@ -107,6 +107,7 @@ mod tests {
             let header = Header::<CurrentNetwork>::from(
                 Field::rand(rng),
                 Field::rand(rng),
+                Field::rand(rng),
                 Metadata::new(
                     CurrentNetwork::ID,
                     u64::rand(rng),
