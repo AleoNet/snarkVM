@@ -2465,7 +2465,6 @@ dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2557,7 +2556,6 @@ dependencies = [
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
  "snarkvm-console-types-integers",
- "snarkvm-utilities",
 ]
 
 [[package]]
