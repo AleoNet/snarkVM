@@ -70,8 +70,7 @@ impl<A: Aleo> Literal<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use console::{Rng, TestRng, Uniform};
-    use snarkvm_utilities::adjust_char::*;
+    use console::{TestRng, Uniform};
 
     const ITERATIONS: u32 = 1000;
 
@@ -132,12 +131,7 @@ mod tests {
             check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let range = 0..rng.gen_range(0..Circuit::MAX_STRING_BYTES / 4);
-            let string: String = range
-                .map(|_| rng.gen::<char>())
-                .map(adjust_unsafe_char)
-                .map(adjust_backslash_and_doublequote)
-                .collect();
+            let string = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
             check_serialization(Literal::<Circuit>::String(StringType::new(mode, console::StringType::new(&string))));
         }
     }

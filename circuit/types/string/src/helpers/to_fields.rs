@@ -33,9 +33,7 @@ impl<E: Environment> ToFields for StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{adjust_char::*, bytes_from_bits_le, FromBytes};
-
-    use rand::Rng;
+    use snarkvm_utilities::{bytes_from_bits_le, FromBytes};
 
     fn native_string_to_fields(string: &str) -> Vec<console::Field<<Circuit as Environment>::Network>> {
         string
@@ -81,11 +79,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::MAX_STRING_BYTES / 4)
-            .map(|_| rng.gen::<char>())
-            .map(adjust_unsafe_char)
-            .map(adjust_backslash_and_doublequote)
-            .collect();
+        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Constant, console::StringType::new(&given));
@@ -97,11 +91,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::MAX_STRING_BYTES / 4)
-            .map(|_| rng.gen::<char>())
-            .map(adjust_unsafe_char)
-            .map(adjust_backslash_and_doublequote)
-            .collect();
+        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Public, console::StringType::new(&given));
@@ -113,11 +103,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::MAX_STRING_BYTES / 4)
-            .map(|_| rng.gen::<char>())
-            .map(adjust_unsafe_char)
-            .map(adjust_backslash_and_doublequote)
-            .collect();
+        let given = rng.sample_string(Circuit::MAX_STRING_BYTES / 4);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Private, console::StringType::new(&given));

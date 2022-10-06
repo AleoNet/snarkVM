@@ -61,7 +61,6 @@ impl<E: Environment> Display for StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_console_network_environment::Console;
-    use snarkvm_utilities::adjust_char::*;
 
     type CurrentEnvironment = Console;
 
@@ -78,13 +77,9 @@ mod tests {
 
         let rng = &mut TestRng::default();
 
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(CurrentEnvironment::MAX_STRING_BYTES - i) / 4)
-                .map(|_| rng.gen::<char>())
-                .map(adjust_unsafe_char)
-                .map(adjust_backslash_and_doublequote)
-                .collect();
+            let expected = rng.sample_string(CurrentEnvironment::MAX_STRING_BYTES / 4);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= CurrentEnvironment::MAX_STRING_BYTES as usize);
 
