@@ -16,8 +16,6 @@
 
 use super::*;
 
-pub type Target = fixed::types::U88F40;
-
 #[allow(unused)]
 ///
 /// Calculate the staking reward, given the starting supply and anchor time.
@@ -26,17 +24,10 @@ pub type Target = fixed::types::U88F40;
 ///     H_Y1 = Expected block height at year 1.
 ///
 pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> Result<u64> {
-    // The staking percentage at genesis.
-    const STAKING_PERCENTAGE: f64 = 0.025f64; // 2.5%
-    let staking_percentage_fixed = Target::from_num(STAKING_PERCENTAGE);
-
     // Calculate the estimated block height at year 1.
     let block_height_around_year_1 = estimated_block_height(ANCHOR_TIME as u64, 1);
 
-    let reward =
-        (Target::from_num(STARTING_SUPPLY) * staking_percentage_fixed) / Target::from_num(block_height_around_year_1);
-
-    reward.floor().checked_to_num::<u64>().ok_or_else(|| anyhow!("Failed to convert staking reward to u64"))
+    Ok(u64::try_from(STARTING_SUPPLY as u128 * 25 / 1000 / block_height_around_year_1 as u128)?)
 }
 
 ///
@@ -58,15 +49,11 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
     let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10);
 
     // Calculate the anchor reward.
-    let max = Target::from_num(std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0));
-    let anchor_reward = Target::from_num(anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>()?);
-
-    let unadjusted_reward =
-        (max * anchor_reward).checked_to_num::<u64>().ok_or_else(|| anyhow!("Failed to convert reward to u64"))?;
+    let max = std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0);
+    let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>()?;
 
     // Return the adjusted reward.
-    // This must be cast down to a u64 to perform the fixed point retargeting algorithm.
-    match unadjusted_reward {
+    match max.checked_mul(anchor_reward).ok_or_else(|| anyhow!("Anchor reward overflow"))? {
         0 => Ok(0),
         // (max * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / NUM_ROUNDS_IN_EPOCH}
         reward => Ok(retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(reward, previous_timestamp, timestamp, true)),
@@ -81,18 +68,19 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
 ///
 pub(crate) fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> Result<u64> {
     // Calculate the estimated block height at year 10.
-    let block_height_around_year_10 = Target::from_num(estimated_block_height(ANCHOR_TIME as u64, 10));
+    let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10) as u128;
 
-    let numerator = Target::from_num(2 * STARTING_SUPPLY);
-    let denominator = block_height_around_year_10 * (block_height_around_year_10 + Target::from_num(1));
+    let numerator = 2 * STARTING_SUPPLY as u128;
+    let denominator = block_height_around_year_10 * (block_height_around_year_10 + 1);
 
-    (numerator / denominator).checked_to_num::<u64>().ok_or_else(|| anyhow!("Failed to convert anchor reward to u64"))
+    Ok(u64::try_from(numerator / denominator)?)
 }
 
 /// Returns the estimated block height after a given number of years for a specific anchor time.
 pub(crate) fn estimated_block_height(anchor_time: u64, num_years: u32) -> u64 {
     const SECONDS_IN_A_YEAR: u64 = 60 * 60 * 24 * 365;
 
+    // Calculate the estimated number of blocks produced in a year.
     let estimated_blocks_in_a_year = SECONDS_IN_A_YEAR / anchor_time;
 
     estimated_blocks_in_a_year * num_years as u64
