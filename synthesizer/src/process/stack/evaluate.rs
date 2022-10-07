@@ -95,7 +95,7 @@ impl<N: Network> Stack<N> {
         // Ensure the number of inputs matches.
         if function.inputs().len() != inputs.len() {
             bail!(
-                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                "Transition '{}' in the program '{}' expects {} inputs, but {} were provided.",
                 function.name(),
                 self.program.id(),
                 function.inputs().len(),

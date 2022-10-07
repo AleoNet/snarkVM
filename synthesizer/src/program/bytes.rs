@@ -127,7 +127,7 @@ impl<N: Network> ToBytes for Program<N> {
                         // Write the function.
                         function.write_le(&mut writer)?;
                     }
-                    None => return Err(error(format!("Function '{identifier}' is not defined."))),
+                    None => return Err(error(format!("Transition '{identifier}' is not defined."))),
                 },
             }
         }
@@ -153,7 +153,7 @@ record token:
     gates as u64.private;
     token_amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as token.record;
     add r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;";

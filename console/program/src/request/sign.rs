@@ -31,7 +31,7 @@ impl<N: Network> Request<N> {
         // Ensure the number of inputs matches the number of input types.
         if input_types.len() != inputs.len() {
             bail!(
-                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                "Transition '{}' in the program '{}' expects {} inputs, but {} were provided.",
                 function_name,
                 program_id,
                 input_types.len(),

@@ -62,9 +62,9 @@ impl<N: Network> Stack<N> {
         let _response = self.execute_function::<A, R>(call_stack, rng)?;
 
         // Ensure the proving key exists.
-        ensure!(self.contains_proving_key(function_name), "Function '{function_name}' is missing a proving key.");
+        ensure!(self.contains_proving_key(function_name), "Transition '{function_name}' is missing a proving key.");
         // Ensure the verifying key exists.
-        ensure!(self.contains_verifying_key(function_name), "Function '{function_name}' is missing a verifying key.");
+        ensure!(self.contains_verifying_key(function_name), "Transition '{function_name}' is missing a verifying key.");
         Ok(())
     }
 

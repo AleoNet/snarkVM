@@ -208,12 +208,12 @@ impl<N: Network> Stack<N> {
             .collect::<Result<Vec<_>>>()?;
 
         #[cfg(debug_assertions)]
-        Self::log_circuit::<A, _>(format!("Function '{}()'", function.name()));
+        Self::log_circuit::<A, _>(format!("Transition '{}()'", function.name()));
 
         // If the function does not contain function calls, ensure no new public variables were injected.
         if !contains_function_call {
             // Ensure the number of public variables remains the same.
-            ensure!(A::num_public() == num_public, "Instructions in function injected public variables");
+            ensure!(A::num_public() == num_public, "Instructions in transition injected public variables");
         }
 
         // Construct the response.

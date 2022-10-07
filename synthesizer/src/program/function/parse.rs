@@ -22,7 +22,7 @@ impl<N: Network> Parser for Function<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
-        // Parse the 'function' keyword from the string.
+        // Parse the 'transition' keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
@@ -135,7 +135,7 @@ mod tests {
     fn test_function_parse() {
         let function = Function::<CurrentNetwork>::parse(
             r"
-function foo:
+transition foo:
     input r0 as field.public;
     input r1 as field.private;
     add r0 r1 into r2;
@@ -151,7 +151,7 @@ function foo:
         // Function with 0 inputs.
         let function = Function::<CurrentNetwork>::parse(
             r"
-function foo:
+transition foo:
     add 1u32 2u32 into r0;
     output r0 as u32.private;",
         )
@@ -167,7 +167,7 @@ function foo:
     fn test_function_parse_cast() {
         let function = Function::<CurrentNetwork>::parse(
             r"
-function foo:
+transition foo:
     input r0 as token.record;
     cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     output r1 as token.record;",
@@ -184,7 +184,7 @@ function foo:
     fn test_function_parse_no_instruction_or_output() {
         let function = Function::<CurrentNetwork>::parse(
             r"
-function foo:
+transition foo:
     input r0 as token.record;",
         )
         .unwrap()
@@ -199,7 +199,7 @@ function foo:
     fn test_function_parse_finalize() {
         let function = Function::<CurrentNetwork>::parse(
             r"
-function mint_public:
+transition mint_public:
     // Input the token receiver.
     input r0 as address.public;
     // Input the token amount.
@@ -233,7 +233,7 @@ finalize mint_public:
 
         let function = Function::<CurrentNetwork>::parse(
             r"
-function foo:
+transition foo:
     input r0 as token.record;
     cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     finalize r1.token_amount;
@@ -254,7 +254,7 @@ finalize foo:
 
         let function = Function::<CurrentNetwork>::parse(
             r"
-function compute:
+transition compute:
     input r0 as address.public;
     input r1 as u64.public;
     input r2 as u64.public;
@@ -278,7 +278,7 @@ finalize compute:
 
     #[test]
     fn test_function_display() {
-        let expected = r"function foo:
+        let expected = r"transition foo:
     input r0 as field.public;
     input r1 as field.private;
     add r0 r1 into r2;

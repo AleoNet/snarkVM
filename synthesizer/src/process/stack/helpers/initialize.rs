@@ -97,7 +97,7 @@ impl<N: Network> Stack<N> {
         // Retrieve the function name.
         let name = function.name();
         // Ensure the function name is not already added.
-        ensure!(!self.register_types.contains_key(name), "Function '{name}' already exists");
+        ensure!(!self.register_types.contains_key(name), "Transition '{name}' already exists");
 
         // Compute the register types.
         let register_types = RegisterTypes::from_function(self, function)?;

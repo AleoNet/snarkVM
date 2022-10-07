@@ -41,7 +41,7 @@ impl<N: Network> VerifierFile<N> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
         // Ensure the function name is valid.
-        ensure!(!Program::is_reserved_keyword(function_name), "Function name is invalid (reserved): {}", function_name);
+        ensure!(!Program::is_reserved_keyword(function_name), "Transition name is invalid (reserved): {}", function_name);
 
         // Create the candidate verifier file.
         let verifier_file = Self { function_name: *function_name, verifying_key };
@@ -75,7 +75,7 @@ impl<N: Network> VerifierFile<N> {
         // Ensure the function name matches.
         if verifier.function_name() != function_name {
             bail!(
-                "The verifier file for '{}' contains an incorrect function name of '{}'",
+                "The verifier file for '{}' contains an incorrect transition name of '{}'",
                 function_name,
                 verifier.function_name()
             );
@@ -149,7 +149,7 @@ impl<N: Network> VerifierFile<N> {
             .ok_or_else(|| anyhow!("File name not found."))?
             .to_string();
         // Ensure the function name matches the file stem.
-        ensure!(verifier.function_name.to_string() == file_stem, "Function name does not match file stem.");
+        ensure!(verifier.function_name.to_string() == file_stem, "Transition name does not match file stem.");
 
         // Return the verifier file.
         Ok(verifier)
@@ -168,7 +168,7 @@ impl<N: Network> VerifierFile<N> {
             .ok_or_else(|| anyhow!("File name not found."))?
             .to_string();
         // Ensure the function name matches the file stem.
-        ensure!(self.function_name.to_string() == file_stem, "Function name does not match file stem.");
+        ensure!(self.function_name.to_string() == file_stem, "Transition name does not match file stem.");
 
         // Write to the file (overwriting if it already exists).
         Ok(File::create(path)?.write_all(&self.to_bytes_le()?)?)
@@ -220,7 +220,7 @@ record token:
     gates as u64.private;
     token_amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as token.record;
     add r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;";

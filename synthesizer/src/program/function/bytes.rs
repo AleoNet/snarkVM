@@ -33,7 +33,7 @@ impl<N: Network> FromBytes for Function<N> {
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
         if num_instructions > N::MAX_INSTRUCTIONS as u32 {
-            return Err(error(format!("Failed to deserialize a function: too many instructions ({num_instructions})")));
+            return Err(error(format!("Failed to deserialize a transition: too many instructions ({num_instructions})")));
         }
         let mut instructions = Vec::with_capacity(num_instructions as usize);
         for _ in 0..num_instructions {
@@ -52,7 +52,7 @@ impl<N: Network> FromBytes for Function<N> {
         let finalize = match variant {
             0 => None,
             1 => Some((FinalizeCommand::read_le(&mut reader)?, Finalize::read_le(&mut reader)?)),
-            _ => return Err(error(format!("Failed to deserialize a function: invalid finalize variant ({variant})"))),
+            _ => return Err(error(format!("Failed to deserialize a transition: invalid finalize variant ({variant})"))),
         };
 
         // Initialize a new function.
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn test_function_bytes() -> Result<()> {
         let function_string = r"
-function main:
+transition main:
     input r0 as field.public;
     input r1 as field.private;
     add r0 r1 into r2;

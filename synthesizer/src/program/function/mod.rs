@@ -192,9 +192,9 @@ impl<N: Network> Function<N> {
     #[inline]
     fn add_finalize(&mut self, command: FinalizeCommand<N>, finalize: Finalize<N>) -> Result<()> {
         // Ensure there is no finalize scope in memory.
-        ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
+        ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to transition '{}'", self.name);
         // Ensure the finalize scope name matches the function name.
-        ensure!(*finalize.name() == self.name, "Finalize scope name must match function name '{}'", self.name);
+        ensure!(*finalize.name() == self.name, "Finalize scope name must match transition name '{}'", self.name);
         // Ensure the number of finalize inputs has not been exceeded.
         ensure!(finalize.inputs().len() <= N::MAX_INPUTS, "Cannot add more than {} inputs to finalize", N::MAX_INPUTS);
         // Ensure the finalize command has the same number of operands as the finalize inputs.
@@ -215,6 +215,6 @@ impl<N: Network> TypeName for Function<N> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "function"
+        "transition"
     }
 }

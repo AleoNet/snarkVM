@@ -176,7 +176,7 @@ impl<N: Network> Display for Program<N> {
                 ProgramDefinition::Function => match self.functions.get(identifier) {
                     Some(function) => program.push_str(&format!("{function}\n\n")),
                     None => {
-                        eprintln!("Function '{}' is not defined.", identifier);
+                        eprintln!("Transition '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
@@ -207,7 +207,7 @@ struct message:
     first as field;
     second as field;
 
-function compute:
+transition compute:
     input r0 as message.private;
     add r0.first r0.second into r1;
     output r1 as field.private;",
@@ -230,7 +230,7 @@ function compute:
             r"
 program to_parse.aleo;
 
-function compute:
+transition compute:
     add 1u32 2u32 into r0;
     output r0 as u32.private;",
         )
@@ -251,7 +251,7 @@ struct message:
     first as field;
     second as field;
 
-function compute:
+transition compute:
     input r0 as message.private;
     add r0.first r0.second into r1;
     output r1 as field.private;

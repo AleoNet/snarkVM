@@ -342,7 +342,7 @@ impl<N: Network> Call<N> {
                     }
                     // If the circuit is in evaluate mode, then throw an error.
                     CallStack::Evaluate(..) => {
-                        bail!("Cannot 'execute' a function in 'evaluate' mode.")
+                        bail!("Cannot 'execute' a transition in 'evaluate' mode.")
                     }
                     // If the circuit is in execute mode, then evaluate and execute the instructions.
                     CallStack::Execute(authorization, ..) => {
@@ -362,7 +362,7 @@ impl<N: Network> Call<N> {
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]
                             eprintln!("\n{:#?} != {:#?}\n", console_response.outputs(), response.outputs());
-                            bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                            bail!("Transition '{}' outputs do not match in a 'call' instruction.", function.name())
                         }
                         // Return the request and response.
                         (request, response)

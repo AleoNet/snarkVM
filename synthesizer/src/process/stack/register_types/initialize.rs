@@ -82,7 +82,7 @@ impl<N: Network> RegisterTypes<N> {
             // Ensure the number of finalize operands is within bounds.
             ensure!(
                 command.operands().len() <= N::MAX_INPUTS,
-                "Function '{}' has too many finalize operands",
+                "Transition '{}' has too many finalize operands",
                 function.name()
             );
 

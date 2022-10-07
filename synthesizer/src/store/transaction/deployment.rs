@@ -157,7 +157,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         // Ensure the deployment contains the correct functions.
         for function_name in program.functions().keys() {
             if !deployment.verifying_keys().keys().contains(function_name) {
-                bail!("Deployment is missing a verifying key for function '{function_name}'.");
+                bail!("Deployment is missing a verifying key for transition '{function_name}'.");
             }
         }
 

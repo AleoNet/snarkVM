@@ -75,7 +75,7 @@ impl<N: Network> Request<N> {
         ) {
             Ok(function_id) => function_id,
             Err(error) => {
-                eprintln!("Failed to construct the function ID: {error}");
+                eprintln!("Failed to construct the Transition ID: {error}");
                 return false;
             }
         };

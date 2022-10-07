@@ -95,7 +95,7 @@ impl<N: Network> FinalizeRegisters<N> {
             // Ensure the stack value matches the register type.
             Ok(register_type) => stack.matches_register_type(&stack_value, &register_type)?,
             // Ensure the register is defined.
-            Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+            Err(error) => bail!("Register '{register}' is not a member of the transition: {error}"),
         };
 
         Ok(stack_value)

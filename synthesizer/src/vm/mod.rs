@@ -195,7 +195,7 @@ record token:
     gates as u64.private;
     amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as message.private;
     input r1 as message.public;
     input r2 as message.private;

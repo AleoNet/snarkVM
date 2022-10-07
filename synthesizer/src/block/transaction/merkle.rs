@@ -61,7 +61,7 @@ impl<N: Network> Transaction<N> {
                     }
                 }
                 // Error if the function ID was not found.
-                bail!("Function ID not found in deployment transaction");
+                bail!("Transition ID not found in deployment transaction");
             }
             Self::Execute(_, execution, additional_fee) => {
                 // Check if the ID is the transition ID for the additional fee, if it is present.
@@ -213,14 +213,14 @@ impl<N: Network> Transaction<N> {
         // Ensure the number of functions and verifying keys match.
         ensure!(
             functions.len() == verifying_keys.len(),
-            "Number of functions ('{}') and verifying keys ('{}') do not match",
+            "Number of transitions ('{}') and verifying keys ('{}') do not match",
             functions.len(),
             verifying_keys.len()
         );
         // Ensure the number of functions is within the allowed range.
         ensure!(
             functions.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the additional fee.
-            "Deployment must contain less than {} functions, found {}",
+            "Deployment must contain less than {} transitions, found {}",
             Self::MAX_TRANSITIONS,
             functions.len()
         );

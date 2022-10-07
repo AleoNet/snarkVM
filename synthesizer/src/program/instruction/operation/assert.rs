@@ -279,7 +279,7 @@ mod tests {
         // Initialize the program.
         let program = Program::from_str(&format!(
             "program testing.aleo;
-            function {function_name}:
+            transition {function_name}:
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
                 {opcode} {r0} {r1};

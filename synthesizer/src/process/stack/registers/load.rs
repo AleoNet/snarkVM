@@ -81,7 +81,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             // Ensure the stack value matches the register type.
             Ok(register_type) => stack.matches_register_type(&stack_value, &register_type)?,
             // Ensure the register is defined.
-            Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+            Err(error) => bail!("Register '{register}' is not a member of the transition: {error}"),
         };
 
         Ok(stack_value)
@@ -170,7 +170,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
                 stack.matches_register_type(&circuit::Eject::eject_value(&circuit_value), &register_type)?
             }
             // Ensure the register is defined.
-            Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+            Err(error) => bail!("Register '{register}' is not a member of the transition: {error}"),
         };
 
         Ok(circuit_value)

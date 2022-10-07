@@ -207,13 +207,13 @@ record token:
     gates as u64.private;
     amount as u64.private;
 
-function mint:
+transition mint:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 0u64 r1 into r2 as token.record;
     output r2 as token.record;
 
-function transfer:
+transition transfer:
     input r0 as token.record;
     input r1 as address.private;
     input r2 as u64.private;
@@ -257,13 +257,13 @@ record token:
     gates as u64.private;
     amount as u64.private;
 
-function mint:
+transition mint:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 0u64 r1 into r2 as token.record;
     output r2 as token.record;
 
-function transfer:
+transition transfer:
     input r0 as token.record;
     input r1 as address.private;
     input r2 as u64.private;
@@ -293,7 +293,7 @@ import token.aleo;
 
 program {main_program_id};
 
-function transfer:
+transition transfer:
     input r0 as token.aleo/token.record;
     input r1 as address.private;
     input r2 as u64.private;

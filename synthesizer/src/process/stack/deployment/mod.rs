@@ -87,7 +87,7 @@ pub(crate) mod test_helpers {
                     r"
 program testing.aleo;
 
-function compute:
+transition compute:
     input r0 as u32.private;
     input r1 as u32.public;
     add r0 r1 into r2;

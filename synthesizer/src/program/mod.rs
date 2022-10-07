@@ -108,19 +108,19 @@ record credits:
     owner as address.private;
     gates as u64.private;
 
-function genesis:
+transition genesis:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as credits.record;
     output r2 as credits.record;
 
-function mint:
+transition mint:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as credits.record;
     output r2 as credits.record;
 
-function transfer:
+transition transfer:
     input r0 as credits.record;
     input r1 as address.private;
     input r2 as u64.private;
@@ -130,14 +130,14 @@ function transfer:
     output r4 as credits.record;
     output r5 as credits.record;
 
-function join:
+transition join:
     input r0 as credits.record;
     input r1 as credits.record;
     add r0.gates r1.gates into r2;
     cast r0.owner r2 into r3 as credits.record;
     output r3 as credits.record;
 
-function split:
+transition split:
     input r0 as credits.record;
     input r1 as u64.private;
     sub r0.gates r1 into r2;
@@ -146,7 +146,7 @@ function split:
     output r3 as credits.record;
     output r4 as credits.record;
 
-function fee:
+transition fee:
     input r0 as credits.record;
     input r1 as u64.private;
     sub r0.gates r1 into r2;
@@ -265,15 +265,15 @@ function fee:
     /// Returns the function with the given name.
     pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
         // Attempt to retrieve the function.
-        let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
+        let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Transition '{name}' is not defined."))?;
         // Ensure the function name matches.
-        ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
+        ensure!(function.name() == name, "Expected transition '{name}', but found transition '{}'", function.name());
         // Ensure the number of inputs is within the allowed range.
-        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Transition exceeds maximum number of inputs");
         // Ensure the number of instructions is within the allowed range.
-        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Transition exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
-        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Transition exceeds maximum number of outputs");
         // Return the function.
         Ok(function)
     }
@@ -513,11 +513,11 @@ impl<N: Network> Program<N> {
         ensure!(!Self::is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
         // Ensure the number of inputs is within the allowed range.
-        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Transition exceeds maximum number of inputs");
         // Ensure the number of instructions is within the allowed range.
-        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Transition exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
-        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Transition exceeds maximum number of outputs");
 
         // Add the function name to the identifiers.
         if self.identifiers.insert(function_name, ProgramDefinition::Function).is_some() {
@@ -568,7 +568,7 @@ impl<N: Network> Program<N> {
         "record",
         "gates",
         // Program
-        "function",
+        "transition",
         "struct",
         "closure",
         "program",
@@ -730,7 +730,7 @@ record foo:
         // Create a new function.
         let function = Function::<CurrentNetwork>::from_str(
             r"
-function compute:
+transition compute:
     input r0 as field.public;
     input r1 as field.private;
     add r0 r1 into r2;
@@ -762,7 +762,7 @@ program swap.aleo;
 
 // The `swap` function transfers ownership of the record
 // for token A to the record owner of token B, and vice-versa.
-function swap:
+transition swap:
     // Input the record for token A.
     input r0 as eth.aleo/eth.record;
     // Input the record for token B.
@@ -821,7 +821,7 @@ function swap:
             r"
     program example.aleo;
 
-    function foo:
+    transition foo:
         input r0 as field.public;
         input r1 as field.private;
         add r0 r1 into r2;
@@ -888,7 +888,7 @@ struct message:
     first as field;
     second as field;
 
-function compute:
+transition compute:
     input r0 as message.private;
     add r0.first r0.second into r1;
     output r1 as field.private;",
@@ -952,7 +952,7 @@ record token:
     gates as u64.private;
     token_amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as token.record;
     add r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;",
@@ -1024,7 +1024,7 @@ closure execute:
     output r3 as field;
     output r2 as field;
 
-function compute:
+transition compute:
     input r0 as field.private;
     input r1 as field.public;
     call execute r0 r1 into r2 r3 r4;
@@ -1141,7 +1141,7 @@ record token:
     gates as u64.private;
     token_amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as token.record;
     cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     output r1 as token.record;",

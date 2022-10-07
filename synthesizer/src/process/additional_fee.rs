@@ -123,7 +123,7 @@ impl<N: Network> Process<N> {
         let function = stack.get_function(additional_fee.function_name())?;
         // Ensure the number of function calls in this function is 1.
         if stack.get_number_of_calls(function.name())? != 1 {
-            bail!("The number of function calls in '{}/{}' should be 1", stack.program_id(), function.name())
+            bail!("The number of transition calls in '{}/{}' should be 1", stack.program_id(), function.name())
         }
 
         #[cfg(debug_assertions)]

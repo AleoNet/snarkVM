@@ -27,7 +27,7 @@ impl<N: Network> Stack<N> {
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Ensure the program contains functions.
-        ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
+        ensure!(!self.program.functions().is_empty(), "Program '{}' has no transitions", self.program.id());
 
         // Retrieve the function.
         let function = self.get_function(&function_name)?;
@@ -36,7 +36,7 @@ impl<N: Network> Stack<N> {
         // Ensure the number of inputs matches the number of input types.
         if function.inputs().len() != input_types.len() {
             bail!(
-                "Function '{function_name}' in program '{}' expects {} inputs, but {} types were found.",
+                "Transition '{function_name}' in program '{}' expects {} inputs, but {} types were found.",
                 self.program.id(),
                 function.inputs().len(),
                 input_types.len()

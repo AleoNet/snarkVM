@@ -200,7 +200,7 @@ impl<N: Network> Package<N> {
                     // Ensure the function name matches.
                     ensure!(
                         response.function_name() == function_name,
-                        "Function name mismatch: {} != {function_name}",
+                        "Transition name mismatch: {} != {function_name}",
                         response.function_name()
                     );
                     // Insert the proving key.

@@ -197,7 +197,7 @@ impl<N: Network> Stack<N> {
         // Ensure the program network-level domain (NLD) is correct.
         ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
-        ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
+        ensure!(!program.functions().is_empty(), "No transitions present in the deployment for program '{program_id}'");
 
         // Serialize the program into bytes.
         let program_bytes = program.to_bytes_le()?;
@@ -269,7 +269,7 @@ impl<N: Network> Stack<N> {
         // Ensure the function exists.
         match self.program.contains_function(function_name) {
             true => self.program.get_function(function_name),
-            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
+            false => bail!("Transition '{function_name}' does not exist in program '{}'.", self.program.id()),
         }
     }
 
@@ -347,7 +347,7 @@ impl<N: Network> Stack<N> {
         // Ensure the function name exists in the program.
         ensure!(
             self.program.contains_function(function_name),
-            "Function '{function_name}' does not exist in program '{}'.",
+            "Transition '{function_name}' does not exist in program '{}'.",
             self.program.id()
         );
         // Insert the proving key.
@@ -361,7 +361,7 @@ impl<N: Network> Stack<N> {
         // Ensure the function name exists in the program.
         ensure!(
             self.program.contains_function(function_name),
-            "Function '{function_name}' does not exist in program '{}'.",
+            "Transition '{function_name}' does not exist in program '{}'.",
             self.program.id()
         );
         // Insert the verifying key.

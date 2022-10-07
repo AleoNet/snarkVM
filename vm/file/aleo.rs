@@ -71,7 +71,7 @@ impl<N: Network> AleoFile<N> {
             r#"// The '{program_id}' program.
 program {program_id};
 
-function hello:
+transition hello:
     input r0 as u32.public;
     input r1 as u32.private;
     add r0 r1 into r2;
@@ -259,7 +259,7 @@ record token:
     gates as u64.private;
     token_amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as token.record;
     add r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;";
@@ -288,7 +288,7 @@ record token:
     gates as u64.private;
     token_amount as u64.private;
 
-function compute:
+transition compute:
     input r0 as token.record;
     add r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;";

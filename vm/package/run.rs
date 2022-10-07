@@ -32,7 +32,7 @@ impl<N: Network> Package<N> {
         let program_id = program.id();
         // Ensure that the function exists.
         if !program.contains_function(&function_name) {
-            bail!("Function '{function_name}' does not exist.")
+            bail!("Transition '{function_name}' does not exist.")
         }
 
         // Build the package, if the package requires building.
