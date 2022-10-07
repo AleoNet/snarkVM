@@ -42,15 +42,22 @@ pub struct Header<N: Network> {
     previous_state_root: Field<N>,
     /// The Merkle root representing the transactions in the block.
     transactions_root: Field<N>,
+    /// The root representing the checksum of the key-value store.
+    storage_root: Field<N>,
     /// The metadata of the block.
     metadata: Metadata<N>,
 }
 
 impl<N: Network> Header<N> {
     /// Initializes a new block header with the given inputs.
-    pub fn from(previous_state_root: Field<N>, transactions_root: Field<N>, metadata: Metadata<N>) -> Result<Self> {
+    pub fn from(
+        previous_state_root: Field<N>,
+        transactions_root: Field<N>,
+        storage_root: Field<N>,
+        metadata: Metadata<N>,
+    ) -> Result<Self> {
         // Construct a new block header.
-        let header = Self { previous_state_root, transactions_root, metadata };
+        let header = Self { previous_state_root, transactions_root, storage_root, metadata };
         // Ensure the header is valid.
         match header.is_valid() {
             true => Ok(header),
@@ -81,6 +88,11 @@ impl<N: Network> Header<N> {
     /// Returns the transactions root in the block header.
     pub const fn transactions_root(&self) -> &Field<N> {
         &self.transactions_root
+    }
+
+    /// Returns the storage root in the block header.
+    pub const fn storage_root(&self) -> &Field<N> {
+        &self.storage_root
     }
 
     /// Returns the metadata in the block header.

@@ -30,10 +30,11 @@ impl<N: Network> FromBytes for Header<N> {
         // Read from the buffer.
         let previous_state_root = Field::<N>::read_le(&mut reader)?;
         let transactions_root = Field::<N>::read_le(&mut reader)?;
+        let storage_root = Field::<N>::read_le(&mut reader)?;
         let metadata = Metadata::read_le(&mut reader)?;
 
         // Construct the block header.
-        Self::from(previous_state_root, transactions_root, metadata).map_err(|e| error(e.to_string()))
+        Self::from(previous_state_root, transactions_root, storage_root, metadata).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -47,6 +48,7 @@ impl<N: Network> ToBytes for Header<N> {
         // Write to the buffer.
         self.previous_state_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
+        self.storage_root.write_le(&mut writer)?;
         self.metadata.write_le(&mut writer)
     }
 }

@@ -22,10 +22,11 @@ impl<N: Network> Header<N> {
         // Prepare a genesis block header.
         let previous_state_root = Field::zero();
         let transactions_root = transactions.to_root()?;
+        let storage_root = Field::zero();
         let metadata = Metadata::genesis()?;
 
         // Return the genesis block header.
-        Self::from(previous_state_root, transactions_root, metadata)
+        Self::from(previous_state_root, transactions_root, storage_root, metadata)
     }
 
     /// Returns `true` if the block header is a genesis block header.
@@ -50,7 +51,7 @@ mod tests {
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
         // Previous state root and transactions root size.
-        (Field::<N>::size_in_bytes() * 2)
+        (Field::<N>::size_in_bytes() * 3)
             // Metadata size.
             + 2 + 4 + 8 + 8 + 8 + 8
             // Add an additional 4 bytes for versioning.
