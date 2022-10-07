@@ -81,7 +81,7 @@ impl<N: Network> Stack<N> {
         // Retrieve the closure name.
         let name = closure.name();
         // Ensure the closure name is not already added.
-        ensure!(!self.register_types.contains_key(name), "Closure '{name}' already exists");
+        ensure!(!self.register_types.contains_key(name), "Function '{name}' already exists");
 
         // Compute the register types.
         let register_types = RegisterTypes::from_closure(self, closure)?;

@@ -97,7 +97,7 @@ mod tests {
     fn test_closure_parse() {
         let closure = Closure::<CurrentNetwork>::parse(
             r"
-closure foo:
+function foo:
     input r0 as field;
     input r1 as field;
     add r0 r1 into r2;
@@ -115,7 +115,7 @@ closure foo:
     fn test_closure_parse_cast() {
         let closure = Closure::<CurrentNetwork>::parse(
             r"
-closure foo:
+function foo:
     input r0 as token.record;
     cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     output r1 as token.record;",
@@ -130,7 +130,7 @@ closure foo:
 
     #[test]
     fn test_closure_display() {
-        let expected = r"closure foo:
+        let expected = r"function foo:
     input r0 as field;
     input r1 as field;
     add r0 r1 into r2;

@@ -74,7 +74,7 @@ impl<N: Network> Stack<N> {
         }
 
         // Ensure the number of public variables remains the same.
-        ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
+        ensure!(A::num_public() == num_public, "Illegal function operation: instructions injected public variables");
 
         // Load the outputs.
         let outputs = closure.outputs().iter().map(|output| {

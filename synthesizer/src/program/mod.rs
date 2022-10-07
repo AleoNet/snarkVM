@@ -247,17 +247,17 @@ transition fee:
     /// Returns the closure with the given name.
     pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
         // Attempt to retrieve the closure.
-        let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
+        let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
         // Ensure the closure name matches.
-        ensure!(closure.name() == name, "Expected closure '{name}', but found closure '{}'", closure.name());
+        ensure!(closure.name() == name, "Expected function '{name}', but found function '{}'", closure.name());
         // Ensure there are input statements in the closure.
-        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a function without input statements");
         // Ensure the number of inputs is within the allowed range.
-        ensure!(closure.inputs().len() <= N::MAX_INPUTS, "Closure exceeds maximum number of inputs");
+        ensure!(closure.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
         // Ensure there are instructions in the closure.
-        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a function without instructions");
         // Ensure the number of outputs is within the allowed range.
-        ensure!(closure.outputs().len() <= N::MAX_OUTPUTS, "Closure exceeds maximum number of outputs");
+        ensure!(closure.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Return the closure.
         Ok(closure)
     }
@@ -468,13 +468,13 @@ impl<N: Network> Program<N> {
         ensure!(!Self::is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
 
         // Ensure there are input statements in the closure.
-        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a function without input statements");
         // Ensure the number of inputs is within the allowed range.
-        ensure!(closure.inputs().len() <= N::MAX_INPUTS, "Closure exceeds maximum number of inputs");
+        ensure!(closure.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
         // Ensure there are instructions in the closure.
-        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a function without instructions");
         // Ensure the number of outputs is within the allowed range.
-        ensure!(closure.outputs().len() <= N::MAX_OUTPUTS, "Closure exceeds maximum number of outputs");
+        ensure!(closure.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
 
         // Add the function name to the identifiers.
         if self.identifiers.insert(closure_name, ProgramDefinition::Closure).is_some() {
@@ -570,7 +570,7 @@ impl<N: Network> Program<N> {
         // Program
         "transition",
         "struct",
-        "closure",
+        "function",
         "program",
         "aleo",
         "self",
@@ -1014,7 +1014,7 @@ transition compute:
 program example_call.aleo;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
-closure execute:
+function execute:
     input r0 as field;
     input r1 as field;
     add r0 r1 into r2;

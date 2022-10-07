@@ -118,7 +118,7 @@ impl<N: Network> ToBytes for Program<N> {
                         // Write the closure.
                         closure.write_le(&mut writer)?;
                     }
-                    None => return Err(error(format!("Closure '{identifier}' is not defined."))),
+                    None => return Err(error(format!("Function '{identifier}' is not defined."))),
                 },
                 ProgramDefinition::Function => match self.functions.get(identifier) {
                     Some(function) => {

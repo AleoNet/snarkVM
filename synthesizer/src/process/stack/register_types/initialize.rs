@@ -33,7 +33,7 @@ impl<N: Network> RegisterTypes<N> {
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
             // Ensure the closure contains no call instructions.
-            ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in closures");
+            ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in functions");
             // Check the instruction opcode, operands, and destinations.
             register_types.check_instruction(stack, closure.name(), instruction)?;
         }
@@ -373,7 +373,7 @@ impl<N: Network> RegisterTypes<N> {
                         //  We could invoke the internal function without a state transition, but need to match visibility.
                         if stack.program().contains_function(resource) {
                             bail!(
-                                "Cannot call '{resource}' from '{closure_or_function_name}'. Use a closure ('closure {resource}:') instead."
+                                "Cannot call '{resource}' from '{closure_or_function_name}'. Use a function ('function {resource}:') instead."
                             )
                         }
                         // Ensure the function or closure exists in the program.

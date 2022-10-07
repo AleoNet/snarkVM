@@ -182,7 +182,7 @@ impl<N: Network> Call<N> {
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
                 if stack.program().contains_function(resource) {
-                    bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
+                    bail!("Cannot call '{resource}'. Use a function ('function {resource}:') instead.")
                 }
 
                 (stack.clone(), resource)
@@ -251,7 +251,7 @@ impl<N: Network> Call<N> {
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
                 if stack.program().contains_function(resource) {
-                    bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
+                    bail!("Cannot call '{resource}'. Use a function ('function {resource}:') instead.")
                 }
 
                 (stack.clone(), resource)
@@ -446,7 +446,7 @@ impl<N: Network> Call<N> {
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
                 if stack.program().contains_function(resource) {
-                    bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
+                    bail!("Cannot call '{resource}'. Use a function ('function {resource}:') instead.")
                 }
 
                 (false, stack.program(), resource)

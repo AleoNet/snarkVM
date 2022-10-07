@@ -143,6 +143,6 @@ impl<N: Network> TypeName for Closure<N> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "closure"
+        "function"
     }
 }

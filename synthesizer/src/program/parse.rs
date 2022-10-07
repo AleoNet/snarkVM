@@ -169,7 +169,7 @@ impl<N: Network> Display for Program<N> {
                 ProgramDefinition::Closure => match self.closures.get(identifier) {
                     Some(closure) => program.push_str(&format!("{closure}\n\n")),
                     None => {
-                        eprintln!("Closure '{}' is not defined.", identifier);
+                        eprintln!("Function '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },

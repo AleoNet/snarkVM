@@ -755,7 +755,7 @@ record token:
     token_amount as u64.private;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
-closure execute:
+function execute:
     input r0 as field;
     input r1 as field;
     add r0 r1 into r2;
@@ -765,7 +765,7 @@ closure execute:
     output r3 as field;
     output r2 as field;
 
-closure check_not_equal:
+function check_not_equal:
     input r0 as field;
     input r1 as field;
     assert.neq r0 r1;
