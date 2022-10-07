@@ -224,8 +224,7 @@ transition fee:
     /// Returns the interface with the given name.
     pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
         // Attempt to retrieve the interface.
-        let interface =
-            self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
+        let interface = self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
         // Ensure the interface name matches.
         ensure!(interface.name() == name, "Expected interface '{name}', but found struct '{}'", interface.name());
         // Ensure the interface contains members.
@@ -265,7 +264,8 @@ transition fee:
     /// Returns the function with the given name.
     pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
         // Attempt to retrieve the function.
-        let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Transition '{name}' is not defined."))?;
+        let function =
+            self.functions.get(name).cloned().ok_or_else(|| anyhow!("Transition '{name}' is not defined."))?;
         // Ensure the function name matches.
         ensure!(function.name() == name, "Expected transition '{name}', but found transition '{}'", function.name());
         // Ensure the number of inputs is within the allowed range.

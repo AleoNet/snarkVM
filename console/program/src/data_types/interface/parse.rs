@@ -187,8 +187,7 @@ struct message:
     #[test]
     fn test_display_fails() {
         // Duplicate identifier.
-        let candidate =
-            Interface::<CurrentNetwork>::parse("struct message:\n    first as field;\n    first as field;");
+        let candidate = Interface::<CurrentNetwork>::parse("struct message:\n    first as field;\n    first as field;");
         assert!(candidate.is_err());
         // Visibility in plaintext type.
         let candidate = Interface::<CurrentNetwork>::parse(
