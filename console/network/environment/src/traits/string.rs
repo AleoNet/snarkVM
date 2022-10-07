@@ -39,19 +39,24 @@ pub mod string_parser {
         IResult,
     };
 
-    /// The list of unsupported "invisible" code points.
+    /// Checks for unsupported "invisible" code points.
     /// See [Sanitizer::parse_safe_char] for an explanation.
-    ///
-    /// Instead of using this list to test whether its elements occur in a string literal,
-    /// we should probably rework the string literal parsing code
-    /// to call [Sanitizer::parse_safe_char],
-    /// and remove this list.
-    const UNSUPPORTED_CODE_POINTS: [&str; 39] = [
-        "\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07", "\x08", "\x0b", "\x0c", "\x0e", "\x0f", "\x10",
-        "\x11", "\x12", "\x13", "\x14", "\x15", "\x16", "\x17", "\x18", "\x19", "\x1a", "\x1b", "\x1c", "\x1d", "\x1e",
-        "\x1f", "\x7f", "\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}",
-        "\u{2069}",
-    ];
+    fn is_char_unsupported(c: char) -> bool {
+        let code = c as u32;
+
+        // A quick early return, as anything above is supported.
+        if code > 0x2069 {
+            return false;
+        }
+
+        // A "divide and conquer" approach for greater performance; ranges are
+        // checked before single values and all the comparisons get "reused".
+        if code < 0x202a {
+            if code <= 31 { !(9..14).contains(&code) || code == 11 || code == 12 } else { code == 127 }
+        } else {
+            code <= 0x202e || code >= 0x2066
+        }
+    }
 
     /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
     /// hexadecimal numerals. We will combine this later with parse_escaped_char
@@ -122,10 +127,8 @@ pub mod string_parser {
     /// Parse a non-empty block of text that doesn't include \ or "
     fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
         // Return an error if the literal contains an unsupported code point.
-        for code_point in UNSUPPORTED_CODE_POINTS {
-            if input.contains(code_point) {
-                return Err(Error(E::from_error_kind("String literal contains invalid codepoint", ErrorKind::Char)));
-            }
+        if input.chars().any(is_char_unsupported) {
+            return Err(Error(E::from_error_kind("String literal contains invalid codepoint", ErrorKind::Char)));
         }
 
         // `is_not` parses a string of 0 or more characters that aren't one of the
