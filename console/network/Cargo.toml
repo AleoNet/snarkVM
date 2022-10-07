@@ -61,13 +61,18 @@ version = "1.4"
 version = "1.0"
 
 [features]
-default = [ "snarkvm-console-algorithms/default", "snarkvm-console-collections/default", 
-"snarkvm-console-network-environment/default",
-"snarkvm-utilities/default" ]
-enclave = [ "snarkvm-algorithms/enclave", "snarkvm-console-algorithms/enclave",  
-"snarkvm-console-collections/enclave",
-"snarkvm-console-network-environment/default",
-"snarkvm-curves/enclave", 
-"snarkvm-fields/enclave",
-"snarkvm-utilities/enclave" ]
-
+default = [
+    "snarkvm-console-algorithms/default",
+    "snarkvm-console-collections/default", 
+    "snarkvm-console-network-environment/default",
+    "snarkvm-utilities/default"
+]
+enclave = [
+    "snarkvm-algorithms/enclave",
+    "snarkvm-console-algorithms/enclave",  
+    "snarkvm-console-collections/enclave",
+    "snarkvm-console-network-environment/default",
+    "snarkvm-curves/enclave", 
+    "snarkvm-fields/enclave",
+    "snarkvm-utilities/enclave"
+]
