@@ -37,6 +37,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
+    types::Field,
 };
 
 use core::marker::PhantomData;
@@ -116,6 +117,11 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
                 false
             }
         }
+    }
+
+    /// Returns the storage root.
+    pub fn get_storage_root(&self) -> Result<Field<N>> {
+        self.store.get_storage_root()
     }
 }
 
