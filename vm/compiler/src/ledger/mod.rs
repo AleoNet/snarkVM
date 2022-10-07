@@ -289,6 +289,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             OffsetDateTime::now_utc().unix_timestamp(),
         )?;
 
+        // TODO (raychu86): Add the transaction key-value state to the storage root calculation.
+
         // Construct the header.
         let header = Header::from(*state_root, transactions.to_root()?, self.vm.get_storage_root()?, metadata)?;
 
