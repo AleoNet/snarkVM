@@ -73,5 +73,15 @@ path = "../../console/types"
 version = "0.4"
 
 [features]
-default = [ "console/default", "snarkvm-curves/default", "snarkvm-r1cs/default" ]
-enclave = [ "console/enclave", "snarkvm-curves/enclave", "snarkvm-fields/enclave", "snarkvm-r1cs/enclave", "snarkvm-utilities/enclave" ]
+default = [
+    "console/default",
+    "snarkvm-curves/default",
+    "snarkvm-r1cs/default"
+]
+enclave = [
+    "console/enclave",
+    "snarkvm-curves/enclave",
+    "snarkvm-fields/enclave",
+    "snarkvm-r1cs/enclave",
+    "snarkvm-utilities/enclave"
+]

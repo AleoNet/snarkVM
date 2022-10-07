@@ -42,6 +42,17 @@ version = "1.0.64"
 version = "0.8"
 
 [features]
-default = [ "enable_console", "snarkvm-circuit-account/default", "snarkvm-circuit-network/default", "snarkvm-circuit-types/default", "snarkvm-utilities/default" ]
+default = [
+    "enable_console",
+    "snarkvm-circuit-account/default",
+    "snarkvm-circuit-network/default",
+    "snarkvm-circuit-types/default",
+    "snarkvm-utilities/default"
+]
 enable_console = [ "console" ]
-enclave = [ "snarkvm-circuit-account/enclave", "snarkvm-circuit-network/enclave",  "snarkvm-circuit-types/enclave", "snarkvm-utilities/enclave" ]
+enclave = [
+    "snarkvm-circuit-account/enclave",
+    "snarkvm-circuit-network/enclave",
+    "snarkvm-circuit-types/enclave",
+    "snarkvm-utilities/enclave"
+]

@@ -38,6 +38,13 @@ path = "../../utilities"
 version = "1.0.64"
 
 [features]
-default = [ "enable_console" ]
-enable_console = [ "console", "snarkvm-circuit-algorithms/default", "snarkvm-circuit-types/default" ]
-enclave = [ "snarkvm-circuit-algorithms/enclave", "snarkvm-circuit-types/enclave" ]
+default = [ 
+    "enable_console",
+    "snarkvm-circuit-algorithms/default",
+    "snarkvm-circuit-types/default"
+]
+enable_console = [ "console" ]
+enclave = [
+    "snarkvm-circuit-algorithms/enclave",
+    "snarkvm-circuit-types/enclave"
+]

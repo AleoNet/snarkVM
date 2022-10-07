@@ -20,10 +20,12 @@ default-features = false
 [dependencies.snarkvm-circuit-types-boolean]
 path = "../boolean"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-field]
 path = "../field"
 version = "0.9.0"
+default-features = false
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../../utilities"
@@ -33,6 +35,15 @@ default-features = false
 version = "1"
 
 [features]
-default = [ "enable_console", "snarkvm-circuit-environment/default" ]
+default = [
+    "enable_console",
+    "snarkvm-circuit-environment/default",
+    "snarkvm-circuit-types-boolean/default",
+    "snarkvm-circuit-types-field/default"
+]
 enable_console = [ "console" ]
-enclave = [ "snarkvm-circuit-environment/enclave" ]
+enclave = [
+    "snarkvm-circuit-environment/enclave",
+    "snarkvm-circuit-types-boolean/enclave",
+    "snarkvm-circuit-types-field/enclave"
+]
