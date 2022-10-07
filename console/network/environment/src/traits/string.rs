@@ -41,7 +41,7 @@ pub mod string_parser {
 
     /// Checks for unsupported "invisible" code points.
     /// See [Sanitizer::parse_safe_char] for an explanation.
-    fn is_char_unsupported(c: char) -> bool {
+    pub fn is_char_unsupported(c: char) -> bool {
         let code = c as u32;
 
         // A quick early return, as anything above is supported.

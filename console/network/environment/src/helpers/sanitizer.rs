@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ParserResult;
+use crate::{string_parser::is_char_unsupported, ParserResult};
 
 use nom::{
     branch::alt,
@@ -88,14 +88,7 @@ impl Sanitizer {
     /// as opposed to returning `A` and leaving another `A` in the input.
     pub fn parse_safe_char(string: &str) -> ParserResult<char> {
         fn is_safe(ch: &char) -> bool {
-            let code = *ch as u32;
-            code == 9
-                || code == 10
-                || code == 13
-                || (32..=126).contains(&code)
-                || (128..=0x2029).contains(&code)
-                || (0x202f..=0x2065).contains(&code)
-                || (0x206a <= code)
+            !is_char_unsupported(*ch)
         }
         verify(anychar, is_safe)(string)
     }
