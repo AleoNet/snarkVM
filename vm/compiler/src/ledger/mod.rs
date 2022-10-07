@@ -290,7 +290,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         )?;
 
         // Construct the header.
-        let header = Header::from(*state_root, transactions.to_root()?, metadata)?;
+        let header = Header::from(*state_root, transactions.to_root()?, self.vm.get_storage_root()?, metadata)?;
 
         // Construct the new block.
         Block::new(private_key, block.hash(), header, transactions, rng)
