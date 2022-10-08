@@ -39,9 +39,37 @@ pub mod string_parser {
         IResult,
     };
 
+    /// Checks for supported code points.
+    ///
+    /// We regard the following characters as safe:
+    /// - Horizontal tab (code 9).
+    /// - Line feed (code 10).
+    /// - Carriage return (code 13).
+    /// - Space (code 32).
+    /// - Visible ASCII (codes 33-126).
+    /// - Non-ASCII Unicode scalar values (codes 128+) except
+    ///   * bidi embeddings, overrides and their termination (codes U+202A-U+202E)
+    ///   * isolates (codes U+2066-U+2069)
+    ///
+    /// The Unicode bidi characters are well-known for presenting Trojan Source dangers.
+    /// The ASCII backspace (code 8) can be also used to make text look different from what it is,
+    /// and a similar danger may apply to delete (126).
+    /// Other ASCII control characters
+    /// (except for horizontal tab, space, line feed, and carriage return, which are allowed)
+    /// may or may not present dangers, but we see no good reason for allowing them.
+    /// At some point we may want disallow additional non-ASCII characters,
+    /// if we see no good reason to allow them.
+    ///
+    /// Note that we say 'Unicode scalar values' above,
+    /// because we read UTF-8-decoded characters,
+    /// and thus we will never encounter surrogate code points,
+    /// and we do not need to explicitly exclude them in this function.
+    pub fn is_char_supported(c: char) -> bool {
+        !is_char_unsupported(c)
+    }
+
     /// Checks for unsupported "invisible" code points.
-    /// See [Sanitizer::parse_safe_char] for an explanation.
-    pub fn is_char_unsupported(c: char) -> bool {
+    fn is_char_unsupported(c: char) -> bool {
         let code = c as u32;
 
         // A quick early return, as anything above is supported.
