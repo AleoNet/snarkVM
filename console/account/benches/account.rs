@@ -17,16 +17,19 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
+use snarkvm_console_account::{Address, PrivateKey, ViewKey};
+use snarkvm_console_network::{environment::prelude::*, Testnet3};
 
 use criterion::Criterion;
+
+type CurrentNetwork = Testnet3;
 
 fn account_private_key(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     c.bench_function("account_private_key", move |b| {
         b.iter(|| {
-            let _private_key = PrivateKey::<Testnet2>::new(rng);
+            let _private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         })
     });
 }
@@ -35,10 +38,10 @@ fn account_view_key(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     c.bench_function("account_view_key", move |b| {
-        let private_key = PrivateKey::<Testnet2>::new(rng);
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
         b.iter(|| {
-            let _view_key = ViewKey::from_private_key(&private_key);
+            let _view_key = ViewKey::try_from(&private_key).unwrap();
         })
     });
 }
@@ -47,10 +50,10 @@ fn account_address(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     c.bench_function("account_address", move |b| {
-        let private_key = PrivateKey::<Testnet2>::new(rng);
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
         b.iter(|| {
-            let _address = Address::from_private_key(&private_key);
+            let _address = Address::try_from(&private_key).unwrap();
         })
     });
 }
