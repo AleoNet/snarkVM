@@ -365,13 +365,17 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
         let block_height_at_year_10 = estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10);
-        let coinbase_proof = if self.latest_height() as u64 > block_height_at_year_10
+        let (coinbase_proof, coinbase_accumulator_point) = if self.latest_height() as u64 > block_height_at_year_10
             || cumulative_prover_target < self.latest_coinbase_target()? as u128
         {
-            None
+            (None, Field::<N>::zero())
         } else {
             let epoch_challenge = self.latest_epoch_challenge()?;
-            Some(CoinbasePuzzle::accumulate(&self.coinbase_proving_key, &epoch_challenge, &prover_solutions)?)
+            let coinbase_proof =
+                CoinbasePuzzle::accumulate(&self.coinbase_proving_key, &epoch_challenge, &prover_solutions)?;
+            let coinbase_accumulator_point = coinbase_proof.to_accumulator_point()?;
+
+            (Some(coinbase_proof), coinbase_accumulator_point)
         };
 
         // Fetch the latest block and state root.
@@ -421,7 +425,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let metadata = Metadata::new(N::ID, round, new_height, coinbase_target, proof_target, timestamp)?;
 
         // Construct the header.
-        let header = Header::from(*state_root, transactions.to_root()?, metadata)?;
+        let header = Header::from(*state_root, transactions.to_root()?, coinbase_accumulator_point, metadata)?;
 
         // Construct the new block.
         Block::new(private_key, block.hash(), header, transactions, coinbase_proof, rng)
@@ -612,6 +616,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 bail!("Coinbase proofs are no longer accepted after year 10.");
             }
 
+            if block.header().coinbase_accumulator_point() != &coinbase_proof.to_accumulator_point()? {
+                bail!("Coinbase accumulator point does not match the coinbase proof.");
+            }
+
             if coinbase_proof.partial_solutions.len() > MAX_NUM_PROOFS {
                 bail!(
                     "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
@@ -634,6 +642,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 if block.height() > 0 && prover_solution.to_target()? < self.latest_proof_target()? {
                     bail!("Invalid prover solution found in the coinbase proof");
                 }
+            }
+        } else {
+            // Ensure that the block header does not contain a coinbase accumulator point.
+            if block.header().coinbase_accumulator_point() != &Field::<N>::zero() {
+                bail!("Coinbase accumulator point should be zero if there is no coinbase proof.");
             }
         }
 

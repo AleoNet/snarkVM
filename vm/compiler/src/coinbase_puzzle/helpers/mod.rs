@@ -30,7 +30,7 @@ use crate::{
     coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle},
     MAX_NUM_PROOFS,
 };
-use console::{account::Address, prelude::*};
+use console::{account::Address, prelude::*, types::Field};
 use snarkvm_algorithms::{
     fft::{domain::FFTPrecomputation, DensePolynomial, EvaluationDomain},
     msm::VariableBase,
