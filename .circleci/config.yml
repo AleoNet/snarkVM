@@ -539,9 +539,8 @@ jobs:
           name: Check lint
           no_output_timeout: 35m
           command: |
-            rustup toolchain install nightly-x86_64-unknown-linux-gnu
-            cargo +nightly clippy --workspace --all-targets -- -D warnings
-            cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings
+            cargo clippy --workspace --all-targets -- -D warnings
+            cargo clippy --workspace --all-targets --all-features -- -D warnings
       - clear_environment:
           cache_key: snarkos-clippy-cache
 
