@@ -111,8 +111,8 @@ version = "0.2"
 default = [
   "parallel",
   "snarkvm-algorithms/default",
-  "snarkvm-circuit/default",
-  "snarkvm-console/default",
+  "circuit/default",
+  "console/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-parameters/default"
@@ -126,8 +126,8 @@ parallel = [
 aleo-cli = [ "snarkvm-parameters/default" ]
 enclave = [
   "snarkvm-algorithms/enclave",
-  "snarkvm-circuit/enclave",
-  "snarkvm-console/enclave",
+  "circuit/enclave",
+  "console/enclave",
   "snarkvm-curves/enclave",
   "snarkvm-fields/enclave",
   "snarkvm-utilities/enclave"
