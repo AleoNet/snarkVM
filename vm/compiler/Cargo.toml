@@ -27,23 +27,28 @@ edition = "2021"
 package = "snarkvm-circuit"
 path = "../../circuit"
 version = "0.9.0"
+default-features = false
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../../parameters"
@@ -103,7 +108,15 @@ version = "1.6"
 version = "0.2"
 
 [features]
-default = [ "parallel", "snarkvm-parameters/default" ]
+default = [
+  "parallel",
+  "snarkvm-algorithms/default",
+  "snarkvm-circuit/default",
+  "snarkvm-console/default",
+  "snarkvm-curves/default",
+  "snarkvm-fields/default",
+  "snarkvm-parameters/default"
+]
 parallel = [
   "rayon",
   "snarkvm-fields/parallel",
@@ -111,4 +124,11 @@ parallel = [
   "snarkvm-parameters/default"
 ]
 aleo-cli = [ "snarkvm-parameters/default" ]
-enclave = [ "snarkvm-utilities/enclave" ]
+enclave = [
+  "snarkvm-algorithms/enclave",
+  "snarkvm-circuit/enclave",
+  "snarkvm-console/enclave",
+  "snarkvm-curves/enclave",
+  "snarkvm-fields/enclave",
+  "snarkvm-utilities/enclave"
+]
