@@ -32,7 +32,7 @@ pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>
 
 ///
 /// Calculate the coinbase reward for a given block.
-///     R_coinbase = max(0, H_Y10 - H) * R_anchor * 2^((D - B) / N).
+///     R_coinbase = max(0, H_Y10 - H) * R_anchor * 2^(-1 * (D - B) / N).
 ///     R_anchor = Anchor reward.
 ///     H_Y10 = Expected block height at year 10.
 ///     H = Current block height.
@@ -109,11 +109,12 @@ pub fn proof_target(coinbase_target: u64) -> u64 {
 
 ///
 /// Retarget algorithm using fixed point arithmetic from https://www.reference.cash/protocol/forks/2020-11-15-asert.
-///     T_{i+1} = T_i * 2^((D - B) / N).
+///     T_{i+1} = T_i * 2^(INV * (D - B) / N).
 ///     T_i = Current target.
 ///     D = Time elapsed since the previous block.
 ///     B = Expected time per block.
 ///     N = Number of rounds in an epoch.
+///     INV = {-1, 1} depending on whether the target is increasing or decreasing.
 ///
 fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
     previous_target: u64,
