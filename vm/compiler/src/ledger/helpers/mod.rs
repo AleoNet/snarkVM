@@ -322,7 +322,7 @@ mod tests {
 
         let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
 
-        // Check that block `estimated_blocks_in_10_years` has a reward of 0.
+        // Check that block `anchor_height_at_year_10` has a reward of 0.
         let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
             GENESIS_TIMESTAMP,
             GENESIS_TIMESTAMP + ANCHOR_TIME as i64,
