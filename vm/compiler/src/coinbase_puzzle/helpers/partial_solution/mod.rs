@@ -61,8 +61,8 @@ impl<N: Network> PartialSolution<N> {
         CoinbasePuzzle::prover_polynomial(epoch_challenge, self.address(), self.nonce())
     }
 
-    /// Returns the difficulty target of the solution.
-    pub fn to_difficulty_target(&self) -> Result<u64> {
-        Ok(sha256d_to_u64(&self.commitment.to_bytes_le()?))
+    /// Returns the target of the solution.
+    pub fn to_target(&self) -> Result<u64> {
+        Ok(u64::MAX / sha256d_to_u64(&self.commitment.to_bytes_le()?))
     }
 }

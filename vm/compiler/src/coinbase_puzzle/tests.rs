@@ -32,7 +32,7 @@ fn test_coinbase_puzzle() {
         let degree = (1 << log_degree) - 1;
         let config = PuzzleConfig { degree };
         let (pk, vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
-        let epoch_challenge = EpochChallenge::new(rng.next_u64(), Default::default(), degree).unwrap();
+        let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
         for batch_size in 1..10 {
             let solutions = (0..batch_size)
@@ -46,7 +46,7 @@ fn test_coinbase_puzzle() {
             let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_challenge, &solutions).unwrap();
             assert!(full_solution.verify(&vk, &epoch_challenge).unwrap());
 
-            let bad_epoch_challenge = EpochChallenge::new(rng.next_u64(), Default::default(), degree).unwrap();
+            let bad_epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
             assert!(!full_solution.verify(&vk, &bad_epoch_challenge).unwrap());
         }
     }

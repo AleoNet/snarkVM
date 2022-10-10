@@ -26,7 +26,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
-use crate::UniversalSRS;
+use crate::{UniversalSRS, MAX_NUM_PROOFS};
 use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, CryptoRng, Network, Result, Rng, ToBytes},
@@ -146,6 +146,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {
+        // Check that the number of prover solutions does not exceed `MAX_NUM_PROOFS`.
+        if prover_solutions.len() > MAX_NUM_PROOFS {
+            bail!("Exceeded the allowed number of prover solutions. ({} > {})", prover_solutions.len(), MAX_NUM_PROOFS);
+        }
+
         let (prover_polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
                 if solution.proof().is_hiding() {
@@ -210,10 +215,10 @@ impl<N: Network> CoinbasePuzzle<N> {
         nonce: u64,
     ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
         let input = {
-            let mut bytes = [0u8; 84];
-            bytes[..44].copy_from_slice(&epoch_challenge.to_bytes_le()?);
-            bytes[44..76].copy_from_slice(&address.to_bytes_le()?);
-            bytes[76..].copy_from_slice(&nonce.to_le_bytes());
+            let mut bytes = [0u8; 80];
+            bytes[..40].copy_from_slice(&epoch_challenge.to_bytes_le()?);
+            bytes[40..72].copy_from_slice(&address.to_bytes_le()?);
+            bytes[72..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
         hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?)

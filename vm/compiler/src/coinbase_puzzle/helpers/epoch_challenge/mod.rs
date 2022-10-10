@@ -24,7 +24,7 @@ use crate::coinbase_puzzle::hash_to_polynomial;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EpochChallenge<N: Network> {
     /// The epoch number.
-    epoch_number: u64,
+    epoch_number: u32,
     /// The epoch block hash, defined as the block hash right before the epoch updated.
     epoch_block_hash: N::BlockHash,
     /// The epoch polynomial.
@@ -35,7 +35,7 @@ pub struct EpochChallenge<N: Network> {
 
 impl<N: Network> EpochChallenge<N> {
     /// Initializes a new epoch challenge.
-    pub fn new(epoch_number: u64, epoch_block_hash: N::BlockHash, degree: u32) -> Result<Self> {
+    pub fn new(epoch_number: u32, epoch_block_hash: N::BlockHash, degree: u32) -> Result<Self> {
         // Construct the 'input' as '( epoch_number || epoch_block_hash )'
         let input: Vec<u8> =
             epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?.into_iter()).collect();
@@ -47,7 +47,7 @@ impl<N: Network> EpochChallenge<N> {
     }
 
     /// Returns the epoch number for the solution.
-    pub const fn epoch_number(&self) -> u64 {
+    pub const fn epoch_number(&self) -> u32 {
         self.epoch_number
     }
 

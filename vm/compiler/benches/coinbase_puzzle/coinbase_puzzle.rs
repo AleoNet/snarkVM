@@ -37,7 +37,7 @@ fn sample_inputs(
 }
 
 fn sample_epoch_challenge(degree: u32, rng: &mut (impl CryptoRng + RngCore)) -> EpochChallenge<Testnet3> {
-    EpochChallenge::new(rng.next_u64(), Default::default(), degree).unwrap()
+    EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap()
 }
 
 fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Testnet3>, u64) {
@@ -54,9 +54,10 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
-        c.bench_function(&format!("CoinbasePuzzle::Trim 2^{}", (degree as f64).log2()), |b| {
-            let config = PuzzleConfig { degree };
+    for degree in [(1 << 13) - 1] {
+        let config = PuzzleConfig { degree };
+
+        c.bench_function(&format!("CoinbasePuzzle::Trim 2^{}", ((degree + 1) as f64).log2()), |b| {
             b.iter(|| CoinbasePuzzleInst::trim(&universal_srs, config).unwrap())
         });
     }
@@ -69,10 +70,11 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
-        c.bench_function(&format!("CoinbasePuzzle::Prove 2^{}", (degree as f64).log2()), |b| {
-            let config = PuzzleConfig { degree };
-            let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
+    for degree in [(1 << 13) - 1] {
+        let config = PuzzleConfig { degree };
+        let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
+
+        c.bench_function(&format!("CoinbasePuzzle::Prove 2^{}", ((degree + 1) as f64).log2()), |b| {
             let (epoch_challenge, address, nonce) = sample_inputs(degree, rng);
             b.iter(|| CoinbasePuzzleInst::prove(&pk, &epoch_challenge, &address, nonce).unwrap())
         });
@@ -86,7 +88,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
+    for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
         let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
@@ -100,7 +102,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
                 .collect::<Vec<_>>();
 
             c.bench_function(
-                &format!("CoinbasePuzzle::Accumulate {batch_size} of 2^{}", (degree as f64).log2()),
+                &format!("CoinbasePuzzle::Accumulate {batch_size} of 2^{}", ((degree + 1) as f64).log2()),
                 |b| b.iter(|| CoinbasePuzzleInst::accumulate(&pk, &epoch_challenge, &solutions).unwrap()),
             );
         }
@@ -114,7 +116,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
     let max_config = PuzzleConfig { degree: max_degree };
     let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
 
-    for degree in [1 << 13] {
+    for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
         let (pk, vk) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
@@ -128,9 +130,10 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
                 .collect::<Vec<_>>();
             let final_puzzle = CoinbasePuzzleInst::accumulate(&pk, &epoch_challenge, &solutions).unwrap();
 
-            c.bench_function(&format!("CoinbasePuzzle::Verify {batch_size} of 2^{}", (degree as f64).log2()), |b| {
-                b.iter(|| final_puzzle.verify(&vk, &epoch_challenge).unwrap())
-            });
+            c.bench_function(
+                &format!("CoinbasePuzzle::Verify {batch_size} of 2^{}", ((degree + 1) as f64).log2()),
+                |b| b.iter(|| assert!(final_puzzle.verify(&vk, &epoch_challenge).unwrap())),
+            );
         }
     }
 }

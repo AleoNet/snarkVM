@@ -62,8 +62,23 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         self.get_transactions(self.current_height)
     }
 
+    /// Returns the latest epoch number.
+    pub fn latest_epoch_number(&self) -> u32 {
+        self.current_height / NUM_BLOCKS_PER_EPOCH
+    }
+
     /// Returns the latest epoch challenge.
     pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
-        EpochChallenge::new(self.latest_round().saturating_add(1), self.latest_hash(), COINBASE_PUZZLE_DEGREE)
+        // Get the latest epoch number.
+        let latest_epoch_number = self.latest_epoch_number();
+
+        // Get the epoch's starting height (multiple of `NUM_BLOCKS_PER_EPOCH`).
+        let epoch_starting_height = self.current_height - self.current_height % NUM_BLOCKS_PER_EPOCH;
+        ensure!(epoch_starting_height % NUM_BLOCKS_PER_EPOCH == 0, "Invalid epoch starting height");
+
+        // Fetch the epoch block hash, defined as the 'previous block hash' from the starting block height.
+        let epoch_block_hash = self.get_previous_hash(epoch_starting_height)?;
+
+        EpochChallenge::new(latest_epoch_number, epoch_block_hash, COINBASE_PUZZLE_DEGREE)
     }
 }

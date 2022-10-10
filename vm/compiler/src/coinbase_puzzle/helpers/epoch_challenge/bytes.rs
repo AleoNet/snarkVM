@@ -60,7 +60,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new epoch challenge.
             let degree: u16 = rng.gen(); // Bound the maximal test degree to 2^16.
-            let expected = EpochChallenge::<CurrentNetwork>::new(rng.next_u64(), rng.gen(), degree as u32).unwrap();
+            let expected = EpochChallenge::<CurrentNetwork>::new(rng.next_u32(), rng.gen(), degree as u32).unwrap();
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();

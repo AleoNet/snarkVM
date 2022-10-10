@@ -37,8 +37,13 @@ impl<N: Network> CoinbaseSolution<N> {
     }
 
     pub fn verify(&self, verifying_key: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
-        // Ensure the solution is not empty.
+        // Ensure the coinbase solution is not empty.
         if self.partial_solutions.is_empty() {
+            return Ok(false);
+        }
+
+        // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
+        if self.partial_solutions.len() > MAX_NUM_PROOFS {
             return Ok(false);
         }
 
@@ -91,16 +96,36 @@ impl<N: Network> CoinbaseSolution<N> {
         )?)
     }
 
-    /// Returns the cumulative difficulty of the individual prover solutions.
-    /// NOTE that this is NOT the cumulative difficulty target of the individual prover solutions.
-    pub fn to_cumulative_difficulty(&self) -> Result<u64> {
-        let mut cumulative_difficulty: u64 = 0;
+    /// Returns the cumulative target of the individual prover solutions.
+    pub fn to_cumulative_target(&self) -> Result<u128> {
+        // Ensure the coinbase solution is not empty.
+        ensure!(!self.partial_solutions.is_empty(), "The coinbase solution does not contain any partial solutions");
 
-        for solution in &self.partial_solutions {
-            let solution_difficulty = u64::MAX.saturating_div(solution.to_difficulty_target()?);
-            cumulative_difficulty = cumulative_difficulty.saturating_add(solution_difficulty);
+        // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
+        if self.partial_solutions.len() > MAX_NUM_PROOFS {
+            bail!(
+                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
+                self.partial_solutions.len(),
+                MAX_NUM_PROOFS
+            );
         }
 
-        Ok(cumulative_difficulty)
+        // Compute the cumulative target as a u128.
+        self.partial_solutions.iter().try_fold(0u128, |cumulative, solution| {
+            cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
+        })
+    }
+
+    /// Returns the accumulator challenge point.
+    pub fn to_accumulator_point(&self) -> Result<Field<N>> {
+        let mut challenge_points =
+            hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()))?;
+        ensure!(challenge_points.len() == self.partial_solutions.len() + 1, "Invalid number of challenge points");
+
+        // Pop the last challenge point as the accumulator challenge point.
+        match challenge_points.pop() {
+            Some(point) => Ok(Field::new(point)),
+            None => bail!("Missing the accumulator challenge point"),
+        }
     }
 }

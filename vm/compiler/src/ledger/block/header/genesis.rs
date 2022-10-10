@@ -22,10 +22,11 @@ impl<N: Network> Header<N> {
         // Prepare a genesis block header.
         let previous_state_root = Field::zero();
         let transactions_root = transactions.to_root()?;
+        let coinbase_accumulator_point = Field::zero();
         let metadata = Metadata::genesis()?;
 
         // Return the genesis block header.
-        Self::from(previous_state_root, transactions_root, metadata)
+        Self::from(previous_state_root, transactions_root, coinbase_accumulator_point, metadata)
     }
 
     /// Returns `true` if the block header is a genesis block header.
@@ -42,6 +43,7 @@ impl<N: Network> Header<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{GENESIS_COINBASE_TARGET, GENESIS_PROOF_TARGET, GENESIS_TIMESTAMP};
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -49,8 +51,8 @@ mod tests {
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        // Previous state root and transactions root size.
-        (Field::<N>::size_in_bytes() * 2)
+        // Previous state root, transactions root, and accumulator point size.
+        (Field::<N>::size_in_bytes() * 3)
             // Metadata size.
             + 2 + 4 + 8 + 8 + 8 + 8
             // Add an additional 4 bytes for versioning.
@@ -80,12 +82,13 @@ mod tests {
 
         // Ensure the genesis block contains the following.
         assert_eq!(*header.previous_state_root(), Field::zero());
+        assert_eq!(*header.coinbase_accumulator_point(), Field::zero());
         assert_eq!(header.network(), CurrentNetwork::ID);
         assert_eq!(header.height(), 0);
         assert_eq!(header.round(), 0);
-        assert_eq!(header.coinbase_target(), u64::MAX);
-        assert_eq!(header.proof_target(), u64::MAX);
-        assert_eq!(header.timestamp(), 0);
+        assert_eq!(header.coinbase_target(), GENESIS_COINBASE_TARGET);
+        assert_eq!(header.proof_target(), GENESIS_PROOF_TARGET);
+        assert_eq!(header.timestamp(), GENESIS_TIMESTAMP);
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(*header.transactions_root(), Field::zero());
