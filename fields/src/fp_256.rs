@@ -377,6 +377,87 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     type Parameters = P;
 
     #[inline]
+    fn decompose(
+        &self,
+        q1: &[u64; 4],
+        q2: &[u64; 4],
+        b1: Self,
+        b2: Self,
+        r128: Self,
+        half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool) {
+        let mul_short = |a: &[u64; 4], b: &[u64; 4]| -> [u64; 8] {
+            // Schoolbook multiplication
+            let mut carry = 0;
+            let r0 = fa::mac_with_carry(0, a[0], b[0], &mut carry);
+            let r1 = fa::mac_with_carry(0, a[0], b[1], &mut carry);
+            let r2 = fa::mac_with_carry(0, a[0], b[2], &mut carry);
+            let r3 = carry;
+
+            let mut carry = 0;
+            let r1 = fa::mac_with_carry(r1, a[1], b[0], &mut carry);
+            let r2 = fa::mac_with_carry(r2, a[1], b[1], &mut carry);
+            let r3 = fa::mac_with_carry(r3, a[1], b[2], &mut carry);
+            let r4 = carry;
+
+            let mut carry = 0;
+            let r2 = fa::mac_with_carry(r2, a[2], b[0], &mut carry);
+            let r3 = fa::mac_with_carry(r3, a[2], b[1], &mut carry);
+            let r4 = fa::mac_with_carry(r4, a[2], b[2], &mut carry);
+            let r5 = carry;
+
+            let mut carry = 0;
+            let r3 = fa::mac_with_carry(r3, a[3], b[0], &mut carry);
+            let r4 = fa::mac_with_carry(r4, a[3], b[1], &mut carry);
+            let r5 = fa::mac_with_carry(r5, a[3], b[2], &mut carry);
+            let r6 = carry;
+
+            [r0, r1, r2, r3, r4, r5, r6, 0]
+        };
+
+        let round = |a: &mut [u64; 8]| -> Self {
+            let mut carry = 0;
+            // NOTE: can the first 4 be omitted?
+            carry = fa::adc(&mut a[0], half_r[0], carry);
+            carry = fa::adc(&mut a[1], half_r[1], carry);
+            carry = fa::adc(&mut a[2], half_r[2], carry);
+            carry = fa::adc(&mut a[3], half_r[3], carry);
+            carry = fa::adc(&mut a[4], half_r[4], carry);
+            carry = fa::adc(&mut a[5], half_r[5], carry);
+            carry = fa::adc(&mut a[6], half_r[6], carry);
+            _ = fa::adc(&mut a[7], half_r[7], carry);
+            Self::from_repr(BigInteger([a[4], a[5], a[6], a[7]])).unwrap()
+        };
+
+        let alpha = |x: &Self, q: &[u64; 4]| -> Self {
+            let mut a = mul_short(&x.to_repr().0, q);
+            round(&mut a)
+        };
+
+        let alpha1 = alpha(self, q1);
+        let alpha2 = alpha(self, q2);
+        let z1 = alpha1 * b1;
+        let z2 = alpha2 * b2;
+
+        let mut k1 = *self - z1 - alpha2;
+        let mut k2 = z2 - alpha1;
+        let mut k1_neg = false;
+        let mut k2_neg = false;
+
+        if k1 > r128 {
+            k1 = -k1;
+            k1_neg = true;
+        }
+
+        if k2 > r128 {
+            k2 = -k2;
+            k2_neg = true;
+        }
+
+        (k1, k2, k1_neg, k2_neg)
+    }
+
+    #[inline]
     fn from_repr(r: BigInteger) -> Option<Self> {
         let mut r = Fp256(r, PhantomData);
         if r.is_zero() {
