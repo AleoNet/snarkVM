@@ -17,8 +17,5 @@
 pub mod input;
 pub use input::*;
 
-pub mod output;
-pub use output::*;
-
 #[cfg(test)]
 mod tests;
