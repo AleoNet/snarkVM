@@ -37,7 +37,7 @@ fn sample_inputs(
 }
 
 fn sample_epoch_challenge(degree: u32, rng: &mut (impl CryptoRng + RngCore)) -> EpochChallenge<Testnet3> {
-    EpochChallenge::new(rng.next_u64(), Default::default(), degree).unwrap()
+    EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap()
 }
 
 fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Testnet3>, u64) {

@@ -27,7 +27,7 @@ mod string;
 
 use crate::{
     coinbase_puzzle::CoinbaseSolution,
-    ledger::{vm::VM, Origin, Transaction, Transition, NUM_ROUNDS_PER_EPOCH},
+    ledger::{vm::VM, Origin, Transaction, Transition, NUM_BLOCKS_PER_EPOCH},
     process::{Deployment, Execution},
 };
 use console::{
@@ -161,8 +161,8 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the epoch number of this block.
-    pub const fn epoch_number(&self) -> u64 {
-        self.round() / NUM_ROUNDS_PER_EPOCH as u64
+    pub const fn epoch_number(&self) -> u32 {
+        self.height() / NUM_BLOCKS_PER_EPOCH
     }
 
     /// Returns the coinbase target for this block.

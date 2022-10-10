@@ -40,7 +40,7 @@ pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>
 ///     B = Expected time per block.
 ///     N = Number of rounds in an epoch.
 ///
-pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
+pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64, const NUM_BLOCKS_PER_EPOCH: u32>(
     previous_timestamp: i64,
     timestamp: i64,
     block_height: u64,
@@ -55,8 +55,8 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
     // Return the adjusted reward.
     match max.checked_mul(anchor_reward).ok_or_else(|| anyhow!("Anchor reward overflow"))? {
         0 => Ok(0),
-        // (max * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / NUM_ROUNDS_IN_EPOCH}
-        reward => Ok(retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(reward, previous_timestamp, timestamp, true)),
+        // (max * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / NUM_BLOCKS_PER_EPOCH}
+        reward => Ok(retarget::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(reward, previous_timestamp, timestamp, true)),
     }
 }
 
@@ -87,12 +87,12 @@ pub(crate) fn estimated_block_height(anchor_time: u64, num_years: u32) -> u64 {
 }
 
 /// Calculate the coinbase target for the given block height.
-pub fn coinbase_target<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
+pub fn coinbase_target<const ANCHOR_TIME: i64, const NUM_BLOCKS_PER_EPOCH: u32>(
     previous_coinbase_target: u64,
     previous_block_timestamp: i64,
     block_timestamp: i64,
 ) -> u64 {
-    let candidate_target = retarget::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+    let candidate_target = retarget::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
         previous_coinbase_target,
         previous_block_timestamp,
         block_timestamp,
@@ -116,7 +116,7 @@ pub fn proof_target(coinbase_target: u64) -> u64 {
 ///     N = Number of rounds in an epoch.
 ///     INV = {-1, 1} depending on whether the target is increasing or decreasing.
 ///
-fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
+fn retarget<const ANCHOR_TIME: i64, const NUM_BLOCKS_PER_EPOCH: u32>(
     previous_target: u64,
     previous_block_timestamp: i64,
     block_timestamp: i64,
@@ -150,7 +150,7 @@ fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
     // Compute the exponent factor, and decompose it into integral & fractional parts for fixed point arithmetic.
     let (integral, fractional) = {
         // Calculate the exponent factor.
-        let exponent = (RADIX as i128).saturating_mul(drift as i128) / NUM_ROUNDS_PER_EPOCH as i128;
+        let exponent = (RADIX as i128).saturating_mul(drift as i128) / NUM_BLOCKS_PER_EPOCH as i128;
 
         // Decompose into the integral and fractional parts.
         let integral = exponent >> RBITS;
@@ -202,7 +202,7 @@ fn retarget<const ANCHOR_TIME: i64, const NUM_ROUNDS_PER_EPOCH: u32>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{ANCHOR_TIME, GENESIS_TIMESTAMP, NUM_ROUNDS_PER_EPOCH, STARTING_SUPPLY};
+    use crate::ledger::{ANCHOR_TIME, GENESIS_TIMESTAMP, NUM_BLOCKS_PER_EPOCH, STARTING_SUPPLY};
     use snarkvm_utilities::TestRng;
 
     use rand::Rng;
@@ -245,7 +245,7 @@ mod tests {
         let mut previous_timestamp = GENESIS_TIMESTAMP;
         let mut timestamp = GENESIS_TIMESTAMP;
 
-        let mut previous_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+        let mut previous_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
             previous_timestamp,
             timestamp,
             block_height,
@@ -256,7 +256,7 @@ mod tests {
         timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
 
         while block_height < estimated_blocks_in_10_years {
-            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 previous_timestamp,
                 timestamp,
                 block_height,
@@ -278,7 +278,7 @@ mod tests {
         let estimated_blocks_in_10_years = estimated_block_height(ANCHOR_TIME as u64, 10);
 
         // Check that block `estimated_blocks_in_10_years` has a reward of 0.
-        let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+        let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
             GENESIS_TIMESTAMP,
             GENESIS_TIMESTAMP + ANCHOR_TIME,
             estimated_blocks_in_10_years,
@@ -293,7 +293,7 @@ mod tests {
             let timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME;
             let new_timestamp = timestamp + ANCHOR_TIME;
 
-            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 timestamp,
                 new_timestamp,
                 block_height,
@@ -318,7 +318,7 @@ mod tests {
 
             // Targets stay the same when the timestamp is as expected.
             let new_timestamp = previous_timestamp + ANCHOR_TIME;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
@@ -329,7 +329,7 @@ mod tests {
 
             // Targets decrease (easier) when the timestamp is greater than expected.
             let new_timestamp = previous_timestamp + 2 * ANCHOR_TIME;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
@@ -340,7 +340,7 @@ mod tests {
 
             // Targets increase (harder) when the timestamp is less than expected.
             let new_timestamp = previous_timestamp + ANCHOR_TIME / 2;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,

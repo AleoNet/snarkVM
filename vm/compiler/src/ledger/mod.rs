@@ -79,8 +79,8 @@ const BLOCKS_DEPTH: u8 = 32;
 pub const ANCHOR_TIME: i64 = 20;
 /// The fixed timestamp of the genesis block.
 pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
-/// The number of rounds per epoch (2 hours).
-pub const NUM_ROUNDS_PER_EPOCH: u32 = 1 << 9; // 512
+/// The number of blocks per epoch (1 hour).
+pub const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
 /// The maximum number of prover solutions that can be included per block.
 pub const MAX_NUM_PROOFS: usize = 1 << 20; // 1,048,576
 
@@ -94,7 +94,7 @@ pub const GENESIS_COINBASE_TARGET: u64 = 1 << 11; // 2^11
 pub const GENESIS_PROOF_TARGET: u64 = 1 << 1; // 2^1
 
 /// The starting supply of Aleo credits.
-pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000;
+pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
@@ -391,7 +391,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
         {
             // Calculate the coinbase reward.
-            let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+            let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 block.timestamp(),
                 timestamp,
                 new_height as u64,
@@ -412,7 +412,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Construct the new coinbase target.
-        let coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_ROUNDS_PER_EPOCH>(
+        let coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
             self.latest_coinbase_target()?,
             block.timestamp(),
             timestamp,
@@ -606,9 +606,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         /* Coinbase Proof */
 
-        // TODO (howardwu): Update this to be epoch-based, not block-based.
         // TODO (howardwu): Cache this epoch challenge so it doesn't need to be recomputed each time.
-        let epoch_challenge = EpochChallenge::new(block.round(), block.previous_hash(), COINBASE_PUZZLE_DEGREE)?;
+        let epoch_challenge = self.latest_epoch_challenge()?;
 
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
