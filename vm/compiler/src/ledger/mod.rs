@@ -44,7 +44,7 @@ mod iterators;
 mod latest;
 
 use crate::{
-    ledger::helpers::{coinbase_reward, coinbase_target, estimated_block_height, proof_target},
+    ledger::helpers::{anchor_block_height, coinbase_reward, coinbase_target, proof_target},
     program::Program,
     CoinbaseProvingKey,
     CoinbasePuzzle,
@@ -76,7 +76,7 @@ const BLOCKS_DEPTH: u8 = 32;
 // TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
 
 /// The anchor time per block in seconds, which must be greater than the round time per block.
-pub const ANCHOR_TIME: i64 = 20;
+pub const ANCHOR_TIME: u16 = 20;
 /// The fixed timestamp of the genesis block.
 pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
 /// The number of blocks per epoch (1 hour).
@@ -89,9 +89,9 @@ const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1;
 
 // TODO (raychu86): Adjust these values based network expectations.
 /// The genesis block coinbase target.
-pub const GENESIS_COINBASE_TARGET: u64 = 1 << 11; // 2^11
+pub const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
 /// The genesis block proof target.
-pub const GENESIS_PROOF_TARGET: u64 = 1 << 1; // 2^1
+pub const GENESIS_PROOF_TARGET: u64 = 0; // 00 0000 0000
 
 /// The starting supply of Aleo credits.
 pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
@@ -305,7 +305,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the coinbase memory pool.
     pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
         // Ensure that prover solutions are not accepted after 10 years.
-        if self.latest_height() as u64 > estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10) {
+        if self.latest_height() > anchor_block_height(ANCHOR_TIME, 10) {
             bail!("Coinbase proofs are no longer accepted after year 10.");
         }
 
@@ -364,8 +364,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let block_height_at_year_10 = estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10);
-        let (coinbase_proof, coinbase_accumulator_point) = if self.latest_height() as u64 > block_height_at_year_10
+        let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+        let (coinbase_proof, coinbase_accumulator_point) = if self.latest_height() > anchor_height_at_year_10
             || cumulative_prover_target < self.latest_coinbase_target()? as u128
         {
             (None, Field::<N>::zero())
@@ -384,7 +384,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Fetch the new round state.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        let new_height = self.latest_height().saturating_add(1);
+        let next_height = self.latest_height().saturating_add(1);
         let round = block.round().saturating_add(1);
 
         // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
@@ -394,20 +394,32 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
                 block.timestamp(),
                 timestamp,
-                new_height as u64,
+                next_height,
             )?;
 
             // Calculate the rewards for the individual provers
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
-            for prover_puzzle_solution in prover_solutions {
-                // Prover compensation = 1/2 * coinbase_reward * (prover_target / cumulative_prover_target).
-                let prover_reward = (coinbase_reward as u128)
-                    .checked_mul(prover_puzzle_solution.to_target()? as u128)
-                    .ok_or_else(|| anyhow!("Prover reward overflowed"))?
-                    / 2
-                    / cumulative_prover_target;
+            for prover_solution in prover_solutions {
+                // Prover compensation is defined as:
+                //   1/2 * coinbase_reward * (prover_target / cumulative_prover_target)
+                //   = (coinbase_reward * prover_target) / (2 * cumulative_prover_target)
 
-                prover_rewards.push((*prover_puzzle_solution.address(), u64::try_from(prover_reward)?));
+                // Compute the numerator.
+                let numerator = (coinbase_reward as u128)
+                    .checked_mul(prover_solution.to_target()? as u128)
+                    .ok_or_else(|| anyhow!("Prover reward numerator overflowed"))?;
+
+                // Compute the denominator.
+                let denominator = (cumulative_prover_target as u128)
+                    .checked_mul(2)
+                    .ok_or_else(|| anyhow!("Prover reward denominator overflowed"))?;
+
+                // Compute the prover reward.
+                let prover_reward = u64::try_from(
+                    numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward overflowed"))?,
+                )?;
+
+                prover_rewards.push((*prover_solution.address(), prover_reward));
             }
         }
 
@@ -418,11 +430,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             timestamp,
         );
 
-        // Construct the new coinbase target
+        // Construct the new proof target.
         let proof_target = proof_target(coinbase_target);
 
         // Construct the metadata.
-        let metadata = Metadata::new(N::ID, round, new_height, coinbase_target, proof_target, timestamp)?;
+        let metadata = Metadata::new(N::ID, round, next_height, coinbase_target, proof_target, timestamp)?;
 
         // Construct the header.
         let header = Header::from(*state_root, transactions.to_root()?, coinbase_accumulator_point, metadata)?;
@@ -611,7 +623,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
-            if block.height() as u64 > estimated_block_height(u64::try_from(ANCHOR_TIME)?, 10) {
+            if block.height() > anchor_block_height(ANCHOR_TIME, 10) {
                 bail!("Coinbase proofs are no longer accepted after year 10.");
             }
 
