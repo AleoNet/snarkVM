@@ -125,8 +125,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_validators);
 
-        // POST /testnet3/statePath/{commitment}
-        let get_state_path = warp::post()
+        // GET /testnet3/statePath/{commitment}
+        let get_state_path = warp::get()
             .and(warp::path!("testnet3" / "statePath" / ..))
             .and(warp::path::param::<Field<N>>())
             .and(warp::path::end())
