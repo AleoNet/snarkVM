@@ -64,7 +64,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns the latest epoch number.
     pub fn latest_epoch_number(&self) -> u32 {
-        self.current_height / NUM_BLOCKS_PER_EPOCH as u32
+        self.current_height / NUM_BLOCKS_PER_EPOCH
     }
 
     /// Returns the latest epoch challenge.

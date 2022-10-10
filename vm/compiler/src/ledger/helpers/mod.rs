@@ -25,9 +25,9 @@ use super::*;
 ///
 pub(crate) fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> Result<u64> {
     // Calculate the estimated block height at year 1.
-    let block_height_around_year_1 = estimated_block_height(ANCHOR_TIME as u64, 1);
+    let block_height_at_year_1 = estimated_block_height(ANCHOR_TIME as u64, 1);
 
-    Ok(u64::try_from(STARTING_SUPPLY as u128 * 25 / 1000 / block_height_around_year_1 as u128)?)
+    Ok(u64::try_from(STARTING_SUPPLY as u128 * 25 / 1000 / block_height_at_year_1 as u128)?)
 }
 
 ///
@@ -46,10 +46,10 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
     block_height: u64,
 ) -> Result<u64> {
     // Calculate the estimated block height at year 10.
-    let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10);
+    let block_height_at_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10);
 
     // Calculate the anchor reward.
-    let max = std::cmp::max(block_height_around_year_10.saturating_sub(block_height), 0);
+    let max = std::cmp::max(block_height_at_year_10.saturating_sub(block_height), 0);
     let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>()?;
 
     // Return the adjusted reward.
@@ -68,10 +68,10 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64
 ///
 pub(crate) fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: i64>() -> Result<u64> {
     // Calculate the estimated block height at year 10.
-    let block_height_around_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10) as u128;
+    let block_height_at_year_10 = estimated_block_height(ANCHOR_TIME as u64, 10) as u128;
 
     let numerator = 2 * STARTING_SUPPLY as u128;
-    let denominator = block_height_around_year_10 * (block_height_around_year_10 + 1);
+    let denominator = block_height_at_year_10 * (block_height_at_year_10 + 1);
 
     Ok(u64::try_from(numerator / denominator)?)
 }
