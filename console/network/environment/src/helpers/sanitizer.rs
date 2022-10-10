@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ParserResult;
+use crate::{string_parser::is_char_supported, ParserResult};
 
 use nom::{
     branch::alt,
@@ -52,34 +52,12 @@ impl Sanitizer {
         )(string)
     }
 
-    /// Parse a safe character (in the sense explained below).
+    /// Parse a safe character (in the sense explained in [string_parser::is_char_supported]).
     /// Returns an error if no character is found or a non-safe character is found.
     /// The character is returned, along with the remaining input.
     ///
     /// This is used for otherwise unconstrained characters
     /// in (line and block) comments and in string literals.
-    ///
-    /// We regard the following characters as safe:
-    /// - Horizontal tab (code 9).
-    /// - Line feed (code 10).
-    /// - Carriage return (code 13).
-    /// - Space (code 32).
-    /// - Visible ASCII (codes 33-126).
-    /// - Non-ASCII Unicode scalar values except bidi embeddings, overrides, and isolates.
-    ///
-    /// The Unicode bidi characters are well-known for presenting Trojan Source dangers.
-    /// The ASCII backspace (code 8) can be also used to make text look different from what it is,
-    /// and a similar danger may apply to delete (126).
-    /// Other ASCII control characters
-    /// (except for horizontal tab, space, line feed, and carriage return, which are allowed)
-    /// may or may not present dangers, but we see no good reason for allowing them.
-    /// At some point we may want disallow additional non-ASCII characters,
-    /// if we see no good reason to allow them.
-    ///
-    /// Note that we say 'Unicode scalar values' above,
-    /// because we read UTF-8-decoded characters,
-    /// and thus we will never encounter surrogate code points,
-    /// and we do not need to explicitly exclude them in this function.
     ///
     /// Note also that the `nom` documentation for `anychar` says that
     /// it matches one byte as a character.
@@ -88,14 +66,7 @@ impl Sanitizer {
     /// as opposed to returning `A` and leaving another `A` in the input.
     pub fn parse_safe_char(string: &str) -> ParserResult<char> {
         fn is_safe(ch: &char) -> bool {
-            let code = *ch as u32;
-            code == 9
-                || code == 10
-                || code == 13
-                || (32..=126).contains(&code)
-                || (128..=0x2029).contains(&code)
-                || (0x202f..=0x2065).contains(&code)
-                || (0x206a <= code)
+            is_char_supported(*ch)
         }
         verify(anychar, is_safe)(string)
     }

@@ -74,8 +74,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-    use rand::Rng;
-
     const ITERATIONS: u32 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
@@ -83,7 +81,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, true);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
@@ -103,7 +101,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, true);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 

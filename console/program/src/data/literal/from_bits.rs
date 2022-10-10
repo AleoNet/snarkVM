@@ -147,7 +147,7 @@ mod tests {
             check_serialization(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let string: String = (0..(CurrentNetwork::MAX_STRING_BYTES) / 4).map(|_| rng.gen::<char>()).collect();
+            let string = rng.next_string(CurrentNetwork::MAX_STRING_BYTES / 4, false);
             check_serialization(Literal::<CurrentNetwork>::String(StringType::new(&string)))?;
         }
         Ok(())
