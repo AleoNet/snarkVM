@@ -18,8 +18,8 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -506,15 +506,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
-        let mut res = Self::zero();
-        for i in BitIteratorBE::new_without_leading_zeros(other.to_repr()) {
-            res.double_in_place();
-            if i {
-                res += self;
-            }
-        }
-
-        res
+        P::mul_projective(self, other)
     }
 }
 
