@@ -20,7 +20,6 @@ impl<N: Network> Serialize for Record<N, Plaintext<N>> {
     /// Serializes the record plaintext into a string or as bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            // true => serializer.collect_str(self),
             true => {
                 let mut request = serializer.serialize_struct("Record<N, Plaintext<N>>", 3)?;
                 request.serialize_field("owner", &self.owner.to_string())?;
