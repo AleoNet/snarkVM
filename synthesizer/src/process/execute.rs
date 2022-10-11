@@ -37,7 +37,7 @@ impl<N: Network> Process<N> {
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
         // Extract the execution.
-        let execution = execution.read().clone();
+        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution is not empty.
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
 
