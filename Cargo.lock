@@ -1974,9 +1974,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.85"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e55a28e3aaef9d5ce0506d0a14dbba8054ddc7e499ef522dd8b26859ec9d4a44"
+checksum = "41feea4228a6f1cd09ec7a3593a682276702cd67b5273544757dae23c096f074"
 dependencies = [
  "itoa",
  "ryu",
@@ -2343,6 +2343,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "colored",
+ "criterion",
  "indexmap",
  "once_cell",
  "parking_lot 0.12.1",
@@ -2382,6 +2383,7 @@ version = "0.9.0"
 dependencies = [
  "bincode",
  "bs58",
+ "criterion",
  "serde_json",
  "snarkvm-console-network",
  "snarkvm-console-types",
