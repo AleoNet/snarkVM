@@ -37,10 +37,9 @@ use snarkvm_console::{
 };
 
 use anyhow::Result;
-use indexmap::IndexMap;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use tokio::{sync::mpsc, task::JoinHandle};
 use warp::{http::StatusCode, reject, reply, Filter, Rejection, Reply};
 
