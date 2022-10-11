@@ -17,11 +17,19 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
+use console::{network::Testnet3, prelude::*};
+use snarkvm_compiler::Block;
+use snarkvm_parameters::testnet3::GenesisBytes;
 
 use criterion::Criterion;
 use serde::{de::DeserializeOwned, Serialize};
-use snarkvm_utilities::{FromBytes, ToBytes};
+
+type CurrentNetwork = Testnet3;
+
+/// Loads the genesis block.
+fn load_genesis_block() -> Block<CurrentNetwork> {
+    Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap()
+}
 
 /// Helper method to benchmark serialization.
 fn bench_serialization<T: Serialize + DeserializeOwned + ToBytes + FromBytes + Clone>(
@@ -79,27 +87,28 @@ fn bench_serialization<T: Serialize + DeserializeOwned + ToBytes + FromBytes + C
 }
 
 fn block_serialization(c: &mut Criterion) {
-    let block = Testnet2::genesis_block().clone();
+    let block = load_genesis_block();
     bench_serialization(c, "Block", block);
 }
 
 fn block_header_serialization(c: &mut Criterion) {
-    let header = Testnet2::genesis_block().header().clone();
-    bench_serialization(c, "BlockHeader", header);
+    let header = *load_genesis_block().header();
+    bench_serialization(c, "Header", header);
 }
 
 fn block_transactions_serialization(c: &mut Criterion) {
-    let transactions = Testnet2::genesis_block().transactions().clone();
-    bench_serialization(c, "BlockTransactions", transactions);
+    let transactions = load_genesis_block().transactions().clone();
+    bench_serialization(c, "Transactions", transactions);
 }
 
 fn transaction_serialization(c: &mut Criterion) {
-    let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
+    let transaction = load_genesis_block().transactions().transactions().next().unwrap().clone();
     bench_serialization(c, "Transaction", transaction);
 }
 
 fn transition_serialization(c: &mut Criterion) {
-    let transition = Testnet2::genesis_block().to_coinbase_transaction().unwrap().transitions()[0].clone();
+    let transaction = load_genesis_block().transactions().transactions().next().unwrap().clone();
+    let transition = transaction.transitions().next().unwrap().clone();
     bench_serialization(c, "Transition", transition);
 }
 

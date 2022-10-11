@@ -27,18 +27,18 @@ const ITERATIONS: usize = 1000;
 
 #[wasm_bindgen_test]
 fn test_account() {
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo1wvgwnqvy46qq0zemj0k6sfp3zv0mp77rw97khvwuhac05yuwscxqmfyhwf";
+    const ALEO_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
+    const ALEO_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";
+    const ALEO_ADDRESS: &str = "aleo1wvgwnqvy46qq0zemj0k6sfp3zv0mp77rw97khvwuhac05yuwscxqmfyhwf";
 
-    let private_key = PrivateKey::<Testnet3>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
-    assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, private_key.to_string());
+    let private_key = PrivateKey::<Testnet3>::from_str(ALEO_PRIVATE_KEY).unwrap();
+    assert_eq!(ALEO_PRIVATE_KEY, private_key.to_string());
 
     let view_key = ViewKey::try_from(&private_key).unwrap();
-    assert_eq!(ALEO_TESTNET2_VIEW_KEY, view_key.to_string());
+    assert_eq!(ALEO_VIEW_KEY, view_key.to_string());
 
     let address = Address::try_from(&view_key).unwrap();
-    assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
+    assert_eq!(ALEO_ADDRESS, address.to_string());
 }
 
 #[wasm_bindgen_test]
