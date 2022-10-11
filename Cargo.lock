@@ -2383,6 +2383,7 @@ version = "0.9.0"
 dependencies = [
  "bincode",
  "bs58",
+ "criterion",
  "serde_json",
  "snarkvm-console-network",
  "snarkvm-console-types",
