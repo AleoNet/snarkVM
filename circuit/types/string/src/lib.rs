@@ -27,12 +27,14 @@ use snarkvm_circuit_environment::assert_scope;
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
+use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_integers::U8;
 
 #[derive(Clone)]
 pub struct StringType<E: Environment> {
     mode: Mode,
     bytes: Vec<U8<E>>,
+    size_in_bytes: Field<E>,
 }
 
 impl<E: Environment> StringTrait for StringType<E> {}
@@ -43,7 +45,27 @@ impl<E: Environment> Inject for StringType<E> {
 
     /// Initializes a new instance of a string.
     fn new(mode: Mode, string: Self::Primitive) -> Self {
-        Self { mode, bytes: string.as_bytes().iter().map(|byte| U8::new(mode, console::Integer::new(*byte))).collect() }
+        // Cast the number of bytes in the 'string' as a field element.
+        let num_bytes =
+            console::Field::from_u32(u32::try_from(string.len()).unwrap_or_else(|error| E::halt(error.to_string())));
+
+        // "Load-bearing witness allocation - Please do not optimize me." - Pratyush :)
+
+        // Inject the number of bytes as a constant.
+        let expected_size_in_bytes = Field::constant(num_bytes);
+        // Inject the number of bytes as a witness.
+        let size_in_bytes = match mode.is_constant() {
+            true => expected_size_in_bytes.clone(),
+            false => Field::new(Mode::Private, num_bytes),
+        };
+        // Ensure the witness matches the constant.
+        E::assert_eq(&expected_size_in_bytes, &size_in_bytes);
+
+        Self {
+            mode,
+            bytes: string.as_bytes().iter().map(|byte| U8::new(mode, console::Integer::new(*byte))).collect(),
+            size_in_bytes,
+        }
     }
 }
 

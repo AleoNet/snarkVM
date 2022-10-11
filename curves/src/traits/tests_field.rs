@@ -364,8 +364,8 @@ pub(crate) fn bench_sqrt<F: PrimeField + SquareRootField>(rng: &mut TestRng) {
     let avg_time_a = profile_a.into_iter().reduce(|a, b| a.checked_add(b).unwrap()).unwrap() / num_a;
     let avg_time_b = profile_b.into_iter().reduce(|a, b| a.checked_add(b).unwrap()).unwrap() / num_b;
 
-    println!("{avg_time_a} vs. {avg_time_b} ({}%)", (avg_time_b - avg_time_a) * 100 / avg_time_a);
-    assert!(avg_time_a < avg_time_b);
+    println!("{avg_time_a} vs. {avg_time_b} ({}%)", avg_time_b.saturating_sub(avg_time_a) * 100 / avg_time_a);
+    assert!(avg_time_a <= avg_time_b, "This is an acceptable failure. It is for a timer.");
 }
 
 /// Returns the square root using the Tonelli-Shanks algorithm.

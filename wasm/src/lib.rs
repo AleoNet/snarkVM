@@ -23,8 +23,8 @@ pub use snarkvm_curves::{bls12_377::*, edwards_bls12::*};
 #[cfg(feature = "fields")]
 pub use snarkvm_fields::*;
 
-#[cfg(feature = "r1cs")]
-pub use snarkvm_r1cs::*;
+#[cfg(feature = "utilities")]
+pub use snarkvm_utilities::*;
 
 #[cfg(test)]
 mod tests;

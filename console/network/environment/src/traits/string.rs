@@ -39,9 +39,52 @@ pub mod string_parser {
         IResult,
     };
 
-    /// The list of unsupported "invisible" code points.
-    const UNSUPPORTED_CODE_POINTS: [&str; 9] =
-        ["\u{202a}", "\u{202b}", "\u{202c}", "\u{202d}", "\u{202e}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}"];
+    /// Checks for supported code points.
+    ///
+    /// We regard the following characters as safe:
+    /// - Horizontal tab (code 9).
+    /// - Line feed (code 10).
+    /// - Carriage return (code 13).
+    /// - Space (code 32).
+    /// - Visible ASCII (codes 33-126).
+    /// - Non-ASCII Unicode scalar values (codes 128+) except
+    ///   * bidi embeddings, overrides and their termination (codes U+202A-U+202E)
+    ///   * isolates (codes U+2066-U+2069)
+    ///
+    /// The Unicode bidi characters are well-known for presenting Trojan Source dangers.
+    /// The ASCII backspace (code 8) can be also used to make text look different from what it is,
+    /// and a similar danger may apply to delete (126).
+    /// Other ASCII control characters
+    /// (except for horizontal tab, space, line feed, and carriage return, which are allowed)
+    /// may or may not present dangers, but we see no good reason for allowing them.
+    /// At some point we may want disallow additional non-ASCII characters,
+    /// if we see no good reason to allow them.
+    ///
+    /// Note that we say 'Unicode scalar values' above,
+    /// because we read UTF-8-decoded characters,
+    /// and thus we will never encounter surrogate code points,
+    /// and we do not need to explicitly exclude them in this function.
+    pub fn is_char_supported(c: char) -> bool {
+        !is_char_unsupported(c)
+    }
+
+    /// Checks for unsupported "invisible" code points.
+    fn is_char_unsupported(c: char) -> bool {
+        let code = c as u32;
+
+        // A quick early return, as anything above is supported.
+        if code > 0x2069 {
+            return false;
+        }
+
+        // A "divide and conquer" approach for greater performance; ranges are
+        // checked before single values and all the comparisons get "reused".
+        if code < 0x202a {
+            if code <= 31 { !(9..14).contains(&code) || code == 11 || code == 12 } else { code == 127 }
+        } else {
+            code <= 0x202e || code >= 0x2066
+        }
+    }
 
     /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
     /// hexadecimal numerals. We will combine this later with parse_escaped_char
@@ -112,10 +155,8 @@ pub mod string_parser {
     /// Parse a non-empty block of text that doesn't include \ or "
     fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
         // Return an error if the literal contains an unsupported code point.
-        for code_point in UNSUPPORTED_CODE_POINTS {
-            if input.contains(code_point) {
-                return Err(Error(E::from_error_kind("String literal contains invalid codepoint", ErrorKind::Char)));
-            }
+        if input.chars().any(is_char_unsupported) {
+            return Err(Error(E::from_error_kind("String literal contains invalid codepoint", ErrorKind::Char)));
         }
 
         // `is_not` parses a string of 0 or more characters that aren't one of the
@@ -185,4 +226,24 @@ pub mod string_parser {
         // loop won't accidentally match your closing delimiter!
         delimited(char('"'), build_string, char('"'))(input)
     }
+}
+
+#[test]
+fn test_parse_string() {
+    // to use parse_string_wrapper instead of string_parser::parse_string::<nom::error::VerboseError<&str>> in the tests below:
+    fn parse_string_wrapper(input: &str) -> crate::ParserResult<String> {
+        string_parser::parse_string(input)
+    }
+
+    // tests some correct string literals:
+    assert_eq!(("", String::from("")), parse_string_wrapper("\"\"").unwrap());
+    assert_eq!(("", String::from("abc")), parse_string_wrapper("\"abc\"").unwrap());
+    assert_eq!((" and more", String::from("abc")), parse_string_wrapper("\"abc\" and more").unwrap());
+    assert_eq!(("", String::from("\r")), parse_string_wrapper("\"\r\"").unwrap());
+    assert_eq!(("", String::from("4\u{4141}x\x09")), parse_string_wrapper("\"4\u{4141}x\x09\"").unwrap());
+
+    // test rejection of disallowed characters:
+    assert!(parse_string_wrapper("\"hel\x08lo\"").is_err());
+    assert!(parse_string_wrapper("\"hel\x1flo\"").is_err());
+    assert!(parse_string_wrapper("\"hel\u{2069}lo\"").is_err());
 }

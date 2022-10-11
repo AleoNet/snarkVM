@@ -94,9 +94,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
 
         // GET /testnet3/statePath/{commitment}
         let get_state_path = warp::get()
-            .and(warp::path!("testnet3" / "statePath"))
-            .and(warp::body::content_length_limit(128))
-            .and(warp::body::json())
+            .and(warp::path!("testnet3" / "statePath" / ..))
+            .and(warp::path::param::<Field<N>>())
+            .and(warp::path::end())
             .and(with(self.ledger.clone()))
             .and_then(Self::get_state_path);
 
@@ -225,7 +225,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         program_id: ProgramID<N>,
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
-        Ok(reply::json(&ledger.read().get_program(program_id).or_reject()?))
+        let program = if program_id == ProgramID::<N>::from_str("credits.aleo").or_reject()? {
+            Program::<N>::credits().or_reject()?
+        } else {
+            ledger.read().get_program(program_id).or_reject()?
+        };
+
+        Ok(reply::json(&program))
     }
 
     /// Returns the list of current validators.
