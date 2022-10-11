@@ -196,7 +196,7 @@ $\delta_A, \delta_B, \delta_C \gets \F$
 };
 \draw [->] (11,13) -- (0,13);
 \node[lalign] (prover5) at (-0.75,12.3) {%
-let $h(X) := (\sum_{M \in \{A, B, C\}} \delta_M h_M \sPoly{\NonZeroDomain, \NonZeroDomain_M})\pmod{\vPoly{\NonZeroDomain}}$
+let $h(X) := \sum_{M \in \{A, B, C\}} (\delta_M  h_M(X) |\NonZeroDomain_M|/|\NonZeroDomain|) \pmod{\vPoly{\NonZeroDomain}}$
 };
 \draw [->] (0,11.7) -- node[midway,fill=white] {commitment $\cm{h}$} (13,11.7);
 
@@ -205,11 +205,11 @@ $\gamma \gets \F$
 };
 \draw [->] (12,10.9) -- (0,10.9);
 
-\draw[dashed] (0.3,10.3) rectangle (12.7,7.8);
+\draw[dashed] (0.1,10.3) rectangle (12.9,7.8);
 
 \node[align=center] (mid4) at (6.5, 8.9) {%
 $\Verifier$ will need to check the following: \\[10pt]
-$ \underbrace{{\color{gray}\vPoly{\NonZeroDomain}(\gamma)} h(\gamma)\ \   - \sum_{M \in \{A, B, C\}} \delta_M \sPoly{\NonZeroDomain, \NonZeroDomain_M}({\color{orange} a_M({\color{black} \gamma})} - {\color{Green4} b_M({\color{black} \gamma})} {\color{gray} (\gamma g_M(\gamma) + \sigma_M / |\NonZeroDomain_M|)})}_{\sumcheckinner(\gamma)} \stackrel{?}{=} 0 $
+$ \underbrace{{\color{gray}\vPoly{\NonZeroDomain}(\gamma)} h(\gamma)\ \   - \sum_{M \in \{A, B, C\}} {\color{gray}\delta_M \sPoly{\NonZeroDomain, \NonZeroDomain_M}(\gamma)}({\color{orange} a_M({\color{black} \gamma})} - {\color{Green4} b_M({\color{black} \gamma})} {\color{gray} (\gamma g_M(\gamma) + \sigma_M / |\NonZeroDomain_M|)})}_{\sumcheckinner(\gamma)} \stackrel{?}{=} {\color{gray} 0} $
 };
 
 \node[ralign] (verifier3) at (15.4, 6.9) {%

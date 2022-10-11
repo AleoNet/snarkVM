@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{field, Field, Zero};
+use snarkvm_fields::{field, Field, PrimeField, Zero};
 use snarkvm_utilities::{
     biginteger::{BigInteger256, BigInteger384},
+    BigInteger,
     BitIteratorBE,
 };
 
@@ -24,7 +25,10 @@ use crate::{
     bls12_377::{g1::Bls12_377G1Parameters, Fq, Fq2, Fr},
     traits::{ModelParameters, ShortWeierstrassParameters},
     AffineCurve,
+    ProjectiveCurve,
 };
+
+use std::ops::Neg;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Bls12_377G2Parameters;
@@ -37,6 +41,16 @@ impl ModelParameters for Bls12_377G2Parameters {
 impl ShortWeierstrassParameters for Bls12_377G2Parameters {
     /// AFFINE_GENERATOR_COEFFS = (G2_GENERATOR_X, G2_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (G2_GENERATOR_X, G2_GENERATOR_Y);
+    /// B1 = x^2 - 1
+    const B1: Fr = field!(
+        Fr,
+        BigInteger256([12574070832645531618, 10005695704657941814, 1564543351912391449, 657300228442948690])
+    );
+    /// B2 = x^2
+    const B2: Fr = field!(
+        Fr,
+        BigInteger256([2417046298041509844, 11783911742408086824, 14689097366802547462, 270119112518072728])
+    );
     /// COFACTOR =
     /// 7923214915284317143930293550643874566881017850177945424769256759165301436616933228209277966774092486467289478618404761412630691835764674559376407658497
     const COFACTOR: &'static [u64] = &[
@@ -54,6 +68,26 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
     const COFACTOR_INV: Fr = field!(
         Fr,
         BigInteger256([15499857013495546999, 4613531467548868169, 14546778081091178013, 549402535258503313,])
+    );
+    const PHI: Fq2 = field!(
+        Fq2,
+        field!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
+        field!(
+            Fq,
+            BigInteger384([
+                0x2c766f925a7b8727,
+                0x03d7f6b0253d58b5,
+                0x838ec0deec122131,
+                0xbd5eb3e9f658bb10,
+                0x6942bd126ed3e52e,
+                0x01673786dd04ed6a,
+            ])
+        ),
+    );
+    /// R128 = 2^128 - 1
+    const R128: Fr = field!(
+        Fr,
+        BigInteger256([13717662654766427599, 14709524173037165000, 15342848074630952979, 736762107895475646])
     );
     /// WEIERSTRASS_A = [0, 0]
     const WEIERSTRASS_A: Fq2 = field!(Fq2, Bls12_377G1Parameters::WEIERSTRASS_A, Bls12_377G1Parameters::WEIERSTRASS_A,);
@@ -88,6 +122,116 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         p: &crate::templates::short_weierstrass_jacobian::Affine<Self>,
     ) -> bool {
         p.mul_bits(BitIteratorBE::new(Self::ScalarField::characteristic())).is_zero()
+    }
+
+    fn glv_endomorphism(
+        mut p: crate::templates::short_weierstrass_jacobian::Affine<Self>,
+    ) -> crate::templates::short_weierstrass_jacobian::Affine<Self> {
+        p.x.mul_by_fp(&Self::PHI.c1);
+        p
+    }
+
+    fn mul_projective(
+        p: crate::templates::short_weierstrass_jacobian::Projective<Self>,
+        by: Self::ScalarField,
+    ) -> crate::templates::short_weierstrass_jacobian::Projective<Self> {
+        type ScalarBigInt = <Fr as PrimeField>::BigInteger;
+
+        /// The scalar multiplication window size.
+        const GLV_WINDOW_SIZE: usize = 4;
+
+        /// The table size, used for w-ary NAF recoding.
+        const TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE + 1);
+        const HALF_TABLE_SIZE: i64 = 1 << (GLV_WINDOW_SIZE);
+        const MASK_FOR_MOD_TABLE_SIZE: u64 = (TABLE_SIZE as u64) - 1;
+        /// The GLV table length.
+        const L: usize = 1 << (GLV_WINDOW_SIZE - 1);
+
+        let decomposition = by.decompose(&Self::Q1, &Self::Q2, Self::B1, Self::B2, Self::R128, &Self::HALF_R);
+
+        // Prepare tables.
+        let mut t_1 = Vec::with_capacity(L);
+        let double = crate::templates::short_weierstrass_jacobian::Affine::<Self>::from(p.double());
+        t_1.push(p);
+        for i in 1..L {
+            t_1.push(t_1[i - 1].add_mixed(&double));
+        }
+        let t_1 =
+            crate::templates::short_weierstrass_jacobian::Projective::<Self>::batch_normalization_into_affine(t_1);
+
+        let t_2 = t_1.iter().copied().map(Self::glv_endomorphism).collect::<Vec<_>>();
+
+        let mod_signed = |d| {
+            let d_mod_window_size = i64::try_from(d & MASK_FOR_MOD_TABLE_SIZE).unwrap();
+            if d_mod_window_size >= HALF_TABLE_SIZE { d_mod_window_size - TABLE_SIZE } else { d_mod_window_size }
+        };
+        let to_wnaf = |e: Self::ScalarField| -> Vec<i32> {
+            let mut naf = vec![];
+            let mut e = e.to_repr();
+            while !e.is_zero() {
+                let next = if e.is_odd() {
+                    let naf_sign = mod_signed(e.as_ref()[0]);
+                    if naf_sign < 0 {
+                        e.add_nocarry(&ScalarBigInt::from(-naf_sign as u64));
+                    } else {
+                        e.sub_noborrow(&ScalarBigInt::from(naf_sign as u64));
+                    }
+                    naf_sign.try_into().unwrap()
+                } else {
+                    0
+                };
+                naf.push(next);
+                e.div2();
+            }
+
+            naf
+        };
+
+        let wnaf = |k1: Self::ScalarField, k2: Self::ScalarField, s1: bool, s2: bool| -> (Vec<i32>, Vec<i32>) {
+            let mut wnaf_1 = to_wnaf(k1);
+            let mut wnaf_2 = to_wnaf(k2);
+
+            if s1 {
+                wnaf_1.iter_mut().for_each(|e| *e = -*e);
+            }
+            if !s2 {
+                wnaf_2.iter_mut().for_each(|e| *e = -*e);
+            }
+
+            (wnaf_1, wnaf_2)
+        };
+
+        let naf_add = |table: &[crate::templates::short_weierstrass_jacobian::Affine<Self>],
+                       naf: i32,
+                       acc: &mut crate::templates::short_weierstrass_jacobian::Projective<Self>| {
+            if naf != 0 {
+                let mut p_1 = table[(naf.abs() >> 1) as usize];
+                if naf < 0 {
+                    p_1 = p_1.neg();
+                }
+                acc.add_assign_mixed(&p_1);
+            }
+        };
+
+        // Recode scalars.
+        let (naf_1, naf_2) = wnaf(decomposition.0, decomposition.1, decomposition.2, decomposition.3);
+        let max_len = naf_1.len().max(naf_2.len());
+        let mut acc = crate::templates::short_weierstrass_jacobian::Projective::<Self>::zero();
+        for i in (0..max_len).rev() {
+            if i < naf_1.len() {
+                naf_add(&t_1, naf_1[i], &mut acc)
+            }
+
+            if i < naf_2.len() {
+                naf_add(&t_2, naf_2[i], &mut acc)
+            }
+
+            if i != 0 {
+                acc.double_in_place();
+            }
+        }
+
+        acc
     }
 }
 

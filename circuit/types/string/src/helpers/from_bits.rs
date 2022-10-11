@@ -21,22 +21,51 @@ impl<E: Environment> FromBits for StringType<E> {
 
     /// Initializes a new string from a list of little-endian bits *with* trailing zeros (to byte-alignment).
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        // Ensure the list of booleans is byte-aligned.
-        let num_bits = bits_le.len();
-        match num_bits % 8 == 0 {
-            true => StringType { mode: bits_le.eject_mode(), bytes: bits_le.chunks(8).map(U8::from_bits_le).collect() },
-            false => E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned")),
-        }
+        // Determine the mode.
+        let mode = bits_le.eject_mode();
+        // Inject the string size in bytes.
+        let size_in_bytes = Self::inject_size_in_bytes(mode, bits_le);
+        // Return the string.
+        StringType { mode, bytes: bits_le.chunks(8).map(U8::from_bits_le).collect(), size_in_bytes }
     }
 
     /// Initializes a new scalar field element from a list of big-endian bits *with* leading zeros (to byte-alignment).
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
-        // Ensure the list of booleans is byte-aligned.
-        let num_bits = bits_be.len();
-        match num_bits % 8 == 0 {
-            true => StringType { mode: bits_be.eject_mode(), bytes: bits_be.chunks(8).map(U8::from_bits_be).collect() },
-            false => E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned")),
+        // Determine the mode.
+        let mode = bits_be.eject_mode();
+        // Inject the string size in bytes.
+        let size_in_bytes = Self::inject_size_in_bytes(mode, bits_be);
+        // Return the string.
+        StringType { mode, bytes: bits_be.chunks(8).map(U8::from_bits_be).collect(), size_in_bytes }
+    }
+}
+
+impl<E: Environment> StringType<E> {
+    /// Checks the size of the given bits for the given mode, and returns the size (of the string) in bytes.
+    /// "Load-bearing witness allocation - Please do not optimize me." - Pratyush :)
+    fn inject_size_in_bytes(mode: Mode, bits: &[Boolean<E>]) -> Field<E> {
+        // Ensure the bits are byte-aligned.
+        let num_bits = bits.len();
+        if num_bits % 8 != 0 {
+            E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned"))
         }
+
+        // Cast the number of bytes in the 'string' as a field element.
+        let num_bytes =
+            console::Field::from_u32(u32::try_from(num_bits / 8).unwrap_or_else(|error| E::halt(error.to_string())));
+
+        // Inject the number of bytes as a constant.
+        let expected_size_in_bytes = Field::constant(num_bytes);
+        // Inject the number of bytes as a witness.
+        let size_in_bytes = match mode.is_constant() {
+            true => expected_size_in_bytes.clone(),
+            false => Field::new(Mode::Private, num_bytes),
+        };
+        // Ensure the witness matches the constant.
+        E::assert_eq(&expected_size_in_bytes, &size_in_bytes);
+
+        // Return the size in bytes.
+        size_in_bytes
     }
 }
 
@@ -45,8 +74,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-    use rand::Rng;
-
     const ITERATIONS: u32 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
@@ -54,7 +81,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, true);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
@@ -74,7 +101,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, true);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
@@ -91,31 +118,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 1, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_le(Mode::Public, 1, 0, 1, 1);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_le(Mode::Private, 1, 0, 1, 1);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 1, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be(Mode::Public, 1, 0, 1, 1);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be(Mode::Private, 1, 0, 1, 1);
     }
 }

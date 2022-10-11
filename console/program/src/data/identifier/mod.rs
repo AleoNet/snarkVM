@@ -102,4 +102,11 @@ pub(crate) mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn test_identifier_try_from_illegal() {
+        assert!(Identifier::<CurrentNetwork>::try_from("123").is_err());
+        assert!(Identifier::<CurrentNetwork>::try_from("abc\x08def").is_err());
+        assert!(Identifier::<CurrentNetwork>::try_from("abc\u{202a}def").is_err());
+    }
 }

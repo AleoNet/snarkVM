@@ -19,7 +19,7 @@ use super::*;
 impl<E: Environment> Distribution<StringType<E>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StringType<E> {
-        // Sample a random number up to 1/4 of the maximum bytes.
+        // Sample a random number up to 1/4th of the maximum bytes.
         let num_bytes = rng.gen_range(1..(E::MAX_STRING_BYTES / 4) as usize);
         // Sample a random string.
         StringType::new(&rng.sample_iter(&Alphanumeric).take(num_bytes).map(char::from).collect::<String>())
