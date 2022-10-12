@@ -26,6 +26,12 @@ default-features = false
 version = "0.4"
 
 [features]
-default = [ "enable_console", "snarkvm-circuit-environment/default" ]
+default = [
+    "enable_console",
+    "snarkvm-circuit-environment/default"
+]
 enable_console = [ "console" ]
-enclave = [ "snarkvm-circuit-environment/enclave" ]
+enclave = [
+    "snarkvm-circuit-environment/enclave",
+    "console"
+]
