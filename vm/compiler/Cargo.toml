@@ -65,6 +65,7 @@ version = "1.0.64"
 
 [dependencies.colored]
 version = "2"
+optional = true
 
 [dependencies.indexmap]
 version = "1.8"
@@ -115,7 +116,8 @@ default = [
   "console/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
-  "snarkvm-parameters/default"
+  "snarkvm-parameters/default",
+  "colored"
 ]
 parallel = [
   "rayon",
@@ -123,7 +125,10 @@ parallel = [
   "snarkvm-utilities/parallel",
   "snarkvm-parameters/default"
 ]
-aleo-cli = [ "snarkvm-parameters/default" ]
+aleo-cli = [
+  "snarkvm-parameters/default",
+  "colored"
+]
 enclave = [
   "snarkvm-algorithms/enclave",
   "circuit/enclave",
