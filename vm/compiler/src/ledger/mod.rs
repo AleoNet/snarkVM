@@ -218,7 +218,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         ledger.block_tree.append(&hashes)?;
 
         // Safety check the existence of every block.
-        (0..=latest_height).into_par_iter().try_for_each(|height| {
+        #[cfg(feature = "parallel")]
+        let heights_iter = (0..=latest_height).into_par_iter();
+        #[cfg(not(feature = "parallel"))]
+        let mut heights_iter = (0..=latest_height).into_iter();
+        heights_iter.try_for_each(|height| {
             ledger.get_block(height)?;
             Ok::<_, Error>(())
         })?;
@@ -467,7 +471,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Ensure each transaction is well-formed and unique.
-        if !block.transactions().par_iter().all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
+        #[cfg(feature = "parallel")]
+        let transactions_iter = block.transactions().par_iter();
+        #[cfg(not(feature = "parallel"))]
+        let mut transactions_iter = block.transactions().iter();
+        if !transactions_iter.all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
             bail!("Invalid transaction found in the transactions list");
         }
 
