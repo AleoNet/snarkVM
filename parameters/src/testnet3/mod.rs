@@ -63,18 +63,18 @@ macro_rules! impl_remote_keys {
     };
 }
 
-// Combine
-impl_remote_keys!(CombineProver, CombineVerifier, "combine");
-// Fee
-impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 // Genesis
 impl_remote_keys!(GenesisProver, GenesisVerifier, "genesis");
 // Mint
 impl_remote_keys!(MintProver, MintVerifier, "mint");
-// Split
-impl_remote_keys!(SplitProver, SplitVerifier, "split");
 // Transfer
 impl_remote_keys!(TransferProver, TransferVerifier, "transfer");
+// Join
+impl_remote_keys!(JoinProver, JoinVerifier, "join");
+// Split
+impl_remote_keys!(SplitProver, SplitVerifier, "split");
+// Fee
+impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 
 lazy_static! {
     pub static ref TESTNET3_CREDITS_PROGRAM: indexmap::IndexMap<String, (Vec<u8>, Vec<u8>)> = {
@@ -90,12 +90,12 @@ lazy_static! {
             };
         }
         let mut map = indexmap::IndexMap::new();
-        insert_remote_keys!(map, CombineProver, CombineVerifier, "combine");
-        insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         insert_remote_keys!(map, GenesisProver, GenesisVerifier, "genesis");
         insert_remote_keys!(map, MintProver, MintVerifier, "mint");
-        insert_remote_keys!(map, SplitProver, SplitVerifier, "split");
         insert_remote_keys!(map, TransferProver, TransferVerifier, "transfer");
+        insert_remote_keys!(map, JoinProver, JoinVerifier, "join");
+        insert_remote_keys!(map, SplitProver, SplitVerifier, "split");
+        insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         map
     };
 }

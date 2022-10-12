@@ -130,7 +130,7 @@ function transfer:
     output r4 as credits.record;
     output r5 as credits.record;
 
-function combine:
+function join:
     input r0 as credits.record;
     input r1 as credits.record;
     add r0.gates r1.gates into r2;
