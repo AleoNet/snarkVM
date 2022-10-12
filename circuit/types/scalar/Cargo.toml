@@ -20,10 +20,12 @@ default-features = false
 [dependencies.snarkvm-circuit-types-boolean]
 path = "../boolean"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-field]
 path = "../field"
 version = "0.9.0"
+default-features = false
 
 [features]
 default = [
