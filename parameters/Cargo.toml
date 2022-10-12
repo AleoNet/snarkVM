@@ -33,8 +33,7 @@ path = "../utilities"
 version = "0.9.0"
 
 [dependencies.aleo-std]
-git = "https://github.com/ljedrz/aleo-std.git"
-branch = "granular_features"
+version = "0.1.15"
 default-features = false
 
 [dependencies.anyhow]

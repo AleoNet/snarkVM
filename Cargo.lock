@@ -30,8 +30,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std"
-version = "0.1.14"
-source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3a0b63a4bc771020ff7522ca7458b60ac30e8e71a6e1382765b94b1a278b78d"
 dependencies = [
  "aleo-std-profiler",
  "aleo-std-time",
@@ -41,13 +42,15 @@ dependencies = [
 
 [[package]]
 name = "aleo-std-profiler"
-version = "0.1.12"
-source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b007e46c4d064a62d41fe58ab6a15af809beb0e739ff4086acabc83014aa3a5"
 
 [[package]]
 name = "aleo-std-time"
-version = "0.1.0"
-source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c22735dbb880454b04b26792068f9401f0dc2c5d9b64452b55fcca4e4263e34"
 dependencies = [
  "proc-macro2 0.4.30",
  "quote 0.6.13",
@@ -57,7 +60,8 @@ dependencies = [
 [[package]]
 name = "aleo-std-timed"
 version = "0.1.2"
-source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6118baab6285accf088b31d5ea5029c37bbf9d98e62b4d8720a0a5a66bc2e427"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
@@ -66,8 +70,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std-timer"
-version = "0.1.1"
-source = "git+https://github.com/ljedrz/aleo-std.git?branch=granular_features#f1974598682b00bb62ff0285d484e85a6c2545e0"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e4f181fc1a372e8ceff89612e5c9b13f72bff5b066da9f8d6827ae65af492c4"
 
 [[package]]
 name = "ansi_term"
