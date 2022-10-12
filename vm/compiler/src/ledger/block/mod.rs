@@ -47,7 +47,6 @@ pub struct Block<N: Network> {
     header: Header<N>,
     /// The transactions in this block.
     transactions: Transactions<N>,
-    // TODO (raychu86): Add this into the block hash.
     /// The coinbase proof.
     coinbase_proof: Option<CoinbaseSolution<N>>,
     /// The signature for this block.
@@ -74,6 +73,16 @@ impl<N: Network> Block<N> {
         let address = Address::try_from(private_key)?;
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+        // Ensure that coinbase accumulator matches the coinbase proof.
+        let expected_accumulator_point = match &coinbase_proof {
+            Some(coinbase_proof) => coinbase_proof.to_accumulator_point()?,
+            None => Field::<N>::zero(),
+        };
+        ensure!(
+            header.coinbase_accumulator_point() == &expected_accumulator_point,
+            "Coinbase accumulator point does not match the coinbase proof"
+        );
+
         // Construct the block.
         Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })
     }
@@ -94,8 +103,17 @@ impl<N: Network> Block<N> {
         let address = signature.to_address();
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+        // Ensure that coinbase accumulator matches the coinbase proof.
+        let expected_accumulator_point = match &coinbase_proof {
+            Some(coinbase_proof) => coinbase_proof.to_accumulator_point()?,
+            None => Field::<N>::zero(),
+        };
+        ensure!(
+            header.coinbase_accumulator_point() == &expected_accumulator_point,
+            "Coinbase accumulator point does not match the coinbase proof"
+        );
 
-        // TODO (raychu86): Ensure the coinbase proof is valid.
+        // TODO (raychu86): Ensure the coinbase proof is valid. (requires epoch challenge state)
 
         // Construct the block.
         Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })
