@@ -33,5 +33,5 @@ default = [
 enable_console = [ "console" ]
 enclave = [
     "snarkvm-circuit-environment/enclave",
-    "console"
+    "enable_console"
 ]

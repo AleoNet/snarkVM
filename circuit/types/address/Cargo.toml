@@ -52,5 +52,6 @@ enclave = [
     "snarkvm-circuit-types-boolean/enclave",
     "snarkvm-circuit-types-field/enclave",
     "snarkvm-circuit-types-group/enclave",
-    "snarkvm-circuit-types-scalar/enclave"
+    "snarkvm-circuit-types-scalar/enclave",
+    "enable_console"
 ]
