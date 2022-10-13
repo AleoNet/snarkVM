@@ -23,6 +23,7 @@ impl<N: Network> FromBytes for Operand<N> {
             Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
             Ok(2) => Ok(Self::ProgramID(ProgramID::read_le(&mut reader)?)),
             Ok(3) => Ok(Self::Caller),
+            Ok(4) => Ok(Self::Parent),
             Ok(variant) => Err(error(format!("Failed to deserialize operand variant {variant}"))),
             Err(err) => Err(err),
         }
@@ -45,6 +46,7 @@ impl<N: Network> ToBytes for Operand<N> {
                 program_id.write_le(&mut writer)
             }
             Self::Caller => 3u8.write_le(&mut writer),
+            Self::Parent => 4u8.write_le(&mut writer),
         }
     }
 }

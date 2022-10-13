@@ -65,6 +65,8 @@ impl<N: Network> FinalizeRegisters<N> {
             }
             // If the operand is the caller, load the value of the caller.
             Operand::Caller => bail!("Forbidden operation: Cannot use 'self.caller' in 'finalize'"),
+            // If the operand is the parent, load the value of the parent.
+            Operand::Parent => bail!("Forbidden operation: Cannot use 'self.parent' in 'finalize'"),
         };
 
         // Retrieve the stack value.

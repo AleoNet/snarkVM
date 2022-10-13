@@ -51,6 +51,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             }
             // If the operand is the caller, load the value of the caller.
             Operand::Caller => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.caller()?)))),
+            // If the operand is the parent, load the value of the parent.
+            Operand::Parent => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.parent()?)))),
         };
 
         // Retrieve the stack value.
@@ -133,6 +135,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             Operand::Caller => {
                 return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
                     self.caller_circuit()?,
+                ))));
+            }
+            // If the operand is the parent, load the value of the parent.
+            Operand::Parent => {
+                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                    self.parent_circuit()?,
                 ))));
             }
         };

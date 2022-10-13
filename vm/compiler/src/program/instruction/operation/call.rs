@@ -201,6 +201,7 @@ impl<N: Network> Call<N> {
                 &inputs,
                 registers.call_stack(),
                 registers.caller()?,
+                registers.parent()?,
                 registers.tvk()?,
             )?
         }
@@ -291,6 +292,9 @@ impl<N: Network> Call<N> {
                 // Initialize an RNG.
                 let rng = &mut rand::thread_rng();
 
+                // Set the parent address to the current calling stack's program
+                let parent_address = stack.program_id().to_address()?;
+
                 match registers.call_stack() {
                     // If the circuit is in authorize or synthesize mode, then add any external calls to the stack.
                     CallStack::Authorize(_, private_key, authorization)
@@ -298,6 +302,7 @@ impl<N: Network> Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
+                            &parent_address,
                             *substack.program_id(),
                             *function.name(),
                             &inputs,
@@ -323,6 +328,7 @@ impl<N: Network> Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
+                            &parent_address,
                             *substack.program_id(),
                             *function.name(),
                             &inputs,

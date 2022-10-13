@@ -120,6 +120,8 @@ impl<A: Aleo> ToFields for InputID<A> {
 pub struct Request<A: Aleo> {
     /// The request caller.
     caller: Address<A>,
+    /// The request parent, i.e. the caller/program directly invoking this request.
+    parent: Address<A>,
     /// The network ID.
     network_id: U16<A>,
     /// The program ID.
@@ -213,6 +215,7 @@ impl<A: Aleo> Inject for Request<A> {
 
         Self {
             caller: Address::new(mode, *request.caller()),
+            parent: Address::new(mode, *request.parent()),
             network_id: U16::new(Mode::Constant, *request.network_id()),
             program_id: ProgramID::new(Mode::Constant, *request.program_id()),
             function_name: Identifier::new(Mode::Constant, *request.function_name()),
@@ -231,6 +234,11 @@ impl<A: Aleo> Request<A> {
     /// Returns the request caller.
     pub const fn caller(&self) -> &Address<A> {
         &self.caller
+    }
+
+    /// Returns the request parent.
+    pub const fn parent(&self) -> &Address<A> {
+        &self.parent
     }
 
     /// Returns the network ID.
@@ -308,6 +316,7 @@ impl<A: Aleo> Eject for Request<A> {
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from((
             self.caller.eject_value(),
+            self.parent.eject_value(),
             self.network_id.eject_value(),
             self.program_id.eject_value(),
             self.function_name.eject_value(),

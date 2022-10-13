@@ -84,6 +84,16 @@ impl<N: Network> FinalizeTypes<N> {
                         "Interface member '{interface_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
                     )
                 }
+                // Ensure the parent type (address) matches the member type.
+                Operand::Parent => {
+                    // Retrieve the caller type.
+                    let parent_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    // Ensure the caller type matches the member type.
+                    ensure!(
+                        parent_type == RegisterType::Plaintext(*member_type),
+                        "Interface member '{interface_name}.{member_name}' expects {member_type}, but found '{parent_type}' in the operand '{operand}'.",
+                    )
+                }
             }
         }
         Ok(())
@@ -127,6 +137,7 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
             Operand::Caller => {}
+            Operand::Parent => {}
         }
 
         // Ensure the second input type is a u64.
@@ -147,7 +158,7 @@ impl<N: Network> FinalizeTypes<N> {
                 )
             }
             // These operand types are never a `u64` type.
-            Operand::ProgramID(..) | Operand::Caller => {
+            Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
                 bail!("Casting to a record requires the second operand to be a u64")
             }
         }
@@ -210,6 +221,16 @@ impl<N: Network> FinalizeTypes<N> {
                             ensure!(
                                 caller_type == RegisterType::Plaintext(*plaintext_type),
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
+                            )
+                        }
+                        // Ensure the parent type (address) matches the member type.
+                        Operand::Parent => {
+                            // Retrieve the parent type.
+                            let parent_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                            // Ensure the parent type matches the member type.
+                            ensure!(
+                                parent_type == RegisterType::Plaintext(*plaintext_type),
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{parent_type}' in the operand '{operand}'.",
                             )
                         }
                     }

@@ -79,6 +79,7 @@ impl<N: Network> RegisterTypes<N> {
             Operand::Register(register) => self.get_type(stack, register)?,
             Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
             Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+            Operand::Parent => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
         })
     }
 

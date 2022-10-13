@@ -51,6 +51,8 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                 Ok(Self::from((
                     // Retrieve the caller.
                     serde_json::from_value(request["caller"].clone()).map_err(de::Error::custom)?,
+                    // Retrieve the parent.
+                    serde_json::from_value(request["parent"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the network ID.
                     serde_json::from_value(request["network"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the program ID.

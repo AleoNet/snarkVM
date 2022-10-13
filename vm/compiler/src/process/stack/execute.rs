@@ -153,6 +153,11 @@ impl<N: Network> Stack<N> {
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(request.caller().clone());
 
+        // Set the transition parent.
+        registers.set_parent(*console_request.parent());
+        // Set the transition parent, as a circuit.
+        registers.set_parent_circuit(request.parent().clone());
+
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
         // Set the transition view key, as a circuit.

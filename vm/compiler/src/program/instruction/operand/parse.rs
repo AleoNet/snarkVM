@@ -25,6 +25,7 @@ impl<N: Network> Parser for Operand<N> {
             map(Literal::parse, |literal| Self::Literal(literal)),
             map(Register::parse, |register| Self::Register(register)),
             map(tag("self.caller"), |_| Self::Caller),
+            map(tag("self.parent"), |_| Self::Parent),
             map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
         ))(string)
     }
@@ -67,6 +68,8 @@ impl<N: Network> Display for Operand<N> {
             Self::ProgramID(program_id) => Display::fmt(program_id, f),
             // Prints the caller, i.e. self.caller
             Self::Caller => write!(f, "self.caller"),
+            // Prints the parent, i.e. self.parent
+            Self::Parent => write!(f, "self.parent"),
         }
     }
 }

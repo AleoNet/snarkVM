@@ -22,6 +22,7 @@ impl<N: Network> Stack<N> {
     pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
+        parent: &Address<N>,
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
@@ -44,7 +45,7 @@ impl<N: Network> Stack<N> {
         }
 
         // Compute the request.
-        let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
+        let request = Request::sign(private_key, parent, *self.program.id(), function_name, inputs, &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.

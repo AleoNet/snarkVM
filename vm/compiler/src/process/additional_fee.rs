@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use console::types::Address;
+
 use super::*;
 
 impl<N: Network> Process<N> {
@@ -31,13 +33,16 @@ impl<N: Network> Process<N> {
         // Ensure the additional fee has the correct function.
         let function_name = Identifier::from_str("fee")?;
 
+        let parent_address = Address::try_from(private_key)?;
+
         // Retrieve the input types.
         let input_types = self.get_program(&program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
         let inputs =
             vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(additional_fee_in_gates)))?];
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
+        let request =
+            Request::sign(private_key, &parent_address, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.

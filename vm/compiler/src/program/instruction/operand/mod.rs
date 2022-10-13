@@ -34,6 +34,8 @@ pub enum Operand<N: Network> {
     ProgramID(ProgramID<N>),
     /// The operand is the caller address.
     Caller,
+    /// The operand is the parent address -- i.e. the caller or program that invoked this function.
+    Parent,
 }
 
 impl<N: Network> From<Literal<N>> for Operand<N> {

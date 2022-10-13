@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use console::types::Address;
+
 use super::*;
 
 impl<N: Network> Process<N> {
@@ -27,7 +29,8 @@ impl<N: Network> Process<N> {
         inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Authorization<N>> {
+        let parent_address = Address::try_from(private_key)?;
         // Authorize the call.
-        self.get_stack(program_id)?.authorize::<A, R>(private_key, function_name, inputs, rng)
+        self.get_stack(program_id)?.authorize::<A, R>(private_key, &parent_address, function_name, inputs, rng)
     }
 }
