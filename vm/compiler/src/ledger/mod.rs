@@ -49,6 +49,7 @@ use console::{
     program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
+#[cfg(not(feature = "enclave"))]
 use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
@@ -108,6 +109,7 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
+#[cfg(not(feature = "enclave"))]
 impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new(dev: Option<u16>) -> Result<Self> {
@@ -166,6 +168,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Initializes the `Ledger` from storage.
+    #[cfg(not(feature = "enclave"))]
     pub fn from(blocks: BlockStore<N, B>, store: ProgramStore<N, P>) -> Result<Self> {
         // Initialize a new VM.
         let vm = VM::<N, P>::from(&blocks, store)?;
