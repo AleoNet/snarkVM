@@ -32,7 +32,7 @@ use snarkvm_console_types::prelude::*;
 pub struct Request<N: Network> {
     /// The request caller.
     caller: Address<N>,
-    // /// The request parent, i.e. the caller/program directly invoking this request.
+    /// The request parent, i.e. the caller/program directly invoking this request.
     parent: Address<N>,
     /// The network ID.
     network_id: U16<N>,

@@ -23,6 +23,7 @@ impl<N: Network> Serialize for Request<N> {
             true => {
                 let mut transition = serializer.serialize_struct("Request", 9)?;
                 transition.serialize_field("caller", &self.caller)?;
+                transition.serialize_field("parent", &self.parent)?;
                 transition.serialize_field("network", &self.network_id)?;
                 transition.serialize_field("program", &self.program_id)?;
                 transition.serialize_field("function", &self.function_name)?;
