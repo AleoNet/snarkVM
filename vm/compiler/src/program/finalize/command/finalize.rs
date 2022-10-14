@@ -102,8 +102,8 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeOperation<N, VARIANT> {
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the operands from the string.
         let (string, operands) = many0(parse_operand)(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ';' from the string.
         let (string, _) = tag(";")(string)?;
 
