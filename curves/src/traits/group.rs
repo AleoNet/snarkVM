@@ -269,6 +269,22 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     /// The affine generator of the short Weierstrass curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
 
+    const PHI: Self::BaseField;
+
+    // Decomposition parameters
+    /// Q1 = x^2 * R / q
+    const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
+    /// Q2 = R / q = 13
+    const Q2: [u64; 4] = [13, 0, 0, 0];
+    /// B1 = x^2 - 1
+    const B1: Self::ScalarField;
+    /// B2 = x^2
+    const B2: Self::ScalarField;
+    /// R128 = 2^128 - 1
+    const R128: Self::ScalarField;
+    /// HALF_R = 2^256 / 2
+    const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
+
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
@@ -284,6 +300,13 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     }
 
     fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
+
+    fn glv_endomorphism(p: short_weierstrass_jacobian::Affine<Self>) -> short_weierstrass_jacobian::Affine<Self>;
+
+    fn mul_projective(
+        p: short_weierstrass_jacobian::Projective<Self>,
+        by: Self::ScalarField,
+    ) -> short_weierstrass_jacobian::Projective<Self>;
 }
 
 pub trait TwistedEdwardsParameters: ModelParameters {

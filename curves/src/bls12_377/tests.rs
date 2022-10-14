@@ -67,14 +67,15 @@ use snarkvm_fields::{
     Zero,
 };
 use snarkvm_utilities::{
-    biginteger::{BigInteger, BigInteger384},
+    biginteger::{BigInteger, BigInteger256, BigInteger384},
     rand::{TestRng, Uniform},
+    BitIteratorBE,
 };
 
 use rand::Rng;
 use std::{
     cmp::Ordering,
-    ops::{AddAssign, MulAssign, SubAssign},
+    ops::{AddAssign, Mul, MulAssign, SubAssign},
 };
 
 pub(crate) const ITERATIONS: usize = 10;
@@ -614,6 +615,17 @@ fn test_fq12_mul_by_034() {
 
         assert_eq!(a, b);
     }
+}
+
+#[test]
+fn test_g1_projective_glv() {
+    let mut rng = TestRng::default();
+
+    let point = G1Projective::rand(&mut rng);
+    let scalar = Fr::rand(&mut rng);
+    let affine = point.to_affine();
+    assert_eq!(point.mul(scalar), affine.mul(scalar));
+    assert_eq!(affine.mul(scalar), affine.mul_bits(BitIteratorBE::new_without_leading_zeros(scalar.to_repr())));
 }
 
 #[test]
