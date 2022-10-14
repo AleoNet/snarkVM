@@ -44,5 +44,6 @@ enable_console = [ "console" ]
 enclave = [
     "snarkvm-circuit-algorithms/enclave",
     "snarkvm-circuit-network/enclave",
-    "snarkvm-circuit-types/enclave"
+    "snarkvm-circuit-types/enclave",
+    "enable_console"
 ]

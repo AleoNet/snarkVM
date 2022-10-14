@@ -54,5 +54,6 @@ enclave = [
     "snarkvm-circuit-account/enclave",
     "snarkvm-circuit-network/enclave",
     "snarkvm-circuit-types/enclave",
-    "snarkvm-utilities/enclave"
+    "snarkvm-utilities/enclave",
+    "enable_console"
 ]
