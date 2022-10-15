@@ -40,8 +40,6 @@ impl<N: Network> Parser for Function<N> {
         // Parse the outputs from the string.
         let (string, outputs) = many0(Output::parse)(string)?;
 
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse an optional finalize command from the string.
         let (string, command) = opt(FinalizeCommand::parse)(string)?;
         // If there is a finalize command, parse the finalize scope.
