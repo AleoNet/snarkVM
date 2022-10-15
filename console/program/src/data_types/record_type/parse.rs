@@ -70,8 +70,6 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the owner visibility from the string.
         let (string, owner) = alt((
             map(tag("address.public"), |_| PublicOrPrivate::Public),
@@ -92,8 +90,6 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the gates visibility from the string.
         let (string, gates) = alt((
             map(tag("u64.public"), |_| PublicOrPrivate::Public),
