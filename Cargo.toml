@@ -114,6 +114,7 @@ cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 parallel = [
   "rayon",
+  "snarkvm-algorithms/parallel",
   "snarkvm-compiler/parallel",
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
@@ -124,6 +125,7 @@ noconfig = [ ]
 path = "./algorithms"
 version = "0.9.0"
 optional = true
+default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
@@ -168,6 +170,7 @@ optional = true
 [dependencies.snarkvm-compiler]
 path = "./vm/compiler"
 version = "0.9.0"
+default-features = false
 
 [dependencies.anyhow]
 version = "1.0.64"
