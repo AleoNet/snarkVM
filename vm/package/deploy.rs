@@ -14,21 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::Deployment;
-use snarkvm_console::types::Address;
+use snarkvm_compiler::Transaction;
+use snarkvm_console::{
+    program::{Plaintext, Record},
+    types::Address,
+};
 
 use super::*;
 
 pub struct DeployRequest<N: Network> {
-    deployment: Deployment<N>,
+    transaction: Transaction<N>,
     address: Address<N>,
     program_id: ProgramID<N>,
 }
 
 impl<N: Network> DeployRequest<N> {
     /// Sends the request to the given endpoint.
-    pub fn new(deployment: Deployment<N>, address: Address<N>, program_id: ProgramID<N>) -> Self {
-        Self { deployment, address, program_id }
+    pub fn new(transaction: Transaction<N>, address: Address<N>, program_id: ProgramID<N>) -> Result<Self> {
+        ensure!(
+            matches!(transaction, Transaction::Deploy(_, _, _)),
+            "Cannot create a deploy request with a non-deployment transaction"
+        );
+        Ok(Self { transaction, address, program_id })
     }
 
     /// Sends the request to the given endpoint.
@@ -36,9 +43,9 @@ impl<N: Network> DeployRequest<N> {
         Ok(ureq::post(endpoint).send_json(self)?.into_json()?)
     }
 
-    /// Returns the program.
-    pub const fn deployment(&self) -> &Deployment<N> {
-        &self.deployment
+    /// Returns the deployment transaction.
+    pub const fn transaction(&self) -> &Transaction<N> {
+        &self.transaction
     }
 
     /// Returns the program address.
@@ -57,7 +64,7 @@ impl<N: Network> Serialize for DeployRequest<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut request = serializer.serialize_struct("DeployRequest", 3)?;
         // Serialize the deployment.
-        request.serialize_field("deployment", &self.deployment)?;
+        request.serialize_field("transaction", &self.transaction)?;
         // Serialize the address.
         request.serialize_field("address", &self.address)?;
         // Serialize the program id.
@@ -71,31 +78,39 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
         let request = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
-        Ok(Self::new(
+        // Build the deploy request.
+        let deploy_request = Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["deployment"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["transaction"].clone()).map_err(de::Error::custom)?,
             // Retrieve the address of the program.
             serde_json::from_value(request["address"].clone()).map_err(de::Error::custom)?,
             // Retrieve the program ID.
             serde_json::from_value(request["program_id"].clone()).map_err(de::Error::custom)?,
-        ))
+        );
+        match deploy_request {
+            Ok(deploy_request) => Ok(deploy_request),
+            Err(error) => Err(de::Error::custom(error.to_string())),
+        }
     }
 }
 
 pub struct DeployResponse<N: Network> {
-    deployment: Deployment<N>,
+    transaction: Transaction<N>,
 }
 
 impl<N: Network> DeployResponse<N> {
     /// Initializes a new deploy response.
-    pub const fn new(deployment: Deployment<N>) -> Self {
-        Self { deployment }
+    pub fn new(transaction: Transaction<N>) -> Result<Self> {
+        ensure!(
+            matches!(transaction, Transaction::Deploy(_, _, _)),
+            "Cannot create a deploy response with a non-deployment transaction"
+        );
+        Ok(Self { transaction })
     }
 
-    /// Returns the program ID.
-    pub const fn deployment(&self) -> &Deployment<N> {
-        &self.deployment
+    /// Returns the deployment transaction.
+    pub fn transaction(&self) -> &Transaction<N> {
+        &self.transaction
     }
 }
 
@@ -103,7 +118,7 @@ impl<N: Network> Serialize for DeployResponse<N> {
     /// Serializes the deploy response into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut response = serializer.serialize_struct("DeployResponse", 1)?;
-        response.serialize_field("deployment", &self.deployment)?;
+        response.serialize_field("transaction", &self.transaction)?;
         response.end()
     }
 }
@@ -113,11 +128,15 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the response from a string into a value.
         let response = serde_json::Value::deserialize(deserializer)?;
-        // Recover the leaf.
-        Ok(Self::new(
-            // Retrieve the program ID.
-            serde_json::from_value(response["deployment"].clone()).map_err(de::Error::custom)?,
-        ))
+        // Build the deploy response.
+        let deploy_response = Self::new(
+            // Retrieve the program.
+            serde_json::from_value(response["transaction"].clone()).map_err(de::Error::custom)?,
+        );
+        match deploy_response {
+            Ok(deploy_response) => Ok(deploy_response),
+            Err(error) => Err(de::Error::custom(error.to_string())),
+        }
     }
 }
 
@@ -125,7 +144,10 @@ impl<N: Network> Package<N> {
     pub fn deploy<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
-    ) -> Result<Deployment<N>> {
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
+        fee: u64,
+    ) -> Result<Transaction<N>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the main program ID.
@@ -158,23 +180,21 @@ impl<N: Network> Package<N> {
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
         // Compute the deployment.
-        let deployment = process.deploy::<A, _>(program, rng).unwrap();
+        let deployment = process.deploy::<A, _>(program, rng)?;
+        // Compute the additional fee.
+        let (_, additional_fee) = process.execute_additional_fee::<A, _>(private_key, credits, fee, rng)?;
+        // Compute the deployment transaction.
+        let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
 
         match endpoint {
             Some(ref endpoint) => {
                 // Construct the deploy request.
-                let request = DeployRequest::new(deployment, *caller, *program_id);
+                let request = DeployRequest::new(deployment_transaction, *caller, *program_id)?;
                 // Send the deploy request.
                 let response = request.send(endpoint)?;
-                // Ensure the program ID matches.
-                ensure!(
-                    response.deployment.program_id() == program_id,
-                    "Program ID mismatch: {} != {program_id}",
-                    response.deployment.program_id()
-                );
-                Ok(response.deployment)
+                Ok(response.transaction)
             }
-            None => Ok(deployment),
+            None => Ok(deployment_transaction),
         }
     }
 }
@@ -188,39 +208,46 @@ mod tests {
 
     #[test]
     fn test_deploy() {
-        // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (_, package) = crate::package::test_helpers::sample_package();
+        let private_key = package.manifest_file().development_private_key();
+        let address = Address::try_from(private_key).unwrap();
+        let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
+            "{{ owner: {address}.private, gates: 5u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
+        let fee = 1u64;
 
         // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
-
-        // Ensure the deployment edition matches.
-        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-        // Ensure the deployment program ID matches.
-        assert_eq!(package.program().id(), deployment.program_id());
-        // Ensure the deployment program matches.
-        assert_eq!(package.program(), deployment.program());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
+        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record, fee).unwrap();
+        if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
+            // Ensure the deployment edition matches.
+            assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+            // Ensure the deployment program ID matches.
+            assert_eq!(package.program().id(), deployment.program_id());
+            // Ensure the deployment program matches.
+            assert_eq!(package.program(), deployment.program());
+        }
     }
 
     #[test]
     fn test_deploy_with_import() {
-        // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (_, package) = crate::package::test_helpers::sample_package_with_import();
+        let private_key = package.manifest_file().development_private_key();
+        let address = Address::try_from(private_key).unwrap();
+        let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(&format!(
+            "{{ owner: {address}.private, gates: 5u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
+        let fee = 1u64;
 
-        // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
-
-        // Ensure the deployment edition matches.
-        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-        // Ensure the deployment program ID matches.
-        assert_eq!(package.program().id(), deployment.program_id());
-        // Ensure the deployment program matches.
-        assert_eq!(package.program(), deployment.program());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
+        let deployment_transaction = package.deploy::<CurrentAleo>(None, private_key, record, fee).unwrap();
+        if let Transaction::Deploy(_, deployment, _) = deployment_transaction {
+            // Ensure the deployment edition matches.
+            assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+            // Ensure the deployment program ID matches.
+            assert_eq!(package.program().id(), deployment.program_id());
+            // Ensure the deployment program matches.
+            assert_eq!(package.program(), deployment.program());
+        }
     }
 }
