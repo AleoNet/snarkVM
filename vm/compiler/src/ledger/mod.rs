@@ -76,17 +76,15 @@ const BLOCKS_DEPTH: u8 = 32;
 
 /// The anchor time per block in seconds, which must be greater than the round time per block.
 pub const ANCHOR_TIME: u16 = 20;
-/// The fixed timestamp of the genesis block.
-pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+/// The coinbase puzzle degree.
+pub const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
+/// The maximum number of prover solutions that can be included per block.
+pub const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
 /// The number of blocks per epoch (1 hour).
 pub const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
-/// The maximum number of prover solutions that can be included per block.
-pub const MAX_NUM_PROOFS: usize = 1 << 20; // 1,048,576
 
-/// The coinbase puzzle degree.
-const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1;
-
-// TODO (raychu86): Adjust these values based network expectations.
+/// The fixed timestamp of the genesis block.
+pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
 /// The genesis block coinbase target.
 pub const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
 /// The genesis block proof target.
@@ -349,7 +347,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         };
 
         // Select the prover solutions from the memory pool.
-        let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_NUM_PROOFS).cloned().collect::<Vec<_>>();
+        let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_PROVER_SOLUTIONS).cloned().collect::<Vec<_>>();
 
         // Compute the total cumulative target of the prover puzzle solutions as a u128.
         let cumulative_prover_target: u128 = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {

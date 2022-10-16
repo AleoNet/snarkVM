@@ -23,7 +23,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
-use crate::{UniversalSRS, MAX_NUM_PROOFS};
+use crate::{UniversalSRS, MAX_PROVER_SOLUTIONS};
 use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, Network, Result, ToBytes},
@@ -166,9 +166,12 @@ impl<N: Network> CoinbasePuzzle<N> {
             bail!("Cannot accumulate an empty list of prover solutions.");
         }
 
-        // Ensure the number of prover solutions does not exceed `MAX_NUM_PROOFS`.
-        if prover_solutions.len() > MAX_NUM_PROOFS {
-            bail!("Cannot accumulate beyond {MAX_NUM_PROOFS} prover solutions, found {}.", prover_solutions.len());
+        // Ensure the number of prover solutions does not exceed `MAX_PROVER_SOLUTIONS`.
+        if prover_solutions.len() > MAX_PROVER_SOLUTIONS {
+            bail!(
+                "Cannot accumulate beyond {MAX_PROVER_SOLUTIONS} prover solutions, found {}.",
+                prover_solutions.len()
+            );
         }
 
         // Retrieve the coinbase proving key.
@@ -250,10 +253,10 @@ impl<N: Network> CoinbasePuzzle<N> {
             bail!("The coinbase solution does not contain any partial solutions");
         }
 
-        // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
-        if coinbase_solution.len() > MAX_NUM_PROOFS {
+        // Ensure the number of partial solutions does not exceed `MAX_PROVER_SOLUTIONS`.
+        if coinbase_solution.len() > MAX_PROVER_SOLUTIONS {
             bail!(
-                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {MAX_NUM_PROOFS})",
+                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {MAX_PROVER_SOLUTIONS})",
                 coinbase_solution.len()
             );
         }
