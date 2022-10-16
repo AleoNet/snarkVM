@@ -1352,7 +1352,7 @@ mod tests {
 
     #[test]
     #[traced_test]
-    fn test_cumulative_target() {
+    fn test_coinbase_target() {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
