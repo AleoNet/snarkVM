@@ -320,7 +320,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             &accumulator_commitment,
             accumulator_point,
             accumulator_evaluation,
-            &coinbase_solution.proof(),
+            coinbase_solution.proof(),
         )?)
     }
 

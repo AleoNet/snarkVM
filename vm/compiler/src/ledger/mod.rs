@@ -627,7 +627,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
             // Ensure the coinbase proof is valid.
             if !self.coinbase_puzzle.verify(
-                &coinbase_proof,
+                coinbase_proof,
                 &self.latest_epoch_challenge()?,
                 self.latest_coinbase_target()?,
                 self.latest_proof_target()?,
