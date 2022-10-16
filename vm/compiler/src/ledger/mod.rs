@@ -872,16 +872,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         )
     }
 
-    /// Returns the expected coinbase target given the previous block and expected next block details.
-    pub fn compute_coinbase_target(_anchor_block_header: &Header<N>, _block_timestamp: i64, _block_height: u32) -> u64 {
-        unimplemented!()
-    }
-
-    /// Returns the expected proof target given the previous block and expected next block details.
-    pub fn compute_proof_target(_anchor_block_header: &Header<N>, _block_timestamp: i64, _block_height: u32) -> u64 {
-        unimplemented!()
-    }
-
     /// Checks the given transaction is well formed and unique.
     pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
         let transaction_id = transaction.id();

@@ -45,10 +45,19 @@ pub struct CoinbasePuzzle<N: Network>(PhantomData<N>);
 
 impl<N: Network> CoinbasePuzzle<N> {
     /// Initializes a new `SRS` for the coinbase puzzle.
+    #[cfg(any(test, feature = "setup"))]
     pub fn setup<R: Rng + CryptoRng>(config: PuzzleConfig, rng: &mut R) -> Result<SRS<N::PairingCurve>> {
         // The SRS must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
         Ok(KZG10::setup((2 * config.degree - 1).try_into()?, &kzg10::KZGDegreeBounds::None, false, rng)?)
+    }
+
+    /// Load the coinbase puzzle proving and verifying keys.
+    pub fn load(max_degree: u32) -> Result<(CoinbaseProvingKey<N>, CoinbaseVerifyingKey<N>)> {
+        // Load the universal SRS.
+        let universal_srs = UniversalSRS::<N>::load()?;
+        // Trim the universal SRS to the maximum degree.
+        Self::trim(&*universal_srs, PuzzleConfig { degree: max_degree })
     }
 
     pub fn trim(
@@ -88,16 +97,6 @@ impl<N: Network> CoinbasePuzzle<N> {
             verifying_key: vk.clone(),
         };
         Ok((pk, vk))
-    }
-
-    /// Load the coinbase puzzle proving and verifying keys.
-    pub fn load(max_degree: u32) -> Result<(CoinbaseProvingKey<N>, CoinbaseVerifyingKey<N>)> {
-        // Load the universal SRS.
-        let universal_srs = UniversalSRS::<N>::load()?;
-
-        let max_config = PuzzleConfig { degree: max_degree };
-
-        Self::trim(&*universal_srs, max_config)
     }
 
     // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.

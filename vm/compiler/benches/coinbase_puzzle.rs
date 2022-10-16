@@ -47,6 +47,7 @@ fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Te
     (address, nonce)
 }
 
+#[cfg(feature = "setup")]
 fn coinbase_puzzle_trim(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
@@ -63,6 +64,7 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
     }
 }
 
+#[cfg(feature = "setup")]
 fn coinbase_puzzle_prove(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
@@ -81,6 +83,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     }
 }
 
+#[cfg(feature = "setup")]
 fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
@@ -109,6 +112,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     }
 }
 
+#[cfg(feature = "setup")]
 fn coinbase_puzzle_verify(c: &mut Criterion) {
     let rng = &mut thread_rng();
 

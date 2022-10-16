@@ -32,6 +32,8 @@ harness = false
 name = "coinbase_puzzle"
 path = "benches/coinbase_puzzle.rs"
 harness = false
+# cargo bench --bench coinbase_puzzle --features=setup
+required-features = ["setup"]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
@@ -126,3 +128,4 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 aleo-cli = [ ]
+setup = []
