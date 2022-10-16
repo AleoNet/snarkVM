@@ -47,10 +47,8 @@ mod latest;
 use crate::{
     ledger::helpers::{anchor_block_height, coinbase_reward, coinbase_target, proof_target},
     program::Program,
-    CoinbaseProvingKey,
     CoinbasePuzzle,
     CoinbaseSolution,
-    CoinbaseVerifyingKey,
     EpochChallenge,
     ProverSolution,
 };
@@ -65,7 +63,7 @@ use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
 use indexmap::{IndexMap, IndexSet};
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 use time::OffsetDateTime;
 
 #[cfg(feature = "parallel")]
@@ -138,10 +136,8 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
 
-    /// The coinbase puzzle proving key.
-    coinbase_proving_key: Arc<CoinbaseProvingKey<N>>,
-    /// The coinbase puzzle verifying key.
-    coinbase_verifying_key: Arc<CoinbaseVerifyingKey<N>>,
+    /// The coinbase puzzle.
+    coinbase_puzzle: CoinbasePuzzle<N>,
     /// The memory pool of proposed coinbase puzzle solutions for the current epoch.
     coinbase_memory_pool: IndexSet<ProverSolution<N>>,
 
@@ -176,9 +172,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Genesis block already exists in the ledger.");
         }
 
-        // Load the coinbase puzzle proving and verifying key.
-        let (coinbase_proving_key, coinbase_verifying_key) = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)
-            .map(|(proving_key, verifying_key)| (Arc::new(proving_key), Arc::new(verifying_key)))?;
+        // Load the coinbase puzzle.
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -193,8 +188,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: [(address, ())].into_iter().collect(),
             vm,
             memory_pool: Default::default(),
-            coinbase_proving_key,
-            coinbase_verifying_key,
+            coinbase_puzzle,
             coinbase_memory_pool: Default::default(),
         };
 
@@ -220,9 +214,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Initialize a new VM.
         let vm = VM::<N, P>::from(&blocks, store)?;
 
-        // Load the coinbase puzzle proving and verifying key.
-        let (coinbase_proving_key, coinbase_verifying_key) = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)
-            .map(|(proving_key, verifying_key)| (Arc::new(proving_key), Arc::new(verifying_key)))?;
+        // Load the coinbase puzzle.
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -237,8 +230,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: Default::default(),
             vm,
             memory_pool: Default::default(),
-            coinbase_proving_key,
-            coinbase_verifying_key,
+            coinbase_puzzle,
             coinbase_memory_pool: Default::default(),
         };
 
@@ -320,7 +312,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let proof_target = self.latest_proof_target()?;
 
         // Ensure that the prover solution is valid for the given epoch.
-        if !prover_solution.verify(&self.coinbase_verifying_key, &epoch_challenge, proof_target)? {
+        if !prover_solution.verify(self.coinbase_puzzle.coinbase_verifying_key()?, &epoch_challenge, proof_target)? {
             bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_solution.commitment().0);
         }
 
@@ -373,8 +365,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             (None, Field::<N>::zero())
         } else {
             let epoch_challenge = self.latest_epoch_challenge()?;
-            let coinbase_proof =
-                CoinbasePuzzle::accumulate(&self.coinbase_proving_key, &epoch_challenge, &prover_solutions)?;
+            let coinbase_proof = self.coinbase_puzzle.accumulate(&epoch_challenge, &prover_solutions)?;
             let coinbase_accumulator_point = coinbase_proof.to_accumulator_point()?;
 
             (Some(coinbase_proof), coinbase_accumulator_point)
@@ -399,7 +390,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 next_height,
             )?;
 
-            // Calculate the rewards for the individual provers
+            // Calculate the rewards for the individual provers.
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
             for prover_solution in prover_solutions {
                 // Prover compensation is defined as:
@@ -635,8 +626,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 bail!("Coinbase accumulator point does not match the coinbase proof.");
             }
             // Ensure the coinbase proof is valid.
-            if !coinbase_proof.verify(
-                &self.coinbase_verifying_key,
+            if !self.coinbase_puzzle.verify(
+                &coinbase_proof,
                 &self.latest_epoch_challenge()?,
                 self.latest_coinbase_target()?,
                 self.latest_proof_target()?,
@@ -720,8 +711,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 validators: ledger.validators,
                 vm: ledger.vm,
                 memory_pool: ledger.memory_pool,
-                coinbase_proving_key: ledger.coinbase_proving_key,
-                coinbase_verifying_key: ledger.coinbase_verifying_key,
+                coinbase_puzzle: ledger.coinbase_puzzle,
                 coinbase_memory_pool: ledger.coinbase_memory_pool,
             };
         }
@@ -762,14 +752,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         &self.memory_pool
     }
 
-    /// Returns the coinbase proving key.
-    pub const fn coinbase_proving_key(&self) -> &Arc<CoinbaseProvingKey<N>> {
-        &self.coinbase_proving_key
-    }
-
-    /// Returns the coinbase verifying key.
-    pub const fn coinbase_verifying_key(&self) -> &Arc<CoinbaseVerifyingKey<N>> {
-        &self.coinbase_verifying_key
+    /// Returns the coinbase puzzle.
+    pub const fn coinbase_puzzle(&self) -> &CoinbasePuzzle<N> {
+        &self.coinbase_puzzle
     }
 
     /// Returns the coinbase memory pool.
@@ -1338,8 +1323,7 @@ mod tests {
 
         for _ in 0..100 {
             // Generate a prover solution.
-            let prover_solution =
-                CoinbasePuzzle::prove(&ledger.coinbase_proving_key, &epoch_challenge, &address, rng.gen()).unwrap();
+            let prover_solution = ledger.coinbase_puzzle.prove(&epoch_challenge, &address, rng.gen()).unwrap();
 
             // Check that the prover solution meets the proof target requirement.
             if prover_solution.to_target().unwrap() >= proof_target {
@@ -1377,11 +1361,10 @@ mod tests {
 
         while cumulative_target < ledger.latest_coinbase_target().unwrap() as u128 {
             // Generate a prover solution.
-            let prover_solution =
-                match CoinbasePuzzle::prove(&ledger.coinbase_proving_key, &epoch_challenge, &address, rng.gen()) {
-                    Ok(prover_solution) => prover_solution,
-                    Err(_) => continue,
-                };
+            let prover_solution = match ledger.coinbase_puzzle.prove(&epoch_challenge, &address, rng.gen()) {
+                Ok(prover_solution) => prover_solution,
+                Err(_) => continue,
+            };
 
             // Try to add the prover solution to the memory pool.
             if ledger.add_to_coinbase_memory_pool(prover_solution).is_ok() {

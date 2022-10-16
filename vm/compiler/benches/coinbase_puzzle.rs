@@ -74,11 +74,11 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
-        let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
+        let puzzle = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
 
         c.bench_function(&format!("CoinbasePuzzle::Prove 2^{}", ((degree + 1) as f64).log2()), |b| {
             let (epoch_challenge, address, nonce) = sample_inputs(degree, rng);
-            b.iter(|| CoinbasePuzzleInst::prove(&pk, &epoch_challenge, &address, nonce).unwrap())
+            b.iter(|| puzzle.prove(&epoch_challenge, &address, nonce).unwrap())
         });
     }
 }
@@ -93,20 +93,20 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
-        let (pk, _) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
+        let puzzle = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
 
         for batch_size in [10, 100, 500] {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);
-                    CoinbasePuzzleInst::prove(&pk, &epoch_challenge, &address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, &address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
 
             c.bench_function(
                 &format!("CoinbasePuzzle::Accumulate {batch_size} of 2^{}", ((degree + 1) as f64).log2()),
-                |b| b.iter(|| CoinbasePuzzleInst::accumulate(&pk, &epoch_challenge, &solutions).unwrap()),
+                |b| b.iter(|| puzzle.accumulate(&epoch_challenge, &solutions).unwrap()),
             );
         }
     }
@@ -122,21 +122,21 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
-        let (pk, vk) = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
+        let puzzle = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
 
         for batch_size in [10, 100, 500] {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);
-                    CoinbasePuzzleInst::prove(&pk, &epoch_challenge, &address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, &address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let final_puzzle = CoinbasePuzzleInst::accumulate(&pk, &epoch_challenge, &solutions).unwrap();
+            let solution = puzzle.accumulate(&epoch_challenge, &solutions).unwrap();
 
             c.bench_function(
                 &format!("CoinbasePuzzle::Verify {batch_size} of 2^{}", ((degree + 1) as f64).log2()),
-                |b| b.iter(|| assert!(final_puzzle.verify(&vk, &epoch_challenge, 0u64, 0u64).unwrap())),
+                |b| b.iter(|| assert!(puzzle.verify(&solution, &epoch_challenge, 0u64, 0u64).unwrap())),
             );
         }
     }

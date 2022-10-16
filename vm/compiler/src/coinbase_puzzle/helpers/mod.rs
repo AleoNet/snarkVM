@@ -26,14 +26,10 @@ pub use partial_solution::*;
 mod prover_solution;
 pub use prover_solution::*;
 
-use crate::{
-    coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle},
-    MAX_NUM_PROOFS,
-};
+use crate::coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle};
 use console::{account::Address, prelude::*, types::Field};
 use snarkvm_algorithms::{
     fft::{domain::FFTPrecomputation, DensePolynomial, EvaluationDomain},
-    msm::VariableBase,
     polycommit::kzg10::{KZGCommitment, KZGProof, LagrangeBasis, Powers, VerifierKey, KZG10},
 };
 use snarkvm_curves::PairingEngine;

@@ -31,7 +31,7 @@ fn test_coinbase_puzzle() {
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
         let config = PuzzleConfig { degree };
-        let (pk, vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
+        let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
         let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
         for batch_size in 1..10 {
@@ -40,14 +40,14 @@ fn test_coinbase_puzzle() {
                     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
-                    CoinbasePuzzle::prove(&pk, &epoch_challenge, &address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, &address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_challenge, &solutions).unwrap();
-            assert!(full_solution.verify(&vk, &epoch_challenge, 0u64, 0u64).unwrap());
+            let full_solution = puzzle.accumulate(&epoch_challenge, &solutions).unwrap();
+            assert!(puzzle.verify(&full_solution, &epoch_challenge, 0u64, 0u64).unwrap());
 
             let bad_epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
-            assert!(!full_solution.verify(&vk, &bad_epoch_challenge, 0u64, 0u64).unwrap());
+            assert!(!puzzle.verify(&full_solution, &bad_epoch_challenge, 0u64, 0u64).unwrap());
         }
     }
 }
