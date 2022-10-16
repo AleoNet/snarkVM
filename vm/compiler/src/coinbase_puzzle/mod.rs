@@ -134,7 +134,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             point,
             product_eval_at_point,
         )?;
-        assert!(!proof.is_hiding());
+        ensure!(!proof.is_hiding(), "The prover solution must contain a non-hiding proof");
 
         debug_assert!(KZG10::check(&pk.verifying_key, &commitment, point, product_eval_at_point, &proof)?);
 
@@ -150,9 +150,14 @@ impl<N: Network> CoinbasePuzzle<N> {
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
     ) -> Result<CoinbaseSolution<N>> {
-        // Check that the number of prover solutions does not exceed `MAX_NUM_PROOFS`.
+        // Ensure there exists prover solutions.
+        if prover_solutions.is_empty() {
+            bail!("Cannot accumulate an empty list of prover solutions.");
+        }
+
+        // Ensure the number of prover solutions does not exceed `MAX_NUM_PROOFS`.
         if prover_solutions.len() > MAX_NUM_PROOFS {
-            bail!("Exceeded the allowed number of prover solutions. ({} > {})", prover_solutions.len(), MAX_NUM_PROOFS);
+            bail!("Cannot accumulate beyond {MAX_NUM_PROOFS} prover solutions, found {}.", prover_solutions.len());
         }
 
         let (prover_polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
@@ -197,7 +202,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             )
         };
 
-        // Compute the accumulator proof.
+        // Compute the coinbase proof.
         let proof = KZG10::open_lagrange(
             &pk.lagrange_basis(),
             pk.product_domain_elements(),
@@ -205,6 +210,11 @@ impl<N: Network> CoinbasePuzzle<N> {
             accumulator_point,
             product_eval_at_challenge_point,
         )?;
+
+        // Ensure the coinbase proof is non-hiding.
+        if proof.is_hiding() {
+            bail!("The coinbase proof must be non-hiding");
+        }
 
         // Return the accumulated proof.
         Ok(CoinbaseSolution::new(partial_solutions, proof))
