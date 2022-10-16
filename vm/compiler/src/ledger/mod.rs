@@ -21,6 +21,7 @@ pub mod map;
 pub use map::*;
 
 mod helpers;
+pub use helpers::*;
 
 mod state_path;
 pub use state_path::*;
@@ -429,7 +430,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             self.latest_coinbase_target()?,
             block.timestamp(),
             timestamp,
-        );
+        )?;
 
         // Construct the new proof target.
         let proof_target = proof_target(coinbase_target);

@@ -182,7 +182,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         // Construct the provers polynomial.
         let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials)
-            .zip(challenges)
+            .zip_eq(challenges)
             .fold(DensePolynomial::zero, |mut accumulator, (mut prover_polynomial, challenge)| {
                 prover_polynomial *= challenge;
                 accumulator += &prover_polynomial;

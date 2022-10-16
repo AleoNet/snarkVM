@@ -64,27 +64,13 @@ impl<N: Network> Block<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the block is not empty.
-        ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
+        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
         // Sign the block hash.
         let signature = private_key.sign(&[block_hash], rng)?;
-        // Derive the signer address.
-        let address = Address::try_from(private_key)?;
-        // Ensure the signature is valid.
-        ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
-        // Ensure that coinbase accumulator matches the coinbase proof.
-        let expected_accumulator_point = match &coinbase_proof {
-            Some(coinbase_proof) => coinbase_proof.to_accumulator_point()?,
-            None => Field::<N>::zero(),
-        };
-        ensure!(
-            header.coinbase_accumulator_point() == &expected_accumulator_point,
-            "Coinbase accumulator point does not match the coinbase proof"
-        );
-
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })
+        Self::from(previous_hash, header, transactions, coinbase_proof, signature)
     }
 
     /// Initializes a new block from a given previous hash, header, and transactions list.
@@ -96,13 +82,14 @@ impl<N: Network> Block<N> {
         signature: Signature<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
-        ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
+        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
         // Derive the signer address.
         let address = signature.to_address();
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+
         // Ensure that coinbase accumulator matches the coinbase proof.
         let expected_accumulator_point = match &coinbase_proof {
             Some(coinbase_proof) => coinbase_proof.to_accumulator_point()?,
@@ -110,10 +97,8 @@ impl<N: Network> Block<N> {
         };
         ensure!(
             header.coinbase_accumulator_point() == &expected_accumulator_point,
-            "Coinbase accumulator point does not match the coinbase proof"
+            "The coinbase accumulator point in the block header does not correspond to the given coinbase proof"
         );
-
-        // TODO (raychu86): Ensure the coinbase proof is valid. (requires epoch challenge state)
 
         // Construct the block.
         Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })

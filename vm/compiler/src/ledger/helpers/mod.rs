@@ -16,12 +16,11 @@
 
 use super::*;
 
-#[allow(unused)]
 /// Calculate the staking reward, given the starting supply and anchor time.
 ///     R_staking = floor((0.025 * S) / H_Y1)
 ///     S = Starting supply.
 ///     H_Y1 = Anchor block height at year 1.
-pub(crate) const fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>() -> u64 {
+pub const fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>() -> u64 {
     // Compute the anchor block height at year 1.
     let anchor_height_at_year_1 = anchor_block_height(ANCHOR_TIME, 1);
     // Compute the annual staking reward: (0.025 * S).
@@ -37,7 +36,7 @@ pub(crate) const fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME
 ///     H = Current block height.
 ///     D = Time elapsed since the previous block.
 ///     B = Anchor block time.
-pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16, const NUM_BLOCKS_PER_EPOCH: u32>(
+pub fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16, const NUM_BLOCKS_PER_EPOCH: u32>(
     previous_timestamp: i64,
     timestamp: i64,
     block_height: u32,
@@ -54,7 +53,7 @@ pub(crate) fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16
         0 => Ok(0),
         // Until the anchor block height at year 10, the coinbase reward is determined by this equation:
         //   (num_remaining_blocks_to_year_10 * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / ANCHOR_TIME}
-        reward => Ok(retarget::<ANCHOR_TIME>(reward, previous_timestamp, timestamp, ANCHOR_TIME as u32, true)),
+        reward => retarget::<ANCHOR_TIME>(reward, previous_timestamp, timestamp, ANCHOR_TIME as u32, true),
     }
 }
 
@@ -74,7 +73,7 @@ const fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>() -> 
 }
 
 /// Returns the anchor block height after a given number of years for a specific anchor time.
-pub(crate) const fn anchor_block_height(anchor_time: u16, num_years: u32) -> u32 {
+pub const fn anchor_block_height(anchor_time: u16, num_years: u32) -> u32 {
     // Calculate the number of seconds in a year.
     const SECONDS_IN_A_YEAR: u32 = 60 * 60 * 24 * 365;
     // Calculate the one-year anchor block height.
@@ -88,7 +87,7 @@ pub fn coinbase_target<const ANCHOR_TIME: u16, const NUM_BLOCKS_PER_EPOCH: u32>(
     previous_coinbase_target: u64,
     previous_block_timestamp: i64,
     block_timestamp: i64,
-) -> u64 {
+) -> Result<u64> {
     // Compute the new coinbase target.
     let candidate_target = retarget::<ANCHOR_TIME>(
         previous_coinbase_target,
@@ -96,9 +95,9 @@ pub fn coinbase_target<const ANCHOR_TIME: u16, const NUM_BLOCKS_PER_EPOCH: u32>(
         block_timestamp,
         NUM_BLOCKS_PER_EPOCH,
         true,
-    );
+    )?;
     // Return the new coinbase target, floored at 2^10 - 1.
-    core::cmp::max((1u64 << 10).saturating_sub(1), candidate_target)
+    Ok(core::cmp::max((1u64 << 10).saturating_sub(1), candidate_target))
 }
 
 /// Calculate the minimum proof target for the given coinbase target.
@@ -119,7 +118,7 @@ fn retarget<const ANCHOR_TIME: u16>(
     block_timestamp: i64,
     half_life: u32,
     is_inverse: bool,
-) -> u64 {
+) -> Result<u64> {
     // Compute the difference in block time elapsed, defined as:
     let mut drift = {
         // Determine the block time elapsed (in seconds) since the previous block.
@@ -133,7 +132,7 @@ fn retarget<const ANCHOR_TIME: u16>(
 
     // If the drift is zero, return the previous target.
     if drift == 0 {
-        return previous_target;
+        return Ok(previous_target);
     }
 
     // Negate the drift if the inverse flag is set.
@@ -153,8 +152,8 @@ fn retarget<const ANCHOR_TIME: u16>(
         // Decompose into the integral and fractional parts.
         let integral = exponent >> RBITS;
         let fractional = (exponent - (integral << RBITS)) as u128;
-        assert!(fractional < RADIX, "Ensure fractional part is within fixed point size");
-        assert_eq!(exponent, integral * (RADIX as i128) + fractional as i128);
+        ensure!(fractional < RADIX, "Fractional part is not within the fixed point size");
+        ensure!(exponent == (integral * (RADIX as i128) + fractional as i128), "Exponent is decomposed incorrectly");
 
         (integral, fractional)
     };
@@ -191,10 +190,10 @@ fn retarget<const ANCHOR_TIME: u16>(
     // Cap the target at `u64::MAX` if it has overflowed.
     candidate_target = core::cmp::min(candidate_target, u64::MAX as u128);
 
-    // Cast the new target down from a u128 to a u64.
     // Ensure that the leading 64 bits are zeros.
-    assert_eq!(candidate_target.checked_shr(64), Some(0));
-    candidate_target as u64
+    ensure!(candidate_target.checked_shr(64) == Some(0), "The target has overflowed");
+    // Cast the new target down from a u128 to a u64.
+    Ok(candidate_target as u64)
 }
 
 #[cfg(test)]
@@ -367,7 +366,8 @@ mod tests {
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
-            );
+            )
+            .unwrap();
             let new_prover_target = proof_target(new_coinbase_target);
             assert_eq!(new_coinbase_target, previous_coinbase_target);
             assert_eq!(new_prover_target, previous_prover_target);
@@ -378,7 +378,8 @@ mod tests {
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
-            );
+            )
+            .unwrap();
             let new_prover_target = proof_target(new_coinbase_target);
             assert!(new_coinbase_target < previous_coinbase_target);
             assert!(new_prover_target < previous_prover_target);
@@ -389,7 +390,8 @@ mod tests {
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
-            );
+            )
+            .unwrap();
             let new_prover_target = proof_target(new_coinbase_target);
 
             assert!(new_coinbase_target > previous_coinbase_target);

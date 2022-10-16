@@ -90,7 +90,7 @@ impl<N: Network> CoinbaseSolution<N> {
 
         // Compute the accumulator evaluation.
         let mut accumulator_evaluation = cfg_iter!(prover_polynomials)
-            .zip(&challenge_points)
+            .zip_eq(&challenge_points)
             .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |accumulator, (prover_polynomial, challenge_point)| {
                 accumulator + (prover_polynomial.evaluate(accumulator_point) * challenge_point)
             })
