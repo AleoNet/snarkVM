@@ -36,13 +36,21 @@ impl<N: Network> ProverSolution<N> {
     }
 
     /// Returns `true` if the prover solution is valid.
-    pub fn verify(&self, verifying_key: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
+    pub fn verify(
+        &self,
+        verifying_key: &CoinbaseVerifyingKey<N>,
+        epoch_challenge: &EpochChallenge<N>,
+        proof_target: u64,
+    ) -> Result<bool> {
         // Ensure the proof is non-hiding.
         if self.proof.is_hiding() {
             return Ok(false);
         }
 
-        // TODO: check difficulty of solution.
+        // Ensure that the prover solution is greater than the proof target.
+        if self.to_target()? < proof_target {
+            bail!("Prover puzzle does not meet the proof target requirements.")
+        }
 
         // Compute the prover polynomial.
         let prover_polynomial = self.partial_solution.to_prover_polynomial(epoch_challenge)?;

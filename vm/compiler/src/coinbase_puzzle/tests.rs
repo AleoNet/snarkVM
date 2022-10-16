@@ -44,10 +44,10 @@ fn test_coinbase_puzzle() {
                 })
                 .collect::<Vec<_>>();
             let full_solution = CoinbasePuzzle::accumulate(&pk, &epoch_challenge, &solutions).unwrap();
-            assert!(full_solution.verify(&vk, &epoch_challenge).unwrap());
+            assert!(full_solution.verify(&vk, &epoch_challenge, 0u64, 0u64).unwrap());
 
             let bad_epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
-            assert!(!full_solution.verify(&vk, &bad_epoch_challenge).unwrap());
+            assert!(!full_solution.verify(&vk, &bad_epoch_challenge, 0u64, 0u64).unwrap());
         }
     }
 }

@@ -29,15 +29,20 @@ mod tests;
 use crate::{UniversalSRS, MAX_NUM_PROOFS};
 use console::{
     account::Address,
-    prelude::{anyhow, bail, cfg_iter, ensure, CryptoRng, Network, Result, Rng, ToBytes},
+    prelude::{anyhow, bail, cfg_iter, ensure, Network, Result, ToBytes},
     program::cfg_into_iter,
 };
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::kzg10::{self, UniversalParams as SRS, KZG10},
+    polycommit::kzg10::{UniversalParams as SRS, KZG10},
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::Zero;
+
+#[cfg(any(test, feature = "setup"))]
+use console::prelude::{CryptoRng, Rng};
+#[cfg(any(test, feature = "setup"))]
+use snarkvm_algorithms::polycommit::kzg10;
 
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
@@ -124,7 +129,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         let proof = KZG10::open_lagrange(
             &pk.lagrange_basis(),
-            &pk.product_domain_elements,
+            pk.product_domain_elements(),
             &product_evaluations,
             point,
             product_eval_at_point,
@@ -195,7 +200,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         // Compute the accumulator proof.
         let proof = KZG10::open_lagrange(
             &pk.lagrange_basis(),
-            &pk.product_domain_elements,
+            pk.product_domain_elements(),
             &product_evals,
             accumulator_point,
             product_eval_at_challenge_point,

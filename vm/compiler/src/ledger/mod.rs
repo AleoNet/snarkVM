@@ -313,16 +313,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Coinbase proofs are no longer accepted after year 10.");
         }
 
-        // Ensure that the prover solution is greater than the proof target.
-        if prover_solution.to_target()? < self.latest_proof_target()? {
-            bail!("Prover puzzle does not meet the proof target requirements.")
-        }
-
-        // Compute the epoch challenge.
+        // Compute the current epoch challenge.
         let epoch_challenge = self.latest_epoch_challenge()?;
+        // Retrieve the current proof target.
+        let proof_target = self.latest_proof_target()?;
 
         // Ensure that the prover solution is valid for the given epoch.
-        if !prover_solution.verify(&self.coinbase_verifying_key, &epoch_challenge)? {
+        if !prover_solution.verify(&self.coinbase_verifying_key, &epoch_challenge, proof_target)? {
             bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_solution.commitment().0);
         }
 
@@ -626,46 +623,29 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         /* Coinbase Proof */
 
-        // TODO (howardwu): Cache this epoch challenge so it doesn't need to be recomputed each time.
-        let epoch_challenge = self.latest_epoch_challenge()?;
-
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
+            // Ensure coinbase proofs are not accepted after the anchor block height at year 10.
             if block.height() > anchor_block_height(ANCHOR_TIME, 10) {
-                bail!("Coinbase proofs are no longer accepted after year 10.");
+                bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
             }
-
+            // Ensure the coinbase accumulator point matches in the block header.
             if block.header().coinbase_accumulator_point() != &coinbase_proof.to_accumulator_point()? {
                 bail!("Coinbase accumulator point does not match the coinbase proof.");
             }
-
-            if coinbase_proof.partial_solutions.len() > MAX_NUM_PROOFS {
-                bail!(
-                    "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
-                    coinbase_proof.partial_solutions.len(),
-                    MAX_NUM_PROOFS
-                );
-            }
-
-            if !coinbase_proof.verify(&self.coinbase_verifying_key, &epoch_challenge)? {
+            // Ensure the coinbase proof is valid.
+            if !coinbase_proof.verify(
+                &self.coinbase_verifying_key,
+                &self.latest_epoch_challenge()?,
+                self.latest_coinbase_target()?,
+                self.latest_proof_target()?,
+            )? {
                 bail!("Invalid coinbase proof: {:?}", coinbase_proof);
-            }
-
-            // Ensure the coinbase proof meets the required coinbase target.
-            if block.height() > 0 && coinbase_proof.to_cumulative_target()? < self.latest_coinbase_target()? as u128 {
-                bail!("Coinbase proof does not meet the coinbase target");
-            }
-
-            // Ensure that each of the prover solutions meets the required proof target.
-            for prover_solution in &coinbase_proof.partial_solutions {
-                if block.height() > 0 && prover_solution.to_target()? < self.latest_proof_target()? {
-                    bail!("Invalid prover solution found in the coinbase proof");
-                }
             }
         } else {
             // Ensure that the block header does not contain a coinbase accumulator point.
             if block.header().coinbase_accumulator_point() != &Field::<N>::zero() {
-                bail!("Coinbase accumulator point should be zero if there is no coinbase proof.");
+                bail!("Coinbase accumulator point should be zero as there is no coinbase proof in the block.");
             }
         }
 

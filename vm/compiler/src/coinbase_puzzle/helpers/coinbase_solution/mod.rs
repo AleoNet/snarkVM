@@ -36,27 +36,44 @@ impl<N: Network> CoinbaseSolution<N> {
         Self { partial_solutions, proof }
     }
 
-    pub fn verify(&self, verifying_key: &CoinbaseVerifyingKey<N>, epoch_challenge: &EpochChallenge<N>) -> Result<bool> {
+    /// Returns `true` if the coinbase solution is valid.
+    pub fn verify(
+        &self,
+        verifying_key: &CoinbaseVerifyingKey<N>,
+        epoch_challenge: &EpochChallenge<N>,
+        coinbase_target: u64,
+        proof_target: u64,
+    ) -> Result<bool> {
         // Ensure the coinbase solution is not empty.
         if self.partial_solutions.is_empty() {
-            return Ok(false);
+            bail!("The coinbase solution does not contain any partial solutions");
         }
 
         // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
         if self.partial_solutions.len() > MAX_NUM_PROOFS {
-            return Ok(false);
+            bail!(
+                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {MAX_NUM_PROOFS})",
+                self.partial_solutions.len()
+            );
         }
 
-        // Ensure the proof is non-hiding.
+        // Ensure the coinbase proof is non-hiding.
         if self.proof.is_hiding() {
-            return Ok(false);
+            bail!("The coinbase proof must be non-hiding");
+        }
+
+        // Ensure the coinbase proof meets the required coinbase target.
+        if self.to_cumulative_target()? < coinbase_target as u128 {
+            bail!("The coinbase proof does not meet the coinbase target");
         }
 
         // Compute the prover polynomials.
-        let prover_polynomials: Vec<_> = cfg_iter!(self.partial_solutions)
-            .map(|solution| {
-                // TODO: check difficulty of solution
-                solution.to_prover_polynomial(epoch_challenge)
+        let prover_polynomials = cfg_iter!(self.partial_solutions)
+            // Ensure that each of the prover solutions meets the required proof target.
+            .map(|solution| match solution.to_target()? >= proof_target {
+                // Compute the prover polynomial.
+                true => solution.to_prover_polynomial(epoch_challenge),
+                false => bail!("Prover puzzle does not meet the proof target requirements."),
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -96,20 +113,8 @@ impl<N: Network> CoinbaseSolution<N> {
         )?)
     }
 
-    /// Returns the cumulative target of the individual prover solutions.
+    /// Returns the cumulative sum of the prover solutions.
     pub fn to_cumulative_target(&self) -> Result<u128> {
-        // Ensure the coinbase solution is not empty.
-        ensure!(!self.partial_solutions.is_empty(), "The coinbase solution does not contain any partial solutions");
-
-        // Ensure the number of partial solutions does not exceed `MAX_NUM_PROOFS`.
-        if self.partial_solutions.len() > MAX_NUM_PROOFS {
-            bail!(
-                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
-                self.partial_solutions.len(),
-                MAX_NUM_PROOFS
-            );
-        }
-
         // Compute the cumulative target as a u128.
         self.partial_solutions.iter().try_fold(0u128, |cumulative, solution| {
             cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
