@@ -76,9 +76,9 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the output from a string into a value.
-                let output = serde_json::Value::deserialize(deserializer)?;
+                let mut output = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(output["id"].clone()).map_err(de::Error::custom)?;
+                let id: Field<N> = serde_json::from_value(output["id"].take()).map_err(de::Error::custom)?;
 
                 // Recover the output.
                 let output = match output["type"].as_str() {
@@ -97,7 +97,7 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                     Some("record") => {
                         // Retrieve the checksum.
                         let checksum: Field<N> =
-                            serde_json::from_value(output["checksum"].clone()).map_err(de::Error::custom)?;
+                            serde_json::from_value(output["checksum"].take()).map_err(de::Error::custom)?;
                         // Return the record.
                         Output::Record(id, checksum, match output["value"].as_str() {
                             Some(value) => {

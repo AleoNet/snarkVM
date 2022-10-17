@@ -74,9 +74,9 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the input from a string into a value.
-                let input = serde_json::Value::deserialize(deserializer)?;
+                let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?;
+                let id: Field<N> = serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?;
 
                 // Recover the input.
                 let input = match input["type"].as_str() {
@@ -94,8 +94,8 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                     }),
                     Some("record") => Input::Record(
                         id,
-                        serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["origin"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["origin"].take()).map_err(de::Error::custom)?,
                     ),
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
