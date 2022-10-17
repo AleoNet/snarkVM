@@ -109,6 +109,17 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }))
     }
 
+    pub fn find_transactions(&self, view_key: ViewKey<N>) -> Result<Option<Transactions<N>>> {
+        self.transactions.filter(move |transaction| {
+            transaction
+                .transition_store()
+                .records()
+                .filter(move |record| 
+                    record
+                    .is_owner(&view_key.to_address(), view_key))
+        })
+    }
+
     /// Returns the records that belong to the given view key.
     pub fn find_records<'a>(
         &'a self,

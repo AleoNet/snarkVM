@@ -75,6 +75,15 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
     }
 
+    /// Returns the transactions for the given view key.
+    pub fn get_transactions_from_viewkey(&self, view_key: ViewKey<N>) -> Result<Transactions<N>> {
+        // Retrieve the block transaction.
+        match self.find_transactions(view_key)? {
+            Some(transactions) => Ok(transactions),
+            None => bail!("Missing transactions for viewkey {view_key}"),
+        }
+    }
+
     /// Returns the transaction for the given transaction id.
     pub fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
         // Retrieve the transaction.
