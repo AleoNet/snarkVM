@@ -75,9 +75,6 @@ mod tests {
         Package::<CurrentNetwork>::clean(&directory).unwrap();
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
@@ -101,8 +98,5 @@ mod tests {
         Package::<CurrentNetwork>::clean(&directory).unwrap();
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 }

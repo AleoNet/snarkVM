@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn test_run() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (_, package) = crate::package::test_helpers::sample_package();
 
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());
@@ -127,15 +127,12 @@ mod tests {
         // Run the program function.
         let (_response, _execution) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
     fn test_run_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (_, package) = crate::package::test_helpers::sample_package_with_import();
 
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());
@@ -152,8 +149,5 @@ mod tests {
         // Run the program function.
         let (_response, _execution) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 }

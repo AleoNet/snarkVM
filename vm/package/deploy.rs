@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn test_deploy() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (_, package) = crate::package::test_helpers::sample_package();
 
         // Deploy the package.
         let deployment = package.deploy::<CurrentAleo>(None).unwrap();
@@ -200,15 +200,12 @@ mod tests {
         assert_eq!(package.program().id(), deployment.program_id());
         // Ensure the deployment program matches.
         assert_eq!(package.program(), deployment.program());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
     fn test_deploy_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (_, package) = crate::package::test_helpers::sample_package_with_import();
 
         // Deploy the package.
         let deployment = package.deploy::<CurrentAleo>(None).unwrap();
@@ -219,8 +216,5 @@ mod tests {
         assert_eq!(package.program().id(), deployment.program_id());
         // Ensure the deployment program matches.
         assert_eq!(package.program(), deployment.program());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 }

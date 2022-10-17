@@ -379,9 +379,6 @@ mod tests {
         assert_eq!(package.imports_directory(), directory.join("imports"));
         // Ensure the imports directory does *not* exist, when the package does not contain imports.
         assert!(!package.imports_directory().exists());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
@@ -393,9 +390,6 @@ mod tests {
         assert_eq!(package.imports_directory(), directory.join("imports"));
         // Ensure the imports directory exists, as the package contains an import.
         assert!(package.imports_directory().exists());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
@@ -407,20 +401,14 @@ mod tests {
         assert_eq!(package.build_directory(), directory.join("build"));
         // Ensure the build directory does *not* exist, when the package has not been built.
         assert!(!package.build_directory().exists());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
     fn test_get_process() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (_, package) = crate::package::test_helpers::sample_package();
 
         // Get the program process and check all instructions.
         assert!(package.get_process().is_ok());
-
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
     }
 }
