@@ -64,15 +64,15 @@ impl<'de, N: Network> Deserialize<'de> for BuildRequest<N> {
     /// Deserializes the build request from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
-        let request = serde_json::Value::deserialize(deserializer)?;
+        let mut request = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["program"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["program"].take()).map_err(de::Error::custom)?,
             // Retrieve the imports.
-            serde_json::from_value(request["imports"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["imports"].take()).map_err(de::Error::custom)?,
             // Retrieve the function name.
-            serde_json::from_value(request["function_name"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["function_name"].take()).map_err(de::Error::custom)?,
         ))
     }
 }
@@ -132,17 +132,17 @@ impl<'de, N: Network> Deserialize<'de> for BuildResponse<N> {
     /// Deserializes the build response from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the response from a string into a value.
-        let response = serde_json::Value::deserialize(deserializer)?;
+        let mut response = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["program_id"].take()).map_err(de::Error::custom)?,
             // Retrieve the function name.
-            serde_json::from_value(response["function_name"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["function_name"].take()).map_err(de::Error::custom)?,
             // Retrieve the proving key.
-            serde_json::from_value(response["proving_key"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["proving_key"].take()).map_err(de::Error::custom)?,
             // Retrieve the verifying key.
-            serde_json::from_value(response["verifying_key"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(response["verifying_key"].take()).map_err(de::Error::custom)?,
         ))
     }
 }

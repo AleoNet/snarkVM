@@ -37,11 +37,11 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let header = serde_json::Value::deserialize(deserializer)?;
+                let mut header = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::from(
-                    serde_json::from_value(header["previous_state_root"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["transactions_root"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["previous_state_root"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["transactions_root"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["metadata"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)
             }

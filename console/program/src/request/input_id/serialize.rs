@@ -66,26 +66,26 @@ impl<'de, N: Network> Deserialize<'de> for InputID<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the input ID from a string into a value.
-                let input = serde_json::Value::deserialize(deserializer)?;
+                let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Recover the input.
                 let input_id = match input["type"].as_str() {
                     Some("constant") => {
-                        InputID::Constant(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
+                        InputID::Constant(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
                     }
                     Some("public") => {
-                        InputID::Public(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
+                        InputID::Public(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
                     }
                     Some("private") => {
-                        InputID::Private(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
+                        InputID::Private(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
                     }
                     Some("record") => InputID::Record(
-                        serde_json::from_value(input["commitment"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["gamma"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["serial_number"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["commitment"].take()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["gamma"].take()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["serial_number"].take()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?,
                     ),
                     Some("external_record") => {
-                        InputID::ExternalRecord(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
+                        InputID::ExternalRecord(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
                     }
                     _ => return Err(de::Error::custom("Invalid input type")),
                 };
