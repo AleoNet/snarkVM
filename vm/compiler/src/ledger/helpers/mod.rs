@@ -206,10 +206,14 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
+    const EXPECTED_ANCHOR_REWARD: u64 = 8;
+    const EXPECTED_STAKING_REWARD: u64 = 17_440_385;
+    const EXPECTED_COINBASE_REWARD_FOR_BLOCK_1: u64 = 126_143_992;
+
     #[test]
     fn test_anchor_reward() {
         let reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
-        assert_eq!(reward, 8);
+        assert_eq!(reward, EXPECTED_ANCHOR_REWARD);
 
         // Increasing the anchor time will increase the reward.
         let larger_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
@@ -223,7 +227,7 @@ mod tests {
     #[test]
     fn test_staking_reward() {
         let reward = staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
-        assert_eq!(reward, 17_440_385);
+        assert_eq!(reward, EXPECTED_STAKING_REWARD);
 
         // Increasing the anchor time will increase the reward.
         let larger_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
@@ -242,7 +246,7 @@ mod tests {
             1,
         )
         .unwrap();
-        assert_eq!(reward, 126_143_992);
+        assert_eq!(reward, EXPECTED_COINBASE_REWARD_FOR_BLOCK_1);
 
         // Increasing the block time to twice the anchor time *at most* halves the reward.
         let smaller_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
