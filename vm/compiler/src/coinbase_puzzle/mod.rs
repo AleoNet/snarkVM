@@ -42,7 +42,7 @@ use console::prelude::{CryptoRng, Rng};
 #[cfg(any(test, feature = "setup"))]
 use snarkvm_algorithms::polycommit::kzg10;
 
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::Arc;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -134,7 +134,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             product_evaluations
         };
         let (commitment, _rand) =
-            KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &AtomicBool::default(), None)?;
+            KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &Default::default(), None)?;
         let point = hash_commitment(commitment)?;
         let product_eval_at_point = polynomial.evaluate(point) * epoch_challenge.epoch_polynomial().evaluate(point);
 
@@ -352,10 +352,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         nonce: u64,
     ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
         let input = {
-            let mut bytes = [0u8; 80];
-            bytes[..40].copy_from_slice(&epoch_challenge.to_bytes_le()?);
-            bytes[40..72].copy_from_slice(&address.to_bytes_le()?);
-            bytes[72..].copy_from_slice(&nonce.to_le_bytes());
+            let mut bytes = [0u8; 76];
+            bytes[..4].copy_from_slice(&epoch_challenge.epoch_number().to_bytes_le()?);
+            bytes[4..36].copy_from_slice(&epoch_challenge.epoch_block_hash().to_bytes_le()?);
+            bytes[36..68].copy_from_slice(&address.to_bytes_le()?);
+            bytes[68..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
         hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?)
