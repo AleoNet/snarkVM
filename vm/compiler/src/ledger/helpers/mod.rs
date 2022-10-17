@@ -63,11 +63,11 @@ pub fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16, const
 ///     H_Y10 = Expected block height at year 10.
 const fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>() -> u64 {
     // Calculate the anchor block height at year 10.
-    let anchor_height_at_year_1 = anchor_block_height(ANCHOR_TIME, 10) as u64;
+    let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10) as u64;
     // Compute the numerator.
     let numerator = 2 * STARTING_SUPPLY;
     // Compute the denominator.
-    let denominator = anchor_height_at_year_1 * (anchor_height_at_year_1 + 1);
+    let denominator = anchor_height_at_year_10 * (anchor_height_at_year_10 + 1);
     // Return the anchor reward.
     numerator / denominator
 }
