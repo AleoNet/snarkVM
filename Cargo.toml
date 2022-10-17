@@ -77,7 +77,13 @@ path = "vm/cli/main.rs"
 required-features = [ "cli" ]
 
 [features]
-default = [ "cli", "parallel", "parameters" ]
+default = [ 
+  "cli",
+  "parallel",
+  "parameters",
+  "parking_lot",
+  "ureq",
+  "snarkvm-compiler/default" ]
 full = [
   "algorithms",
   "circuit",
@@ -85,9 +91,11 @@ full = [
   "curves",
   "fields",
   "parameters",
+  "parking_lot",
   "r1cs",
   "rest",
-  "utilities"
+  "utilities",
+  "ureq"
 ]
 cli = [
   "anyhow",
@@ -95,6 +103,7 @@ cli = [
   "console",
   "clap",
   "colored",
+  "parking_lot",
   "rand",
   "self_update",
   "serde_json",
@@ -120,6 +129,9 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 noconfig = [ ]
+enclave = [
+  "snarkvm-compiler/enclave"
+]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
@@ -194,6 +206,7 @@ version = "1.13"
 
 [dependencies.parking_lot]
 version = "0.12"
+optional = true
 
 [dependencies.rand]
 version = "0.8"
@@ -218,6 +231,7 @@ optional = true
 [dependencies.ureq]
 version = "2.5"
 features = [ "json" ]
+optional = true
 
 [dev-dependencies.bincode]
 version = "1.3"

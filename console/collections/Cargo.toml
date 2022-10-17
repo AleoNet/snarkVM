@@ -14,6 +14,7 @@ harness = false
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-console-types]
 path = "../types"
@@ -36,6 +37,7 @@ path = "../network"
 version = "0.4.0"
 
 [features]
-default = [ "parallel" ]
-parallel = [ "rayon" ]
-timer = [ "aleo-std/timer", "aleo-std/timed" ]
+default = [ "parallel", "snarkvm-console-algorithms/default" ]
+parallel = [ "rayon", "snarkvm-console-algorithms/default" ]
+timer = [ "aleo-std/timer", "aleo-std/timed", "snarkvm-console-algorithms/default" ]
+enclave = [ "snarkvm-console-algorithms/enclave" ]

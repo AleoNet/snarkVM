@@ -95,6 +95,7 @@ impl<N: Network> Process<N> {
 
 impl<N: Network> Process<N> {
     /// Initializes a new process.
+    #[cfg(not(feature = "enclave"))]
     #[inline]
     pub fn load() -> Result<Self> {
         // Initialize the process.

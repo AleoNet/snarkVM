@@ -433,18 +433,34 @@ impl<N: Network> Stack<N> {
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
     fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
-        use colored::Colorize;
-
-        // Determine if the circuit is satisfied.
-        let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
         // Determine the count.
         let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
 
-        // Print the log.
-        println!(
-            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
-            scope.into().bold(),
-            width = 20
-        );
+        #[cfg(not(feature = "enclave"))]
+        {
+            use colored::Colorize;
+
+            // Determine if the circuit is satisfied.
+            let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
+
+            // Print the log.
+            println!(
+                "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+                scope.into().bold(),
+                width = 20
+            );
+        }
+        #[cfg(feature = "enclave")]
+        {
+            // Determine if the circuit is satisfied.
+            let is_satisfied = if A::is_satisfied() { "[OK]" } else { "[ERROR]" };
+
+            // Print the log.
+            println!(
+                "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+                scope.into(),
+                width = 20
+            );
+        }
     }
 }

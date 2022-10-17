@@ -15,10 +15,12 @@ optional = true
 [dependencies.snarkvm-circuit-algorithms]
 path = "../algorithms"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types]
 path = "../types"
 version = "0.9.0"
+default-features = false
 
 [dev-dependencies.snarkvm-circuit-network]
 path = "../network"
@@ -36,5 +38,13 @@ path = "../../utilities"
 version = "1.0.64"
 
 [features]
-default = [ "enable_console" ]
+default = [ 
+    "enable_console",
+    "snarkvm-circuit-algorithms/default",
+    "snarkvm-circuit-types/default"
+]
 enable_console = [ "console" ]
+enclave = [
+    "snarkvm-circuit-algorithms/enclave",
+    "snarkvm-circuit-types/enclave"
+]

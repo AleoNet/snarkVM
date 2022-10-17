@@ -9,31 +9,61 @@ edition = "2021"
 [dependencies.snarkvm-circuit-environment]
 path = "../environment"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-address]
 path = "./address"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-boolean]
 path = "./boolean"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-field]
 path = "./field"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-group]
 path = "./group"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-integers]
 path = "./integers"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-scalar]
 path = "./scalar"
 version = "0.9.0"
+default-features = false
 
 [dependencies.snarkvm-circuit-types-string]
 path = "./string"
 version = "0.9.0"
+default-features = false
+
+[features]
+default = [
+    "snarkvm-circuit-environment/default",
+    "snarkvm-circuit-types-address/default",
+    "snarkvm-circuit-types-boolean/default",
+    "snarkvm-circuit-types-field/default",
+    "snarkvm-circuit-types-group/default",
+    "snarkvm-circuit-types-integers/default",
+    "snarkvm-circuit-types-scalar/default",
+    "snarkvm-circuit-types-string/default"
+]
+enclave = [
+    "snarkvm-circuit-environment/enclave",
+    "snarkvm-circuit-types-address/enclave",
+    "snarkvm-circuit-types-boolean/enclave",
+    "snarkvm-circuit-types-field/enclave",
+    "snarkvm-circuit-types-group/enclave",
+    "snarkvm-circuit-types-integers/enclave",
+    "snarkvm-circuit-types-scalar/enclave",
+    "snarkvm-circuit-types-string/enclave"
+]
