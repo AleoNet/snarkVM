@@ -169,7 +169,7 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
             }
 
             // Store the block coinbase proof.
-            self.coinbase_proof_map().insert(block.hash(), block.coinbase_proof().clone())?;
+            self.coinbase_proof_map().insert(block.hash(), block.coinbase_proof().cloned())?;
 
             // Store the block signature.
             self.signature_map().insert(block.hash(), *block.signature())?;

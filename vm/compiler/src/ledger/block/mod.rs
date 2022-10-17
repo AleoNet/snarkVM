@@ -117,8 +117,8 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the coinbase proof.
-    pub const fn coinbase_proof(&self) -> &Option<CoinbaseSolution<N>> {
-        &self.coinbase_proof
+    pub const fn coinbase_proof(&self) -> Option<&CoinbaseSolution<N>> {
+        self.coinbase_proof.as_ref()
     }
 
     /// Returns the signature.

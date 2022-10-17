@@ -27,7 +27,7 @@ impl<N: Network> Serialize for Block<N> {
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("transactions", &self.transactions)?;
 
-                if let Some(coinbase_proof) = &self.coinbase_proof {
+                if let Some(coinbase_proof) = self.coinbase_proof() {
                     block.serialize_field("coinbase_proof", coinbase_proof)?;
                 }
 
