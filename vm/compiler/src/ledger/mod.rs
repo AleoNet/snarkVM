@@ -580,7 +580,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         match block.transactions().to_root() {
             // Ensure the transactions root matches the one in the block header.
             Ok(root) => {
-                if &root != block.header().transactions_root() {
+                if root != block.header().transactions_root() {
                     bail!(
                         "Block {} ({}) has an incorrect transactions root: expected {}",
                         block.height(),
@@ -620,7 +620,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
             }
             // Ensure the coinbase accumulator point matches in the block header.
-            if block.header().coinbase_accumulator_point() != &coinbase_proof.to_accumulator_point()? {
+            if block.header().coinbase_accumulator_point() != coinbase_proof.to_accumulator_point()? {
                 bail!("Coinbase accumulator point does not match the coinbase proof.");
             }
             // Ensure the coinbase proof is valid.
@@ -634,7 +634,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
         } else {
             // Ensure that the block header does not contain a coinbase accumulator point.
-            if block.header().coinbase_accumulator_point() != &Field::<N>::zero() {
+            if block.header().coinbase_accumulator_point() != Field::<N>::zero() {
                 bail!("Coinbase accumulator point should be zero as there is no coinbase proof in the block.");
             }
         }
@@ -812,7 +812,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Construct the block header path.
         let block_header = block.header();
         let header_root = block_header.to_root()?;
-        let header_leaf = HeaderLeaf::<N>::new(1, *block_header.transactions_root());
+        let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
         let header_path = block_header.to_path(&header_leaf)?;
 
         // Construct the state root and block path.

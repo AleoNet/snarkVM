@@ -96,7 +96,7 @@ impl<N: Network> Block<N> {
             None => Field::<N>::zero(),
         };
         ensure!(
-            header.coinbase_accumulator_point() == &expected_accumulator_point,
+            header.coinbase_accumulator_point() == expected_accumulator_point,
             "The coinbase accumulator point in the block header does not correspond to the given coinbase proof"
         );
 
@@ -134,12 +134,12 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the previous state root from the block header.
-    pub const fn previous_state_root(&self) -> &Field<N> {
+    pub const fn previous_state_root(&self) -> Field<N> {
         self.header.previous_state_root()
     }
 
     /// Returns the transactions root in the block header.
-    pub const fn transactions_root(&self) -> &Field<N> {
+    pub const fn transactions_root(&self) -> Field<N> {
         self.header.transactions_root()
     }
 

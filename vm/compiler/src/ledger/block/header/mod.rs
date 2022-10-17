@@ -81,18 +81,18 @@ impl<N: Network> Header<N> {
     }
 
     /// Returns the previous state root from the block header.
-    pub const fn previous_state_root(&self) -> &Field<N> {
-        &self.previous_state_root
+    pub const fn previous_state_root(&self) -> Field<N> {
+        self.previous_state_root
     }
 
     /// Returns the transactions root in the block header.
-    pub const fn transactions_root(&self) -> &Field<N> {
-        &self.transactions_root
+    pub const fn transactions_root(&self) -> Field<N> {
+        self.transactions_root
     }
 
     /// Returns the coinbase puzzle accumulator point in the block header.
-    pub const fn coinbase_accumulator_point(&self) -> &Field<N> {
-        &self.coinbase_accumulator_point
+    pub const fn coinbase_accumulator_point(&self) -> Field<N> {
+        self.coinbase_accumulator_point
     }
 
     /// Returns the metadata in the block header.

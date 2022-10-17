@@ -39,12 +39,12 @@ impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
+                let mut combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(combined_puzzle_solution["partial_solutions"].clone())
+                    serde_json::from_value(combined_puzzle_solution["partial_solutions"].take())
                         .map_err(de::Error::custom)?,
                     KZGProof {
-                        w: serde_json::from_value(combined_puzzle_solution["proof.w"].clone())
+                        w: serde_json::from_value(combined_puzzle_solution["proof.w"].take())
                             .map_err(de::Error::custom)?,
                         random_v: match combined_puzzle_solution.get("proof.random_v") {
                             Some(random_v) => {

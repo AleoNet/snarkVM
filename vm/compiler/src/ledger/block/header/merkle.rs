@@ -127,17 +127,17 @@ mod tests {
             let root = header.to_root()?;
 
             // Check the 0th leaf.
-            let leaf = header.to_leaf(header.previous_state_root())?;
+            let leaf = header.to_leaf(&header.previous_state_root())?;
             assert_eq!(leaf.index(), 0);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 1st leaf.
-            let leaf = header.to_leaf(header.transactions_root())?;
+            let leaf = header.to_leaf(&header.transactions_root())?;
             assert_eq!(leaf.index(), 1);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 2nd leaf.
-            let leaf = header.to_leaf(header.coinbase_accumulator_point())?;
+            let leaf = header.to_leaf(&header.coinbase_accumulator_point())?;
             assert_eq!(leaf.index(), 2);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
