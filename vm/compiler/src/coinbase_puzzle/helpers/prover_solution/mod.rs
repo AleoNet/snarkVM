@@ -66,11 +66,11 @@ impl<N: Network> ProverSolution<N> {
         let claimed_value = epoch_evaluation * prover_evaluation;
 
         // Check the KZG proof.
-        Ok(KZG10::check(verifying_key, self.commitment(), challenge_point, claimed_value, self.proof())?)
+        Ok(KZG10::check(verifying_key, &self.commitment(), challenge_point, claimed_value, self.proof())?)
     }
 
     /// Returns the address of the prover.
-    pub const fn address(&self) -> &Address<N> {
+    pub const fn address(&self) -> Address<N> {
         self.partial_solution.address()
     }
 
@@ -80,7 +80,7 @@ impl<N: Network> ProverSolution<N> {
     }
 
     /// Returns the commitment for the solution.
-    pub const fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
+    pub const fn commitment(&self) -> KZGCommitment<N::PairingCurve> {
         self.partial_solution.commitment()
     }
 

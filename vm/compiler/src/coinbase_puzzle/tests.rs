@@ -40,7 +40,7 @@ fn test_coinbase_puzzle() {
                     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
-                    puzzle.prove(&epoch_challenge, &address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
             let full_solution = puzzle.accumulate(&epoch_challenge, &solutions).unwrap();

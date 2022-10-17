@@ -39,8 +39,8 @@ impl<N: Network> PartialSolution<N> {
     }
 
     /// Returns the address of the prover.
-    pub const fn address(&self) -> &Address<N> {
-        &self.address
+    pub const fn address(&self) -> Address<N> {
+        self.address
     }
 
     /// Returns the nonce for the solution.
@@ -49,8 +49,8 @@ impl<N: Network> PartialSolution<N> {
     }
 
     /// Returns the commitment for the solution.
-    pub const fn commitment(&self) -> &KZGCommitment<N::PairingCurve> {
-        &self.commitment
+    pub const fn commitment(&self) -> KZGCommitment<N::PairingCurve> {
+        self.commitment
     }
 
     /// Returns the prover polynomial.

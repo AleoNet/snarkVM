@@ -410,7 +410,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                     numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward overflowed"))?,
                 )?;
 
-                prover_rewards.push((*prover_solution.address(), prover_reward));
+                prover_rewards.push((prover_solution.address(), prover_reward));
             }
         }
 
@@ -1251,7 +1251,7 @@ mod tests {
 
         for _ in 0..100 {
             // Generate a prover solution.
-            let prover_solution = ledger.coinbase_puzzle.prove(&epoch_challenge, &address, rng.gen()).unwrap();
+            let prover_solution = ledger.coinbase_puzzle.prove(&epoch_challenge, address, rng.gen()).unwrap();
 
             // Check that the prover solution meets the proof target requirement.
             if prover_solution.to_target().unwrap() >= proof_target {
@@ -1289,7 +1289,7 @@ mod tests {
 
         while cumulative_target < ledger.latest_coinbase_target().unwrap() as u128 {
             // Generate a prover solution.
-            let prover_solution = match ledger.coinbase_puzzle.prove(&epoch_challenge, &address, rng.gen()) {
+            let prover_solution = match ledger.coinbase_puzzle.prove(&epoch_challenge, address, rng.gen()) {
                 Ok(prover_solution) => prover_solution,
                 Err(_) => continue,
             };
