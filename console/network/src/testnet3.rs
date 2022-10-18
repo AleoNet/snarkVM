@@ -127,13 +127,11 @@ impl Network for Testnet3 {
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
 
-    /// TODO (howardwu): Refactor into returning the genesis block, after migrating ledger into console & circuit.
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
         snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
     }
 
-    /// TODO (howardwu): Refactor into returning the universal SRS, after migrating snark into console.
     /// Returns the universal SRS bytes.
     fn universal_srs_bytes() -> &'static [u8] {
         static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
@@ -142,7 +140,6 @@ impl Network for Testnet3 {
             .expect("Failed to load the universal SRS bytes")
     }
 
-    /// TODO (howardwu): Refactor into returning the proving and verifying key, after migrating snark into console.
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)> {
         snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM

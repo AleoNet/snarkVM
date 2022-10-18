@@ -103,15 +103,12 @@ pub trait Network:
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
 
-    /// TODO (howardwu): Refactor into returning the genesis block, after migrating ledger into console & circuit.
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
 
-    /// TODO (howardwu): Refactor into returning the universal SRS, after migrating snark into console.
     /// Returns the universal SRS bytes.
     fn universal_srs_bytes() -> &'static [u8];
 
-    /// TODO (howardwu): Refactor into returning the proving and verifying key, after migrating snark into console.
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;
 
