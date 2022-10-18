@@ -125,6 +125,11 @@ impl Network for Testnet3 {
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
 
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8] {
+        snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
+    }
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>> {
         &GENERATOR_G

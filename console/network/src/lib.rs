@@ -103,6 +103,10 @@ pub trait Network:
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
 
+    /// TODO (howardwu): Refactor into returning the genesis block, after migrating ledger into console & circuit.
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8];
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
 
