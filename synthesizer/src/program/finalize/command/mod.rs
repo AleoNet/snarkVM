@@ -40,6 +40,10 @@ pub enum Command<N: Network> {
     Instruction(Instruction<N>),
     /// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
     Increment(Increment<N>),
+    /// Loads the value stored at the `key` operand in `mapping` into `destination`.
+    Load(Load<N>),
+    /// Stores the `value` operand into the `key` entry in `mapping`.
+    Store(Store<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -57,6 +61,8 @@ impl<N: Network> Command<N> {
             // Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
             Command::Instruction(_) => bail!("Instructions in 'finalize' are not supported (yet)."),
             Command::Increment(increment) => increment.evaluate_finalize(stack, store, registers),
+            Command::Load(load) => load.evaluate_finalize(stack, store, registers),
+            Command::Store(store_instruction) => store_instruction.evaluate_finalize(stack, store, registers),
         }
     }
 }
@@ -73,8 +79,12 @@ impl<N: Network> FromBytes for Command<N> {
             1 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
             // Read the increment.
             2 => Ok(Self::Increment(Increment::read_le(&mut reader)?)),
+            // Read the load.
+            3 => Ok(Self::Load(Load::read_le(&mut reader)?)),
+            // Read the store.
+            4 => Ok(Self::Store(Store::read_le(&mut reader)?)),
             // Invalid variant.
-            3.. => Err(error(format!("Invalid command variant: {variant}"))),
+            5.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -101,6 +111,18 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the increment.
                 increment.write_le(&mut writer)
             }
+            Self::Load(load) => {
+                // Write the variant.
+                3u8.write_le(&mut writer)?;
+                // Write the load.
+                load.write_le(&mut writer)
+            }
+            Self::Store(store) => {
+                // Write the variant.
+                4u8.write_le(&mut writer)?;
+                // Write the store.
+                store.write_le(&mut writer)
+            }
         }
     }
 }
@@ -113,6 +135,8 @@ impl<N: Network> Parser for Command<N> {
             map(Decrement::parse, |decrement| Self::Decrement(decrement)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
             map(Increment::parse, |increment| Self::Increment(increment)),
+            map(Load::parse, |load| Self::Load(load)),
+            map(Store::parse, |store| Self::Store(store)),
         ))(string)
     }
 }
@@ -149,6 +173,8 @@ impl<N: Network> Display for Command<N> {
             Self::Decrement(decrement) => Display::fmt(decrement, f),
             Self::Instruction(instruction) => Display::fmt(instruction, f),
             Self::Increment(increment) => Display::fmt(increment, f),
+            Self::Load(load) => Display::fmt(load, f),
+            Self::Store(store) => Display::fmt(store, f),
         }
     }
 }
@@ -179,6 +205,18 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Load
+        let expected = "load object[r0] into r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Store
+        let expected = "store r0 into object[r1];";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -199,6 +237,18 @@ mod tests {
         let expected = "increment object[r0] by r1;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Increment(Increment::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Load
+        let expected = "load object[r0] into r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Load(Load::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Store
+        let expected = "store r0 into object[r1];";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Store(Store::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }
