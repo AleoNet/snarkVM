@@ -425,7 +425,7 @@ mod tests {
 
             // Compute the signed request.
             let request =
-                console::Request::sign(&private_key, &address, program_id, function_name, &inputs, &input_types, rng)?;
+                console::Request::sign(&private_key, address, program_id, function_name, &inputs, &input_types, rng)?;
             assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.

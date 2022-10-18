@@ -31,12 +31,14 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 let inputs = inputs.to_vec();
+
                 // Prepare the inputs.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let program_id = cast_ref!(&program_id as ProgramID<$network>);
                 let function_name = cast_ref!(function_name as Identifier<$network>);
                 let inputs = cast_ref!(inputs as Vec<Value<$network>>);
 
+                // Compute the authorization.
                 let authorization =
                     $process.authorize::<$aleo, _>(private_key, program_id, function_name.clone(), inputs, rng)?;
 

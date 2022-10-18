@@ -47,13 +47,13 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the request from a string into a value.
-                let request = serde_json::Value::deserialize(deserializer)?;
+                let mut request = serde_json::Value::deserialize(deserializer)?;
                 // Recover the request.
                 Ok(Self::from((
                     // Retrieve the caller.
                     serde_json::from_value(request["caller"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the parent.
-                    serde_json::from_value(request["parent"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(request["parent"].take()).map_err(de::Error::custom)?,
                     // Retrieve the network ID.
                     serde_json::from_value(request["network"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the program ID.

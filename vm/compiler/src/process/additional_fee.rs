@@ -42,7 +42,7 @@ impl<N: Network> Process<N> {
             vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(additional_fee_in_gates)))?];
         // Compute the request.
         let request =
-            Request::sign(private_key, &parent_address, program_id, function_name, &inputs, &input_types, rng)?;
+            Request::sign(private_key, parent_address, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.

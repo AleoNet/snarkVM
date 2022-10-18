@@ -70,13 +70,10 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let mut rng = TestRng::default();
-        println!("pre-iterator");
 
         for expected in [crate::ledger::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
-            println!("iterating...");
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            println!("expected bytes is good");
             assert_eq!(expected, Block::read_le(&expected_bytes[..])?);
             assert!(Block::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }

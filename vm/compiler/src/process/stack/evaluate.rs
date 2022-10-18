@@ -93,7 +93,7 @@ impl<N: Network> Stack<N> {
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
         let caller = *request.caller();
-        let parent: Address<N> = *request.parent();
+        let parent = request.parent();
         let tvk = *request.tvk();
 
         // Ensure the number of inputs matches.

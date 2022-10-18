@@ -47,7 +47,7 @@ impl<N: Network> Stack<N> {
 
         // Compute the request.
         let request =
-            Request::sign(private_key, &parent_address, *self.program.id(), function_name, inputs, &input_types, rng)?;
+            Request::sign(private_key, parent_address, *self.program.id(), function_name, inputs, &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.

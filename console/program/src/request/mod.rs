@@ -118,8 +118,8 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the request parent.
-    pub const fn parent(&self) -> &Address<N> {
-        &self.parent
+    pub const fn parent(&self) -> Address<N> {
+        self.parent
     }
 
     /// Returns the network ID.
@@ -228,7 +228,7 @@ mod test_helpers {
 
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, &address, program_id, function_name, &inputs, &input_types, rng).unwrap();
+                    Request::sign(&private_key, address, program_id, function_name, &inputs, &input_types, rng).unwrap();
                 assert!(request.verify(&input_types));
                 request
             })

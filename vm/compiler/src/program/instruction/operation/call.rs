@@ -302,7 +302,7 @@ impl<N: Network> Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            &parent_address,
+                            parent_address,
                             *substack.program_id(),
                             *function.name(),
                             &inputs,
@@ -328,7 +328,7 @@ impl<N: Network> Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            &parent_address,
+                            parent_address,
                             *substack.program_id(),
                             *function.name(),
                             &inputs,

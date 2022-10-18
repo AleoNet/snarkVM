@@ -30,15 +30,12 @@ impl<N: Network> Process<N> {
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executing '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
-        println!("process execution 33");
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
         // Retrieve the stack.
         let stack = self.get_stack(request.program_id())?;
-        println!("get_stack retrieved");
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
-        println!("executed, response received");
         // Extract the execution.
         let execution = execution.read().clone();
         // Ensure the execution is not empty.

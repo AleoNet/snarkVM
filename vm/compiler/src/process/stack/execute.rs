@@ -153,7 +153,7 @@ impl<N: Network> Stack<N> {
         registers.set_caller_circuit(request.caller().clone());
 
         // Set the transition parent.
-        registers.set_parent(*console_request.parent());
+        registers.set_parent(console_request.parent());
         // Set the transition parent, as a circuit.
         registers.set_parent_circuit(request.parent().clone());
 

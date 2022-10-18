@@ -215,7 +215,7 @@ impl<A: Aleo> Inject for Request<A> {
 
         Self {
             caller: Address::new(mode, *request.caller()),
-            parent: Address::new(mode, *request.parent()),
+            parent: Address::new(mode, request.parent()),
             network_id: U16::new(Mode::Constant, *request.network_id()),
             program_id: ProgramID::new(Mode::Constant, *request.program_id()),
             function_name: Identifier::new(Mode::Constant, *request.function_name()),
