@@ -22,7 +22,7 @@ use console::{
 
 // TODO: Verify that the desired format is `store r1 into accounts[r0]`.
 
-/// Stores `value` in the `mapping` at the location given by `key`.
+/// Stores the `value` operand into the `key` entry in `mapping`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Store<N: Network> {
     /// The mapping name.

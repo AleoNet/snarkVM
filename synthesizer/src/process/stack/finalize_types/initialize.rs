@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::finalize::{Load, Store};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -190,6 +191,8 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Decrement(decrement) => self.check_decrement(stack, finalize_name, decrement)?,
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Increment(increment) => self.check_increment(stack, finalize_name, increment)?,
+            Command::Load(load) => self.check_load(stack, finalize_name, load)?,
+            Command::Store(store) => self.check_store(stack, finalize_name, store)?,
         }
         Ok(())
     }
@@ -300,6 +303,72 @@ impl<N: Network> FinalizeTypes<N> {
             RegisterType::Record(..) => bail!("Increment cannot increment by a 'record' (found at '{increment}')"),
             RegisterType::ExternalRecord(..) => {
                 bail!("Increment cannot increment by an 'external record' (found at '{increment}')")
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensures the given load command is well-formed.
+    #[inline]
+    fn check_load(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &Load<N>) -> Result<()> {
+        // Ensure the declared mapping in load is defined in the program.
+        if !stack.program().contains_mapping(load.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
+        }
+
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, load.key())?;
+        // Ensure the key is not a record or external record.
+        match key_type {
+            RegisterType::Plaintext(..) => (),
+            RegisterType::Record(..) => bail!("Load cannot use a 'record' as a key (found at '{load}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Load cannot use an 'external record' as a key (found at '{load}')")
+            }
+        }
+
+        // Retrieve the register type of the destination register.
+        let value_type = self.get_type(stack, load.destination())?;
+        // Ensure the destination register type is a plaintext type.
+        match value_type {
+            RegisterType::Plaintext(_) => (),
+            RegisterType::Record(..) => bail!("Cannot load a 'record' (found at '{load}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Cannot load an 'external record' (found at '{load}')")
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensures the given store command is well-formed.
+    #[inline]
+    fn check_store(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, store: &Store<N>) -> Result<()> {
+        // Ensure the declared mapping in store is defined in the program.
+        if !stack.program().contains_mapping(store.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", store.mapping_name(), stack.program_id())
+        }
+
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, store.key())?;
+        // Ensure the key is not a record or external record.
+        match key_type {
+            RegisterType::Plaintext(..) => (),
+            RegisterType::Record(..) => bail!("Store cannot use a 'record' as a key (found at '{store}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Store cannot use an 'external record' as a key (found at '{store}')")
+            }
+        }
+
+        // Retrieve the type of the value.
+        let value_type = self.get_type_from_operand(stack, store.value())?;
+        // Ensure the value is a plaintext type.
+        match value_type {
+            RegisterType::Plaintext(_) => (),
+            RegisterType::Record(..) => bail!("Cannot store a 'record' (found at '{store}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Cannot store an 'external record' (found at '{store}')")
             }
         }
 
