@@ -107,11 +107,8 @@ impl<N: Network> Process<N> {
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
-            // TODO (howardwu): Abstract this into the `Network` trait.
             // Load the proving and verifying key bytes.
-            let (proving_key, verifying_key) = snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
-                .get(&function_name.to_string())
-                .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
+            let (proving_key, verifying_key) = N::get_credits_key_bytes(function_name.to_string())?;
 
             // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
@@ -139,11 +136,8 @@ impl<N: Network> Process<N> {
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
-            // TODO (howardwu): Abstract this into the `Network` trait.
             // Load the proving and verifying key bytes.
-            let (proving_key, verifying_key) = snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
-                .get(&function_name.to_string())
-                .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
+            let (proving_key, verifying_key) = N::get_credits_key_bytes(function_name.to_string())?;
 
             let (proving_key, verifying_key) = cache.entry(function_name.to_string()).or_insert_with(|| {
                 (ProvingKey::from_bytes_le(proving_key).unwrap(), VerifyingKey::from_bytes_le(verifying_key).unwrap())
