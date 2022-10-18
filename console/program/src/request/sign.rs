@@ -178,17 +178,10 @@ impl<N: Network> Request<N> {
                     // Compute `gamma` as `sk_sig * H`.
                     let gamma = h * sk_sig;
 
-                    // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                    let sn_nonce = N::hash_to_scalar_psd2(&[
-                        N::serial_number_domain(),
-                        gamma.mul_by_cofactor().to_x_coordinate(),
-                    ])?;
-                    // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                    let serial_number =
-                        N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
-
-                    // Compute the tag as `Hash(sk_tag || commitment)`.
-                    let tag = N::hash_psd2(&[sk_tag, commitment])?;
+                    // Compute the `serial_number` from `gamma`.
+                    let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, commitment)?;
+                    // Compute the tag.
+                    let tag = Record::<N, Plaintext<N>>::tag(sk_tag, commitment)?;
 
                     // Add (`H`, `r * H`, `gamma`, `tag`) to the preimage.
                     message.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));

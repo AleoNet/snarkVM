@@ -33,24 +33,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             Err(e) => bail!("Failed to derive the graph key from the view key: {e}"),
         };
 
-        /// A helper method to derive the tag from the `sk_tag` and commitment.
-        fn compute_tag<N: Network>(sk_tag: Field<N>, commitment: Field<N>) -> Result<Field<N>> {
-            N::hash_psd2(&[sk_tag, commitment])
-        }
-
-        /// A helper method to derive the serial number from the private key and commitment.
-        fn compute_serial_number<N: Network>(private_key: PrivateKey<N>, commitment: Field<N>) -> Result<Field<N>> {
-            // Compute the generator `H` as `HashToGroup(commitment)`.
-            let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
-            // Compute `gamma` as `sk_sig * H`.
-            let gamma = h * private_key.sk_sig();
-            // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-            let sn_nonce =
-                N::hash_to_scalar_psd2(&[N::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()])?;
-            // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-            N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)
-        }
-
         Ok(self.records().flat_map(move |cow| {
             // Retrieve the commitment and record.
             let (commitment, record) = match cow {
@@ -61,14 +43,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             // Determine whether to decrypt this record (or not), based on the filter.
             let commitment = match filter {
                 RecordsFilter::All => Ok(Some(commitment)),
-                RecordsFilter::Spent => compute_tag(sk_tag, commitment).and_then(|tag| {
+                RecordsFilter::Spent => Record::<N, Plaintext<N>>::tag(sk_tag, commitment).and_then(|tag| {
                     // Determine if the record is spent.
                     self.contains_tag(&tag).map(|is_spent| match is_spent {
                         true => Some(commitment),
                         false => None,
                     })
                 }),
-                RecordsFilter::Unspent => compute_tag(sk_tag, commitment).and_then(|tag| {
+                RecordsFilter::Unspent => Record::<N, Plaintext<N>>::tag(sk_tag, commitment).and_then(|tag| {
                     // Determine if the record is spent.
                     self.contains_tag(&tag).map(|is_spent| match is_spent {
                         true => None,
@@ -76,7 +58,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                     })
                 }),
                 RecordsFilter::SlowSpent(private_key) => {
-                    compute_serial_number(private_key, commitment).and_then(|serial_number| {
+                    Record::<N, Plaintext<N>>::serial_number(private_key, commitment).and_then(|serial_number| {
                         // Determine if the record is spent.
                         self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
                             true => Some(commitment),
@@ -85,7 +67,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                     })
                 }
                 RecordsFilter::SlowUnspent(private_key) => {
-                    compute_serial_number(private_key, commitment).and_then(|serial_number| {
+                    Record::<N, Plaintext<N>>::serial_number(private_key, commitment).and_then(|serial_number| {
                         // Determine if the record is spent.
                         self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
                             true => None,
