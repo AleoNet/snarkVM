@@ -19,7 +19,6 @@ extern crate criterion;
 
 use console::{network::Testnet3, prelude::*};
 use snarkvm_compiler::Block;
-use snarkvm_parameters::testnet3::GenesisBytes;
 
 use criterion::Criterion;
 use serde::{de::DeserializeOwned, Serialize};
@@ -28,7 +27,7 @@ type CurrentNetwork = Testnet3;
 
 /// Loads the genesis block.
 fn load_genesis_block() -> Block<CurrentNetwork> {
-    Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap()
+    Block::<CurrentNetwork>::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
 }
 
 /// Helper method to benchmark serialization.

@@ -40,14 +40,14 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let metadata = serde_json::Value::deserialize(deserializer)?;
+                let mut metadata = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(metadata["network"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["round"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["height"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["coinbase_target"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["proof_target"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["timestamp"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["network"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["round"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["height"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["coinbase_target"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["proof_target"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["timestamp"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)
             }

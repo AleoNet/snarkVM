@@ -40,19 +40,19 @@ impl<'de, N: Network> Deserialize<'de> for TransactionLeaf<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the leaf from a string into a value.
-                let leaf = serde_json::Value::deserialize(deserializer)?;
+                let mut leaf = serde_json::Value::deserialize(deserializer)?;
                 // Recover the leaf.
                 Ok(Self::new(
                     // Retrieve the variant.
-                    serde_json::from_value(leaf["variant"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["variant"].take()).map_err(de::Error::custom)?,
                     // Retrieve the index.
-                    serde_json::from_value(leaf["index"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["index"].take()).map_err(de::Error::custom)?,
                     // Retrieve the program ID.
-                    serde_json::from_value(leaf["program_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["program_id"].take()).map_err(de::Error::custom)?,
                     // Retrieve the function name.
-                    serde_json::from_value(leaf["function_name"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["function_name"].take()).map_err(de::Error::custom)?,
                     // Retrieve the id.
-                    serde_json::from_value(leaf["id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["id"].take()).map_err(de::Error::custom)?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction leaf"),

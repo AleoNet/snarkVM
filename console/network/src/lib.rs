@@ -103,6 +103,15 @@ pub trait Network:
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
 
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8];
+
+    /// Returns the universal SRS bytes.
+    fn universal_srs_bytes() -> &'static [u8];
+
+    /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
+    fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
 

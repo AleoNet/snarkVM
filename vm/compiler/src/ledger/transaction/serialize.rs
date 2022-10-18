@@ -51,27 +51,27 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Deserialize the transaction into a JSON value.
-                let transaction = serde_json::Value::deserialize(deserializer)?;
+                let mut transaction = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the transaction ID.
                 let id: N::TransactionID =
-                    serde_json::from_value(transaction["id"].clone()).map_err(de::Error::custom)?;
+                    serde_json::from_value(transaction["id"].take()).map_err(de::Error::custom)?;
 
                 // Recover the transaction.
                 let transaction = match transaction["type"].as_str() {
                     Some("deploy") => {
                         // Retrieve the deployment.
                         let deployment =
-                            serde_json::from_value(transaction["deployment"].clone()).map_err(de::Error::custom)?;
+                            serde_json::from_value(transaction["deployment"].take()).map_err(de::Error::custom)?;
                         // Retrieve the additional fee.
                         let additional_fee =
-                            serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
+                            serde_json::from_value(transaction["additional_fee"].take()).map_err(de::Error::custom)?;
                         // Construct the transaction.
                         Transaction::from_deployment(deployment, additional_fee).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
                         // Retrieve the execution.
                         let execution =
-                            serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
+                            serde_json::from_value(transaction["execution"].take()).map_err(de::Error::custom)?;
                         // Retrieve the additional fee, if it exists.
                         let additional_fee = match transaction["additional_fee"].as_str() {
                             Some(additional_fee) => {

@@ -29,6 +29,7 @@ crate-type = [ "cdylib", "rlib" ]
 [dependencies.snarkvm-console]
 path = "../console"
 version = "0.9.0"
+features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]

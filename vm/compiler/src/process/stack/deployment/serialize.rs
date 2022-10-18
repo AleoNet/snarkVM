@@ -38,16 +38,16 @@ impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the deployment from a string into a value.
-                let deployment = serde_json::Value::deserialize(deserializer)?;
+                let mut deployment = serde_json::Value::deserialize(deserializer)?;
 
                 // Recover the deployment.
                 let deployment = Self::new(
                     // Retrieve the edition.
-                    serde_json::from_value(deployment["edition"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(deployment["edition"].take()).map_err(de::Error::custom)?,
                     // Retrieve the program.
-                    serde_json::from_value(deployment["program"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(deployment["program"].take()).map_err(de::Error::custom)?,
                     // Retrieve the verifying keys.
-                    serde_json::from_value(deployment["verifying_keys"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(deployment["verifying_keys"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 
