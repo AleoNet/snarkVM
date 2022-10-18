@@ -146,7 +146,7 @@ impl Network for Testnet3 {
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)> {
         snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
-            .get(&function_name.to_string())
+            .get(&function_name)
             .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))
     }
 
