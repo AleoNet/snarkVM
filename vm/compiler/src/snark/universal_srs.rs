@@ -71,13 +71,10 @@ impl<N: Network> Deref for UniversalSRS<N> {
             let timer = std::time::Instant::now();
 
             // Load the universal SRS bytes.
-            static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
-            let srs = UNIVERSAL_SRS
-                .get_or_try_init(snarkvm_parameters::testnet3::TrialSRS::load_bytes)
-                .expect("Failed to load universal SRS bytes");
+            let srs = N::universal_srs_bytes();
 
             // Recover the universal SRS.
-            let universal_srs = CanonicalDeserialize::deserialize_with_mode(&**srs, Compress::No, Validate::No)
+            let universal_srs = CanonicalDeserialize::deserialize_with_mode(srs, Compress::No, Validate::No)
                 .expect("Failed to initialize universal SRS");
 
             #[cfg(feature = "aleo-cli")]

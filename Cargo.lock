@@ -2358,7 +2358,6 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-parameters",
  "snarkvm-utilities",
  "time",
  "tracing",
@@ -2425,6 +2424,7 @@ dependencies = [
  "anyhow",
  "itertools",
  "lazy_static",
+ "once_cell",
  "serde",
  "snarkvm-algorithms",
  "snarkvm-console-algorithms",
@@ -2433,6 +2433,7 @@ dependencies = [
  "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-parameters",
  "snarkvm-utilities",
 ]
 

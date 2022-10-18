@@ -40,6 +40,10 @@ path = "../../fields"
 version = "0.9.0"
 default-features = false
 
+[dependencies.snarkvm-parameters]
+path = "../../parameters"
+version = "0.9.0"
+
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
 version = "0.9.0"
@@ -53,5 +57,12 @@ version = "0.10.1"
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.once_cell]
+version = "1.13"
+
 [dependencies.serde]
 version = "1.0"
+
+[features]
+default = []
+wasm = [ "snarkvm-parameters/wasm" ]
