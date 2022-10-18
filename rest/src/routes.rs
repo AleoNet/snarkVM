@@ -15,12 +15,45 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_compiler::cow_to_cloned;
+use snarkvm_console::{
+    account::PrivateKey,
+    prelude::{de, Deserializer, Zero},
+    program::{Identifier, Value},
+};
+
+use std::str::FromStr;
 
 /// The `get_blocks` query object.
 #[derive(Deserialize, Serialize)]
 struct BlockRange {
     start: u32,
     end: u32,
+}
+
+/// The `create_transfer` query object.
+struct TransferData<N: Network> {
+    from: PrivateKey<N>,
+    to: Address<N>,
+    amount: u64,
+}
+
+impl<N: Network> TransferData<N> {
+    fn new(from: PrivateKey<N>, to: Address<N>, amount: u64) -> Self {
+        Self { from, to, amount }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for TransferData<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let request = serde_json::Value::deserialize(deserializer)?;
+
+        Ok(Self::new(
+            serde_json::from_value(request["from"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["to"].clone()).map_err(de::Error::custom)?,
+            serde_json::from_value(request["amount"].clone()).map_err(de::Error::custom)?,
+        ))
+    }
 }
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
@@ -100,29 +133,37 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_state_path);
 
-        // GET /testnet3/records/all
-        let records_all = warp::get()
+        // POST /testnet3/records/all
+        let records_all = warp::post()
             .and(warp::path!("testnet3" / "records" / "all"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
             .and_then(Self::records_all);
 
-        // GET /testnet3/records/spent
-        let records_spent = warp::get()
+        // POST /testnet3/records/spent
+        let records_spent = warp::post()
             .and(warp::path!("testnet3" / "records" / "spent"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
             .and_then(Self::records_spent);
 
-        // GET /testnet3/records/unspent
-        let records_unspent = warp::get()
+        // POST /testnet3/records/unspent
+        let records_unspent = warp::post()
             .and(warp::path!("testnet3" / "records" / "unspent"))
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
             .and_then(Self::records_unspent);
+
+        // POST /testnet3/ciphertexts/unspent
+        let ciphertexts_unspent = warp::post()
+            .and(warp::path!("testnet3" / "ciphertexts" / "unspent"))
+            .and(warp::body::content_length_limit(128))
+            .and(warp::body::json())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::ciphertexts_unspent);
 
         // POST /testnet3/transaction/broadcast
         let transaction_broadcast = warp::post()
@@ -132,6 +173,22 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger_sender.clone()))
             .and(with(self.ledger.clone()))
             .and_then(Self::transaction_broadcast);
+
+        // POST /testnet3/transfer
+        let create_transfer = warp::post()
+            .and(warp::path!("testnet3" / "transfer"))
+            .and(warp::body::content_length_limit(10 * 1024 * 1024))
+            .and(warp::body::json())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::create_transfer);
+
+        // GET /testnet3/ciphertext/{commitment}
+        let get_record_ciphertext = warp::get()
+            .and(warp::path!("testnet3" / "record" / "ciphertext" / ..))
+            .and(warp::path::param::<Field<N>>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::get_record_ciphertext);
 
         // Return the list of routes.
         latest_height
@@ -148,7 +205,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(records_all)
             .or(records_spent)
             .or(records_unspent)
+            .or(ciphertexts_unspent)
             .or(transaction_broadcast)
+            .or(create_transfer)
+            .or(get_record_ciphertext)
     }
 }
 
@@ -250,7 +310,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Returns all of the records for the given view key.
     async fn records_all(view_key: ViewKey<N>, ledger: Arc<RwLock<Ledger<N, B, P>>>) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let records: IndexMap<_, _> = ledger.read().find_records(&view_key, RecordsFilter::All).or_reject()?.collect();
+        let records = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::All)
+            .or_reject()?
+            .map(|(_commitment, record)| record)
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
@@ -261,8 +326,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let records =
-            ledger.read().find_records(&view_key, RecordsFilter::Spent).or_reject()?.collect::<IndexMap<_, _>>();
+        let records = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::Spent)
+            .or_reject()?
+            .map(|(_commitment, record)| record)
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
@@ -273,8 +342,28 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         // Fetch the records using the view key.
-        let records =
-            ledger.read().find_records(&view_key, RecordsFilter::Unspent).or_reject()?.collect::<IndexMap<_, _>>();
+        let records = ledger
+            .read()
+            .find_records(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .map(|(_commitment, record)| record)
+            .collect::<Vec<_>>();
+        // Return the records.
+        Ok(reply::with_status(reply::json(&records), StatusCode::OK))
+    }
+
+    /// Returns the unspent records for the given view key.
+    async fn ciphertexts_unspent(
+        view_key: ViewKey<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        // Fetch the records using the view key.
+        let records = ledger
+            .read()
+            .find_record_ciphertexts(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .map(|(_commitment, record_ciphertext)| cow_to_cloned!(record_ciphertext))
+            .collect::<Vec<_>>();
         // Return the records.
         Ok(reply::with_status(reply::json(&records), StatusCode::OK))
     }
@@ -292,6 +381,62 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         match ledger_sender.send(LedgerRequest::TransactionBroadcast(transaction)).await {
             Ok(()) => Ok("OK"),
             Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
+        }
+    }
+
+    /// Creates a transfer transaction.
+    async fn create_transfer(
+        query: TransferData<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        let from = query.from;
+        let to = query.to;
+        let amount = query.amount;
+        let view_key = ViewKey::try_from(from).or_reject()?;
+
+        // TODO: This solution does not broadcast the transaction just to
+        // ensure that the record retrieval, the transaction creation and
+        // addition to the mempool are atomic.
+        let mut ledger_writer = ledger.write();
+
+        let (_, max_credits_record) = ledger_writer
+            .find_records(&view_key, RecordsFilter::Unspent)
+            .or_reject()?
+            .filter(|(_, record)| !record.gates().is_zero())
+            .max_by(|(_, record_a), (_, record_b)| (**record_a.gates()).cmp(&**record_b.gates()))
+            .or_reject()?;
+
+        let transfer_transaction = Transaction::execute(
+            ledger_writer.vm(),
+            &from,
+            &ProgramID::from_str("credits.aleo").or_reject()?,
+            Identifier::from_str("transfer").or_reject()?,
+            &[
+                Value::Record(max_credits_record),
+                Value::from_str(&format!("{to}")).or_reject()?,
+                Value::from_str(&format!("{amount}u64")).or_reject()?,
+            ],
+            None,
+            &mut rand::thread_rng(),
+        )
+        .or_reject()?;
+
+        let transaction_id = transfer_transaction.id();
+
+        match ledger_writer.add_to_memory_pool(transfer_transaction) {
+            Ok(()) => Ok(reply::with_status(reply::json(&transaction_id), StatusCode::OK)),
+            Err(error) => Err(reject::custom(RestError::Request(format!("{error}")))),
+        }
+    }
+
+    /// Returns the record ciphertext for the given view key.
+    async fn get_record_ciphertext(
+        commitment: Field<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        match ledger.read().get_record_ciphertext(commitment).or_reject()? {
+            Some(record_ciphertext) => Ok(reply::with_status(reply::json(&record_ciphertext), StatusCode::OK)),
+            None => Err(warp::reject::not_found()),
         }
     }
 }
