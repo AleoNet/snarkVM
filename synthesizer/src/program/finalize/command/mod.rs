@@ -26,6 +26,9 @@ pub use increment::*;
 mod load;
 pub use load::*;
 
+mod store;
+pub use store::*;
+
 use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Stack};
 use console::network::prelude::*;
 
