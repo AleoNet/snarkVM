@@ -2425,6 +2425,7 @@ dependencies = [
  "anyhow",
  "itertools",
  "lazy_static",
+ "once_cell",
  "serde",
  "snarkvm-algorithms",
  "snarkvm-console-algorithms",

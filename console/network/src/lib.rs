@@ -107,6 +107,10 @@ pub trait Network:
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
 
+    /// TODO (howardwu): Refactor into returning the universal SRS, after migrating snark into console.
+    /// Returns the universal SRS bytes.
+    fn universal_srs_bytes() -> &'static [u8];
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
 

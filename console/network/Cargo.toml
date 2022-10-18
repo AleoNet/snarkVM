@@ -57,5 +57,8 @@ version = "0.10.1"
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.once_cell]
+version = "1.13"
+
 [dependencies.serde]
 version = "1.0"
