@@ -138,7 +138,6 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
-
         use circuit::{Eject, Inject};
 
         // Inject the transition public key `tpk` as `Mode::Public`.

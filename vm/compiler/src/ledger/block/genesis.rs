@@ -34,8 +34,10 @@ impl<N: Network> Block<N> {
         let inputs = [Value::from_str(&caller.to_string())?, Value::from_str("1_100_000_000_000_000_u64")?];
         // Authorize the call to start.
         let authorization = vm.authorize(private_key, &program_id, function_name, &inputs, rng)?;
+        println!("authorized, genesis");
         // Execute the genesis function.
         let transaction = Transaction::execute_authorization(vm, authorization, rng)?;
+        println!("tx authorization executed, genesis");
 
         // Prepare the transactions.
         let transactions = Transactions::from(&[transaction]);
@@ -44,6 +46,7 @@ impl<N: Network> Block<N> {
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
+        println!("genesis, 47");
         // Construct the block.
         let block = Self::new(private_key, previous_hash, header, transactions, rng)?;
         // Ensure the block is valid genesis block.
