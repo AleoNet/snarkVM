@@ -57,8 +57,8 @@ pub enum CoinbasePuzzle<N: Network> {
 
 impl<N: Network> CoinbasePuzzle<N> {
     /// Checks that the degree for the epoch and prover polynomial is within bounds,
-    /// and returns the number of coefficients of the product polynomial.
-    pub(crate) fn check_degree(degree: u32) -> Result<u32> {
+    /// and returns the evaluation domain for the product polynomial.
+    pub(crate) fn product_domain(degree: u32) -> Result<EvaluationDomain<N::Field>> {
         ensure!(degree != 0, "Degree cannot be zero");
         let num_coefficients = degree.checked_add(1).ok_or_else(|| anyhow!("Degree is too large"))?;
         let product_num_coefficients = num_coefficients
@@ -66,7 +66,10 @@ impl<N: Network> CoinbasePuzzle<N> {
             .and_then(|t| t.checked_sub(1))
             .ok_or_else(|| anyhow!("Degree is too large"))?;
         assert_eq!(product_num_coefficients, 2 * degree + 1);
-        Ok(product_num_coefficients)
+        let product_domain =
+            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+        assert_eq!(product_domain.size(), (product_num_coefficients as usize).checked_next_power_of_two().unwrap());
+        Ok(product_domain)
     }
 
     /// Initializes a new `SRS` for the coinbase puzzle.
@@ -92,11 +95,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         // of coefficients. The degree of the product has `2n - 1` coefficients.
         //
         // Hence, we request the powers of beta for the interval [0, 2n].
-        let product_num_coefficients = Self::check_degree(config.degree)?;
+        let product_domain = Self::product_domain(config.degree)?;
 
-        let product_domain =
-            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
-        assert_eq!(product_domain.size(), (product_num_coefficients as usize).checked_next_power_of_two().unwrap());
         let lagrange_basis_at_beta_g = srs.lagrange_basis(product_domain)?;
         let fft_precomputation = product_domain.precompute_fft();
         let product_domain_elements = product_domain.elements().collect();

@@ -39,14 +39,12 @@ impl<N: Network> EpochChallenge<N> {
         // Construct the 'input' as '( epoch_number || epoch_block_hash )'
         let input: Vec<u8> = epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?).collect();
 
-        let product_num_coefficients = CoinbasePuzzle::<N>::check_degree(degree)?;
-        let domain =
-            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+        let product_domain = CoinbasePuzzle::<N>::product_domain(degree)?;
 
         let epoch_polynomial = hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, degree);
         ensure!(u32::try_from(epoch_polynomial.degree()).is_ok(), "Degree is too large");
 
-        let epoch_polynomial_evaluations = epoch_polynomial.evaluate_over_domain_by_ref(domain);
+        let epoch_polynomial_evaluations = epoch_polynomial.evaluate_over_domain_by_ref(product_domain);
         // Returns the epoch challenge.
         Ok(EpochChallenge { epoch_number, epoch_block_hash, epoch_polynomial, epoch_polynomial_evaluations })
     }
