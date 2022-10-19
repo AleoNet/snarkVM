@@ -129,23 +129,16 @@ impl<A: Aleo> Request<A> {
                         };
                         // Compute the record commitment.
                         let candidate_commitment = record.to_commitment(&self.program_id, &record_name);
-
-                        // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
-                        let sn_nonce = A::hash_to_scalar_psd2(&[
-                            A::serial_number_domain(),
-                            gamma.mul_by_cofactor().to_x_coordinate(),
-                        ]);
-                        // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
-                        let candidate_serial_number =
-                            A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
+                        // Compute the `candidate_serial_number` from `gamma`.
+                        let candidate_serial_number = Record::<A, Plaintext<A>>::serial_number_from_gamma(gamma, candidate_commitment.clone());
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
                         let h_r = (gamma.deref() * challenge) + (&h * response);
 
-                        // Compute the tag as `Hash(sk_tag, commitment)`.
-                        let candidate_tag = A::hash_psd2(&[self.sk_tag.clone(), candidate_commitment.clone()]);
+                        // Compute the tag.
+                        let candidate_tag = Record::<A, Plaintext<A>>::tag(self.sk_tag.clone(), candidate_commitment.clone());
 
                         // Add (`H`, `r * H`, `gamma`, `tag`) to the message.
                         message.extend([h, h_r, *gamma.clone()].iter().map(|point| point.to_x_coordinate()));
@@ -317,18 +310,10 @@ impl<A: Aleo> Request<A> {
                         };
                         // Compute the record commitment.
                         let candidate_commitment = record.to_commitment(program_id, &record_name);
-
-                        // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
-                        let sn_nonce = A::hash_to_scalar_psd2(&[
-                            A::serial_number_domain(),
-                            gamma.mul_by_cofactor().to_x_coordinate(),
-                        ]);
-                        // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
-                        let candidate_serial_number =
-                            A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
-
-                        // Compute the tag as `Hash(sk_tag, commitment)`.
-                        let candidate_tag = A::hash_psd2(&[sk_tag.clone(), candidate_commitment.clone()]);
+                        // Compute the `candidate_serial_number` from `gamma`.
+                        let candidate_serial_number = Record::<A, Plaintext<A>>::serial_number_from_gamma(gamma, candidate_commitment.clone());
+                        // Compute the tag.
+                        let candidate_tag = Record::<A, Plaintext<A>>::tag(sk_tag.clone(), candidate_commitment.clone());
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)

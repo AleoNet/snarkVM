@@ -175,14 +175,8 @@ impl<N: Network> Request<N> {
                             bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                         }
 
-                        // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                        let sn_nonce = N::hash_to_scalar_psd2(&[
-                            N::serial_number_domain(),
-                            gamma.mul_by_cofactor().to_x_coordinate(),
-                        ])?;
-                        // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                        let candidate_sn =
-                            N::commit_bhp512(&(N::serial_number_domain(), *commitment).to_bits_le(), &sn_nonce)?;
+                        // Compute the `candidate_sn` from `gamma`.
+                        let candidate_sn = Record::<N, Plaintext<N>>::serial_number_from_gamma(gamma, *commitment)?;
                         // Ensure the serial number matches.
                         ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
 
