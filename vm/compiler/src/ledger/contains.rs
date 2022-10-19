@@ -34,14 +34,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         self.blocks.contains_block_height(height)
     }
 
-    /// Returns `true` if the given transaction ID exists.
-    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
-        self.transactions.contains_transaction_id(transaction_id)
-    }
-
     /// Returns `true` if the given program ID exists.
     pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
         self.transactions.contains_program_id(program_id)
+    }
+
+    /// Returns `true` if the given transaction ID exists.
+    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
+        self.transactions.contains_transaction_id(transaction_id)
     }
 
     /* Transition */
