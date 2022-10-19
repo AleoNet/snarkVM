@@ -26,6 +26,7 @@ use crate::{
     msm::{FixedBase, VariableBase},
     polycommit::PCError,
 };
+use anyhow::anyhow;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
@@ -411,10 +412,19 @@ impl<E: PairingEngine> KZG10<E> {
         evaluation_at_point: E::Fr,
     ) -> Result<KZGProof<E>, PCError> {
         Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
-        assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
+        // Ensure that the point is not in the domain
+        if lagrange_basis.domain.evaluate_vanishing_polynomial(point).is_zero() {
+            Err(anyhow!("Point cannot be in the domain"))?;
+        }
+        if evaluations.len().checked_next_power_of_two().ok_or(anyhow!("Evaluations length is too large"))?
+            != lagrange_basis.size()
+        {
+            Err(anyhow!("`evaluations.len()` must equal `domain.size()`"))?;
+        }
+
         let mut divisor_evals = cfg_iter!(domain_elements).map(|&e| e - point).collect::<Vec<_>>();
         snarkvm_fields::batch_inversion(&mut divisor_evals);
-        cfg_iter_mut!(divisor_evals).zip(evaluations).for_each(|(divisor_eval, &eval)| {
+        cfg_iter_mut!(divisor_evals).zip_eq(evaluations).for_each(|(divisor_eval, &eval)| {
             *divisor_eval *= eval - evaluation_at_point;
         });
         let (witness_comm, _) =

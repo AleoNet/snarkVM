@@ -43,10 +43,11 @@ impl<N: Network> EpochChallenge<N> {
         let num_coefficients = degree + 1;
         let product_num_coefficients = 2 * num_coefficients - 1;
         assert_eq!(product_num_coefficients, 2 * degree + 1);
-        let epoch_polynomial = hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, degree)?;
+        let epoch_polynomial = hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, degree);
 
         let domain =
             EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+        ensure!(u32::try_from(epoch_polynomial.degree()).is_ok(), "Degree is too large");
 
         let epoch_polynomial_evaluations = epoch_polynomial.evaluate_over_domain_by_ref(domain);
         // Returns the epoch challenge.

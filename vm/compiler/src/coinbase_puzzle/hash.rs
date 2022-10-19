@@ -25,25 +25,25 @@ use blake2::Digest;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Result<Vec<F>> {
+pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Vec<F> {
     // Hash the input.
     let hash = blake2::Blake2s256::digest(input);
     // Hash with a counter and return the coefficients.
-    Ok(cfg_into_iter!(0..num_coefficients)
+    cfg_into_iter!(0..num_coefficients)
         .map(|counter| {
             let mut input_with_counter = [0u8; 36];
             input_with_counter[..32].copy_from_slice(&hash);
             input_with_counter[32..].copy_from_slice(&counter.to_le_bytes());
             F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))
         })
-        .collect())
+        .collect()
 }
 
-pub fn hash_to_polynomial<F: PrimeField>(input: &[u8], degree: u32) -> Result<DensePolynomial<F>> {
+pub fn hash_to_polynomial<F: PrimeField>(input: &[u8], degree: u32) -> DensePolynomial<F> {
     // Hash the input into coefficients.
-    let coefficients = hash_to_coefficients(input, degree + 1)?;
+    let coefficients = hash_to_coefficients(input, degree + 1);
     // Construct the polynomial from the coefficients.
-    Ok(DensePolynomial::from_coefficients_vec(coefficients))
+    DensePolynomial::from_coefficients_vec(coefficients)
 }
 
 pub fn hash_commitment<E: PairingEngine>(commitment: KZGCommitment<E>) -> Result<E::Fr> {
@@ -77,5 +77,5 @@ pub fn hash_commitments<E: PairingEngine>(
     ensure!(bytes.len() == 96 * usize::try_from(num_commitments)?, "Invalid commitment byte length for hashing");
 
     // Hash the commitment bytes into coefficients.
-    hash_to_coefficients(&bytes, num_commitments + 1)
+    Ok(hash_to_coefficients(&bytes, num_commitments + 1))
 }

@@ -361,6 +361,6 @@ impl<N: Network> CoinbasePuzzle<N> {
             bytes[68..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
-        hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?)
+        Ok(hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?))
     }
 }
