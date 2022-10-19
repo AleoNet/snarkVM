@@ -63,7 +63,7 @@ fn test_edge_case_for_degree() {
 
     // Generate PK and VK.
     let degree = (1 << 13) - 1; // IF YOU ADD `- 1` THIS WILL PASS
-    let (pk, _vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, PuzzleConfig { degree }).unwrap();
+    let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, PuzzleConfig { degree }).unwrap();
 
     // Generate proof inputs
     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
@@ -71,5 +71,7 @@ fn test_edge_case_for_degree() {
     let epoch_challenge = EpochChallenge::new(rng.gen(), Default::default(), degree).unwrap();
 
     // Generate a prover solution.
-    let _prover_solution = CoinbasePuzzle::prove(&pk, &epoch_challenge, &address, rng.gen()).unwrap();
+    let prover_solution = puzzle.prove(&epoch_challenge, address, rng.gen()).unwrap();
+    let coinbase_solution = puzzle.accumulate(&epoch_challenge, &[prover_solution]).unwrap();
+    assert!(puzzle.verify(&coinbase_solution, &epoch_challenge, 0u64, 0u64).unwrap());
 }
