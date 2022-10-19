@@ -31,10 +31,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
                 // Decrypt the owner.
                 match Address::from_field(&(ciphertext[0] - randomizer[0])) {
                     Ok(owner) => &owner == address,
-                    Err(error) => {
-                        eprintln!("Failed to decrypt the record owner: {error}");
-                        false
-                    }
+                    Err(_) => false,
                 }
             }
         }

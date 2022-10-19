@@ -37,12 +37,12 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the execution from a string into a value.
-                let execution = serde_json::Value::deserialize(deserializer)?;
+                let mut execution = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the edition.
-                let edition = serde_json::from_value(execution["edition"].clone()).map_err(de::Error::custom)?;
+                let edition = serde_json::from_value(execution["edition"].take()).map_err(de::Error::custom)?;
                 // Retrieve the transitions.
                 let transitions: Vec<_> =
-                    serde_json::from_value(execution["transitions"].clone()).map_err(de::Error::custom)?;
+                    serde_json::from_value(execution["transitions"].take()).map_err(de::Error::custom)?;
                 // Recover the execution.
                 Self::from(edition, &transitions).map_err(de::Error::custom)
             }

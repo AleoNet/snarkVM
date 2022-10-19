@@ -37,13 +37,13 @@ impl<'de, N: Network> Deserialize<'de> for HeaderLeaf<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the leaf from a string into a value.
-                let leaf = serde_json::Value::deserialize(deserializer)?;
+                let mut leaf = serde_json::Value::deserialize(deserializer)?;
                 // Recover the leaf.
                 Ok(Self::new(
                     // Retrieve the index.
-                    serde_json::from_value(leaf["index"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["index"].take()).map_err(de::Error::custom)?,
                     // Retrieve the id.
-                    serde_json::from_value(leaf["id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(leaf["id"].take()).map_err(de::Error::custom)?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "header leaf"),

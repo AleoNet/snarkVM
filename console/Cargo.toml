@@ -47,6 +47,8 @@ default = [
   "types"
 ]
 parallel = [ "snarkvm-console-collections/parallel" ]
+wasm = [ "snarkvm-console-network/wasm" ]
+
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
 collections = [ "algorithms", "snarkvm-console-collections" ]

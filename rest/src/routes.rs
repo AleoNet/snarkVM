@@ -64,7 +64,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_transactions);
 
-        // GET /testnet3/transaction/{id}
+        // GET /testnet3/transaction/{transactionID}
         let get_transaction = warp::get()
             .and(warp::path!("testnet3" / "transaction" / ..))
             .and(warp::path::param::<N::TransactionID>())
@@ -78,7 +78,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(with(self.ledger.clone()))
             .and_then(Self::get_transactions_mempool);
 
-        // GET /testnet3/program/{id}
+        // GET /testnet3/program/{programID}
         let get_program = warp::get()
             .and(warp::path!("testnet3" / "program" / ..))
             .and(warp::path::param::<ProgramID<N>>())
@@ -99,6 +99,38 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .and(warp::path::end())
             .and(with(self.ledger.clone()))
             .and_then(Self::get_state_path);
+
+        // GET /testnet3/find/blockHash/{transactionID}
+        let find_block_hash = warp::get()
+            .and(warp::path!("testnet3" / "find" / "blockHash" / ..))
+            .and(warp::path::param::<N::TransactionID>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::find_block_hash);
+
+        // GET /testnet3/find/deploymentID/{programID}
+        let find_deployment_id = warp::get()
+            .and(warp::path!("testnet3" / "find" / "deploymentID" / ..))
+            .and(warp::path::param::<ProgramID<N>>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::find_deployment_id);
+
+        // GET /testnet3/find/transactionID/{transitionID}
+        let find_transaction_id = warp::get()
+            .and(warp::path!("testnet3" / "find" / "transactionID" / ..))
+            .and(warp::path::param::<N::TransitionID>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::find_transaction_id);
+
+        // GET /testnet3/find/transitionID/{inputOrOutputID}
+        let find_transition_id = warp::get()
+            .and(warp::path!("testnet3" / "find" / "transitionID" / ..))
+            .and(warp::path::param::<Field<N>>())
+            .and(warp::path::end())
+            .and(with(self.ledger.clone()))
+            .and_then(Self::find_transition_id);
 
         // GET /testnet3/records/all
         let records_all = warp::get()
@@ -145,6 +177,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
             .or(get_program)
             .or(get_validators)
             .or(get_state_path)
+            .or(find_block_hash)
+            .or(find_deployment_id)
+            .or(find_transaction_id)
+            .or(find_transition_id)
             .or(records_all)
             .or(records_spent)
             .or(records_unspent)
@@ -245,6 +281,38 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         ledger: Arc<RwLock<Ledger<N, B, P>>>,
     ) -> Result<impl Reply, Rejection> {
         Ok(reply::json(&ledger.read().to_state_path(&commitment).or_reject()?))
+    }
+
+    /// Returns the block hash that contains the given `transaction ID`.
+    async fn find_block_hash(
+        transaction_id: N::TransactionID,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().find_block_hash(&transaction_id).or_reject()?))
+    }
+
+    /// Returns the transaction ID that contains the given `program ID`.
+    async fn find_deployment_id(
+        program_id: ProgramID<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().find_deployment_id(&program_id).or_reject()?))
+    }
+
+    /// Returns the transaction ID that contains the given `transition ID`.
+    async fn find_transaction_id(
+        transition_id: N::TransitionID,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().find_transaction_id(&transition_id).or_reject()?))
+    }
+
+    /// Returns the transition ID that contains the given `input ID` or `output ID`.
+    async fn find_transition_id(
+        input_or_output_id: Field<N>,
+        ledger: Arc<RwLock<Ledger<N, B, P>>>,
+    ) -> Result<impl Reply, Rejection> {
+        Ok(reply::json(&ledger.read().find_transition_id(&input_or_output_id).or_reject()?))
     }
 
     /// Returns all of the records for the given view key.

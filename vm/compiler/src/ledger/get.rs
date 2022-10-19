@@ -122,11 +122,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 mod tests {
     use super::*;
     use crate::ledger::test_helpers::CurrentLedger;
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_get_block() {
         // Load the genesis block.
-        let genesis = Block::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+        let genesis = Block::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap();
 
         // Initialize a new ledger.
         let ledger = CurrentLedger::new(None).unwrap();
