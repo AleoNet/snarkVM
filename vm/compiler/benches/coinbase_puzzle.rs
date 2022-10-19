@@ -106,7 +106,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
 
             c.bench_function(
                 &format!("CoinbasePuzzle::Accumulate {batch_size} of 2^{}", ((degree + 1) as f64).log2()),
-                |b| b.iter(|| puzzle.accumulate(&epoch_challenge, &solutions).unwrap()),
+                |b| b.iter(|| puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap()),
             );
         }
     }
@@ -132,7 +132,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
                     puzzle.prove(&epoch_challenge, address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let solution = puzzle.accumulate(&epoch_challenge, &solutions).unwrap();
+            let solution = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
 
             c.bench_function(
                 &format!("CoinbasePuzzle::Verify {batch_size} of 2^{}", ((degree + 1) as f64).log2()),

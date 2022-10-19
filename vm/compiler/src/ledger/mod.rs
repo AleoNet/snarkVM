@@ -363,7 +363,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             (None, Field::<N>::zero())
         } else {
             let epoch_challenge = self.latest_epoch_challenge()?;
-            let coinbase_proof = self.coinbase_puzzle.accumulate(&epoch_challenge, &prover_solutions)?;
+            let coinbase_proof = self.coinbase_puzzle.accumulate_unchecked(&epoch_challenge, &prover_solutions)?;
             let coinbase_accumulator_point = coinbase_proof.to_accumulator_point()?;
 
             (Some(coinbase_proof), coinbase_accumulator_point)

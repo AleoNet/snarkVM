@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod helpers;
+use circuit::has_duplicates;
 pub use helpers::*;
 
 mod hash;
@@ -168,7 +169,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     ///
     /// # Note
     /// This method does *not* check that the prover solutions are valid.
-    pub fn accumulate(
+    pub fn accumulate_unchecked(
         &self,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
@@ -191,13 +192,14 @@ impl<N: Network> CoinbasePuzzle<N> {
             Self::Prover(coinbase_proving_key) => coinbase_proving_key,
             Self::Verifier(_) => bail!("Cannot accumulate the coinbase puzzle with a verifier"),
         };
+        ensure!(!has_duplicates(prover_solutions), "Cannot accumulate duplicate prover solutions");
 
         let (prover_polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
                 if solution.proof().is_hiding() {
                     return None;
                 }
-                let polynomial = solution.to_prover_polynomial(epoch_challenge).unwrap();
+                let polynomial = solution.to_prover_polynomial(epoch_challenge).ok()?;
                 Some((polynomial, PartialSolution::new(solution.address(), solution.nonce(), solution.commitment())))
             })
             .unzip();

@@ -43,7 +43,7 @@ fn test_coinbase_puzzle() {
                     puzzle.prove(&epoch_challenge, address, nonce).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let full_solution = puzzle.accumulate(&epoch_challenge, &solutions).unwrap();
+            let full_solution = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
             assert!(puzzle.verify(&full_solution, &epoch_challenge, 0u64, 0u64).unwrap());
 
             let bad_epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
@@ -72,6 +72,6 @@ fn test_edge_case_for_degree() {
 
     // Generate a prover solution.
     let prover_solution = puzzle.prove(&epoch_challenge, address, rng.gen()).unwrap();
-    let coinbase_solution = puzzle.accumulate(&epoch_challenge, &[prover_solution]).unwrap();
+    let coinbase_solution = puzzle.accumulate_unchecked(&epoch_challenge, &[prover_solution]).unwrap();
     assert!(puzzle.verify(&coinbase_solution, &epoch_challenge, 0u64, 0u64).unwrap());
 }
