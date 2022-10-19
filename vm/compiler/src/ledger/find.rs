@@ -19,6 +19,26 @@ use super::*;
 use std::borrow::Cow;
 
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
+    /// Returns the block hash that contains the given `transaction ID`.
+    pub fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
+        self.blocks.find_block_hash(transaction_id)
+    }
+
+    /// Returns the transaction ID that contains the given `program ID`.
+    pub fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.transactions.find_deployment_id(program_id)
+    }
+
+    /// Returns the transaction ID that contains the given `transition ID`.
+    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.transactions.find_transaction_id(transition_id)
+    }
+
+    /// Returns the transition ID that contains the given `input ID` or `output ID`.
+    pub fn find_transition_id(&self, id: &Field<N>) -> Result<N::TransitionID> {
+        self.transitions.find_transition_id(id)
+    }
+
     /// Returns the record ciphertexts that belong to the given view key.
     pub fn find_record_ciphertexts<'a>(
         &'a self,
