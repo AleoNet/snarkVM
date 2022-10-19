@@ -400,14 +400,14 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 }
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
-    /// Returns the transaction ID that contains the given `transition ID`.
-    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.storage.execution_store().find_transaction_id(transition_id)
-    }
-
     /// Returns the transaction ID that contains the given `program ID`.
     pub fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
         self.storage.deployment_store().find_transaction_id(program_id)
+    }
+
+    /// Returns the transaction ID that contains the given `transition ID`.
+    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.storage.execution_store().find_transaction_id(transition_id)
     }
 }
 

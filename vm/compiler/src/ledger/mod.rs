@@ -59,7 +59,6 @@ use console::{
     program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
-use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
 use indexmap::{IndexMap, IndexSet};
@@ -149,7 +148,7 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new(dev: Option<u16>) -> Result<Self> {
         // Load the genesis block.
-        let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+        let genesis = Block::<N>::from_bytes_le(N::genesis_bytes())?;
         // Initialize the ledger.
         Self::new_with_genesis(&genesis, genesis.signature().to_address(), dev)
     }
@@ -238,7 +237,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             // If there are no previous hashes, add the genesis block.
             None => {
                 // Load the genesis block.
-                let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+                let genesis = Block::<N>::from_bytes_le(N::genesis_bytes())?;
                 // Add the genesis block.
                 ledger.blocks.insert(&genesis)?;
                 // Return the genesis height.
@@ -1063,7 +1062,7 @@ mod tests {
     #[test]
     fn test_new() {
         // Load the genesis block.
-        let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+        let genesis = Block::<CurrentNetwork>::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap();
 
         // Initialize a ledger with the genesis block.
         let ledger = CurrentLedger::new(None).unwrap();
@@ -1076,7 +1075,7 @@ mod tests {
     #[test]
     fn test_from() {
         // Load the genesis block.
-        let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+        let genesis = Block::<CurrentNetwork>::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap();
         // Initialize the address.
         let address =
             Address::<CurrentNetwork>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")

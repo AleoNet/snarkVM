@@ -44,20 +44,20 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let block = serde_json::Value::deserialize(deserializer)?;
+                let mut block = serde_json::Value::deserialize(deserializer)?;
                 let block_hash: N::BlockHash =
-                    serde_json::from_value(block["block_hash"].clone()).map_err(de::Error::custom)?;
+                    serde_json::from_value(block["block_hash"].take()).map_err(de::Error::custom)?;
 
                 // Recover the block.
                 let block = Self::from(
-                    serde_json::from_value(block["previous_hash"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["header"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["transactions"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["previous_hash"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["header"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["transactions"].take()).map_err(de::Error::custom)?,
                     match block["coinbase_proof"].as_str() {
                         Some(coinbase_proof) => Some(serde_json::from_str(coinbase_proof).map_err(de::Error::custom)?),
                         None => None,
                     },
-                    serde_json::from_value(block["signature"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["signature"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 

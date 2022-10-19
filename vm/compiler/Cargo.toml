@@ -57,10 +57,6 @@ version = "0.9.0"
 path = "../../fields"
 version = "0.9.0"
 
-[dependencies.snarkvm-parameters]
-path = "../../parameters"
-version = "0.9.0"
-
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
 version = "0.9.0"
