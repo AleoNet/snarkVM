@@ -38,6 +38,7 @@ impl<N: Network> EpochChallenge<N> {
     pub fn new(epoch_number: u32, epoch_block_hash: N::BlockHash, degree: u32) -> Result<Self> {
         // Construct the 'input' as '( epoch_number || epoch_block_hash )'
         let input: Vec<u8> = epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?).collect();
+
         ensure!(!degree.is_zero(), "Degree cannot be zero");
 
         let num_coefficients = degree.checked_add(1).ok_or(anyhow!("Degree is too large"))?;

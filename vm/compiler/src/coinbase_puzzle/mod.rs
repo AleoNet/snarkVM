@@ -79,6 +79,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         // of coefficients. The degree of the product has `2n - 1` coefficients.
         //
         // Hence, we request the powers of beta for the interval [0, 2n].
+
+        ensure!(config.degree != 0, "Degree cannot be zero");
         let num_coefficients = config.degree.checked_add(1).ok_or(anyhow!("Degree is too large"))?;
         let product_num_coefficients =
             num_coefficients.checked_mul(2).and_then(|t| t.checked_sub(1)).ok_or(anyhow!("Degree is too large"))?;
