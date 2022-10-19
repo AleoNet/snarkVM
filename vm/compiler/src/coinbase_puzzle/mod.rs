@@ -94,7 +94,6 @@ impl<N: Network> CoinbasePuzzle<N> {
         // Hence, we request the powers of beta for the interval [0, 2n].
         let product_num_coefficients = Self::check_degree(config.degree)?;
 
-        let powers_of_beta_g = srs.powers_of_beta_g(0, product_num_coefficients.try_into()?)?.to_vec();
         let product_domain =
             EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
         assert_eq!(product_domain.size(), (product_num_coefficients as usize).checked_next_power_of_two().unwrap());
@@ -112,7 +111,6 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
 
         let pk = CoinbaseProvingKey {
-            powers_of_beta_g,
             product_domain,
             product_domain_elements,
             lagrange_basis_at_beta_g,
