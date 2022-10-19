@@ -51,3 +51,25 @@ fn test_coinbase_puzzle() {
         }
     }
 }
+
+#[test]
+fn test_edge_case_for_degree() {
+    let mut rng = rand::thread_rng();
+
+    // Generate srs.
+    let max_degree = 1 << 15;
+    let max_config = PuzzleConfig { degree: max_degree };
+    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config, &mut rng).unwrap();
+
+    // Generate PK and VK.
+    let degree = (1 << 13) - 1; // IF YOU ADD `- 1` THIS WILL PASS
+    let (pk, _vk) = CoinbasePuzzle::<Testnet3>::trim(&srs, PuzzleConfig { degree }).unwrap();
+
+    // Generate proof inputs
+    let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+    let address = Address::try_from(private_key).unwrap();
+    let epoch_challenge = EpochChallenge::new(rng.gen(), Default::default(), degree).unwrap();
+
+    // Generate a prover solution.
+    let _prover_solution = CoinbasePuzzle::prove(&pk, &epoch_challenge, &address, rng.gen()).unwrap();
+}

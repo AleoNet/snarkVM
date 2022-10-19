@@ -39,8 +39,15 @@ impl<N: Network> EpochChallenge<N> {
         // Construct the 'input' as '( epoch_number || epoch_block_hash )'
         let input: Vec<u8> =
             epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?.into_iter()).collect();
+
+        let num_coefficients = degree + 1;
+        let product_num_coefficients = 2 * num_coefficients - 1;
+        assert_eq!(product_num_coefficients, 2 * degree + 1);
         let epoch_polynomial = hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, degree)?;
-        let domain = EvaluationDomain::new((2 * degree - 1) as usize).unwrap();
+
+        let domain =
+            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+
         let epoch_polynomial_evaluations = epoch_polynomial.evaluate_over_domain_by_ref(domain);
         // Returns the epoch challenge.
         Ok(EpochChallenge { epoch_number, epoch_block_hash, epoch_polynomial, epoch_polynomial_evaluations })
