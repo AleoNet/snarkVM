@@ -24,14 +24,14 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         self.blocks.find_block_hash(transaction_id)
     }
 
-    /// Returns the transaction ID that contains the given `transition ID`.
-    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.transactions.find_transaction_id(transition_id)
-    }
-
     /// Returns the transaction ID that contains the given `program ID`.
     pub fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
         self.transactions.find_deployment_id(program_id)
+    }
+
+    /// Returns the transaction ID that contains the given `transition ID`.
+    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.transactions.find_transaction_id(transition_id)
     }
 
     /// Returns the transition ID that contains the given `input ID` or `output ID`.
