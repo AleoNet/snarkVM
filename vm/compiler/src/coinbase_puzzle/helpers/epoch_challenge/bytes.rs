@@ -38,7 +38,7 @@ impl<N: Network> ToBytes for EpochChallenge<N> {
         // Write the epoch block hash.
         self.epoch_block_hash.write_le(&mut writer)?;
         // Write the epoch degree.
-        self.degree().map_err(|e| error(e.to_string()))?.write_le(&mut writer)
+        self.degree().write_le(&mut writer)
     }
 }
 
@@ -67,7 +67,7 @@ mod tests {
             let candidate = EpochChallenge::read_le(&expected_bytes[..]).unwrap();
             assert_eq!(expected.epoch_number(), candidate.epoch_number());
             assert_eq!(expected.epoch_block_hash(), candidate.epoch_block_hash());
-            assert_eq!(expected.degree().unwrap(), candidate.degree().unwrap());
+            assert_eq!(expected.degree(), candidate.degree());
             assert_eq!(expected, candidate);
 
             assert!(EpochChallenge::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());

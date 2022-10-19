@@ -79,12 +79,14 @@ impl<N: Network> CoinbasePuzzle<N> {
         // of coefficients. The degree of the product has `2n - 1` coefficients.
         //
         // Hence, we request the powers of beta for the interval [0, 2n].
-        let num_coefficients = config.degree + 1;
-        let product_num_coefficients = 2 * num_coefficients - 1;
+        let num_coefficients = config.degree.checked_add(1).ok_or(anyhow!("Degree is too large"))?;
+        let product_num_coefficients =
+            num_coefficients.checked_mul(2).and_then(|t| t.checked_sub(1)).ok_or(anyhow!("Degree is too large"))?;
         assert_eq!(product_num_coefficients, 2 * config.degree + 1);
+
         let powers_of_beta_g = srs.powers_of_beta_g(0, product_num_coefficients.try_into()?)?.to_vec();
         let product_domain =
-            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or(anyhow!("Invalid degree"))?;
         assert_eq!(product_domain.size(), (product_num_coefficients as usize).checked_next_power_of_two().unwrap());
         let lagrange_basis_at_beta_g = srs.lagrange_basis(product_domain)?;
         let fft_precomputation = product_domain.precompute_fft();
@@ -361,6 +363,6 @@ impl<N: Network> CoinbasePuzzle<N> {
             bytes[68..].copy_from_slice(&nonce.to_le_bytes());
             bytes
         };
-        Ok(hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()?))
+        Ok(hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()))
     }
 }
