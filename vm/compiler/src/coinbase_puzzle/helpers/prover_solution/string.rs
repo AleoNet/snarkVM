@@ -57,7 +57,7 @@ mod tests {
         let expected = ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None });
 
         // Check the string representation.
-        let candidate = format!("{expected}");
+        let candidate = expected.to_string();
         assert_eq!(expected, ProverSolution::from_str(&candidate)?);
 
         Ok(())

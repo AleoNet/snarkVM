@@ -38,7 +38,7 @@ impl<N: Network> EpochChallenge<N> {
     pub fn new(epoch_number: u32, epoch_block_hash: N::BlockHash, degree: u32) -> Result<Self> {
         // Construct the 'input' as '( epoch_number || epoch_block_hash )'
         let input: Vec<u8> =
-            epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?.into_iter()).collect();
+            epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?).collect();
 
         let num_coefficients = degree + 1;
         let product_num_coefficients = 2 * num_coefficients - 1;
@@ -76,7 +76,7 @@ impl<N: Network> EpochChallenge<N> {
 
     /// Returns the number of coefficients of the epoch polynomial.
     pub fn degree(&self) -> Result<u32> {
-        // Cast the degree into a u32.
+        // Convert the degree into a u32.
         match u32::try_from(self.epoch_polynomial.degree()) {
             Ok(degree) => Ok(degree),
             Err(_) => bail!("Epoch polynomial degree ({}) is too large", self.epoch_polynomial.degree()),
