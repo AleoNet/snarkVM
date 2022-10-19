@@ -416,7 +416,7 @@ impl<E: PairingEngine> KZG10<E> {
         if lagrange_basis.domain.evaluate_vanishing_polynomial(point).is_zero() {
             Err(anyhow!("Point cannot be in the domain"))?;
         }
-        if evaluations.len().checked_next_power_of_two().ok_or(anyhow!("Evaluations length is too large"))?
+        if evaluations.len().checked_next_power_of_two().ok_or_else(|| anyhow!("Evaluations length is too large"))?
             != lagrange_basis.size()
         {
             Err(anyhow!("`evaluations.len()` must equal `domain.size()`"))?;
