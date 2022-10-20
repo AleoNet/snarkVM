@@ -26,10 +26,25 @@ struct BlockRange {
 impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
     /// Initializes the routes, given the ledger and ledger sender.
     #[allow(clippy::redundant_clone)]
-    pub fn routes(&self) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    pub fn routes(&self, auth_token: String) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        // Header authenticator.
+        fn auth(auth_token: String) -> impl Filter<Extract = ((),), Error = Rejection> + Clone {
+            warp::header::<String>("authorization").and(with(auth_token)).and_then(
+                |token: String, auth_token: String| async move {
+                    if token == format!("Basic {}", auth_token) || token == format!("Bearer {}", auth_token) {
+                        Ok(())
+                    } else {
+                        Err(reject::custom(RestError::Request("Unauthorized caller".to_string())))
+                    }
+                },
+            )
+        }
+
         // GET /testnet3/latest/height
         let latest_height = warp::get()
             .and(warp::path!("testnet3" / "latest" / "height"))
+            .and(auth(auth_token.clone()))
+            .untuple_one()
             .and(with(self.ledger.clone()))
             .and_then(Self::latest_height);
 
@@ -135,6 +150,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // GET /testnet3/records/all
         let records_all = warp::get()
             .and(warp::path!("testnet3" / "records" / "all"))
+            .and(auth(auth_token.clone()))
+            .untuple_one()
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
@@ -143,6 +160,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // GET /testnet3/records/spent
         let records_spent = warp::get()
             .and(warp::path!("testnet3" / "records" / "spent"))
+            .and(auth(auth_token.clone()))
+            .untuple_one()
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
@@ -151,6 +170,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // GET /testnet3/records/unspent
         let records_unspent = warp::get()
             .and(warp::path!("testnet3" / "records" / "unspent"))
+            .and(auth(auth_token))
+            .untuple_one()
             .and(warp::body::content_length_limit(128))
             .and(warp::body::json())
             .and(with(self.ledger.clone()))
