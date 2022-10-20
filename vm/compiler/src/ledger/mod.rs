@@ -474,9 +474,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let transactions_iter = block.transactions().par_iter();
         #[cfg(not(feature = "parallel"))]
         let mut transactions_iter = block.transactions().iter();
-        if !transactions_iter.all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
-            bail!("Invalid transaction found in the transactions list");
-        }
+        transactions_iter.try_for_each(|(_, transaction)| {
+            self.check_transaction(transaction)
+                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+        })?;
 
         /* Fees */
 
