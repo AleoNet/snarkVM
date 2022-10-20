@@ -43,10 +43,16 @@ version = "1.8.2"
 [dependencies.parking_lot]
 version = "0.12"
 
+[dependencies.rand]
+version = "0.8"
+
 [dependencies.serde]
 version = "1.0.145"
 default-features = false
 features = [ "derive" ]
+
+[dependencies.serde_json]
+version = "1"
 
 [dependencies.tokio]
 version = "1"

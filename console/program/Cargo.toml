@@ -26,6 +26,7 @@ version = "0.2"
 
 [dependencies.indexmap]
 version = "1.8"
+features = ["serde-1"] # This is neccessary for snarkvm-wasm
 
 [dependencies.num-derive]
 version = "0.3"
