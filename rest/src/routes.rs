@@ -43,8 +43,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
         // GET /testnet3/latest/height
         let latest_height = warp::get()
             .and(warp::path!("testnet3" / "latest" / "height"))
-            .and(auth(auth_token.clone()))
-            .untuple_one()
             .and(with(self.ledger.clone()))
             .and_then(Self::latest_height);
 
