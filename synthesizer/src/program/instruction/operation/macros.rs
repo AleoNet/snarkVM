@@ -791,8 +791,7 @@ mod tests {
                                 should_panic_on_halt |= is_shift_operator && shift_exceeds_bitwidth && mode_b.is_constant();
                                 // If the operation is a division operator, check if both operands are constant or if the RHS is a constant and zero.
                                 should_panic_on_halt |= is_division_operator && (
-                                    (mode_a.is_constant() && mode_b.is_constant()) ||
-                                    (mode_b.is_constant() && is_rhs_zero)
+                                    mode_b.is_constant() && (mode_a.is_constant() || is_rhs_zero)
                                 );
 
                                 // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
