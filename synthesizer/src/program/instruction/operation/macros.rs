@@ -719,6 +719,10 @@ mod tests {
                             3.. => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng))
                         };
 
+                        // This flag is used to determine halting conditions.
+                        #[allow(deprecated)]
+                        let is_rhs_zero = (*b) == *$input_b::<CurrentNetwork>::zero();
+
                         // Initialize an indicator whether the operation should succeed or not.
                         #[allow(unused_mut)]
                         let mut should_succeed = true;
@@ -785,8 +789,11 @@ mod tests {
                                 let mut should_panic_on_halt = false;
                                 // If the operation is a shift operator, check if the mode of the RHS is a constant and if the shift amount exceeds the bitwidth.
                                 should_panic_on_halt |= is_shift_operator && shift_exceeds_bitwidth && mode_b.is_constant();
-                                // If the operation is a division operator, check if the mode of the RHS is a constant.
-                                should_panic_on_halt |= is_division_operator && mode_b.is_constant();
+                                // If the operation is a division operator, check if both operands are constant or if the RHS is a constant and zero.
+                                should_panic_on_halt |= is_division_operator && (
+                                    (mode_a.is_constant() && mode_b.is_constant()) ||
+                                    (mode_b.is_constant() && is_rhs_zero)
+                                );
 
                                 // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
                                 if should_succeed {
