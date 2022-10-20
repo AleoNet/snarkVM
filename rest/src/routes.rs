@@ -34,7 +34,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Server<N, B, P> {
                     if token == format!("Basic {}", auth_token) || token == format!("Bearer {}", auth_token) {
                         Ok(())
                     } else {
-                        Err(reject::custom(RestError::Request("Unauthorized caller".to_string())))
+                        Err(reject::custom(RestError::Request("Unauthorized caller.".to_string())))
                     }
                 },
             )
