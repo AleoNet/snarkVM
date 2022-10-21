@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod helpers;
-use circuit::has_duplicates;
 pub use helpers::*;
 
 mod hash;
@@ -27,7 +26,7 @@ mod tests;
 use crate::{UniversalSRS, MAX_PROVER_SOLUTIONS};
 use console::{
     account::Address,
-    prelude::{anyhow, bail, cfg_iter, ensure, Network, Result, ToBytes},
+    prelude::{anyhow, bail, cfg_iter, ensure, has_duplicates, Network, Result, ToBytes},
     program::cfg_into_iter,
 };
 use snarkvm_algorithms::{
