@@ -41,6 +41,11 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
+/// The commitment to the polynomial.
+pub type PuzzleCommitment<N> = KZGCommitment<<N as Environment>::PairingCurve>;
+/// The proof of opening the polynomial, for the solution.
+pub type PuzzleProof<N> = KZGProof<<N as Environment>::PairingCurve>;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PuzzleConfig {
     /// The maximum degree of the polynomial.

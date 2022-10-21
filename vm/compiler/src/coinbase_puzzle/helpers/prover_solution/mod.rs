@@ -26,12 +26,12 @@ pub struct ProverSolution<N: Network> {
     /// The core data of the prover solution.
     partial_solution: PartialSolution<N>,
     /// The proof for the solution.
-    proof: KZGProof<N::PairingCurve>,
+    proof: PuzzleProof<N>,
 }
 
 impl<N: Network> ProverSolution<N> {
     /// Initializes a new instance of the prover solution.
-    pub const fn new(partial_solution: PartialSolution<N>, proof: KZGProof<N::PairingCurve>) -> Self {
+    pub const fn new(partial_solution: PartialSolution<N>, proof: PuzzleProof<N>) -> Self {
         Self { partial_solution, proof }
     }
 
@@ -80,12 +80,12 @@ impl<N: Network> ProverSolution<N> {
     }
 
     /// Returns the commitment for the solution.
-    pub const fn commitment(&self) -> KZGCommitment<N::PairingCurve> {
+    pub const fn commitment(&self) -> PuzzleCommitment<N> {
         self.partial_solution.commitment()
     }
 
     /// Returns the proof for the solution.
-    pub const fn proof(&self) -> &KZGProof<N::PairingCurve> {
+    pub const fn proof(&self) -> &PuzzleProof<N> {
         &self.proof
     }
 

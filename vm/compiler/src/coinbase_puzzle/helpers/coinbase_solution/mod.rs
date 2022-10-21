@@ -26,12 +26,12 @@ pub struct CoinbaseSolution<N: Network> {
     /// The partial solutions of the coinbase puzzle, which are aggregated into a single solution.
     partial_solutions: Vec<PartialSolution<N>>,
     /// The KZG proof of the coinbase solution.
-    proof: KZGProof<N::PairingCurve>,
+    proof: PuzzleProof<N>,
 }
 
 impl<N: Network> CoinbaseSolution<N> {
     /// Initializes a new instance of a coinbase solution.
-    pub const fn new(partial_solutions: Vec<PartialSolution<N>>, proof: KZGProof<N::PairingCurve>) -> Self {
+    pub const fn new(partial_solutions: Vec<PartialSolution<N>>, proof: PuzzleProof<N>) -> Self {
         Self { partial_solutions, proof }
     }
 
@@ -41,7 +41,7 @@ impl<N: Network> CoinbaseSolution<N> {
     }
 
     /// Returns the KZG proof.
-    pub const fn proof(&self) -> &KZGProof<N::PairingCurve> {
+    pub const fn proof(&self) -> &PuzzleProof<N> {
         &self.proof
     }
 

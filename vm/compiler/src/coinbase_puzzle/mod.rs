@@ -56,22 +56,6 @@ pub enum CoinbasePuzzle<N: Network> {
 }
 
 impl<N: Network> CoinbasePuzzle<N> {
-    /// Checks that the degree for the epoch and prover polynomial is within bounds,
-    /// and returns the evaluation domain for the product polynomial.
-    pub(crate) fn product_domain(degree: u32) -> Result<EvaluationDomain<N::Field>> {
-        ensure!(degree != 0, "Degree cannot be zero");
-        let num_coefficients = degree.checked_add(1).ok_or_else(|| anyhow!("Degree is too large"))?;
-        let product_num_coefficients = num_coefficients
-            .checked_mul(2)
-            .and_then(|t| t.checked_sub(1))
-            .ok_or_else(|| anyhow!("Degree is too large"))?;
-        assert_eq!(product_num_coefficients, 2 * degree + 1);
-        let product_domain =
-            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
-        assert_eq!(product_domain.size(), (product_num_coefficients as usize).checked_next_power_of_two().unwrap());
-        Ok(product_domain)
-    }
-
     /// Initializes a new `SRS` for the coinbase puzzle.
     #[cfg(any(test, feature = "setup"))]
     pub fn setup<R: Rng + CryptoRng>(config: PuzzleConfig, rng: &mut R) -> Result<SRS<N::PairingCurve>> {
@@ -358,6 +342,22 @@ impl<N: Network> CoinbasePuzzle<N> {
 }
 
 impl<N: Network> CoinbasePuzzle<N> {
+    /// Checks that the degree for the epoch and prover polynomial is within bounds,
+    /// and returns the evaluation domain for the product polynomial.
+    pub(crate) fn product_domain(degree: u32) -> Result<EvaluationDomain<N::Field>> {
+        ensure!(degree != 0, "Degree cannot be zero");
+        let num_coefficients = degree.checked_add(1).ok_or_else(|| anyhow!("Degree is too large"))?;
+        let product_num_coefficients = num_coefficients
+            .checked_mul(2)
+            .and_then(|t| t.checked_sub(1))
+            .ok_or_else(|| anyhow!("Degree is too large"))?;
+        assert_eq!(product_num_coefficients, 2 * degree + 1);
+        let product_domain =
+            EvaluationDomain::new(product_num_coefficients.try_into()?).ok_or_else(|| anyhow!("Invalid degree"))?;
+        assert_eq!(product_domain.size(), (product_num_coefficients as usize).checked_next_power_of_two().unwrap());
+        Ok(product_domain)
+    }
+
     /// Returns the prover polynomial for the coinbase puzzle.
     fn prover_polynomial(
         epoch_challenge: &EpochChallenge<N>,
