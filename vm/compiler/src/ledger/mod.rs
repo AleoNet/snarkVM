@@ -1098,21 +1098,20 @@ mod tests {
             let records: Vec<_> = ledger
                 .find_records(&view_key, RecordsFilter::Unspent)
                 .unwrap()
-                .filter(|(_, record)| !record.gates().is_zero())
+                .map(|(_, record)| record)
+                .filter(|record| !record.gates().is_zero())
                 .collect();
             assert_eq!(records.len(), 1 << (height - 1));
 
-            for (_, record) in records {
+            for record in records {
+                let num_gates = ***record.gates() / 2;
                 // Create a new transaction.
                 let transaction = Transaction::execute(
                     ledger.vm(),
                     &private_key,
                     &ProgramID::from_str("credits.aleo").unwrap(),
                     Identifier::from_str("split").unwrap(),
-                    &[
-                        Value::Record(record.clone()),
-                        Value::from_str(&format!("{}u64", ***record.gates() / 2)).unwrap(),
-                    ],
+                    &[Value::Record(record), Value::from_str(&format!("{num_gates}u64")).unwrap()],
                     None,
                     rng,
                 )
