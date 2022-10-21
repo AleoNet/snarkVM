@@ -474,9 +474,10 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let transactions_iter = block.transactions().par_iter();
         #[cfg(not(feature = "parallel"))]
         let mut transactions_iter = block.transactions().iter();
-        if !transactions_iter.all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
-            bail!("Invalid transaction found in the transactions list");
-        }
+        transactions_iter.try_for_each(|(_, transaction)| {
+            self.check_transaction(transaction)
+                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+        })?;
 
         /* Fees */
 
@@ -896,25 +897,20 @@ pub(crate) mod test_helpers {
     }
 
     pub(crate) fn sample_genesis_ledger(rng: &mut TestRng) -> CurrentLedger {
-        static INSTANCE: OnceCell<CurrentLedger> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Sample the genesis private key.
-                let private_key = sample_genesis_private_key(rng);
-                // Sample the genesis block.
-                let genesis = sample_genesis_block_with_pk(rng, private_key);
+        // Sample the genesis private key.
+        let private_key = sample_genesis_private_key(rng);
+        // Sample the genesis block.
+        let genesis = sample_genesis_block_with_pk(rng, private_key);
 
-                // Initialize the ledger with the genesis block and the associated private key.
-                let address = Address::try_from(&private_key).unwrap();
-                let ledger = CurrentLedger::new_with_genesis(&genesis, address, None).unwrap();
-                assert_eq!(0, ledger.latest_height());
-                assert_eq!(genesis.hash(), ledger.latest_hash());
-                assert_eq!(genesis.round(), ledger.latest_round());
-                assert_eq!(genesis, ledger.get_block(0).unwrap());
+        // Initialize the ledger with the genesis block and the associated private key.
+        let address = Address::try_from(&private_key).unwrap();
+        let ledger = CurrentLedger::new_with_genesis(&genesis, address, None).unwrap();
+        assert_eq!(0, ledger.latest_height());
+        assert_eq!(genesis.hash(), ledger.latest_hash());
+        assert_eq!(genesis.round(), ledger.latest_round());
+        assert_eq!(genesis, ledger.get_block(0).unwrap());
 
-                ledger
-            })
-            .clone()
+        ledger
     }
 }
 
