@@ -28,13 +28,13 @@ pub use routes::*;
 mod start;
 pub use start::*;
 
-use snarkvm_compiler::{BlockStorage, Ledger, Program, ProgramStorage, RecordsFilter, Transaction};
 use snarkvm_console::{
     account::{Address, ViewKey},
     prelude::Network,
     program::ProgramID,
     types::Field,
 };
+use snarkvm_synthesizer::{BlockStorage, Ledger, Program, ProgramStorage, RecordsFilter, Transaction};
 
 use anyhow::Result;
 use indexmap::IndexMap;
