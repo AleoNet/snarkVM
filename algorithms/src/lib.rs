@@ -32,21 +32,17 @@ pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter,
 
 #[cfg(feature = "crypto_hash")]
 pub mod crypto_hash;
+#[cfg(feature = "fft")]
+pub mod fft;
+#[cfg(feature = "msm")]
+pub mod msm;
+#[cfg(feature = "polycommit")]
+pub mod polycommit;
+#[cfg(feature = "snark")]
+pub mod snark;
 
 pub mod errors;
 pub use errors::*;
-
-#[cfg(feature = "fft")]
-pub mod fft;
-
-#[cfg(feature = "msm")]
-pub mod msm;
-
-#[cfg(feature = "polycommit")]
-pub mod polycommit;
-
-#[cfg(feature = "snark")]
-pub mod snark;
 
 pub mod traits;
 pub use traits::*;
