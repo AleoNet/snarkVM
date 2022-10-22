@@ -62,9 +62,9 @@ members = [
   "parameters",
   "r1cs",
   "rest",
+  "synthesizer",
   "utilities",
   "utilities/derives",
-  "vm/compiler",
   "wasm"
 ]
 
@@ -87,20 +87,36 @@ full = [
   "parameters",
   "r1cs",
   "rest",
+  "synthesizer",
   "utilities"
 ]
 cli = [
+  # External
   "anyhow",
-  "circuit",
-  "console",
   "clap",
   "colored",
   "rand",
   "self_update",
   "serde_json",
-  "thiserror"
+  "thiserror",
+  # Internal
+  "circuit",
+  "console",
+  "synthesizer",
 ]
-aleo-cli = [ "snarkvm-compiler/aleo-cli" ]
+aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
+parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
+parallel = [
+  "rayon",
+  "snarkvm-algorithms/parallel",
+  "snarkvm-fields/parallel",
+  "snarkvm-synthesizer/parallel",
+  "snarkvm-utilities/parallel"
+]
+noconfig = [ ]
+
+# Internal Dependencies
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -109,17 +125,8 @@ fields = [ "snarkvm-fields" ]
 parameters = [ "snarkvm-parameters" ]
 r1cs = [ "snarkvm-r1cs" ]
 rest = [ "snarkvm-rest" ]
+synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
-cuda = [ "snarkvm-algorithms/cuda" ]
-parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
-parallel = [
-  "rayon",
-  "snarkvm-algorithms/parallel",
-  "snarkvm-compiler/parallel",
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
-]
-noconfig = [ ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
@@ -162,18 +169,19 @@ path = "./rest"
 version = "0.9.0"
 optional = true
 
+[dependencies.snarkvm-synthesizer]
+path = "./synthesizer"
+version = "0.9.0"
+default-features = false
+optional = true
+
 [dependencies.snarkvm-utilities]
 path = "./utilities"
 version = "0.9.0"
 optional = true
 
-[dependencies.snarkvm-compiler]
-path = "./vm/compiler"
-version = "0.9.0"
-default-features = false
-
 [dependencies.anyhow]
-version = "1.0.64"
+version = "1.0.66"
 optional = true
 
 [dependencies.clap]

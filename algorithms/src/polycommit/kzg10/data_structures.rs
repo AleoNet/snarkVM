@@ -366,35 +366,37 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
     }
 }
 
-/// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
+/// `KZGCommitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Commitment<E: PairingEngine>(
+pub struct KZGCommitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub E::G1Affine,
 );
 
-impl<E: PairingEngine> FromBytes for Commitment<E> {
+impl<E: PairingEngine> FromBytes for KZGCommitment<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize Commitment"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader)
+            .map_err(|_| error("could not deserialize KZGCommitment"))
     }
 }
 
-impl<E: PairingEngine> ToBytes for Commitment<E> {
+impl<E: PairingEngine> ToBytes for KZGCommitment<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize Commitment"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer)
+            .map_err(|_| error("could not serialize KZGCommitment"))
     }
 }
 
-impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
+impl<E: PairingEngine> ToMinimalBits for KZGCommitment<E> {
     fn to_minimal_bits(&self) -> Vec<bool> {
         self.0.to_minimal_bits()
     }
 }
 
-impl<E: PairingEngine> Commitment<E> {
+impl<E: PairingEngine> KZGCommitment<E> {
     #[inline]
     pub fn empty() -> Self {
-        Commitment(E::G1Affine::zero())
+        KZGCommitment(E::G1Affine::zero())
     }
 
     pub fn has_degree_bound(&self) -> bool {
@@ -406,22 +408,22 @@ impl<E: PairingEngine> Commitment<E> {
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E> {
+impl<E: PairingEngine> ToConstraintField<E::Fq> for KZGCommitment<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         self.0.to_field_elements()
     }
 }
 
-/// `PreparedCommitment` commits to a polynomial and prepares for mul_bits.
+/// `PreparedKZGCommitment` commits to a polynomial and prepares for mul_bits.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct PreparedCommitment<E: PairingEngine>(
+pub struct PreparedKZGCommitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub Vec<E::G1Affine>,
 );
 
-impl<E: PairingEngine> PreparedCommitment<E> {
-    /// prepare `PreparedCommitment` from `Commitment`
-    pub fn prepare(comm: &Commitment<E>) -> Self {
+impl<E: PairingEngine> PreparedKZGCommitment<E> {
+    /// prepare `PreparedKZGCommitment` from `KZGCommitment`
+    pub fn prepare(comm: &KZGCommitment<E>) -> Self {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
         let mut cur = E::G1Projective::from(comm.0);
 
@@ -436,25 +438,27 @@ impl<E: PairingEngine> PreparedCommitment<E> {
     }
 }
 
-/// `Randomness` hides the polynomial inside a commitment. It is output by `KZG10::commit`.
+/// `KZGRandomness` hides the polynomial inside a commitment. It is output by `KZG10::commit`.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Randomness<E: PairingEngine> {
+pub struct KZGRandomness<E: PairingEngine> {
     /// For KZG10, the commitment randomness is a random polynomial.
     pub blinding_polynomial: DensePolynomial<E::Fr>,
 }
-impl<E: PairingEngine> FromBytes for Randomness<E> {
+impl<E: PairingEngine> FromBytes for KZGRandomness<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize Randomness"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader)
+            .map_err(|_| error("could not deserialize KZGRandomness"))
     }
 }
 
-impl<E: PairingEngine> ToBytes for Randomness<E> {
+impl<E: PairingEngine> ToBytes for KZGRandomness<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize Randomness"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer)
+            .map_err(|_| error("could not serialize KZGRandomness"))
     }
 }
 
-impl<E: PairingEngine> Randomness<E> {
+impl<E: PairingEngine> KZGRandomness<E> {
     /// Does `self` provide any hiding properties to the corresponding commitment?
     /// `self.is_hiding() == true` only if the underlying polynomial is non-zero.
     #[inline]
@@ -469,20 +473,20 @@ impl<E: PairingEngine> Randomness<E> {
     }
 }
 
-impl<E: PairingEngine> Randomness<E> {
+impl<E: PairingEngine> KZGRandomness<E> {
     pub fn empty() -> Self {
         Self { blinding_polynomial: DensePolynomial::zero() }
     }
 
     pub fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
-        let mut randomness = Randomness::empty();
+        let mut randomness = KZGRandomness::empty();
         let hiding_poly_degree = Self::calculate_hiding_polynomial_degree(hiding_bound);
         randomness.blinding_polynomial = DensePolynomial::rand(hiding_poly_degree, rng);
         randomness
     }
 }
 
-impl<'a, E: PairingEngine> Add<&'a Randomness<E>> for Randomness<E> {
+impl<'a, E: PairingEngine> Add<&'a KZGRandomness<E>> for KZGRandomness<E> {
     type Output = Self;
 
     #[inline]
@@ -492,33 +496,33 @@ impl<'a, E: PairingEngine> Add<&'a Randomness<E>> for Randomness<E> {
     }
 }
 
-impl<'a, E: PairingEngine> Add<(E::Fr, &'a Randomness<E>)> for Randomness<E> {
+impl<'a, E: PairingEngine> Add<(E::Fr, &'a KZGRandomness<E>)> for KZGRandomness<E> {
     type Output = Self;
 
     #[inline]
-    fn add(mut self, other: (E::Fr, &'a Randomness<E>)) -> Self {
+    fn add(mut self, other: (E::Fr, &'a KZGRandomness<E>)) -> Self {
         self += other;
         self
     }
 }
 
-impl<'a, E: PairingEngine> AddAssign<&'a Randomness<E>> for Randomness<E> {
+impl<'a, E: PairingEngine> AddAssign<&'a KZGRandomness<E>> for KZGRandomness<E> {
     #[inline]
     fn add_assign(&mut self, other: &'a Self) {
         self.blinding_polynomial += &other.blinding_polynomial;
     }
 }
 
-impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<E> {
+impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a KZGRandomness<E>)> for KZGRandomness<E> {
     #[inline]
-    fn add_assign(&mut self, (f, other): (E::Fr, &'a Randomness<E>)) {
+    fn add_assign(&mut self, (f, other): (E::Fr, &'a KZGRandomness<E>)) {
         self.blinding_polynomial += (f, &other.blinding_polynomial);
     }
 }
 
-/// `Proof` is an evaluation proof that is output by `KZG10::open`.
+/// `KZGProof` is an evaluation proof that is output by `KZG10::open`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Proof<E: PairingEngine> {
+pub struct KZGProof<E: PairingEngine> {
     /// This is a commitment to the witness polynomial; see [\[KZG10\]][kzg] for more details.
     ///
     /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
@@ -528,7 +532,7 @@ pub struct Proof<E: PairingEngine> {
     pub random_v: Option<E::Fr>,
 }
 
-impl<E: PairingEngine> Proof<E> {
+impl<E: PairingEngine> KZGProof<E> {
     pub fn absorb_into_sponge(&self, sponge: &mut impl AlgebraicSponge<E::Fq, 2>) {
         sponge.absorb_native_field_elements(&self.w.to_field_elements().unwrap());
         if let Some(random_v) = self.random_v {
@@ -537,19 +541,19 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
-impl<E: PairingEngine> FromBytes for Proof<E> {
+impl<E: PairingEngine> FromBytes for KZGProof<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize proof"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize KZG proof"))
     }
 }
 
-impl<E: PairingEngine> ToBytes for Proof<E> {
+impl<E: PairingEngine> ToBytes for KZGProof<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize proof"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize KZG proof"))
     }
 }
 
-impl<E: PairingEngine> Proof<E> {
+impl<E: PairingEngine> KZGProof<E> {
     pub fn is_hiding(&self) -> bool {
         self.random_v.is_some()
     }

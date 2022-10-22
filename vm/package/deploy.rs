@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::Deployment;
+use crate::synthesizer::Deployment;
 use snarkvm_console::types::Address;
 
 use super::*;

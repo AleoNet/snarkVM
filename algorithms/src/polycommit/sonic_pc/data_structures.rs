@@ -33,13 +33,13 @@ use super::{LabeledPolynomial, PolynomialInfo};
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
 
 /// `Randomness` is the randomness for the KZG10 scheme.
-pub type Randomness<E> = kzg10::Randomness<E>;
+pub type Randomness<E> = kzg10::KZGRandomness<E>;
 
 /// `Commitment` is the commitment for the KZG10 scheme.
-pub type Commitment<E> = kzg10::Commitment<E>;
+pub type Commitment<E> = kzg10::KZGCommitment<E>;
 
 /// `PreparedCommitment` is the prepared commitment for the KZG10 scheme.
-pub type PreparedCommitment<E> = kzg10::PreparedCommitment<E>;
+pub type PreparedCommitment<E> = kzg10::PreparedKZGCommitment<E>;
 
 impl<E: PairingEngine> Prepare for Commitment<E> {
     type Prepared = PreparedCommitment<E>;
@@ -53,7 +53,7 @@ impl<E: PairingEngine> Prepare for Commitment<E> {
             cur.double_in_place();
         }
 
-        kzg10::PreparedCommitment::<E>(prepared_comm)
+        kzg10::PreparedKZGCommitment::<E>(prepared_comm)
     }
 }
 
@@ -63,7 +63,7 @@ pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
 
-    /// The key used to commit to polynomials.
+    /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
 
     /// The key used to commit to hiding polynomials.
@@ -487,7 +487,7 @@ impl<E: PairingEngine> Prepare for VerifierKey<E> {
 
 /// Evaluation proof at a query set.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
-pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::Proof<E>>);
+pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::KZGProof<E>>);
 
 impl<E: PairingEngine> BatchProof<E> {
     pub fn is_hiding(&self) -> bool {

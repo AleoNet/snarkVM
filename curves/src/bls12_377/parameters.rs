@@ -38,7 +38,7 @@ use crate::{
     traits::{PairingCurve, PairingEngine},
 };
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Bls12_377Parameters;
 
 impl Bls12Parameters for Bls12_377Parameters {
