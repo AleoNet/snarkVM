@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ProgramStorage;
+use crate::{ledger::STARTING_SUPPLY, ProgramStorage};
 
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
@@ -31,7 +31,7 @@ impl<N: Network> Block<N> {
         // Prepare the function name.
         let function_name = FromStr::from_str("genesis")?;
         // Prepare the function inputs.
-        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str("1_100_000_000_000_000_u64")?];
+        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str(&format!("{STARTING_SUPPLY}_u64"))?];
         // Authorize the call to start.
         let authorization = vm.authorize(private_key, &program_id, function_name, &inputs, rng)?;
         // Execute the genesis function.
@@ -44,8 +44,11 @@ impl<N: Network> Block<N> {
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
+        // Prepare the coinbase proof.
+        let coinbase_proof = None; // The genesis block does not require a coinbase proof.
+
         // Construct the block.
-        let block = Self::new(private_key, previous_hash, header, transactions, rng)?;
+        let block = Self::new(private_key, previous_hash, header, transactions, coinbase_proof, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -61,6 +64,8 @@ impl<N: Network> Block<N> {
             && self.header.is_genesis()
             // Ensure there is 1 transaction in the genesis block.
             && self.transactions.len() == 1
+            // Ensure the coinbase proof does not exist.
+            && self.coinbase_proof.is_none()
     }
 }
 

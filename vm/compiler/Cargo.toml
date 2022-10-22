@@ -28,6 +28,13 @@ name = "block"
 path = "benches/block.rs"
 harness = false
 
+[[bench]]
+name = "coinbase_puzzle"
+path = "benches/coinbase_puzzle.rs"
+harness = false
+# cargo bench --bench coinbase_puzzle --features=setup
+required-features = ["setup"]
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
@@ -57,6 +64,10 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0.64"
+
+[dependencies.blake2]
+version = "0.10"
+default-features = false
 
 [dependencies.colored]
 version = "2"
@@ -113,3 +124,4 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 aleo-cli = [ ]
+setup = []
