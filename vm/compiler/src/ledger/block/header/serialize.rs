@@ -21,9 +21,10 @@ impl<N: Network> Serialize for Header<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("Header", 3)?;
+                let mut header = serializer.serialize_struct("Header", 4)?;
                 header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
+                header.serialize_field("coinbase_accumulator_point", &self.coinbase_accumulator_point)?;
                 header.serialize_field("metadata", &self.metadata)?;
                 header.end()
             }
@@ -41,6 +42,7 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
                 Ok(Self::from(
                     serde_json::from_value(header["previous_state_root"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["transactions_root"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["coinbase_accumulator_point"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["metadata"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)

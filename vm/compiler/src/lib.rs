@@ -24,6 +24,9 @@
 #[macro_use]
 extern crate tracing;
 
+mod coinbase_puzzle;
+pub use coinbase_puzzle::*;
+
 mod ledger;
 pub use ledger::*;
 

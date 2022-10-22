@@ -20,6 +20,9 @@ pub use block::*;
 pub mod map;
 pub use map::*;
 
+mod helpers;
+pub use helpers::*;
+
 mod state_path;
 pub use state_path::*;
 
@@ -41,7 +44,14 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::program::Program;
+use crate::{
+    ledger::helpers::{anchor_block_height, coinbase_reward, coinbase_target, proof_target},
+    program::Program,
+    CoinbasePuzzle,
+    CoinbaseSolution,
+    EpochChallenge,
+    ProverSolution,
+};
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
@@ -51,7 +61,7 @@ use console::{
 };
 
 use anyhow::Result;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use std::borrow::Cow;
 use time::OffsetDateTime;
 
@@ -60,6 +70,27 @@ use rayon::prelude::*;
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
+
+// TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
+
+/// The anchor time per block in seconds, which must be greater than the round time per block.
+pub const ANCHOR_TIME: u16 = 20;
+/// The coinbase puzzle degree.
+pub const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
+/// The maximum number of prover solutions that can be included per block.
+pub const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
+/// The number of blocks per epoch (1 hour).
+pub const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
+
+/// The fixed timestamp of the genesis block.
+pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+/// The genesis block coinbase target.
+pub const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
+/// The genesis block proof target.
+pub const GENESIS_PROOF_TARGET: u64 = 0; // 00 0000 0000
+
+/// The starting supply of Aleo credits.
+pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
@@ -101,6 +132,12 @@ pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     validators: IndexMap<Address<N>, ()>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
+
+    /// The coinbase puzzle.
+    coinbase_puzzle: CoinbasePuzzle<N>,
+    /// The memory pool of proposed coinbase puzzle solutions for the current epoch.
+    coinbase_memory_pool: IndexSet<ProverSolution<N>>,
+
     /// The VM state.
     vm: VM<N, P>,
     // /// The mapping of program IDs to their global state.
@@ -132,6 +169,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             bail!("Genesis block already exists in the ledger.");
         }
 
+        // Load the coinbase puzzle.
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
+
         // Initialize the ledger.
         let mut ledger = Self {
             current_hash: Default::default(),
@@ -145,6 +185,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: [(address, ())].into_iter().collect(),
             vm,
             memory_pool: Default::default(),
+            coinbase_puzzle,
+            coinbase_memory_pool: Default::default(),
         };
 
         // Add the genesis block.
@@ -169,6 +211,9 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Initialize a new VM.
         let vm = VM::<N, P>::from(&blocks, store)?;
 
+        // Load the coinbase puzzle.
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
+
         // Initialize the ledger.
         let mut ledger = Self {
             current_hash: Default::default(),
@@ -182,6 +227,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             validators: Default::default(),
             vm,
             memory_pool: Default::default(),
+            coinbase_puzzle,
+            coinbase_memory_pool: Default::default(),
         };
 
         // Fetch the latest height.
@@ -249,6 +296,31 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         Ok(())
     }
 
+    /// Appends the given prover solution to the coinbase memory pool.
+    pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
+        // Ensure that prover solutions are not accepted after 10 years.
+        if self.latest_height() > anchor_block_height(ANCHOR_TIME, 10) {
+            bail!("Coinbase proofs are no longer accepted after year 10.");
+        }
+
+        // Compute the current epoch challenge.
+        let epoch_challenge = self.latest_epoch_challenge()?;
+        // Retrieve the current proof target.
+        let proof_target = self.latest_proof_target()?;
+
+        // Ensure that the prover solution is valid for the given epoch.
+        if !prover_solution.verify(self.coinbase_puzzle.coinbase_verifying_key()?, &epoch_challenge, proof_target)? {
+            bail!("Prover puzzle '{}' is invalid for the given epoch.", prover_solution.commitment().0);
+        }
+
+        // Insert the prover solution to the memory pool.
+        if !self.coinbase_memory_pool.insert(prover_solution) {
+            bail!("Prover puzzle '{}' already exists in the memory pool.", prover_solution.commitment().0);
+        }
+
+        Ok(())
+    }
+
     /// Returns a candidate for the next block in the ledger.
     pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // Construct the transactions for the block.
@@ -273,30 +345,92 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transcations.into_iter().collect::<Transactions<N>>()
         };
 
+        // Select the prover solutions from the memory pool.
+        let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_PROVER_SOLUTIONS).cloned().collect::<Vec<_>>();
+
+        // Compute the total cumulative target of the prover puzzle solutions as a u128.
+        let cumulative_prover_target: u128 = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
+            cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
+        })?;
+
+        // TODO (howardwu): Add `has_coinbase` to function arguments.
+        // Construct the coinbase proof.
+        let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+        let (coinbase_proof, coinbase_accumulator_point) = if self.latest_height() > anchor_height_at_year_10
+            || cumulative_prover_target < self.latest_coinbase_target()? as u128
+        {
+            (None, Field::<N>::zero())
+        } else {
+            let epoch_challenge = self.latest_epoch_challenge()?;
+            let coinbase_proof = self.coinbase_puzzle.accumulate_unchecked(&epoch_challenge, &prover_solutions)?;
+            let coinbase_accumulator_point = coinbase_proof.to_accumulator_point()?;
+
+            (Some(coinbase_proof), coinbase_accumulator_point)
+        };
+
         // Fetch the latest block and state root.
         let block = self.latest_block()?;
         let state_root = self.latest_state_root();
 
-        // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
-        let round = block.round() + 1;
-        let coinbase_target = u64::MAX;
-        let proof_target = u64::MAX;
+        // Fetch the new round state.
+        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        let next_height = self.latest_height().saturating_add(1);
+        let round = block.round().saturating_add(1);
 
-        // Construct the metadata.
-        let metadata = Metadata::new(
-            N::ID,
-            round,
-            block.height() + 1,
-            coinbase_target,
-            proof_target,
-            OffsetDateTime::now_utc().unix_timestamp(),
+        // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
+        //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
+        {
+            // Calculate the coinbase reward.
+            let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+                block.timestamp(),
+                timestamp,
+                next_height,
+            )?;
+
+            // Calculate the rewards for the individual provers.
+            let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
+            for prover_solution in prover_solutions {
+                // Prover compensation is defined as:
+                //   1/2 * coinbase_reward * (prover_target / cumulative_prover_target)
+                //   = (coinbase_reward * prover_target) / (2 * cumulative_prover_target)
+
+                // Compute the numerator.
+                let numerator = (coinbase_reward as u128)
+                    .checked_mul(prover_solution.to_target()? as u128)
+                    .ok_or_else(|| anyhow!("Prover reward numerator overflowed"))?;
+
+                // Compute the denominator.
+                let denominator = (cumulative_prover_target as u128)
+                    .checked_mul(2)
+                    .ok_or_else(|| anyhow!("Prover reward denominator overflowed"))?;
+
+                // Compute the prover reward.
+                let prover_reward = u64::try_from(
+                    numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward overflowed"))?,
+                )?;
+
+                prover_rewards.push((prover_solution.address(), prover_reward));
+            }
+        }
+
+        // Construct the new coinbase target.
+        let coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+            self.latest_coinbase_target()?,
+            block.timestamp(),
+            timestamp,
         )?;
 
+        // Construct the new proof target.
+        let proof_target = proof_target(coinbase_target);
+
+        // Construct the metadata.
+        let metadata = Metadata::new(N::ID, round, next_height, coinbase_target, proof_target, timestamp)?;
+
         // Construct the header.
-        let header = Header::from(*state_root, transactions.to_root()?, metadata)?;
+        let header = Header::from(*state_root, transactions.to_root()?, coinbase_accumulator_point, metadata)?;
 
         // Construct the new block.
-        Block::new(private_key, block.hash(), header, transactions, rng)
+        Block::new(private_key, block.hash(), header, transactions, coinbase_proof, rng)
     }
 
     /// Checks the given block is valid next block.
@@ -332,8 +466,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         if block.height() > 0 && block.header().timestamp() <= self.latest_block()?.header().timestamp() {
             bail!("The given block timestamp is before the current timestamp")
         }
-
-        // TODO (raychu86): Add proof and coinbase target verification.
 
         for transaction_id in block.transaction_ids() {
             // Ensure the transaction in the block do not already exist.
@@ -447,7 +579,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         match block.transactions().to_root() {
             // Ensure the transactions root matches the one in the block header.
             Ok(root) => {
-                if &root != block.header().transactions_root() {
+                if root != block.header().transactions_root() {
                     bail!(
                         "Block {} ({}) has an incorrect transactions root: expected {}",
                         block.height(),
@@ -476,6 +608,34 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let mut transactions_iter = block.transactions().iter();
         if !transactions_iter.all(|(_, transaction)| self.check_transaction(transaction).is_ok()) {
             bail!("Invalid transaction found in the transactions list");
+        }
+
+        /* Coinbase Proof */
+
+        // Ensure the coinbase proof is valid, if it exists.
+        if let Some(coinbase_proof) = block.coinbase_proof() {
+            // Ensure coinbase proofs are not accepted after the anchor block height at year 10.
+            if block.height() > anchor_block_height(ANCHOR_TIME, 10) {
+                bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
+            }
+            // Ensure the coinbase accumulator point matches in the block header.
+            if block.header().coinbase_accumulator_point() != coinbase_proof.to_accumulator_point()? {
+                bail!("Coinbase accumulator point does not match the coinbase proof.");
+            }
+            // Ensure the coinbase proof is valid.
+            if !self.coinbase_puzzle.verify(
+                coinbase_proof,
+                &self.latest_epoch_challenge()?,
+                self.latest_coinbase_target()?,
+                self.latest_proof_target()?,
+            )? {
+                bail!("Invalid coinbase proof: {:?}", coinbase_proof);
+            }
+        } else {
+            // Ensure that the block header does not contain a coinbase accumulator point.
+            if block.header().coinbase_accumulator_point() != Field::<N>::zero() {
+                bail!("Coinbase accumulator point should be zero as there is no coinbase proof in the block.");
+            }
         }
 
         /* Fees */
@@ -525,13 +685,17 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 ledger.vm.finalize(transaction)?;
             }
 
-            // Clear the memory pool of these transactions.
-            for transaction_id in block.transaction_ids() {
-                ledger.memory_pool.remove(transaction_id);
+            // Clear the memory pool of the transactions that are now invalid.
+            for (transaction_id, transaction) in self.memory_pool() {
+                if ledger.check_transaction(transaction).is_err() {
+                    ledger.memory_pool.remove(transaction_id);
+                }
             }
 
-            // Clear the memory pool of the transactions that are now invalid.
-            ledger.memory_pool.retain(|_, transaction| self.check_transaction(transaction).is_ok());
+            // Clear the coinbase memory pool of the coinbase proofs if a new epoch has started.
+            if block.epoch_number() > self.latest_epoch_number() {
+                ledger.coinbase_memory_pool.clear();
+            }
 
             *self = Self {
                 current_hash: ledger.current_hash,
@@ -544,6 +708,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 validators: ledger.validators,
                 vm: ledger.vm,
                 memory_pool: ledger.memory_pool,
+                coinbase_puzzle: ledger.coinbase_puzzle,
+                coinbase_memory_pool: ledger.coinbase_memory_pool,
             };
         }
 
@@ -581,6 +747,16 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns the memory pool.
     pub const fn memory_pool(&self) -> &IndexMap<N::TransactionID, Transaction<N>> {
         &self.memory_pool
+    }
+
+    /// Returns the coinbase puzzle.
+    pub const fn coinbase_puzzle(&self) -> &CoinbasePuzzle<N> {
+        &self.coinbase_puzzle
+    }
+
+    /// Returns the coinbase memory pool.
+    pub const fn coinbase_memory_pool(&self) -> &IndexSet<ProverSolution<N>> {
+        &self.coinbase_memory_pool
     }
 
     /// Returns a state path for the given commitment.
@@ -635,7 +811,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Construct the block header path.
         let block_header = block.header();
         let header_root = block_header.to_root()?;
-        let header_leaf = HeaderLeaf::<N>::new(1, *block_header.transactions_root());
+        let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
         let header_path = block_header.to_path(&header_leaf)?;
 
         // Construct the state root and block path.
@@ -657,16 +833,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             transition_path,
             transition_leaf,
         )
-    }
-
-    /// Returns the expected coinbase target given the previous block and expected next block details.
-    pub fn compute_coinbase_target(_anchor_block_header: &Header<N>, _block_timestamp: i64, _block_height: u32) -> u64 {
-        unimplemented!()
-    }
-
-    /// Returns the expected proof target given the previous block and expected next block details.
-    pub fn compute_proof_target(_anchor_block_header: &Header<N>, _block_timestamp: i64, _block_height: u32) -> u64 {
-        unimplemented!()
     }
 
     /// Checks the given transaction is well formed and unique.
@@ -774,76 +940,6 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         Ok(())
     }
-
-    // /// Adds the given transaction to the transaction store.
-    // pub fn insert(&mut self, transaction: Transaction<N>) -> Result<()> {
-    //     // Check that there are not collisions with existing transactions.
-    //     self.check_transaction(&transaction)?;
-    //
-    //     /* ATOMIC CODE SECTION */
-    //
-    //     // Insert the transaction. This code section executes atomically.
-    //     {
-    //         let mut transaction_store = self.clone();
-    //
-    //         for transition in transaction.transitions() {
-    //             let transition_id = transition.id();
-    //
-    //             // Insert the transitions.
-    //             transaction_store.transitions.insert(*transition_id, transition.clone())?;
-    //
-    //             // Insert the transition public key.
-    //             transaction_store.transition_public_keys.insert(*transition.tpk(), *transition_id)?;
-    //
-    //             // Insert the serial numbers.
-    //             for serial_number in transition.serial_numbers() {
-    //                 transaction_store.serial_numbers.insert(*serial_number, *transition_id)?;
-    //             }
-    //
-    //             // Insert the commitments.
-    //             for commitment in transition.commitments() {
-    //                 transaction_store.commitments.insert(*commitment, *transition_id)?;
-    //             }
-    //
-    //             // Insert the origins.
-    //             for origin in transition.origins() {
-    //                 transaction_store.origins.insert(*origin, *transition_id)?;
-    //             }
-    //
-    //             // Insert the nonces.
-    //             for nonce in transition.nonces() {
-    //                 transaction_store.nonces.insert(*nonce, *transition_id)?;
-    //             }
-    //         }
-    //
-    //         // Insert the deployment or execution.
-    //         match transaction {
-    //             Transaction::Deploy(transaction_id, deployment, additional_fee) => {
-    //                 transaction_store.deployments.insert(transaction_id, (deployment, *additional_fee.id()))?;
-    //             }
-    //             Transaction::Execute(transaction_id, execution, additional_fee) => {
-    //                 let transition_ids = execution.iter().map(|transition| *transition.id()).collect();
-    //
-    //                 transaction_store
-    //                     .executions
-    //                     .insert(transaction_id, (transition_ids, additional_fee.map(|t| *t.id())))?;
-    //             }
-    //         }
-    //
-    //         *self = Self {
-    //             deployments: transaction_store.deployments,
-    //             executions: transaction_store.executions,
-    //             transitions: transaction_store.transitions,
-    //             transition_public_keys: transaction_store.transition_public_keys,
-    //             origins: transaction_store.origins,
-    //             serial_numbers: transaction_store.serial_numbers,
-    //             commitments: transaction_store.commitments,
-    //             nonces: transaction_store.nonces,
-    //         };
-    //     }
-    //
-    //     Ok(())
-    // }
 }
 
 #[cfg(test)]
@@ -1134,5 +1230,79 @@ mod tests {
             assert_eq!(ledger.latest_height(), height);
             assert_eq!(ledger.latest_hash(), next_block.hash());
         }
+    }
+
+    #[test]
+    #[traced_test]
+    fn test_proof_target() {
+        let rng = &mut TestRng::default();
+
+        // Sample the genesis private key and address.
+        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Sample the genesis ledger.
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
+
+        // Fetch the proof target and epoch challenge for the block.
+        let proof_target = ledger.latest_proof_target().unwrap();
+        let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+
+        for _ in 0..100 {
+            // Generate a prover solution.
+            let prover_solution = ledger.coinbase_puzzle.prove(&epoch_challenge, address, rng.gen()).unwrap();
+
+            // Check that the prover solution meets the proof target requirement.
+            if prover_solution.to_target().unwrap() >= proof_target {
+                assert!(ledger.add_to_coinbase_memory_pool(prover_solution).is_ok())
+            } else {
+                assert!(ledger.add_to_coinbase_memory_pool(prover_solution).is_err())
+            }
+        }
+    }
+
+    #[test]
+    #[traced_test]
+    fn test_coinbase_target() {
+        let rng = &mut TestRng::default();
+
+        // Sample the genesis private key and address.
+        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Sample the genesis ledger.
+        let mut ledger = test_helpers::sample_genesis_ledger(rng);
+
+        // Add a transaction to the memory pool.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        ledger.add_to_memory_pool(transaction).unwrap();
+
+        // Ensure that the ledger can't create a block that satisfies the coinbase target.
+        let proposed_block = ledger.propose_next_block(&private_key, rng).unwrap();
+        // Ensure the block does not contain a coinbase proof.
+        assert!(proposed_block.coinbase_proof().is_none());
+
+        // Check that the ledger won't generate a block for a cumulative target that does not meet the requirements.
+        let mut cumulative_target = 0u128;
+        let epoch_challenge = ledger.latest_epoch_challenge().unwrap();
+
+        while cumulative_target < ledger.latest_coinbase_target().unwrap() as u128 {
+            // Generate a prover solution.
+            let prover_solution = match ledger.coinbase_puzzle.prove(&epoch_challenge, address, rng.gen()) {
+                Ok(prover_solution) => prover_solution,
+                Err(_) => continue,
+            };
+
+            // Try to add the prover solution to the memory pool.
+            if ledger.add_to_coinbase_memory_pool(prover_solution).is_ok() {
+                // Add to the cumulative target if the prover solution is valid.
+                cumulative_target += prover_solution.to_target().unwrap() as u128;
+            }
+        }
+
+        // Ensure that the ledger can create a block that satisfies the coinbase target.
+        let proposed_block = ledger.propose_next_block(&private_key, rng).unwrap();
+        // Ensure the block contains a coinbase proof.
+        assert!(proposed_block.coinbase_proof().is_some());
     }
 }

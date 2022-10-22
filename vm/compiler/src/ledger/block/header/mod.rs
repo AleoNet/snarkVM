@@ -42,15 +42,22 @@ pub struct Header<N: Network> {
     previous_state_root: Field<N>,
     /// The Merkle root representing the transactions in the block.
     transactions_root: Field<N>,
+    /// The accumulator point of the coinbase puzzle.
+    coinbase_accumulator_point: Field<N>,
     /// The metadata of the block.
     metadata: Metadata<N>,
 }
 
 impl<N: Network> Header<N> {
     /// Initializes a new block header with the given inputs.
-    pub fn from(previous_state_root: Field<N>, transactions_root: Field<N>, metadata: Metadata<N>) -> Result<Self> {
+    pub fn from(
+        previous_state_root: Field<N>,
+        transactions_root: Field<N>,
+        coinbase_accumulator_point: Field<N>,
+        metadata: Metadata<N>,
+    ) -> Result<Self> {
         // Construct a new block header.
-        let header = Self { previous_state_root, transactions_root, metadata };
+        let header = Self { previous_state_root, transactions_root, coinbase_accumulator_point, metadata };
         // Ensure the header is valid.
         match header.is_valid() {
             true => Ok(header),
@@ -74,13 +81,18 @@ impl<N: Network> Header<N> {
     }
 
     /// Returns the previous state root from the block header.
-    pub const fn previous_state_root(&self) -> &Field<N> {
-        &self.previous_state_root
+    pub const fn previous_state_root(&self) -> Field<N> {
+        self.previous_state_root
     }
 
     /// Returns the transactions root in the block header.
-    pub const fn transactions_root(&self) -> &Field<N> {
-        &self.transactions_root
+    pub const fn transactions_root(&self) -> Field<N> {
+        self.transactions_root
+    }
+
+    /// Returns the coinbase puzzle accumulator point in the block header.
+    pub const fn coinbase_accumulator_point(&self) -> Field<N> {
+        self.coinbase_accumulator_point
     }
 
     /// Returns the metadata in the block header.

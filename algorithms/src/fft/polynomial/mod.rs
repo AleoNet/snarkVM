@@ -132,6 +132,11 @@ impl<F: Field> TryInto<SparsePolynomial<F>> for Polynomial<'_, F> {
 }
 
 impl<'a, F: Field> Polynomial<'a, F> {
+    /// The zero polynomial.
+    pub fn zero() -> Self {
+        Sparse(Cow::Owned(SparsePolynomial::zero()))
+    }
+
     /// Checks if the given polynomial is zero.
     pub fn is_zero(&self) -> bool {
         match self {
