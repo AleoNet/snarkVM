@@ -127,6 +127,15 @@ commands:
           cache_key: << parameters.cache_key >>
 
 jobs:
+  snarkvm:
+    docker:
+      - image: cimg/rust:1.64
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: .
+          cache_key: snarkvm-stable-cache
+
   algorithms:
     docker:
       - image: cimg/rust:1.64
@@ -562,6 +571,7 @@ workflows:
 
   main-workflow:
     jobs:
+      - snarkvm
       - algorithms
       - circuit
       - circuit-account
