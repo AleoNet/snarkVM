@@ -127,7 +127,7 @@ impl<A: Aleo> Eject for StatePath<A> {
 
     /// Ejects the ciphertext.
     fn eject_value(&self) -> Self::Primitive {
-        match Self::Primitive::new(
+        match Self::Primitive::from(
             self.state_root.eject_value().into(),
             self.block_path.eject_value(),
             self.block_hash.eject_value().into(),

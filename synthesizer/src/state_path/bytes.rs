@@ -42,7 +42,7 @@ impl<N: Network> FromBytes for StatePath<N> {
         let transition_leaf = FromBytes::read_le(&mut reader)?;
 
         // Construct the state path.
-        Self::new(
+        Self::from(
             state_root,
             block_path,
             block_hash,
