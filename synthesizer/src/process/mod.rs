@@ -24,14 +24,10 @@ mod evaluate;
 mod execute;
 
 use crate::{
-    ledger::{ProgramStorage, ProgramStore},
-    AdditionalFee,
-    Instruction,
-    Operand,
-    Program,
-    ProvingKey,
-    UniversalSRS,
-    VerifyingKey,
+    block::AdditionalFee,
+    program::{Instruction, Operand, Program},
+    snark::{ProvingKey, UniversalSRS, VerifyingKey},
+    store::{ProgramStorage, ProgramStore},
 };
 use console::{
     account::PrivateKey,

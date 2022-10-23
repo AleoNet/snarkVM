@@ -14,29 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod block;
-pub use block::*;
-
-pub mod map;
-pub use map::*;
-
 mod helpers;
 pub use helpers::*;
-
-mod state_path;
-pub use state_path::*;
-
-mod store;
-pub use store::*;
-
-mod transaction;
-pub use transaction::*;
-
-pub mod transition;
-pub use transition::*;
-
-mod vm;
-pub use vm::*;
 
 mod contains;
 mod find;
@@ -45,17 +24,18 @@ mod iterators;
 mod latest;
 
 use crate::{
+    block::{Block, BlockTree, Header, HeaderLeaf, Metadata, Origin, Transaction, Transactions},
+    coinbase_puzzle::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution},
     ledger::helpers::{anchor_block_height, coinbase_reward, coinbase_target, proof_target},
     program::Program,
-    CoinbasePuzzle,
-    CoinbaseSolution,
-    EpochChallenge,
-    ProverSolution,
+    store::{BlockMemory, BlockStorage, BlockStore, ProgramStorage, ProgramStore, TransactionStore, TransitionStore},
+    vm::VM,
+    ProgramMemory,
+    StatePath,
 };
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
@@ -67,35 +47,6 @@ use time::OffsetDateTime;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-
-/// The depth of the Merkle tree for the blocks.
-const BLOCKS_DEPTH: u8 = 32;
-
-// TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
-
-/// The anchor time per block in seconds, which must be greater than the round time per block.
-pub const ANCHOR_TIME: u16 = 20;
-/// The coinbase puzzle degree.
-pub const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
-/// The maximum number of prover solutions that can be included per block.
-pub const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
-/// The number of blocks per epoch (1 hour).
-pub const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
-
-/// The fixed timestamp of the genesis block.
-pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
-/// The genesis block coinbase target.
-pub const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
-/// The genesis block proof target.
-pub const GENESIS_PROOF_TARGET: u64 = 0; // 00 0000 0000
-
-/// The starting supply of Aleo credits.
-pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
-
-/// The Merkle tree for the block state.
-pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
-/// The Merkle path for the state tree blocks.
-pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Copy, Clone, Debug)]
 pub enum RecordsFilter<N: Network> {
@@ -170,7 +121,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Load the coinbase puzzle.
-        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load()?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -212,7 +163,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let vm = VM::<N, P>::from(&blocks, store)?;
 
         // Load the coinbase puzzle.
-        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load()?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -299,7 +250,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the coinbase memory pool.
     pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
         // Ensure that prover solutions are not accepted after 10 years.
-        if self.latest_height() > anchor_block_height(ANCHOR_TIME, 10) {
+        if self.latest_height() > anchor_block_height(N::ANCHOR_TIME, 10) {
             bail!("Coinbase proofs are no longer accepted after year 10.");
         }
 
@@ -346,7 +297,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         };
 
         // Select the prover solutions from the memory pool.
-        let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_PROVER_SOLUTIONS).cloned().collect::<Vec<_>>();
+        let prover_solutions =
+            self.coinbase_memory_pool.iter().take(N::MAX_PROVER_SOLUTIONS).cloned().collect::<Vec<_>>();
 
         // Compute the total cumulative target of the prover puzzle solutions as a u128.
         let cumulative_prover_target: u128 = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
@@ -355,7 +307,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+        let anchor_height_at_year_10 = anchor_block_height(N::ANCHOR_TIME, 10);
         let (coinbase_proof, coinbase_accumulator_point) = if self.latest_height() > anchor_height_at_year_10
             || cumulative_prover_target < self.latest_coinbase_target()? as u128
         {
@@ -381,11 +333,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
         {
             // Calculate the coinbase reward.
-            let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-                block.timestamp(),
-                timestamp,
-                next_height,
-            )?;
+            let coinbase_reward =
+                coinbase_reward(block.timestamp(), timestamp, next_height, N::STARTING_SUPPLY, N::ANCHOR_TIME)?;
 
             // Calculate the rewards for the individual provers.
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
@@ -414,10 +363,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Construct the new coinbase target.
-        let coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+        let coinbase_target = coinbase_target(
             self.latest_coinbase_target()?,
             block.timestamp(),
             timestamp,
+            N::ANCHOR_TIME,
+            N::NUM_BLOCKS_PER_EPOCH,
         )?;
 
         // Construct the new proof target.
@@ -616,7 +567,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
             // Ensure coinbase proofs are not accepted after the anchor block height at year 10.
-            if block.height() > anchor_block_height(ANCHOR_TIME, 10) {
+            if block.height() > anchor_block_height(N::ANCHOR_TIME, 10) {
                 bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
             }
             // Ensure the coinbase accumulator point matches in the block header.
@@ -968,7 +919,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let vm = crate::ledger::vm::test_helpers::sample_vm();
+                let vm = crate::vm::test_helpers::sample_vm();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
@@ -985,7 +936,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let vm = crate::ledger::vm::test_helpers::sample_vm();
+                let vm = crate::vm::test_helpers::sample_vm();
                 // Return the block.
                 Block::genesis(&vm, &private_key, rng).unwrap()
             })
@@ -1032,7 +983,7 @@ mod tests {
         let address = Address::try_from(&view_key).unwrap();
 
         // Initialize the VM.
-        let vm = crate::ledger::vm::test_helpers::sample_vm();
+        let vm = crate::vm::test_helpers::sample_vm();
 
         // Create a genesis block.
         let genesis = Block::genesis(&vm, &private_key, rng).unwrap();
@@ -1121,7 +1072,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1154,7 +1105,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1270,7 +1221,7 @@ mod tests {
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction).unwrap();
 
         // Ensure that the ledger can't create a block that satisfies the coinbase target.

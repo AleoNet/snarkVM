@@ -20,11 +20,11 @@ use super::*;
 ///     R_staking = floor((0.025 * S) / H_Y1)
 ///     S = Starting supply.
 ///     H_Y1 = Anchor block height at year 1.
-pub const fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>() -> u64 {
+pub const fn staking_reward(starting_supply: u64, anchor_time: u16) -> u64 {
     // Compute the anchor block height at year 1.
-    let anchor_height_at_year_1 = anchor_block_height(ANCHOR_TIME, 1);
+    let anchor_height_at_year_1 = anchor_block_height(anchor_time, 1);
     // Compute the annual staking reward: (0.025 * S).
-    let annual_staking_reward = (STARTING_SUPPLY / 1000) * 25;
+    let annual_staking_reward = (starting_supply / 1000) * 25;
     // Compute the staking reward: (0.025 * S) / H_Y1.
     annual_staking_reward / anchor_height_at_year_1 as u64
 }
@@ -36,15 +36,17 @@ pub const fn staking_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>(
 ///     H = Current block height.
 ///     D = Time elapsed since the previous block.
 ///     B = Anchor block time.
-pub fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16, const NUM_BLOCKS_PER_EPOCH: u32>(
+pub fn coinbase_reward(
     previous_timestamp: i64,
     timestamp: i64,
     block_height: u32,
+    starting_supply: u64,
+    anchor_time: u16,
 ) -> Result<u64> {
     // Compute the anchor block height at year 10.
-    let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+    let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10);
     // Compute the anchor reward.
-    let anchor_reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+    let anchor_reward = anchor_reward(starting_supply, anchor_time);
     // Compute the remaining blocks until year 10, as a u64.
     let num_remaining_blocks_to_year_10 = anchor_height_at_year_10.saturating_sub(block_height) as u64;
     // Return the coinbase reward.
@@ -53,7 +55,7 @@ pub fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16, const
         0 => Ok(0),
         // Until the anchor block height at year 10, the coinbase reward is determined by this equation:
         //   (num_remaining_blocks_to_year_10 * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / ANCHOR_TIME}
-        reward => retarget::<ANCHOR_TIME>(reward, previous_timestamp, timestamp, ANCHOR_TIME as u32, true),
+        reward => retarget(reward, previous_timestamp, timestamp, anchor_time as u32, true, anchor_time),
     }
 }
 
@@ -61,11 +63,11 @@ pub fn coinbase_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16, const
 ///     R_anchor = floor((2 * S) / (H_Y10 * (H_Y10 + 1))).
 ///     S = Starting supply.
 ///     H_Y10 = Expected block height at year 10.
-const fn anchor_reward<const STARTING_SUPPLY: u64, const ANCHOR_TIME: u16>() -> u64 {
+const fn anchor_reward(starting_supply: u64, anchor_time: u16) -> u64 {
     // Calculate the anchor block height at year 10.
-    let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10) as u64;
+    let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10) as u64;
     // Compute the numerator.
-    let numerator = 2 * STARTING_SUPPLY;
+    let numerator = 2 * starting_supply;
     // Compute the denominator.
     let denominator = anchor_height_at_year_10 * (anchor_height_at_year_10 + 1);
     // Return the anchor reward.
@@ -83,18 +85,21 @@ pub const fn anchor_block_height(anchor_time: u16, num_years: u32) -> u32 {
 }
 
 /// Calculate the coinbase target for the given block height.
-pub fn coinbase_target<const ANCHOR_TIME: u16, const NUM_BLOCKS_PER_EPOCH: u32>(
+pub fn coinbase_target(
     previous_coinbase_target: u64,
     previous_block_timestamp: i64,
     block_timestamp: i64,
+    anchor_time: u16,
+    num_blocks_per_epoch: u32,
 ) -> Result<u64> {
     // Compute the new coinbase target.
-    let candidate_target = retarget::<ANCHOR_TIME>(
+    let candidate_target = retarget(
         previous_coinbase_target,
         previous_block_timestamp,
         block_timestamp,
-        NUM_BLOCKS_PER_EPOCH,
+        num_blocks_per_epoch,
         true,
+        anchor_time,
     )?;
     // Return the new coinbase target, floored at 2^10 - 1.
     Ok(core::cmp::max((1u64 << 10).saturating_sub(1), candidate_target))
@@ -112,12 +117,13 @@ pub fn proof_target(coinbase_target: u64) -> u64 {
 ///     B = Expected time per block.
 ///     TAU = Rate of doubling (or half-life).
 ///     INV = {-1, 1} depending on whether the target is increasing or decreasing.
-fn retarget<const ANCHOR_TIME: u16>(
+fn retarget(
     previous_target: u64,
     previous_block_timestamp: i64,
     block_timestamp: i64,
     half_life: u32,
     is_inverse: bool,
+    anchor_time: u16,
 ) -> Result<u64> {
     // Compute the difference in block time elapsed, defined as:
     let mut drift = {
@@ -127,7 +133,7 @@ fn retarget<const ANCHOR_TIME: u16>(
 
         // Determine the difference in block time elapsed (in seconds).
         // Note: This operation must be *standard subtraction* to account for faster blocks.
-        block_time_elapsed - ANCHOR_TIME as i64
+        block_time_elapsed - anchor_time as i64
     };
 
     // If the drift is zero, return the previous target.
@@ -199,10 +205,12 @@ fn retarget<const ANCHOR_TIME: u16>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{ANCHOR_TIME, GENESIS_TIMESTAMP, NUM_BLOCKS_PER_EPOCH, STARTING_SUPPLY};
+    use console::network::Testnet3;
     use snarkvm_utilities::TestRng;
 
     use rand::Rng;
+
+    type CurrentNetwork = Testnet3;
 
     const ITERATIONS: usize = 1000;
 
@@ -212,74 +220,84 @@ mod tests {
 
     #[test]
     fn test_anchor_reward() {
-        let reward = anchor_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+        let reward = anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME);
         assert_eq!(reward, EXPECTED_ANCHOR_REWARD);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
+        let larger_reward = anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME + 1);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = anchor_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
+        let smaller_reward = anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME - 1);
         assert!(reward > smaller_reward);
     }
 
     #[test]
     fn test_staking_reward() {
-        let reward = staking_reward::<STARTING_SUPPLY, ANCHOR_TIME>();
+        let reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME);
         assert_eq!(reward, EXPECTED_STAKING_REWARD);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME + 1 }>();
+        let larger_reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME + 1);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = staking_reward::<STARTING_SUPPLY, { ANCHOR_TIME - 1 }>();
+        let smaller_reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME - 1);
         assert!(reward > smaller_reward);
     }
 
     #[test]
     fn test_coinbase_reward() {
-        let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-            GENESIS_TIMESTAMP,
-            GENESIS_TIMESTAMP + ANCHOR_TIME as i64,
+        let reward = coinbase_reward(
+            CurrentNetwork::GENESIS_TIMESTAMP,
+            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64,
             1,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
         assert_eq!(reward, EXPECTED_COINBASE_REWARD_FOR_BLOCK_1);
 
         // Increasing the block time to twice the anchor time *at most* halves the reward.
-        let smaller_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-            GENESIS_TIMESTAMP,
-            GENESIS_TIMESTAMP + (2 * ANCHOR_TIME as i64),
+        let smaller_reward = coinbase_reward(
+            CurrentNetwork::GENESIS_TIMESTAMP,
+            CurrentNetwork::GENESIS_TIMESTAMP + (2 * CurrentNetwork::ANCHOR_TIME as i64),
             1,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
         assert!(smaller_reward >= reward / 2);
 
         // Increasing the block time beyond the anchor time will decrease the reward.
-        let smaller_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-            GENESIS_TIMESTAMP,
-            GENESIS_TIMESTAMP + ANCHOR_TIME as i64 + 1,
+        let smaller_reward = coinbase_reward(
+            CurrentNetwork::GENESIS_TIMESTAMP,
+            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64 + 1,
             1,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
         assert!(reward > smaller_reward);
 
         // Decreasing the block time below the anchor time will increase the reward.
-        let larger_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-            GENESIS_TIMESTAMP,
-            GENESIS_TIMESTAMP + ANCHOR_TIME as i64 - 1,
+        let larger_reward = coinbase_reward(
+            CurrentNetwork::GENESIS_TIMESTAMP,
+            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64 - 1,
             1,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
         assert!(reward < larger_reward);
 
         // Decreasing the block time to 0 *at most* doubles the reward.
-        let larger_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-            GENESIS_TIMESTAMP,
-            GENESIS_TIMESTAMP,
+        let larger_reward = coinbase_reward(
+            CurrentNetwork::GENESIS_TIMESTAMP,
+            CurrentNetwork::GENESIS_TIMESTAMP,
             1,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
         assert!(larger_reward <= reward * 2);
@@ -287,27 +305,31 @@ mod tests {
 
     #[test]
     fn test_coinbase_reward_up_to_year_10() {
-        let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+        let anchor_height_at_year_10 = anchor_block_height(CurrentNetwork::ANCHOR_TIME, 10);
 
         let mut block_height = 1;
-        let mut previous_timestamp = GENESIS_TIMESTAMP;
-        let mut timestamp = GENESIS_TIMESTAMP;
+        let mut previous_timestamp = CurrentNetwork::GENESIS_TIMESTAMP;
+        let mut timestamp = CurrentNetwork::GENESIS_TIMESTAMP;
 
-        let mut previous_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+        let mut previous_reward = coinbase_reward(
             previous_timestamp,
             timestamp,
             block_height,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
 
         block_height *= 2;
-        timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME as i64;
+        timestamp = CurrentNetwork::GENESIS_TIMESTAMP + block_height as i64 * CurrentNetwork::ANCHOR_TIME as i64;
 
         while block_height < anchor_height_at_year_10 {
-            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+            let reward = coinbase_reward(
                 previous_timestamp,
                 timestamp,
                 block_height,
+                CurrentNetwork::STARTING_SUPPLY,
+                CurrentNetwork::ANCHOR_TIME,
             )
             .unwrap();
             assert!(reward <= previous_reward);
@@ -315,7 +337,7 @@ mod tests {
             previous_reward = reward;
             previous_timestamp = timestamp;
             block_height *= 2;
-            timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME as i64;
+            timestamp = CurrentNetwork::GENESIS_TIMESTAMP + block_height as i64 * CurrentNetwork::ANCHOR_TIME as i64;
         }
     }
 
@@ -323,13 +345,15 @@ mod tests {
     fn test_coinbase_reward_after_year_10() {
         let mut rng = TestRng::default();
 
-        let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+        let anchor_height_at_year_10 = anchor_block_height(CurrentNetwork::ANCHOR_TIME, 10);
 
         // Check that block `anchor_height_at_year_10` has a reward of 0.
-        let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-            GENESIS_TIMESTAMP,
-            GENESIS_TIMESTAMP + ANCHOR_TIME as i64,
+        let reward = coinbase_reward(
+            CurrentNetwork::GENESIS_TIMESTAMP,
+            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64,
             anchor_height_at_year_10,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
         )
         .unwrap();
         assert_eq!(reward, 0);
@@ -338,13 +362,16 @@ mod tests {
         for _ in 0..ITERATIONS {
             let block_height: u32 = rng.gen_range(anchor_height_at_year_10..anchor_height_at_year_10 * 10);
 
-            let timestamp = GENESIS_TIMESTAMP + block_height as i64 * ANCHOR_TIME as i64;
-            let new_timestamp = timestamp + ANCHOR_TIME as i64;
+            let timestamp =
+                CurrentNetwork::GENESIS_TIMESTAMP + block_height as i64 * CurrentNetwork::ANCHOR_TIME as i64;
+            let new_timestamp = timestamp + CurrentNetwork::ANCHOR_TIME as i64;
 
-            let reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+            let reward = coinbase_reward(
                 timestamp,
                 new_timestamp,
                 block_height,
+                CurrentNetwork::STARTING_SUPPLY,
+                CurrentNetwork::ANCHOR_TIME,
             )
             .unwrap();
 
@@ -365,11 +392,13 @@ mod tests {
             let previous_timestamp = rng.gen();
 
             // Targets stay the same when the timestamp is as expected.
-            let new_timestamp = previous_timestamp + ANCHOR_TIME as i64;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+            let new_timestamp = previous_timestamp + CurrentNetwork::ANCHOR_TIME as i64;
+            let new_coinbase_target = coinbase_target(
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
+                CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
             )
             .unwrap();
             let new_prover_target = proof_target(new_coinbase_target);
@@ -377,11 +406,13 @@ mod tests {
             assert_eq!(new_prover_target, previous_prover_target);
 
             // Targets decrease (easier) when the timestamp is greater than expected.
-            let new_timestamp = previous_timestamp + 2 * ANCHOR_TIME as i64;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+            let new_timestamp = previous_timestamp + 2 * CurrentNetwork::ANCHOR_TIME as i64;
+            let new_coinbase_target = coinbase_target(
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
+                CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
             )
             .unwrap();
             let new_prover_target = proof_target(new_coinbase_target);
@@ -389,11 +420,13 @@ mod tests {
             assert!(new_prover_target < previous_prover_target);
 
             // Targets increase (harder) when the timestamp is less than expected.
-            let new_timestamp = previous_timestamp + ANCHOR_TIME as i64 / 2;
-            let new_coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+            let new_timestamp = previous_timestamp + CurrentNetwork::ANCHOR_TIME as i64 / 2;
+            let new_coinbase_target = coinbase_target(
                 previous_coinbase_target,
                 previous_timestamp,
                 new_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
+                CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
             )
             .unwrap();
             let new_prover_target = proof_target(new_coinbase_target);

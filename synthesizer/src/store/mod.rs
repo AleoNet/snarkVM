@@ -14,39 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::single_element_loop)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
-
-#[macro_use]
-extern crate tracing;
+pub mod helpers;
 
 mod block;
 pub use block::*;
 
-mod coinbase_puzzle;
-pub use coinbase_puzzle::*;
-
-mod ledger;
-pub use ledger::*;
-
-mod process;
-pub use process::*;
-
 mod program;
 pub use program::*;
 
-mod snark;
-pub use snark::*;
+mod transaction;
+pub use transaction::*;
 
-mod state_path;
-pub use state_path::*;
+mod transition;
+pub use transition::*;
 
-mod store;
-pub use store::*;
+#[macro_export]
+macro_rules! cow_to_copied {
+    ($cow:expr) => {
+        match $cow {
+            std::borrow::Cow::Borrowed(inner) => *inner,
+            std::borrow::Cow::Owned(inner) => inner,
+        }
+    };
+}
 
-mod vm;
-pub use vm::*;
+#[macro_export]
+macro_rules! cow_to_cloned {
+    ($cow:expr) => {
+        match $cow {
+            std::borrow::Cow::Borrowed(inner) => (*inner).clone(),
+            std::borrow::Cow::Owned(inner) => inner,
+        }
+    };
+}
