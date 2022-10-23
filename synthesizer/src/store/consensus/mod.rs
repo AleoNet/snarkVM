@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::store::{
-    helpers::{memory_map::MemoryMap, Map, MapRead},
     BlockMemory,
     BlockStorage,
     BlockStore,
@@ -29,11 +28,10 @@ use crate::store::{
     TransitionStorage,
     TransitionStore,
 };
-use console::{account::Signature, network::prelude::*};
+use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
-use std::borrow::Cow;
 
 /// A trait for consensus storage.
 pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
@@ -176,7 +174,7 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
 
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
-        self.storage.transaction_store().transition_store()
+        self.storage.transition_store()
     }
 
     /// Starts an atomic batch write operation.

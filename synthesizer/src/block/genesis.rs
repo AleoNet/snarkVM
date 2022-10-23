@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ProgramStorage;
+use crate::ConsensusStorage;
 
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
-    pub fn genesis<P: ProgramStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, P>,
+    pub fn genesis<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         rng: &mut R,
     ) -> Result<Self> {

@@ -28,7 +28,10 @@ use crate::{
     process,
     process::{Authorization, Deployment, Execution, Process},
     program::Program,
-    store::{BlockStorage, BlockStore, ProgramStorage, ProgramStore},
+    store::{BlockStore, ConsensusStorage, ConsensusStore},
+    ProgramStore,
+    TransactionStore,
+    TransitionStore,
 };
 use console::{
     account::PrivateKey,
@@ -41,27 +44,21 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct VM<N: Network, P: ProgramStorage<N>> {
+pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process for Aleo Testnet3 (V0).
     process: Arc<RwLock<Process<console::network::Testnet3>>>,
-    /// The program store.
-    store: ProgramStore<N, P>,
+    /// The consensus store.
+    store: ConsensusStore<N, C>,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
 
-impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
-    /// Initializes a new VM.
-    #[inline]
-    pub fn new(store: ProgramStore<N, P>) -> Result<Self> {
-        Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), store, _phantom: PhantomData })
-    }
-
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Initializes the VM from storage.
     #[inline]
-    pub fn from<B: BlockStorage<N>>(blocks: &BlockStore<N, B>, store: ProgramStore<N, P>) -> Result<Self> {
+    pub fn from(store: ConsensusStore<N, C>) -> Result<Self> {
         // Retrieve the transaction store.
-        let transaction_store = blocks.transaction_store();
+        let transaction_store = store.transaction_store();
 
         // Initialize a new process.
         let mut process = Process::load()?;
@@ -90,7 +87,31 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
         process!(self, logic)
     }
 
-    /// Deploys a program with the given program ID.
+    /// Returns the program store.
+    #[inline]
+    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
+        self.store.program_store()
+    }
+
+    /// Returns the block store.
+    #[inline]
+    pub fn block_store(&self) -> &BlockStore<N, C::BlockStorage> {
+        self.store.block_store()
+    }
+
+    /// Returns the transaction store.
+    #[inline]
+    pub fn transaction_store(&self) -> &TransactionStore<N, C::TransactionStorage> {
+        self.store.transaction_store()
+    }
+
+    /// Returns the transition store.
+    #[inline]
+    pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
+        self.store.transition_store()
+    }
+
+    /// Returns `true` if a program with the given program ID exists.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
         // Compute the core logic.
@@ -119,7 +140,7 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ProgramMemory, Transition};
+    use crate::{program::Program, Block, ConsensusMemory, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -131,8 +152,8 @@ pub(crate) mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    pub(crate) fn sample_vm() -> VM<CurrentNetwork, ProgramMemory<CurrentNetwork>> {
-        VM::new(ProgramStore::open(None).unwrap()).unwrap()
+    pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
+        VM::from(ConsensusStore::open(None).unwrap()).unwrap()
     }
 
     pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {

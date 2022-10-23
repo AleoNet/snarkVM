@@ -29,7 +29,7 @@ use crate::{
     process::{Authorization, Deployment, Execution},
     program::Program,
     vm::VM,
-    ProgramStorage,
+    ConsensusStorage,
 };
 use console::{
     account::PrivateKey,
@@ -77,8 +77,8 @@ impl<N: Network> Transaction<N> {
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
     /// Initializes a new deployment transaction.
-    pub fn deploy<P: ProgramStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, P>,
+    pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         (credits, additional_fee_in_gates): (Record<N, Plaintext<N>>, u64),
@@ -93,8 +93,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<P: ProgramStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, P>,
+    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -105,8 +105,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction from an authorization and additional fee.
-    pub fn execute_authorization_with_additional_fee<P: ProgramStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, P>,
+    pub fn execute_authorization_with_additional_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
@@ -126,8 +126,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
-    pub fn execute<P: ProgramStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, P>,
+    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
         function_name: Identifier<N>,
