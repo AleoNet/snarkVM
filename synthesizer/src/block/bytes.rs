@@ -94,7 +94,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         let mut rng = TestRng::default();
 
-        for expected in [crate::ledger::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
+        for expected in [crate::vm::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
             assert_eq!(expected, Block::read_le(&expected_bytes[..])?);

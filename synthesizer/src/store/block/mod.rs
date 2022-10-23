@@ -576,7 +576,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample the block.
-        let block = crate::ledger::test_helpers::sample_genesis_block(&mut rng);
+        let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         let block_hash = block.hash();
 
         // Initialize a new block store.
@@ -606,7 +606,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample the block.
-        let block = crate::ledger::test_helpers::sample_genesis_block(&mut rng);
+        let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         let block_hash = block.hash();
         assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
 

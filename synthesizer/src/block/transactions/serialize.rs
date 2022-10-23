@@ -89,7 +89,7 @@ mod tests {
         };
 
         // Check the serialization.
-        check_serde_json(crate::ledger::test_helpers::sample_genesis_block(rng).transactions().clone());
+        check_serde_json(crate::vm::test_helpers::sample_genesis_block(rng).transactions().clone());
 
         for transaction in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),
@@ -120,7 +120,7 @@ mod tests {
         };
 
         // Check the serialization.
-        check_bincode(crate::ledger::test_helpers::sample_genesis_block(rng).transactions().clone());
+        check_bincode(crate::vm::test_helpers::sample_genesis_block(rng).transactions().clone());
 
         for transaction in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),

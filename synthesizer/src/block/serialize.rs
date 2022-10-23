@@ -80,7 +80,7 @@ mod tests {
     fn test_serde_json() -> Result<()> {
         let mut rng = TestRng::default();
 
-        for expected in [crate::ledger::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
+        for expected in [crate::vm::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected)?;
@@ -96,7 +96,7 @@ mod tests {
     fn test_bincode() -> Result<()> {
         let mut rng = TestRng::default();
 
-        for expected in [crate::ledger::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
+        for expected in [crate::vm::test_helpers::sample_genesis_block(&mut rng)].into_iter() {
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;
             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;

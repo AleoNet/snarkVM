@@ -119,19 +119,42 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, ProgramMemory, RecordsFilter};
+    use crate::{program::Program, Block, ProgramMemory, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Identifier, Value},
     };
 
+    use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ProgramMemory<CurrentNetwork>> {
         VM::new(ProgramStore::open(None).unwrap()).unwrap()
+    }
+
+    pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {
+        static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
+        *INSTANCE.get_or_init(|| {
+            // Initialize a new caller.
+            PrivateKey::<CurrentNetwork>::new(rng).unwrap()
+        })
+    }
+
+    pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
+        static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize the VM.
+                let vm = crate::vm::test_helpers::sample_vm();
+                // Initialize a new caller.
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                // Return the block.
+                Block::genesis(&vm, &caller_private_key, rng).unwrap()
+            })
+            .clone()
     }
 
     pub(crate) fn sample_program() -> Program<CurrentNetwork> {
@@ -174,22 +197,22 @@ function compute:
                 let program = sample_program();
 
                 // Initialize a new caller.
-                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
-                // Initialize the ledger.
-                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
 
                 // Fetch the unspent records.
-                let records = ledger
-                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
-                    .unwrap()
-                    .filter(|(_, record)| !record.gates().is_zero())
-                    .collect::<indexmap::IndexMap<_, _>>();
+                let records = genesis
+                    .transitions()
+                    .cloned()
+                    .flat_map(Transition::into_output_records)
+                    .collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
 
                 // Prepare the additional fee.
-                let credits = records.values().next().unwrap().clone();
+                let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
                 let additional_fee = (credits, 10);
 
                 // Initialize the VM.
@@ -209,22 +232,23 @@ function compute:
         INSTANCE
             .get_or_init(|| {
                 // Initialize a new caller.
-                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
 
-                // Initialize the ledger.
-                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
 
                 // Fetch the unspent records.
-                let records = ledger
-                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
-                    .unwrap()
-                    .filter(|(_, record)| !record.gates().is_zero())
-                    .collect::<indexmap::IndexMap<_, _>>();
+                let records = genesis
+                    .transitions()
+                    .cloned()
+                    .flat_map(Transition::into_output_records)
+                    .collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
+
                 // Select a record to spend.
-                let record = records.values().next().unwrap().clone();
+                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
 
                 // Initialize the VM.
                 let vm = sample_vm();

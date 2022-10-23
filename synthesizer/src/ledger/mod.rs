@@ -834,8 +834,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::ledger::Block;
-    use console::{account::PrivateKey, network::Testnet3};
+    use crate::{ledger::Block, vm::test_helpers::sample_vm};
+    use console::{account::PrivateKey, network::Testnet3, program::Value};
     use snarkvm_utilities::TestRng;
 
     use once_cell::sync::OnceCell;
@@ -851,6 +851,7 @@ pub(crate) mod test_helpers {
         })
     }
 
+    #[allow(dead_code)]
     pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
         static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
         INSTANCE
@@ -865,7 +866,7 @@ pub(crate) mod test_helpers {
             .clone()
     }
 
-    pub(crate) fn sample_genesis_block_with_pk(
+    pub(crate) fn sample_genesis_block_with_private_key(
         rng: &mut TestRng,
         private_key: PrivateKey<CurrentNetwork>,
     ) -> Block<CurrentNetwork> {
@@ -884,7 +885,7 @@ pub(crate) mod test_helpers {
         // Sample the genesis private key.
         let private_key = sample_genesis_private_key(rng);
         // Sample the genesis block.
-        let genesis = sample_genesis_block_with_pk(rng, private_key);
+        let genesis = sample_genesis_block_with_private_key(rng, private_key);
 
         // Initialize the ledger with the genesis block and the associated private key.
         let address = Address::try_from(&private_key).unwrap();
@@ -895,6 +896,127 @@ pub(crate) mod test_helpers {
         assert_eq!(genesis, ledger.get_block(0).unwrap());
 
         ledger
+    }
+
+    pub(crate) fn sample_program() -> Program<CurrentNetwork> {
+        static INSTANCE: OnceCell<Program<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                Program::<CurrentNetwork>::from_str(
+                    r"
+program testing.aleo;
+
+interface message:
+    amount as u128;
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    amount as u64.private;
+
+function compute:
+    input r0 as message.private;
+    input r1 as message.public;
+    input r2 as message.private;
+    input r3 as token.record;
+    add r0.amount r1.amount into r4;
+    cast r3.owner r3.gates r3.amount into r5 as token.record;
+    output r4 as u128.public;
+    output r5 as token.record;",
+                )
+                .unwrap()
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_deployment_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize the program.
+                let program = sample_program();
+
+                // Initialize a new caller.
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+                // Initialize the ledger.
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
+
+                // Fetch the unspent records.
+                let records = ledger
+                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
+                    .unwrap()
+                    .filter(|(_, record)| !record.gates().is_zero())
+                    .collect::<indexmap::IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
+                // Prepare the additional fee.
+                let credits = records.values().next().unwrap().clone();
+                let additional_fee = (credits, 10);
+
+                // Initialize the VM.
+                let vm = sample_vm();
+                // Deploy.
+                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
+                // Verify.
+                assert!(vm.verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_execution_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the ledger.
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
+
+                // Fetch the unspent records.
+                let records = ledger
+                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
+                    .unwrap()
+                    .filter(|(_, record)| !record.gates().is_zero())
+                    .collect::<indexmap::IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+                // Select a record to spend.
+                let record = records.values().next().unwrap().clone();
+
+                // Initialize the VM.
+                let vm = sample_vm();
+
+                // Authorize.
+                let authorization = vm
+                    .authorize(
+                        &caller_private_key,
+                        &ProgramID::from_str("credits.aleo").unwrap(),
+                        Identifier::from_str("transfer").unwrap(),
+                        &[
+                            Value::<CurrentNetwork>::Record(record),
+                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                        ],
+                        rng,
+                    )
+                    .unwrap();
+                assert_eq!(authorization.len(), 1);
+
+                // Execute.
+                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                // Verify.
+                assert!(vm.verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
     }
 }
 
@@ -1004,12 +1126,12 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = crate::ledger::test_helpers::sample_deployment_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1037,12 +1159,12 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::ledger::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1065,7 +1187,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key, view key, and address.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         let view_key = ViewKey::try_from(private_key).unwrap();
         let address = Address::try_from(&view_key).unwrap();
 
@@ -1122,11 +1244,11 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         let address = Address::try_from(&private_key).unwrap();
 
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger(rng);
+        let mut ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
 
         // Fetch the proof target and epoch challenge for the block.
         let proof_target = ledger.latest_proof_target().unwrap();
@@ -1151,14 +1273,14 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         let address = Address::try_from(&private_key).unwrap();
 
         // Sample the genesis ledger.
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::ledger::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction).unwrap();
 
         // Ensure that the ledger can't create a block that satisfies the coinbase target.

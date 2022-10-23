@@ -45,7 +45,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample a ledger.
-        let ledger = crate::ledger::test_helpers::sample_genesis_ledger(&mut rng);
+        let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
 
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
@@ -74,7 +74,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Sample a ledger.
-        let ledger = crate::ledger::test_helpers::sample_genesis_ledger(&mut rng);
+        let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
 
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();

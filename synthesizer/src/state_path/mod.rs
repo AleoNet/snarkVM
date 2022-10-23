@@ -288,3 +288,120 @@ impl<N: Network> StatePath<N> {
         &self.transition_leaf
     }
 }
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use crate::{
+        block::{Block, BlockTree},
+        store::{
+            BlockMemory,
+            BlockStore,
+            ProgramMemory,
+            ProgramStore,
+            TransactionMemory,
+            TransactionStore,
+            TransitionMemory,
+            TransitionStore,
+        },
+        vm::VM,
+    };
+    use console::{network::Testnet3, prelude::Network};
+    use snarkvm_utilities::rand::TestRng;
+
+    type CurrentNetwork = Testnet3;
+
+    #[derive(Clone)]
+    pub struct TestLedger<N: Network> {
+        /// The VM state.
+        vm: VM<N, ProgramMemory<N>>,
+        /// The current block tree.
+        block_tree: BlockTree<N>,
+        /// The block store.
+        blocks: BlockStore<N, BlockMemory<N>>,
+        /// The transaction store.
+        transactions: TransactionStore<N, TransactionMemory<N>>,
+        /// The transition store.
+        transitions: TransitionStore<N, TransitionMemory<N>>,
+    }
+
+    impl TestLedger<CurrentNetwork> {
+        /// Initializes a new instance of the ledger.
+        pub fn new(rng: &mut TestRng) -> Result<Self> {
+            // Initialize the genesis block.
+            let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+            // Initialize the block store.
+            let blocks = BlockStore::<CurrentNetwork, BlockMemory<CurrentNetwork>>::open(None)?;
+            // Initialize the program store.
+            let store = ProgramStore::<CurrentNetwork, ProgramMemory<CurrentNetwork>>::open(None)?;
+            // Initialize a new VM.
+            let vm = VM::new(store)?;
+
+            // Initialize the ledger.
+            let mut ledger = Self {
+                vm,
+                block_tree: CurrentNetwork::merkle_tree_bhp(&[])?,
+                transactions: blocks.transaction_store().clone(),
+                transitions: blocks.transition_store().clone(),
+                blocks,
+            };
+
+            // Add the genesis block.
+            ledger.add_next_block(&genesis)?;
+
+            // Return the ledger.
+            Ok(ledger)
+        }
+    }
+
+    impl<N: Network> TestLedger<N> {
+        /// Adds the given block as the next block in the chain.
+        pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
+            /* ATOMIC CODE SECTION */
+
+            // Add the block to the ledger. This code section executes atomically.
+            {
+                let mut ledger = self.clone();
+
+                // Update the blocks.
+                ledger.block_tree.append(&[block.hash().to_bits_le()])?;
+                ledger.blocks.insert(block)?;
+
+                // Update the VM.
+                for transaction in block.transactions().values() {
+                    ledger.vm.finalize(transaction)?;
+                }
+
+                *self = Self {
+                    vm: ledger.vm,
+                    block_tree: ledger.block_tree,
+                    blocks: ledger.blocks,
+                    transactions: ledger.transactions,
+                    transitions: ledger.transitions,
+                };
+            }
+
+            Ok(())
+        }
+
+        /// Returns the block for the given block height.
+        pub fn get_block(&self, height: u32) -> Result<Block<N>> {
+            // Retrieve the block hash.
+            let block_hash = match self.blocks.get_block_hash(height)? {
+                Some(block_hash) => block_hash,
+                None => bail!("Block {height} does not exist in storage"),
+            };
+            // Retrieve the block.
+            match self.blocks.get_block(&block_hash)? {
+                Some(block) => Ok(block),
+                None => bail!("Block {height} ('{block_hash}') does not exist in storage"),
+            }
+        }
+
+        /// Returns a state path for the given commitment.
+        pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+            StatePath::new_commitment(&self.block_tree, &self.blocks, &self.transactions, &self.transitions, commitment)
+        }
+    }
+}
