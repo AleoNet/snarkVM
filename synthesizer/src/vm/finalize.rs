@@ -44,7 +44,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     .downcast_ref::<Arc<RwLock<Process<N>>>>()
                     .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!(self.process)))?;
 
-                process.write().finalize_deployment::<C::ProgramStorage>(&self.program_store(), deployment)
+                process.write().finalize_deployment::<C::ProgramStorage>(self.program_store(), deployment)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
@@ -64,7 +64,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     .downcast_ref::<Arc<RwLock<Process<N>>>>()
                     .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!(self.process)))?;
 
-                process.write().finalize_execution::<C::ProgramStorage>(&self.program_store(), execution)
+                process.write().finalize_execution::<C::ProgramStorage>(self.program_store(), execution)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
