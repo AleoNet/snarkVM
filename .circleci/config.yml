@@ -126,6 +126,11 @@ commands:
       - clear_environment:
           cache_key: << parameters.cache_key >>
 
+  install_rust_nightly:
+    description: "Install Rust nightly toolchain"
+    steps:
+      - run: rustup toolchain install nightly-x86_64-unknown-linux-gnu
+
 jobs:
   snarkvm:
     docker:
