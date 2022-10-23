@@ -292,17 +292,6 @@ jobs:
       - run_serial:
           workspace_member: circuit/types/string
           cache_key: snarkvm-circuit-types-string-cache
-
-  compiler:
-    docker:
-      - image: cimg/rust:1.64
-    resource_class: 2xlarge
-    parallelism: 4
-    steps:
-      - run_parallel:
-          workspace_member: vm/compiler
-          cache_key: snarkvm-compiler-cache
-
   console:
     docker:
       - image: cimg/rust:1.64
@@ -474,6 +463,16 @@ jobs:
           workspace_member: r1cs
           cache_key: snarkvm-r1cs-cache
 
+  synthesizer:
+    docker:
+      - image: cimg/rust:1.64
+    resource_class: 2xlarge
+    parallelism: 4
+    steps:
+      - run_parallel:
+          workspace_member: synthesizer
+          cache_key: snarkvm-synthesizer-cache
+
   utilities:
     docker:
       - image: cimg/rust:1.64
@@ -580,7 +579,6 @@ workflows:
       - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
-      - compiler
       - console
       - console-account
       - console-algorithms
@@ -600,6 +598,7 @@ workflows:
       - fields
       - parameters
       - r1cs
+      - synthesizer
       - utilities
       - utilities-derives
       - wasm
@@ -619,6 +618,6 @@ workflows:
                 fields,
                 parameters,
                 r1cs,
+                synthesizer,
                 utilities,
-                vm/compiler
               ]

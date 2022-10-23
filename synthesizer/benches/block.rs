@@ -18,7 +18,7 @@
 extern crate criterion;
 
 use console::{network::Testnet3, prelude::*};
-use snarkvm_compiler::Block;
+use snarkvm_synthesizer::Block;
 
 use criterion::Criterion;
 use serde::{de::DeserializeOwned, Serialize};

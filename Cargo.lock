@@ -2113,13 +2113,13 @@ dependencies = [
  "serde_json",
  "snarkvm-algorithms",
  "snarkvm-circuit",
- "snarkvm-compiler",
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-parameters",
  "snarkvm-r1cs",
  "snarkvm-rest",
+ "snarkvm-synthesizer",
  "snarkvm-utilities",
  "tempfile",
  "thiserror",
@@ -2351,35 +2351,6 @@ dependencies = [
  "snarkvm-circuit-types-integers",
  "snarkvm-console-types-string",
  "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-compiler"
-version = "0.9.0"
-dependencies = [
- "anyhow",
- "bincode",
- "blake2",
- "colored",
- "criterion",
- "indexmap",
- "once_cell",
- "parking_lot 0.12.1",
- "paste",
- "rand",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "snarkvm-algorithms",
- "snarkvm-circuit",
- "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-utilities",
- "time",
- "tracing",
- "tracing-test",
 ]
 
 [[package]]
@@ -2628,10 +2599,11 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sha2",
- "snarkvm",
  "snarkvm-algorithms",
+ "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-curves",
+ "snarkvm-synthesizer",
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
@@ -2661,11 +2633,40 @@ dependencies = [
  "indexmap",
  "parking_lot 0.12.1",
  "serde",
- "snarkvm-compiler",
  "snarkvm-console",
+ "snarkvm-synthesizer",
  "tokio",
  "tracing",
  "warp",
+]
+
+[[package]]
+name = "snarkvm-synthesizer"
+version = "0.9.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "blake2",
+ "colored",
+ "criterion",
+ "indexmap",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "paste",
+ "rand",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+ "time",
+ "tracing",
+ "tracing-test",
 ]
 
 [[package]]

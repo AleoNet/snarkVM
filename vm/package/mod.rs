@@ -40,8 +40,8 @@ use crate::{
         Serializer,
         Value,
     },
+    synthesizer::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey},
 };
-use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
 
 use anyhow::{bail, ensure, Error, Result};
 use core::str::FromStr;
