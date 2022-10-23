@@ -721,7 +721,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns a state path for the given commitment.
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        StatePath::new_commitment(&self.block_tree, &self.blocks, &self.transactions, &self.transitions, commitment)
+        StatePath::new_commitment(&self.block_tree, &self.blocks, commitment)
     }
 
     /// Checks the given transaction is well formed and unique.

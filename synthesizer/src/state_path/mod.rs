@@ -34,10 +34,6 @@ use crate::{
     BlockStorage,
     BlockStore,
     BlockTree,
-    TransactionStorage,
-    TransactionStore,
-    TransitionStorage,
-    TransitionStore,
 };
 use console::{network::prelude::*, types::Field};
 
@@ -73,13 +69,15 @@ pub struct StatePath<N: Network> {
 
 impl<N: Network> StatePath<N> {
     /// Returns a state path for the given commitment.
-    pub fn new_commitment<B: BlockStorage<N>, T0: TransactionStorage<N>, T1: TransitionStorage<N>>(
+    pub fn new_commitment<B: BlockStorage<N>>(
         block_tree: &BlockTree<N>,
         blocks: &BlockStore<N, B>,
-        transactions: &TransactionStore<N, T0>,
-        transitions: &TransitionStore<N, T1>,
         commitment: &Field<N>,
     ) -> Result<StatePath<N>> {
+        // Retrieve the transaction and transition store.
+        let transactions = blocks.transaction_store();
+        let transitions = blocks.transition_store();
+
         // Ensure the commitment exists.
         if !transitions.contains_commitment(commitment)? {
             bail!("Commitment '{commitment}' does not exist");
@@ -294,16 +292,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use crate::{
         block::{Block, BlockTree},
-        store::{
-            BlockMemory,
-            BlockStore,
-            ProgramMemory,
-            ProgramStore,
-            TransactionMemory,
-            TransactionStore,
-            TransitionMemory,
-            TransitionStore,
-        },
+        store::{BlockMemory, BlockStore, ProgramMemory, ProgramStore},
         vm::VM,
     };
     use console::{network::Testnet3, prelude::Network};
@@ -319,10 +308,6 @@ pub(crate) mod test_helpers {
         block_tree: BlockTree<N>,
         /// The block store.
         blocks: BlockStore<N, BlockMemory<N>>,
-        /// The transaction store.
-        transactions: TransactionStore<N, TransactionMemory<N>>,
-        /// The transition store.
-        transitions: TransitionStore<N, TransitionMemory<N>>,
     }
 
     impl TestLedger<CurrentNetwork> {
@@ -339,13 +324,7 @@ pub(crate) mod test_helpers {
             let vm = VM::new(store)?;
 
             // Initialize the ledger.
-            let mut ledger = Self {
-                vm,
-                block_tree: CurrentNetwork::merkle_tree_bhp(&[])?,
-                transactions: blocks.transaction_store().clone(),
-                transitions: blocks.transition_store().clone(),
-                blocks,
-            };
+            let mut ledger = Self { vm, block_tree: CurrentNetwork::merkle_tree_bhp(&[])?, blocks };
 
             // Add the genesis block.
             ledger.add_next_block(&genesis)?;
@@ -373,13 +352,7 @@ pub(crate) mod test_helpers {
                     ledger.vm.finalize(transaction)?;
                 }
 
-                *self = Self {
-                    vm: ledger.vm,
-                    block_tree: ledger.block_tree,
-                    blocks: ledger.blocks,
-                    transactions: ledger.transactions,
-                    transitions: ledger.transitions,
-                };
+                *self = Self { vm: ledger.vm, block_tree: ledger.block_tree, blocks: ledger.blocks };
             }
 
             Ok(())
@@ -401,7 +374,7 @@ pub(crate) mod test_helpers {
 
         /// Returns a state path for the given commitment.
         pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-            StatePath::new_commitment(&self.block_tree, &self.blocks, &self.transactions, &self.transitions, commitment)
+            StatePath::new_commitment(&self.block_tree, &self.blocks, commitment)
         }
     }
 }
