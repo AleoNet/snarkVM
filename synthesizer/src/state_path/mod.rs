@@ -345,7 +345,7 @@ pub(crate) mod test_helpers {
 
                 // Update the blocks.
                 ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-                ledger.blocks.insert(block)?;
+                ledger.blocks.insert(*ledger.block_tree.root(), block)?;
 
                 // Update the VM.
                 for transaction in block.transactions().values() {

@@ -42,7 +42,7 @@ use std::collections::BTreeMap;
 /// // (program_id => (mapping_name => (key => value)))
 /// IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Key, Value>>>
 /// ```
-pub trait ProgramStorage<N: Network>: Clone + Send + Sync {
+pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `(program ID, mapping name)` to `mapping ID`.
@@ -643,6 +643,11 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.

@@ -19,6 +19,9 @@ pub mod helpers;
 mod block;
 pub use block::*;
 
+mod consensus;
+pub use consensus::*;
+
 mod program;
 pub use program::*;
 
