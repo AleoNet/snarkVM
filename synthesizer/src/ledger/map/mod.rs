@@ -21,6 +21,7 @@ use console::network::prelude::*;
 use core::{borrow::Borrow, hash::Hash};
 use std::borrow::Cow;
 
+#[derive(Clone)]
 pub enum BatchOperation<K: Copy + Clone + PartialEq + Eq + Hash + Send + Sync, V: Clone + PartialEq + Eq + Send + Sync>
 {
     Insert(K, V),
@@ -94,6 +95,28 @@ pub trait MapRead<
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Returns the current value for the given key if it is scheduled
+    /// to be inserted as part of an atomic batch.
+    ///
+    fn get_batched<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Returns the value for the given key from the map if it exists there
+    /// or is currently scheduled to be inserted as part of an atomic batch.
+    ///
+    fn get_speculative<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
+    {
+        // Return early in case of errors in order to not conceal them.
+        Ok(self.get(key)?.or_else(|| self.get_batched(key).map(|v| Cow::Owned(v))))
+    }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.

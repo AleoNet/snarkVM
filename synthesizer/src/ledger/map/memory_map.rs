@@ -195,6 +195,35 @@ impl<
     }
 
     ///
+    /// Returns the current value for the given key if it is scheduled
+    /// to be inserted as part of an atomic batch.
+    ///
+    fn get_batched<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
+    {
+        // Return early if there is no atomic batch in progress.
+        if self.batch_in_progress.load(Ordering::SeqCst) {
+            // Clone the batch to not hold the lock.
+            let ops = self.atomic_batch.lock().clone();
+
+            // The final operation related to the key is the final state of the key.
+            for op in ops.into_iter().rev() {
+                match op {
+                    BatchOperation::Remove(k) if k.borrow() == key => return None,
+                    BatchOperation::Insert(k, v) if k.borrow() == key => return Some(v),
+                    _ => continue,
+                }
+            }
+
+            None
+        } else {
+            None
+        }
+    }
+
+    ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
