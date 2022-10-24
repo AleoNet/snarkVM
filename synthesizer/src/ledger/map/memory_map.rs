@@ -299,6 +299,10 @@ mod tests {
         // Queue (since a batch is in progress) NUM_ITEMS insertions.
         for i in 0..NUM_ITEMS {
             map.insert(i, i.to_string()).unwrap();
+            // Ensure that the item is queued for insertion.
+            assert_eq!(map.get_batched(&i), Some(i.to_string()));
+            // Ensure that the item can be found with a speculative get.
+            assert_eq!(map.get_speculative(&i).unwrap(), Some(Cow::Owned(i.to_string())));
         }
 
         // The map should still contain no items.
@@ -320,6 +324,8 @@ mod tests {
         // Queue (since a batch is in progress) NUM_ITEMS removals.
         for i in 0..NUM_ITEMS {
             map.remove(&i).unwrap();
+            // Ensure that the item is NOT queued for insertion.
+            assert_eq!(map.get_batched(&i), None);
         }
 
         // The map should still contains all the items.
