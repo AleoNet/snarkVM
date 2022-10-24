@@ -72,35 +72,36 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 10;
 
     #[test]
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        let check_serde_json = |expected: Transactions<CurrentNetwork>| {
+        let check_serde_json = |expected: &Transactions<CurrentNetwork>| {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected).unwrap();
 
             // Deserialize
-            assert_eq!(expected, Transactions::from_str(expected_string).unwrap());
-            assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
+            assert_eq!(*expected, Transactions::from_str(expected_string).unwrap());
+            assert_eq!(*expected, serde_json::from_str(&candidate_string).unwrap());
         };
 
         // Check the serialization.
-        check_serde_json(crate::vm::test_helpers::sample_genesis_block(rng).transactions().clone());
+        check_serde_json(crate::vm::test_helpers::sample_genesis_block(rng).transactions());
 
-        for transaction in [
-            crate::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::vm::test_helpers::sample_execution_transaction(rng),
-        ] {
-            for i in 0..ITERATIONS {
-                // Construct the transactions.
-                let expected: Transactions<CurrentNetwork> = vec![transaction.clone(); i].into_iter().collect();
-                // Check the serialization.
-                check_serde_json(expected);
-            }
+        for i in 0..ITERATIONS {
+            let transaction = if i % 2 == 0 {
+                crate::vm::test_helpers::sample_deployment_transaction(rng)
+            } else {
+                crate::vm::test_helpers::sample_execution_transaction(rng)
+            };
+
+            // Construct the transactions.
+            let expected: Transactions<CurrentNetwork> = [transaction.clone(), transaction].into_iter().collect();
+            // Check the serialization.
+            check_serde_json(&expected);
         }
     }
 
@@ -108,19 +109,19 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        let check_bincode = |expected: Transactions<CurrentNetwork>| {
+        let check_bincode = |expected: &Transactions<CurrentNetwork>| {
             // Serialize
             let expected_bytes = expected.to_bytes_le().unwrap();
             let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
             // Deserialize
-            assert_eq!(expected, Transactions::read_le(&expected_bytes[..]).unwrap());
-            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
+            assert_eq!(*expected, Transactions::read_le(&expected_bytes[..]).unwrap());
+            assert_eq!(*expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
         };
 
         // Check the serialization.
-        check_bincode(crate::vm::test_helpers::sample_genesis_block(rng).transactions().clone());
+        check_bincode(crate::vm::test_helpers::sample_genesis_block(rng).transactions());
 
         for transaction in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),
@@ -130,7 +131,7 @@ mod tests {
                 // Construct the transactions.
                 let expected: Transactions<CurrentNetwork> = vec![transaction.clone(); i].into_iter().collect();
                 // Check the serialization.
-                check_bincode(expected);
+                check_bincode(&expected);
             }
         }
     }
