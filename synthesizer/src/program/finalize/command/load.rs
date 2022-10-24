@@ -86,9 +86,8 @@ impl<N: Network> Load<N> {
         let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'load' a 'record'"),
-            // If the key does not exist, use a default value.
-            // TODO: Infer type.
-            None => todo!(),
+            // If a key does not exist, then bail.
+            None => bail!("Key '{}' does not exist in mapping '{}/{}'", key, stack.program_id(), self.mapping),
         };
 
         // Assign the value to the destination register.
