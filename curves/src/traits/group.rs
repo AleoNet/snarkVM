@@ -163,6 +163,12 @@ pub trait AffineCurve:
     /// largest y-coordinate be selected.
     fn from_x_coordinate(x: Self::BaseField, greatest: bool) -> Option<Self>;
 
+    /// Attempts to construct an affine point given an x-coordinate. The
+    /// point is not guaranteed to be in the prime order subgroup.
+    /// Returns variants with and without the lexicographically largest
+    /// y-coordinate selected.
+    fn from_x_coordinate_variants(x: Self::BaseField) -> Option<(Self, Self)>;
+
     /// Attempts to construct an affine point given a y-coordinate. The
     /// point is not guaranteed to be in the prime order subgroup.
     ///
