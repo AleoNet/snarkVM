@@ -30,9 +30,6 @@ pub use block::*;
 pub mod coinbase_puzzle;
 pub use coinbase_puzzle::*;
 
-pub mod ledger;
-pub use ledger::*;
-
 pub mod process;
 pub use process::*;
 
