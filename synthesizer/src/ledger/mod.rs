@@ -14,29 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod block;
-pub use block::*;
-
-pub mod map;
-pub use map::*;
-
 mod helpers;
 pub use helpers::*;
-
-mod state_path;
-pub use state_path::*;
-
-mod store;
-pub use store::*;
-
-mod transaction;
-pub use transaction::*;
-
-pub mod transition;
-pub use transition::*;
-
-mod vm;
-pub use vm::*;
 
 mod contains;
 mod find;
@@ -45,17 +24,26 @@ mod iterators;
 mod latest;
 
 use crate::{
+    block::{Block, BlockTree, Header, Metadata, Origin, Transaction, Transactions},
+    coinbase_puzzle::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution},
     ledger::helpers::{anchor_block_height, coinbase_reward, coinbase_target, proof_target},
     program::Program,
-    CoinbasePuzzle,
-    CoinbaseSolution,
-    EpochChallenge,
-    ProverSolution,
+    state_path::StatePath,
+    store::{
+        BlockMemory,
+        BlockStorage,
+        BlockStore,
+        ProgramMemory,
+        ProgramStorage,
+        ProgramStore,
+        TransactionStore,
+        TransitionStore,
+    },
+    vm::VM,
 };
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
@@ -67,35 +55,6 @@ use time::OffsetDateTime;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-
-/// The depth of the Merkle tree for the blocks.
-const BLOCKS_DEPTH: u8 = 32;
-
-// TODO (raychu86): Move the following constants to a dedicated space (Or include in Network).
-
-/// The anchor time per block in seconds, which must be greater than the round time per block.
-pub const ANCHOR_TIME: u16 = 20;
-/// The coinbase puzzle degree.
-pub const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
-/// The maximum number of prover solutions that can be included per block.
-pub const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
-/// The number of blocks per epoch (1 hour).
-pub const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
-
-/// The fixed timestamp of the genesis block.
-pub const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
-/// The genesis block coinbase target.
-pub const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
-/// The genesis block proof target.
-pub const GENESIS_PROOF_TARGET: u64 = 0; // 00 0000 0000
-
-/// The starting supply of Aleo credits.
-pub const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
-
-/// The Merkle tree for the block state.
-pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
-/// The Merkle path for the state tree blocks.
-pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Copy, Clone, Debug)]
 pub enum RecordsFilter<N: Network> {
@@ -170,7 +129,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Load the coinbase puzzle.
-        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load()?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -212,7 +171,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         let vm = VM::<N, P>::from(&blocks, store)?;
 
         // Load the coinbase puzzle.
-        let coinbase_puzzle = CoinbasePuzzle::<N>::load(COINBASE_PUZZLE_DEGREE)?;
+        let coinbase_puzzle = CoinbasePuzzle::<N>::load()?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -299,7 +258,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Appends the given prover solution to the coinbase memory pool.
     pub fn add_to_coinbase_memory_pool(&mut self, prover_solution: ProverSolution<N>) -> Result<()> {
         // Ensure that prover solutions are not accepted after 10 years.
-        if self.latest_height() > anchor_block_height(ANCHOR_TIME, 10) {
+        if self.latest_height() > anchor_block_height(N::ANCHOR_TIME, 10) {
             bail!("Coinbase proofs are no longer accepted after year 10.");
         }
 
@@ -346,7 +305,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         };
 
         // Select the prover solutions from the memory pool.
-        let prover_solutions = self.coinbase_memory_pool.iter().take(MAX_PROVER_SOLUTIONS).cloned().collect::<Vec<_>>();
+        let prover_solutions =
+            self.coinbase_memory_pool.iter().take(N::MAX_PROVER_SOLUTIONS).cloned().collect::<Vec<_>>();
 
         // Compute the total cumulative target of the prover puzzle solutions as a u128.
         let cumulative_prover_target: u128 = prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
@@ -355,7 +315,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         // TODO (howardwu): Add `has_coinbase` to function arguments.
         // Construct the coinbase proof.
-        let anchor_height_at_year_10 = anchor_block_height(ANCHOR_TIME, 10);
+        let anchor_height_at_year_10 = anchor_block_height(N::ANCHOR_TIME, 10);
         let (coinbase_proof, coinbase_accumulator_point) = if self.latest_height() > anchor_height_at_year_10
             || cumulative_prover_target < self.latest_coinbase_target()? as u128
         {
@@ -381,11 +341,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         //  and instead, will track prover leaderboards via the `coinbase_proof` in each block.
         {
             // Calculate the coinbase reward.
-            let coinbase_reward = coinbase_reward::<STARTING_SUPPLY, ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
-                block.timestamp(),
-                timestamp,
-                next_height,
-            )?;
+            let coinbase_reward =
+                coinbase_reward(block.timestamp(), timestamp, next_height, N::STARTING_SUPPLY, N::ANCHOR_TIME)?;
 
             // Calculate the rewards for the individual provers.
             let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
@@ -414,10 +371,12 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         }
 
         // Construct the new coinbase target.
-        let coinbase_target = coinbase_target::<ANCHOR_TIME, NUM_BLOCKS_PER_EPOCH>(
+        let coinbase_target = coinbase_target(
             self.latest_coinbase_target()?,
             block.timestamp(),
             timestamp,
+            N::ANCHOR_TIME,
+            N::NUM_BLOCKS_PER_EPOCH,
         )?;
 
         // Construct the new proof target.
@@ -616,7 +575,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
         // Ensure the coinbase proof is valid, if it exists.
         if let Some(coinbase_proof) = block.coinbase_proof() {
             // Ensure coinbase proofs are not accepted after the anchor block height at year 10.
-            if block.height() > anchor_block_height(ANCHOR_TIME, 10) {
+            if block.height() > anchor_block_height(N::ANCHOR_TIME, 10) {
                 bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
             }
             // Ensure the coinbase accumulator point matches in the block header.
@@ -762,78 +721,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
     /// Returns a state path for the given commitment.
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        // Ensure the commitment exists.
-        if !self.contains_commitment(commitment)? {
-            bail!("Commitment '{commitment}' does not exist");
-        }
-
-        // Find the transition that contains the commitment.
-        let transition_id = self.transitions.find_transition_id(commitment)?;
-        // Find the transaction that contains the transition.
-        let transaction_id = match self.transactions.find_transaction_id(&transition_id)? {
-            Some(transaction_id) => transaction_id,
-            None => bail!("The transaction ID for commitment '{commitment}' is not in the ledger"),
-        };
-        // Find the block that contains the transaction.
-        let block_hash = match self.blocks.find_block_hash(&transaction_id)? {
-            Some(block_hash) => block_hash,
-            None => bail!("The block hash for commitment '{commitment}' is not in the ledger"),
-        };
-
-        // Retrieve the transition.
-        let transition = match self.transitions.get_transition(&transition_id)? {
-            Some(transition) => transition,
-            None => bail!("The transition '{transition_id}' for commitment '{commitment}' is not in the ledger"),
-        };
-        // Retrieve the transaction.
-        let transaction = match self.transactions.get_transaction(&transaction_id)? {
-            Some(transaction) => transaction,
-            None => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the ledger"),
-        };
-        // Retrieve the block.
-        let block = match self.blocks.get_block(&block_hash)? {
-            Some(block) => block,
-            None => bail!("The block '{block_hash}' for commitment '{commitment}' is not in the ledger"),
-        };
-
-        // Construct the transition path and transaction leaf.
-        let transition_leaf = transition.to_leaf(commitment, false)?;
-        let transition_path = transition.to_path(&transition_leaf)?;
-
-        // Construct the transaction path and transaction leaf.
-        let transaction_leaf = transaction.to_leaf(transition.id())?;
-        let transaction_path = transaction.to_path(&transaction_leaf)?;
-
-        // Construct the transactions path.
-        let transactions = block.transactions();
-        let transaction_index = transactions.iter().position(|(id, _)| id == &transaction.id()).unwrap();
-        let transactions_path = transactions.to_path(transaction_index, *transaction.id())?;
-
-        // Construct the block header path.
-        let block_header = block.header();
-        let header_root = block_header.to_root()?;
-        let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
-        let header_path = block_header.to_path(&header_leaf)?;
-
-        // Construct the state root and block path.
-        let state_root = *self.block_tree.root();
-        let block_path = self.block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
-
-        StatePath::new(
-            state_root.into(),
-            block_path,
-            block.hash(),
-            block.previous_hash(),
-            header_root,
-            header_path,
-            header_leaf,
-            transactions_path,
-            transaction.id(),
-            transaction_path,
-            transaction_leaf,
-            transition_path,
-            transition_leaf,
-        )
+        StatePath::new_commitment(&self.block_tree, &self.blocks, commitment)
     }
 
     /// Checks the given transaction is well formed and unique.
@@ -946,8 +834,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::ledger::Block;
-    use console::{account::PrivateKey, network::Testnet3};
+    use crate::{ledger::Block, vm::test_helpers::sample_vm};
+    use console::{account::PrivateKey, network::Testnet3, program::Value};
     use snarkvm_utilities::TestRng;
 
     use once_cell::sync::OnceCell;
@@ -963,12 +851,13 @@ pub(crate) mod test_helpers {
         })
     }
 
+    #[allow(dead_code)]
     pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
         static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let vm = crate::ledger::vm::test_helpers::sample_vm();
+                let vm = crate::vm::test_helpers::sample_vm();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
@@ -977,7 +866,7 @@ pub(crate) mod test_helpers {
             .clone()
     }
 
-    pub(crate) fn sample_genesis_block_with_pk(
+    pub(crate) fn sample_genesis_block_with_private_key(
         rng: &mut TestRng,
         private_key: PrivateKey<CurrentNetwork>,
     ) -> Block<CurrentNetwork> {
@@ -985,7 +874,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let vm = crate::ledger::vm::test_helpers::sample_vm();
+                let vm = crate::vm::test_helpers::sample_vm();
                 // Return the block.
                 Block::genesis(&vm, &private_key, rng).unwrap()
             })
@@ -996,7 +885,7 @@ pub(crate) mod test_helpers {
         // Sample the genesis private key.
         let private_key = sample_genesis_private_key(rng);
         // Sample the genesis block.
-        let genesis = sample_genesis_block_with_pk(rng, private_key);
+        let genesis = sample_genesis_block_with_private_key(rng, private_key);
 
         // Initialize the ledger with the genesis block and the associated private key.
         let address = Address::try_from(&private_key).unwrap();
@@ -1007,6 +896,127 @@ pub(crate) mod test_helpers {
         assert_eq!(genesis, ledger.get_block(0).unwrap());
 
         ledger
+    }
+
+    pub(crate) fn sample_program() -> Program<CurrentNetwork> {
+        static INSTANCE: OnceCell<Program<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                Program::<CurrentNetwork>::from_str(
+                    r"
+program testing.aleo;
+
+interface message:
+    amount as u128;
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    amount as u64.private;
+
+function compute:
+    input r0 as message.private;
+    input r1 as message.public;
+    input r2 as message.private;
+    input r3 as token.record;
+    add r0.amount r1.amount into r4;
+    cast r3.owner r3.gates r3.amount into r5 as token.record;
+    output r4 as u128.public;
+    output r5 as token.record;",
+                )
+                .unwrap()
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_deployment_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize the program.
+                let program = sample_program();
+
+                // Initialize a new caller.
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+                // Initialize the ledger.
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
+
+                // Fetch the unspent records.
+                let records = ledger
+                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
+                    .unwrap()
+                    .filter(|(_, record)| !record.gates().is_zero())
+                    .collect::<indexmap::IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
+                // Prepare the additional fee.
+                let credits = records.values().next().unwrap().clone();
+                let additional_fee = (credits, 10);
+
+                // Initialize the VM.
+                let vm = sample_vm();
+                // Deploy.
+                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
+                // Verify.
+                assert!(vm.verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_execution_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the ledger.
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
+
+                // Fetch the unspent records.
+                let records = ledger
+                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
+                    .unwrap()
+                    .filter(|(_, record)| !record.gates().is_zero())
+                    .collect::<indexmap::IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+                // Select a record to spend.
+                let record = records.values().next().unwrap().clone();
+
+                // Initialize the VM.
+                let vm = sample_vm();
+
+                // Authorize.
+                let authorization = vm
+                    .authorize(
+                        &caller_private_key,
+                        &ProgramID::from_str("credits.aleo").unwrap(),
+                        Identifier::from_str("transfer").unwrap(),
+                        &[
+                            Value::<CurrentNetwork>::Record(record),
+                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                        ],
+                        rng,
+                    )
+                    .unwrap();
+                assert_eq!(authorization.len(), 1);
+
+                // Execute.
+                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                // Verify.
+                assert!(vm.verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
     }
 }
 
@@ -1032,7 +1042,7 @@ mod tests {
         let address = Address::try_from(&view_key).unwrap();
 
         // Initialize the VM.
-        let vm = crate::ledger::vm::test_helpers::sample_vm();
+        let vm = crate::vm::test_helpers::sample_vm();
 
         // Create a genesis block.
         let genesis = Block::genesis(&vm, &private_key, rng).unwrap();
@@ -1116,12 +1126,12 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = crate::ledger::test_helpers::sample_deployment_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1149,12 +1159,12 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         // Sample the genesis ledger.
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::ledger::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction.clone()).unwrap();
 
         // Propose the next block.
@@ -1177,7 +1187,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key, view key, and address.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         let view_key = ViewKey::try_from(private_key).unwrap();
         let address = Address::try_from(&view_key).unwrap();
 
@@ -1234,11 +1244,11 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         let address = Address::try_from(&private_key).unwrap();
 
         // Sample the genesis ledger.
-        let mut ledger = test_helpers::sample_genesis_ledger(rng);
+        let mut ledger = crate::ledger::test_helpers::sample_genesis_ledger(rng);
 
         // Fetch the proof target and epoch challenge for the block.
         let proof_target = ledger.latest_proof_target().unwrap();
@@ -1263,14 +1273,14 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the genesis private key and address.
-        let private_key = test_helpers::sample_genesis_private_key(rng);
+        let private_key = crate::ledger::test_helpers::sample_genesis_private_key(rng);
         let address = Address::try_from(&private_key).unwrap();
 
         // Sample the genesis ledger.
         let mut ledger = test_helpers::sample_genesis_ledger(rng);
 
         // Add a transaction to the memory pool.
-        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::ledger::test_helpers::sample_execution_transaction(rng);
         ledger.add_to_memory_pool(transaction).unwrap();
 
         // Ensure that the ledger can't create a block that satisfies the coinbase target.
