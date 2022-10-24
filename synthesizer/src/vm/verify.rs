@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the transaction in the VM.
     #[inline]
     pub fn verify(&self, transaction: &Transaction<N>) -> bool {

@@ -292,7 +292,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use crate::{
         block::{Block, BlockTree},
-        store::{BlockMemory, BlockStore, ProgramMemory, ProgramStore},
+        store::{ConsensusMemory, ConsensusStore},
         vm::VM,
     };
     use console::{network::Testnet3, prelude::Network};
@@ -303,11 +303,9 @@ pub(crate) mod test_helpers {
     #[derive(Clone)]
     pub struct TestLedger<N: Network> {
         /// The VM state.
-        vm: VM<N, ProgramMemory<N>>,
+        vm: VM<N, ConsensusMemory<N>>,
         /// The current block tree.
         block_tree: BlockTree<N>,
-        /// The block store.
-        blocks: BlockStore<N, BlockMemory<N>>,
     }
 
     impl TestLedger<CurrentNetwork> {
@@ -316,15 +314,13 @@ pub(crate) mod test_helpers {
             // Initialize the genesis block.
             let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
 
-            // Initialize the block store.
-            let blocks = BlockStore::<CurrentNetwork, BlockMemory<CurrentNetwork>>::open(None)?;
-            // Initialize the program store.
-            let store = ProgramStore::<CurrentNetwork, ProgramMemory<CurrentNetwork>>::open(None)?;
+            // Initialize the consensus store.
+            let store = ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None)?;
             // Initialize a new VM.
-            let vm = VM::new(store)?;
+            let vm = VM::from(store)?;
 
             // Initialize the ledger.
-            let mut ledger = Self { vm, block_tree: CurrentNetwork::merkle_tree_bhp(&[])?, blocks };
+            let mut ledger = Self { vm, block_tree: CurrentNetwork::merkle_tree_bhp(&[])? };
 
             // Add the genesis block.
             ledger.add_next_block(&genesis)?;
@@ -345,14 +341,14 @@ pub(crate) mod test_helpers {
 
                 // Update the blocks.
                 ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-                ledger.blocks.insert(block)?;
+                ledger.vm.block_store().insert(*ledger.block_tree.root(), block)?;
 
                 // Update the VM.
                 for transaction in block.transactions().values() {
                     ledger.vm.finalize(transaction)?;
                 }
 
-                *self = Self { vm: ledger.vm, block_tree: ledger.block_tree, blocks: ledger.blocks };
+                *self = Self { vm: ledger.vm, block_tree: ledger.block_tree };
             }
 
             Ok(())
@@ -361,12 +357,12 @@ pub(crate) mod test_helpers {
         /// Returns the block for the given block height.
         pub fn get_block(&self, height: u32) -> Result<Block<N>> {
             // Retrieve the block hash.
-            let block_hash = match self.blocks.get_block_hash(height)? {
+            let block_hash = match self.vm.block_store().get_block_hash(height)? {
                 Some(block_hash) => block_hash,
                 None => bail!("Block {height} does not exist in storage"),
             };
             // Retrieve the block.
-            match self.blocks.get_block(&block_hash)? {
+            match self.vm.block_store().get_block(&block_hash)? {
                 Some(block) => Ok(block),
                 None => bail!("Block {height} ('{block_hash}') does not exist in storage"),
             }
@@ -374,7 +370,7 @@ pub(crate) mod test_helpers {
 
         /// Returns a state path for the given commitment.
         pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-            StatePath::new_commitment(&self.block_tree, &self.blocks, commitment)
+            StatePath::new_commitment(&self.block_tree, self.vm.block_store(), commitment)
         }
     }
 }

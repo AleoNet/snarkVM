@@ -30,7 +30,7 @@ use crate::{
         TransitionStore,
     },
 };
-use console::{account::Signature, network::prelude::*};
+use console::{account::Signature, network::prelude::*, types::Field};
 
 use anyhow::Result;
 use core::marker::PhantomData;
@@ -44,7 +44,11 @@ macro_rules! bail_with_block {
 }
 
 /// A trait for block storage.
-pub trait BlockStorage<N: Network>: Clone + Send + Sync {
+pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
+    /// The mapping of `block height` to `state root`.
+    type StateRootMap: for<'a> Map<'a, u32, Field<N>>;
+    /// The mapping of `state root` to `block height`.
+    type ReverseStateRootMap: for<'a> Map<'a, Field<N>, u32>;
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
@@ -67,6 +71,10 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    /// Returns the state root map.
+    fn state_root_map(&self) -> &Self::StateRootMap;
+    /// Returns the reverse state root map.
+    fn reverse_state_root_map(&self) -> &Self::ReverseStateRootMap;
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
     /// Returns the reverse ID map.
@@ -96,6 +104,8 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
+        self.state_root_map().start_atomic();
+        self.reverse_state_root_map().start_atomic();
         self.id_map().start_atomic();
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
@@ -108,7 +118,9 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
 
     /// Checks if an atomic batch is in progress.
     fn is_atomic_in_progress(&self) -> bool {
-        self.id_map().is_atomic_in_progress()
+        self.state_root_map().is_atomic_in_progress()
+            || self.reverse_state_root_map().is_atomic_in_progress()
+            || self.id_map().is_atomic_in_progress()
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
@@ -120,6 +132,8 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
 
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
+        self.state_root_map().abort_atomic();
+        self.reverse_state_root_map().abort_atomic();
         self.id_map().abort_atomic();
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
@@ -132,6 +146,8 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
 
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
+        self.state_root_map().finish_atomic()?;
+        self.reverse_state_root_map().finish_atomic()?;
         self.id_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
@@ -142,9 +158,14 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
         self.signature_map().finish_atomic()
     }
 
-    /// Stores the given `block` into storage.
-    fn insert(&self, block: &Block<N>) -> Result<()> {
+    /// Stores the given `(state root, block)` pair into storage.
+    fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
         atomic_write_batch!(self, {
+            // Store the (block height, state root) pair.
+            self.state_root_map().insert(block.height(), state_root)?;
+            // Store the (state root, block height) pair.
+            self.reverse_state_root_map().insert(state_root, block.height())?;
+
             // Store the block hash.
             self.id_map().insert(block.height(), block.hash())?;
             // Store the block height.
@@ -178,19 +199,29 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
     /// Removes the block for the given `block hash`.
     fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
         // Retrieve the block height.
-        let height = match self.get_block_height(block_hash)? {
+        let block_height = match self.get_block_height(block_hash)? {
             Some(height) => height,
             None => bail!("Failed to remove block: missing block height for block hash '{block_hash}'"),
+        };
+        // Retrieve the state root.
+        let state_root = match self.state_root_map().get(&block_height)? {
+            Some(state_root) => cow_to_copied!(state_root),
+            None => bail!("Failed to remove block: missing state root for block height '{block_height}'"),
         };
         // Retrieve the transaction IDs.
         let transaction_ids = match self.transactions_map().get(block_hash)? {
             Some(transaction_ids) => transaction_ids,
-            None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
+            None => bail!("Failed to remove block: missing transactions for block '{block_height}' ('{block_hash}')"),
         };
 
         atomic_write_batch!(self, {
+            // Remove the (block height, state root) pair.
+            self.state_root_map().remove(&block_height)?;
+            // Remove the (state root, block height) pair.
+            self.reverse_state_root_map().remove(&state_root)?;
+
             // Remove the block hash.
-            self.id_map().remove(&height)?;
+            self.id_map().remove(&block_height)?;
             // Remove the block height.
             self.reverse_id_map().remove(block_hash)?;
             // Remove the block header.
@@ -219,10 +250,26 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
         Ok(())
     }
 
+    /// Returns the block height that contains the given `state root`.
+    fn find_block_height_from_state_root(&self, state_root: Field<N>) -> Result<Option<u32>> {
+        match self.reverse_state_root_map().get(&state_root)? {
+            Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the block hash that contains the given `transaction ID`.
     fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
         match self.reverse_transactions_map().get(transaction_id)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the state root that contains the given `block height`.
+    fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
+        match self.state_root_map().get(&block_height)? {
+            Some(state_root) => Ok(Some(cow_to_copied!(state_root))),
             None => Ok(None),
         }
     }
@@ -282,19 +329,19 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
         Ok(Some(Transactions::from(&transactions)))
     }
 
-    /// Returns the block signature for the given `block hash`.
-    fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        match self.signature_map().get(block_hash)? {
-            Some(signature) => Ok(Some(cow_to_cloned!(signature))),
-            None => Ok(None),
-        }
-    }
-
     /// Returns the block coinbase proof for the given `block hash`.
     fn get_block_coinbase_proof(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         match self.coinbase_proof_map().get(block_hash)? {
             Some(coinbase_proof) => Ok(cow_to_cloned!(coinbase_proof)),
             None => bail!("Missing coinbase proof for block ('{block_hash}')"),
+        }
+    }
+
+    /// Returns the block signature for the given `block hash`.
+    fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
+        match self.signature_map().get(block_hash)? {
+            Some(signature) => Ok(Some(cow_to_cloned!(signature))),
+            None => Ok(None),
         }
     }
 
@@ -345,6 +392,10 @@ pub trait BlockStorage<N: Network>: Clone + Send + Sync {
 /// An in-memory block storage.
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
+    /// The mapping of `block height` to `state root`.
+    state_root_map: MemoryMap<u32, Field<N>>,
+    /// The mapping of `state root` to `block height`.
+    reverse_state_root_map: MemoryMap<Field<N>, u32>,
     /// The mapping of `block height` to `block hash`.
     id_map: MemoryMap<u32, N::BlockHash>,
     /// The mapping of `block hash` to `block height`.
@@ -365,6 +416,8 @@ pub struct BlockMemory<N: Network> {
 
 #[rustfmt::skip]
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
+    type StateRootMap = MemoryMap<u32, Field<N>>;
+    type ReverseStateRootMap = MemoryMap<Field<N>, u32>;
     type IDMap = MemoryMap<u32, N::BlockHash>;
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
@@ -383,6 +436,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
         // Return the block storage.
         Ok(Self {
+            state_root_map: MemoryMap::default(),
+            reverse_state_root_map: MemoryMap::default(),
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
@@ -392,6 +447,16 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             coinbase_proof_map: MemoryMap::default(),
             signature_map: MemoryMap::default(),
         })
+    }
+
+    /// Returns the state root map.
+    fn state_root_map(&self) -> &Self::StateRootMap {
+        &self.state_root_map
+    }
+
+    /// Returns the reverse state root map.
+    fn reverse_state_root_map(&self) -> &Self::ReverseStateRootMap {
+        &self.reverse_state_root_map
     }
 
     /// Returns the ID map.
@@ -458,9 +523,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         Self { storage, _phantom: PhantomData }
     }
 
-    /// Stores the given `block` into storage.
-    pub fn insert(&self, block: &Block<N>) -> Result<()> {
-        self.storage.insert(block)
+    /// Stores the given `(state root, block)` pair into storage.
+    pub fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
+        self.storage.insert(state_root, block)
     }
 
     /// Removes the block for the given `block hash`.
@@ -483,6 +548,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     pub fn abort_atomic(&self) {
         self.storage.abort_atomic();
@@ -492,9 +562,31 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
     }
+
+    /// Returns the optional development ID.
+    pub fn dev(&self) -> Option<u16> {
+        self.storage.dev()
+    }
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the block height that contains the given `state root`.
+    pub fn find_block_height_from_state_root(&self, state_root: Field<N>) -> Result<Option<u32>> {
+        self.storage.find_block_height_from_state_root(state_root)
+    }
+
+    /// Returns the block hash that contains the given `transaction ID`.
+    pub fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
+        self.storage.find_block_hash(transaction_id)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the state root that contains the given `block height`.
+    pub fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
+        self.storage.get_state_root(block_height)
+    }
+
     /// Returns the previous block hash of the given `block height`.
     pub fn get_previous_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
         self.storage.get_previous_block_hash(height)
@@ -537,13 +629,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
-    /// Returns the block hash that contains the given `transaction ID`.
-    pub fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
-        self.storage.find_block_hash(transaction_id)
+    /// Returns `true` if the given state root exists.
+    pub fn contains_state_root(&self, state_root: Field<N>) -> Result<bool> {
+        self.storage.reverse_state_root_map().contains_key(&state_root)
     }
-}
 
-impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given block height exists.
     pub fn contains_block_height(&self, height: u32) -> Result<bool> {
         self.storage.id_map().contains_key(&height)
@@ -556,6 +646,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns an iterator over the state roots, for all blocks in `self`.
+    pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.storage.reverse_state_root_map().keys()
+    }
+
     /// Returns an iterator over the block heights, for all blocks in `self`.
     pub fn heights(&self) -> impl '_ + Iterator<Item = Cow<'_, u32>> {
         self.storage.id_map().keys()
@@ -587,7 +682,7 @@ mod tests {
         assert_eq!(None, candidate);
 
         // Insert the block.
-        block_store.insert(&block).unwrap();
+        block_store.insert(rng.gen(), &block).unwrap();
 
         // Retrieve the block.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -624,7 +719,7 @@ mod tests {
         }
 
         // Insert the block.
-        block_store.insert(&block).unwrap();
+        block_store.insert(rng.gen(), &block).unwrap();
 
         for transaction_id in block.transaction_ids() {
             // Find the block hash.
