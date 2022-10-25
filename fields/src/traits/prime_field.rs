@@ -29,7 +29,7 @@ pub trait PrimeField:
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
-    /// Returns a prime field element from its underlying representation.
+    /// Constructs a `PrimeField` element given a human-readable `Self::BigInteger`.
     fn from_bigint(repr: Self::BigInteger) -> Option<Self>;
 
     /// Returns the underlying representation of the prime field element.
