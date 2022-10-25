@@ -188,7 +188,7 @@ impl<E: Environment> Pow<Scalar<E>> for Scalar<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Scalar<E>) -> Self::Output {
-        Scalar::new(self.scalar.pow(other.scalar.to_repr()))
+        Scalar::new(self.scalar.pow(other.scalar.to_bigint()))
     }
 }
 
@@ -198,7 +198,7 @@ impl<E: Environment> Pow<&Scalar<E>> for Scalar<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: &Scalar<E>) -> Self::Output {
-        Scalar::new(self.scalar.pow(other.scalar.to_repr()))
+        Scalar::new(self.scalar.pow(other.scalar.to_bigint()))
     }
 }
 

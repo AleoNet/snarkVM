@@ -66,11 +66,6 @@ pub struct Fp384<P: Fp384Parameters>(
 
 impl<P: Fp384Parameters> Fp384<P> {
     #[inline]
-    pub fn new(element: BigInteger) -> Self {
-        Fp384::<P>(element, PhantomData)
-    }
-
-    #[inline]
     pub fn is_valid(&self) -> bool {
         self.0 < P::MODULUS
     }
@@ -212,7 +207,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         let mut two_inv = P::MODULUS;
         two_inv.add_nocarry(&1u64.into());
         two_inv.div2();
-        Self::from_repr(two_inv).unwrap() // Guaranteed to be valid.
+        Self::from_bigint(two_inv).unwrap() // Guaranteed to be valid.
     }
 
     fn sum_of_products<'a>(
@@ -273,7 +268,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
 
         // Because we represent F_p elements in non-redundant form, we need a final
         // conditional subtraction to ensure the output is in range.
-        let mut result = Self::new(BigInteger([u0, u1, u2, u3, u4, u5]));
+        let mut result = Self(BigInteger([u0, u1, u2, u3, u4, u5]), PhantomData);
         result.reduce();
         result
     }
@@ -435,20 +430,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     type Parameters = P;
 
     #[inline]
-    fn decompose(
-        &self,
-        _q1: &[u64; 4],
-        _q2: &[u64; 4],
-        _b1: Self,
-        _b2: Self,
-        _r128: Self,
-        _half_r: &[u64; 8],
-    ) -> (Self, Self, bool, bool) {
-        unimplemented!()
-    }
-
-    #[inline]
-    fn from_repr(r: BigInteger) -> Option<Self> {
+    fn from_bigint(r: BigInteger) -> Option<Self> {
         let mut r = Fp384(r, PhantomData);
         if r.is_zero() {
             Some(r)
@@ -461,7 +443,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn to_repr(&self) -> BigInteger {
+    fn to_bigint(&self) -> BigInteger {
         let mut tmp = self.0;
         let mut r = tmp.0;
         // Montgomery Reduction
@@ -531,8 +513,16 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn to_repr_unchecked(&self) -> BigInteger {
-        self.0
+    fn decompose(
+        &self,
+        _q1: &[u64; 4],
+        _q2: &[u64; 4],
+        _b1: Self,
+        _b2: Self,
+        _r128: Self,
+        _half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool) {
+        unimplemented!()
     }
 }
 
@@ -587,7 +577,7 @@ impl<P: Fp384Parameters> SquareRootField for Fp384<P> {
 impl<P: Fp384Parameters> Ord for Fp384<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_repr().cmp(&other.to_repr())
+        self.to_bigint().cmp(&other.to_bigint())
     }
 }
 
@@ -613,7 +603,7 @@ impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBits for Fp384<P> {
     fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_repr().to_bits_le();
+        let mut bits_vec = self.to_bigint().to_bits_le();
         bits_vec.truncate(P::MODULUS_BITS as usize);
         bits_vec
     }
@@ -628,14 +618,14 @@ impl<P: Fp384Parameters> ToBits for Fp384<P> {
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.to_repr().write_le(writer)
+        self.to_bigint().write_le(writer)
     }
 }
 
 impl<P: Fp384Parameters> FromBytes for Fp384<P> {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_bigint(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -658,7 +648,8 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten =
+            Self::from_bigint(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -675,7 +666,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_bigint(<Self as PrimeField>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }
@@ -692,14 +683,14 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 impl<P: Fp384Parameters> Debug for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 
 impl<P: Fp384Parameters> Display for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 

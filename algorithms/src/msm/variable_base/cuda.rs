@@ -356,7 +356,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(
 mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
-    use snarkvm_fields::{Field, One, PrimeField};
+    use snarkvm_fields::{Field, One};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
     use serial_test::serial;
@@ -470,15 +470,15 @@ mod tests {
         let output: Vec<Fq> = run_roundtrip("mul_test", &inputs[..]);
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] * input[1];
-            let output = output.to_repr_unchecked();
-            let rust_out = rust_out.to_repr_unchecked();
+            let output = output.0; // Montgomery BigInteger representation
+            let rust_out = rust_out.0; // Montgomery BigInteger representation
 
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
                 eprintln!(
                     "inputs {:?}, {:?}",
-                    input[0].to_repr_unchecked().as_ref(),
-                    input[1].to_repr_unchecked().as_ref()
+                    input[0].0.as_ref(), // Montgomery BigInteger representation
+                    input[1].0.as_ref()  // Montgomery BigInteger representation
                 );
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
@@ -493,12 +493,12 @@ mod tests {
         let output: Vec<Fq> = run_roundtrip("sqr_test", &inputs[..]);
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0].square();
-            let output = output.to_repr_unchecked();
-            let rust_out = rust_out.to_repr_unchecked();
+            let output = output.0; // Montgomery BigInteger representation
+            let rust_out = rust_out.0; // Montgomery BigInteger representation
 
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
-                eprintln!("inputs {:?}", input[0].to_repr_unchecked().as_ref());
+                eprintln!("inputs {:?}", input[0].0.as_ref()); // Montgomery BigInteger representation
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
         }
@@ -513,15 +513,15 @@ mod tests {
 
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] + input[1];
-            let output = output.to_repr_unchecked();
-            let rust_out = rust_out.to_repr_unchecked();
+            let output = output.0; // Montgomery BigInteger representation
+            let rust_out = rust_out.0; // Montgomery BigInteger representation
 
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
                 eprintln!(
                     "inputs {:?}, {:?}",
-                    input[0].to_repr_unchecked().as_ref(),
-                    input[1].to_repr_unchecked().as_ref()
+                    input[0].0.as_ref(), // Montgomery BigInteger representation
+                    input[1].0.as_ref()  // Montgomery BigInteger representation
                 );
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
@@ -618,14 +618,14 @@ mod tests {
 
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] - input[1];
-            let output = output.to_repr_unchecked();
-            let rust_out = rust_out.to_repr_unchecked();
+            let output = output.0; // Montgomery BigInteger representation
+            let rust_out = rust_out.0; // Montgomery BigInteger representation
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
                 eprintln!(
                     "inputs {:?}, {:?}",
-                    input[0].to_repr_unchecked().as_ref(),
-                    input[1].to_repr_unchecked().as_ref()
+                    input[0].0.as_ref(), // Montgomery BigInteger representation
+                    input[1].0.as_ref()  // Montgomery BigInteger representation
                 );
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
