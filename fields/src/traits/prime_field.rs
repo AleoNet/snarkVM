@@ -29,10 +29,10 @@ pub trait PrimeField:
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
-    /// Returns a prime field element from its underlying representation.
+    /// Constructs a `PrimeField` element given a human-readable `Self::BigInteger`.
     fn from_bigint(repr: Self::BigInteger) -> Option<Self>;
 
-    /// Returns the underlying representation of the prime field element.
+    /// Returns a human-readable `Self::BigInteger` in the range `0..(Self::MODULUS - 1)`.
     fn to_bigint(&self) -> Self::BigInteger;
 
     /// Returns the decomposition of the scalar.
