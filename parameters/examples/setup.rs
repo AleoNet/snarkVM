@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm::{
-    circuit::Aleo,
-    prelude::{Network, Process, Program, Testnet3},
-};
 use snarkvm_algorithms::{
     crypto_hash::sha256::sha256,
     snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
     SNARK,
 };
+use snarkvm_circuit::Aleo;
+use snarkvm_console::network::{Network, Testnet3};
+use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
 use serde_json::{json, Value};
@@ -196,7 +195,7 @@ pub fn main() -> Result<()> {
 
     match args[1].as_str() {
         "trial_srs" => trial_srs::<Testnet3>(args[2].as_str().parse::<usize>()?)?,
-        "credits" => credits_program::<Testnet3, snarkvm::circuit::AleoV0>()?,
+        "credits" => credits_program::<Testnet3, snarkvm_circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };
 

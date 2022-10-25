@@ -17,8 +17,8 @@
 use crate::{
     file::Manifest,
     prelude::{Network, ProgramID},
+    synthesizer::Program,
 };
-use snarkvm_compiler::Program;
 
 use anyhow::{anyhow, bail, ensure, Result};
 use core::str::FromStr;
