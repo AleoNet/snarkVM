@@ -356,7 +356,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(
 mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
-    use snarkvm_fields::{Field, One, PrimeField};
+    use snarkvm_fields::{Field, One};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
     use serial_test::serial;
