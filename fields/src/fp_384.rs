@@ -207,7 +207,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         let mut two_inv = P::MODULUS;
         two_inv.add_nocarry(&1u64.into());
         two_inv.div2();
-        Self::from_repr(two_inv).unwrap() // Guaranteed to be valid.
+        Self::from_bigint(two_inv).unwrap() // Guaranteed to be valid.
     }
 
     fn sum_of_products<'a>(
@@ -430,7 +430,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     type Parameters = P;
 
     #[inline]
-    fn from_repr(r: BigInteger) -> Option<Self> {
+    fn from_bigint(r: BigInteger) -> Option<Self> {
         let mut r = Fp384(r, PhantomData);
         if r.is_zero() {
             Some(r)
@@ -625,7 +625,7 @@ impl<P: Fp384Parameters> ToBytes for Fp384<P> {
 impl<P: Fp384Parameters> FromBytes for Fp384<P> {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_bigint(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -648,7 +648,8 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten =
+            Self::from_bigint(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -665,7 +666,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_bigint(<Self as PrimeField>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }

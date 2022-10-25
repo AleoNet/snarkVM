@@ -174,7 +174,7 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
         let mut two_inv = P::MODULUS;
         two_inv.add_nocarry(&1u64.into());
         two_inv.div2();
-        Self::from_repr(two_inv).unwrap() // Guaranteed to be valid.
+        Self::from_bigint(two_inv).unwrap() // Guaranteed to be valid.
     }
 
     fn sum_of_products<'a>(
@@ -372,7 +372,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     type Parameters = P;
 
     #[inline]
-    fn from_repr(r: BigInteger) -> Option<Self> {
+    fn from_bigint(r: BigInteger) -> Option<Self> {
         let mut r = Fp256(r, PhantomData);
         if r.is_zero() {
             Some(r)
@@ -475,7 +475,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
             carry = fa::adc(&mut a[5], half_r[5], carry);
             carry = fa::adc(&mut a[6], half_r[6], carry);
             _ = fa::adc(&mut a[7], half_r[7], carry);
-            Self::from_repr(BigInteger([a[4], a[5], a[6], a[7]])).unwrap()
+            Self::from_bigint(BigInteger([a[4], a[5], a[6], a[7]])).unwrap()
         };
 
         let alpha = |x: &Self, q: &[u64; 4]| -> Self {
@@ -597,7 +597,7 @@ impl<P: Fp256Parameters> ToBytes for Fp256<P> {
 impl<P: Fp256Parameters> FromBytes for Fp256<P> {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_bigint(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -635,7 +635,8 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten =
+            Self::from_bigint(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -652,7 +653,7 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_bigint(<Self as PrimeField>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }

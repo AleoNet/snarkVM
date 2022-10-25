@@ -296,7 +296,7 @@ pub(crate) fn bench_fr_to_bigint(c: &mut Criterion) {
     });
 }
 
-pub(crate) fn bench_fr_from_repr(c: &mut Criterion) {
+pub(crate) fn bench_fr_from_bigint(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
     let mut rng = TestRng::default();
@@ -304,10 +304,10 @@ pub(crate) fn bench_fr_from_repr(c: &mut Criterion) {
     let v: Vec<FrRepr> = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_bigint()).collect();
 
     let mut count = 0;
-    c.bench_function("bls12_377: fr_from_repr", |c| {
+    c.bench_function("bls12_377: fr_from_bigint", |c| {
         c.iter(|| {
             count = (count + 1) % SAMPLES;
-            Fr::from_repr(v[count])
+            Fr::from_bigint(v[count])
         })
     });
 }

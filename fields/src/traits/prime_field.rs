@@ -30,7 +30,7 @@ pub trait PrimeField:
     type BigInteger: BigInteger;
 
     /// Returns a prime field element from its underlying representation.
-    fn from_repr(repr: Self::BigInteger) -> Option<Self>;
+    fn from_bigint(repr: Self::BigInteger) -> Option<Self>;
 
     /// Returns the underlying representation of the prime field element.
     fn to_bigint(&self) -> Self::BigInteger;

@@ -198,7 +198,7 @@ mod tests {
         let two = Fq::from(2u8);
 
         // Compute the expected powers of G.
-        let g = Fq::from_repr(FqParameters::GENERATOR).unwrap().pow(FqParameters::T);
+        let g = Fq::from_bigint(FqParameters::GENERATOR).unwrap().pow(FqParameters::T);
         let powers = (0..FqParameters::TWO_ADICITY - 1)
             .map(|i| g.pow(two.pow(Fq::from(i as u64).to_bigint()).to_bigint()).to_bigint())
             .collect::<Vec<_>>();

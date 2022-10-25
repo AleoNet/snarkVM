@@ -68,7 +68,7 @@ macro_rules! impl_primefield_from_int {
                 let mut default_int = P::BigInteger::default();
                 default_int.0[0] = lower;
                 default_int.0[1] = upper;
-                Self::from_repr(default_int).unwrap()
+                Self::from_bigint(default_int).unwrap()
             }
         }
     };
@@ -77,7 +77,7 @@ macro_rules! impl_primefield_from_int {
             /// Attempts to convert an integer into a field element.
             /// Panics if the provided integer is invalid (e.g. larger than the field modulus).
             fn from(other: $int) -> Self {
-                Self::from_repr(P::BigInteger::from(u64::from(other))).unwrap()
+                Self::from_bigint(P::BigInteger::from(u64::from(other))).unwrap()
             }
         }
     };
@@ -136,7 +136,7 @@ macro_rules! sqrt_impl {
                         let n_minus_one_minus_i = n - 1 - i;
                         s += 2u64.pow(n_minus_one_minus_i as u32);
                         if i > 0 {
-                            delta *= $Self::from_repr($P::POWERS_OF_G[n_minus_one_minus_i as usize])
+                            delta *= $Self::from_bigint($P::POWERS_OF_G[n_minus_one_minus_i as usize])
                                 .expect("precomputed powers of g should always convert properly");
                         } else {
                             delta = -delta;
@@ -159,7 +159,7 @@ macro_rules! sqrt_impl {
                             }
                             q_bits.iter().enumerate().take(*l as usize).for_each(|(k, bit)| {
                                 if *bit {
-                                    gamma *= $Self::from_repr($P::POWERS_OF_G[(kappa as usize) + k])
+                                    gamma *= $Self::from_bigint($P::POWERS_OF_G[(kappa as usize) + k])
                                         .expect("precomputed powers of g should always convert properly");
                                 }
                             });
