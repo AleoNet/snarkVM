@@ -36,9 +36,9 @@ impl Blake2Xs {
         panic!("Unable to hash to curve on {}", input)
     }
 
-    /// Executes **one** round of hash-to-curve and returns a generator on success.
+    /// Evaluates **one** round of hash-to-curve and returns a generator on success.
     #[inline]
-    fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
+    pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
         let serialized_size = G::prime_subgroup_generator().compressed_size();
 
         // Compute the digest for sampling the generator.
@@ -57,12 +57,9 @@ impl Blake2Xs {
 }
 
 #[cfg(test)]
-mod bls12_377 {
+mod bls12_377_g1 {
     use super::*;
-    use snarkvm_curves::{
-        bls12_377::{G1Affine, G2Affine},
-        AffineCurve,
-    };
+    use snarkvm_curves::bls12_377::G1Affine;
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{BigInteger384, CanonicalSerialize};
 
@@ -134,7 +131,18 @@ mod bls12_377 {
                 21335464879237822
             ])
         );
+
+        // Check that G1Affine matches.
+        assert_eq!(G1Affine::prime_subgroup_generator(), g1);
     }
+}
+
+#[cfg(test)]
+mod bls12_377_g2 {
+    use super::*;
+    use snarkvm_curves::bls12_377::G2Affine;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger384, CanonicalSerialize};
 
     #[test]
     fn hash_bls12_377_g2() {
@@ -248,5 +256,63 @@ mod bls12_377 {
                 73741830940675480
             ])
         );
+
+        // Check that G2Affine matches.
+        assert_eq!(G2Affine::prime_subgroup_generator(), g2);
+    }
+}
+
+#[cfg(test)]
+mod edwards_bls12 {
+    use super::*;
+    use snarkvm_curves::edwards_bls12::EdwardsAffine;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger256, CanonicalSerialize};
+
+    #[test]
+    fn hash_edwards_bls12() {
+        let group = Blake2Xs::try_hash_to_curve::<EdwardsAffine>("Aleo Edwards BLS12 in 4").unwrap();
+        assert!(group.is_on_curve());
+        assert!(group.is_in_correct_subgroup_assuming_on_curve());
+        assert_eq!(group.compressed_size(), 256 / 8);
+        assert_eq!(
+            Blake2Xs::hash_to_curve::<EdwardsAffine>("Aleo Edwards BLS12"),
+            (group, "Aleo Edwards BLS12 in 4".to_string(), 4)
+        );
+
+        // String representation
+        assert_eq!(group.x.to_string(), "1540945439182663264862696551825005342995406165131907382295858612069623286213",);
+        assert_eq!(group.y.to_string(), "8003546896475222703853313610036801932325312921786952001586936882361378122196",);
+
+        // Montgomery BigInteger representation
+        assert_eq!(
+            group.x.to_repr(),
+            BigInteger256::new([1404703638504229317, 16672475576000152563, 1635533132911366150, 245486771465834503]),
+            "\n\nExpected: {:?}\n\n",
+            group.x.to_repr().0,
+        );
+        assert_eq!(
+            group.y.to_repr(),
+            BigInteger256::new([15352153743387634132, 9180404173643694677, 4017395716581932261, 1275038582114391971]),
+            "\n\nExpected: {:?}\n\n",
+            group.y.to_repr().0,
+        );
+
+        // Raw BigInteger representation
+        assert_eq!(
+            group.x.to_repr_unchecked(),
+            BigInteger256::new([15976313411695170452, 17230178952810798400, 11626259175167078036, 678729006091608048]),
+            "\n\nExpected: {:?}\n\n",
+            group.x.to_repr_unchecked().0,
+        );
+        assert_eq!(
+            group.y.to_repr_unchecked(),
+            BigInteger256::new([926786653590077393, 18147000980977651608, 13077459464847727671, 1231472949076376191]),
+            "\n\nExpected: {:?}\n\n",
+            group.y.to_repr_unchecked().0,
+        );
+
+        // Check that EdwardsAffine matches.
+        assert_eq!(EdwardsAffine::prime_subgroup_generator(), group);
     }
 }
