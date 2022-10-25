@@ -304,7 +304,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         // Compute the accumulator commitment.
         let commitments: Vec<_> =
             cfg_iter!(coinbase_solution.partial_solutions()).map(|solution| solution.commitment().0).collect();
-        let fs_challenges = challenge_points.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
+        let fs_challenges = challenge_points.into_iter().map(|f| f.to_bigint()).collect::<Vec<_>>();
         let accumulator_commitment =
             KZGCommitment::<N::PairingCurve>(VariableBase::msm(&commitments, &fs_challenges).into());
 

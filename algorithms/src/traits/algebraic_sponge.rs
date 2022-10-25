@@ -105,7 +105,7 @@ pub(crate) mod nonnative_params {
         ($x:expr) => {{
             use snarkvm_utilities::ToBits;
             let num = $x;
-            let num_bits = num.to_repr().to_bits_be();
+            let num_bits = num.to_bigint().to_bits_be();
             let mut skipped_bits = 0;
             for b in num_bits.iter() {
                 if *b == false {

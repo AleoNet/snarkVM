@@ -48,7 +48,7 @@ criterion_group!(
     bls12_377::fq::bench_fq_inverse,
     bls12_377::fq::bench_fq_negate,
     bls12_377::fq::bench_fq_sqrt,
-    bls12_377::fq::bench_fq_into_repr,
+    bls12_377::fq::bench_fq_to_bigint,
     bls12_377::fq::bench_fq_from_repr,
 );
 
@@ -88,7 +88,7 @@ criterion_group!(
     bls12_377::fr::bench_fr_inverse,
     bls12_377::fr::bench_fr_negate,
     bls12_377::fr::bench_fr_sqrt,
-    bls12_377::fr::bench_fr_into_repr,
+    bls12_377::fr::bench_fr_to_bigint,
     bls12_377::fr::bench_fr_from_repr,
 );
 

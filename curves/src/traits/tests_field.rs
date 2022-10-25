@@ -555,17 +555,17 @@ pub fn fft_field_test<F: PrimeField + FftField>() {
     let two_adic_root_of_unity = F::two_adic_root_of_unity();
     assert!(!two_adic_root_of_unity.is_zero());
     assert_eq!(two_adic_root_of_unity.pow([1 << two_adicity]), F::one());
-    assert_eq!(generator.pow(trace.to_repr().as_ref()), two_adic_root_of_unity);
+    assert_eq!(generator.pow(trace.to_bigint().as_ref()), two_adic_root_of_unity);
 }
 
 pub fn primefield_test<F: PrimeField>(rng: &mut TestRng) {
     let one = F::one();
-    assert_eq!(F::from_repr(one.to_repr()).unwrap(), one);
+    assert_eq!(F::from_repr(one.to_bigint()).unwrap(), one);
     assert_eq!(F::from_str("1").ok().unwrap(), one);
     assert_eq!(F::from_str(&one.to_string()).ok().unwrap(), one);
 
     let two = F::one().double();
-    assert_eq!(F::from_repr(two.to_repr()).unwrap(), two);
+    assert_eq!(F::from_repr(two.to_bigint()).unwrap(), two);
     assert_eq!(F::from_str("2").ok().unwrap(), two);
     assert_eq!(F::from_str(&two.to_string()).ok().unwrap(), two);
 

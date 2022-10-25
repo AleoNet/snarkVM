@@ -29,6 +29,12 @@ pub trait PrimeField:
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
+    /// Returns a prime field element from its underlying representation.
+    fn from_repr(repr: Self::BigInteger) -> Option<Self>;
+
+    /// Returns the underlying representation of the prime field element.
+    fn to_bigint(&self) -> Self::BigInteger;
+
     /// Returns the decomposition of the scalar.
     fn decompose(
         &self,
@@ -39,12 +45,6 @@ pub trait PrimeField:
         r128: Self,
         half_r: &[u64; 8],
     ) -> (Self, Self, bool, bool);
-
-    /// Returns a prime field element from its underlying representation.
-    fn from_repr(repr: Self::BigInteger) -> Option<Self>;
-
-    /// Returns the underlying representation of the prime field element.
-    fn to_repr(&self) -> Self::BigInteger;
 
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {

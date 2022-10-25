@@ -27,12 +27,12 @@ macro_rules! field {
     };
 }
 
-macro_rules! impl_field_into_biginteger {
+macro_rules! impl_field_to_biginteger {
     ($field: ident, $biginteger: ident, $parameters: ident) => {
         #[allow(clippy::from_over_into)]
         impl<P: $parameters> Into<$biginteger> for $field<P> {
             fn into(self) -> $biginteger {
-                self.to_repr()
+                self.to_bigint()
             }
         }
     };

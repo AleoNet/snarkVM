@@ -67,7 +67,7 @@ impl FixedBase {
         multiples_of_g: &[Vec<T>],
         scalar: &T::ScalarField,
     ) -> T {
-        let scalar_val = scalar.to_repr().to_bits_le();
+        let scalar_val = scalar.to_bigint().to_bits_le();
 
         cfg_into_iter!(0..outerc)
             .map(|outer| {

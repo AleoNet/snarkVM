@@ -430,19 +430,6 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     type Parameters = P;
 
     #[inline]
-    fn decompose(
-        &self,
-        _q1: &[u64; 4],
-        _q2: &[u64; 4],
-        _b1: Self,
-        _b2: Self,
-        _r128: Self,
-        _half_r: &[u64; 8],
-    ) -> (Self, Self, bool, bool) {
-        unimplemented!()
-    }
-
-    #[inline]
     fn from_repr(r: BigInteger) -> Option<Self> {
         let mut r = Fp384(r, PhantomData);
         if r.is_zero() {
@@ -456,7 +443,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn to_repr(&self) -> BigInteger {
+    fn to_bigint(&self) -> BigInteger {
         let mut tmp = self.0;
         let mut r = tmp.0;
         // Montgomery Reduction
@@ -524,6 +511,19 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
         tmp.0 = r;
         tmp
     }
+
+    #[inline]
+    fn decompose(
+        &self,
+        _q1: &[u64; 4],
+        _q2: &[u64; 4],
+        _b1: Self,
+        _b2: Self,
+        _r128: Self,
+        _half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool) {
+        unimplemented!()
+    }
 }
 
 impl<P: Fp384Parameters> FftField for Fp384<P> {
@@ -577,7 +577,7 @@ impl<P: Fp384Parameters> SquareRootField for Fp384<P> {
 impl<P: Fp384Parameters> Ord for Fp384<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_repr().cmp(&other.to_repr())
+        self.to_bigint().cmp(&other.to_bigint())
     }
 }
 
@@ -603,7 +603,7 @@ impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBits for Fp384<P> {
     fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_repr().to_bits_le();
+        let mut bits_vec = self.to_bigint().to_bits_le();
         bits_vec.truncate(P::MODULUS_BITS as usize);
         bits_vec
     }
@@ -618,7 +618,7 @@ impl<P: Fp384Parameters> ToBits for Fp384<P> {
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.to_repr().write_le(writer)
+        self.to_bigint().write_le(writer)
     }
 }
 
@@ -682,14 +682,14 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 impl<P: Fp384Parameters> Debug for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 
 impl<P: Fp384Parameters> Display for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 

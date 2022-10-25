@@ -379,7 +379,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         elem: &TargetField,
         optimization_type: OptimizationType,
     ) -> SmallVec<[F; 10]> {
-        Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_repr(), optimization_type)
+        Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_bigint(), optimization_type)
     }
 
     /// Obtain the limbs directly from a big int
@@ -439,7 +439,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         let skip = (F::Parameters::REPR_SHAVE_BITS + 1) as usize;
         for elem in src_elements.iter() {
             // discard the highest bit
-            let elem_bits = elem.to_repr().to_bits_be();
+            let elem_bits = elem.to_bigint().to_bits_be();
             dest_bits.extend_from_slice(&elem_bits[skip..]);
         }
         dest_bits.truncate(num_bits);
