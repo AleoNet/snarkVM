@@ -111,14 +111,15 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
     #[inline]
     fn apply_s_box(&mut self, is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
+        let alpha = Field::from_u64(self.parameters.alpha);
         if is_full_round {
             for elem in self.state.iter_mut() {
-                *elem = elem.pow(Field::from_u64(self.parameters.alpha));
+                *elem = elem.pow(alpha);
             }
         }
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
-            self.state[0] = self.state[0].pow(Field::from_u64(self.parameters.alpha));
+            self.state[0] = self.state[0].pow(alpha);
         }
     }
 
