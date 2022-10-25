@@ -62,11 +62,11 @@ impl<A: Aleo> StatePath<A> {
             A::verify_merkle_path_bhp(&self.block_path, &self.state_root, &self.block_hash.to_bits_le());
 
         check_transition_path
-            .is_equal(&check_transaction_path)
-            .is_equal(&check_transactions_path)
-            .is_equal(&check_header_path)
-            .is_equal(&check_block_hash)
-            .is_equal(&check_state_root)
+            & check_transaction_path
+            & check_transactions_path
+            & check_header_path
+            & check_block_hash
+            & check_state_root
     }
 }
 
