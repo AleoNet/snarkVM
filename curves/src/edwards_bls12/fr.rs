@@ -117,3 +117,15 @@ impl PoseidonDefaultParameters for FrParameters {
         PoseidonDefaultParametersEntry::new(8, 3, 8, 84, 0),
     ];
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_fields::{Field, PrimeField};
+
+    #[test]
+    fn test_two_adic_root_of_unity() {
+        let expected = Fr::from_repr(FrParameters::GENERATOR).unwrap().pow(FrParameters::T);
+        assert_eq!(Some(expected), Fr::from_repr(FrParameters::TWO_ADIC_ROOT_OF_UNITY));
+    }
+}

@@ -229,4 +229,10 @@ mod tests {
             assert_eq!(expected, candidate);
         }
     }
+
+    #[test]
+    fn test_two_adic_root_of_unity() {
+        let expected = Fr::from_repr(FrParameters::GENERATOR).unwrap().pow(FrParameters::T);
+        assert_eq!(Some(expected), Fr::from_repr(FrParameters::TWO_ADIC_ROOT_OF_UNITY));
+    }
 }
