@@ -480,7 +480,9 @@ fn test_fq_ordering() {
     // BigInteger384's ordering is well-tested, but we still need to make sure the
     // Fq elements aren't being compared in Montgomery form.
     for i in 0..100 {
-        assert!(Fq::from_repr(BigInteger384::from(i + 1)).unwrap() > Fq::from_repr(BigInteger384::from(i)).unwrap());
+        assert!(
+            Fq::from_bigint(BigInteger384::from(i + 1)).unwrap() > Fq::from_bigint(BigInteger384::from(i)).unwrap()
+        );
     }
 }
 
@@ -488,8 +490,8 @@ fn test_fq_ordering() {
 fn test_fq_legendre() {
     assert_eq!(QuadraticResidue, Fq::one().legendre());
     assert_eq!(Zero, Fq::zero().legendre());
-    assert_eq!(QuadraticResidue, Fq::from_repr(BigInteger384::from(4)).unwrap().legendre());
-    assert_eq!(QuadraticNonResidue, Fq::from_repr(BigInteger384::from(5)).unwrap().legendre());
+    assert_eq!(QuadraticResidue, Fq::from_bigint(BigInteger384::from(4)).unwrap().legendre());
+    assert_eq!(QuadraticNonResidue, Fq::from_bigint(BigInteger384::from(5)).unwrap().legendre());
 }
 
 #[test]
@@ -625,7 +627,7 @@ fn test_g1_projective_glv() {
     let scalar = Fr::rand(&mut rng);
     let affine = point.to_affine();
     assert_eq!(point.mul(scalar), affine.mul(scalar));
-    assert_eq!(affine.mul(scalar), affine.mul_bits(BitIteratorBE::new_without_leading_zeros(scalar.to_repr())));
+    assert_eq!(affine.mul(scalar), affine.mul_bits(BitIteratorBE::new_without_leading_zeros(scalar.to_bigint())));
 }
 
 #[test]
@@ -689,7 +691,7 @@ fn test_bilinearity() {
 
     let ans1 = Bls12_377::pairing(sa, b);
     let ans2 = Bls12_377::pairing(a, sb);
-    let ans3 = Bls12_377::pairing(a, b).pow(s.to_repr());
+    let ans3 = Bls12_377::pairing(a, b).pow(s.to_bigint());
 
     assert_eq!(ans1, ans2);
     assert_eq!(ans2, ans3);

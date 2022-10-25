@@ -45,14 +45,14 @@ impl<E: Environment> FromBits for Field<E> {
             ensure!(field < E::Field::modulus(), "The field is greater than or equal to the modulus.");
 
             // Return the field.
-            Ok(Field { field: E::Field::from_repr(field).ok_or_else(|| anyhow!("Invalid field from bits"))? })
+            Ok(Field { field: E::Field::from_bigint(field).ok_or_else(|| anyhow!("Invalid field from bits"))? })
         } else {
             // Construct the sanitized list of bits, resizing up if necessary.
             let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
             bits_le.resize(size_in_bits, false);
 
             // Recover the native field.
-            let field = E::Field::from_repr(E::BigInteger::from_bits_le(&bits_le)?)
+            let field = E::Field::from_bigint(E::BigInteger::from_bits_le(&bits_le)?)
                 .ok_or_else(|| anyhow!("Invalid field from bits"))?;
 
             // Return the field.

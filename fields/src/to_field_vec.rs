@@ -65,7 +65,7 @@ impl<F: PrimeField> ToConstraintField<F> for [bool] {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.chunks(F::size_in_data_bits())
             .map(|chunk| {
-                F::from_repr(F::BigInteger::from_bits_le(chunk)?)
+                F::from_bigint(F::BigInteger::from_bits_le(chunk)?)
                     .ok_or(ConstraintFieldError::Message("Invalid data bits for constraint field"))
             })
             .collect::<Result<Vec<F>, _>>()
