@@ -103,7 +103,7 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
             p
         };
         let x_square = Fr::from(super::Bls12_377Parameters::X[0]).square();
-        (phi(*p).mul_bits(BitIteratorBE::new_without_leading_zeros(x_square.to_repr())).add_mixed(p)).is_zero()
+        (phi(*p).mul_bits(BitIteratorBE::new_without_leading_zeros(x_square.to_bigint())).add_mixed(p)).is_zero()
     }
 
     fn glv_endomorphism(
@@ -149,7 +149,7 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
         };
         let to_wnaf = |e: Self::ScalarField| -> Vec<i32> {
             let mut naf = vec![];
-            let mut e = e.to_repr();
+            let mut e = e.to_bigint();
             while !e.is_zero() {
                 let next = if e.is_odd() {
                     let naf_sign = mod_signed(e.as_ref()[0]);
