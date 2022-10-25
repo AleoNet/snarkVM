@@ -66,11 +66,6 @@ pub struct Fp256<P>(
 
 impl<P: Fp256Parameters> Fp256<P> {
     #[inline]
-    pub fn new(element: BigInteger) -> Self {
-        Fp256::<P>(element, PhantomData)
-    }
-
-    #[inline]
     fn is_valid(&self) -> bool {
         self.0 < P::MODULUS
     }
@@ -234,7 +229,7 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
 
         // Because we represent F_p elements in non-redundant form, we need a final
         // conditional subtraction to ensure the output is in range.
-        let mut result = Self::new(BigInteger([u0, u1, u2, u3]));
+        let mut result = Self(BigInteger([u0, u1, u2, u3]), PhantomData);
         result.reduce();
         result
     }

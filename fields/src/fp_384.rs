@@ -66,11 +66,6 @@ pub struct Fp384<P: Fp384Parameters>(
 
 impl<P: Fp384Parameters> Fp384<P> {
     #[inline]
-    pub fn new(element: BigInteger) -> Self {
-        Fp384::<P>(element, PhantomData)
-    }
-
-    #[inline]
     pub fn is_valid(&self) -> bool {
         self.0 < P::MODULUS
     }
@@ -273,7 +268,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
 
         // Because we represent F_p elements in non-redundant form, we need a final
         // conditional subtraction to ensure the output is in range.
-        let mut result = Self::new(BigInteger([u0, u1, u2, u3, u4, u5]));
+        let mut result = Self(BigInteger([u0, u1, u2, u3, u4, u5]), PhantomData);
         result.reduce();
         result
     }
