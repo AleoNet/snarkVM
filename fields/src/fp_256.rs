@@ -505,12 +505,6 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
         tmp.0 = r;
         tmp
     }
-
-    #[inline]
-    fn to_repr_unchecked(&self) -> BigInteger {
-        let r = *self;
-        r.0
-    }
 }
 
 impl<P: Fp256Parameters> FftField for Fp256<P> {

@@ -46,9 +46,6 @@ pub trait PrimeField:
     /// Returns the underlying representation of the prime field element.
     fn to_repr(&self) -> Self::BigInteger;
 
-    /// Returns the underlying raw representation of the prime field element.
-    fn to_repr_unchecked(&self) -> Self::BigInteger;
-
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {
         Self::Parameters::MODULUS_BITS as usize

@@ -524,11 +524,6 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
         tmp.0 = r;
         tmp
     }
-
-    #[inline]
-    fn to_repr_unchecked(&self) -> BigInteger {
-        self.0
-    }
 }
 
 impl<P: Fp384Parameters> FftField for Fp384<P> {

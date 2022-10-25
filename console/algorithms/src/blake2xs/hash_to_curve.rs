@@ -111,9 +111,9 @@ mod bls12_377 {
             ])
         );
 
-        // Raw BigInteger representation
+        // Montgomery BigInteger representation
         assert_eq!(
-            g1.x.to_repr_unchecked(),
+            g1.x.0,
             BigInteger384::new([
                 1171681672315280277,
                 6528257384425852712,
@@ -124,7 +124,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g1.y.to_repr_unchecked(),
+            g1.y.0,
             BigInteger384::new([
                 13572190014569192121,
                 15344828677741220784,
@@ -203,9 +203,9 @@ mod bls12_377 {
             ])
         );
 
-        // Raw BigInteger representation
+        // Montgomery BigInteger representation
         assert_eq!(
-            g2.x.c0.to_repr_unchecked(),
+            g2.x.c0.0,
             BigInteger384::new([
                 1394603105513884269,
                 11069732150289508451,
@@ -216,7 +216,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.x.c1.to_repr_unchecked(),
+            g2.x.c1.0,
             BigInteger384::new([
                 12672065269715576738,
                 3451530808602826578,
@@ -227,7 +227,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.y.c0.to_repr_unchecked(),
+            g2.y.c0.0,
             BigInteger384::new([
                 1855632670224768760,
                 2989378521406112342,
@@ -238,7 +238,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.y.c1.to_repr_unchecked(),
+            g2.y.c1.0,
             BigInteger384::new([
                 1532128906028652860,
                 14539073382194201855,
