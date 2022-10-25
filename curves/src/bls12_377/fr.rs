@@ -213,14 +213,14 @@ mod tests {
     fn test_powers_of_root_of_unity() {
         let two = Fr::from(2u8);
 
-        // Compute the expected powers of G.
+        // Compute the expected powers of root of unity.
         let root_of_unity = Fr::two_adic_root_of_unity();
         let powers = (0..FrParameters::TWO_ADICITY - 1)
             .map(|i| root_of_unity.pow(two.pow(Fr::from(i as u64).to_bigint()).to_bigint()))
             .collect::<Vec<_>>();
         assert_eq!(powers[0], Fr::two_adic_root_of_unity());
 
-        // Ensure the correct number of powers of G are present.
+        // Ensure the correct number of powers of root of unity are present.
         assert_eq!(FrParameters::POWERS_OF_ROOTS_OF_UNITY.len() as u64, (FrParameters::TWO_ADICITY - 1) as u64);
         assert_eq!(FrParameters::POWERS_OF_ROOTS_OF_UNITY.len(), powers.len());
 
