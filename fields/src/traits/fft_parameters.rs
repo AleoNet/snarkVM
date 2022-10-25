@@ -42,5 +42,5 @@ pub trait FftParameters: 'static + Send + Sync + Sized {
     const LARGE_SUBGROUP_ROOT_OF_UNITY: Option<Self::BigInteger> = None;
 
     /// `G^2^i` for `i := 0..TWO_ADICITY-1`
-    const POWERS_OF_G: &'static [Self::BigInteger];
+    const POWERS_OF_ROOTS_OF_UNITY: &'static [Self::BigInteger];
 }

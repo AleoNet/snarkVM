@@ -33,7 +33,7 @@ impl Fp256Parameters for FrParameters {}
 impl FftParameters for FrParameters {
     type BigInteger = BigInteger;
 
-    const POWERS_OF_G: &'static [BigInteger] = &[];
+    const POWERS_OF_ROOTS_OF_UNITY: &'static [BigInteger] = unimplemented!();
     const TWO_ADICITY: u32 = 1;
     #[rustfmt::skip]
     const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
@@ -121,11 +121,11 @@ impl PoseidonDefaultParameters for FrParameters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_fields::{Field, PrimeField};
+    use snarkvm_fields::{FftField, Field};
 
     #[test]
     fn test_two_adic_root_of_unity() {
-        let expected = Fr::from_repr(FrParameters::GENERATOR).unwrap().pow(FrParameters::T);
-        assert_eq!(Some(expected), Fr::from_repr(FrParameters::TWO_ADIC_ROOT_OF_UNITY));
+        let expected = Fr::multiplicative_generator().pow(FrParameters::T);
+        assert_eq!(expected, Fr::two_adic_root_of_unity());
     }
 }
