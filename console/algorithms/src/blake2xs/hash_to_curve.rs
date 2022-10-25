@@ -38,7 +38,7 @@ impl Blake2Xs {
 
     /// Evaluates **one** round of hash-to-curve and returns a generator on success.
     #[inline]
-    pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
+    fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
         let serialized_size = G::prime_subgroup_generator().compressed_size();
 
         // Compute the digest for sampling the generator.
