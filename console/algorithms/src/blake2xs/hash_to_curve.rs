@@ -84,7 +84,7 @@ mod bls12_377_g1 {
             "3702177272937190650578065972808860481433820514072818216637796320125658674906330993856598323293086021583822603349",
         );
 
-        // Montgomery BigInteger representation
+        // BigInteger representation
         assert_eq!(
             g1.x.to_bigint(),
             BigInteger384::new([
@@ -165,7 +165,7 @@ mod bls12_377_g2 {
             "Fp2(1843833842842620867708835993770650838640642469700861403869757682057607397502738488921663703124647238454792872005 + 33145532013610981697337930729788870077912093258611421158732879580766461459275194744385880708057348608045241477209 * u)",
         );
 
-        // Montgomery BigInteger representation
+        // BigInteger representation
         assert_eq!(
             g2.x.c0.to_bigint(),
             BigInteger384::new([
@@ -284,32 +284,32 @@ mod edwards_bls12 {
         assert_eq!(group.x.to_string(), "1540945439182663264862696551825005342995406165131907382295858612069623286213",);
         assert_eq!(group.y.to_string(), "8003546896475222703853313610036801932325312921786952001586936882361378122196",);
 
-        // Montgomery BigInteger representation
+        // BigInteger representation
         assert_eq!(
-            group.x.to_repr(),
+            group.x.to_bigint(),
             BigInteger256::new([1404703638504229317, 16672475576000152563, 1635533132911366150, 245486771465834503]),
             "\n\nExpected: {:?}\n\n",
-            group.x.to_repr().0,
+            group.x.to_bigint().0,
         );
         assert_eq!(
-            group.y.to_repr(),
+            group.y.to_bigint(),
             BigInteger256::new([15352153743387634132, 9180404173643694677, 4017395716581932261, 1275038582114391971]),
             "\n\nExpected: {:?}\n\n",
-            group.y.to_repr().0,
+            group.y.to_bigint().0,
         );
 
-        // Raw BigInteger representation
+        // Montgomery BigInteger representation
         assert_eq!(
-            group.x.to_repr_unchecked(),
+            group.x.0,
             BigInteger256::new([15976313411695170452, 17230178952810798400, 11626259175167078036, 678729006091608048]),
             "\n\nExpected: {:?}\n\n",
-            group.x.to_repr_unchecked().0,
+            group.x.0,
         );
         assert_eq!(
-            group.y.to_repr_unchecked(),
+            group.y.0,
             BigInteger256::new([926786653590077393, 18147000980977651608, 13077459464847727671, 1231472949076376191]),
             "\n\nExpected: {:?}\n\n",
-            group.y.to_repr_unchecked().0,
+            group.y.0,
         );
 
         // Check that EdwardsAffine matches.
