@@ -51,6 +51,7 @@ use crate::{
     Process,
     Program,
     ProvingKey,
+    StatePath,
     Transition,
     UniversalSRS,
     VerifyingKey,
@@ -151,6 +152,17 @@ impl<N: Network> CallStack<N> {
             }
             CallStack::Evaluate(authorization) => authorization.next(),
             CallStack::Execute(authorization, ..) => authorization.next(),
+        }
+    }
+
+    /// Returns the state paths in the stack authorizations.
+    pub fn state_paths(&self) -> IndexMap<Field<N>, StatePath<N>> {
+        match self {
+            CallStack::Authorize(_, _, authorization) => authorization.state_paths().clone(),
+            CallStack::Synthesize(_, _, authorization) => authorization.state_paths().clone(),
+            CallStack::CheckDeployment(..) => IndexMap::new(),
+            CallStack::Evaluate(authorization) => authorization.state_paths().clone(),
+            CallStack::Execute(authorization, ..) => authorization.state_paths().clone(),
         }
     }
 
