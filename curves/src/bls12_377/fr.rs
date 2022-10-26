@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(FrParameters::POWERS_OF_ROOTS_OF_UNITY.len(), powers.len());
 
         // Ensure the expected and candidate powers match.
-        for (expected, candidate) in powers.iter().zip(FrParameters::POWERS_OF_ROOTS_OF_UNITY.iter()) {
+        for (expected, candidate) in powers.iter().zip(FrParameters::POWERS_OF_ROOTS_OF_UNITY) {
             // println!("BigInteger({:?}),", expected.0.0);
             println!("{:?} =?= {:?}", expected.0, candidate);
             assert_eq!(&expected.0, candidate);
