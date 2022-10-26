@@ -77,6 +77,13 @@ pub struct StatePath<A: Aleo> {
     transition_leaf: TransitionLeaf<A>,
 }
 
+impl<A: Aleo> StatePath<A> {
+    /// Returns the transition leaf.
+    pub const fn transition_leaf(&self) -> &TransitionLeaf<A> {
+        &self.transition_leaf
+    }
+}
+
 impl<A: Aleo> Inject for StatePath<A> {
     type Primitive = crate::state_path::StatePath<A::Network>;
 
@@ -103,27 +110,26 @@ impl<A: Aleo> Inject for StatePath<A> {
 impl<A: Aleo> Eject for StatePath<A> {
     type Primitive = crate::state_path::StatePath<A::Network>;
 
-    /// Ejects the mode of the ciphertext.
+    /// Ejects the mode of the state path.
     fn eject_mode(&self) -> Mode {
-        (
-            &self.state_root,
-            &self.block_path,
-            &self.block_hash,
-            &self.previous_block_hash,
-            &self.header_root,
-            &self.header_path,
-            &self.header_leaf,
-            &self.transactions_path,
-            &self.transaction_id,
-            &self.transaction_path,
-            &self.transaction_leaf,
-            &self.transition_path,
-            &self.transition_leaf,
-        )
-            .eject_mode()
+        Mode::combine(self.state_root.eject_mode(), [
+            self.state_root.eject_mode(),
+            self.block_path.eject_mode(),
+            self.block_hash.eject_mode(),
+            self.previous_block_hash.eject_mode(),
+            self.header_root.eject_mode(),
+            self.header_path.eject_mode(),
+            self.header_leaf.eject_mode(),
+            self.transactions_path.eject_mode(),
+            self.transaction_id.eject_mode(),
+            self.transaction_path.eject_mode(),
+            self.transaction_leaf.eject_mode(),
+            self.transition_path.eject_mode(),
+            self.transition_leaf.eject_mode(),
+        ])
     }
 
-    /// Ejects the ciphertext.
+    /// Ejects the state path.
     fn eject_value(&self) -> Self::Primitive {
         match Self::Primitive::from(
             self.state_root.eject_value().into(),
