@@ -30,7 +30,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::Proof;
+use crate::{Proof, StatePath};
 use console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
@@ -49,6 +49,8 @@ use console::{
     },
     types::{Field, Group},
 };
+
+use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
@@ -98,6 +100,7 @@ impl<N: Network> Transition<N> {
     pub fn from(
         request: &Request<N>,
         response: &Response<N>,
+        state_paths: &IndexMap<Field<N>, StatePath<N>>,
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
@@ -147,7 +150,13 @@ impl<N: Network> Transition<N> {
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
                     (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
-                        Ok(Input::Record(*serial_number, *tag, Origin::Commitment(*commitment)))
+                        // Fetch the state root for the corresponding record.
+                        let state_path = state_paths.get(commitment).ok_or_else(|| {
+                            anyhow!("The state root for the record input is missing: '{:?}'", commitment)
+                        })?;
+                        let state_root = state_path.state_root();
+
+                        Ok(Input::Record(*serial_number, *tag, Origin::StateRoot(state_root)))
                     }
                     (InputID::ExternalRecord(input_hash), Value::Record(..)) => Ok(Input::ExternalRecord(*input_hash)),
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),
