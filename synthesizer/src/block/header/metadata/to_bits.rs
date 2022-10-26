@@ -20,12 +20,13 @@ impl<N: Network> ToBits for Metadata<N> {
     /// Returns the little-endian bits of the metadata.
     fn to_bits_le(&self) -> Vec<bool> {
         vec![
-            self.network.to_bits_le(),         // 2 bytes
-            self.round.to_bits_le(),           // 8 bytes
-            self.height.to_bits_le(),          // 4 bytes
-            self.coinbase_target.to_bits_le(), // 8 bytes
-            self.proof_target.to_bits_le(),    // 8 bytes
-            self.timestamp.to_bits_le(),       // 8 bytes
+            self.network.to_bits_le(),                 // 2 bytes
+            self.round.to_bits_le(),                   // 8 bytes
+            self.height.to_bits_le(),                  // 4 bytes
+            self.coinbase_target.to_bits_le(),         // 8 bytes
+            self.proof_target.to_bits_le(),            // 8 bytes
+            self.last_coinbase_timestamp.to_bits_le(), // 8 bytes
+            self.timestamp.to_bits_le(),               // 8 bytes
         ]
         .concat()
     }
@@ -33,12 +34,13 @@ impl<N: Network> ToBits for Metadata<N> {
     /// Returns the big-endian bits of the metadata.
     fn to_bits_be(&self) -> Vec<bool> {
         vec![
-            self.network.to_bits_be(),         // 2 bytes
-            self.round.to_bits_be(),           // 8 bytes
-            self.height.to_bits_be(),          // 4 bytes
-            self.coinbase_target.to_bits_be(), // 8 bytes
-            self.proof_target.to_bits_be(),    // 8 bytes
-            self.timestamp.to_bits_be(),       // 8 bytes
+            self.network.to_bits_be(),                 // 2 bytes
+            self.round.to_bits_be(),                   // 8 bytes
+            self.height.to_bits_be(),                  // 4 bytes
+            self.coinbase_target.to_bits_be(),         // 8 bytes
+            self.proof_target.to_bits_be(),            // 8 bytes
+            self.last_coinbase_timestamp.to_bits_be(), // 8 bytes
+            self.timestamp.to_bits_be(),               // 8 bytes
         ]
         .concat()
     }

@@ -55,7 +55,7 @@ mod tests {
         // Previous state root, transactions root, and accumulator point size.
         (Field::<N>::size_in_bytes() * 3)
             // Metadata size.
-            + 2 + 4 + 8 + 8 + 8 + 8
+            + 2 + 4 + 8 + 8 + 8 + 8 + 8
             // Add an additional 4 bytes for versioning.
             + 2 + 2
     }

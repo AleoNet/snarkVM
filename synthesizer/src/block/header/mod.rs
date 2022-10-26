@@ -125,6 +125,11 @@ impl<N: Network> Header<N> {
         self.metadata.proof_target()
     }
 
+    /// Returns the Unix timestamp (UTC) of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.metadata.last_coinbase_timestamp()
+    }
+
     /// Returns the Unix timestamp (UTC) for this block.
     pub const fn timestamp(&self) -> i64 {
         self.metadata.timestamp()

@@ -37,6 +37,8 @@ pub struct Metadata<N: Network> {
     coinbase_target: u64,
     /// The proof target for this block - 8 bytes.
     proof_target: u64,
+    /// The Unix timestamp (UTC) for the last coinbase - 8 bytes.
+    last_coinbase_timestamp: i64,
     /// The Unix timestamp (UTC) for this block - 8 bytes.
     timestamp: i64,
     /// PhantomData.
@@ -51,10 +53,20 @@ impl<N: Network> Metadata<N> {
         height: u32,
         coinbase_target: u64,
         proof_target: u64,
+        last_coinbase_timestamp: i64,
         timestamp: i64,
     ) -> Result<Self> {
         // Construct a new metadata.
-        let metadata = Self { network, round, height, coinbase_target, proof_target, timestamp, _phantom: PhantomData };
+        let metadata = Self {
+            network,
+            round,
+            height,
+            coinbase_target,
+            proof_target,
+            last_coinbase_timestamp,
+            timestamp,
+            _phantom: PhantomData,
+        };
         // Ensure the header is valid.
         match metadata.is_valid() {
             true => Ok(metadata),
@@ -73,8 +85,14 @@ impl<N: Network> Metadata<N> {
                     && self.round != 0u64
                     // Ensure the height is nonzero.
                     && self.height != 0u32
-                    // Ensure the timestamp in the block is nonzero.
-                    && self.timestamp != 0i64
+                    // Ensure the coinbase target is at or above the minimum.
+                    && self.coinbase_target >= N::GENESIS_COINBASE_TARGET
+                    // Ensure the proof target is at or above the minimum.
+                    && self.proof_target >= N::GENESIS_PROOF_TARGET
+                    // Ensure the last coinbase timestamp is after the genesis timestamp.
+                    && self.last_coinbase_timestamp > N::GENESIS_TIMESTAMP
+                    // Ensure the timestamp in the block is after the genesis timestamp.
+                    && self.timestamp > N::GENESIS_TIMESTAMP
             }
         }
     }
@@ -104,6 +122,11 @@ impl<N: Network> Metadata<N> {
     /// Returns the proof target for this block.
     pub const fn proof_target(&self) -> u64 {
         self.proof_target
+    }
+
+    /// Returns the Unix timestamp (UTC) of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.last_coinbase_timestamp
     }
 
     /// Returns the Unix timestamp (UTC) for this block.
