@@ -107,3 +107,10 @@ impl<E: Environment> Deref for Field<E> {
         &self.field
     }
 }
+
+impl<E: Environment> DerefMut for Field<E> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.field
+    }
+}
