@@ -22,7 +22,7 @@ use snarkvm_console_types::{prelude::*, Field};
 use snarkvm_fields::PoseidonParameters;
 
 use smallvec::SmallVec;
-use std::sync::Arc;
+use std::{ops::DerefMut, sync::Arc};
 
 /// A duplex sponge based using the Poseidon permutation.
 ///
@@ -113,12 +113,14 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
             for elem in self.state.iter_mut() {
-                *elem = elem.pow(Field::from_u64(self.parameters.alpha));
+                let e = elem.deref_mut();
+                *e = e.pow([self.parameters.alpha]);
             }
         }
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
-            self.state[0] = self.state[0].pow(Field::from_u64(self.parameters.alpha));
+            let e = self.state[0].deref_mut();
+            *e = e.pow(&[self.parameters.alpha]);
         }
     }
 
