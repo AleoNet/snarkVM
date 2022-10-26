@@ -29,12 +29,9 @@ impl<N: Network> Record<N, Ciphertext<N>> {
                 // Compute the 0th randomizer.
                 let randomizer = N::hash_many_psd8(&[N::encryption_domain(), record_view_key], 1);
                 // Decrypt the owner.
-                let x_coordinate = ciphertext[0] - randomizer[0];
-                if let Some((point1, point2)) = N::Affine::from_x_coordinate_variants(*x_coordinate) {
-                    point1 == ***address || point2 == ***address
-                } else {
-                    false
-                }
+                let owner_x = ciphertext[0] - randomizer[0];
+                // Compare the x coordinates of computed and supplied affines.
+                owner_x == address.to_x_coordinate()
             }
         }
     }
