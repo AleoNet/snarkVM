@@ -49,14 +49,14 @@ impl<E: Environment> FromBits for Scalar<E> {
             ensure!(scalar < modulus_minus_one, "The scalar is greater than or equal to the modulus.");
 
             // Return the scalar.
-            Ok(Scalar { scalar: E::Scalar::from_repr(scalar).ok_or_else(|| anyhow!("Invalid scalar from bits"))? })
+            Ok(Scalar { scalar: E::Scalar::from_bigint(scalar).ok_or_else(|| anyhow!("Invalid scalar from bits"))? })
         } else {
             // Construct the sanitized list of bits, resizing up if necessary.
             let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
             bits_le.resize(size_in_bits, false);
 
             // Recover the native scalar.
-            let scalar = E::Scalar::from_repr(E::BigInteger::from_bits_le(&bits_le)?)
+            let scalar = E::Scalar::from_bigint(E::BigInteger::from_bits_le(&bits_le)?)
                 .ok_or_else(|| anyhow!("Invalid scalar from bits"))?;
 
             // Return the scalar.

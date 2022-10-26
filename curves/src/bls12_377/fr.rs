@@ -214,9 +214,9 @@ mod tests {
         let two = Fr::from(2u8);
 
         // Compute the expected powers of G.
-        let g = Fr::from_repr(FrParameters::GENERATOR).unwrap().pow(FrParameters::T);
+        let g = Fr::from_bigint(FrParameters::GENERATOR).unwrap().pow(FrParameters::T);
         let powers = (0..FrParameters::TWO_ADICITY - 1)
-            .map(|i| g.pow(two.pow(Fr::from(i as u64).to_repr()).to_repr()).to_repr())
+            .map(|i| g.pow(two.pow(Fr::from(i as u64).to_bigint()).to_bigint()).to_bigint())
             .collect::<Vec<_>>();
 
         // Ensure the correct number of powers of G are present.

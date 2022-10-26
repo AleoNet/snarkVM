@@ -245,7 +245,7 @@ impl<E: PairingEngine> KZG10<E> {
             Polynomial::Sparse(polynomial) => polynomial
                 .coeffs()
                 .map(|(i, coeff)| {
-                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
+                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_bigint()))
                 })
                 .sum(),
         };
@@ -300,7 +300,7 @@ impl<E: PairingEngine> KZG10<E> {
             hiding_bound,
         ));
 
-        let evaluations = evaluations.iter().map(|e| e.to_repr()).collect::<Vec<_>>();
+        let evaluations = evaluations.iter().map(|e| e.to_bigint()).collect::<Vec<_>>();
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
         let mut commitment = VariableBase::msm(&lagrange_basis.lagrange_basis_at_beta_g, &evaluations);
         end_timer!(msm_time);
@@ -598,7 +598,7 @@ fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &DensePolynomial<
 
 fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
     let to_bigint_time = start_timer!(|| "Converting polynomial coeffs to bigints");
-    let coeffs = cfg_iter!(p).map(|s| s.to_repr()).collect::<Vec<_>>();
+    let coeffs = cfg_iter!(p).map(|s| s.to_bigint()).collect::<Vec<_>>();
     end_timer!(to_bigint_time);
     coeffs
 }
