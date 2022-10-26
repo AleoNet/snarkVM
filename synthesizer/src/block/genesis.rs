@@ -44,11 +44,11 @@ impl<N: Network> Block<N> {
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
-        // Prepare the coinbase proof.
-        let coinbase_proof = None; // The genesis block does not require a coinbase proof.
+        // Prepare the coinbase solution.
+        let coinbase_solution = None; // The genesis block does not require a coinbase solution.
 
         // Construct the block.
-        let block = Self::new(private_key, previous_hash, header, transactions, coinbase_proof, rng)?;
+        let block = Self::new(private_key, previous_hash, header, transactions, coinbase_solution, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -64,8 +64,8 @@ impl<N: Network> Block<N> {
             && self.header.is_genesis()
             // Ensure there is 1 transaction in the genesis block.
             && self.transactions.len() == 1
-            // Ensure the coinbase proof does not exist.
-            && self.coinbase_proof.is_none()
+            // Ensure the coinbase solution does not exist.
+            && self.coinbase.is_none()
     }
 }
 

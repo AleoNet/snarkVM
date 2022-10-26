@@ -29,7 +29,7 @@ impl<N: Network> FromBytes for CoinbaseSolution<N> {
 
         let proof = KZGProof::read_le(&mut reader)?;
 
-        Ok(Self { partial_solutions, proof })
+        Ok(Self::new(partial_solutions, proof))
     }
 }
 

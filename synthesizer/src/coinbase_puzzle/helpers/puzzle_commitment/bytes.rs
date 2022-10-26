@@ -16,22 +16,18 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for PartialSolution<N> {
-    /// Reads the partial solution from the buffer.
+impl<N: Network> FromBytes for PuzzleCommitment<N> {
+    /// Reads the puzzle commitment from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let address: Address<N> = FromBytes::read_le(&mut reader)?;
-        let nonce = u64::read_le(&mut reader)?;
         let commitment = KZGCommitment::read_le(&mut reader)?;
 
-        Ok(Self::new(address, nonce, commitment))
+        Ok(Self::new(commitment))
     }
 }
 
-impl<N: Network> ToBytes for PartialSolution<N> {
-    /// Writes the partial solution to the buffer.
+impl<N: Network> ToBytes for PuzzleCommitment<N> {
+    /// Writes the puzzle commitment to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)?;
-        self.nonce.write_le(&mut writer)?;
         self.commitment.write_le(&mut writer)
     }
 }
@@ -39,23 +35,21 @@ impl<N: Network> ToBytes for PartialSolution<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3};
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() -> Result<()> {
         let mut rng = TestRng::default();
-        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-        let address = Address::try_from(private_key)?;
-
-        // Sample a new partial solution.
-        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        // Sample a new puzzle commitment.
+        let expected = PuzzleCommitment::<CurrentNetwork>::new(KZGCommitment(rng.gen()));
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
-        assert!(PartialSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected_bytes.len(), 48);
+        assert_eq!(expected, PuzzleCommitment::read_le(&expected_bytes[..])?);
+        assert!(PuzzleCommitment::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
         Ok(())
     }
