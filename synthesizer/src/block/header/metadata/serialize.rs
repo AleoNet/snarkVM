@@ -27,6 +27,7 @@ impl<N: Network> Serialize for Metadata<N> {
                 metadata.serialize_field("height", &self.height)?;
                 metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
                 metadata.serialize_field("proof_target", &self.proof_target)?;
+                metadata.serialize_field("last_coinbase_timestamp", &self.last_coinbase_timestamp)?;
                 metadata.serialize_field("timestamp", &self.timestamp)?;
                 metadata.end()
             }
@@ -47,6 +48,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     serde_json::from_value(metadata["height"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["coinbase_target"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["proof_target"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["last_coinbase_timestamp"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["timestamp"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)

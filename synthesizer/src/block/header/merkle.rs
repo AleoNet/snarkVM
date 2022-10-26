@@ -120,6 +120,7 @@ mod tests {
                     u64::rand(rng),
                     u64::rand(rng),
                     rng.gen_range(0..i64::MAX),
+                    rng.gen_range(0..i64::MAX),
                 )?,
             )?;
 
