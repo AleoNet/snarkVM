@@ -29,19 +29,21 @@ use crate::{
     process::{Authorization, Deployment, Execution, Process},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore},
+    BlockTree,
     ProgramStore,
+    StatePath,
     TransactionStore,
     TransitionStore,
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
+    program::{Identifier, InputID, Plaintext, ProgramID, Record, Response, Value, ValueType},
 };
 
 use core::marker::PhantomData;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -237,7 +239,18 @@ function compute:
                 let additional_fee = (credits, 10);
 
                 // Initialize the VM.
-                let vm = sample_vm();
+                let mut vm = sample_vm();
+
+                // Update the blocks.
+                let block_tree: BlockTree<CurrentNetwork> =
+                    CurrentNetwork::merkle_tree_bhp(&[genesis.hash().to_bits_le()]).unwrap();
+                vm.block_store().insert(*block_tree.root(), &genesis.clone()).unwrap();
+
+                // Update the VM.
+                for transaction in genesis.transactions().values() {
+                    vm.finalize(transaction).unwrap();
+                }
+
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
                 // Verify.
@@ -272,7 +285,17 @@ function compute:
                 let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
 
                 // Initialize the VM.
-                let vm = sample_vm();
+                let mut vm = sample_vm();
+
+                // Update the blocks.
+                let block_tree: BlockTree<CurrentNetwork> =
+                    CurrentNetwork::merkle_tree_bhp(&[genesis.hash().to_bits_le()]).unwrap();
+                vm.block_store().insert(*block_tree.root(), &genesis.clone()).unwrap();
+
+                // Update the VM.
+                for transaction in genesis.transactions().values() {
+                    vm.finalize(transaction).unwrap();
+                }
 
                 // Authorize.
                 let authorization = vm
