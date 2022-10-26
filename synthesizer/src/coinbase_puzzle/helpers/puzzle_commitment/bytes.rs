@@ -47,6 +47,7 @@ mod tests {
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
+        assert_eq!(expected_bytes.len(), 48);
         assert_eq!(expected, PuzzleCommitment::read_le(&expected_bytes[..])?);
         assert!(PuzzleCommitment::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
 
