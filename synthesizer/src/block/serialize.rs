@@ -27,8 +27,8 @@ impl<N: Network> Serialize for Block<N> {
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("transactions", &self.transactions)?;
 
-                if let Some(coinbase_proof) = self.coinbase_proof() {
-                    block.serialize_field("coinbase_proof", coinbase_proof)?;
+                if let Some(coinbase) = &self.coinbase {
+                    block.serialize_field("coinbase", coinbase)?;
                 }
 
                 block.serialize_field("signature", &self.signature)?;
@@ -53,8 +53,8 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     serde_json::from_value(block["previous_hash"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["header"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["transactions"].take()).map_err(de::Error::custom)?,
-                    match block["coinbase_proof"].as_str() {
-                        Some(coinbase_proof) => Some(serde_json::from_str(coinbase_proof).map_err(de::Error::custom)?),
+                    match block["coinbase"].as_str() {
+                        Some(coinbase) => Some(serde_json::from_str(coinbase).map_err(de::Error::custom)?),
                         None => None,
                     },
                     serde_json::from_value(block["signature"].take()).map_err(de::Error::custom)?,

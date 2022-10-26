@@ -16,36 +16,22 @@
 
 use super::*;
 
-impl<N: Network> Serialize for PartialSolution<N> {
-    /// Serializes the partial solution to a JSON-string or buffer.
+impl<N: Network> Serialize for PuzzleCommitment<N> {
+    /// Serializes the puzzle commitment to a string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => {
-                let mut partial_prover_solution = serializer.serialize_struct("PartialSolution", 3)?;
-                partial_prover_solution.serialize_field("address", &self.address)?;
-                partial_prover_solution.serialize_field("nonce", &self.nonce)?;
-                partial_prover_solution.serialize_field("commitment", &self.commitment)?;
-                partial_prover_solution.end()
-            }
+            true => serializer.collect_str(self),
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
-    /// Deserializes the partial solution from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for PuzzleCommitment<N> {
+    /// Deserializes the puzzle commitment from a string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => {
-                let partial_prover_solution = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::new(
-                    serde_json::from_value(partial_prover_solution["address"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(partial_prover_solution["nonce"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value::<PuzzleCommitment<N>>(partial_prover_solution["commitment"].clone())
-                        .map_err(de::Error::custom)?,
-                ))
-            }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial solution"),
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "puzzle commitment"),
         }
     }
 }
@@ -53,18 +39,16 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3};
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_serde_json() -> Result<()> {
         let mut rng = TestRng::default();
-        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-        let address = Address::try_from(private_key)?;
 
-        // Sample a new partial solution.
-        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        // Sample a new puzzle commitment.
+        let expected = PuzzleCommitment::<CurrentNetwork>::new(KZGCommitment(rng.gen()));
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -72,7 +56,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, PartialSolution::from_str(expected_string)?);
+        assert_eq!(expected, PuzzleCommitment::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -81,11 +65,9 @@ mod tests {
     #[test]
     fn test_bincode() -> Result<()> {
         let mut rng = TestRng::default();
-        let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-        let address = Address::try_from(private_key)?;
 
-        // Sample a new partial solution.
-        let expected = PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen()));
+        // Sample a new puzzle commitment.
+        let expected = PuzzleCommitment::<CurrentNetwork>::new(KZGCommitment(rng.gen()));
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -93,7 +75,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, PartialSolution::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, PuzzleCommitment::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())

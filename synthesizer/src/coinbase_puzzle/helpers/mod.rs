@@ -26,6 +26,9 @@ pub use partial_solution::*;
 mod prover_solution;
 pub use prover_solution::*;
 
+mod puzzle_commitment;
+pub use puzzle_commitment::*;
+
 use crate::coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle};
 use console::{account::Address, prelude::*, types::Field};
 use snarkvm_algorithms::{
@@ -41,8 +44,6 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
-/// The commitment to the polynomial.
-pub type PuzzleCommitment<N> = KZGCommitment<<N as Environment>::PairingCurve>;
 /// The proof of opening the polynomial, for the solution.
 pub type PuzzleProof<N> = KZGProof<<N as Environment>::PairingCurve>;
 

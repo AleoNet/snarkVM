@@ -33,20 +33,20 @@ impl<N: Network> FromBytes for Block<N> {
         let header = FromBytes::read_le(&mut reader)?;
         let transactions = FromBytes::read_le(&mut reader)?;
 
-        // Write the coinbase proof.
+        // Write the coinbase.
         let coinbase_variant = u8::read_le(&mut reader)?;
-        let coinbase_proof = match coinbase_variant {
+        let coinbase = match coinbase_variant {
             0 => None,
             1 => Some(FromBytes::read_le(&mut reader)?),
-            _ => return Err(error("Invalid coinbase proof variant")),
+            _ => return Err(error("Invalid coinbase variant")),
         };
 
         // Write the signature.
         let signature = FromBytes::read_le(&mut reader)?;
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transactions, coinbase_proof, signature)
-            .map_err(|e| error(e.to_string()))?;
+        let block =
+            Self::from(previous_hash, header, transactions, coinbase, signature).map_err(|e| error(e.to_string()))?;
 
         // Ensure the block hash matches.
         match block_hash == block.hash() {
@@ -69,12 +69,12 @@ impl<N: Network> ToBytes for Block<N> {
         self.header.write_le(&mut writer)?;
         self.transactions.write_le(&mut writer)?;
 
-        // Write the coinbase proof.
-        match self.coinbase_proof {
+        // Write the coinbase solution.
+        match self.coinbase {
             None => 0u8.write_le(&mut writer)?,
-            Some(ref coinbase_proof) => {
+            Some(ref coinbase) => {
                 1u8.write_le(&mut writer)?;
-                coinbase_proof.write_le(&mut writer)?;
+                coinbase.write_le(&mut writer)?;
             }
         }
 
