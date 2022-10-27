@@ -226,7 +226,7 @@ transition fee:
         // Attempt to retrieve the interface.
         let interface = self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
         // Ensure the interface name matches.
-        ensure!(interface.name() == name, "Expected interface '{name}', but found struct '{}'", interface.name());
+        ensure!(interface.name() == name, "Expected struct '{name}', but found struct '{}'", interface.name());
         // Ensure the interface contains members.
         ensure!(!interface.members().is_empty(), "Struct '{name}' is missing members.");
         // Return the interface.
