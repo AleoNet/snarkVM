@@ -207,10 +207,7 @@ impl<N: Network> Block<N> {
 impl<N: Network> Block<N> {
     /// Returns the puzzle commitments in this block.
     pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
-        match &self.coinbase {
-            Some(solution) => Some(solution.puzzle_commitments()),
-            None => None,
-        }
+        self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
     }
 
     /// Returns the transactions in this block.
