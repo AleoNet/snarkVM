@@ -40,6 +40,11 @@ impl<N: Network> CoinbaseSolution<N> {
         &self.partial_solutions
     }
 
+    /// Returns the puzzle commitments.
+    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = PuzzleCommitment<N>> {
+        self.partial_solutions.iter().map(|s| s.commitment())
+    }
+
     /// Returns the KZG proof.
     pub const fn proof(&self) -> &PuzzleProof<N> {
         &self.proof
