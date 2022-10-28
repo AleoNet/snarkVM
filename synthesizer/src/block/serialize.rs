@@ -53,10 +53,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     serde_json::from_value(block["previous_hash"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["header"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["transactions"].take()).map_err(de::Error::custom)?,
-                    match block["coinbase"].as_str() {
-                        Some(coinbase) => Some(serde_json::from_str(coinbase).map_err(de::Error::custom)?),
-                        None => None,
-                    },
+                    serde_json::from_value(block["coinbase"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["signature"].take()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;

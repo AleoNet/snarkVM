@@ -73,12 +73,8 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         let execution =
                             serde_json::from_value(transaction["execution"].take()).map_err(de::Error::custom)?;
                         // Retrieve the additional fee, if it exists.
-                        let additional_fee = match transaction["additional_fee"].as_str() {
-                            Some(additional_fee) => {
-                                Some(serde_json::from_str(additional_fee).map_err(de::Error::custom)?)
-                            }
-                            None => None,
-                        };
+                        let additional_fee =
+                            serde_json::from_value(transaction["additional_fee"].take()).map_err(de::Error::custom)?;
                         // Construct the transaction.
                         Transaction::from_execution(execution, additional_fee).map_err(de::Error::custom)?
                     }
