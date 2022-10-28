@@ -23,6 +23,7 @@ impl<N: Network> Process<N> {
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
+        state_path: StatePath<N>,
         additional_fee_in_gates: u64,
         rng: &mut R,
     ) -> Result<(Response<N>, AdditionalFee<N>)> {
@@ -39,7 +40,9 @@ impl<N: Network> Process<N> {
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
-        let authorization = Authorization::new(&[request.clone()]);
+        let mut authorization = Authorization::new(&[request.clone()]);
+        // Add the state path to the authorization.
+        authorization.insert_state_path(state_path.transition_leaf().id(), state_path);
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
@@ -136,6 +139,37 @@ impl<N: Network> Process<N> {
             verifying_key.verify(function.name(), &inputs, additional_fee.proof()),
             "The proof for the additional fee is invalid"
         );
+
+        // Retrieve the state path inputs for the transition.
+        let mut state_path_inputs = vec![];
+        for origin in additional_fee.origins() {
+            if let Origin::StateRoot(state_root) = origin {
+                state_path_inputs.push(vec![N::Field::one(), ***state_root]);
+            }
+        }
+
+        ensure!(state_path_inputs.len() == 1, "The number of state path inputs for the additional fee is incorrect");
+
+        match additional_fee.state_path_proof() {
+            Some(proof) => {
+                // TODO (raychu86): Have a global accessor for the state path keys.
+                // Ensure the state path proof is valid.
+                match stack.get_state_path_verifying_key() {
+                    Some(verifying_key) => {
+                        let state_path_function_name = Identifier::from_str("state_path")?;
+                        ensure!(
+                            verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
+                            "Transition state path is valid."
+                        );
+                    }
+                    None => bail!("The state path verifying key is missing"),
+                };
+            }
+            None => {
+                bail!("The state path proof is missing from additional fee.");
+            }
+        }
+
         Ok(())
     }
 }
