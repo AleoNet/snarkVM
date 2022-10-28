@@ -30,7 +30,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{Proof, StatePath};
+use crate::Proof;
 use console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
@@ -68,6 +68,8 @@ pub struct Transition<N: Network> {
     finalize: Option<Vec<Value<N>>>,
     /// The transition proof.
     proof: Proof<N>,
+    /// The state path proof. (`None` if the transition does not include record types)
+    state_path_proof: Option<Proof<N>>,
     /// The transition public key.
     tpk: Group<N>,
     /// The transition commitment.
@@ -86,6 +88,7 @@ impl<N: Network> Transition<N> {
         outputs: Vec<Output<N>>,
         finalize: Option<Vec<Value<N>>>,
         proof: Proof<N>,
+        state_path_proof: Option<Proof<N>>,
         tpk: Group<N>,
         tcm: Field<N>,
         fee: i64,
@@ -93,18 +96,31 @@ impl<N: Network> Transition<N> {
         // Compute the transition ID.
         let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee })
+        Ok(Self {
+            id: id.into(),
+            program_id,
+            function_name,
+            inputs,
+            outputs,
+            finalize,
+            proof,
+            state_path_proof,
+            tpk,
+            tcm,
+            fee,
+        })
     }
 
     /// Initializes a new transition from a request and response.
     pub fn from(
         request: &Request<N>,
         response: &Response<N>,
-        state_paths: &IndexMap<Field<N>, StatePath<N>>,
+        state_roots: &IndexMap<Field<N>, N::StateRoot>,
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
         proof: Proof<N>,
+        state_path_proof: Option<Proof<N>>,
         fee: i64,
     ) -> Result<Self> {
         let program_id = *request.program_id();
@@ -151,12 +167,11 @@ impl<N: Network> Transition<N> {
                     }
                     (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
                         // Fetch the state root for the corresponding record.
-                        let state_path = state_paths.get(commitment).ok_or_else(|| {
+                        let state_root = state_roots.get(commitment).ok_or_else(|| {
                             anyhow!("The state root for the record input is missing: '{:?}'", commitment)
                         })?;
-                        let state_root = state_path.state_root();
 
-                        Ok(Input::Record(*serial_number, *tag, Origin::StateRoot(state_root)))
+                        Ok(Input::Record(*serial_number, *tag, Origin::StateRoot(*state_root)))
                     }
                     (InputID::ExternalRecord(input_hash), Value::Record(..)) => Ok(Input::ExternalRecord(*input_hash)),
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),
@@ -256,7 +271,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee)
+        Self::new(program_id, function_name, inputs, outputs, finalize, proof, state_path_proof, tpk, tcm, fee)
     }
 }
 
@@ -294,6 +309,11 @@ impl<N: Network> Transition<N> {
     /// Returns the proof.
     pub const fn proof(&self) -> &Proof<N> {
         &self.proof
+    }
+
+    /// Returns the state path proof.
+    pub const fn state_path_proof(&self) -> &Option<Proof<N>> {
+        &self.state_path_proof
     }
 
     /// Returns the transition public key.
