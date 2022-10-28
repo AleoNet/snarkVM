@@ -112,6 +112,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Initializes a new transition from a request and response.
+    #[allow(clippy::too_many_arguments)]
     pub fn from(
         request: &Request<N>,
         response: &Response<N>,
