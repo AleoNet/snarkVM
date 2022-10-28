@@ -28,6 +28,8 @@ use crate::{
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
+    Origin,
+    StatePath,
 };
 use console::{
     account::PrivateKey,
@@ -37,6 +39,7 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 #[cfg(test)]
 use std::collections::HashMap;
@@ -51,6 +54,10 @@ pub struct Process<N: Network> {
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    /// The state path proving key.
+    state_path_proving_key: Arc<OnceCell<ProvingKey<N>>>,
+    /// The state path verifying key.
+    state_path_verifying_key: Arc<OnceCell<VerifyingKey<N>>>,
 }
 
 impl<N: Network> Process<N> {
@@ -58,7 +65,12 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            stacks: IndexMap::new(),
+            state_path_proving_key: Default::default(),
+            state_path_verifying_key: Default::default(),
+        };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -87,6 +99,46 @@ impl<N: Network> Process<N> {
         // Return success.
         Ok(())
     }
+
+    /// Returns the state path proving key.
+    #[inline]
+    pub fn get_state_path_proving_key(&self) -> Option<&ProvingKey<N>> {
+        self.state_path_proving_key.get()
+    }
+
+    /// Returns the state path verifying key.
+    #[inline]
+    pub fn get_state_path_verifying_key(&self) -> Option<&VerifyingKey<N>> {
+        self.state_path_verifying_key.get()
+    }
+
+    /// Sets an instance of the state path proving key.
+    #[inline]
+    pub fn set_state_path_proving_key(&self, proving_key: ProvingKey<N>) -> Result<()> {
+        if self.state_path_proving_key.get().is_some() {
+            bail!("State path proving key is already initialized");
+        }
+
+        if self.state_path_proving_key.set(proving_key).is_err() {
+            bail!("Failed to store the state path proving key in the cache.");
+        }
+
+        Ok(())
+    }
+
+    /// Sets an instance of the state path verifying key.
+    #[inline]
+    pub fn set_state_path_verifying_key(&self, verifying_key: VerifyingKey<N>) -> Result<()> {
+        if self.state_path_verifying_key.get().is_some() {
+            bail!("State path verifying key is already initialized");
+        }
+
+        if self.state_path_verifying_key.set(verifying_key).is_err() {
+            bail!("Failed to store the state path verifying key in the cache.");
+        }
+
+        Ok(())
+    }
 }
 
 impl<N: Network> Process<N> {
@@ -94,7 +146,12 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn load() -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            stacks: IndexMap::new(),
+            state_path_proving_key: Default::default(),
+            state_path_verifying_key: Default::default(),
+        };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -123,7 +180,12 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn load_with_cache(cache: &mut HashMap<String, (ProvingKey<N>, VerifyingKey<N>)>) -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self {
+            universal_srs: Arc::new(UniversalSRS::load()?),
+            stacks: IndexMap::new(),
+            state_path_proving_key: Default::default(),
+            state_path_verifying_key: Default::default(),
+        };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
