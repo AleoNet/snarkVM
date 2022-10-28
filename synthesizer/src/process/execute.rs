@@ -185,6 +185,48 @@ impl<N: Network> Process<N> {
                 verifying_key.verify(transition.function_name(), &inputs, transition.proof()),
                 "Transition is invalid"
             );
+
+            // Retrieve the state path inputs for the transition.
+            let mut state_path_inputs = vec![];
+            for origin in transition.origins() {
+                if let Origin::StateRoot(state_root) = origin {
+                    state_path_inputs.push(vec![N::Field::one(), ***state_root]);
+                }
+            }
+
+            // Verify the state path proof if it exists.
+            match transition.state_path_proof() {
+                Some(proof) => {
+                    // TODO (raychu86): Have a global accessor for the state path keys.
+                    // Store the state path keys properly.
+                    let state_path_verifying_key = match self.get_state_path_verifying_key() {
+                        Some(state_path_verifying_key) => state_path_verifying_key,
+                        None => {
+                            // Store the stack's state path verifying key in the process.
+                            match stack.get_state_path_verifying_key() {
+                                Some(state_path_verifying_key) => {
+                                    self.set_state_path_verifying_key(state_path_verifying_key.clone())?;
+                                    state_path_verifying_key
+                                }
+                                None => {
+                                    bail!("The state path verifying key is missing")
+                                }
+                            }
+                        }
+                    };
+
+                    // Ensure the state path proof is valid.
+                    let state_path_function_name = Identifier::from_str("state_path")?;
+                    ensure!(
+                        state_path_verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
+                        "Transition state path is valid."
+                    );
+                }
+                None => {
+                    // Ensure there are no state path inputs if there is no state path proof.
+                    ensure!(state_path_inputs.is_empty(), "State path inputs are not empty");
+                }
+            }
         }
         Ok(())
     }

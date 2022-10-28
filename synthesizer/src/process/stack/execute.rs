@@ -103,6 +103,10 @@ impl<N: Network> Stack<N> {
         // Ensure the circuit environment is clean.
         A::reset();
 
+        // Retrieve the state paths.
+        let call_stack_clone = call_stack.replicate();
+        let state_paths = call_stack_clone.state_paths();
+
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
 
@@ -419,9 +423,97 @@ impl<N: Network> Stack<N> {
             let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
+
+            // Ensure the circuit environment is clean.
+            A::reset();
+
+            // Add the state path proof.
+            let (state_roots, state_path_proof) = {
+                let mut state_path_assignments = vec![];
+                let mut state_roots = IndexMap::new();
+                // Verify the state paths.
+                // TODO (raychu86): Add the state path for every input. Currently just the records.
+                for (index, input_id) in request.input_ids().iter().enumerate() {
+                    match input_id {
+                        circuit::InputID::Record(commitment, ..) => {
+                            // Fetch the state path.
+                            let console_commitment = commitment.eject_value();
+                            let console_state_path = state_paths
+                                .get(&console_commitment)
+                                .ok_or_else(|| anyhow!("Missing state path for commitment: {:?}", commitment))?;
+
+                            // Inject the state path as `Mode::Private`.
+                            let state_path = crate::state_path::circuit::StatePath::<A>::new(
+                                circuit::Mode::Private,
+                                console_state_path.clone(),
+                            );
+
+                            // Ensure that the leaf is equal to the commitment.
+                            let commitment = circuit::Field::<A>::new(circuit::Mode::Private, console_commitment);
+                            A::assert_eq(state_path.transition_leaf().id(), commitment);
+
+                            // Ensure that the state path is valid.
+                            let state_path_is_valid = state_path.verify();
+                            A::assert(state_path_is_valid);
+
+                            #[cfg(debug_assertions)]
+                            Self::log_circuit::<A, _>(format!("Input {} State Path", index).as_str());
+
+                            let assignment = A::eject_assignment_and_reset();
+
+                            state_path_assignments.push(assignment);
+                            state_roots.insert(console_commitment, console_state_path.state_root());
+                        }
+                        _ => continue,
+                    }
+                }
+
+                if state_path_assignments.is_empty() {
+                    (IndexMap::new(), None)
+                } else {
+                    let state_path_function_name = Identifier::from_str("state_path")?;
+
+                    // If the state path proving key does not exist, then synthesize it.
+                    let state_path_proving_key = match self.get_state_path_proving_key() {
+                        Some(proving_key) => proving_key,
+                        None => {
+                            // Synthesize the proving and verifying key.
+                            let (state_path_proving_key, verifying_key) = self
+                                .universal_srs
+                                .to_circuit_key(&state_path_function_name, &state_path_assignments[0])?;
+
+                            // Store the state path proving and verifying key.
+                            self.initialize_state_path_keys(state_path_proving_key, verifying_key)?;
+
+                            // Attempt to fetch the state path proving key.
+                            match self.get_state_path_proving_key() {
+                                Some(proving_key) => proving_key,
+                                None => bail!("Missing state path proving key."),
+                            }
+                        }
+                    };
+
+                    // Generate the state path batch proof.
+                    let state_path_proof =
+                        state_path_proving_key.prove_batch(&state_path_function_name, &state_path_assignments, rng)?;
+
+                    (state_roots, Some(state_path_proof))
+                }
+            };
+
             // Construct the transition.
-            let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
+            let transition = Transition::from(
+                &console_request,
+                &response,
+                &state_roots,
+                finalize,
+                &output_types,
+                output_registers,
+                proof,
+                state_path_proof,
+                *fee,
+            )?;
+
             // Add the transition to the execution.
             execution.write().push(transition);
         }
