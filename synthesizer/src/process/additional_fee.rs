@@ -152,18 +152,16 @@ impl<N: Network> Process<N> {
 
         match additional_fee.state_path_proof() {
             Some(proof) => {
-                // TODO (raychu86): Have a global accessor for the state path keys.
+                // Load the state path verifying key.
+                let state_path_verifying_key: VerifyingKey<N> =
+                    VerifyingKey::from_bytes_le(N::get_state_path_verifying_key_bytes())?;
+
                 // Ensure the state path proof is valid.
-                match stack.get_state_path_verifying_key() {
-                    Some(verifying_key) => {
-                        let state_path_function_name = Identifier::from_str("state_path")?;
-                        ensure!(
-                            verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
-                            "Transition state path is valid."
-                        );
-                    }
-                    None => bail!("The state path verifying key is missing"),
-                };
+                let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
+                ensure!(
+                    state_path_verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
+                    "Transition state path is valid."
+                );
             }
             None => {
                 bail!("The state path proof is missing from additional fee.");

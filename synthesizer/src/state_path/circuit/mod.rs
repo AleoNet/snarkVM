@@ -31,6 +31,9 @@ use circuit::{
     types::{environment::prelude::*, Boolean, Field},
 };
 
+/// The function name for the state path verification circuit.
+pub const STATE_PATH_FUNCTION_NAME: &str = "state_path";
+
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for the block header.
@@ -150,4 +153,20 @@ impl<A: Aleo> Eject for StatePath<A> {
             Err(error) => A::halt(format!("Failed to eject state path: {error}")),
         }
     }
+}
+
+/// The circuit for state path verification.
+pub fn state_path_verification_circuit<N: console::network::Network, A: Aleo<Network = N>>(
+    state_path: crate::StatePath<N>,
+    commitment: console::types::Field<N>,
+) {
+    // Allocate the state path circuit.
+    let state_path_circuit = StatePath::<A>::new(Mode::Private, state_path);
+
+    // Allocate the commitment circuit.
+    let commitment_circuit = Field::<A>::new(Mode::Private, commitment);
+
+    A::assert_eq(state_path_circuit.transition_leaf().id(), commitment_circuit);
+
+    A::assert(state_path_circuit.verify())
 }

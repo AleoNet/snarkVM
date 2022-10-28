@@ -42,6 +42,7 @@ mod execute;
 mod helpers;
 
 use crate::{
+    state_path::circuit::STATE_PATH_FUNCTION_NAME,
     CallOperator,
     Certificate,
     Closure,
@@ -82,7 +83,6 @@ use console::{
 };
 
 use indexmap::IndexMap;
-use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -197,12 +197,6 @@ pub struct Stack<N: Network> {
     proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.
     verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
-
-    // TODO (raychu86): Add these to the process or Network trait since it will be the same for all executions.
-    /// The state path proving key.
-    state_path_proving_key: Arc<OnceCell<ProvingKey<N>>>,
-    /// The state path verifying key.
-    state_path_verifying_key: Arc<OnceCell<VerifyingKey<N>>>,
 }
 
 impl<N: Network> Stack<N> {
@@ -398,36 +392,6 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
         self.verifying_keys.write().remove(function_name);
-    }
-
-    /// Returns the state path proving key.
-    #[inline]
-    pub fn get_state_path_proving_key(&self) -> Option<&ProvingKey<N>> {
-        self.state_path_proving_key.get()
-    }
-
-    /// Returns the state path verifying key.
-    #[inline]
-    pub fn get_state_path_verifying_key(&self) -> Option<&VerifyingKey<N>> {
-        self.state_path_verifying_key.get()
-    }
-
-    /// Initializes the instances of the state path proving key and verifying key.
-    #[inline]
-    pub fn initialize_state_path_keys(&self, proving_key: ProvingKey<N>, verifying_key: VerifyingKey<N>) -> Result<()> {
-        if self.state_path_proving_key.get().is_some() || self.state_path_verifying_key.get().is_some() {
-            bail!("State path keys are already initialized");
-        }
-
-        if self.state_path_proving_key.set(proving_key).is_err() {
-            bail!("Failed to store the state path proving key in the cache.");
-        }
-
-        if self.state_path_verifying_key.set(verifying_key).is_err() {
-            bail!("Failed to store the state path verifying key in the cache.");
-        }
-
-        Ok(())
     }
 }
 

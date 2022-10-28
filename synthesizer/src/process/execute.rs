@@ -197,26 +197,11 @@ impl<N: Network> Process<N> {
             // Verify the state path proof if it exists.
             match transition.state_path_proof() {
                 Some(proof) => {
-                    // TODO (raychu86): Have a global accessor for the state path keys.
-                    // Store the state path keys properly.
-                    let state_path_verifying_key = match self.get_state_path_verifying_key() {
-                        Some(state_path_verifying_key) => state_path_verifying_key,
-                        None => {
-                            // Store the stack's state path verifying key in the process.
-                            match stack.get_state_path_verifying_key() {
-                                Some(state_path_verifying_key) => {
-                                    self.set_state_path_verifying_key(state_path_verifying_key.clone())?;
-                                    state_path_verifying_key
-                                }
-                                None => {
-                                    bail!("The state path verifying key is missing")
-                                }
-                            }
-                        }
-                    };
-
+                    // Load the state path verifying key.
+                    let state_path_verifying_key: VerifyingKey<N> =
+                        VerifyingKey::from_bytes_le(N::get_state_path_verifying_key_bytes())?;
                     // Ensure the state path proof is valid.
-                    let state_path_function_name = Identifier::from_str("state_path")?;
+                    let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
                     ensure!(
                         state_path_verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
                         "Transition state path is valid."

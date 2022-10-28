@@ -442,19 +442,11 @@ impl<N: Network> Stack<N> {
                                 .get(&console_commitment)
                                 .ok_or_else(|| anyhow!("Missing state path for commitment: {:?}", commitment))?;
 
-                            // Inject the state path as `Mode::Private`.
-                            let state_path = crate::state_path::circuit::StatePath::<A>::new(
-                                circuit::Mode::Private,
+                            // Verify the state path circuit.
+                            crate::state_path::circuit::state_path_verification_circuit::<N, A>(
                                 console_state_path.clone(),
+                                console_commitment,
                             );
-
-                            // Ensure that the leaf is equal to the commitment.
-                            let commitment = circuit::Field::<A>::new(circuit::Mode::Private, console_commitment);
-                            A::assert_eq(state_path.transition_leaf().id(), commitment);
-
-                            // Ensure that the state path is valid.
-                            let state_path_is_valid = state_path.verify();
-                            A::assert(state_path_is_valid);
 
                             #[cfg(debug_assertions)]
                             Self::log_circuit::<A, _>(format!("Input {} State Path", index).as_str());
@@ -471,27 +463,11 @@ impl<N: Network> Stack<N> {
                 if state_path_assignments.is_empty() {
                     (IndexMap::new(), None)
                 } else {
-                    let state_path_function_name = Identifier::from_str("state_path")?;
+                    // Load the state path proving key.
+                    let state_path_proving_key: ProvingKey<N> =
+                        ProvingKey::from_bytes_le(N::get_state_path_proving_key_bytes())?;
 
-                    // If the state path proving key does not exist, then synthesize it.
-                    let state_path_proving_key = match self.get_state_path_proving_key() {
-                        Some(proving_key) => proving_key,
-                        None => {
-                            // Synthesize the proving and verifying key.
-                            let (state_path_proving_key, verifying_key) = self
-                                .universal_srs
-                                .to_circuit_key(&state_path_function_name, &state_path_assignments[0])?;
-
-                            // Store the state path proving and verifying key.
-                            self.initialize_state_path_keys(state_path_proving_key, verifying_key)?;
-
-                            // Attempt to fetch the state path proving key.
-                            match self.get_state_path_proving_key() {
-                                Some(proving_key) => proving_key,
-                                None => bail!("Missing state path proving key."),
-                            }
-                        }
-                    };
+                    let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
 
                     // Generate the state path batch proof.
                     let state_path_proof =

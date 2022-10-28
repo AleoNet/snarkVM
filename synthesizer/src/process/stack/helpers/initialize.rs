@@ -29,8 +29,6 @@ impl<N: Network> Stack<N> {
             universal_srs: process.universal_srs().clone(),
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
-            state_path_proving_key: Default::default(),
-            state_path_verifying_key: Default::default(),
         };
 
         // Add all of the imports into the stack.
