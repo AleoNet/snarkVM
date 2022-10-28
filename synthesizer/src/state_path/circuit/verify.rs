@@ -121,12 +121,15 @@ mod tests {
         // Construct the assignments.
         let mut assignments = Vec::with_capacity(batch_size);
 
+        // Construct the verification inputs.
+        let mut inputs = vec![];
+
         for _ in 0..batch_size {
             let commitment = genesis.commitments().next().unwrap();
             // Construct the console state path.
             let console_state_path = ledger.to_state_path(commitment).unwrap();
             // Construct the circuit state path.
-            let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path);
+            let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path.clone());
 
             // Ensure the state path is valid.
             let is_valid = circuit_state_path.verify();
@@ -135,6 +138,8 @@ mod tests {
 
             let assignment = CurrentAleo::eject_assignment_and_reset();
             Circuit::reset();
+
+            inputs.push(vec![<Circuit as Environment>::BaseField::one(), **console_state_path.state_root]);
 
             assignments.push(assignment);
         }
@@ -148,9 +153,7 @@ mod tests {
         let batch_proof = proving_key.prove_batch(&function_name, &assignments, rng).unwrap();
 
         // Verify the batch proof.
-        let one = <Circuit as Environment>::BaseField::one();
-        let batch_verify =
-            verifying_key.verify_batch(&function_name, vec![vec![one].as_slice(); batch_size].as_slice(), &batch_proof);
+        let batch_verify = verifying_key.verify_batch(&function_name, inputs.as_slice(), &batch_proof);
         assert!(batch_verify);
     }
 

@@ -90,7 +90,7 @@ impl<A: Aleo> Inject for StatePath<A> {
     /// Initializes a new ciphertext circuit from a primitive.
     fn new(mode: Mode, state_path: Self::Primitive) -> Self {
         Self {
-            state_root: Field::new(mode, *state_path.state_root()),
+            state_root: Field::new(Mode::Public, *state_path.state_root()),
             block_path: BlockPath::new(mode, state_path.block_path().clone()),
             block_hash: Field::new(mode, *state_path.block_hash()),
             previous_block_hash: Field::new(mode, *state_path.previous_block_hash()),
