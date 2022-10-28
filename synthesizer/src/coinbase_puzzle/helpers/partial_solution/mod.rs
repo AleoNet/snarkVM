@@ -34,8 +34,8 @@ pub struct PartialSolution<N: Network> {
 
 impl<N: Network> PartialSolution<N> {
     /// Initializes a new instance of the partial solution.
-    pub const fn new(address: Address<N>, nonce: u64, commitment: PuzzleCommitment<N>) -> Self {
-        Self { address, nonce, commitment }
+    pub fn new<C: Into<PuzzleCommitment<N>>>(address: Address<N>, nonce: u64, commitment: C) -> Self {
+        Self { address, nonce, commitment: commitment.into() }
     }
 
     /// Returns the address of the prover.

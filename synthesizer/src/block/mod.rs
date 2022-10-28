@@ -32,7 +32,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    coinbase_puzzle::CoinbaseSolution,
+    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     process::{Deployment, Execution},
     vm::VM,
 };
@@ -62,20 +62,20 @@ pub struct Block<N: Network> {
     header: Header<N>,
     /// The transactions in this block.
     transactions: Transactions<N>,
-    /// The coinbase proof.
-    coinbase_proof: Option<CoinbaseSolution<N>>,
+    /// The coinbase solution.
+    coinbase: Option<CoinbaseSolution<N>>,
     /// The signature for this block.
     signature: Signature<N>,
 }
 
 impl<N: Network> Block<N> {
-    /// Initializes a new block from a given previous hash, header, and transactions list.
+    /// Initializes a new block from a given previous hash, header, transactions, coinbase, and signature.
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
-        coinbase_proof: Option<CoinbaseSolution<N>>,
+        coinbase: Option<CoinbaseSolution<N>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the block is not empty.
@@ -85,15 +85,15 @@ impl<N: Network> Block<N> {
         // Sign the block hash.
         let signature = private_key.sign(&[block_hash], rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, transactions, coinbase_proof, signature)
+        Self::from(previous_hash, header, transactions, coinbase, signature)
     }
 
-    /// Initializes a new block from a given previous hash, header, and transactions list.
+    /// Initializes a new block from a given previous hash, header, transactions, coinbase, and signature.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
-        coinbase_proof: Option<CoinbaseSolution<N>>,
+        coinbase: Option<CoinbaseSolution<N>>,
         signature: Signature<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
@@ -105,18 +105,18 @@ impl<N: Network> Block<N> {
         // Ensure the signature is valid.
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
 
-        // Ensure that coinbase accumulator matches the coinbase proof.
-        let expected_accumulator_point = match &coinbase_proof {
-            Some(coinbase_proof) => coinbase_proof.to_accumulator_point()?,
+        // Ensure that coinbase accumulator matches the coinbase solution.
+        let expected_accumulator_point = match &coinbase {
+            Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
         ensure!(
             header.coinbase_accumulator_point() == expected_accumulator_point,
-            "The coinbase accumulator point in the block header does not correspond to the given coinbase proof"
+            "The coinbase accumulator point in the block header does not correspond to the given coinbase solution"
         );
 
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase_proof, signature })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase, signature })
     }
 }
 
@@ -131,9 +131,9 @@ impl<N: Network> Block<N> {
         self.previous_hash
     }
 
-    /// Returns the coinbase proof.
-    pub const fn coinbase_proof(&self) -> Option<&CoinbaseSolution<N>> {
-        self.coinbase_proof.as_ref()
+    /// Returns the coinbase solution.
+    pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
+        self.coinbase.as_ref()
     }
 
     /// Returns the signature.
@@ -193,6 +193,11 @@ impl<N: Network> Block<N> {
         self.header.proof_target()
     }
 
+    /// Returns the Unix timestamp (UTC) of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.header.last_coinbase_timestamp()
+    }
+
     /// Returns the Unix timestamp (UTC) for this block.
     pub const fn timestamp(&self) -> i64 {
         self.header.timestamp()
@@ -200,6 +205,11 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns the puzzle commitments in this block.
+    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
+        self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
+    }
+
     /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions

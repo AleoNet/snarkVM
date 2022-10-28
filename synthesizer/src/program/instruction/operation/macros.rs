@@ -710,14 +710,36 @@ mod tests {
 
                     // Check the operation on randomly-sampled values.
                     for i in 0..num_iterations {
+                        macro_rules! sample_value {
+                            (I8, I8) => { sample_value!(I128, I128) };
+                            (I16, I16) => { sample_value!(I128, I128) };
+                            (I32, I32) => { sample_value!(I128, I128) };
+                            (I64, I64) => { sample_value!(I128, I128) };
+                            (I128, I128) => {
+                                match i {
+                                    0 => ($input_a::zero(), $input_b::zero()),
+                                    1 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::zero()),
+                                    2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut rng)),
+                                    3 => ($input_a::MIN, $input_b::zero() - $input_b::one()),
+                                    4.. => ($input_b::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng))
+                                }
+                            };
+                            ($lhs:ident, $rhs:ident) => {
+                                match i {
+                                    0 => ($lhs::zero(), $rhs::zero()),
+                                    1 => ($lhs::<CurrentNetwork>::rand(&mut rng), $rhs::zero()),
+                                    2 => ($lhs::zero(), $rhs::<CurrentNetwork>::rand(&mut rng)),
+                                    3.. => ($lhs::<CurrentNetwork>::rand(&mut rng), $rhs::<CurrentNetwork>::rand(&mut rng))
+                                }
+                            }
+                        }
                         // Sample the first and second value.
                         #[allow(deprecated)]
-                        let (a, b) = match i {
-                            0 => ($input_a::zero(), $input_b::zero()),
-                            1 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::zero()),
-                            2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut rng)),
-                            3.. => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng))
-                        };
+                        let (a, b) = sample_value!($input_a, $input_b);
+
+                        // This flag is used to determine halting conditions.
+                        #[allow(deprecated)]
+                        let is_rhs_zero = (*b) == *$input_b::<CurrentNetwork>::zero();
 
                         // Initialize an indicator whether the operation should succeed or not.
                         #[allow(unused_mut)]
@@ -785,8 +807,10 @@ mod tests {
                                 let mut should_panic_on_halt = false;
                                 // If the operation is a shift operator, check if the mode of the RHS is a constant and if the shift amount exceeds the bitwidth.
                                 should_panic_on_halt |= is_shift_operator && shift_exceeds_bitwidth && mode_b.is_constant();
-                                // If the operation is a division operator, check if the mode of the RHS is a constant.
-                                should_panic_on_halt |= is_division_operator && mode_b.is_constant();
+                                // If the operation is a division operator, check if both operands are constant or if the RHS is a constant and zero.
+                                should_panic_on_halt |= is_division_operator && (
+                                    mode_b.is_constant() && (mode_a.is_constant() || is_rhs_zero)
+                                );
 
                                 // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
                                 if should_succeed {

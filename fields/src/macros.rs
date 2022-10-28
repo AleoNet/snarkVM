@@ -136,8 +136,7 @@ macro_rules! sqrt_impl {
                         let n_minus_one_minus_i = n - 1 - i;
                         s += 2u64.pow(n_minus_one_minus_i as u32);
                         if i > 0 {
-                            delta *= $Self::from_bigint($P::POWERS_OF_G[n_minus_one_minus_i as usize])
-                                .expect("precomputed powers of g should always convert properly");
+                            delta *= $Self($P::POWERS_OF_ROOTS_OF_UNITY[n_minus_one_minus_i as usize], PhantomData);
                         } else {
                             delta = -delta;
                         }
@@ -159,8 +158,7 @@ macro_rules! sqrt_impl {
                             }
                             q_bits.iter().enumerate().take(*l as usize).for_each(|(k, bit)| {
                                 if *bit {
-                                    gamma *= $Self::from_bigint($P::POWERS_OF_G[(kappa as usize) + k])
-                                        .expect("precomputed powers of g should always convert properly");
+                                    gamma *= $Self($P::POWERS_OF_ROOTS_OF_UNITY[(kappa as usize) + k], PhantomData);
                                 }
                             });
                         });

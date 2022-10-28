@@ -132,7 +132,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
         let (commitment, _rand) =
             KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &Default::default(), None)?;
-        let point = hash_commitment(commitment)?;
+        let point = hash_commitment(&commitment)?;
         let product_eval_at_point = polynomial.evaluate(point) * epoch_challenge.epoch_polynomial().evaluate(point);
 
         let proof = KZG10::open_lagrange(
@@ -190,7 +190,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             .unzip();
 
         // Compute the challenge points.
-        let mut challenges = hash_commitments(partial_solutions.iter().map(|solution| solution.commitment()))?;
+        let mut challenges = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()))?;
         ensure!(challenges.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge as the accumulator challenge point.
@@ -267,8 +267,13 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
 
         // Ensure the coinbase proof meets the required coinbase target.
-        if coinbase_solution.to_cumulative_target()? < coinbase_target as u128 {
+        if coinbase_solution.to_cumulative_proof_target()? < coinbase_target as u128 {
             bail!("The coinbase proof does not meet the coinbase target");
+        }
+
+        // Ensure the puzzle commitments are unique.
+        if has_duplicates(coinbase_solution.puzzle_commitments()) {
+            bail!("The coinbase solution contains duplicate puzzle commitments");
         }
 
         // Compute the prover polynomials.
@@ -283,7 +288,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         // Compute the challenge points.
         let mut challenge_points =
-            hash_commitments(coinbase_solution.partial_solutions().iter().map(|solution| solution.commitment()))?;
+            hash_commitments(coinbase_solution.partial_solutions().iter().map(|solution| *solution.commitment()))?;
         ensure!(
             challenge_points.len() == coinbase_solution.partial_solutions().len() + 1,
             "Invalid number of challenge points"

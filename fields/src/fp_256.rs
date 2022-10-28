@@ -544,7 +544,6 @@ impl<P: Fp256Parameters> SquareRootField for Fp256<P> {
         }
     }
 
-    // Only works for p = 1 (mod 16).
     #[inline]
     fn sqrt(&self) -> Option<Self> {
         sqrt_impl!(Self, P, self)

@@ -40,6 +40,11 @@ impl<N: Network> CoinbaseSolution<N> {
         &self.partial_solutions
     }
 
+    /// Returns the puzzle commitments.
+    pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = PuzzleCommitment<N>> {
+        self.partial_solutions.iter().map(|s| s.commitment())
+    }
+
     /// Returns the KZG proof.
     pub const fn proof(&self) -> &PuzzleProof<N> {
         &self.proof
@@ -56,7 +61,7 @@ impl<N: Network> CoinbaseSolution<N> {
     }
 
     /// Returns the cumulative sum of the prover solutions.
-    pub fn to_cumulative_target(&self) -> Result<u128> {
+    pub fn to_cumulative_proof_target(&self) -> Result<u128> {
         // Compute the cumulative target as a u128.
         self.partial_solutions.iter().try_fold(0u128, |cumulative, solution| {
             cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
@@ -66,7 +71,7 @@ impl<N: Network> CoinbaseSolution<N> {
     /// Returns the accumulator challenge point.
     pub fn to_accumulator_point(&self) -> Result<Field<N>> {
         let mut challenge_points =
-            hash_commitments(self.partial_solutions.iter().map(|solution| solution.commitment()))?;
+            hash_commitments(self.partial_solutions.iter().map(|solution| *solution.commitment()))?;
         ensure!(challenge_points.len() == self.partial_solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge point as the accumulator challenge point.
