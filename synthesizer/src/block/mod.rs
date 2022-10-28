@@ -32,7 +32,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    coinbase_puzzle::CoinbaseSolution,
+    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     process::{Deployment, Execution},
     vm::VM,
 };
@@ -193,6 +193,11 @@ impl<N: Network> Block<N> {
         self.header.proof_target()
     }
 
+    /// Returns the Unix timestamp (UTC) of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.header.last_coinbase_timestamp()
+    }
+
     /// Returns the Unix timestamp (UTC) for this block.
     pub const fn timestamp(&self) -> i64 {
         self.header.timestamp()
@@ -200,6 +205,11 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns the puzzle commitments in this block.
+    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
+        self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
+    }
+
     /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
