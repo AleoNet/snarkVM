@@ -147,6 +147,16 @@ impl Network for Testnet3 {
             .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))
     }
 
+    /// Returns the `proving key` bytes for the state path circuit.
+    fn get_state_path_proving_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_STATE_PATH_PROVING_KEY
+    }
+
+    /// Returns the `verifying key` bytes for the state path circuit.
+    fn get_state_path_verifying_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_STATE_PATH_VERIFYING_KEY
+    }
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>> {
         &GENERATOR_G

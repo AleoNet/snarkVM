@@ -131,6 +131,12 @@ pub trait Network:
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;
 
+    /// Returns the `proving key` bytes for the state path circuit.
+    fn get_state_path_proving_key_bytes() -> &'static Vec<u8>;
+
+    /// Returns the `verifying key` bytes for the state path circuit.
+    fn get_state_path_verifying_key_bytes() -> &'static Vec<u8>;
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
 
