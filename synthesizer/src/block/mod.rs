@@ -110,7 +110,6 @@ impl<N: Network> Block<N> {
             Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
-        println!("@@@ {} {}", header.coinbase_accumulator_point(), expected_accumulator_point);
         ensure!(
             header.coinbase_accumulator_point() == expected_accumulator_point,
             "The coinbase accumulator point in the block header does not correspond to the given coinbase solution"
