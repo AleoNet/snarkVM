@@ -17,27 +17,25 @@
 mod bytes;
 mod parse;
 
-use console::{
-    network::prelude::*,
-    program::{Register, ValueType},
-};
+use crate::Operand;
 
-/// An output statement defines an output of a function, and may refer to the value
-/// in either a register or a register member. An output statement is of the form
-/// `output {register} as {value_type};`.
+use console::{network::prelude::*, program::ValueType};
+
+/// An output statement defines an output of a function.
+///  An output statement is of the form `output {operand} as {value_type};`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
-    /// The output register.
-    register: Register<N>,
+    /// The output operand.
+    operand: Operand<N>,
     /// The output value type.
     value_type: ValueType<N>,
 }
 
 impl<N: Network> Output<N> {
-    /// Returns the output register.
+    /// Returns the output operand.
     #[inline]
-    pub const fn register(&self) -> &Register<N> {
-        &self.register
+    pub const fn operand(&self) -> &Operand<N> {
+        &self.operand
     }
 
     /// Returns the output value type.
