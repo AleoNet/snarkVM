@@ -38,8 +38,8 @@ impl<N: Network> FinalizeTypes<N> {
 
         // Step 3. Check the outputs are well-formed.
         for output in finalize.outputs() {
-            // Retrieve the register type and check the output register type.
-            finalize_types.check_output(stack, output.register(), &RegisterType::from(*output.finalize_type()))?;
+            // Check the output operand type.
+            finalize_types.check_output(stack, output.operand(), &RegisterType::from(*output.finalize_type()))?;
         }
 
         Ok(finalize_types)
@@ -133,20 +133,23 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensure the given output register is well-formed.
+    /// Ensure the given output operand is well-formed.
     #[inline]
-    fn check_output(
-        &mut self,
-        stack: &Stack<N>,
-        register: &Register<N>,
-        register_type: &RegisterType<N>,
-    ) -> Result<()> {
-        // Inform the user the output register is an input register, to ensure this is intended behavior.
-        if self.is_input(register) {
-            eprintln!("Output {register} in '{}' is an input register, ensure this is intended", stack.program_id());
+    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &RegisterType<N>) -> Result<()> {
+        match operand {
+            // Inform the user the output operand is an input register, to ensure this is intended behavior.
+            Operand::Register(register) if self.is_input(register) => {
+                eprintln!("Output {operand} in '{}' is an input register, ensure this is intended", stack.program_id())
+            }
+            // Inform the user the output operand is a literal, to ensure this is intended behavior.
+            Operand::Literal(..) => {
+                eprintln!("Output {operand} in '{}' is a literal, ensure this is intended", stack.program_id())
+            }
+            // Otherwise, do nothing.
+            _ => (),
         }
 
-        // Ensure the register type is defined in the program.
+        // Ensure the operand type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
@@ -169,11 +172,11 @@ impl<N: Network> FinalizeTypes<N> {
             }
         };
 
-        // Ensure the register type and the output type match.
-        if *register_type != self.get_type(stack, register)? {
+        // Ensure the operand type and the output type match.
+        if *register_type != self.get_type_from_operand(stack, operand)? {
             bail!(
-                "Output '{register}' does not match the expected output register type: expected '{}', found '{}'",
-                self.get_type(stack, register)?,
+                "Output '{operand}' does not match the expected output operand type: expected '{}', found '{}'",
+                self.get_type_from_operand(stack, operand)?,
                 register_type
             )
         }
