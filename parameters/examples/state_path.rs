@@ -26,7 +26,7 @@ use snarkvm_console::{
 use snarkvm_synthesizer::{
     snark::UniversalSRS,
     state_path::{
-        circuit::{state_path_verification_circuit, STATE_PATH_FUNCTION_NAME},
+        circuit::{inject_and_verify_state_path, STATE_PATH_FUNCTION_NAME},
         StatePath,
     },
     Block,
@@ -37,6 +37,7 @@ use snarkvm_synthesizer::{
 };
 
 use anyhow::{anyhow, Result};
+use rand::thread_rng;
 use serde_json::{json, Value};
 use snarkvm_utilities::ToBytes;
 use std::{
@@ -79,24 +80,22 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
 }
 
 /// Returns a new (commitment, state_path) pair.
-pub fn sample_new_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
-    // Initialize an RNG.
-    let rng = &mut snarkvm_utilities::TestRng::fixed(1245897092);
-
+pub fn sample_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
     // Initialize the consensus store.
     let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
     // Initialize a new VM.
     let mut vm = VM::from(store)?;
-    // Initialize the block tree.
-    let mut block_tree: BlockTree<N> = N::merkle_tree_bhp(&[])?;
 
+    // Initialize an RNG.
+    let rng = &mut thread_rng();
     // Initialize a new caller.
     let caller_private_key = PrivateKey::<N>::new(rng).unwrap();
     // Return the block.
     let genesis_block = Block::genesis(&vm, &caller_private_key, rng)?;
 
+    // Initialize the block tree.
+    let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[genesis_block.hash().to_bits_le()])?;
     // Add the genesis block to the block tree.
-    block_tree.append(&[genesis_block.hash().to_bits_le()])?;
     vm.block_store().insert(*block_tree.root(), &genesis_block)?;
 
     // Update the VM.
@@ -104,7 +103,9 @@ pub fn sample_new_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
         vm.finalize(transaction)?;
     }
 
+    // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;
+    // Compute the state path for the commitment.
     let state_path = StatePath::new_commitment(&block_tree, vm.block_store(), commitment)?;
 
     Ok((*commitment, state_path))
@@ -112,20 +113,18 @@ pub fn sample_new_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
 
 /// Synthesizes the circuit keys for the state path circuit. (cargo run --release --example state_path [network])
 pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
-    // Initialize an RNG.
-    let rng = &mut snarkvm_utilities::TestRng::fixed(1245897092);
-
-    // Ensure the circuit environment is clean.
-    A::reset();
-
     // Sample a new state path.
-    let (commitment, state_path) = sample_new_state_path::<N>()?;
+    let (commitment, state_path) = sample_state_path::<N>()?;
 
-    // Generate the state path verification circuit.
-    state_path_verification_circuit::<N, A>(state_path.clone(), commitment);
-
-    // Fetch the assignment.
-    let assignment = A::eject_assignment_and_reset();
+    // Construct the assignment.
+    let assignment = {
+        // Ensure the circuit environment is clean.
+        A::reset();
+        // Inject and verify the state path.
+        inject_and_verify_state_path::<N, A>(state_path.clone(), commitment);
+        // Eject and return the assignment.
+        A::eject_assignment_and_reset()
+    };
 
     // Load the universal SRS.
     let universal_srs = UniversalSRS::<N>::load()?;
@@ -135,7 +134,7 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let (proving_key, verifying_key) = universal_srs.to_circuit_key(&state_path_function_name, &assignment)?;
 
     // Ensure the proving key and verifying keys are valid.
-    let proof = proving_key.prove(&state_path_function_name, &assignment, rng)?;
+    let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(&state_path_function_name, &[N::Field::one(), **state_path.state_root()], &proof));
 
     // Initialize a vector for the commands.

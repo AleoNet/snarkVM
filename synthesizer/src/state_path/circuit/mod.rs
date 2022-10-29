@@ -155,13 +155,12 @@ impl<A: Aleo> Eject for StatePath<A> {
 }
 
 /// The circuit for state path verification.
-pub fn state_path_verification_circuit<N: console::network::Network, A: Aleo<Network = N>>(
+pub fn inject_and_verify_state_path<N: console::network::Network, A: Aleo<Network = N>>(
     state_path: crate::StatePath<N>,
     commitment: console::types::Field<N>,
 ) {
     // Allocate the state path circuit.
     let state_path_circuit = StatePath::<A>::new(Mode::Private, state_path);
-
     // Allocate the commitment circuit.
     let commitment_circuit = Field::<A>::new(Mode::Private, commitment);
 

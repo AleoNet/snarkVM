@@ -440,10 +440,10 @@ impl<N: Network> Stack<N> {
                             let console_commitment = commitment.eject_value();
                             let console_state_path = state_paths
                                 .get(&console_commitment)
-                                .ok_or_else(|| anyhow!("Missing state path for commitment: {:?}", commitment))?;
+                                .ok_or_else(|| anyhow!("Missing state path for commitment: {commitment}"))?;
 
                             // Verify the state path circuit.
-                            crate::state_path::circuit::state_path_verification_circuit::<N, A>(
+                            crate::state_path::circuit::inject_and_verify_state_path::<N, A>(
                                 console_state_path.clone(),
                                 console_commitment,
                             );
@@ -481,11 +481,11 @@ impl<N: Network> Stack<N> {
             let transition = Transition::from(
                 &console_request,
                 &response,
-                &state_roots,
                 finalize,
                 &output_types,
                 output_registers,
                 proof,
+                &state_roots,
                 state_path_proof,
                 *fee,
             )?;

@@ -116,11 +116,11 @@ impl<N: Network> Transition<N> {
     pub fn from(
         request: &Request<N>,
         response: &Response<N>,
-        state_roots: &IndexMap<Field<N>, N::StateRoot>,
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
         proof: Proof<N>,
+        state_roots: &IndexMap<Field<N>, N::StateRoot>,
         state_path_proof: Option<Proof<N>>,
         fee: i64,
     ) -> Result<Self> {
