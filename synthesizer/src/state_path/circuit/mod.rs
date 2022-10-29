@@ -116,7 +116,6 @@ impl<A: Aleo> Eject for StatePath<A> {
     /// Ejects the mode of the state path.
     fn eject_mode(&self) -> Mode {
         Mode::combine(self.state_root.eject_mode(), [
-            self.state_root.eject_mode(),
             self.block_path.eject_mode(),
             self.block_hash.eject_mode(),
             self.previous_block_hash.eject_mode(),

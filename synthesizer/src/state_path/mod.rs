@@ -295,10 +295,76 @@ pub(crate) mod test_helpers {
         store::{ConsensusMemory, ConsensusStore},
         vm::VM,
     };
-    use console::{network::Testnet3, prelude::Network};
+    use console::{
+        network::Testnet3,
+        prelude::Network,
+        program::{Identifier, ProgramID},
+    };
     use snarkvm_utilities::rand::TestRng;
 
     type CurrentNetwork = Testnet3;
+
+    /// Randomly sample a state path from the given `commitment`, `program_id`, and `function_name`.
+    pub fn sample_state_path<N: Network>(
+        commitment: Field<N>,
+        _program_id: ProgramID<N>,
+        _function_name: Identifier<N>,
+    ) -> Result<StatePath<N>> {
+        let rng = &mut TestRng::default();
+
+        // TODO (raychu86): Different program IDs and function names will change the number of constraints each circuit has.
+        //  This seems like a bug? Strings should be represented with the same number of fields.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        let function_name = Identifier::from_str("genesis")?;
+
+        // Construct the transition path and transaction leaf.
+        let transition_leaf = TransitionLeaf::new(0, 0, program_id, function_name, 0, commitment);
+        let transition_tree: crate::TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
+        let transition_id = transition_tree.root();
+        let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
+
+        // Construct the transaction path and transaction leaf.
+        let transaction_leaf = TransactionLeaf::new(0, 0, program_id, function_name, *transition_id);
+        let transaction_tree: crate::TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
+        let transaction_id = *transaction_tree.root();
+        let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;
+
+        // Construct the transactions path.
+        let transactions_tree: crate::TransactionsTree<N> = N::merkle_tree_bhp(&[transaction_id.to_bits_le()])?;
+        let transactions_root = transactions_tree.root();
+        let transactions_path = transactions_tree.prove(0, &transaction_id.to_bits_le())?;
+
+        // Construct the block header path.
+        let header_leaf = HeaderLeaf::<N>::new(0, *transactions_root);
+        let header_tree: crate::HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf.to_bits_le()])?;
+        let header_root = header_tree.root();
+        let header_path = header_tree.prove(0, &header_leaf.to_bits_le())?;
+
+        let previous_block_hash: N::BlockHash = console::types::Field::<N>::rand(rng).into();
+        let preimage = (*previous_block_hash).to_bits_le().into_iter().chain(header_root.to_bits_le().into_iter());
+        let block_hash = N::hash_bhp1024(&preimage.collect::<Vec<_>>())?;
+
+        // Construct the state root and block path.
+        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash.to_bits_le()])?;
+        let state_root = *block_tree.root();
+        let block_path = block_tree.prove(0, &block_hash.to_bits_le())?;
+
+        StatePath::<N>::from(
+            state_root.into(),
+            block_path,
+            block_hash.into(),
+            previous_block_hash,
+            *header_root,
+            header_path,
+            header_leaf,
+            transactions_path,
+            transaction_id.into(),
+            transaction_path,
+            transaction_leaf,
+            transition_path,
+            transition_leaf,
+        )
+    }
 
     #[derive(Clone)]
     pub struct TestLedger<N: Network> {
