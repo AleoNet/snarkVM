@@ -21,7 +21,7 @@ mod output;
 pub use output::*;
 
 use crate::{
-    block::{Input, Origin, Output, Transition},
+    block::{Input, Origin, Output, Transition, TransitionProof},
     cow_to_cloned,
     cow_to_copied,
     snark::Proof,
@@ -47,9 +47,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     /// The transition finalize inputs.
     type FinalizeMap: for<'a> Map<'a, N::TransitionID, Option<Vec<Value<N>>>>;
     /// The transition proofs.
-    type ProofMap: for<'a> Map<'a, N::TransitionID, Proof<N>>;
-    /// The transition state path proofs proofs.
-    type StatePathProofMap: for<'a> Map<'a, N::TransitionID, Option<Proof<N>>>;
+    type ProofMap: for<'a> Map<'a, N::TransitionID, TransitionProof<N>>;
     /// The transition public keys.
     type TPKMap: for<'a> Map<'a, N::TransitionID, Group<N>>;
     /// The mapping of `transition public key` to `transition ID`.
@@ -74,8 +72,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn finalize_map(&self) -> &Self::FinalizeMap;
     /// Returns the transition proofs map.
     fn proof_map(&self) -> &Self::ProofMap;
-    /// Returns the transition state path proofs map.
-    fn state_path_proof_map(&self) -> &Self::StatePathProofMap;
     /// Returns the transition public keys map.
     fn tpk_map(&self) -> &Self::TPKMap;
     /// Returns the reverse `tpk` map.
@@ -100,7 +96,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.output_store().start_atomic();
         self.finalize_map().start_atomic();
         self.proof_map().start_atomic();
-        self.state_path_proof_map().start_atomic();
         self.tpk_map().start_atomic();
         self.reverse_tpk_map().start_atomic();
         self.tcm_map().start_atomic();
@@ -115,7 +110,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             || self.output_store().is_atomic_in_progress()
             || self.finalize_map().is_atomic_in_progress()
             || self.proof_map().is_atomic_in_progress()
-            || self.state_path_proof_map().is_atomic_in_progress()
             || self.tpk_map().is_atomic_in_progress()
             || self.reverse_tpk_map().is_atomic_in_progress()
             || self.tcm_map().is_atomic_in_progress()
@@ -130,7 +124,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.output_store().abort_atomic();
         self.finalize_map().abort_atomic();
         self.proof_map().abort_atomic();
-        self.state_path_proof_map().abort_atomic();
         self.tpk_map().abort_atomic();
         self.reverse_tpk_map().abort_atomic();
         self.tcm_map().abort_atomic();
@@ -145,7 +138,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.output_store().finish_atomic()?;
         self.finalize_map().finish_atomic()?;
         self.proof_map().finish_atomic()?;
-        self.state_path_proof_map().finish_atomic()?;
         self.tpk_map().finish_atomic()?;
         self.reverse_tpk_map().finish_atomic()?;
         self.tcm_map().finish_atomic()?;
@@ -176,8 +168,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.finalize_map().insert(transition_id, transition.finalize().clone())?;
             // Store the proof.
             self.proof_map().insert(transition_id, transition.proof().clone())?;
-            // Store the state path proof.
-            self.state_path_proof_map().insert(transition_id, transition.state_path_proof().clone())?;
             // Store `tpk`.
             self.tpk_map().insert(transition_id, *transition.tpk())?;
             // Store the reverse `tpk` entry.
@@ -238,8 +228,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.finalize_map().remove(transition_id)?;
             // Remove the proof.
             self.proof_map().remove(transition_id)?;
-            // Remove the state path proof.
-            self.state_path_proof_map().remove(transition_id)?;
             // Remove `tpk`.
             self.tpk_map().remove(transition_id)?;
             // Remove the reverse `tpk` entry.
@@ -283,8 +271,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         let finalize = self.finalize_map().get(transition_id)?;
         // Retrieve the proof.
         let proof = self.proof_map().get(transition_id)?;
-        // Retrieve the state path proof.
-        let state_path_proof = self.state_path_proof_map().get(transition_id)?;
         // Retrieve `tpk`.
         let tpk = self.tpk_map().get(transition_id)?;
         // Retrieve `tcm`.
@@ -292,8 +278,8 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the fee.
         let fee = self.fee_map().get(transition_id)?;
 
-        match (finalize, proof, state_path_proof, tpk, tcm, fee) {
-            (Some(finalize), Some(proof), Some(state_path_proof), Some(tpk), Some(tcm), Some(fee)) => {
+        match (finalize, proof, tpk, tcm, fee) {
+            (Some(finalize), Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
@@ -302,7 +288,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
                     outputs,
                     cow_to_cloned!(finalize),
                     cow_to_cloned!(proof),
-                    cow_to_cloned!(state_path_proof),
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
                     cow_to_cloned!(fee),
@@ -330,9 +315,7 @@ pub struct TransitionMemory<N: Network> {
     /// The transition finalize inputs.
     finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
     /// The transition proofs.
-    proof_map: MemoryMap<N::TransitionID, Proof<N>>,
-    /// The transition state path proofs.
-    state_path_proof_map: MemoryMap<N::TransitionID, Option<Proof<N>>>,
+    proof_map: MemoryMap<N::TransitionID, TransitionProof<N>>,
     /// The transition public keys.
     tpk_map: MemoryMap<N::TransitionID, Group<N>>,
     /// The reverse `tpk` map.
@@ -351,8 +334,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type InputStorage = InputMemory<N>;
     type OutputStorage = OutputMemory<N>;
     type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
-    type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
-    type StatePathProofMap = MemoryMap<N::TransitionID, Option<Proof<N>>>;
+    type ProofMap = MemoryMap<N::TransitionID, TransitionProof<N>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
@@ -367,7 +349,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             output_store: OutputStore::open(dev)?,
             finalize_map: MemoryMap::default(),
             proof_map: MemoryMap::default(),
-            state_path_proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
@@ -399,11 +380,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     /// Returns the transition proofs.
     fn proof_map(&self) -> &Self::ProofMap {
         &self.proof_map
-    }
-
-    /// Returns the transition state path proofs.
-    fn state_path_proof_map(&self) -> &Self::StatePathProofMap {
-        &self.state_path_proof_map
     }
 
     /// Returns the transition public keys.
@@ -445,8 +421,6 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     finalize: T::FinalizeMap,
     /// The map of transition proofs.
     proof: T::ProofMap,
-    /// The map of transition state path proofs.
-    state_path_proof: T::StatePathProofMap,
     /// The map of transition public keys.
     tpk: T::TPKMap,
     /// The reverse `tpk` map.
@@ -473,7 +447,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             outputs: (*storage.output_store()).clone(),
             finalize: storage.finalize_map().clone(),
             proof: storage.proof_map().clone(),
-            state_path_proof: storage.state_path_proof_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
@@ -491,7 +464,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             outputs: (*storage.output_store()).clone(),
             finalize: storage.finalize_map().clone(),
             proof: storage.proof_map().clone(),
-            state_path_proof: storage.state_path_proof_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
@@ -805,13 +777,8 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /* Metadata */
 
     /// Returns an iterator over the proofs, for all transitions.
-    pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Proof<N>>> {
+    pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, TransitionProof<N>>> {
         self.proof.values()
-    }
-
-    /// Returns an iterator over the state path proofs, for all transitions.
-    pub fn state_path_proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Option<Proof<N>>>> {
-        self.state_path_proof.values()
     }
 
     /// Returns an iterator over the transition public keys, for all transitions.

@@ -31,9 +31,6 @@ impl<N: Network> Serialize for Transition<N> {
                     transition.serialize_field("finalize", &finalize)?;
                 }
                 transition.serialize_field("proof", &self.proof)?;
-                if let Some(state_path_proof) = &self.state_path_proof {
-                    transition.serialize_field("state_path_proof", &state_path_proof)?;
-                }
                 transition.serialize_field("tpk", &self.tpk)?;
                 transition.serialize_field("tcm", &self.tcm)?;
                 transition.serialize_field("fee", &self.fee)?;
@@ -71,13 +68,6 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     },
                     // Retrieve the proof.
                     serde_json::from_value(transition["proof"].take()).map_err(de::Error::custom)?,
-                    // Retrieve the state path proof.
-                    match transition.get("state_path_proof") {
-                        Some(state_path_proof) => {
-                            Some(serde_json::from_value(state_path_proof.clone()).map_err(de::Error::custom)?)
-                        }
-                        None => None,
-                    },
                     // Retrieve the `tpk`.
                     serde_json::from_value(transition["tpk"].take()).map_err(de::Error::custom)?,
                     // Retrieve the `tcm`.

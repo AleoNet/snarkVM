@@ -132,39 +132,52 @@ impl<N: Network> Process<N> {
         #[cfg(debug_assertions)]
         println!("Additional fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-        // Retrieve the verifying key.
-        let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-        // Ensure the proof is valid.
-        ensure!(
-            verifying_key.verify(function.name(), &inputs, additional_fee.proof()),
-            "The proof for the additional fee is invalid"
-        );
+        match additional_fee.proof() {
+            TransitionProof::Birth(_) => bail!("The state path proof is missing from additional fee."),
+            TransitionProof::BirthAndDeath { execution_proof, state_path_proof } => {
+                // Ensure the additional fee contains input records.
+                ensure!(
+                    additional_fee.inputs().iter().any(|input| matches!(input, Input::Record(..))),
+                    "The additional fee proof is the wrong type (found *no* input records)"
+                );
 
-        // Retrieve the state path inputs for the transition.
-        let mut state_path_inputs = vec![];
-        for origin in additional_fee.origins() {
-            if let Origin::StateRoot(state_root) = origin {
-                state_path_inputs.push(vec![N::Field::one(), ***state_root]);
-            }
-        }
+                // Retrieve the verifying key.
+                let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
 
-        ensure!(state_path_inputs.len() == 1, "The number of state path inputs for the additional fee is incorrect");
+                // Ensure the execution proof is valid.
+                ensure!(
+                    verifying_key.verify(function.name(), &inputs, execution_proof),
+                    "Additional fee is invalid - failed to verify execution proof"
+                );
 
-        match additional_fee.state_path_proof() {
-            Some(proof) => {
+                // Retrieve the state path inputs for the additional fee.
+                let mut state_path_inputs = vec![];
+                for origin in additional_fee.origins() {
+                    if let Origin::StateRoot(state_root) = origin {
+                        state_path_inputs.push(vec![N::Field::one(), ***state_root]);
+                    }
+                }
+                ensure!(
+                    state_path_inputs.len() == 1,
+                    "The number of state path inputs for the additional fee is incorrect"
+                );
+
+                // TODO (howardwu): Cache this in the process.
                 // Load the state path verifying key.
                 let state_path_verifying_key: VerifyingKey<N> =
-                    VerifyingKey::from_bytes_le(N::get_state_path_verifying_key_bytes())?;
-
+                    VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
                 // Ensure the state path proof is valid.
                 let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
+
+                // Verify the state path proof.
                 ensure!(
-                    state_path_verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
-                    "Transition state path is valid."
+                    state_path_verifying_key.verify_batch(
+                        &state_path_function_name,
+                        &state_path_inputs,
+                        state_path_proof
+                    ),
+                    "Transition state path is invalid."
                 );
-            }
-            None => {
-                bail!("The state path proof is missing from additional fee.");
             }
         }
 

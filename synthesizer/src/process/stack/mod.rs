@@ -54,6 +54,7 @@ use crate::{
     ProvingKey,
     StatePath,
     Transition,
+    TransitionProof,
     UniversalSRS,
     VerifyingKey,
 };
@@ -65,6 +66,7 @@ use console::{
         Entry,
         EntryType,
         Identifier,
+        InputID,
         Literal,
         Locator,
         Owner,

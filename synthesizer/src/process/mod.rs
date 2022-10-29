@@ -24,12 +24,11 @@ mod evaluate;
 mod execute;
 
 use crate::{
-    block::AdditionalFee,
+    block::{AdditionalFee, Input, Origin, TransitionProof},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     state_path::{circuit::STATE_PATH_FUNCTION_NAME, StatePath},
     store::{ProgramStorage, ProgramStore},
-    Origin,
 };
 use console::{
     account::PrivateKey,

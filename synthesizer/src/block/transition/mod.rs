@@ -26,6 +26,9 @@ pub use merkle::*;
 pub mod output;
 pub use output::Output;
 
+mod proof;
+pub use proof::*;
+
 mod bytes;
 mod serialize;
 mod string;
@@ -67,9 +70,7 @@ pub struct Transition<N: Network> {
     /// The inputs for finalize.
     finalize: Option<Vec<Value<N>>>,
     /// The transition proof.
-    proof: Proof<N>,
-    /// The state path proof. (`None` if the transition does not include record types)
-    state_path_proof: Option<Proof<N>>,
+    proof: TransitionProof<N>,
     /// The transition public key.
     tpk: Group<N>,
     /// The transition commitment.
@@ -87,8 +88,7 @@ impl<N: Network> Transition<N> {
         inputs: Vec<Input<N>>,
         outputs: Vec<Output<N>>,
         finalize: Option<Vec<Value<N>>>,
-        proof: Proof<N>,
-        state_path_proof: Option<Proof<N>>,
+        proof: TransitionProof<N>,
         tpk: Group<N>,
         tcm: Field<N>,
         fee: i64,
@@ -96,19 +96,7 @@ impl<N: Network> Transition<N> {
         // Compute the transition ID.
         let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self {
-            id: id.into(),
-            program_id,
-            function_name,
-            inputs,
-            outputs,
-            finalize,
-            proof,
-            state_path_proof,
-            tpk,
-            tcm,
-            fee,
-        })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee })
     }
 
     /// Initializes a new transition from a request and response.
@@ -119,9 +107,8 @@ impl<N: Network> Transition<N> {
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
-        proof: Proof<N>,
+        proof: TransitionProof<N>,
         state_roots: &IndexMap<Field<N>, N::StateRoot>,
-        state_path_proof: Option<Proof<N>>,
         fee: i64,
     ) -> Result<Self> {
         let program_id = *request.program_id();
@@ -272,7 +259,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, finalize, proof, state_path_proof, tpk, tcm, fee)
+        Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee)
     }
 }
 
@@ -308,13 +295,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the proof.
-    pub const fn proof(&self) -> &Proof<N> {
+    pub const fn proof(&self) -> &TransitionProof<N> {
         &self.proof
-    }
-
-    /// Returns the state path proof.
-    pub const fn state_path_proof(&self) -> &Option<Proof<N>> {
-        &self.state_path_proof
     }
 
     /// Returns the transition public key.

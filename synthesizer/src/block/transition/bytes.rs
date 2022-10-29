@@ -73,20 +73,6 @@ impl<N: Network> FromBytes for Transition<N> {
         // Read the proof.
         let proof = FromBytes::read_le(&mut reader)?;
 
-        // Read the state path proof variant.
-        let state_path_proof_variant = u8::read_le(&mut reader)?;
-        // Read the state path proof inputs.
-        let state_path_proof = match state_path_proof_variant {
-            0 => None,
-            1 => {
-                // Read the state path proof
-                Some(FromBytes::read_le(&mut reader)?)
-            }
-            2.. => {
-                return Err(error(format!("Invalid transition state path proof variant ({state_path_proof_variant})")));
-            }
-        };
-
         // Read the transition public key.
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
@@ -95,9 +81,8 @@ impl<N: Network> FromBytes for Transition<N> {
         let fee = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition =
-            Self::new(program_id, function_name, inputs, outputs, finalize, proof, state_path_proof, tpk, tcm, fee)
-                .map_err(|e| error(e.to_string()))?;
+        let transition = Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee)
+            .map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
@@ -147,20 +132,6 @@ impl<N: Network> ToBytes for Transition<N> {
 
         // Write the proof.
         self.proof.write_le(&mut writer)?;
-
-        // Write the state path proof.
-        match &self.state_path_proof {
-            None => {
-                // Write the state path proof variant.
-                0u8.write_le(&mut writer)?;
-            }
-            Some(state_path_proof) => {
-                // Write the state path proof variant.
-                1u8.write_le(&mut writer)?;
-                // Write the state path proof to finalize.
-                state_path_proof.write_le(&mut writer)?;
-            }
-        }
 
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;

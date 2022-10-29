@@ -179,37 +179,58 @@ impl<N: Network> Process<N> {
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
             // Retrieve the verifying key.
-            let verifying_key = self.get_verifying_key(transition.program_id(), transition.function_name())?;
-            // Ensure the proof is valid.
-            ensure!(
-                verifying_key.verify(transition.function_name(), &inputs, transition.proof()),
-                "Transition is invalid"
-            );
+            let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
 
-            // Retrieve the state path inputs for the transition.
-            let mut state_path_inputs = vec![];
-            for origin in transition.origins() {
-                if let Origin::StateRoot(state_root) = origin {
-                    state_path_inputs.push(vec![N::Field::one(), ***state_root]);
-                }
-            }
-
-            // Verify the state path proof if it exists.
-            match transition.state_path_proof() {
-                Some(proof) => {
-                    // Load the state path verifying key.
-                    let state_path_verifying_key: VerifyingKey<N> =
-                        VerifyingKey::from_bytes_le(N::get_state_path_verifying_key_bytes())?;
-                    // Ensure the state path proof is valid.
-                    let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
+            match transition.proof() {
+                TransitionProof::Birth(execution_proof) => {
+                    // Ensure the transition contains no input records.
                     ensure!(
-                        state_path_verifying_key.verify_batch(&state_path_function_name, &state_path_inputs, proof),
-                        "Transition state path is valid."
+                        !transition.inputs().iter().any(|input| matches!(input, Input::Record(..))),
+                        "The transition proof is the wrong type (found input records)"
+                    );
+                    // Ensure the execution proof is valid.
+                    ensure!(
+                        verifying_key.verify(function.name(), &inputs, execution_proof),
+                        "Transition is invalid - failed to verify execution proof"
                     );
                 }
-                None => {
-                    // Ensure there are no state path inputs if there is no state path proof.
-                    ensure!(state_path_inputs.is_empty(), "State path inputs are not empty");
+                TransitionProof::BirthAndDeath { execution_proof, state_path_proof } => {
+                    // Ensure the transition contains input records.
+                    ensure!(
+                        transition.inputs().iter().any(|input| matches!(input, Input::Record(..))),
+                        "The transition proof is the wrong type (found *no* input records)"
+                    );
+                    // Ensure the execution proof is valid.
+                    ensure!(
+                        verifying_key.verify(function.name(), &inputs, execution_proof),
+                        "Transition is invalid - failed to verify execution proof"
+                    );
+
+                    // Retrieve the state path inputs for the transition.
+                    let mut state_path_inputs = vec![];
+                    for origin in transition.origins() {
+                        if let Origin::StateRoot(state_root) = origin {
+                            state_path_inputs.push(vec![N::Field::one(), ***state_root]);
+                        }
+                    }
+                    ensure!(!state_path_inputs.is_empty(), "Transition is invalid - missing state root(s)");
+
+                    // TODO (howardwu): Cache this in the process.
+                    // Load the state path verifying key.
+                    let state_path_verifying_key: VerifyingKey<N> =
+                        VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
+                    // Ensure the state path proof is valid.
+                    let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
+
+                    // Verify the state path proof.
+                    ensure!(
+                        state_path_verifying_key.verify_batch(
+                            &state_path_function_name,
+                            &state_path_inputs,
+                            state_path_proof
+                        ),
+                        "Transition state path is invalid."
+                    );
                 }
             }
         }

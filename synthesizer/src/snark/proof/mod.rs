@@ -44,6 +44,7 @@ impl<N: Network> Deref for Proof<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::TransitionProof;
     use console::network::Testnet3;
 
     use once_cell::sync::OnceCell;
@@ -57,7 +58,10 @@ mod tests {
                 // Sample a transition.
                 let transition = crate::process::test_helpers::sample_transition();
                 // Return the proof.
-                transition.proof().clone()
+                match transition.proof() {
+                    TransitionProof::Birth(proof) => proof.clone(),
+                    TransitionProof::BirthAndDeath { execution_proof, .. } => execution_proof.clone(),
+                }
             })
             .clone()
     }
