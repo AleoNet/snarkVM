@@ -2409,6 +2409,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "cfg-if",
+ "colored",
  "curl",
  "hex",
  "indexmap",
