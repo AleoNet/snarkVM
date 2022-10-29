@@ -20,7 +20,7 @@ use super::*;
 pub(super) const TRANSACTION_DEPTH: u8 = 4;
 
 /// The Merkle tree for the transaction.
-type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
+pub(crate) type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
 /// The Merkle path for a function or transition in the transaction.
 pub type TransactionPath<N> = MerklePath<N, TRANSACTION_DEPTH>;
 

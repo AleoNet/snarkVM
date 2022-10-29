@@ -20,7 +20,7 @@ use super::*;
 const HEADER_DEPTH: u8 = 3;
 
 /// The Merkle tree for the block header.
-type HeaderTree<N> = BHPMerkleTree<N, HEADER_DEPTH>;
+pub(crate) type HeaderTree<N> = BHPMerkleTree<N, HEADER_DEPTH>;
 /// The Merkle path for the block header.
 pub type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
 

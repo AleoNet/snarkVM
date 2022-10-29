@@ -20,7 +20,7 @@ use super::*;
 const TRANSITION_DEPTH: u8 = 4;
 
 /// The Merkle tree for the transition.
-type TransitionTree<N> = BHPMerkleTree<N, TRANSITION_DEPTH>;
+pub(crate) type TransitionTree<N> = BHPMerkleTree<N, TRANSITION_DEPTH>;
 /// The Merkle path for an input or output ID in the transition.
 pub type TransitionPath<N> = MerklePath<N, TRANSITION_DEPTH>;
 
