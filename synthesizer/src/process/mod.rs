@@ -237,11 +237,11 @@ impl<N: Network> Process<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program, Transition};
+    use crate::{state_path::test_helpers::sample_state_path, Process, Program, Transition};
     use console::{
         account::PrivateKey,
         network::Testnet3,
-        program::{Identifier, Value},
+        program::{Identifier, InputID, Value},
     };
 
     use once_cell::sync::OnceCell;
@@ -362,12 +362,33 @@ function compute:
         // Return the process.
         process
     }
+
+    /// Initializes test state paths for the records in an authorization.
+    pub(crate) fn sample_state_paths(authorization: Authorization<CurrentNetwork>) -> Authorization<CurrentNetwork> {
+        // Add the required state paths to the authorization
+        let mut authorization = authorization;
+
+        // Sample a random state path for each input record.
+        for request in authorization.to_vec_deque() {
+            let program_id = request.program_id();
+            let function_name = request.function_name();
+            for input_id in request.input_ids() {
+                // Generate the relevant state roots for each input record.
+                if let InputID::Record(commitment, ..) = input_id {
+                    let state_path = sample_state_path(*commitment, *program_id, *function_name).unwrap();
+                    authorization.insert_state_path(*commitment, state_path);
+                }
+            }
+        }
+
+        authorization
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ProgramMemory;
+    use crate::{process::test_helpers::sample_state_paths, ProgramMemory};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
@@ -559,6 +580,8 @@ function hello_world:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input_a, input_b], rng)
             .unwrap();
+        // Sample random state paths for the input values.
+        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
@@ -651,6 +674,8 @@ function hello_world:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
             .unwrap();
+        // Sample random state paths for the input values.
+        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
@@ -820,6 +845,8 @@ function compute:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
+        // Sample random state paths for the input values.
+        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
@@ -964,6 +991,8 @@ function transfer:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
+        // Sample random state paths for the input values.
+        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 5);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
