@@ -180,8 +180,8 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     Ok(())
 }
 
-/// Run the following command to perform a setup.
-/// `cargo run --example setup [network]`
+/// Run the following command to generate the state path circuit keys.
+/// `cargo run --example state_path [network]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
