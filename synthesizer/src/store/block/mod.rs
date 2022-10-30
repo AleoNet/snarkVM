@@ -898,7 +898,7 @@ mod tests {
         // Compute the block path.
         let block_path = block_tree.prove(0, &block_hash.to_bits_le()).unwrap();
         // Insert the block.
-        block_store.insert(rng.gen(), block_path, &block).unwrap();
+        block_store.insert(*block_tree.root(), block_path, &block).unwrap();
 
         // Retrieve the block.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -941,7 +941,7 @@ mod tests {
         // Compute the block path.
         let block_path = block_tree.prove(0, &block_hash.to_bits_le()).unwrap();
         // Insert the block.
-        block_store.insert(rng.gen(), block_path, &block).unwrap();
+        block_store.insert(*block_tree.root(), block_path, &block).unwrap();
 
         for transaction_id in block.transaction_ids() {
             // Find the block hash.

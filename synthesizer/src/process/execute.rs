@@ -226,9 +226,11 @@ impl<N: Network> Process<N> {
 
                     // Retrieve the state path inputs for the transition.
                     let mut state_path_inputs = vec![];
-                    for origin in transition.origins() {
-                        if let Origin::StateRoot(state_root) = origin {
-                            state_path_inputs.push(vec![N::Field::one(), ***state_root]);
+                    for input in transition.inputs() {
+                        if let Input::Record(serial_number, _, origin) = input {
+                            if let Origin::StateRoot(state_root) = origin {
+                                state_path_inputs.push(vec![N::Field::one(), ***state_root, **serial_number]);
+                            }
                         }
                     }
                     ensure!(!state_path_inputs.is_empty(), "Transition is invalid - missing state root(s)");

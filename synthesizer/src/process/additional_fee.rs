@@ -170,9 +170,11 @@ impl<N: Network> Process<N> {
 
                 // Retrieve the state path inputs for the additional fee.
                 let mut state_path_inputs = vec![];
-                for origin in additional_fee.origins() {
-                    if let Origin::StateRoot(state_root) = origin {
-                        state_path_inputs.push(vec![N::Field::one(), ***state_root]);
+                for input in additional_fee.inputs() {
+                    if let Input::Record(serial_number, _, origin) = input {
+                        if let Origin::StateRoot(state_root) = origin {
+                            state_path_inputs.push(vec![N::Field::one(), ***state_root, **serial_number]);
+                        }
                     }
                 }
                 ensure!(

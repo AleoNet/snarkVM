@@ -574,7 +574,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/genesis' is not satisfied on the given inputs (26479 constraints).")
+            format!("'token.aleo/genesis' is not satisfied on the given inputs (26619 constraints).")
         );
     }
 

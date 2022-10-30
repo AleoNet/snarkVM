@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
-use snarkvm_circuit::Aleo;
+use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
@@ -35,6 +35,7 @@ use snarkvm_synthesizer::{
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
 use serde_json::{json, Value};
+use snarkvm_console::program::{Plaintext, Record};
 use snarkvm_utilities::ToBytes;
 use std::{
     fs::File,
@@ -75,8 +76,8 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     Ok(())
 }
 
-/// Returns a new (commitment, state_path) pair.
-pub fn sample_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
+/// Returns the assignment for verifying the state path.
+pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignment<N::Field>, StatePath<N>, Field<N>)> {
     // Initialize the consensus store.
     let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
     // Initialize a new VM.
@@ -105,26 +106,26 @@ pub fn sample_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
     // Compute the state path for the commitment.
     let state_path = vm.block_store().get_state_path_for_commitment(commitment, Some(&block_tree))?;
 
-    Ok((*commitment, state_path))
+    // Compute the generator `H` as `HashToGroup(commitment)`.
+    let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
+    // Compute `gamma` as `sk_sig * H`.
+    let gamma = h * caller_private_key.sk_sig();
+    // Compute the serial number.
+    let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, *commitment)?;
+
+    // Construct the assignment for the state path verification.
+    let assignment = inject_and_verify_state_path::<N, A>(state_path.clone(), *commitment, gamma, serial_number);
+
+    Ok((assignment, state_path, serial_number))
 }
 
 /// Synthesizes the circuit keys for the state path circuit. (cargo run --release --example state_path [network])
 pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
-    // Sample a new state path.
-    let (commitment, state_path) = sample_state_path::<N>()?;
-
-    // Construct the assignment.
-    let assignment = {
-        // Ensure the circuit environment is clean.
-        A::reset();
-        // Inject and verify the state path.
-        inject_and_verify_state_path::<N, A>(state_path.clone(), commitment);
-        // Eject and return the assignment.
-        A::eject_assignment_and_reset()
-    };
-
     // Load the universal SRS.
     let universal_srs = UniversalSRS::<N>::load()?;
+
+    // Sample the assignment for the state path verification.
+    let (assignment, state_path, serial_number) = sample_assignment::<N, A>()?;
 
     // Synthesize the proving and verifying key.
     let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
@@ -132,7 +133,11 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 
     // Ensure the proving key and verifying keys are valid.
     let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
-    assert!(verifying_key.verify(&state_path_function_name, &[N::Field::one(), **state_path.state_root()], &proof));
+    assert!(verifying_key.verify(
+        &state_path_function_name,
+        &[N::Field::one(), **state_path.state_root(), *serial_number],
+        &proof
+    ));
 
     // Initialize a vector for the commands.
     let mut commands = vec![];

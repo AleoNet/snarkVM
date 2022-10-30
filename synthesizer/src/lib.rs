@@ -45,21 +45,60 @@ pub use store::*;
 pub mod vm;
 pub use vm::*;
 
+use console::{
+    network::Network,
+    program::StatePath,
+    types::{Field, Group},
+};
+
 /// The circuit for state path verification.
-pub fn inject_and_verify_state_path<N: console::network::Network, A: circuit::Aleo<Network = N>>(
-    state_path: console::program::StatePath<N>,
-    commitment: console::types::Field<N>,
-) {
+///
+/// The `[[ ]]` notation is used to denote public inputs.
+/// ```ignore
+///                           [[state_root]]
+///                                 /\
+///                                 |
+///                                 | state_path
+///                                 |
+///  [[serial_number]] := Commit( commitment || Hash( COFACTOR * gamma ) )
+/// ```
+pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
+    console_state_path: StatePath<N>,
+    console_commitment: Field<N>,
+    console_gamma: Group<N>,
+    console_serial_number: Field<N>,
+) -> circuit::Assignment<N::Field> {
     use circuit::Inject;
 
-    // Allocate the state path circuit.
-    let state_path_circuit = circuit::StatePath::<A>::new(circuit::Mode::Private, state_path);
-    // Allocate the commitment circuit.
-    let commitment_circuit = circuit::Field::<A>::new(circuit::Mode::Private, commitment);
+    // Ensure the circuit environment is clean.
+    assert_eq!(A::count(), (0, 1, 0, 0, 0));
+    A::reset();
 
-    A::assert_eq(state_path_circuit.transition_leaf().id(), commitment_circuit);
+    // Inject the state path as `Mode::Private`.
+    let state_path = circuit::StatePath::<A>::new(circuit::Mode::Private, console_state_path);
+    // Inject the commitment as `Mode::Private`.
+    let commitment = circuit::Field::<A>::new(circuit::Mode::Private, console_commitment);
+    // Inject the gamma as `Mode::Private`.
+    let gamma = circuit::Group::<A>::new(circuit::Mode::Private, console_gamma);
 
-    A::assert(state_path_circuit.verify())
+    // Inject the serial number as `Mode::Public`.
+    let serial_number = circuit::Field::<A>::new(circuit::Mode::Public, console_serial_number);
+    // Compute the candidate serial number.
+    let candidate_serial_number =
+        circuit::Record::<A, circuit::Plaintext<A>>::serial_number_from_gamma(&gamma, commitment.clone());
+    // Enforce that the candidate serial number is equal to the serial number.
+    A::assert_eq(&candidate_serial_number, &serial_number);
+
+    // Enforce the starting leaf is the claimed commitment.
+    A::assert_eq(state_path.transition_leaf().id(), commitment);
+    // Enforce the state path from leaf to root is correct.
+    A::assert(state_path.verify());
+
+    #[cfg(debug_assertions)]
+    Stack::log_circuit::<A, _>(&format!("State Path for {console_serial_number}"));
+
+    // Eject the assignment and reset the circuit environment.
+    A::eject_assignment_and_reset()
 }
 
 #[cfg(test)]

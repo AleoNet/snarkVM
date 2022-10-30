@@ -429,14 +429,11 @@ impl<N: Network> Stack<N> {
                 Err(error) => bail!("Execution proof failed - {error}"),
             };
 
-            // Ensure the circuit environment is clean.
-            A::reset();
-
             let mut state_path_assignments = vec![];
             let mut state_roots = IndexMap::new();
 
             // Inject the state paths.
-            for (index, input_id) in console_request.input_ids().iter().enumerate() {
+            for input_id in console_request.input_ids() {
                 match input_id {
                     InputID::Record(commitment, gamma, serial_number, ..) => {
                         // Fetch the state path.
@@ -444,13 +441,13 @@ impl<N: Network> Stack<N> {
                             .get(commitment)
                             .ok_or_else(|| anyhow!("Missing state path for commitment: {commitment}"))?;
 
-                        // Verify the state path circuit.
-                        crate::inject_and_verify_state_path::<N, A>(console_state_path.clone(), *commitment);
-
-                        #[cfg(debug_assertions)]
-                        Self::log_circuit::<A, _>(format!("Input {index} State Path").as_str());
-
-                        let assignment = A::eject_assignment_and_reset();
+                        // Construct the assignment for the state path.
+                        let assignment = crate::inject_and_verify_state_path::<N, A>(
+                            console_state_path.clone(),
+                            *commitment,
+                            *gamma,
+                            *serial_number,
+                        );
 
                         state_path_assignments.push(assignment);
                         state_roots.insert(*commitment, console_state_path.state_root());
@@ -498,7 +495,7 @@ impl<N: Network> Stack<N> {
 
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
-    fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
+    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 
         // Determine if the circuit is satisfied.
