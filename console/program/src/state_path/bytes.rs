@@ -84,34 +84,27 @@ impl<N: Network> ToBytes for StatePath<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use console::network::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//
-//     #[test]
-//     fn test_bytes() {
-//         let mut rng = TestRng::default();
-//
-//         // Sample a ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
-//
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//         // Ensure there is at least 1 commitment.
-//         assert!(genesis.transactions().commitments().count() > 0);
-//
-//         // Check each commitment.
-//         for commitment in genesis.transactions().commitments() {
-//             // Compute the state path.
-//             let expected = ledger.to_state_path(commitment).unwrap();
-//
-//             // Check the byte representation.
-//             let expected_bytes = expected.to_bytes_le().unwrap();
-//             assert_eq!(expected, StatePath::read_le(&expected_bytes[..]).unwrap());
-//             assert!(StatePath::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-//         }
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_bytes() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng).unwrap();
+
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            assert_eq!(expected, StatePath::read_le(&expected_bytes[..]).unwrap());
+            assert!(StatePath::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        }
+    }
+}

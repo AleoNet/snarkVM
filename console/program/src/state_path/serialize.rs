@@ -36,65 +36,52 @@ impl<'de, N: Network> Deserialize<'de> for StatePath<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn test_serde_json() -> Result<()> {
-//         let mut rng = TestRng::default();
-//
-//         // Sample a ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
-//
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//         // Ensure there is at least 1 commitment.
-//         assert!(genesis.transactions().commitments().count() > 0);
-//
-//         // Check each commitment.
-//         for commitment in genesis.transactions().commitments() {
-//             // Compute the state path.
-//             let expected = ledger.to_state_path(commitment).unwrap();
-//
-//             // Serialize
-//             let expected_string = &expected.to_string();
-//             let candidate_string = serde_json::to_string(&expected)?;
-//             assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string)?.as_str().unwrap());
-//
-//             // Deserialize
-//             assert_eq!(expected, StatePath::from_str(expected_string)?);
-//             assert_eq!(expected, serde_json::from_str(&candidate_string)?);
-//         }
-//         Ok(())
-//     }
-//
-//     #[test]
-//     fn test_bincode() -> Result<()> {
-//         let mut rng = TestRng::default();
-//
-//         // Sample a ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
-//
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//         // Ensure there is at least 1 commitment.
-//         assert!(genesis.transactions().commitments().count() > 0);
-//
-//         // Check each commitment.
-//         for commitment in genesis.transactions().commitments() {
-//             // Compute the state path.
-//             let expected = ledger.to_state_path(commitment).unwrap();
-//
-//             // Serialize
-//             let expected_bytes = expected.to_bytes_le()?;
-//             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
-//             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
-//
-//             // Deserialize
-//             assert_eq!(expected, StatePath::read_le(&expected_bytes[..])?);
-//             assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
-//         }
-//         Ok(())
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_serde_json() -> Result<()> {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng)?;
+
+            // Serialize
+            let expected_string = &expected.to_string();
+            let candidate_string = serde_json::to_string(&expected)?;
+            assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string)?.as_str().unwrap());
+
+            // Deserialize
+            assert_eq!(expected, StatePath::from_str(expected_string)?);
+            assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_bincode() -> Result<()> {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng)?;
+
+            // Serialize
+            let expected_bytes = expected.to_bytes_le()?;
+            let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
+            assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
+
+            // Deserialize
+            assert_eq!(expected, StatePath::read_le(&expected_bytes[..])?);
+            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
+        }
+        Ok(())
+    }
+}

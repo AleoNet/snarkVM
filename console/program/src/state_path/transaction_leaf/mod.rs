@@ -19,7 +19,6 @@ mod serialize;
 mod string;
 mod to_bits;
 
-use crate::{Identifier, ProgramID};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 

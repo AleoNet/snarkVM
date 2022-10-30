@@ -73,92 +73,64 @@ impl<N: Network> Display for StatePath<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use console::network::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//
-//     #[test]
-//     fn test_parse() -> Result<()> {
-//         let mut rng = TestRng::default();
-//
-//         // Ensure type and empty value fails.
-//         assert!(StatePath::<CurrentNetwork>::parse(&format!("{STATE_PATH_PREFIX}1")).is_err());
-//         assert!(StatePath::<CurrentNetwork>::parse("").is_err());
-//
-//         // Sample a ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
-//
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//         // Ensure there is at least 1 commitment.
-//         assert!(genesis.transactions().commitments().count() > 0);
-//
-//         // Check each commitment.
-//         for commitment in genesis.transactions().commitments() {
-//             // Compute the state path.
-//             let expected = ledger.to_state_path(commitment).unwrap();
-//
-//             let expected = format!("{expected}");
-//             let (remainder, candidate) = StatePath::<CurrentNetwork>::parse(&expected).unwrap();
-//             assert_eq!(format!("{expected}"), candidate.to_string());
-//             assert_eq!(STATE_PATH_PREFIX, candidate.to_string().split('1').next().unwrap());
-//             assert_eq!("", remainder);
-//         }
-//         Ok(())
-//     }
-//
-//     #[test]
-//     fn test_string() -> Result<()> {
-//         let mut rng = TestRng::default();
-//
-//         // Sample a ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
-//
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//         // Ensure there is at least 1 commitment.
-//         assert!(genesis.transactions().commitments().count() > 0);
-//
-//         // Check each commitment.
-//         for commitment in genesis.transactions().commitments() {
-//             // Compute the state path.
-//             let expected = ledger.to_state_path(commitment).unwrap();
-//
-//             // Check the string representation.
-//             let candidate = format!("{expected}");
-//             assert_eq!(expected, StatePath::from_str(&candidate)?);
-//             assert_eq!(STATE_PATH_PREFIX, candidate.to_string().split('1').next().unwrap());
-//         }
-//         Ok(())
-//     }
-//
-//     #[test]
-//     fn test_display() -> Result<()> {
-//         let mut rng = TestRng::default();
-//
-//         // Sample a ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(&mut rng).unwrap();
-//
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//         // Ensure there is at least 1 commitment.
-//         assert!(genesis.transactions().commitments().count() > 0);
-//
-//         // Check each commitment.
-//         for commitment in genesis.transactions().commitments() {
-//             // Compute the state path.
-//             let expected = ledger.to_state_path(commitment).unwrap();
-//
-//             let candidate = expected.to_string();
-//             assert_eq!(format!("{expected}"), candidate);
-//             assert_eq!(STATE_PATH_PREFIX, candidate.split('1').next().unwrap());
-//
-//             let candidate_recovered = StatePath::<CurrentNetwork>::from_str(&candidate.to_string())?;
-//             assert_eq!(expected, candidate_recovered);
-//         }
-//         Ok(())
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_parse() {
+        let mut rng = TestRng::default();
+
+        // Ensure type and empty value fails.
+        assert!(StatePath::<CurrentNetwork>::parse(&format!("{STATE_PATH_PREFIX}1")).is_err());
+        assert!(StatePath::<CurrentNetwork>::parse("").is_err());
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng).unwrap();
+
+            let expected = format!("{expected}");
+            let (remainder, candidate) = StatePath::<CurrentNetwork>::parse(&expected).unwrap();
+            assert_eq!(format!("{expected}"), candidate.to_string());
+            assert_eq!(STATE_PATH_PREFIX, candidate.to_string().split('1').next().unwrap());
+            assert_eq!("", remainder);
+        }
+    }
+
+    #[test]
+    fn test_string() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng).unwrap();
+
+            // Check the string representation.
+            let candidate = format!("{expected}");
+            assert_eq!(expected, StatePath::from_str(&candidate).unwrap());
+            assert_eq!(STATE_PATH_PREFIX, candidate.to_string().split('1').next().unwrap());
+        }
+    }
+
+    #[test]
+    fn test_display() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng).unwrap();
+
+            let candidate = expected.to_string();
+            assert_eq!(format!("{expected}"), candidate);
+            assert_eq!(STATE_PATH_PREFIX, candidate.split('1').next().unwrap());
+
+            let candidate_recovered = StatePath::<CurrentNetwork>::from_str(&candidate.to_string()).unwrap();
+            assert_eq!(expected, candidate_recovered);
+        }
+    }
+}
