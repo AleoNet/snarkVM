@@ -398,7 +398,7 @@ function compute:
         let function_name = Identifier::from_str("genesis")?;
 
         // Construct the transition path and transaction leaf.
-        let transition_leaf = TransitionLeaf::new(0, 0, program_id, function_name, 0, commitment);
+        let transition_leaf = TransitionLeaf::new(0, 0, 0, commitment);
         let transition_tree: TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
         let transition_id = transition_tree.root();
         let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;

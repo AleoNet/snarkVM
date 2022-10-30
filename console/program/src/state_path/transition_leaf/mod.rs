@@ -19,7 +19,6 @@ mod serialize;
 mod string;
 mod to_bits;
 
-use crate::{Identifier, ProgramID};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 
@@ -30,10 +29,6 @@ pub struct TransitionLeaf<N: Network> {
     version: u8,
     /// The index of the Merkle leaf.
     index: u8,
-    /// The program ID.
-    program_id: ProgramID<N>,
-    /// The function name.
-    function_name: Identifier<N>,
     /// The variant of the Merkle leaf.
     variant: u16,
     /// The ID.
@@ -42,15 +37,8 @@ pub struct TransitionLeaf<N: Network> {
 
 impl<N: Network> TransitionLeaf<N> {
     /// Initializes a new instance of `TransitionLeaf`.
-    pub const fn new(
-        version: u8,
-        index: u8,
-        program_id: ProgramID<N>,
-        function_name: Identifier<N>,
-        variant: u16,
-        id: Field<N>,
-    ) -> Self {
-        Self { version, index, program_id, function_name, variant, id }
+    pub const fn new(version: u8, index: u8, variant: u16, id: Field<N>) -> Self {
+        Self { version, index, variant, id }
     }
 
     /// Returns the version of the Merkle leaf.
@@ -61,16 +49,6 @@ impl<N: Network> TransitionLeaf<N> {
     /// Returns the index of the Merkle leaf.
     pub const fn index(&self) -> u8 {
         self.index
-    }
-
-    /// Returns the program ID in the Merkle leaf.
-    pub const fn program_id(&self) -> ProgramID<N> {
-        self.program_id
-    }
-
-    /// Returns the function name in the Merkle leaf.
-    pub const fn function_name(&self) -> Identifier<N> {
-        self.function_name
     }
 
     /// Returns the variant of the Merkle leaf.
@@ -93,13 +71,6 @@ mod test_helpers {
 
     pub(super) fn sample_leaf(rng: &mut TestRng) -> TransitionLeaf<CurrentNetwork> {
         // Construct a new leaf.
-        TransitionLeaf::new(
-            rng.gen(),
-            rng.gen(),
-            FromStr::from_str("hello.aleo").unwrap(),
-            FromStr::from_str("runner").unwrap(),
-            rng.gen(),
-            Uniform::rand(rng),
-        )
+        TransitionLeaf::new(rng.gen(), rng.gen(), rng.gen(), Uniform::rand(rng))
     }
 }

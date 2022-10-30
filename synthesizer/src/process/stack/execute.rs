@@ -222,7 +222,9 @@ impl<N: Network> Stack<N> {
 
         // Construct the response.
         let response = circuit::Response::from_outputs(
+            request.network_id(),
             request.program_id(),
+            request.function_name(),
             num_inputs,
             request.tvk(),
             request.tcm(),

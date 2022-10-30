@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, ProgramID};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
 
@@ -24,10 +23,6 @@ pub struct TransitionLeaf<A: Aleo> {
     version: U8<A>,
     /// The index of the Merkle leaf.
     index: U8<A>,
-    /// The program ID.
-    program_id: ProgramID<A>,
-    /// The function name.
-    function_name: Identifier<A>,
     /// The variant of the Merkle leaf.
     variant: U16<A>,
     /// The ID.
@@ -49,8 +44,6 @@ impl<A: Aleo> Inject for TransitionLeaf<A> {
         Self {
             version: U8::new(mode, console::U8::new(transition_leaf.version())),
             index: U8::new(mode, console::U8::new(transition_leaf.index())),
-            program_id: ProgramID::new(mode, transition_leaf.program_id()),
-            function_name: Identifier::new(mode, transition_leaf.function_name()),
             variant: U16::new(mode, console::U16::new(transition_leaf.variant())),
             id: Field::new(mode, transition_leaf.id()),
         }
@@ -62,7 +55,7 @@ impl<A: Aleo> Eject for TransitionLeaf<A> {
 
     /// Ejects the mode of the transition leaf.
     fn eject_mode(&self) -> Mode {
-        (&self.version, &self.index, &self.program_id, &self.function_name, &self.variant, &self.id).eject_mode()
+        (&self.version, &self.index, &self.variant, &self.id).eject_mode()
     }
 
     /// Ejects the transition leaf.
@@ -70,8 +63,6 @@ impl<A: Aleo> Eject for TransitionLeaf<A> {
         Self::Primitive::new(
             *self.version.eject_value(),
             *self.index.eject_value(),
-            self.program_id.eject_value(),
-            self.function_name.eject_value(),
             *self.variant.eject_value(),
             self.id.eject_value(),
         )
@@ -85,8 +76,6 @@ impl<A: Aleo> ToBits for TransitionLeaf<A> {
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
         let mut bits_le = self.version.to_bits_le();
         bits_le.extend(self.index.to_bits_le());
-        bits_le.extend(self.program_id.to_bits_le());
-        bits_le.extend(self.function_name.to_bits_le());
         bits_le.extend(self.variant.to_bits_le());
         bits_le.extend(self.id.to_bits_le());
         bits_le
@@ -96,8 +85,6 @@ impl<A: Aleo> ToBits for TransitionLeaf<A> {
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
         let mut bits_be = self.version.to_bits_be();
         bits_be.extend(self.index.to_bits_be());
-        bits_be.extend(self.program_id.to_bits_be());
-        bits_be.extend(self.function_name.to_bits_be());
         bits_be.extend(self.variant.to_bits_be());
         bits_be.extend(self.id.to_bits_be());
         bits_be

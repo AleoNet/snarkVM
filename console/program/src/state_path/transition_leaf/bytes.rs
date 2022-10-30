@@ -23,16 +23,12 @@ impl<N: Network> FromBytes for TransitionLeaf<N> {
         let version = FromBytes::read_le(&mut reader)?;
         // Read the index.
         let index = FromBytes::read_le(&mut reader)?;
-        // Read the program ID.
-        let program_id = FromBytes::read_le(&mut reader)?;
-        // Read the function name.
-        let function_name = FromBytes::read_le(&mut reader)?;
         // Read the variant.
         let variant = FromBytes::read_le(&mut reader)?;
         // Read the ID.
         let id = FromBytes::read_le(&mut reader)?;
         // Return the transition leaf.
-        Ok(Self::new(version, index, program_id, function_name, variant, id))
+        Ok(Self::new(version, index, variant, id))
     }
 }
 
@@ -43,10 +39,6 @@ impl<N: Network> ToBytes for TransitionLeaf<N> {
         self.version.write_le(&mut writer)?;
         // Write the index.
         self.index.write_le(&mut writer)?;
-        // Write the program ID.
-        self.program_id.write_le(&mut writer)?;
-        // Write the function name.
-        self.function_name.write_le(&mut writer)?;
         // Write the variant.
         self.variant.write_le(&mut writer)?;
         // Write the ID.

@@ -91,7 +91,7 @@ impl<N: Network> Transition<N> {
         fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
+        let id = *Self::function_tree(&inputs, &outputs)?.root();
         // Return the transition.
         Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee })
     }
