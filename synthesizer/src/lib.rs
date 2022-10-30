@@ -61,3 +61,97 @@ pub fn inject_and_verify_state_path<N: console::network::Network, A: circuit::Al
 
     A::assert(state_path_circuit.verify())
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) mod test_helpers {
+    use crate::{
+        block::Block,
+        store::{ConsensusMemory, ConsensusStore},
+        vm::VM,
+    };
+    use console::{
+        network::Testnet3,
+        prelude::{Network, TestRng, ToBits},
+        program::{BlockTree, StatePath},
+        types::Field,
+    };
+
+    use anyhow::{bail, Result};
+
+    type CurrentNetwork = Testnet3;
+
+    #[derive(Clone)]
+    pub struct TestLedger<N: Network> {
+        /// The VM state.
+        vm: VM<N, ConsensusMemory<N>>,
+        /// The current block tree.
+        block_tree: BlockTree<N>,
+    }
+
+    impl TestLedger<CurrentNetwork> {
+        /// Initializes a new instance of the ledger.
+        pub fn new(rng: &mut TestRng) -> Result<Self> {
+            // Initialize the genesis block.
+            let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+            // Initialize the consensus store.
+            let store = ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None)?;
+            // Initialize a new VM.
+            let vm = VM::from(store)?;
+
+            // Initialize the ledger.
+            let mut ledger = Self { vm, block_tree: CurrentNetwork::merkle_tree_bhp(&[])? };
+
+            // Add the genesis block.
+            ledger.add_next_block(&genesis)?;
+
+            // Return the ledger.
+            Ok(ledger)
+        }
+    }
+
+    impl<N: Network> TestLedger<N> {
+        /// Adds the given block as the next block in the chain.
+        pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
+            /* ATOMIC CODE SECTION */
+
+            // Add the block to the ledger. This code section executes atomically.
+            {
+                let mut ledger = self.clone();
+
+                // Update the blocks.
+                ledger.block_tree.append(&[block.hash().to_bits_le()])?;
+                ledger.vm.block_store().insert(*ledger.block_tree.root(), block)?;
+
+                // Update the VM.
+                for transaction in block.transactions().values() {
+                    ledger.vm.finalize(transaction)?;
+                }
+
+                *self = Self { vm: ledger.vm, block_tree: ledger.block_tree };
+            }
+
+            Ok(())
+        }
+
+        /// Returns the block for the given block height.
+        pub fn get_block(&self, height: u32) -> Result<Block<N>> {
+            // Retrieve the block hash.
+            let block_hash = match self.vm.block_store().get_block_hash(height)? {
+                Some(block_hash) => block_hash,
+                None => bail!("Block {height} does not exist in storage"),
+            };
+            // Retrieve the block.
+            match self.vm.block_store().get_block(&block_hash)? {
+                Some(block) => Ok(block),
+                None => bail!("Block {height} ('{block_hash}') does not exist in storage"),
+            }
+        }
+
+        /// Returns a state path for the given commitment.
+        pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+            self.vm.block_store().get_state_path_for_commitment(&self.block_tree, commitment)
+        }
+    }
+}

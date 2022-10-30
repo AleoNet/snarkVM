@@ -199,46 +199,41 @@ impl<A: Aleo> StatePath<A> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::snark::UniversalSRS;
-//     use circuit::{
-//         environment::{Circuit, Inject},
-//         network::AleoV0,
-//         Mode,
-//     };
-//     use console::{network::Testnet3, program::Identifier};
-//     use snarkvm_utilities::rand::TestRng;
-//
-//     type CurrentAleo = AleoV0;
-//     type CurrentNetwork = Testnet3;
-//
-//     #[test]
-//     fn test_verify() {
-//         let rng = &mut TestRng::default();
-//
-//         // Initialize the ledger.
-//         let ledger = crate::state_path::test_helpers::TestLedger::new(rng).unwrap();
-//         // Retrieve the genesis block.
-//         let genesis = ledger.get_block(0).unwrap();
-//
-//         for mode in [Mode::Constant, Mode::Public, Mode::Private].into_iter() {
-//             for commitment in genesis.commitments() {
-//                 // Construct the console state path.
-//                 let console_state_path = ledger.to_state_path(commitment).unwrap();
-//                 // Construct the circuit state path.
-//                 let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path);
-//
-//                 // Ensure the state path is valid.
-//                 let is_valid = circuit_state_path.verify();
-//                 assert!(is_valid.eject_value());
-//                 assert!(CurrentAleo::is_satisfied());
-//                 CurrentAleo::reset();
-//             }
-//         }
-//     }
-//
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Circuit;
+    // use crate::snark::UniversalSRS;
+    use snarkvm_utilities::rand::TestRng;
+
+    type CurrentAleo = Circuit;
+    type CurrentNetwork = <Circuit as Environment>::Network;
+
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_verify() {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the console state path.
+            let console_state_path =
+                console::state_path::test_helpers::sample_state_path::<CurrentNetwork>(rng).unwrap();
+
+            for mode in [Mode::Constant, Mode::Public, Mode::Private].into_iter() {
+                // Construct the circuit state path.
+                let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path.clone());
+
+                // Ensure the state path is valid.
+                let is_valid = circuit_state_path.verify();
+                assert!(is_valid.eject_value());
+                assert!(CurrentAleo::is_satisfied());
+                CurrentAleo::reset();
+            }
+        }
+    }
+}
+
 //     fn check_batch_verify(mode: Mode, batch_size: usize) {
 //         let rng = &mut TestRng::default();
 //
@@ -275,7 +270,7 @@ impl<A: Aleo> StatePath<A> {
 //
 //         // Construct the proving and verifying keys.
 //         let universal_srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
-//         let function_name = Identifier::<CurrentNetwork>::from_str(&format!("state_paths_{batch_size}")).unwrap();
+//         let function_name = console::Identifier::<CurrentNetwork>::from_str(&format!("state_paths_{batch_size}")).unwrap();
 //         let (proving_key, verifying_key) = universal_srs.to_circuit_key(&function_name, &assignments[0]).unwrap();
 //
 //         // Generate the batch proof.
