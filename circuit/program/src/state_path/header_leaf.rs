@@ -26,6 +26,11 @@ pub struct HeaderLeaf<A: Aleo> {
 }
 
 impl<A: Aleo> HeaderLeaf<A> {
+    /// Returns the index of the Merkle leaf.
+    pub fn index(&self) -> &U8<A> {
+        &self.index
+    }
+
     /// Returns the ID in the Merkle leaf.
     pub const fn id(&self) -> &Field<A> {
         &self.id

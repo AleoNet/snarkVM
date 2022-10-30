@@ -450,7 +450,7 @@ impl<N: Network> Stack<N> {
                         );
 
                         state_path_assignments.push(assignment);
-                        state_roots.insert(*commitment, console_state_path.state_root());
+                        state_roots.insert(*commitment, console_state_path.global_state_root());
                     }
                     _ => continue,
                 }

@@ -55,12 +55,12 @@ use console::{
 ///
 /// The `[[ ]]` notation is used to denote public inputs.
 /// ```ignore
-///                           [[state_root]]
-///                                 /\
-///                                 |
-///                                 | state_path
-///                                 |
-///  [[serial_number]] := Commit( commitment || Hash( COFACTOR * gamma ) )
+///             [[ global_state_root ]] || [[ local_state_root ]]
+///                                     /\
+///                                     |
+///                                state_path
+///                                    |
+/// [[ serial_number ]] := Commit( commitment || Hash( COFACTOR * gamma ) )
 /// ```
 pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
     console_state_path: StatePath<N>,

@@ -342,19 +342,15 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         commitment: &Field<N>,
         block_tree: Option<&BlockTree<N>>,
     ) -> Result<StatePath<N>> {
-        // Retrieve the transaction and transition store.
-        let transactions = self.transaction_store();
-        let transitions = self.transition_store();
-
         // Ensure the commitment exists.
-        if !transitions.contains_commitment(commitment)? {
+        if !self.transition_store().contains_commitment(commitment)? {
             bail!("Commitment '{commitment}' does not exist");
         }
 
         // Find the transition that contains the commitment.
-        let transition_id = transitions.find_transition_id(commitment)?;
+        let transition_id = self.transition_store().find_transition_id(commitment)?;
         // Find the transaction that contains the transition.
-        let transaction_id = match transactions.find_transaction_id(&transition_id)? {
+        let transaction_id = match self.transaction_store().find_transaction_id(&transition_id)? {
             Some(transaction_id) => transaction_id,
             None => bail!("The transaction ID for commitment '{commitment}' is not in the ledger"),
         };
@@ -365,14 +361,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         };
 
         // Retrieve the transition.
-        let transition = match transitions.get_transition(&transition_id)? {
+        let transition = match self.transition_store().get_transition(&transition_id)? {
             Some(transition) => transition,
             None => bail!("The transition '{transition_id}' for commitment '{commitment}' is not in the ledger"),
-        };
-        // Retrieve the transaction.
-        let transaction = match transactions.get_transaction(&transaction_id)? {
-            Some(transaction) => transaction,
-            None => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the ledger"),
         };
         // Retrieve the block.
         let block = match self.get_block(&block_hash)? {
@@ -380,8 +371,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("The block '{block_hash}' for commitment '{commitment}' is not in the ledger"),
         };
 
-        // Construct the state root and block path.
-        let (state_root, block_path) = match block_tree {
+        // Construct the global state root and block path.
+        let (global_state_root, block_path) = match block_tree {
             Some(block_tree) => {
                 let state_root = *block_tree.root();
                 let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
@@ -406,14 +397,20 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let transition_leaf = transition.to_leaf(commitment, false)?;
         let transition_path = transition.to_path(&transition_leaf)?;
 
-        // Construct the transaction path and transaction leaf.
-        let transaction_leaf = transaction.to_leaf(transition.id())?;
-        let transaction_path = transaction.to_path(&transaction_leaf)?;
-
         // Construct the transactions path.
         let transactions = block.transactions();
-        let transaction_index = transactions.iter().position(|(id, _)| id == &transaction.id()).unwrap();
-        let transactions_path = transactions.to_path(transaction_index, *transaction.id())?;
+        let transactions_path = match transactions.to_path(transaction_id) {
+            Ok(transactions_path) => transactions_path,
+            Err(_) => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the block"),
+        };
+
+        // Construct the transaction path and transaction leaf.
+        let transaction = match transactions.get(&transaction_id) {
+            Some(transaction) => transaction,
+            None => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the block"),
+        };
+        let transaction_leaf = transaction.to_leaf(transition.id())?;
+        let transaction_path = transaction.to_path(&transaction_leaf)?;
 
         // Construct the block header path.
         let block_header = block.header();
@@ -422,7 +419,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let header_path = block_header.to_path(&header_leaf)?;
 
         StatePath::from(
-            state_root.into(),
+            global_state_root.into(),
+            local_state_root,
             block_path,
             block.hash(),
             block.previous_hash(),
@@ -435,6 +433,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             transaction_leaf,
             transition_path,
             transition_leaf,
+            true,
         )
     }
 

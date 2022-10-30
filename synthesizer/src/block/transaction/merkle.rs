@@ -38,14 +38,14 @@ impl<N: Network> Transaction<N> {
 
                 // Iterate through the functions in the deployment.
                 for (index, function) in deployment.program().functions().values().enumerate() {
-                    // Check if the function ID matches the given ID.
+                    // Check if the function hash matches the given ID.
                     if *id == N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())? {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new(0u8, index as u16, *id));
                     }
                 }
-                // Error if the function ID was not found.
-                bail!("Function ID not found in deployment transaction");
+                // Error if the function hash was not found.
+                bail!("Function hash not found in deployment transaction");
             }
             Self::Execute(_, execution, additional_fee) => {
                 // Check if the ID is the transition ID for the additional fee, if it is present.

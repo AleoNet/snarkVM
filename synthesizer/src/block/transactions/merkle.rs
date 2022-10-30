@@ -23,8 +23,11 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the Merkle path for the transactions leaf.
-    pub fn to_path(&self, index: usize, leaf: impl ToBits) -> Result<TransactionsPath<N>> {
-        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    pub fn to_path(&self, transaction_id: N::TransactionID) -> Result<TransactionsPath<N>> {
+        match self.transactions.get_index_of(&transaction_id) {
+            Some(transaction_index) => self.to_tree()?.prove(transaction_index, &transaction_id.to_bits_le()),
+            None => bail!("The transaction '{transaction_id}' is not in the block transactions"),
+        }
     }
 
     /// The Merkle tree of transaction IDs for the block.

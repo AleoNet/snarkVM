@@ -27,7 +27,9 @@ impl<N: Network> FromBytes for StatePath<N> {
         }
 
         // Read the state path.
-        let state_root = N::StateRoot::read_le(&mut reader)?;
+        let global_state_root = N::StateRoot::read_le(&mut reader)?;
+        let local_state_root = Field::read_le(&mut reader)?;
+
         let block_path = BlockPath::read_le(&mut reader)?;
         let block_hash = N::BlockHash::read_le(&mut reader)?;
         let previous_block_hash = N::BlockHash::read_le(&mut reader)?;
@@ -35,15 +37,19 @@ impl<N: Network> FromBytes for StatePath<N> {
         let header_path = HeaderPath::read_le(&mut reader)?;
         let header_leaf = HeaderLeaf::read_le(&mut reader)?;
         let transactions_path = TransactionsPath::read_le(&mut reader)?;
+
         let transaction_id = FromBytes::read_le(&mut reader)?;
         let transaction_path = FromBytes::read_le(&mut reader)?;
         let transaction_leaf = FromBytes::read_le(&mut reader)?;
         let transition_path = FromBytes::read_le(&mut reader)?;
         let transition_leaf = FromBytes::read_le(&mut reader)?;
 
+        let is_global = bool::read_le(&mut reader)?;
+
         // Construct the state path.
         Self::from(
-            state_root,
+            global_state_root,
+            local_state_root,
             block_path,
             block_hash,
             previous_block_hash,
@@ -56,6 +62,7 @@ impl<N: Network> FromBytes for StatePath<N> {
             transaction_leaf,
             transition_path,
             transition_leaf,
+            is_global,
         )
         .map_err(|e| error(e.to_string()))
     }
@@ -68,7 +75,9 @@ impl<N: Network> ToBytes for StatePath<N> {
         0u16.write_le(&mut writer)?;
 
         // Write the state path.
-        self.state_root.write_le(&mut writer)?;
+        self.global_state_root.write_le(&mut writer)?;
+        self.local_state_root.write_le(&mut writer)?;
+
         self.block_path.write_le(&mut writer)?;
         self.block_hash.write_le(&mut writer)?;
         self.previous_block_hash.write_le(&mut writer)?;
@@ -76,11 +85,14 @@ impl<N: Network> ToBytes for StatePath<N> {
         self.header_path.write_le(&mut writer)?;
         self.header_leaf.write_le(&mut writer)?;
         self.transactions_path.write_le(&mut writer)?;
+
         self.transaction_id.write_le(&mut writer)?;
         self.transaction_path.write_le(&mut writer)?;
         self.transaction_leaf.write_le(&mut writer)?;
         self.transition_path.write_le(&mut writer)?;
-        self.transition_leaf.write_le(&mut writer)
+        self.transition_leaf.write_le(&mut writer)?;
+
+        (*self.is_global).write_le(&mut writer)
     }
 }
 
@@ -99,7 +111,8 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample the state path.
-            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(&mut rng).unwrap();
+            let expected =
+                crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(true, None, &mut rng).unwrap();
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();

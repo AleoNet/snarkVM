@@ -135,7 +135,7 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         &state_path_function_name,
-        &[N::Field::one(), **state_path.state_root(), *serial_number],
+        &[N::Field::one(), **state_path.global_state_root(), *serial_number],
         &proof
     ));
 

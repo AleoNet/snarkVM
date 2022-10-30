@@ -30,6 +30,21 @@ pub struct TransitionLeaf<A: Aleo> {
 }
 
 impl<A: Aleo> TransitionLeaf<A> {
+    /// Returns the version of the Merkle leaf.
+    pub const fn version(&self) -> &U8<A> {
+        &self.version
+    }
+
+    /// Returns the index of the Merkle leaf.
+    pub const fn index(&self) -> &U8<A> {
+        &self.index
+    }
+
+    /// Returns the variant of the Merkle leaf.
+    pub const fn variant(&self) -> &U16<A> {
+        &self.variant
+    }
+
     /// Returns the ID in the Merkle leaf.
     pub const fn id(&self) -> &Field<A> {
         &self.id

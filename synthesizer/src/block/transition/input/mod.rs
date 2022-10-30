@@ -51,7 +51,7 @@ impl<N: Network> Input<N> {
             Input::Constant(..) => 0,
             Input::Public(..) => 1,
             Input::Private(..) => 2,
-            Input::Record(..) => 3,
+            Input::Record(..) => 3, // <- Changing this will invalidate 'console::StatePath' and 'circuit::StatePath'.
             Input::ExternalRecord(..) => 4,
         }
     }

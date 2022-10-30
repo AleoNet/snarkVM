@@ -28,6 +28,16 @@ pub struct TransactionLeaf<A: Aleo> {
 }
 
 impl<A: Aleo> TransactionLeaf<A> {
+    /// Returns the variant of the Merkle leaf.
+    pub const fn variant(&self) -> &U8<A> {
+        &self.variant
+    }
+
+    /// Returns the index of the Merkle leaf.
+    pub const fn index(&self) -> &U16<A> {
+        &self.index
+    }
+
     /// Returns the ID in the Merkle leaf.
     pub const fn id(&self) -> &Field<A> {
         &self.id
