@@ -19,26 +19,22 @@ use super::*;
 impl<N: Network> ToBits for TransactionLeaf<N> {
     /// Returns the little-endian bits of the Merkle leaf.
     fn to_bits_le(&self) -> Vec<bool> {
-        // Construct the leaf as (variant || index || program ID || function name || ID).
+        // Construct the leaf as (variant || index || ID).
         self.variant
             .to_bits_le()
             .into_iter()
             .chain(self.index.to_bits_le().into_iter())
-            .chain(self.program_id.to_bits_le().into_iter())
-            .chain(self.function_name.to_bits_le().into_iter())
             .chain(self.id.to_bits_le().into_iter())
             .collect()
     }
 
     /// Returns the big-endian bits of the Merkle leaf.
     fn to_bits_be(&self) -> Vec<bool> {
-        // Construct the leaf as (variant || index || program ID || function name || ID).
+        // Construct the leaf as (variant || index || ID).
         self.variant
             .to_bits_be()
             .into_iter()
             .chain(self.index.to_bits_be().into_iter())
-            .chain(self.program_id.to_bits_be().into_iter())
-            .chain(self.function_name.to_bits_be().into_iter())
             .chain(self.id.to_bits_be().into_iter())
             .collect()
     }

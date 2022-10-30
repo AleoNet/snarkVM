@@ -30,24 +30,14 @@ pub struct TransactionLeaf<N: Network> {
     variant: u8,
     /// The index of the Merkle leaf.
     index: u16,
-    /// The program ID.
-    program_id: ProgramID<N>,
-    /// The function name.
-    function_name: Identifier<N>,
     /// The ID.
     id: Field<N>,
 }
 
 impl<N: Network> TransactionLeaf<N> {
     /// Initializes a new instance of `TransactionLeaf`.
-    pub const fn new(
-        variant: u8,
-        index: u16,
-        program_id: ProgramID<N>,
-        function_name: Identifier<N>,
-        id: Field<N>,
-    ) -> Self {
-        Self { variant, index, program_id, function_name, id }
+    pub const fn new(variant: u8, index: u16, id: Field<N>) -> Self {
+        Self { variant, index, id }
     }
 
     /// Returns the variant of the Merkle leaf.
@@ -58,16 +48,6 @@ impl<N: Network> TransactionLeaf<N> {
     /// Returns the index of the Merkle leaf.
     pub const fn index(&self) -> u16 {
         self.index
-    }
-
-    /// Returns the program ID in the Merkle leaf.
-    pub const fn program_id(&self) -> ProgramID<N> {
-        self.program_id
-    }
-
-    /// Returns the function name in the Merkle leaf.
-    pub const fn function_name(&self) -> Identifier<N> {
-        self.function_name
     }
 
     /// Returns the ID in the Merkle leaf.
@@ -85,12 +65,6 @@ mod test_helpers {
 
     pub(super) fn sample_leaf(rng: &mut TestRng) -> TransactionLeaf<CurrentNetwork> {
         // Construct a new leaf.
-        TransactionLeaf::new(
-            rng.gen(),
-            rng.gen(),
-            FromStr::from_str("hello.aleo").unwrap(),
-            FromStr::from_str("runner").unwrap(),
-            Uniform::rand(rng),
-        )
+        TransactionLeaf::new(rng.gen(), rng.gen(), Uniform::rand(rng))
     }
 }

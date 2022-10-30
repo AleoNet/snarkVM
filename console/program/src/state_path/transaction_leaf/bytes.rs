@@ -23,14 +23,10 @@ impl<N: Network> FromBytes for TransactionLeaf<N> {
         let variant = FromBytes::read_le(&mut reader)?;
         // Read the index.
         let index = FromBytes::read_le(&mut reader)?;
-        // Read the program ID.
-        let program_id = FromBytes::read_le(&mut reader)?;
-        // Read the function name.
-        let function_name = FromBytes::read_le(&mut reader)?;
         // Read the ID.
         let id = FromBytes::read_le(&mut reader)?;
         // Return the transaction leaf.
-        Ok(Self::new(variant, index, program_id, function_name, id))
+        Ok(Self::new(variant, index, id))
     }
 }
 
@@ -41,10 +37,6 @@ impl<N: Network> ToBytes for TransactionLeaf<N> {
         self.variant.write_le(&mut writer)?;
         // Write the index.
         self.index.write_le(&mut writer)?;
-        // Write the program ID.
-        self.program_id.write_le(&mut writer)?;
-        // Write the function name.
-        self.function_name.write_le(&mut writer)?;
         // Write the ID.
         self.id.write_le(&mut writer)
     }

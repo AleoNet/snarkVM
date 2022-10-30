@@ -384,18 +384,9 @@ function compute:
         process
     }
 
-    /// Randomly sample a state path from the given `commitment`, `program_id`, and `function_name`.
-    pub fn sample_state_path<N: Network>(
-        commitment: Field<N>,
-        _program_id: ProgramID<N>,
-        _function_name: Identifier<N>,
-    ) -> Result<StatePath<N>> {
+    /// Randomly sample a state path from the given `commitment`.
+    pub fn sample_state_path<N: Network>(commitment: Field<N>) -> Result<StatePath<N>> {
         let rng = &mut TestRng::default();
-
-        // TODO (raychu86): Different program IDs and function names will change the number of constraints each circuit has.
-        //  This seems like a bug? Strings should be represented with the same number of fields.
-        let program_id = ProgramID::from_str("credits.aleo")?;
-        let function_name = Identifier::from_str("genesis")?;
 
         // Construct the transition path and transaction leaf.
         let transition_leaf = TransitionLeaf::new(0, 0, 0, commitment);
@@ -404,7 +395,7 @@ function compute:
         let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
 
         // Construct the transaction path and transaction leaf.
-        let transaction_leaf = TransactionLeaf::new(0, 0, program_id, function_name, *transition_id);
+        let transaction_leaf = TransactionLeaf::new(0, 0, *transition_id);
         let transaction_tree: TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
         let transaction_id = *transaction_tree.root();
         let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;
@@ -458,7 +449,7 @@ function compute:
             for input_id in request.input_ids() {
                 // Generate the relevant state roots for each input record.
                 if let InputID::Record(commitment, ..) = input_id {
-                    let state_path = sample_state_path(*commitment, *program_id, *function_name).unwrap();
+                    let state_path = sample_state_path(*commitment).unwrap();
                     authorization.insert_state_path(*commitment, state_path);
                 }
             }

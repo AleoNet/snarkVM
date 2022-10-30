@@ -24,8 +24,6 @@ impl<N: Network> Serialize for TransactionLeaf<N> {
                 let mut leaf = serializer.serialize_struct("TransactionLeaf", 5)?;
                 leaf.serialize_field("variant", &self.variant)?;
                 leaf.serialize_field("index", &self.index)?;
-                leaf.serialize_field("program_id", &self.program_id)?;
-                leaf.serialize_field("function_name", &self.function_name)?;
                 leaf.serialize_field("id", &self.id)?;
                 leaf.end()
             }
@@ -47,10 +45,6 @@ impl<'de, N: Network> Deserialize<'de> for TransactionLeaf<N> {
                     serde_json::from_value(leaf["variant"].take()).map_err(de::Error::custom)?,
                     // Retrieve the index.
                     serde_json::from_value(leaf["index"].take()).map_err(de::Error::custom)?,
-                    // Retrieve the program ID.
-                    serde_json::from_value(leaf["program_id"].take()).map_err(de::Error::custom)?,
-                    // Retrieve the function name.
-                    serde_json::from_value(leaf["function_name"].take()).map_err(de::Error::custom)?,
                     // Retrieve the id.
                     serde_json::from_value(leaf["id"].take()).map_err(de::Error::custom)?,
                 ))

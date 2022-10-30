@@ -32,8 +32,6 @@ impl<N: Network> Transaction<N> {
                     return Ok(TransactionLeaf::new(
                         0u8,
                         deployment.program().functions().len() as u16, // The last index.
-                        *additional_fee.program_id(),
-                        *additional_fee.function_name(),
                         *id,
                     ));
                 }
@@ -43,13 +41,7 @@ impl<N: Network> Transaction<N> {
                     // Check if the function ID matches the given ID.
                     if *id == N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())? {
                         // Return the transaction leaf.
-                        return Ok(TransactionLeaf::new(
-                            0u8,
-                            index as u16,
-                            *deployment.program().id(),
-                            *function.name(),
-                            *id,
-                        ));
+                        return Ok(TransactionLeaf::new(0u8, index as u16, *id));
                     }
                 }
                 // Error if the function ID was not found.
@@ -63,8 +55,6 @@ impl<N: Network> Transaction<N> {
                         return Ok(TransactionLeaf::new(
                             1u8,
                             execution.len() as u16, // The last index.
-                            *additional_fee.program_id(),
-                            *additional_fee.function_name(),
                             *id,
                         ));
                     }
@@ -75,13 +65,7 @@ impl<N: Network> Transaction<N> {
                     // Check if the transition ID matches the given ID.
                     if *id == **transition.id() {
                         // Return the transaction leaf.
-                        return Ok(TransactionLeaf::new(
-                            1u8,
-                            index as u16,
-                            *transition.program_id(),
-                            *transition.function_name(),
-                            *id,
-                        ));
+                        return Ok(TransactionLeaf::new(1u8, index as u16, *id));
                     }
                 }
                 // Error if the transition ID was not found.
@@ -125,22 +109,14 @@ impl<N: Network> Transaction<N> {
             .values()
             .enumerate()
             .map(|(index, function)| {
-                // Construct the leaf as (variant || index || program ID || function name || Hash(function)).
-                Ok(TransactionLeaf::new(
-                    variant,
-                    index as u16,
-                    *program.id(),
-                    *function.name(),
-                    N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?,
-                )
-                .to_bits_le())
+                // Construct the leaf as (variant || index || Hash(function)).
+                Ok(TransactionLeaf::new(variant, index as u16, N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?)
+                    .to_bits_le())
             })
             .chain(
                 [Ok(TransactionLeaf::new(
                     variant,
                     program.functions().len() as u16, // The last index.
-                    *additional_fee.program_id(),
-                    *additional_fee.function_name(),
                     **additional_fee.id(),
                 )
                 .to_bits_le())]
@@ -161,25 +137,16 @@ impl<N: Network> Transaction<N> {
         let variant = 1u8;
         // Prepare the leaves.
         let leaves = execution.iter().enumerate().map(|(index, transition)| {
-            // Construct the leaf as (variant || index || program ID || function name || transition ID).
-            TransactionLeaf::new(
-                variant,
-                index as u16,
-                *transition.program_id(),
-                *transition.function_name(),
-                **transition.id(),
-            )
-            .to_bits_le()
+            // Construct the leaf as (variant || index || transition ID).
+            TransactionLeaf::new(variant, index as u16, **transition.id()).to_bits_le()
         });
         // If the additional fee is present, add it to the leaves.
         let leaves = match additional_fee {
             Some(additional_fee) => {
-                // Construct the leaf as (variant || index || program ID || function name || transition ID).
+                // Construct the leaf as (variant || index || transition ID).
                 let leaf = TransactionLeaf::new(
                     variant,
                     execution.len() as u16, // The last index.
-                    *additional_fee.program_id(),
-                    *additional_fee.function_name(),
                     **additional_fee.id(),
                 )
                 .to_bits_le();

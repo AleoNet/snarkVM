@@ -24,10 +24,6 @@ pub struct TransactionLeaf<A: Aleo> {
     variant: U8<A>,
     /// The index of the Merkle leaf.
     index: U16<A>,
-    /// The program ID.
-    program_id: ProgramID<A>,
-    /// The function name.
-    function_name: Identifier<A>,
     /// The ID.
     id: Field<A>,
 }
@@ -47,8 +43,6 @@ impl<A: Aleo> Inject for TransactionLeaf<A> {
         Self {
             variant: U8::new(mode, console::U8::new(transaction_leaf.variant())),
             index: U16::new(mode, console::U16::new(transaction_leaf.index())),
-            program_id: ProgramID::new(mode, transaction_leaf.program_id()),
-            function_name: Identifier::new(mode, transaction_leaf.function_name()),
             id: Field::new(mode, transaction_leaf.id()),
         }
     }
@@ -59,18 +53,12 @@ impl<A: Aleo> Eject for TransactionLeaf<A> {
 
     /// Ejects the mode of the transaction leaf.
     fn eject_mode(&self) -> Mode {
-        (&self.variant, &self.index, &self.program_id, &self.function_name, &self.id).eject_mode()
+        (&self.variant, &self.index, &self.id).eject_mode()
     }
 
     /// Ejects the transaction leaf.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::new(
-            *self.variant.eject_value(),
-            *self.index.eject_value(),
-            self.program_id.eject_value(),
-            self.function_name.eject_value(),
-            self.id.eject_value(),
-        )
+        Self::Primitive::new(*self.variant.eject_value(), *self.index.eject_value(), self.id.eject_value())
     }
 }
 
@@ -81,8 +69,6 @@ impl<A: Aleo> ToBits for TransactionLeaf<A> {
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
         let mut bits_le = self.variant.to_bits_le();
         bits_le.extend(self.index.to_bits_le());
-        bits_le.extend(self.program_id.to_bits_le());
-        bits_le.extend(self.function_name.to_bits_le());
         bits_le.extend(self.id.to_bits_le());
         bits_le
     }
@@ -91,8 +77,6 @@ impl<A: Aleo> ToBits for TransactionLeaf<A> {
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
         let mut bits_be = self.variant.to_bits_be();
         bits_be.extend(self.index.to_bits_be());
-        bits_be.extend(self.program_id.to_bits_be());
-        bits_be.extend(self.function_name.to_bits_be());
         bits_be.extend(self.id.to_bits_be());
         bits_be
     }
