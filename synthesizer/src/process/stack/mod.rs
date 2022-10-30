@@ -42,7 +42,6 @@ mod execute;
 mod helpers;
 
 use crate::{
-    state_path::circuit::STATE_PATH_FUNCTION_NAME,
     CallOperator,
     Certificate,
     Closure,
@@ -52,7 +51,6 @@ use crate::{
     Process,
     Program,
     ProvingKey,
-    StatePath,
     Transition,
     TransitionProof,
     UniversalSRS,
@@ -78,8 +76,10 @@ use console::{
         RegisterType,
         Request,
         Response,
+        StatePath,
         Value,
         ValueType,
+        STATE_PATH_FUNCTION_NAME,
     },
     types::{Field, Group, U64},
 };

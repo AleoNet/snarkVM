@@ -440,10 +440,7 @@ impl<N: Network> Stack<N> {
                             .ok_or_else(|| anyhow!("Missing state path for commitment: {commitment}"))?;
 
                         // Verify the state path circuit.
-                        crate::state_path::circuit::inject_and_verify_state_path::<N, A>(
-                            console_state_path.clone(),
-                            *commitment,
-                        );
+                        crate::inject_and_verify_state_path::<N, A>(console_state_path.clone(), *commitment);
 
                         #[cfg(debug_assertions)]
                         Self::log_circuit::<A, _>(format!("Input {index} State Path").as_str());

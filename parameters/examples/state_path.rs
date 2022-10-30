@@ -20,17 +20,13 @@ use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
     prelude::{One, ToBits},
-    program::Identifier,
+    program::{BlockTree, Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
     types::Field,
 };
 use snarkvm_synthesizer::{
+    inject_and_verify_state_path,
     snark::UniversalSRS,
-    state_path::{
-        circuit::{inject_and_verify_state_path, STATE_PATH_FUNCTION_NAME},
-        StatePath,
-    },
     Block,
-    BlockTree,
     ConsensusMemory,
     ConsensusStore,
     VM,
@@ -106,7 +102,7 @@ pub fn sample_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
     // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;
     // Compute the state path for the commitment.
-    let state_path = StatePath::new_commitment(&block_tree, vm.block_store(), commitment)?;
+    let state_path = vm.block_store().get_state_path_for_commitment(&block_tree, commitment)?;
 
     Ok((*commitment, state_path))
 }

@@ -16,6 +16,10 @@ optional = true
 path = "../account"
 version = "0.9.0"
 
+[dependencies.snarkvm-circuit-collections]
+path = "../collections"
+version = "0.9.0"
+
 [dependencies.snarkvm-circuit-network]
 path = "../network"
 version = "0.9.0"

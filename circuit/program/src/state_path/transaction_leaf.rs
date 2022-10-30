@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use circuit::{
-    network::Aleo,
-    program::{Identifier, ProgramID},
-    types::{environment::prelude::*, Boolean, Field, U16, U8},
-};
+use crate::{Identifier, ProgramID};
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
 
 #[derive(Clone)]
 pub struct TransactionLeaf<A: Aleo> {
@@ -42,13 +40,13 @@ impl<A: Aleo> TransactionLeaf<A> {
 }
 
 impl<A: Aleo> Inject for TransactionLeaf<A> {
-    type Primitive = crate::state_path::TransactionLeaf<A::Network>;
+    type Primitive = console::TransactionLeaf<A::Network>;
 
     /// Initializes a new transaction leaf circuit from a primitive.
     fn new(mode: Mode, transaction_leaf: Self::Primitive) -> Self {
         Self {
-            variant: U8::new(mode, console::types::U8::new(transaction_leaf.variant())),
-            index: U16::new(mode, console::types::U16::new(transaction_leaf.index())),
+            variant: U8::new(mode, console::U8::new(transaction_leaf.variant())),
+            index: U16::new(mode, console::U16::new(transaction_leaf.index())),
             program_id: ProgramID::new(mode, transaction_leaf.program_id()),
             function_name: Identifier::new(mode, transaction_leaf.function_name()),
             id: Field::new(mode, transaction_leaf.id()),
@@ -57,7 +55,7 @@ impl<A: Aleo> Inject for TransactionLeaf<A> {
 }
 
 impl<A: Aleo> Eject for TransactionLeaf<A> {
-    type Primitive = crate::state_path::TransactionLeaf<A::Network>;
+    type Primitive = console::TransactionLeaf<A::Network>;
 
     /// Ejects the mode of the transaction leaf.
     fn eject_mode(&self) -> Mode {

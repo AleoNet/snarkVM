@@ -17,12 +17,6 @@
 pub mod input;
 pub use input::{Input, Origin};
 
-mod leaf;
-pub use leaf::*;
-
-mod merkle;
-pub use merkle::*;
-
 pub mod output;
 pub use output::Output;
 
@@ -30,13 +24,12 @@ mod proof;
 pub use proof::*;
 
 mod bytes;
+mod merkle;
 mod serialize;
 mod string;
 
-use crate::Proof;
 use console::{
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::{
         Ciphertext,
         Identifier,
@@ -47,8 +40,12 @@ use console::{
         Register,
         Request,
         Response,
+        TransitionLeaf,
+        TransitionPath,
+        TransitionTree,
         Value,
         ValueType,
+        TRANSITION_DEPTH,
     },
     types::{Field, Group},
 };

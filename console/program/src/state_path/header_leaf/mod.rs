@@ -19,7 +19,8 @@ mod serialize;
 mod string;
 mod to_bits;
 
-use console::{network::prelude::*, types::Field};
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::Field;
 
 /// The Merkle leaf for the block header.
 #[derive(Clone, PartialEq, Eq)]
@@ -50,7 +51,7 @@ impl<N: Network> HeaderLeaf<N> {
 #[cfg(test)]
 mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 

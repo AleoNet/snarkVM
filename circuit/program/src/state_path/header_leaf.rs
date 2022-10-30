@@ -14,10 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use circuit::{
-    network::Aleo,
-    types::{environment::prelude::*, Boolean, Field, U8},
-};
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
 
 #[derive(Clone)]
 pub struct HeaderLeaf<A: Aleo> {
@@ -35,16 +33,16 @@ impl<A: Aleo> HeaderLeaf<A> {
 }
 
 impl<A: Aleo> Inject for HeaderLeaf<A> {
-    type Primitive = crate::block::HeaderLeaf<A::Network>;
+    type Primitive = console::HeaderLeaf<A::Network>;
 
     /// Initializes a new header leaf circuit from a primitive.
     fn new(mode: Mode, leaf: Self::Primitive) -> Self {
-        Self { index: U8::new(mode, console::types::U8::new(leaf.index())), id: Field::new(mode, leaf.id()) }
+        Self { index: U8::new(mode, console::U8::new(leaf.index())), id: Field::new(mode, leaf.id()) }
     }
 }
 
 impl<A: Aleo> Eject for HeaderLeaf<A> {
-    type Primitive = crate::block::HeaderLeaf<A::Network>;
+    type Primitive = console::HeaderLeaf<A::Network>;
 
     /// Ejects the mode of the header leaf.
     fn eject_mode(&self) -> Mode {

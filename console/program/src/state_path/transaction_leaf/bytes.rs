@@ -16,23 +16,35 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for HeaderLeaf<N> {
-    /// Reads the header leaf from a buffer.
+impl<N: Network> FromBytes for TransactionLeaf<N> {
+    /// Reads the transaction leaf from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the variant.
+        let variant = FromBytes::read_le(&mut reader)?;
         // Read the index.
         let index = FromBytes::read_le(&mut reader)?;
+        // Read the program ID.
+        let program_id = FromBytes::read_le(&mut reader)?;
+        // Read the function name.
+        let function_name = FromBytes::read_le(&mut reader)?;
         // Read the ID.
         let id = FromBytes::read_le(&mut reader)?;
-        // Return the header leaf.
-        Ok(Self::new(index, id))
+        // Return the transaction leaf.
+        Ok(Self::new(variant, index, program_id, function_name, id))
     }
 }
 
-impl<N: Network> ToBytes for HeaderLeaf<N> {
-    /// Writes the header leaf to a buffer.
+impl<N: Network> ToBytes for TransactionLeaf<N> {
+    /// Writes the transaction leaf to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the variant.
+        self.variant.write_le(&mut writer)?;
         // Write the index.
         self.index.write_le(&mut writer)?;
+        // Write the program ID.
+        self.program_id.write_le(&mut writer)?;
+        // Write the function name.
+        self.function_name.write_le(&mut writer)?;
         // Write the ID.
         self.id.write_le(&mut writer)
     }
@@ -41,7 +53,7 @@ impl<N: Network> ToBytes for HeaderLeaf<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
@@ -57,8 +69,8 @@ mod tests {
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, HeaderLeaf::read_le(&expected_bytes[..])?);
-            assert!(HeaderLeaf::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, TransactionLeaf::read_le(&expected_bytes[..])?);
+            assert!(TransactionLeaf::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

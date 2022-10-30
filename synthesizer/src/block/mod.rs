@@ -38,19 +38,10 @@ use crate::{
 };
 use console::{
     account::{Address, PrivateKey, Signature},
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::Value,
     types::{Field, Group},
 };
-
-/// The depth of the Merkle tree for the blocks.
-const BLOCKS_DEPTH: u8 = 32;
-
-/// The Merkle tree for the block state.
-pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
-/// The Merkle path for the state tree blocks.
-pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {

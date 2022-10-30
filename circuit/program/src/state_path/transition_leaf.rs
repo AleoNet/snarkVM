@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use circuit::{
-    network::Aleo,
-    program::{Identifier, ProgramID},
-    types::{environment::prelude::*, Boolean, Field, U16, U8},
-};
+use crate::{Identifier, ProgramID};
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
 
 #[derive(Clone)]
 pub struct TransitionLeaf<A: Aleo> {
@@ -44,23 +42,23 @@ impl<A: Aleo> TransitionLeaf<A> {
 }
 
 impl<A: Aleo> Inject for TransitionLeaf<A> {
-    type Primitive = crate::state_path::TransitionLeaf<A::Network>;
+    type Primitive = console::TransitionLeaf<A::Network>;
 
     /// Initializes a new transition leaf circuit from a primitive.
     fn new(mode: Mode, transition_leaf: Self::Primitive) -> Self {
         Self {
-            version: U8::new(mode, console::types::U8::new(transition_leaf.version())),
-            index: U8::new(mode, console::types::U8::new(transition_leaf.index())),
+            version: U8::new(mode, console::U8::new(transition_leaf.version())),
+            index: U8::new(mode, console::U8::new(transition_leaf.index())),
             program_id: ProgramID::new(mode, transition_leaf.program_id()),
             function_name: Identifier::new(mode, transition_leaf.function_name()),
-            variant: U16::new(mode, console::types::U16::new(transition_leaf.variant())),
+            variant: U16::new(mode, console::U16::new(transition_leaf.variant())),
             id: Field::new(mode, transition_leaf.id()),
         }
     }
 }
 
 impl<A: Aleo> Eject for TransitionLeaf<A> {
-    type Primitive = crate::state_path::TransitionLeaf<A::Network>;
+    type Primitive = console::TransitionLeaf<A::Network>;
 
     /// Ejects the mode of the transition leaf.
     fn eject_mode(&self) -> Mode {

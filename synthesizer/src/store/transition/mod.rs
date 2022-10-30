@@ -24,7 +24,6 @@ use crate::{
     block::{Input, Origin, Output, Transition, TransitionProof},
     cow_to_cloned,
     cow_to_copied,
-    snark::Proof,
     store::helpers::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{

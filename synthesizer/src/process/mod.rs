@@ -27,13 +27,22 @@ use crate::{
     block::{AdditionalFee, Input, Origin, TransitionProof},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
-    state_path::{circuit::STATE_PATH_FUNCTION_NAME, StatePath},
     store::{ProgramStorage, ProgramStore},
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
+    program::{
+        Identifier,
+        Plaintext,
+        ProgramID,
+        Record,
+        Request,
+        Response,
+        StatePath,
+        Value,
+        STATE_PATH_FUNCTION_NAME,
+    },
     types::{I64, U64},
 };
 
@@ -236,11 +245,24 @@ impl<N: Network> Process<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{state_path::test_helpers::sample_state_path, Process, Program, Transition};
+    use crate::{Process, Program, Transition};
     use console::{
         account::PrivateKey,
         network::Testnet3,
-        program::{Identifier, InputID, Value},
+        program::{
+            BlockTree,
+            HeaderLeaf,
+            HeaderTree,
+            Identifier,
+            InputID,
+            TransactionLeaf,
+            TransactionTree,
+            TransactionsTree,
+            TransitionLeaf,
+            TransitionTree,
+            Value,
+        },
+        types::Field,
     };
 
     use once_cell::sync::OnceCell;
@@ -360,6 +382,68 @@ function compute:
         process.add_program(program).unwrap();
         // Return the process.
         process
+    }
+
+    /// Randomly sample a state path from the given `commitment`, `program_id`, and `function_name`.
+    pub fn sample_state_path<N: Network>(
+        commitment: Field<N>,
+        _program_id: ProgramID<N>,
+        _function_name: Identifier<N>,
+    ) -> Result<StatePath<N>> {
+        let rng = &mut TestRng::default();
+
+        // TODO (raychu86): Different program IDs and function names will change the number of constraints each circuit has.
+        //  This seems like a bug? Strings should be represented with the same number of fields.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        let function_name = Identifier::from_str("genesis")?;
+
+        // Construct the transition path and transaction leaf.
+        let transition_leaf = TransitionLeaf::new(0, 0, program_id, function_name, 0, commitment);
+        let transition_tree: TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
+        let transition_id = transition_tree.root();
+        let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
+
+        // Construct the transaction path and transaction leaf.
+        let transaction_leaf = TransactionLeaf::new(0, 0, program_id, function_name, *transition_id);
+        let transaction_tree: TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
+        let transaction_id = *transaction_tree.root();
+        let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;
+
+        // Construct the transactions path.
+        let transactions_tree: TransactionsTree<N> = N::merkle_tree_bhp(&[transaction_id.to_bits_le()])?;
+        let transactions_root = transactions_tree.root();
+        let transactions_path = transactions_tree.prove(0, &transaction_id.to_bits_le())?;
+
+        // Construct the block header path.
+        let header_leaf = HeaderLeaf::<N>::new(0, *transactions_root);
+        let header_tree: HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf.to_bits_le()])?;
+        let header_root = header_tree.root();
+        let header_path = header_tree.prove(0, &header_leaf.to_bits_le())?;
+
+        let previous_block_hash: N::BlockHash = console::types::Field::<N>::rand(rng).into();
+        let preimage = (*previous_block_hash).to_bits_le().into_iter().chain(header_root.to_bits_le().into_iter());
+        let block_hash = N::hash_bhp1024(&preimage.collect::<Vec<_>>())?;
+
+        // Construct the state root and block path.
+        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash.to_bits_le()])?;
+        let state_root = *block_tree.root();
+        let block_path = block_tree.prove(0, &block_hash.to_bits_le())?;
+
+        StatePath::<N>::from(
+            state_root.into(),
+            block_path,
+            block_hash.into(),
+            previous_block_hash,
+            *header_root,
+            header_path,
+            header_leaf,
+            transactions_path,
+            transaction_id.into(),
+            transaction_path,
+            transaction_leaf,
+            transition_path,
+            transition_leaf,
+        )
     }
 
     /// Initializes test state paths for the records in an authorization.

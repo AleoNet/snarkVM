@@ -16,14 +16,6 @@
 
 use super::*;
 
-/// The depth of the Merkle tree for the transition.
-const TRANSITION_DEPTH: u8 = 4;
-
-/// The Merkle tree for the transition.
-pub(crate) type TransitionTree<N> = BHPMerkleTree<N, TRANSITION_DEPTH>;
-/// The Merkle path for an input or output ID in the transition.
-pub type TransitionPath<N> = MerklePath<N, TRANSITION_DEPTH>;
-
 impl<N: Network> Transition<N> {
     /// Returns the transition root, by computing the root for a Merkle tree of the input and output IDs.
     pub fn to_root(&self) -> Result<Field<N>> {

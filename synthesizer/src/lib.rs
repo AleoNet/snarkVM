@@ -39,11 +39,25 @@ pub use program::*;
 pub mod snark;
 pub use snark::*;
 
-pub mod state_path;
-pub use state_path::*;
-
 pub mod store;
 pub use store::*;
 
 pub mod vm;
 pub use vm::*;
+
+/// The circuit for state path verification.
+pub fn inject_and_verify_state_path<N: console::network::Network, A: circuit::Aleo<Network = N>>(
+    state_path: console::program::StatePath<N>,
+    commitment: console::types::Field<N>,
+) {
+    use circuit::Inject;
+
+    // Allocate the state path circuit.
+    let state_path_circuit = circuit::StatePath::<A>::new(circuit::Mode::Private, state_path);
+    // Allocate the commitment circuit.
+    let commitment_circuit = circuit::Field::<A>::new(circuit::Mode::Private, commitment);
+
+    A::assert_eq(state_path_circuit.transition_leaf().id(), commitment_circuit);
+
+    A::assert(state_path_circuit.verify())
+}

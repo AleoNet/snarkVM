@@ -16,14 +16,6 @@
 
 use super::*;
 
-/// The depth of the Merkle tree for the transaction.
-pub(super) const TRANSACTION_DEPTH: u8 = 4;
-
-/// The Merkle tree for the transaction.
-pub(crate) type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
-/// The Merkle path for a function or transition in the transaction.
-pub type TransactionPath<N> = MerklePath<N, TRANSACTION_DEPTH>;
-
 impl<N: Network> Transaction<N> {
     /// Returns the transaction root, by computing the root for a Merkle tree of the transition IDs.
     pub fn to_root(&self) -> Result<Field<N>> {

@@ -60,7 +60,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         for input_id in authorization.to_vec_deque().iter().flat_map(|request| request.input_ids()) {
             // Generate the relevant state roots for each input record.
             if let InputID::Record(commitment, ..) = input_id {
-                let state_path = StatePath::new_commitment(&block_tree, block_store, commitment)?;
+                let state_path = block_store.get_state_path_for_commitment(&block_tree, commitment)?;
                 authorization.insert_state_path(*commitment, state_path);
             }
         }
@@ -109,13 +109,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let input_types = self.process.read().get_program(&program_id)?.get_function(&function_name)?.input_types();
 
             match input_types[0] {
-                ValueType::Record(record_name) => {
-                    let commitment = credits.to_commitment(
+                ValueType::Record(record_name) => block_store.get_state_path_for_commitment(
+                    &block_tree,
+                    &credits.to_commitment(
                         cast_ref!(program_id as ProgramID<N>),
                         cast_ref!(record_name as Identifier<N>),
-                    )?;
-                    StatePath::new_commitment(&block_tree, block_store, &commitment)?
-                }
+                    )?,
+                )?,
                 _ => bail!("Invalid input type"),
             }
         };

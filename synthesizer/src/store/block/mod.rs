@@ -30,7 +30,12 @@ use crate::{
         TransitionStore,
     },
 };
-use console::{account::Signature, network::prelude::*, types::Field};
+use console::{
+    account::Signature,
+    network::prelude::*,
+    program::{BlockTree, HeaderLeaf, StatePath},
+    types::Field,
+};
 
 use anyhow::Result;
 use core::marker::PhantomData;
@@ -312,6 +317,86 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(state_root) => Ok(Some(cow_to_copied!(state_root))),
             None => Ok(None),
         }
+    }
+
+    /// Returns a state path for the given `commitment`.
+    fn get_state_path_for_commitment(&self, block_tree: &BlockTree<N>, commitment: &Field<N>) -> Result<StatePath<N>> {
+        // Retrieve the transaction and transition store.
+        let transactions = self.transaction_store();
+        let transitions = self.transition_store();
+
+        // Ensure the commitment exists.
+        if !transitions.contains_commitment(commitment)? {
+            bail!("Commitment '{commitment}' does not exist");
+        }
+
+        // Find the transition that contains the commitment.
+        let transition_id = transitions.find_transition_id(commitment)?;
+        // Find the transaction that contains the transition.
+        let transaction_id = match transactions.find_transaction_id(&transition_id)? {
+            Some(transaction_id) => transaction_id,
+            None => bail!("The transaction ID for commitment '{commitment}' is not in the ledger"),
+        };
+        // Find the block that contains the transaction.
+        let block_hash = match self.find_block_hash(&transaction_id)? {
+            Some(block_hash) => block_hash,
+            None => bail!("The block hash for commitment '{commitment}' is not in the ledger"),
+        };
+
+        // Retrieve the transition.
+        let transition = match transitions.get_transition(&transition_id)? {
+            Some(transition) => transition,
+            None => bail!("The transition '{transition_id}' for commitment '{commitment}' is not in the ledger"),
+        };
+        // Retrieve the transaction.
+        let transaction = match transactions.get_transaction(&transaction_id)? {
+            Some(transaction) => transaction,
+            None => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the ledger"),
+        };
+        // Retrieve the block.
+        let block = match self.get_block(&block_hash)? {
+            Some(block) => block,
+            None => bail!("The block '{block_hash}' for commitment '{commitment}' is not in the ledger"),
+        };
+
+        // Construct the transition path and transaction leaf.
+        let transition_leaf = transition.to_leaf(commitment, false)?;
+        let transition_path = transition.to_path(&transition_leaf)?;
+
+        // Construct the transaction path and transaction leaf.
+        let transaction_leaf = transaction.to_leaf(transition.id())?;
+        let transaction_path = transaction.to_path(&transaction_leaf)?;
+
+        // Construct the transactions path.
+        let transactions = block.transactions();
+        let transaction_index = transactions.iter().position(|(id, _)| id == &transaction.id()).unwrap();
+        let transactions_path = transactions.to_path(transaction_index, *transaction.id())?;
+
+        // Construct the block header path.
+        let block_header = block.header();
+        let header_root = block_header.to_root()?;
+        let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
+        let header_path = block_header.to_path(&header_leaf)?;
+
+        // Construct the state root and block path.
+        let state_root = *block_tree.root();
+        let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
+
+        StatePath::from(
+            state_root.into(),
+            block_path,
+            block.hash(),
+            block.previous_hash(),
+            header_root,
+            header_path,
+            header_leaf,
+            transactions_path,
+            transaction.id(),
+            transaction_path,
+            transaction_leaf,
+            transition_path,
+            transition_leaf,
+        )
     }
 
     /// Returns the previous block hash of the given `block height`.
@@ -642,6 +727,15 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the state root that contains the given `block height`.
     pub fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
         self.storage.get_state_root(block_height)
+    }
+
+    /// Returns a state path for the given `commitment`.
+    pub fn get_state_path_for_commitment(
+        &self,
+        block_tree: &BlockTree<N>,
+        commitment: &Field<N>,
+    ) -> Result<StatePath<N>> {
+        self.storage.get_state_path_for_commitment(block_tree, commitment)
     }
 
     /// Returns the previous block hash of the given `block height`.

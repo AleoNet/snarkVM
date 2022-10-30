@@ -29,16 +29,14 @@ use crate::{
     process::{Authorization, Deployment, Execution, Process},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore},
-    BlockTree,
     ProgramStore,
-    StatePath,
     TransactionStore,
     TransitionStore,
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, InputID, Plaintext, ProgramID, Record, Response, Value, ValueType},
+    program::{BlockTree, Identifier, InputID, Plaintext, ProgramID, Record, Response, StatePath, Value, ValueType},
 };
 
 use core::marker::PhantomData;

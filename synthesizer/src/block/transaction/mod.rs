@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod leaf;
-pub use leaf::*;
-
-mod merkle;
-pub use merkle::*;
-
 mod bytes;
+mod merkle;
 mod serialize;
 mod string;
 
@@ -33,9 +28,18 @@ use crate::{
 };
 use console::{
     account::PrivateKey,
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
-    program::{Identifier, Plaintext, ProgramID, Record, Value},
+    network::prelude::*,
+    program::{
+        Identifier,
+        Plaintext,
+        ProgramID,
+        Record,
+        TransactionLeaf,
+        TransactionPath,
+        TransactionTree,
+        Value,
+        TRANSACTION_DEPTH,
+    },
     types::{Field, Group},
 };
 

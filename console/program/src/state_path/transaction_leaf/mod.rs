@@ -19,49 +19,44 @@ mod serialize;
 mod string;
 mod to_bits;
 
-use console::{
-    network::prelude::*,
-    program::{Identifier, ProgramID},
-    types::Field,
-};
+use crate::{Identifier, ProgramID};
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::Field;
 
-/// The Merkle leaf for an input or output ID in the transition.
+/// The Merkle leaf for a function or transition in the transaction.
 #[derive(Clone, PartialEq, Eq)]
-pub struct TransitionLeaf<N: Network> {
-    /// The version of the Merkle leaf.
-    version: u8,
+pub struct TransactionLeaf<N: Network> {
+    /// The variant of the Merkle leaf.
+    variant: u8,
     /// The index of the Merkle leaf.
-    index: u8,
+    index: u16,
     /// The program ID.
     program_id: ProgramID<N>,
     /// The function name.
     function_name: Identifier<N>,
-    /// The variant of the Merkle leaf.
-    variant: u16,
     /// The ID.
     id: Field<N>,
 }
 
-impl<N: Network> TransitionLeaf<N> {
-    /// Initializes a new instance of `TransitionLeaf`.
+impl<N: Network> TransactionLeaf<N> {
+    /// Initializes a new instance of `TransactionLeaf`.
     pub const fn new(
-        version: u8,
-        index: u8,
+        variant: u8,
+        index: u16,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
-        variant: u16,
         id: Field<N>,
     ) -> Self {
-        Self { version, index, program_id, function_name, variant, id }
+        Self { variant, index, program_id, function_name, id }
     }
 
-    /// Returns the version of the Merkle leaf.
-    pub const fn version(&self) -> u8 {
-        self.version
+    /// Returns the variant of the Merkle leaf.
+    pub const fn variant(&self) -> u8 {
+        self.variant
     }
 
     /// Returns the index of the Merkle leaf.
-    pub const fn index(&self) -> u8 {
+    pub const fn index(&self) -> u16 {
         self.index
     }
 
@@ -75,11 +70,6 @@ impl<N: Network> TransitionLeaf<N> {
         self.function_name
     }
 
-    /// Returns the variant of the Merkle leaf.
-    pub const fn variant(&self) -> u16 {
-        self.variant
-    }
-
     /// Returns the ID in the Merkle leaf.
     pub const fn id(&self) -> Field<N> {
         self.id
@@ -89,18 +79,17 @@ impl<N: Network> TransitionLeaf<N> {
 #[cfg(test)]
 mod test_helpers {
     use super::*;
-    use console::network::Testnet3;
+    use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
-    pub(super) fn sample_leaf(rng: &mut TestRng) -> TransitionLeaf<CurrentNetwork> {
+    pub(super) fn sample_leaf(rng: &mut TestRng) -> TransactionLeaf<CurrentNetwork> {
         // Construct a new leaf.
-        TransitionLeaf::new(
+        TransactionLeaf::new(
             rng.gen(),
             rng.gen(),
             FromStr::from_str("hello.aleo").unwrap(),
             FromStr::from_str("runner").unwrap(),
-            rng.gen(),
             Uniform::rand(rng),
         )
     }
