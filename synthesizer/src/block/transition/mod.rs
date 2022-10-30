@@ -108,9 +108,23 @@ impl<N: Network> Transition<N> {
         state_roots: &IndexMap<Field<N>, N::StateRoot>,
         fee: i64,
     ) -> Result<Self> {
+        let network_id = *request.network_id();
         let program_id = *request.program_id();
         let function_name = *request.function_name();
         let num_inputs = request.inputs().len();
+
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id = N::hash_bhp1024(
+            &[
+                network_id.to_bits_le(),
+                program_id.name().to_bits_le(),
+                program_id.network().to_bits_le(),
+                function_name.to_bits_le(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        )?;
 
         let inputs = request
             .input_ids()
@@ -124,7 +138,7 @@ impl<N: Network> Transition<N> {
                         // Construct the constant input.
                         let input = Input::Constant(*input_hash, Some(plaintext.clone()));
                         // Ensure the input is valid.
-                        match input.verify(request.tcm(), index) {
+                        match input.verify(function_id, request.tcm(), index) {
                             true => Ok(input),
                             false => bail!("Malformed constant transition input: '{input}'"),
                         }
@@ -133,7 +147,7 @@ impl<N: Network> Transition<N> {
                         // Construct the public input.
                         let input = Input::Public(*input_hash, Some(plaintext.clone()));
                         // Ensure the input is valid.
-                        match input.verify(request.tcm(), index) {
+                        match input.verify(function_id, request.tcm(), index) {
                             true => Ok(input),
                             false => bail!("Malformed public transition input: '{input}'"),
                         }
@@ -141,8 +155,9 @@ impl<N: Network> Transition<N> {
                     (InputID::Private(input_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
-                        let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
+                        // Compute the ciphertext, with the input view key as `Hash(function ID || tvk || index)`.
+                        let ciphertext =
+                            plaintext.encrypt_symmetric(N::hash_psd4(&[function_id, *request.tvk(), index])?)?;
                         // Compute the ciphertext hash.
                         let ciphertext_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the ciphertext hash matches.
@@ -178,7 +193,7 @@ impl<N: Network> Transition<N> {
                         // Construct the constant output.
                         let output = Output::Constant(*output_hash, Some(plaintext.clone()));
                         // Ensure the output is valid.
-                        match output.verify(request.tcm(), num_inputs + index) {
+                        match output.verify(function_id, request.tcm(), num_inputs + index) {
                             true => Ok(output),
                             false => bail!("Malformed constant transition output: '{output}'"),
                         }
@@ -187,7 +202,7 @@ impl<N: Network> Transition<N> {
                         // Construct the public output.
                         let output = Output::Public(*output_hash, Some(plaintext.clone()));
                         // Ensure the output is valid.
-                        match output.verify(request.tcm(), num_inputs + index) {
+                        match output.verify(function_id, request.tcm(), num_inputs + index) {
                             true => Ok(output),
                             false => bail!("Malformed public transition output: '{output}'"),
                         }
@@ -195,8 +210,9 @@ impl<N: Network> Transition<N> {
                     (OutputID::Private(output_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
-                        let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
+                        // Compute the ciphertext, with the input view key as `Hash(function ID || tvk || index)`.
+                        let ciphertext =
+                            plaintext.encrypt_symmetric(N::hash_psd4(&[function_id, *request.tvk(), index])?)?;
                         // Compute the ciphertext hash.
                         let ciphertext_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the ciphertext hash matches.
@@ -235,8 +251,9 @@ impl<N: Network> Transition<N> {
                     (OutputID::ExternalRecord(hash), Value::Record(record)) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
-                        // Construct the preimage as `(output || tvk || index)`.
-                        let mut preimage = record.to_fields()?;
+                        // Construct the preimage as `(function ID || output || tvk || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(record.to_fields()?);
                         preimage.push(*request.tvk());
                         preimage.push(index);
                         // Hash the output to a field element.

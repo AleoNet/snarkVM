@@ -30,6 +30,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{
+        BlockTree,
         Identifier,
         Plaintext,
         ProgramID,
@@ -86,12 +87,14 @@ impl<N: Network> Transaction<N> {
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         (credits, additional_fee_in_gates): (Record<N, Plaintext<N>>, u64),
+        block_tree: Option<&BlockTree<N>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
         // Compute the additional fee.
-        let (_, additional_fee) = vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?;
+        let (_, additional_fee) =
+            vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, block_tree, rng)?;
         // Initialize the transaction.
         Self::from_deployment(deployment, additional_fee)
     }
@@ -100,10 +103,11 @@ impl<N: Network> Transaction<N> {
     pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         authorization: Authorization<N>,
+        block_tree: Option<&BlockTree<N>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, rng)?;
+        let (_, execution) = vm.execute(authorization, block_tree, rng)?;
         // Initialize the transaction.
         Self::from_execution(execution, None)
     }
@@ -114,14 +118,15 @@ impl<N: Network> Transaction<N> {
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        block_tree: Option<&BlockTree<N>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, rng)?;
+        let (_, execution) = vm.execute(authorization, block_tree, rng)?;
         // Compute the additional fee, if it is present.
         let additional_fee = match additional_fee {
             Some((credits, additional_fee_in_gates)) => {
-                Some(vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?.1)
+                Some(vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, block_tree, rng)?.1)
             }
             None => None,
         };
@@ -137,12 +142,13 @@ impl<N: Network> Transaction<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        block_tree: Option<&BlockTree<N>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the authorization.
         let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Initialize the transaction.
-        Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, rng)
+        Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, block_tree, rng)
     }
 }
 

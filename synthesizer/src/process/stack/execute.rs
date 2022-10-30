@@ -424,7 +424,10 @@ impl<N: Network> Stack<N> {
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
-            let execution_proof = proving_key.prove(function.name(), &assignment, rng)?;
+            let execution_proof = match proving_key.prove(function.name(), &assignment, rng) {
+                Ok(proof) => proof,
+                Err(error) => bail!("Execution proof failed - {error}"),
+            };
 
             // Ensure the circuit environment is clean.
             A::reset();

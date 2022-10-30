@@ -122,7 +122,7 @@ impl<N: Network> Input<N> {
 
     /// Returns `true` if the input is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
+    pub fn verify(&self, function_id: Field<N>, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
         let result = || match self {
             Input::Constant(hash, Some(input)) => {
@@ -130,8 +130,9 @@ impl<N: Network> Input<N> {
                     Ok(fields) => {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = fields;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Ensure the hash matches.
@@ -148,8 +149,9 @@ impl<N: Network> Input<N> {
                     Ok(fields) => {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = fields;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Ensure the hash matches.
@@ -171,7 +173,11 @@ impl<N: Network> Input<N> {
                     Err(error) => Err(error),
                 }
             }
-            _ => Ok(true),
+            Input::Constant(_, None)
+            | Input::Public(_, None)
+            | Input::Private(_, None)
+            | Input::Record(..)
+            | Input::ExternalRecord(..) => Ok(true),
         };
 
         match result() {

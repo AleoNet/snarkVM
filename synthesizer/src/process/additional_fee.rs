@@ -90,8 +90,26 @@ impl<N: Network> Process<N> {
         // Ensure the number of outputs is within the allowed range.
         ensure!(additional_fee.outputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of outputs");
 
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id = N::hash_bhp1024(
+            &[
+                U16::<N>::new(N::ID).to_bits_le(),
+                additional_fee.program_id().name().to_bits_le(),
+                additional_fee.program_id().network().to_bits_le(),
+                additional_fee.function_name().to_bits_le(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        )?;
+
         // Ensure each input is valid.
-        if additional_fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(additional_fee.tcm(), index)) {
+        if additional_fee
+            .inputs()
+            .iter()
+            .enumerate()
+            .any(|(index, input)| !input.verify(function_id, additional_fee.tcm(), index))
+        {
             bail!("Failed to verify an additional fee input")
         }
         // Ensure each output is valid.
@@ -100,7 +118,7 @@ impl<N: Network> Process<N> {
             .outputs()
             .iter()
             .enumerate()
-            .any(|(index, output)| !output.verify(additional_fee.tcm(), num_inputs + index))
+            .any(|(index, output)| !output.verify(function_id, additional_fee.tcm(), num_inputs + index))
         {
             bail!("Failed to verify an additional fee output")
         }

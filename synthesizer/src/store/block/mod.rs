@@ -33,7 +33,7 @@ use crate::{
 use console::{
     account::Signature,
     network::prelude::*,
-    program::{BlockTree, HeaderLeaf, StatePath},
+    program::{BlockPath, BlockTree, HeaderLeaf, StatePath},
     types::Field,
 };
 
@@ -54,6 +54,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type StateRootMap: for<'a> Map<'a, u32, Field<N>>;
     /// The mapping of `state root` to `block height`.
     type ReverseStateRootMap: for<'a> Map<'a, Field<N>, u32>;
+    /// The mapping of `block height` to `block path`.
+    type BlockPathMap: for<'a> Map<'a, u32, BlockPath<N>>;
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
@@ -82,6 +84,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn state_root_map(&self) -> &Self::StateRootMap;
     /// Returns the reverse state root map.
     fn reverse_state_root_map(&self) -> &Self::ReverseStateRootMap;
+    /// Returns the block path map.
+    fn block_path_map(&self) -> &Self::BlockPathMap;
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
     /// Returns the reverse ID map.
@@ -115,6 +119,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn start_atomic(&self) {
         self.state_root_map().start_atomic();
         self.reverse_state_root_map().start_atomic();
+        self.block_path_map().start_atomic();
         self.id_map().start_atomic();
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
@@ -130,6 +135,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn is_atomic_in_progress(&self) -> bool {
         self.state_root_map().is_atomic_in_progress()
             || self.reverse_state_root_map().is_atomic_in_progress()
+            || self.block_path_map().is_atomic_in_progress()
             || self.id_map().is_atomic_in_progress()
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
@@ -145,6 +151,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn abort_atomic(&self) {
         self.state_root_map().abort_atomic();
         self.reverse_state_root_map().abort_atomic();
+        self.block_path_map().abort_atomic();
         self.id_map().abort_atomic();
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
@@ -160,6 +167,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn finish_atomic(&self) -> Result<()> {
         self.state_root_map().finish_atomic()?;
         self.reverse_state_root_map().finish_atomic()?;
+        self.block_path_map().finish_atomic()?;
         self.id_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
@@ -171,13 +179,20 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.signature_map().finish_atomic()
     }
 
-    /// Stores the given `(state root, block)` pair into storage.
-    fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
+    /// Stores the given `(state root, block path, block)` tuple into storage.
+    fn insert(&self, state_root: Field<N>, block_path: BlockPath<N>, block: &Block<N>) -> Result<()> {
+        // Ensure the state root and block path correspond to the given block.
+        if !N::verify_merkle_path_bhp(&block_path, &state_root, &block.hash().to_bits_le()) {
+            bail!("Invalid state root and block path for the given block")
+        }
+
         atomic_write_batch!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
             // Store the (state root, block height) pair.
             self.reverse_state_root_map().insert(state_root, block.height())?;
+            // Store the (block height, block path) pair.
+            self.block_path_map().insert(block.height(), block_path)?;
 
             // Store the block hash.
             self.id_map().insert(block.height(), block.hash())?;
@@ -246,6 +261,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.state_root_map().remove(&block_height)?;
             // Remove the (state root, block height) pair.
             self.reverse_state_root_map().remove(&state_root)?;
+            // Remove the (block height, block path) pair.
+            self.block_path_map().remove(&block_height)?;
 
             // Remove the block hash.
             self.id_map().remove(&block_height)?;
@@ -320,7 +337,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns a state path for the given `commitment`.
-    fn get_state_path_for_commitment(&self, block_tree: &BlockTree<N>, commitment: &Field<N>) -> Result<StatePath<N>> {
+    fn get_state_path_for_commitment(
+        &self,
+        commitment: &Field<N>,
+        block_tree: Option<&BlockTree<N>>,
+    ) -> Result<StatePath<N>> {
         // Retrieve the transaction and transition store.
         let transactions = self.transaction_store();
         let transitions = self.transition_store();
@@ -359,6 +380,28 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("The block '{block_hash}' for commitment '{commitment}' is not in the ledger"),
         };
 
+        // Construct the state root and block path.
+        let (state_root, block_path) = match block_tree {
+            Some(block_tree) => {
+                let state_root = *block_tree.root();
+                let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
+                (state_root, block_path)
+            }
+            None => {
+                // Retrieve the state root.
+                let state_root = match self.get_state_root(block.height())? {
+                    Some(state_root) => state_root,
+                    None => bail!("The state root is not in the ledger. Please provide a block tree."),
+                };
+                // Retrieve the block path.
+                let block_path = match self.block_path_map().get(&block.height())? {
+                    Some(block_path) => cow_to_cloned!(block_path),
+                    None => bail!("The block path is not in the ledger. Please provide a block tree."),
+                };
+                (state_root, block_path)
+            }
+        };
+
         // Construct the transition path and transaction leaf.
         let transition_leaf = transition.to_leaf(commitment, false)?;
         let transition_path = transition.to_path(&transition_leaf)?;
@@ -377,10 +420,6 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let header_root = block_header.to_root()?;
         let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
         let header_path = block_header.to_path(&header_leaf)?;
-
-        // Construct the state root and block path.
-        let state_root = *block_tree.root();
-        let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
 
         StatePath::from(
             state_root.into(),
@@ -521,6 +560,8 @@ pub struct BlockMemory<N: Network> {
     state_root_map: MemoryMap<u32, Field<N>>,
     /// The mapping of `state root` to `block height`.
     reverse_state_root_map: MemoryMap<Field<N>, u32>,
+    /// The mapping of `block height` to `block path`.
+    block_path_map: MemoryMap<u32, BlockPath<N>>,
     /// The mapping of `block height` to `block hash`.
     id_map: MemoryMap<u32, N::BlockHash>,
     /// The mapping of `block hash` to `block height`.
@@ -545,6 +586,7 @@ pub struct BlockMemory<N: Network> {
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type StateRootMap = MemoryMap<u32, Field<N>>;
     type ReverseStateRootMap = MemoryMap<Field<N>, u32>;
+    type BlockPathMap = MemoryMap<u32, BlockPath<N>>;
     type IDMap = MemoryMap<u32, N::BlockHash>;
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
@@ -566,6 +608,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         Ok(Self {
             state_root_map: MemoryMap::default(),
             reverse_state_root_map: MemoryMap::default(),
+            block_path_map: MemoryMap::default(),
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
@@ -586,6 +629,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the reverse state root map.
     fn reverse_state_root_map(&self) -> &Self::ReverseStateRootMap {
         &self.reverse_state_root_map
+    }
+
+    /// Returns the block path map.
+    fn block_path_map(&self) -> &Self::BlockPathMap {
+        &self.block_path_map
     }
 
     /// Returns the ID map.
@@ -657,9 +705,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         Self { storage, _phantom: PhantomData }
     }
 
-    /// Stores the given `(state root, block)` pair into storage.
-    pub fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
-        self.storage.insert(state_root, block)
+    /// Stores the given `(state root, block path, block)` tuple into storage.
+    pub fn insert(&self, state_root: Field<N>, block_path: BlockPath<N>, block: &Block<N>) -> Result<()> {
+        self.storage.insert(state_root, block_path, block)
     }
 
     /// Removes the block for the given `block hash`.
@@ -732,10 +780,10 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns a state path for the given `commitment`.
     pub fn get_state_path_for_commitment(
         &self,
-        block_tree: &BlockTree<N>,
         commitment: &Field<N>,
+        block_tree: Option<&BlockTree<N>>,
     ) -> Result<StatePath<N>> {
-        self.storage.get_state_path_for_commitment(block_tree, commitment)
+        self.storage.get_state_path_for_commitment(commitment, block_tree)
     }
 
     /// Returns the previous block hash of the given `block height`.
@@ -826,6 +874,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vm::test_helpers::CurrentNetwork;
 
     #[test]
     fn test_insert_get_remove() {
@@ -835,6 +884,8 @@ mod tests {
         let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         let block_hash = block.hash();
 
+        // Initialize a new block tree.
+        let mut block_tree: BlockTree<CurrentNetwork> = CurrentNetwork::merkle_tree_bhp(&[]).unwrap();
         // Initialize a new block store.
         let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
 
@@ -842,8 +893,12 @@ mod tests {
         let candidate = block_store.get_block(&block_hash).unwrap();
         assert_eq!(None, candidate);
 
+        // Update the block tree.
+        block_tree.append(&[block_hash.to_bits_le()]).unwrap();
+        // Compute the block path.
+        let block_path = block_tree.prove(0, &block_hash.to_bits_le()).unwrap();
         // Insert the block.
-        block_store.insert(rng.gen(), &block).unwrap();
+        block_store.insert(rng.gen(), block_path, &block).unwrap();
 
         // Retrieve the block.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -866,6 +921,8 @@ mod tests {
         let block_hash = block.hash();
         assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
 
+        // Initialize a new block tree.
+        let mut block_tree: BlockTree<CurrentNetwork> = CurrentNetwork::merkle_tree_bhp(&[]).unwrap();
         // Initialize a new block store.
         let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
 
@@ -879,8 +936,12 @@ mod tests {
             assert_eq!(None, candidate);
         }
 
+        // Update the block tree.
+        block_tree.append(&[block_hash.to_bits_le()]).unwrap();
+        // Compute the block path.
+        let block_path = block_tree.prove(0, &block_hash.to_bits_le()).unwrap();
         // Insert the block.
-        block_store.insert(rng.gen(), &block).unwrap();
+        block_store.insert(rng.gen(), block_path, &block).unwrap();
 
         for transaction_id in block.transaction_ids() {
             // Find the block hash.

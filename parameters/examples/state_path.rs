@@ -91,8 +91,9 @@ pub fn sample_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
 
     // Initialize the block tree.
     let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[genesis_block.hash().to_bits_le()])?;
+    let block_path = block_tree.prove(genesis_block.height() as usize, &genesis_block.hash().to_bits_le())?;
     // Add the genesis block to the block tree.
-    vm.block_store().insert(*block_tree.root(), &genesis_block)?;
+    vm.block_store().insert(*block_tree.root(), block_path, &genesis_block)?;
 
     // Update the VM.
     for transaction in genesis_block.transactions().values() {
@@ -102,7 +103,7 @@ pub fn sample_state_path<N: Network>() -> Result<(Field<N>, StatePath<N>)> {
     // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;
     // Compute the state path for the commitment.
-    let state_path = vm.block_store().get_state_path_for_commitment(&block_tree, commitment)?;
+    let state_path = vm.block_store().get_state_path_for_commitment(commitment, Some(&block_tree))?;
 
     Ok((*commitment, state_path))
 }

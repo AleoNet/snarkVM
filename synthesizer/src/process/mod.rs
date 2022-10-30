@@ -43,7 +43,7 @@ use console::{
         Value,
         STATE_PATH_FUNCTION_NAME,
     },
-    types::{I64, U64},
+    types::{I64, U16, U64},
 };
 
 use indexmap::IndexMap;
@@ -444,8 +444,6 @@ function compute:
 
         // Sample a random state path for each input record.
         for request in authorization.to_vec_deque() {
-            let program_id = request.program_id();
-            let function_name = request.function_name();
             for input_id in request.input_ids() {
                 // Generate the relevant state roots for each input record.
                 if let InputID::Record(commitment, ..) = input_id {

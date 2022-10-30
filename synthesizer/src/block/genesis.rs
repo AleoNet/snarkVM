@@ -35,7 +35,7 @@ impl<N: Network> Block<N> {
         // Authorize the call to start.
         let authorization = vm.authorize(private_key, &program_id, function_name, &inputs, rng)?;
         // Execute the genesis function.
-        let transaction = Transaction::execute_authorization(vm, authorization, rng)?;
+        let transaction = Transaction::execute_authorization(vm, authorization, None, rng)?;
 
         // Prepare the transactions.
         let transactions = Transactions::from(&[transaction]);

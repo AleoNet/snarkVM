@@ -140,7 +140,7 @@ impl<N: Network> Output<N> {
 
     /// Returns `true` if the output is well-formed.
     /// If the optional value exists, this method checks that it hashes to the output ID.
-    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
+    pub fn verify(&self, function_id: Field<N>, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
         let result = match self {
             Output::Constant(hash, Some(output)) => {
@@ -148,8 +148,9 @@ impl<N: Network> Output<N> {
                     Ok(fields) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Construct the preimage as `(output || tcm || index)`.
-                        let mut preimage = fields;
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Ensure the hash matches.
@@ -166,8 +167,9 @@ impl<N: Network> Output<N> {
                     Ok(fields) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Construct the preimage as `(output || tcm || index)`.
-                        let mut preimage = fields;
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Ensure the hash matches.
@@ -193,7 +195,11 @@ impl<N: Network> Output<N> {
                 Ok(candidate_hash) => Ok(checksum == &candidate_hash),
                 Err(error) => Err(error),
             },
-            _ => Ok(true),
+            Output::Constant(_, None)
+            | Output::Public(_, None)
+            | Output::Private(_, None)
+            | Output::Record(..)
+            | Output::ExternalRecord(..) => Ok(true),
         };
 
         match result {

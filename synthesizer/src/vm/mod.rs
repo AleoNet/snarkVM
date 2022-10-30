@@ -41,7 +41,7 @@ use console::{
 
 use core::marker::PhantomData;
 use parking_lot::RwLock;
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -150,7 +150,7 @@ pub(crate) mod test_helpers {
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
 
-    type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentNetwork = Testnet3;
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
         VM::from(ConsensusStore::open(None).unwrap()).unwrap()
@@ -242,7 +242,8 @@ function compute:
                 // Update the blocks.
                 let block_tree: BlockTree<CurrentNetwork> =
                     CurrentNetwork::merkle_tree_bhp(&[genesis.hash().to_bits_le()]).unwrap();
-                vm.block_store().insert(*block_tree.root(), &genesis.clone()).unwrap();
+                let block_path = block_tree.prove(0, &genesis.hash().to_bits_le()).unwrap();
+                vm.block_store().insert(*block_tree.root(), block_path, &genesis.clone()).unwrap();
 
                 // Update the VM.
                 for transaction in genesis.transactions().values() {
@@ -250,7 +251,9 @@ function compute:
                 }
 
                 // Deploy.
-                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
+                let transaction =
+                    Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, Some(&block_tree), rng)
+                        .unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
@@ -288,7 +291,8 @@ function compute:
                 // Update the blocks.
                 let block_tree: BlockTree<CurrentNetwork> =
                     CurrentNetwork::merkle_tree_bhp(&[genesis.hash().to_bits_le()]).unwrap();
-                vm.block_store().insert(*block_tree.root(), &genesis.clone()).unwrap();
+                let block_path = block_tree.prove(0, &genesis.hash().to_bits_le()).unwrap();
+                vm.block_store().insert(*block_tree.root(), block_path, &genesis.clone()).unwrap();
 
                 // Update the VM.
                 for transaction in genesis.transactions().values() {
@@ -312,7 +316,8 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                let transaction =
+                    Transaction::execute_authorization(&vm, authorization, Some(&block_tree), rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.

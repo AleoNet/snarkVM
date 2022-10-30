@@ -85,8 +85,26 @@ impl<N: Network> Process<N> {
             // Ensure the number of outputs is within the allowed range.
             ensure!(transition.outputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
 
+            // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+            let function_id = N::hash_bhp1024(
+                &[
+                    U16::<N>::new(N::ID).to_bits_le(),
+                    transition.program_id().name().to_bits_le(),
+                    transition.program_id().network().to_bits_le(),
+                    transition.function_name().to_bits_le(),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+            )?;
+
             // Ensure each input is valid.
-            if transition.inputs().iter().enumerate().any(|(index, input)| !input.verify(transition.tcm(), index)) {
+            if transition
+                .inputs()
+                .iter()
+                .enumerate()
+                .any(|(index, input)| !input.verify(function_id, transition.tcm(), index))
+            {
                 bail!("Failed to verify a transition input")
             }
             // Ensure each output is valid.
@@ -95,7 +113,7 @@ impl<N: Network> Process<N> {
                 .outputs()
                 .iter()
                 .enumerate()
-                .any(|(index, output)| !output.verify(transition.tcm(), num_inputs + index))
+                .any(|(index, output)| !output.verify(function_id, transition.tcm(), num_inputs + index))
             {
                 bail!("Failed to verify a transition output")
             }
