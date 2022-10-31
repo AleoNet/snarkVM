@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::Origin;
 
 impl<N: Network> Stack<N> {
     /// Executes a program closure on the given inputs.
@@ -430,7 +431,7 @@ impl<N: Network> Stack<N> {
             };
 
             let mut state_path_assignments = Vec::with_capacity(console_request.input_ids().len());
-            let mut state_roots = IndexMap::new();
+            let mut record_origins = IndexMap::new();
 
             // Construct the state path assignments.
             console_request.input_ids().iter().try_for_each(|input_id| {
@@ -452,7 +453,9 @@ impl<N: Network> Stack<N> {
                     )?;
 
                     state_path_assignments.push(assignment);
-                    state_roots.insert(*commitment, state_path.global_state_root());
+
+                    // TODO (raychu86): Add support for adding an`Origin::Commitment` for local roots.
+                    record_origins.insert(*commitment, Origin::StateRoot(state_path.global_state_root()));
                 }
                 Ok::<_, Error>(())
             })?;
@@ -478,7 +481,7 @@ impl<N: Network> Stack<N> {
                 &output_types,
                 output_registers,
                 proof,
-                &state_roots,
+                &record_origins,
                 *fee,
             )?;
 

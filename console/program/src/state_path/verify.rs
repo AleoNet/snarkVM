@@ -176,4 +176,38 @@ mod tests {
             state_path.verify(true, Field::rand(rng)).unwrap_err();
         }
     }
+
+    #[test]
+    fn test_verify_new_local() {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the state path.
+            let state_path =
+                crate::state_path::test_helpers::sample_local_state_path::<CurrentNetwork>(None, rng).unwrap();
+
+            // Initialize the state path using `new_local`.
+            let new_local_state_path = StatePath::new_local(
+                state_path.global_state_root(),
+                *state_path.transaction_id(),
+                state_path.transaction_path().clone(),
+                state_path.transaction_leaf().clone(),
+                state_path.transition_path().clone(),
+                state_path.transition_leaf().clone(),
+            )
+            .unwrap();
+
+            // Retrieve the local state root.
+            let local_state_root = **new_local_state_path.transaction_id();
+
+            // Ensure the state path is valid.
+            new_local_state_path.verify(false, local_state_root).unwrap();
+            // Ensure the state path does *not* match a random local state root.
+            new_local_state_path.verify(false, Field::rand(rng)).unwrap_err();
+            // Ensure the state path does *not* match to the random global state root.
+            new_local_state_path.verify(true, local_state_root).unwrap_err();
+            // Ensure the state path does *not* match to the random global state root.
+            new_local_state_path.verify(true, Field::rand(rng)).unwrap_err();
+        }
+    }
 }

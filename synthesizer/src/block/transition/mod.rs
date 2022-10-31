@@ -105,7 +105,7 @@ impl<N: Network> Transition<N> {
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
         proof: TransitionProof<N>,
-        state_roots: &IndexMap<Field<N>, N::StateRoot>,
+        record_origins: &IndexMap<Field<N>, Origin<N>>,
         fee: i64,
     ) -> Result<Self> {
         let network_id = *request.network_id();
@@ -157,12 +157,12 @@ impl<N: Network> Transition<N> {
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
                     (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
-                        // Fetch the state root for the corresponding record.
-                        let state_root = state_roots.get(commitment).ok_or_else(|| {
-                            anyhow!("The state root for the record input is missing: '{:?}'", commitment)
-                        })?;
+                        // Fetch the origin for the corresponding record.
+                        let origin = record_origins
+                            .get(commitment)
+                            .ok_or_else(|| anyhow!("The origin for the record input is missing: '{:?}'", commitment))?;
 
-                        Ok(Input::Record(*serial_number, *tag, Origin::StateRoot(*state_root)))
+                        Ok(Input::Record(*serial_number, *tag, *origin))
                     }
                     (InputID::ExternalRecord(input_hash), Value::Record(..)) => Ok(Input::ExternalRecord(*input_hash)),
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),

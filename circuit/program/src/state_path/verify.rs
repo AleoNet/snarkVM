@@ -169,7 +169,7 @@ mod tests {
     fn check_verify_local(
         mode: Mode,
         is_global: bool,
-        invalid_root: bool,
+        is_valid_local_root: bool,
         num_constants: u64,
         num_public: u64,
         num_private: u64,
@@ -188,15 +188,17 @@ mod tests {
             console_state_path.verify(false, local_state_root).unwrap();
 
             Circuit::scope(
-                format!("Verify local state path {mode} (is_global: {is_global}, invalid_root: {invalid_root})"),
+                format!(
+                    "Verify local state path {mode} (is_global: {is_global}, is_valid_local_root: {is_valid_local_root})"
+                ),
                 || {
                     // Inject the is_global boolean.
                     let circuit_is_global = Boolean::new(mode, is_global);
                     // Inject the local state root.
-                    let circuit_local_state_root = if invalid_root {
-                        Field::new(mode, console::Field::rand(rng))
-                    } else {
+                    let circuit_local_state_root = if is_valid_local_root {
                         Field::new(mode, local_state_root)
+                    } else {
+                        Field::new(mode, console::Field::rand(rng))
                     };
 
                     // Inject the state path.
@@ -204,8 +206,8 @@ mod tests {
 
                     // Ensure the state path is valid.
                     let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
-                    match (is_global, invalid_root) {
-                        (false, false) => assert!(is_valid.eject_value()),
+                    match (is_global, is_valid_local_root) {
+                        (false, true) => assert!(is_valid.eject_value()),
                         _ => assert!(!is_valid.eject_value()),
                     }
 
@@ -242,25 +244,25 @@ mod tests {
 
     #[test]
     fn test_state_path_verify_local_constant() -> Result<()> {
-        check_verify_local(Mode::Constant, false, false, 102293, 1, 2, 3)?;
         check_verify_local(Mode::Constant, false, true, 102293, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, true, false, 102293, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, true, true, 102293, 1, 2, 3)
+        check_verify_local(Mode::Constant, false, false, 102293, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, true, 102293, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, false, 102293, 1, 2, 3)
     }
 
     #[test]
     fn test_state_path_verify_local_public() -> Result<()> {
-        check_verify_local(Mode::Public, false, false, 27353, 453, 87468, 88616)?;
         check_verify_local(Mode::Public, false, true, 27353, 453, 87468, 88616)?;
-        check_verify_local(Mode::Public, true, false, 27353, 453, 87468, 88616)?;
-        check_verify_local(Mode::Public, true, true, 27353, 453, 87468, 88616)
+        check_verify_local(Mode::Public, false, false, 27353, 453, 87468, 88616)?;
+        check_verify_local(Mode::Public, true, true, 27353, 453, 87468, 88616)?;
+        check_verify_local(Mode::Public, true, false, 27353, 453, 87468, 88616)
     }
 
     #[test]
     fn test_state_path_verify_local_private() -> Result<()> {
-        check_verify_local(Mode::Private, false, false, 27353, 1, 87920, 88616)?;
         check_verify_local(Mode::Private, false, true, 27353, 1, 87920, 88616)?;
-        check_verify_local(Mode::Private, true, false, 27353, 1, 87920, 88616)?;
-        check_verify_local(Mode::Private, true, true, 27353, 1, 87920, 88616)
+        check_verify_local(Mode::Private, false, false, 27353, 1, 87920, 88616)?;
+        check_verify_local(Mode::Private, true, true, 27353, 1, 87920, 88616)?;
+        check_verify_local(Mode::Private, true, false, 27353, 1, 87920, 88616)
     }
 }

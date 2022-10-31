@@ -24,7 +24,7 @@ mod evaluate;
 mod execute;
 
 use crate::{
-    block::{AdditionalFee, Input, TransitionProof},
+    block::{AdditionalFee, Input, Origin, TransitionProof},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
@@ -46,7 +46,7 @@ use console::{
     types::{I64, U16, U64},
 };
 
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 #[cfg(test)]
 use std::collections::HashMap;
