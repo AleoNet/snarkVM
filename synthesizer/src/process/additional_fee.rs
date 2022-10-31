@@ -92,15 +92,13 @@ impl<N: Network> Process<N> {
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
-            &[
-                U16::<N>::new(N::ID).to_bits_le(),
-                additional_fee.program_id().name().to_bits_le(),
-                additional_fee.program_id().network().to_bits_le(),
-                additional_fee.function_name().to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
+            &(
+                U16::<N>::new(N::ID),
+                additional_fee.program_id().name(),
+                additional_fee.program_id().network(),
+                additional_fee.function_name(),
+            )
+                .to_bits_le(),
         )?;
 
         // Ensure each input is valid.
