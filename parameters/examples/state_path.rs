@@ -19,7 +19,7 @@ use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
-    prelude::{One, ToBits},
+    prelude::{One, ToBits, Zero},
     program::{BlockTree, Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
     types::Field,
 };
@@ -113,18 +113,15 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Compute the serial number.
     let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, *commitment)?;
 
-    // Construct a blank local state root.
-    let local_state_root = Field::one();
-
     // Construct the assignment for the state path verification.
     let assignment = inject_and_verify_state_path::<N, A>(
         state_path.clone(),
         *commitment,
         gamma,
         serial_number,
-        local_state_root,
+        Field::zero(),
         true,
-    );
+    )?;
 
     Ok((assignment, state_path, serial_number))
 }
@@ -145,7 +142,7 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         &state_path_function_name,
-        &[N::Field::one(), **state_path.global_state_root(), *serial_number],
+        &[N::Field::one(), **state_path.global_state_root(), *Field::<N>::zero(), *serial_number],
         &proof
     ));
 

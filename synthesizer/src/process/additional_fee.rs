@@ -173,7 +173,12 @@ impl<N: Network> Process<N> {
                 for input in additional_fee.inputs() {
                     if let Input::Record(serial_number, _, origin) = input {
                         if let Origin::StateRoot(state_root) = origin {
-                            state_path_inputs.push(vec![N::Field::one(), ***state_root, **serial_number]);
+                            state_path_inputs.push(vec![
+                                N::Field::one(),
+                                ***state_root,
+                                N::Field::zero(),
+                                **serial_number,
+                            ]);
                         }
                     }
                 }

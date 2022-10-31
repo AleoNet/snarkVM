@@ -118,11 +118,3 @@ impl<N: Network> Execution<N> {
         self.transitions.values().flat_map(Transition::commitments)
     }
 }
-
-impl<N: Network> Deref for Execution<N> {
-    type Target = IndexMap<N::TransitionID, Transition<N>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.transitions
-    }
-}
