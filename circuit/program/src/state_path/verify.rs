@@ -113,10 +113,8 @@ impl<A: Aleo> StatePath<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_circuit_environment::assert_scope;
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
-    type CurrentAleo = Circuit;
     type CurrentNetwork = <Circuit as Environment>::Network;
 
     const ITERATIONS: usize = 20;

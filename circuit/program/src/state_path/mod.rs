@@ -19,6 +19,9 @@ pub use helpers::*;
 
 mod verify;
 
+#[cfg(test)]
+use snarkvm_circuit_types::environment::assert_scope;
+
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
@@ -146,7 +149,6 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    use snarkvm_circuit_environment::assert_scope;
     use snarkvm_utilities::TestRng;
 
     use anyhow::Result;
