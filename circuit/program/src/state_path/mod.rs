@@ -140,3 +140,57 @@ impl<A: Aleo> Eject for StatePath<A> {
         )
     }
 }
+
+#[cfg(all(test, console))]
+mod tests {
+    use super::*;
+    use crate::Circuit;
+
+    use snarkvm_circuit_environment::assert_scope;
+    use snarkvm_utilities::TestRng;
+
+    use anyhow::Result;
+
+    type CurrentNetwork = <Circuit as Environment>::Network;
+
+    const ITERATIONS: u64 = 250;
+
+    fn check_new(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample the console state path.
+            let console_state_path =
+                console::state_path::test_helpers::sample_local_state_path::<CurrentNetwork>(None, rng).unwrap();
+
+            Circuit::scope(format!("New {mode}"), || {
+                let candidate = StatePath::<Circuit>::new(mode, console_state_path.clone());
+                assert_eq!(console_state_path, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_state_path_new_constant() -> Result<()> {
+        check_new(Mode::Constant, 450, 1, 0, 0)
+    }
+
+    #[test]
+    fn test_state_path_new_public() -> Result<()> {
+        check_new(Mode::Public, 0, 451, 0, 384)
+    }
+
+    #[test]
+    fn test_state_path_new_private() -> Result<()> {
+        check_new(Mode::Private, 0, 1, 450, 384)
+    }
+}

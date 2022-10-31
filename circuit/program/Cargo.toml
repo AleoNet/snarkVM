@@ -20,6 +20,10 @@ version = "0.9.0"
 path = "../collections"
 version = "0.9.0"
 
+[dependencies.snarkvm-circuit-environment]
+path = "../environment"
+version = "0.9.0"
+
 [dependencies.snarkvm-circuit-network]
 path = "../network"
 version = "0.9.0"

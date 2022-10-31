@@ -2077,6 +2077,7 @@ dependencies = [
  "rand",
  "snarkvm-circuit-account",
  "snarkvm-circuit-collections",
+ "snarkvm-circuit-environment",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
  "snarkvm-console-account",
