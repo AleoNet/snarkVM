@@ -23,6 +23,9 @@ pub use path::*;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod remove;
+
 use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
