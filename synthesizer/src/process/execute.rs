@@ -73,6 +73,9 @@ impl<N: Network> Process<N> {
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();
 
+        // The output record commitments of the transitions.
+        let mut transition_record_commitments = IndexSet::new();
+
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
             #[cfg(debug_assertions)]
@@ -226,6 +229,14 @@ impl<N: Network> Process<N> {
                     let mut state_path_verifier_inputs = vec![];
                     for input in transition.inputs() {
                         if let Input::Record(serial_number, _, origin) = input {
+                            // Check that the origin is valid.
+                            if let Origin::Commitment(commitment) = origin {
+                                ensure!(
+                                    transition_record_commitments.contains(commitment),
+                                    "The commitment origin does not exist locally in the transitions."
+                                );
+                            }
+
                             state_path_verifier_inputs.push(origin.verifier_inputs(serial_number));
                         }
                     }
@@ -245,6 +256,9 @@ impl<N: Network> Process<N> {
                     );
                 }
             }
+
+            // Add the output commitments to the set of transition record commitments.
+            transition_record_commitments.extend(transition.commitments().copied());
         }
         Ok(())
     }
