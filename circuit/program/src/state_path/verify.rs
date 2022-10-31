@@ -139,8 +139,6 @@ mod tests {
             // Ensure the console state path is valid.
             console_state_path.verify(true, local_state_root).unwrap();
 
-            Circuit::reset();
-
             Circuit::scope(format!("Verify global state path {mode} (is_global: {is_global})"), || {
                 // Inject the is_global boolean.
                 let circuit_is_global = Boolean::new(mode, is_global);
@@ -208,9 +206,7 @@ mod tests {
                     let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
                     match (is_global, invalid_root) {
                         (false, false) => assert!(is_valid.eject_value()),
-                        (false, true) => assert!(!is_valid.eject_value()),
-                        (true, false) => assert!(!is_valid.eject_value()),
-                        (true, true) => assert!(!is_valid.eject_value()),
+                        _ => assert!(!is_valid.eject_value()),
                     }
 
                     assert!(Circuit::is_satisfied());
