@@ -23,7 +23,8 @@ impl<N: Network> Serialize for Execution<N> {
             true => {
                 let mut execution = serializer.serialize_struct("Execution", 2)?;
                 execution.serialize_field("edition", &self.edition)?;
-                execution.serialize_field("transitions", &self.transitions)?;
+                execution
+                    .serialize_field("transitions", &self.transitions.values().collect::<Vec<&Transition<N>>>())?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -44,7 +45,7 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                 let transitions: Vec<_> =
                     serde_json::from_value(execution["transitions"].take()).map_err(de::Error::custom)?;
                 // Recover the execution.
-                Self::from(edition, &transitions).map_err(de::Error::custom)
+                Self::from(edition, transitions).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }

@@ -108,9 +108,9 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the edition.
         let edition = execution.edition();
         // Retrieve the transitions.
-        let transitions: Vec<_> = execution.clone().into_transitions().collect();
+        let transitions = execution.transitions();
         // Retrieve the transition IDs.
-        let transition_ids = transitions.iter().map(Transition::id).copied().collect();
+        let transition_ids = execution.transitions().map(Transition::id).copied().collect();
         // Retrieve the optional additional fee ID.
         let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
 
@@ -133,7 +133,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 // Store the additional fee ID.
                 self.reverse_id_map().insert(*additional_fee.id(), *transaction_id)?;
                 // Store the additional fee transition.
-                self.transition_store().insert(additional_fee.clone())?;
+                self.transition_store().insert(additional_fee)?;
             }
 
             Ok(())
@@ -212,7 +212,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Return the execution.
-        Ok(Some(Execution::from(edition, &transitions)?))
+        Ok(Some(Execution::from(edition, transitions)?))
     }
 
     /// Returns the transaction for the given `transaction ID`.
@@ -241,7 +241,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Construct the execution.
-        let execution = Execution::from(edition, &transitions)?;
+        let execution = Execution::from(edition, transitions)?;
 
         // Construct the transaction.
         let transaction = match optional_additional_fee_id {
@@ -481,7 +481,7 @@ mod tests {
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {
-                execution.clone().into_transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
+                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
             }
             _ => panic!("Incorrect transaction type"),
         };

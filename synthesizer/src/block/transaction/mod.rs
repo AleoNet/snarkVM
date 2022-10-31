@@ -152,6 +152,23 @@ impl<N: Network> Transaction<N> {
     }
 }
 
+/// A helper enum for iterators and consuming iterators over a transaction.
+enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
+    Deploy(I1),
+    Execute(I2),
+}
+
+impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Deploy(iter) => iter.next(),
+            Self::Execute(iter) => iter.next(),
+        }
+    }
+}
+
 impl<N: Network> Transaction<N> {
     /// Returns the transaction ID.
     pub const fn id(&self) -> N::TransactionID {
@@ -164,9 +181,9 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
-            Self::Deploy(_, _, additional_fee) => [].iter().chain([Some(additional_fee)].into_iter().flatten()),
+            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
             Self::Execute(_, execution, additional_fee) => {
-                execution.iter().chain([additional_fee.as_ref()].into_iter().flatten())
+                IterWrap::Execute(execution.transitions().chain(additional_fee))
             }
         }
     }
@@ -234,22 +251,6 @@ impl<N: Network> Transaction<N> {
 impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
-        enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
-            Deploy(I1),
-            Execute(I2),
-        }
-
-        impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
-            type Item = T;
-
-            fn next(&mut self) -> Option<Self::Item> {
-                match self {
-                    Self::Deploy(iter) => iter.next(),
-                    Self::Execute(iter) => iter.next(),
-                }
-            }
-        }
-
         match self {
             Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
             Self::Execute(_, execution, additional_fee) => {

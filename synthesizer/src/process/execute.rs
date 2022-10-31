@@ -150,7 +150,7 @@ impl<N: Network> Process<N> {
             if num_function_calls > 0 {
                 // This loop takes the last `num_function_call` transitions, and reverses them
                 // to order them in the order they were defined in the function.
-                for transition in (*queue).iter().rev().take(num_function_calls).rev() {
+                for transition in queue.transitions().rev().take(num_function_calls).rev() {
                     // [Inputs] Extend the verifier inputs with the input IDs of the external call.
                     inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
                     // [Inputs] Extend the verifier inputs with the output IDs of the external call.
@@ -286,8 +286,7 @@ impl<N: Network> Process<N> {
         // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
         //  Currently this loop assumes a linearly execution stack.
         // Finalize each transition, starting from the last one.
-        #[allow(clippy::into_iter_on_ref)]
-        for transition in execution.into_iter().rev() {
+        for transition in execution.transitions().rev() {
             #[cfg(debug_assertions)]
             println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
 

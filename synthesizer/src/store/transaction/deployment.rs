@@ -183,7 +183,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             // Store the additional fee ID.
             self.additional_fee_map().insert(*transaction_id, *additional_fee.id())?;
             // Store the additional fee transition.
-            self.transition_store().insert(additional_fee.clone())?;
+            self.transition_store().insert(additional_fee)?;
 
             Ok(())
         });

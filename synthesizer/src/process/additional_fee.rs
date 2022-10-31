@@ -65,7 +65,7 @@ impl<N: Network> Process<N> {
         // Ensure the execution contains 1 transition.
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
 
-        Ok((response, execution.peek()?))
+        Ok((response, execution.peek()?.clone()))
     }
 
     /// Verifies the given additional fee is valid.

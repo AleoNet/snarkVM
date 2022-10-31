@@ -67,6 +67,50 @@ pub struct StatePath<N: Network> {
 
 impl<N: Network> StatePath<N> {
     /// Initializes a new instance of `StatePath`.
+    pub fn new_local(
+        global_state_root: N::StateRoot,
+        local_state_root: N::TransactionID,
+        transaction_path: TransactionPath<N>,
+        transaction_leaf: TransactionLeaf<N>,
+        transition_path: TransitionPath<N>,
+        transition_leaf: TransitionLeaf<N>,
+    ) -> Result<Self> {
+        // Compute an arbitrary transactions path.
+        let transactions_tree: TransactionsTree<N> = N::merkle_tree_bhp(&[local_state_root.to_bits_le()])?;
+        let transactions_path = transactions_tree.prove(0, &local_state_root.to_bits_le())?;
+        let transactions_root = transactions_tree.root();
+
+        // Compute an arbitrary block header path.
+        let header_leaf = HeaderLeaf::<N>::new(0, *transactions_root);
+        let header_tree: HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf.to_bits_le()])?;
+        let header_path = header_tree.prove(0, &header_leaf.to_bits_le())?;
+        let header_root = *header_tree.root();
+
+        // Compute an arbitrary block path.
+        let previous_block_hash: N::BlockHash = Field::<N>::zero().into();
+        let block_hash: N::BlockHash = previous_block_hash;
+        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash.to_bits_le()])?;
+        let block_path = block_tree.prove(0, &block_hash.to_bits_le())?;
+
+        // Return the state path.
+        Ok(Self {
+            global_state_root,
+            block_path,
+            block_hash,
+            previous_block_hash,
+            header_root,
+            header_path,
+            header_leaf,
+            transactions_path,
+            transaction_id: local_state_root,
+            transaction_path,
+            transaction_leaf,
+            transition_path,
+            transition_leaf,
+        })
+    }
+
+    /// Initializes a new instance of `StatePath`.
     #[allow(clippy::too_many_arguments)]
     pub fn from(
         global_state_root: N::StateRoot,

@@ -38,7 +38,7 @@ impl<N: Network> FromBytes for Execution<N> {
         let transitions =
             (0..num_transitions).map(|_| Transition::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
         // Return the new `Execution` instance.
-        Self::from(edition, &transitions).map_err(|e| error(e.to_string()))
+        Self::from(edition, transitions).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -52,7 +52,10 @@ impl<N: Network> ToBytes for Execution<N> {
         // Write the number of transitions.
         (self.transitions.len() as u16).write_le(&mut writer)?;
         // Write the transitions.
-        self.transitions.write_le(&mut writer)
+        for transition in self.transitions.values() {
+            transition.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 

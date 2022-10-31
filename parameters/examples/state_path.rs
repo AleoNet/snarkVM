@@ -113,8 +113,18 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Compute the serial number.
     let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, *commitment)?;
 
+    // Construct a blank local state root.
+    let local_state_root = Field::one();
+
     // Construct the assignment for the state path verification.
-    let assignment = inject_and_verify_state_path::<N, A>(state_path.clone(), *commitment, gamma, serial_number);
+    let assignment = inject_and_verify_state_path::<N, A>(
+        state_path.clone(),
+        *commitment,
+        gamma,
+        serial_number,
+        local_state_root,
+        true,
+    );
 
     Ok((assignment, state_path, serial_number))
 }

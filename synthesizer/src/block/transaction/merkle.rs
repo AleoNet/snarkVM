@@ -61,7 +61,7 @@ impl<N: Network> Transaction<N> {
                 }
 
                 // Iterate through the transitions in the execution.
-                for (index, transition) in execution.iter().enumerate() {
+                for (index, transition) in execution.transitions().enumerate() {
                     // Check if the transition ID matches the given ID.
                     if *id == **transition.id() {
                         // Return the transaction leaf.
@@ -127,7 +127,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the Merkle tree for the given execution.
-    pub(super) fn execution_tree(
+    pub fn execution_tree(
         execution: &Execution<N>,
         additional_fee: &Option<AdditionalFee<N>>,
     ) -> Result<TransactionTree<N>> {
@@ -136,7 +136,7 @@ impl<N: Network> Transaction<N> {
         // Set the variant.
         let variant = 1u8;
         // Prepare the leaves.
-        let leaves = execution.iter().enumerate().map(|(index, transition)| {
+        let leaves = execution.transitions().enumerate().map(|(index, transition)| {
             // Construct the leaf as (variant || index || transition ID).
             TransactionLeaf::new(variant, index as u16, **transition.id()).to_bits_le()
         });

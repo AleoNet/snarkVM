@@ -58,7 +58,7 @@ impl<N: Network> ProvingKey<N> {
     /// Returns a proof for the given batch of assignments on the circuit.
     pub fn prove_batch<R: Rng + CryptoRng>(
         &self,
-        function_name: &Identifier<N>,
+        function_name: &str,
         assignments: &[circuit::Assignment<N::Field>],
         rng: &mut R,
     ) -> Result<Proof<N>> {

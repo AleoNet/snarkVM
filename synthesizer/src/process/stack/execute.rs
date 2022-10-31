@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::Transaction;
 
 impl<N: Network> Stack<N> {
     /// Executes a program closure on the given inputs.
@@ -429,46 +430,58 @@ impl<N: Network> Stack<N> {
                 Err(error) => bail!("Execution proof failed - {error}"),
             };
 
-            let mut state_path_assignments = vec![];
+            // Compute the local tree.
+            let local_tree = Transaction::execution_tree(&execution.read(), &None)?;
+            // Retrieve the local state root.
+            let local_state_root = *local_tree.root();
+
+            let mut state_path_assignments = Vec::with_capacity(console_request.input_ids().len());
             let mut state_roots = IndexMap::new();
 
-            // Inject the state paths.
-            for input_id in console_request.input_ids() {
-                match input_id {
-                    InputID::Record(commitment, gamma, serial_number, ..) => {
-                        // Fetch the state path.
-                        let console_state_path = state_paths
+            // Construct the state path assignments.
+            console_request.input_ids().iter().try_for_each(|input_id| {
+                // Filter the inputs for records.
+                if let InputID::Record(commitment, gamma, serial_number, ..) = input_id {
+                    // Determine if the input is a local record.
+                    let is_local = execution.read().commitments().contains(commitment);
+
+                    // Construct the state path.
+                    let state_path = match is_local {
+                        true => {
+                            // local_tree.prove()
+                            // StatePath::new_local()
+                            unimplemented!()
+                        }
+                        false => state_paths
                             .get(commitment)
-                            .ok_or_else(|| anyhow!("Missing state path for commitment: {commitment}"))?;
+                            .ok_or_else(|| anyhow!("Missing state path for commitment {commitment}"))?,
+                    };
 
-                        // Construct the assignment for the state path.
-                        let assignment = crate::inject_and_verify_state_path::<N, A>(
-                            console_state_path.clone(),
-                            *commitment,
-                            *gamma,
-                            *serial_number,
-                        );
+                    // Construct the assignment for the state path.
+                    let assignment = crate::inject_and_verify_state_path::<N, A>(
+                        state_path.clone(),
+                        *commitment,
+                        *gamma,
+                        *serial_number,
+                        local_state_root,
+                        !is_local,
+                    );
 
-                        state_path_assignments.push(assignment);
-                        state_roots.insert(*commitment, console_state_path.global_state_root());
-                    }
-                    _ => continue,
+                    state_path_assignments.push(assignment);
+                    state_roots.insert(*commitment, state_path.global_state_root());
                 }
-            }
+                Ok::<_, Error>(())
+            })?;
 
             let proof = match state_path_assignments.is_empty() {
                 true => TransitionProof::new_birth(execution_proof),
                 false => {
                     // Load the state path proving key.
-                    let state_path_proving_key: ProvingKey<N> =
-                        ProvingKey::from_bytes_le(N::state_path_proving_key_bytes())?;
-
-                    let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
-
+                    let state_path_proving_key = ProvingKey::from_bytes_le(N::state_path_proving_key_bytes())?;
                     // Generate the state path batch proof.
                     let state_path_proof =
-                        state_path_proving_key.prove_batch(&state_path_function_name, &state_path_assignments, rng)?;
-
+                        state_path_proving_key.prove_batch(STATE_PATH_FUNCTION_NAME, &state_path_assignments, rng)?;
+                    // Construct the transition proof.
                     TransitionProof::new_birth_and_death(execution_proof, state_path_proof)
                 }
             };

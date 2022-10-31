@@ -514,7 +514,7 @@ mod tests {
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {
-                execution.clone().into_transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
+                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
             }
             _ => panic!("Incorrect transaction type"),
         };
