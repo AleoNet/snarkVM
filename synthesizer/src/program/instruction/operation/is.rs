@@ -80,10 +80,9 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
-        // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
         // Retrieve the inputs.
-        let (input_a, input_b) = (inputs[0].clone(), inputs[1].clone());
+        let input_a = registers.load(stack, &self.operands[0])?;
+        let input_b = registers.load(stack, &self.operands[1])?;
 
         // Check the inputs.
         let output = match VARIANT {
@@ -107,11 +106,9 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
-        // Load the operands values.
-        let inputs: Vec<_> =
-            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
         // Retrieve the inputs.
-        let (input_a, input_b) = (inputs[0].clone(), inputs[1].clone());
+        let input_a = registers.load_circuit(stack, &self.operands[0])?;
+        let input_b = registers.load_circuit(stack, &self.operands[1])?;
 
         // Check the inputs.
         let output = match VARIANT {
