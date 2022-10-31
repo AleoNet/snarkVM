@@ -113,6 +113,7 @@ impl<A: Aleo> StatePath<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use snarkvm_circuit_environment::assert_scope;
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
     type CurrentAleo = Circuit;
@@ -120,11 +121,17 @@ mod tests {
 
     const ITERATIONS: usize = 20;
 
-    #[test]
-    fn test_verify_global() {
+    fn check_verify_global(
+        mode: Mode,
+        is_global: bool,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
         let rng = &mut TestRng::default();
 
-        for _ in 0..ITERATIONS {
+        for i in 0..ITERATIONS {
             // Sample the console state path.
             let console_state_path =
                 console::state_path::test_helpers::sample_global_state_path::<CurrentNetwork>(None, rng).unwrap();
@@ -134,37 +141,47 @@ mod tests {
             // Ensure the console state path is valid.
             console_state_path.verify(true, local_state_root).unwrap();
 
-            for mode in [Mode::Constant, Mode::Public, Mode::Private].into_iter() {
+            Circuit::reset();
+
+            Circuit::scope(format!("Verify global state path {mode} (is_global: {is_global})"), || {
                 // Inject the is_global boolean.
-                let circuit_is_global = Boolean::new(mode, true);
+                let circuit_is_global = Boolean::new(mode, is_global);
                 // Inject the local state root.
                 let circuit_local_state_root = Field::new(mode, local_state_root);
                 // Inject the state path.
-                let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path.clone());
+                let circuit_state_path = StatePath::<Circuit>::new(mode, console_state_path.clone());
 
                 // Ensure the state path is valid.
                 let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
-                assert!(is_valid.eject_value());
-                assert!(CurrentAleo::is_satisfied());
-                CurrentAleo::reset();
+                match is_global {
+                    true => assert!(is_valid.eject_value()),
+                    false => assert!(!is_valid.eject_value()),
+                }
 
-                // Inject the is_global boolean.
-                let circuit_is_global = Boolean::new(mode, false);
+                assert!(Circuit::is_satisfied());
+                // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
+                if i > 0 {
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                }
+            });
 
-                // Ensure the state path is *not* valid for a random local state root.
-                let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
-                assert!(!is_valid.eject_value());
-                assert!(CurrentAleo::is_satisfied());
-                CurrentAleo::reset();
-            }
+            Circuit::reset();
         }
+        Ok(())
     }
 
-    #[test]
-    fn test_verify_local() {
+    fn check_verify_local(
+        mode: Mode,
+        is_global: bool,
+        invalid_root: bool,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
         let rng = &mut TestRng::default();
 
-        for _ in 0..ITERATIONS {
+        for i in 0..ITERATIONS {
             // Sample the console state path.
             let console_state_path =
                 console::state_path::test_helpers::sample_local_state_path::<CurrentNetwork>(None, rng).unwrap();
@@ -174,42 +191,82 @@ mod tests {
             // Ensure the console state path is valid.
             console_state_path.verify(false, local_state_root).unwrap();
 
-            for mode in [Mode::Constant, Mode::Public, Mode::Private].into_iter() {
-                // Inject the is_global boolean.
-                let circuit_is_global = Boolean::new(mode, false);
-                // Inject the local state root.
-                let circuit_local_state_root = Field::new(mode, local_state_root);
-                // Inject the state path.
-                let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path.clone());
+            Circuit::scope(
+                format!("Verify local state path {mode} (is_global: {is_global}, invalid_root: {invalid_root})"),
+                || {
+                    // Inject the is_global boolean.
+                    let circuit_is_global = Boolean::new(mode, is_global);
+                    // Inject the local state root.
+                    let circuit_local_state_root = if invalid_root {
+                        Field::new(mode, console::Field::rand(rng))
+                    } else {
+                        Field::new(mode, local_state_root)
+                    };
 
-                // Ensure the state path is valid.
-                let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
-                assert!(is_valid.eject_value());
-                assert!(CurrentAleo::is_satisfied());
-                CurrentAleo::reset();
+                    // Inject the state path.
+                    let circuit_state_path = StatePath::<Circuit>::new(mode, console_state_path.clone());
 
-                // Inject the is_global boolean.
-                let circuit_is_global = Boolean::new(mode, false);
-                // Inject a random local state root.
-                let circuit_local_state_root = Field::new(mode, console::Field::rand(rng));
+                    // Ensure the state path is valid.
+                    let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
+                    match (is_global, invalid_root) {
+                        (false, false) => assert!(is_valid.eject_value()),
+                        (false, true) => assert!(!is_valid.eject_value()),
+                        (true, false) => assert!(!is_valid.eject_value()),
+                        (true, true) => assert!(!is_valid.eject_value()),
+                    }
 
-                // Ensure the state path does *not* match a random local state root.
-                let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
-                assert!(!is_valid.eject_value());
-                assert!(CurrentAleo::is_satisfied());
-                CurrentAleo::reset();
+                    assert!(Circuit::is_satisfied());
+                    // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
+                    if i > 0 {
+                        assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    }
+                },
+            );
 
-                // Inject the is_global boolean.
-                let circuit_is_global = Boolean::new(mode, true);
-                // Inject a random local state root.
-                let circuit_local_state_root = Field::new(mode, local_state_root);
-
-                // Ensure the state path does *not* match to the random global state root.
-                let is_valid = circuit_state_path.verify(&circuit_is_global, &circuit_local_state_root);
-                assert!(!is_valid.eject_value());
-                assert!(CurrentAleo::is_satisfied());
-                CurrentAleo::reset();
-            }
+            Circuit::reset();
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_state_path_verify_global_constant() -> Result<()> {
+        check_verify_global(Mode::Constant, true, 102293, 1, 2, 3)?;
+        check_verify_global(Mode::Constant, false, 102293, 1, 2, 3)
+    }
+
+    #[test]
+    fn test_state_path_verify_global_public() -> Result<()> {
+        check_verify_global(Mode::Public, true, 27353, 453, 87468, 88616)?;
+        check_verify_global(Mode::Public, false, 27353, 453, 87468, 88616)
+    }
+
+    #[test]
+    fn test_state_path_verify_global_private() -> Result<()> {
+        check_verify_global(Mode::Private, true, 27353, 1, 87920, 88616)?;
+        check_verify_global(Mode::Private, false, 27353, 1, 87920, 88616)
+    }
+
+    #[test]
+    fn test_state_path_verify_local_constant() -> Result<()> {
+        check_verify_local(Mode::Constant, false, false, 102293, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, false, true, 102293, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, false, 102293, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, true, 102293, 1, 2, 3)
+    }
+
+    #[test]
+    fn test_state_path_verify_local_public() -> Result<()> {
+        check_verify_local(Mode::Public, false, false, 27353, 453, 87468, 88616)?;
+        check_verify_local(Mode::Public, false, true, 27353, 453, 87468, 88616)?;
+        check_verify_local(Mode::Public, true, false, 27353, 453, 87468, 88616)?;
+        check_verify_local(Mode::Public, true, true, 27353, 453, 87468, 88616)
+    }
+
+    #[test]
+    fn test_state_path_verify_local_private() -> Result<()> {
+        check_verify_local(Mode::Private, false, false, 27353, 1, 87920, 88616)?;
+        check_verify_local(Mode::Private, false, true, 27353, 1, 87920, 88616)?;
+        check_verify_local(Mode::Private, true, false, 27353, 1, 87920, 88616)?;
+        check_verify_local(Mode::Private, true, true, 27353, 1, 87920, 88616)
     }
 }
