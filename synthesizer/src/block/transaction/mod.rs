@@ -135,6 +135,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
+    #[allow(clippy::too_many_arguments)]
     pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,

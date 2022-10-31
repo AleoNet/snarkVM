@@ -26,6 +26,18 @@ type Variant = u16;
 pub enum Origin<N: Network> {
     /// The origin is a commitment.
     Commitment(Field<N>),
-    /// The origin is a state root.
+    /// The origin is a global state root.
     StateRoot(N::StateRoot),
+}
+
+impl<N: Network> Origin<N> {
+    /// Returns the verifier inputs for the state path proof.
+    pub fn verifier_inputs(&self, serial_number: &Field<N>) -> Vec<N::Field> {
+        match self {
+            Self::Commitment(_) => vec![],
+            Self::StateRoot(global_state_root) => {
+                vec![N::Field::one(), ***global_state_root, N::Field::zero(), **serial_number]
+            }
+        }
+    }
 }

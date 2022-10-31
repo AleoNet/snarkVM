@@ -29,6 +29,7 @@ use snarkvm_synthesizer::{
     Block,
     ConsensusMemory,
     ConsensusStore,
+    Origin,
     VM,
 };
 
@@ -142,7 +143,7 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         &state_path_function_name,
-        &[N::Field::one(), **state_path.global_state_root(), *Field::<N>::zero(), *serial_number],
+        &Origin::StateRoot(state_path.global_state_root()).verifier_inputs(&serial_number),
         &proof
     ));
 

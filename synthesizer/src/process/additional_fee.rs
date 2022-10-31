@@ -169,36 +169,25 @@ impl<N: Network> Process<N> {
                 );
 
                 // Retrieve the state path inputs for the additional fee.
-                let mut state_path_inputs = vec![];
+                let mut state_path_verifier_inputs = vec![];
                 for input in additional_fee.inputs() {
                     if let Input::Record(serial_number, _, origin) = input {
-                        if let Origin::StateRoot(state_root) = origin {
-                            state_path_inputs.push(vec![
-                                N::Field::one(),
-                                ***state_root,
-                                N::Field::zero(),
-                                **serial_number,
-                            ]);
-                        }
+                        state_path_verifier_inputs.push(origin.verifier_inputs(serial_number));
                     }
                 }
                 ensure!(
-                    state_path_inputs.len() == 1,
+                    state_path_verifier_inputs.len() == 1,
                     "The number of state path inputs for the additional fee is incorrect"
                 );
 
                 // TODO (howardwu): Cache this in the process.
                 // Load the state path verifying key.
-                let state_path_verifying_key: VerifyingKey<N> =
-                    VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
+                let state_path_verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
                 // Ensure the state path proof is valid.
-                let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
-
-                // Verify the state path proof.
                 ensure!(
                     state_path_verifying_key.verify_batch(
-                        &state_path_function_name,
-                        &state_path_inputs,
+                        STATE_PATH_FUNCTION_NAME,
+                        &state_path_verifier_inputs,
                         state_path_proof
                     ),
                     "Transition state path is invalid."

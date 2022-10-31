@@ -24,7 +24,7 @@ mod evaluate;
 mod execute;
 
 use crate::{
-    block::{AdditionalFee, Input, Origin, TransitionProof},
+    block::{AdditionalFee, Input, TransitionProof},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
