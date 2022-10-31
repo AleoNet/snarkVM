@@ -114,17 +114,8 @@ impl<N: Network> Transition<N> {
         let num_inputs = request.inputs().len();
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &[
-                network_id.to_bits_le(),
-                program_id.name().to_bits_le(),
-                program_id.network().to_bits_le(),
-                function_name.to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
-        )?;
+        let function_id =
+            N::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le())?;
 
         let inputs = request
             .input_ids()
