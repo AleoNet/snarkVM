@@ -175,7 +175,7 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
             }
             new_state.push(accumulator);
         }
-        state.clone_from_slice(&new_state[..state.len()]);
+        state.clone_from_slice(&new_state);
     }
 
     /// Apply the permutation for all rounds in-place.
