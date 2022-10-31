@@ -26,7 +26,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
         let mut preimage = Vec::with_capacity(RATE + input.len());
         preimage.push(self.domain.clone());
         preimage.push(Field::constant(console::Field::from_u128(input.len() as u128)));
-        preimage.extend(vec![Field::zero(); RATE - 2]); // Pad up to RATE.
+        preimage.resize(RATE, Field::zero()); // Pad up to RATE.
         preimage.extend_from_slice(input);
 
         // Initialize a new sponge.
