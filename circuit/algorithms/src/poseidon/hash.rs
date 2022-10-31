@@ -22,7 +22,7 @@ impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
 
     #[inline]
     fn hash(&self, input: &[Self::Input]) -> Self::Output {
-        self.hash_many(input, 1)[0].clone()
+        self.hash_many(input, 1).swap_remove(0)
     }
 }
 
