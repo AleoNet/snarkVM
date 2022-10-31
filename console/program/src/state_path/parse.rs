@@ -93,7 +93,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample the state path.
             let expected =
-                crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(true, None, &mut rng).unwrap();
+                crate::state_path::test_helpers::sample_global_state_path::<CurrentNetwork>(None, &mut rng).unwrap();
 
             let expected = format!("{expected}");
             let (remainder, candidate) = StatePath::<CurrentNetwork>::parse(&expected).unwrap();
@@ -110,7 +110,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample the state path.
             let expected =
-                crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(true, None, &mut rng).unwrap();
+                crate::state_path::test_helpers::sample_global_state_path::<CurrentNetwork>(None, &mut rng).unwrap();
 
             // Check the string representation.
             let candidate = format!("{expected}");
@@ -126,7 +126,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample the state path.
             let expected =
-                crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(true, None, &mut rng).unwrap();
+                crate::state_path::test_helpers::sample_global_state_path::<CurrentNetwork>(None, &mut rng).unwrap();
 
             let candidate = expected.to_string();
             assert_eq!(format!("{expected}"), candidate);

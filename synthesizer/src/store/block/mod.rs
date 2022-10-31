@@ -418,9 +418,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
         let header_path = block_header.to_path(&header_leaf)?;
 
-        StatePath::from(
+        Ok(StatePath::from(
             global_state_root.into(),
-            local_state_root,
             block_path,
             block.hash(),
             block.previous_hash(),
@@ -433,8 +432,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             transaction_leaf,
             transition_path,
             transition_leaf,
-            true,
-        )
+        ))
     }
 
     /// Returns the previous block hash of the given `block height`.

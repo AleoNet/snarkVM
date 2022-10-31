@@ -384,7 +384,7 @@ function compute:
                 // Generate the relevant state roots for each input record.
                 if let InputID::Record(commitment, ..) = input_id {
                     let state_path =
-                        console::program::state_path::test_helpers::sample_state_path(true, Some(*commitment), rng)
+                        console::program::state_path::test_helpers::sample_global_state_path(Some(*commitment), rng)
                             .unwrap();
                     authorization.insert_state_path(*commitment, state_path);
                 }

@@ -51,7 +51,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample the state path.
-            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(true, None, &mut rng)?;
+            let expected = crate::state_path::test_helpers::sample_global_state_path::<CurrentNetwork>(None, &mut rng)?;
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -71,7 +71,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample the state path.
-            let expected = crate::state_path::test_helpers::sample_state_path::<CurrentNetwork>(true, None, &mut rng)?;
+            let expected = crate::state_path::test_helpers::sample_global_state_path::<CurrentNetwork>(None, &mut rng)?;
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

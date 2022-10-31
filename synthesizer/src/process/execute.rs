@@ -228,8 +228,8 @@ impl<N: Network> Process<N> {
                     let mut state_path_inputs = vec![];
                     for input in transition.inputs() {
                         if let Input::Record(serial_number, _, origin) = input {
-                            if let Origin::StateRoot(state_root) = origin {
-                                state_path_inputs.push(vec![N::Field::one(), ***state_root, **serial_number]);
+                            if let Origin::StateRoot(global_state_root) = origin {
+                                state_path_inputs.push(vec![N::Field::one(), ***global_state_root, **serial_number]);
                             }
                         }
                     }

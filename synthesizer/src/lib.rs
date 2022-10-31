@@ -53,10 +53,12 @@ use console::{
 
 /// The circuit for state path verification.
 ///
+/// # Diagram
 /// The `[[ ]]` notation is used to denote public inputs.
 /// ```ignore
 ///             [[ global_state_root ]] || [[ local_state_root ]]
-///                                     /\
+///                        |                          |
+///                        -------- is_global --------
 ///                                     |
 ///                                state_path
 ///                                    |
@@ -67,6 +69,8 @@ pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
     console_commitment: Field<N>,
     console_gamma: Group<N>,
     console_serial_number: Field<N>,
+    console_local_state_root: Field<N>,
+    console_is_global: bool,
 ) -> circuit::Assignment<N::Field> {
     use circuit::Inject;
 
@@ -74,12 +78,17 @@ pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
     assert_eq!(A::count(), (0, 1, 0, 0, 0));
     A::reset();
 
-    // Inject the state path as `Mode::Private`.
+    // Inject the state path as `Mode::Private` (with a global state root as `Mode::Public`).
     let state_path = circuit::StatePath::<A>::new(circuit::Mode::Private, console_state_path);
     // Inject the commitment as `Mode::Private`.
     let commitment = circuit::Field::<A>::new(circuit::Mode::Private, console_commitment);
     // Inject the gamma as `Mode::Private`.
     let gamma = circuit::Group::<A>::new(circuit::Mode::Private, console_gamma);
+
+    // Inject the local state root as `Mode::Public`.
+    let local_state_root = circuit::Field::<A>::new(circuit::Mode::Public, console_local_state_root);
+    // Inject the 'is_global' flag as `Mode::Private`.
+    let is_global = circuit::Boolean::<A>::new(circuit::Mode::Private, console_is_global);
 
     // Inject the serial number as `Mode::Public`.
     let serial_number = circuit::Field::<A>::new(circuit::Mode::Public, console_serial_number);
@@ -92,7 +101,7 @@ pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
     // Enforce the starting leaf is the claimed commitment.
     A::assert_eq(state_path.transition_leaf().id(), commitment);
     // Enforce the state path from leaf to root is correct.
-    A::assert(state_path.verify());
+    A::assert(state_path.verify(&is_global, &local_state_root));
 
     #[cfg(debug_assertions)]
     Stack::log_circuit::<A, _>(&format!("State Path for {console_serial_number}"));
