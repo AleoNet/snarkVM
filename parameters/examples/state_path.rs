@@ -19,7 +19,7 @@ use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
-    prelude::{One, ToBits, Zero},
+    prelude::{ToBits, Zero},
     program::{BlockTree, Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
     types::Field,
 };
@@ -78,6 +78,7 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
 }
 
 /// Returns the assignment for verifying the state path.
+#[allow(clippy::type_complexity)]
 pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignment<N::Field>, StatePath<N>, Field<N>)> {
     // Initialize the consensus store.
     let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
