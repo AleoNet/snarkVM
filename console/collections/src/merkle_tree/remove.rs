@@ -100,13 +100,13 @@ fn test_merkle_tree_bhp_remove() -> Result<()> {
         }
 
         // Test removing merkle tree many leaves (spanning powers of two).
-        for i in 1..(u8::try_from(ITERATIONS)?) {
-            if i >= DEPTH {
+        for i in 1..ITERATIONS {
+            if i >= DEPTH as u128 {
                 continue;
             }
 
             // Determine the leaves and additional leaves.
-            let limit_depth = core::cmp::min(DEPTH, 16).saturating_sub(i);
+            let limit_depth = core::cmp::min(DEPTH, 16).saturating_sub(u8::try_from(i)?);
             let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), 2u128.pow(limit_depth as u32));
 
             let next_power_of_two = (0..i).fold(num_leaves, |acc, _| acc.next_power_of_two());
@@ -178,13 +178,13 @@ fn test_merkle_tree_poseidon_remove() -> Result<()> {
         }
 
         // Test removing merkle tree many leaves (spanning powers of two).
-        for i in 1..(u8::try_from(ITERATIONS)?) {
-            if i >= DEPTH {
+        for i in 1..ITERATIONS {
+            if i >= DEPTH as u128 {
                 continue;
             }
 
             // Determine the leaves and additional leaves.
-            let limit_depth = core::cmp::min(DEPTH, 16).saturating_sub(i);
+            let limit_depth = core::cmp::min(DEPTH, 16).saturating_sub(u8::try_from(i)?);
             let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), 2u128.pow(limit_depth as u32));
 
             let next_power_of_two = (0..i).fold(num_leaves, |acc, _| acc.next_power_of_two());
