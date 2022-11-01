@@ -682,6 +682,10 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         let mut tree = self.tree.write();
         // Prepare an updated Merkle tree containing the new block hash.
         let updated_tree = tree.prepare_append(&[block.hash().to_bits_le()])?;
+        // Ensure the next block height is correct.
+        if block.height() != u32::try_from(updated_tree.number_of_leaves())? - 1 {
+            bail!("Attempted to insert a block at the incorrect height into storage")
+        }
         // Insert the (state root, block height) pair.
         self.storage.insert(*updated_tree.root(), block)?;
         // Update the block tree.
