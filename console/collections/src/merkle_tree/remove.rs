@@ -42,7 +42,9 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     assert_eq!(leaves.len() + additional_leaves.len(), new_merkle_tree.number_of_leaves);
 
     // Remove the additional leaves from the new Merkle tree.
-    new_merkle_tree.remove_last_n(additional_leaves.len())?;
+    if !additional_leaves.is_empty() {
+        new_merkle_tree.remove_last_n(additional_leaves.len())?;
+    }
     assert_eq!(new_merkle_tree.number_of_leaves, merkle_tree.number_of_leaves);
 
     // Ensure that the new Merkle tree has the same root as the original Merkle tree.
@@ -96,6 +98,33 @@ fn test_merkle_tree_bhp_remove() -> Result<()> {
                 )?;
             }
         }
+
+        // Test removing merkle tree many leaves (spanning powers of two).
+        for i in 1..(u8::try_from(ITERATIONS)?) {
+            if i >= DEPTH {
+                continue;
+            }
+
+            // Determine the leaves and additional leaves.
+            let limit_depth = core::cmp::min(DEPTH, 16).saturating_sub(i);
+            let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), 2u128.pow(limit_depth as u32));
+
+            let next_power_of_two = (0..i).fold(num_leaves, |acc, _| acc.next_power_of_two());
+            let num_additional_leaves = core::cmp::min(2u128.pow(DEPTH as u32) - num_leaves, next_power_of_two);
+
+            // Check the Merkle tree.
+            check_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH>(
+                &leaf_hasher,
+                &path_hasher,
+                &(0..num_leaves)
+                    .map(|_| Field::<CurrentEnvironment>::rand(rng).to_bits_le())
+                    .collect::<Vec<Vec<bool>>>(),
+                &(0..num_additional_leaves)
+                    .map(|_| Field::<CurrentEnvironment>::rand(rng).to_bits_le())
+                    .collect::<Vec<Vec<bool>>>(),
+            )?;
+        }
+
         Ok(())
     }
 
@@ -147,6 +176,29 @@ fn test_merkle_tree_poseidon_remove() -> Result<()> {
                 )?;
             }
         }
+
+        // Test removing merkle tree many leaves (spanning powers of two).
+        for i in 1..(u8::try_from(ITERATIONS)?) {
+            if i >= DEPTH {
+                continue;
+            }
+
+            // Determine the leaves and additional leaves.
+            let limit_depth = core::cmp::min(DEPTH, 16).saturating_sub(i);
+            let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), 2u128.pow(limit_depth as u32));
+
+            let next_power_of_two = (0..i).fold(num_leaves, |acc, _| acc.next_power_of_two());
+            let num_additional_leaves = core::cmp::min(2u128.pow(DEPTH as u32) - num_leaves, next_power_of_two);
+
+            // Check the Merkle tree.
+            check_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH>(
+                &leaf_hasher,
+                &path_hasher,
+                &(0..num_leaves).map(|_| vec![Uniform::rand(rng)]).collect::<Vec<_>>(),
+                &(0..num_additional_leaves).map(|_| vec![Uniform::rand(rng)]).collect::<Vec<_>>(),
+            )?;
+        }
+
         Ok(())
     }
 

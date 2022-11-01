@@ -236,6 +236,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     #[inline]
     /// Returns a new Merkle tree with the last 'n' leaves removed from it.
     pub fn prepare_remove_last_n(&self, n: usize) -> Result<Self> {
+        ensure!(n > 0, "Cannot remove zero leaves from the Merkle tree");
+
         // Determine the updated number of leaves, after removing the last 'n' leaves.
         let updated_number_of_leaves = self.number_of_leaves.checked_sub(n).ok_or_else(|| {
             anyhow!("Failed to remove '{n}' leaves from the Merkle tree, as it only contains {}", self.number_of_leaves)
