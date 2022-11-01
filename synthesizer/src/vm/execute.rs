@@ -22,7 +22,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn execute<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
-        block_tree: Option<&BlockTree<N>>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
         // Fetch the block storage.
@@ -33,8 +32,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         for input_id in authorization.to_vec_deque().iter().flat_map(|request| request.input_ids()) {
             // Generate the relevant state roots for each input record.
             if let InputID::Record(commitment, ..) = input_id {
-                // TODO (howardwu): Introduce the block tree here.
-                let state_path = block_store.get_state_path_for_commitment(commitment, block_tree)?;
+                let state_path = block_store.get_state_path_for_commitment(commitment)?;
                 authorization.insert_state_path(*commitment, state_path);
             }
         }
@@ -66,7 +64,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
         additional_fee_in_gates: u64,
-        block_tree: Option<&BlockTree<N>>,
         rng: &mut R,
     ) -> Result<(Response<N>, AdditionalFee<N>)> {
         // Generate the state path for the given credits record.
@@ -81,15 +78,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             let input_types = self.process.read().get_program(&program_id)?.get_function(&function_name)?.input_types();
 
-            // TODO (howardwu): Introduce the block tree here.
             match input_types[0] {
-                ValueType::Record(record_name) => block_store.get_state_path_for_commitment(
-                    &credits.to_commitment(
+                ValueType::Record(record_name) => {
+                    block_store.get_state_path_for_commitment(&credits.to_commitment(
                         cast_ref!(program_id as ProgramID<N>),
                         cast_ref!(record_name as Identifier<N>),
-                    )?,
-                    block_tree,
-                )?,
+                    )?)?
+                }
                 _ => bail!("Invalid input type"),
             }
         };

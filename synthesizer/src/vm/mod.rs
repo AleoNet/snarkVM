@@ -36,7 +36,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{BlockTree, Identifier, InputID, Plaintext, ProgramID, Record, Response, StatePath, Value, ValueType},
+    program::{Identifier, InputID, Plaintext, ProgramID, Record, Response, StatePath, Value, ValueType},
 };
 
 use core::marker::PhantomData;
@@ -240,10 +240,7 @@ function compute:
                 let mut vm = sample_vm();
 
                 // Update the blocks.
-                let block_tree: BlockTree<CurrentNetwork> =
-                    CurrentNetwork::merkle_tree_bhp(&[genesis.hash().to_bits_le()]).unwrap();
-                let block_path = block_tree.prove(0, &genesis.hash().to_bits_le()).unwrap();
-                vm.block_store().insert(*block_tree.root(), block_path, &genesis.clone()).unwrap();
+                vm.block_store().insert(&genesis).unwrap();
 
                 // Update the VM.
                 for transaction in genesis.transactions().values() {
@@ -251,9 +248,7 @@ function compute:
                 }
 
                 // Deploy.
-                let transaction =
-                    Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, Some(&block_tree), rng)
-                        .unwrap();
+                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
@@ -289,10 +284,7 @@ function compute:
                 let mut vm = sample_vm();
 
                 // Update the blocks.
-                let block_tree: BlockTree<CurrentNetwork> =
-                    CurrentNetwork::merkle_tree_bhp(&[genesis.hash().to_bits_le()]).unwrap();
-                let block_path = block_tree.prove(0, &genesis.hash().to_bits_le()).unwrap();
-                vm.block_store().insert(*block_tree.root(), block_path, &genesis.clone()).unwrap();
+                vm.block_store().insert(&genesis).unwrap();
 
                 // Update the VM.
                 for transaction in genesis.transactions().values() {
@@ -316,8 +308,7 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction =
-                    Transaction::execute_authorization(&vm, authorization, Some(&block_tree), rng).unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.

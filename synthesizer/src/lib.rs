@@ -128,8 +128,8 @@ pub(crate) mod test_helpers {
     };
     use console::{
         network::Testnet3,
-        prelude::{Network, TestRng, ToBits},
-        program::{BlockTree, StatePath},
+        prelude::{Network, TestRng},
+        program::StatePath,
         types::Field,
     };
 
@@ -141,8 +141,6 @@ pub(crate) mod test_helpers {
     pub struct TestLedger<N: Network> {
         /// The VM state.
         vm: VM<N, ConsensusMemory<N>>,
-        /// The current block tree.
-        block_tree: BlockTree<N>,
     }
 
     impl TestLedger<CurrentNetwork> {
@@ -157,7 +155,7 @@ pub(crate) mod test_helpers {
             let vm = VM::from(store)?;
 
             // Initialize the ledger.
-            let mut ledger = Self { vm, block_tree: CurrentNetwork::merkle_tree_bhp(&[])? };
+            let mut ledger = Self { vm };
 
             // Add the genesis block.
             ledger.add_next_block(&genesis)?;
@@ -177,16 +175,14 @@ pub(crate) mod test_helpers {
                 let mut ledger = self.clone();
 
                 // Update the blocks.
-                ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-                let block_path = ledger.block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
-                ledger.vm.block_store().insert(*ledger.block_tree.root(), block_path, block)?;
+                ledger.vm.block_store().insert(block)?;
 
                 // Update the VM.
                 for transaction in block.transactions().values() {
                     ledger.vm.finalize(transaction)?;
                 }
 
-                *self = Self { vm: ledger.vm, block_tree: ledger.block_tree };
+                *self = Self { vm: ledger.vm };
             }
 
             Ok(())
@@ -208,7 +204,7 @@ pub(crate) mod test_helpers {
 
         /// Returns a state path for the given commitment.
         pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-            self.vm.block_store().get_state_path_for_commitment(commitment, Some(&self.block_tree))
+            self.vm.block_store().get_state_path_for_commitment(commitment)
         }
     }
 }

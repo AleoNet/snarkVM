@@ -19,8 +19,8 @@ use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
-    prelude::{ToBits, Zero},
-    program::{BlockTree, Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
+    prelude::Zero,
+    program::{Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
     types::Field,
 };
 use snarkvm_synthesizer::{
@@ -92,11 +92,8 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Return the block.
     let genesis_block = Block::genesis(&vm, &caller_private_key, rng)?;
 
-    // Initialize the block tree.
-    let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[genesis_block.hash().to_bits_le()])?;
-    let block_path = block_tree.prove(genesis_block.height() as usize, &genesis_block.hash().to_bits_le())?;
     // Add the genesis block to the block tree.
-    vm.block_store().insert(*block_tree.root(), block_path, &genesis_block)?;
+    vm.block_store().insert(&genesis_block)?;
 
     // Update the VM.
     for transaction in genesis_block.transactions().values() {
@@ -106,7 +103,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;
     // Compute the state path for the commitment.
-    let state_path = vm.block_store().get_state_path_for_commitment(commitment, Some(&block_tree))?;
+    let state_path = vm.block_store().get_state_path_for_commitment(commitment)?;
 
     // Compute the generator `H` as `HashToGroup(commitment)`.
     let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
