@@ -23,7 +23,7 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 
 /// The Merkle leaf for a function or transition in the transaction.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TransactionLeaf<N: Network> {
     /// The variant of the Merkle leaf.
     variant: u8,
@@ -35,7 +35,17 @@ pub struct TransactionLeaf<N: Network> {
 
 impl<N: Network> TransactionLeaf<N> {
     /// Initializes a new instance of `TransactionLeaf`.
-    pub const fn new(variant: u8, index: u16, id: Field<N>) -> Self {
+    pub const fn new_deployment(index: u16, id: Field<N>) -> Self {
+        Self { variant: 0, index, id }
+    }
+
+    /// Initializes a new instance of `TransactionLeaf`.
+    pub const fn new_execution(index: u16, id: Field<N>) -> Self {
+        Self { variant: 1, index, id }
+    }
+
+    /// Initializes a new instance of `TransactionLeaf`.
+    pub const fn from(variant: u8, index: u16, id: Field<N>) -> Self {
         Self { variant, index, id }
     }
 
@@ -64,6 +74,6 @@ mod test_helpers {
 
     pub(super) fn sample_leaf(rng: &mut TestRng) -> TransactionLeaf<CurrentNetwork> {
         // Construct a new leaf.
-        TransactionLeaf::new(rng.gen(), rng.gen(), Uniform::rand(rng))
+        TransactionLeaf::from(rng.gen(), rng.gen(), Uniform::rand(rng))
     }
 }

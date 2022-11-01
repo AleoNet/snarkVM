@@ -23,10 +23,9 @@ impl<N: Network> Process<N> {
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        state_path: StatePath<N>,
         additional_fee_in_gates: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, AdditionalFee<N>)> {
+    ) -> Result<(Response<N>, AdditionalFee<N>, Inclusion<N>)> {
         // Ensure the additional fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the additional fee has the correct function.
@@ -41,8 +40,6 @@ impl<N: Network> Process<N> {
         let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
         let mut authorization = Authorization::new(&[request.clone()]);
-        // Add the state path to the authorization.
-        authorization.insert_state_path(state_path.transition_leaf().id(), state_path);
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
@@ -58,14 +55,20 @@ impl<N: Network> Process<N> {
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
+        // Initialize the inclusion.
+        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the call stack.
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
         // Execute the circuit.
-        let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
+        let response = stack.execute_function::<A, R>(call_stack, rng)?;
         // Extract the execution.
         let execution = execution.read().clone();
         // Ensure the execution contains 1 transition.
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
+        // Extract the inclusion.
+        let inclusion = inclusion.read().clone();
 
-        Ok((response, execution.peek()?.clone()))
+        Ok((response, execution.peek()?.clone(), inclusion))
     }
 
     /// Verifies the given additional fee is valid.
@@ -124,6 +127,9 @@ impl<N: Network> Process<N> {
         // Ensure the fee is not negative.
         ensure!(additional_fee.fee() >= &0, "The fee must be zero or positive");
 
+        // Ensure the inclusion proof is valid.
+        Inclusion::verify_batch(&execution)?;
+
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = additional_fee.tpk().to_xy_coordinate();
 
@@ -148,50 +154,19 @@ impl<N: Network> Process<N> {
         #[cfg(debug_assertions)]
         println!("Additional fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-        match additional_fee.proof() {
-            TransitionProof::Birth(_) => bail!("The state path proof is missing from additional fee."),
-            TransitionProof::BirthAndDeath { execution_proof, state_path_proof } => {
-                // Ensure the additional fee contains input records.
-                ensure!(
-                    additional_fee.inputs().iter().any(|input| matches!(input, Input::Record(..))),
-                    "The additional fee proof is the wrong type (found *no* input records)"
-                );
+        // Ensure the additional fee contains input records.
+        ensure!(
+            additional_fee.inputs().iter().any(|input| matches!(input, Input::Record(..))),
+            "The additional fee proof is the wrong type (found *no* input records)"
+        );
 
-                // Retrieve the verifying key.
-                let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-
-                // Ensure the execution proof is valid.
-                ensure!(
-                    verifying_key.verify(function.name(), &inputs, execution_proof),
-                    "Additional fee is invalid - failed to verify execution proof"
-                );
-
-                // Retrieve the state path inputs for the additional fee.
-                let mut state_path_verifier_inputs = vec![];
-                for input in additional_fee.inputs() {
-                    if let Input::Record(serial_number, _, origin) = input {
-                        state_path_verifier_inputs.push(origin.verifier_inputs(serial_number));
-                    }
-                }
-                ensure!(
-                    state_path_verifier_inputs.len() == 1,
-                    "The number of state path inputs for the additional fee is incorrect"
-                );
-
-                // TODO (howardwu): Cache this in the process.
-                // Load the state path verifying key.
-                let state_path_verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
-                // Ensure the state path proof is valid.
-                ensure!(
-                    state_path_verifying_key.verify_batch(
-                        STATE_PATH_FUNCTION_NAME,
-                        &state_path_verifier_inputs,
-                        state_path_proof
-                    ),
-                    "Transition state path is invalid."
-                );
-            }
-        }
+        // Retrieve the verifying key.
+        let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
+        // Ensure the transition proof is valid.
+        ensure!(
+            verifying_key.verify(function.name(), &inputs, additional_fee.proof()),
+            "Additional fee is invalid - failed to verify transition proof"
+        );
 
         Ok(())
     }

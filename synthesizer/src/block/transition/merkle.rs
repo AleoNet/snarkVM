@@ -30,8 +30,6 @@ impl<N: Network> Transition<N> {
 
     /// Returns the Merkle leaf for the given input or output ID in the transition.
     pub fn to_leaf(&self, id: &Field<N>, is_input: bool) -> Result<TransitionLeaf<N>> {
-        // Set the version.
-        let version = 0u8;
         // Match on the input or output ID.
         match is_input {
             true => {
@@ -40,7 +38,7 @@ impl<N: Network> Transition<N> {
                     // Check if the input ID matches the given ID.
                     if id == input.id() {
                         // Return the transition leaf.
-                        return Ok(TransitionLeaf::new(version, index as u8, input.variant(), *id));
+                        return Ok(input.to_transition_leaf(index as u8));
                     }
                 }
                 // Error if the input ID was not found.
@@ -51,10 +49,8 @@ impl<N: Network> Transition<N> {
                 for (index, output) in self.outputs.iter().enumerate() {
                     // Check if the output ID matches the given ID.
                     if id == output.id() {
-                        // Compute the output index.
-                        let output_index = (self.inputs.len() + index) as u8;
                         // Return the transition leaf.
-                        return Ok(TransitionLeaf::new(version, output_index, output.variant(), *id));
+                        return Ok(output.to_transition_leaf((self.inputs.len() + index) as u8));
                     }
                 }
                 // Error if the output ID was not found.
@@ -85,18 +81,14 @@ impl<N: Network> Transition<N> {
             outputs.len()
         );
 
-        // Set the version.
-        let version = 0u8;
         // Prepare the input leaves.
-        let input_leaves = inputs.iter().enumerate().map(|(index, input)| {
-            // Construct each leaf as (version || index || variant || ID).
-            TransitionLeaf::new(version, index as u8, input.variant(), *input.id()).to_bits_le()
-        });
+        let input_leaves =
+            inputs.iter().enumerate().map(|(index, input)| input.to_transition_leaf(index as u8).to_bits_le());
         // Prepare the output leaves.
-        let output_leaves = outputs.iter().enumerate().map(|(index, output)| {
-            // Construct each leaf as (version || index || variant || ID).
-            TransitionLeaf::new(version, (inputs.len() + index) as u8, output.variant(), *output.id()).to_bits_le()
-        });
+        let output_leaves = outputs
+            .iter()
+            .enumerate()
+            .map(|(index, output)| output.to_transition_leaf((inputs.len() + index) as u8).to_bits_le());
         // Compute the function tree.
         N::merkle_tree_bhp::<TRANSITION_DEPTH>(&input_leaves.chain(output_leaves).collect::<Vec<_>>())
     }

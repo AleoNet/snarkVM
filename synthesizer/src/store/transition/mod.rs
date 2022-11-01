@@ -21,9 +21,10 @@ mod output;
 pub use output::*;
 
 use crate::{
-    block::{Input, Origin, Output, Transition, TransitionProof},
+    block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
+    snark::Proof,
     store::helpers::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{
@@ -46,7 +47,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     /// The transition finalize inputs.
     type FinalizeMap: for<'a> Map<'a, N::TransitionID, Option<Vec<Value<N>>>>;
     /// The transition proofs.
-    type ProofMap: for<'a> Map<'a, N::TransitionID, TransitionProof<N>>;
+    type ProofMap: for<'a> Map<'a, N::TransitionID, Proof<N>>;
     /// The transition public keys.
     type TPKMap: for<'a> Map<'a, N::TransitionID, Group<N>>;
     /// The mapping of `transition public key` to `transition ID`.
@@ -314,7 +315,7 @@ pub struct TransitionMemory<N: Network> {
     /// The transition finalize inputs.
     finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
     /// The transition proofs.
-    proof_map: MemoryMap<N::TransitionID, TransitionProof<N>>,
+    proof_map: MemoryMap<N::TransitionID, Proof<N>>,
     /// The transition public keys.
     tpk_map: MemoryMap<N::TransitionID, Group<N>>,
     /// The reverse `tpk` map.
@@ -333,7 +334,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type InputStorage = InputMemory<N>;
     type OutputStorage = OutputMemory<N>;
     type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
-    type ProofMap = MemoryMap<N::TransitionID, TransitionProof<N>>;
+    type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
@@ -736,11 +737,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.inputs.tags()
     }
 
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
-        self.inputs.origins()
-    }
-
     /* Output */
 
     /// Returns an iterator over the constant outputs, for all transitions.
@@ -776,7 +772,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /* Metadata */
 
     /// Returns an iterator over the proofs, for all transitions.
-    pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, TransitionProof<N>>> {
+    pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Proof<N>>> {
         self.proof.values()
     }
 

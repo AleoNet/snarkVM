@@ -801,6 +801,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the current state root.
+    pub fn current_state_root(&self) -> N::StateRoot {
+        (*self.tree.read().root()).into()
+    }
+
     /// Returns the state root that contains the given `block height`.
     pub fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
         self.storage.get_state_root(block_height)

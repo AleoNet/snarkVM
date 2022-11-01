@@ -24,27 +24,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
-        // Fetch the block storage.
+        // Fetch the block store.
         let block_store = self.block_store();
-
-        // Add the required state paths to the authorization
-        let mut authorization = authorization;
-        for input_id in authorization.to_vec_deque().iter().flat_map(|request| request.input_ids()) {
-            // Generate the relevant state roots for each input record.
-            if let InputID::Record(commitment, ..) = input_id {
-                let state_path = block_store.get_state_path_for_commitment(commitment)?;
-                authorization.insert_state_path(*commitment, state_path);
-            }
-        }
-
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the authorization.
+                // Prepare the authorization and block store.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
+                let block_store = cast_ref!(block_store as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call.
-                let (response, execution) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+                let (response, execution, inclusion) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+                // Compute the inclusion proof and update the execution.
+                let execution = inclusion.prove_batch::<$aleo, _>(&execution, &block_store, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
@@ -66,47 +58,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         additional_fee_in_gates: u64,
         rng: &mut R,
     ) -> Result<(Response<N>, AdditionalFee<N>)> {
-        // Generate the state path for the given credits record.
-        let state_path = {
-            // Ensure the additional fee has the correct program ID.
-            let program_id = ProgramID::from_str("credits.aleo")?;
-            // Ensure the additional fee has the correct function.
-            let function_name = Identifier::from_str("fee")?;
-
-            // Fetch the block storage.
-            let block_store = self.block_store();
-
-            let input_types = self.process.read().get_program(&program_id)?.get_function(&function_name)?.input_types();
-
-            match input_types[0] {
-                ValueType::Record(record_name) => {
-                    block_store.get_state_path_for_commitment(&credits.to_commitment(
-                        cast_ref!(program_id as ProgramID<N>),
-                        cast_ref!(record_name as Identifier<N>),
-                    )?)?
-                }
-                _ => bail!("Invalid input type"),
-            }
-        };
-
+        // Fetch the block store.
+        let block_store = self.block_store();
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
 
-                // Prepare the private key and credits record.
+                // Prepare the private key, credits record, and block store.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let credits = cast_ref!(credits as RecordPlaintext<$network>);
-                let state_path = cast_ref!(state_path as StatePath<$network>);
+                let block_store = cast_ref!(block_store as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call to additional fee.
-                let (response, additional_fee) = $process.execute_additional_fee::<$aleo, _>(
+                let (response, additional_fee, inclusion) = $process.execute_additional_fee::<$aleo, _>(
                     private_key,
                     credits.clone(),
-                    state_path.clone(),
                     additional_fee_in_gates,
                     rng,
                 )?;
+                // Compute the inclusion proof and update the execution.
+                let execution = inclusion.prove_batch::<$aleo, _>(&execution, &block_store, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();

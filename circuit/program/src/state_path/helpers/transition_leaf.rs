@@ -75,7 +75,7 @@ impl<A: Aleo> Eject for TransitionLeaf<A> {
 
     /// Ejects the transition leaf.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::new(
+        Self::Primitive::from(
             *self.version.eject_value(),
             *self.index.eject_value(),
             *self.variant.eject_value(),

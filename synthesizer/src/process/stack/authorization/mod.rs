@@ -28,23 +28,17 @@ use std::{collections::VecDeque, sync::Arc};
 pub struct Authorization<N: Network> {
     /// The authorized requests.
     requests: Arc<RwLock<VecDeque<Request<N>>>>,
-
-    /// A mapping of input record commitments to their state paths.
-    state_paths: IndexMap<Field<N>, StatePath<N>>,
 }
 
 impl<N: Network> Authorization<N> {
     /// Initialize a new `Authorization` instance, with the given requests.
     pub fn new(requests: &[Request<N>]) -> Self {
-        Self {
-            requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))),
-            state_paths: Default::default(),
-        }
+        Self { requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))) }
     }
 
     /// Returns a new and independent replica of the authorization.
     pub fn replicate(&self) -> Self {
-        Self { requests: Arc::new(RwLock::new(self.requests.read().clone())), state_paths: self.state_paths.clone() }
+        Self { requests: Arc::new(RwLock::new(self.requests.read().clone())) }
     }
 
     /// Returns the next `Request` in the authorization.
@@ -80,14 +74,5 @@ impl<N: Network> Authorization<N> {
     /// Returns the requests in the authorization.
     pub fn to_vec_deque(&self) -> VecDeque<Request<N>> {
         self.requests.read().clone()
-    }
-
-    /// Returns the state paths in the authorization.
-    pub fn state_paths(&self) -> &IndexMap<Field<N>, StatePath<N>> {
-        &self.state_paths
-    }
-
-    pub fn insert_state_path(&mut self, commitment: Field<N>, state_path: StatePath<N>) {
-        self.state_paths.insert(commitment, state_path);
     }
 }

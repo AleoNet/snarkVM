@@ -16,7 +16,7 @@
 
 use crate::{
     atomic_write_batch,
-    block::{Input, Origin},
+    block::Input,
     store::helpers::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{
@@ -40,8 +40,8 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     type PublicMap: for<'a> Map<'a, Field<N>, Option<Plaintext<N>>>;
     /// The mapping of `ciphertext hash` to `(optional) ciphertext`.
     type PrivateMap: for<'a> Map<'a, Field<N>, Option<Ciphertext<N>>>;
-    /// The mapping of `serial number` to `(tag, origin)`.
-    type RecordMap: for<'a> Map<'a, Field<N>, (Field<N>, Origin<N>)>;
+    /// The mapping of `serial number` to `tag`.
+    type RecordMap: for<'a> Map<'a, Field<N>, Field<N>>;
     /// The mapping of `tag` to `serial number`.
     type RecordTagMap: for<'a> Map<'a, Field<N>, Field<N>>;
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
@@ -133,11 +133,11 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
                     Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
                     Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
                     Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
-                    Input::Record(serial_number, tag, origin) => {
+                    Input::Record(serial_number, tag) => {
                         // Store the record tag.
                         self.record_tag_map().insert(tag, serial_number)?;
                         // Store the record.
-                        self.record_map().insert(serial_number, (tag, origin))?
+                        self.record_map().insert(serial_number, tag)?
                     }
                     Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
                 }
@@ -168,8 +168,8 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
                 self.reverse_id_map().remove(&input_id)?;
 
                 // If the input is a record, remove the record tag.
-                if let Some(record) = self.record_map().get(&input_id)? {
-                    self.record_tag_map().remove(&record.0)?;
+                if let Some(tag) = self.record_map().get(&input_id)? {
+                    self.record_tag_map().remove(&tag)?;
                 }
 
                 // Remove the input.
@@ -211,8 +211,8 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
         macro_rules! into_input {
             (Input::Record($input_id:ident, $input:expr)) => {
                 match $input {
-                    Cow::Borrowed((tag, origin)) => Input::Record($input_id, *tag, *origin),
-                    Cow::Owned((tag, origin)) => Input::Record($input_id, tag, origin),
+                    Cow::Borrowed(tag) => Input::Record($input_id, *tag),
+                    Cow::Owned(tag) => Input::Record($input_id, tag),
                 }
             };
             (Input::$Variant:ident($input_id:ident, $input:expr)) => {
@@ -267,8 +267,8 @@ pub struct InputMemory<N: Network> {
     public: MemoryMap<Field<N>, Option<Plaintext<N>>>,
     /// The mapping of `ciphertext hash` to `(optional) ciphertext`.
     private: MemoryMap<Field<N>, Option<Ciphertext<N>>>,
-    /// The mapping of `serial number` to `(tag, origin)`.
-    record: MemoryMap<Field<N>, (Field<N>, Origin<N>)>,
+    /// The mapping of `serial number` to `tag`.
+    record: MemoryMap<Field<N>, Field<N>>,
     /// The mapping of `record tag` to `serial number`.
     record_tag: MemoryMap<Field<N>, Field<N>>,
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
@@ -284,7 +284,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
-    type RecordMap = MemoryMap<Field<N>, (Field<N>, Origin<N>)>;
+    type RecordMap = MemoryMap<Field<N>, Field<N>>;
     type RecordTagMap = MemoryMap<Field<N>, Field<N>>;
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
@@ -533,14 +533,6 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.record_tag.keys()
-    }
-
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
-        self.record.values().map(|input| match input {
-            Cow::Borrowed((_, origin)) => Cow::Borrowed(origin),
-            Cow::Owned((_, origin)) => Cow::Owned(origin),
-        })
     }
 }
 

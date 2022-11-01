@@ -19,7 +19,7 @@ use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
-    prelude::Zero,
+    prelude::{One, Zero},
     program::{Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
     types::Field,
 };
@@ -29,7 +29,6 @@ use snarkvm_synthesizer::{
     Block,
     ConsensusMemory,
     ConsensusStore,
-    Origin,
     VM,
 };
 
@@ -141,7 +140,7 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         &state_path_function_name,
-        &Origin::StateRoot(state_path.global_state_root()).verifier_inputs(&serial_number),
+        &vec![N::Field::one(), **state_path.global_state_root(), N::Field::zero(), *serial_number],
         &proof
     ));
 

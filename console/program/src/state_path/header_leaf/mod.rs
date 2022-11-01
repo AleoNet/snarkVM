@@ -23,7 +23,7 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 
 /// The Merkle leaf for the block header.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct HeaderLeaf<N: Network> {
     /// The index of the Merkle leaf.
     index: u8,

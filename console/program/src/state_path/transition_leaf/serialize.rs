@@ -41,7 +41,7 @@ impl<'de, N: Network> Deserialize<'de> for TransitionLeaf<N> {
                 // Parse the leaf from a string into a value.
                 let mut leaf = serde_json::Value::deserialize(deserializer)?;
                 // Recover the leaf.
-                Ok(Self::new(
+                Ok(Self::from(
                     // Retrieve the version.
                     serde_json::from_value(leaf["version"].take()).map_err(de::Error::custom)?,
                     // Retrieve the index.

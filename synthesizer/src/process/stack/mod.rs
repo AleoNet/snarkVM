@@ -29,6 +29,9 @@ pub use finalize_registers::*;
 mod finalize_types;
 pub use finalize_types::*;
 
+mod inclusion;
+pub use inclusion::*;
+
 mod register_types;
 pub use register_types::*;
 
@@ -52,7 +55,6 @@ use crate::{
     Program,
     ProvingKey,
     Transition,
-    TransitionProof,
     UniversalSRS,
     VerifyingKey,
 };
@@ -96,18 +98,22 @@ pub enum CallStack<N: Network> {
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
-    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>),
+    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Inclusion<N>>>),
 }
 
 impl<N: Network> CallStack<N> {
-    /// Initializes a call stack as `Evaluate`.
+    /// Initializes a call stack as `Self::Evaluate`.
     pub fn evaluate(authorization: Authorization<N>) -> Result<Self> {
         Ok(CallStack::Evaluate(authorization))
     }
 
-    /// Initializes a call stack as `Execute`.
-    pub fn execute(authorization: Authorization<N>, execution: Arc<RwLock<Execution<N>>>) -> Result<Self> {
-        Ok(CallStack::Execute(authorization, execution))
+    /// Initializes a call stack as `Self::Execute`.
+    pub fn execute(
+        authorization: Authorization<N>,
+        execution: Arc<RwLock<Execution<N>>>,
+        inclusion: Arc<RwLock<Inclusion<N>>>,
+    ) -> Result<Self> {
+        Ok(CallStack::Execute(authorization, execution, inclusion))
     }
 }
 
@@ -127,9 +133,11 @@ impl<N: Network> CallStack<N> {
                 Arc::new(RwLock::new(assignments.read().clone())),
             ),
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
-            CallStack::Execute(authorization, execution) => {
-                CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(execution.read().clone())))
-            }
+            CallStack::Execute(authorization, execution, inclusion) => CallStack::Execute(
+                authorization.replicate(),
+                Arc::new(RwLock::new(execution.read().clone())),
+                Arc::new(RwLock::new(inclusion.read().clone())),
+            ),
         }
     }
 
@@ -155,17 +163,6 @@ impl<N: Network> CallStack<N> {
             }
             CallStack::Evaluate(authorization) => authorization.next(),
             CallStack::Execute(authorization, ..) => authorization.next(),
-        }
-    }
-
-    /// Returns the state paths in the stack authorizations.
-    pub fn state_paths(&self) -> IndexMap<Field<N>, StatePath<N>> {
-        match self {
-            CallStack::Authorize(_, _, authorization) => authorization.state_paths().clone(),
-            CallStack::Synthesize(_, _, authorization) => authorization.state_paths().clone(),
-            CallStack::CheckDeployment(..) => IndexMap::new(),
-            CallStack::Evaluate(authorization) => authorization.state_paths().clone(),
-            CallStack::Execute(authorization, ..) => authorization.state_paths().clone(),
         }
     }
 

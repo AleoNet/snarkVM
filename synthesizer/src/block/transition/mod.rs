@@ -15,19 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod input;
-pub use input::{Input, Origin};
+pub use input::Input;
 
 pub mod output;
 pub use output::Output;
-
-mod proof;
-pub use proof::*;
 
 mod bytes;
 mod merkle;
 mod serialize;
 mod string;
 
+use crate::{process::Inclusion, snark::Proof};
 use console::{
     network::prelude::*,
     program::{
@@ -67,7 +65,7 @@ pub struct Transition<N: Network> {
     /// The inputs for finalize.
     finalize: Option<Vec<Value<N>>>,
     /// The transition proof.
-    proof: TransitionProof<N>,
+    proof: Proof<N>,
     /// The transition public key.
     tpk: Group<N>,
     /// The transition commitment.
@@ -85,7 +83,7 @@ impl<N: Network> Transition<N> {
         inputs: Vec<Input<N>>,
         outputs: Vec<Output<N>>,
         finalize: Option<Vec<Value<N>>>,
-        proof: TransitionProof<N>,
+        proof: Proof<N>,
         tpk: Group<N>,
         tcm: Field<N>,
         fee: i64,
@@ -104,8 +102,7 @@ impl<N: Network> Transition<N> {
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
-        proof: TransitionProof<N>,
-        record_origins: &IndexMap<Field<N>, Origin<N>>,
+        proof: Proof<N>,
         fee: i64,
     ) -> Result<Self> {
         let network_id = *request.network_id();
@@ -157,12 +154,8 @@ impl<N: Network> Transition<N> {
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
                     (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
-                        // Fetch the origin for the corresponding record.
-                        let origin = record_origins
-                            .get(commitment)
-                            .ok_or_else(|| anyhow!("The origin for the record input is missing: '{:?}'", commitment))?;
-
-                        Ok(Input::Record(*serial_number, *tag, *origin))
+                        // Return the input record.
+                        Ok(Input::Record(*serial_number, *tag))
                     }
                     (InputID::ExternalRecord(input_hash), Value::Record(..)) => Ok(Input::ExternalRecord(*input_hash)),
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),
@@ -300,7 +293,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the proof.
-    pub const fn proof(&self) -> &TransitionProof<N> {
+    pub const fn proof(&self) -> &Proof<N> {
         &self.proof
     }
 
@@ -331,11 +324,6 @@ impl<N: Network> Transition<N> {
     /// Returns an iterator over the serial numbers, for inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.inputs.iter().flat_map(Input::serial_number)
-    }
-
-    /// Returns an iterator over the origins, for inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.inputs.iter().flat_map(Input::origin)
     }
 
     /// Returns an iterator over the tags, for inputs that are records.
@@ -389,11 +377,6 @@ impl<N: Network> Transition<N> {
     /// Returns a consuming iterator over the tags, for inputs that are records.
     pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
         self.inputs.into_iter().flat_map(Input::into_tag)
-    }
-
-    /// Returns a consuming iterator over the origins, for inputs that are records.
-    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
-        self.inputs.into_iter().flat_map(Input::into_origin)
     }
 
     /* Output */

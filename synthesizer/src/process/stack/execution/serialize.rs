@@ -25,6 +25,10 @@ impl<N: Network> Serialize for Execution<N> {
                 execution.serialize_field("edition", &self.edition)?;
                 execution
                     .serialize_field("transitions", &self.transitions.values().collect::<Vec<&Transition<N>>>())?;
+                execution.serialize_field("global_state_root", &self.global_state_root)?;
+                if let Some(inclusion_proof) = &self.inclusion_proof {
+                    execution.serialize_field("inclusion", inclusion_proof)?;
+                }
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -44,8 +48,14 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                 // Retrieve the transitions.
                 let transitions: Vec<_> =
                     serde_json::from_value(execution["transitions"].take()).map_err(de::Error::custom)?;
+                // Retrieve the global state root.
+                let global_state_root =
+                    serde_json::from_value(execution["global_state_root"].take()).map_err(de::Error::custom)?;
+                // Retrieve the inclusion proof.
+                let inclusion_proof =
+                    serde_json::from_value(execution["inclusion"].take()).map_err(de::Error::custom)?;
                 // Recover the execution.
-                Self::from(edition, transitions).map_err(de::Error::custom)
+                Self::from(edition, transitions.iter(), global_state_root, inclusion_proof).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }

@@ -212,7 +212,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Return the execution.
-        Ok(Some(Execution::from(edition, transitions)?))
+        Ok(Some(Execution::from(edition, transitions.iter())?))
     }
 
     /// Returns the transaction for the given `transaction ID`.

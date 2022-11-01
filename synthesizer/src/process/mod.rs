@@ -24,7 +24,7 @@ mod evaluate;
 mod execute;
 
 use crate::{
-    block::{AdditionalFee, Input, Origin, TransitionProof},
+    block::{AdditionalFee, Input},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
@@ -344,7 +344,7 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.
                 execution
@@ -370,35 +370,12 @@ function compute:
         // Return the process.
         process
     }
-
-    /// Initializes test state paths for the records in an authorization.
-    pub(crate) fn sample_state_paths(authorization: Authorization<CurrentNetwork>) -> Authorization<CurrentNetwork> {
-        let rng = &mut TestRng::default();
-
-        // Add the required state paths to the authorization
-        let mut authorization = authorization;
-
-        // Sample a random state path for each input record.
-        for request in authorization.to_vec_deque() {
-            for input_id in request.input_ids() {
-                // Generate the relevant state roots for each input record.
-                if let InputID::Record(commitment, ..) = input_id {
-                    let state_path =
-                        console::program::state_path::test_helpers::sample_global_state_path(Some(*commitment), rng)
-                            .unwrap();
-                    authorization.insert_state_path(*commitment, state_path);
-                }
-            }
-        }
-
-        authorization
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{process::test_helpers::sample_state_paths, ProgramMemory};
+    use crate::ProgramMemory;
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
@@ -464,7 +441,7 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -590,8 +567,6 @@ function hello_world:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input_a, input_b], rng)
             .unwrap();
-        // Sample random state paths for the input values.
-        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
@@ -627,7 +602,7 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
@@ -684,8 +659,6 @@ function hello_world:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
             .unwrap();
-        // Sample random state paths for the input values.
-        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
@@ -711,7 +684,7 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -771,7 +744,7 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -855,8 +828,6 @@ function compute:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
-        // Sample random state paths for the input values.
-        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
@@ -889,7 +860,7 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[0]);
@@ -1001,8 +972,6 @@ function transfer:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
-        // Sample random state paths for the input values.
-        let authorization = sample_state_paths(authorization);
         assert_eq!(authorization.len(), 5);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
@@ -1045,7 +1014,7 @@ function transfer:
         assert_eq!(authorization.len(), 5);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
@@ -1148,7 +1117,7 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1245,7 +1214,7 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1360,7 +1329,7 @@ finalize mint_public:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1496,7 +1465,7 @@ function mint:
         assert_eq!(authorization.len(), 2);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 

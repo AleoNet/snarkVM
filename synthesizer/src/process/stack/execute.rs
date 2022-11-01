@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::Origin;
 
 impl<N: Network> Stack<N> {
     /// Executes a program closure on the given inputs.
@@ -103,10 +102,6 @@ impl<N: Network> Stack<N> {
 
         // Ensure the circuit environment is clean.
         A::reset();
-
-        // Retrieve the state paths.
-        let call_stack_clone = call_stack.replicate();
-        let state_paths = call_stack_clone.state_paths();
 
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
@@ -419,72 +414,23 @@ impl<N: Network> Stack<N> {
             assignments.write().push(assignment);
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
-            let execution_proof = match proving_key.prove(function.name(), &assignment, rng) {
+            let proof = match proving_key.prove(function.name(), &assignment, rng) {
                 Ok(proof) => proof,
                 Err(error) => bail!("Execution proof failed - {error}"),
             };
 
-            let mut state_path_assignments = Vec::with_capacity(console_request.input_ids().len());
-            let mut record_origins = IndexMap::new();
-
-            // Construct the state path assignments.
-            console_request.input_ids().iter().try_for_each(|input_id| {
-                // Filter the inputs for records.
-                if let InputID::Record(commitment, gamma, serial_number, ..) = input_id {
-                    // Construct the state path.
-                    let state_path = state_paths
-                        .get(commitment)
-                        .ok_or_else(|| anyhow!("Missing state path for commitment {commitment}"))?;
-
-                    // Construct the assignment for the state path.
-                    let assignment = crate::inject_and_verify_state_path::<N, A>(
-                        state_path.clone(),
-                        *commitment,
-                        *gamma,
-                        *serial_number,
-                        Field::zero(), // Currently unused.
-                        true,
-                    )?;
-
-                    state_path_assignments.push(assignment);
-
-                    // TODO (raychu86): Add support for adding an`Origin::Commitment` for local roots.
-                    record_origins.insert(*commitment, Origin::StateRoot(state_path.global_state_root()));
-                }
-                Ok::<_, Error>(())
-            })?;
-
-            let proof = match state_path_assignments.is_empty() {
-                true => TransitionProof::new_birth(execution_proof),
-                false => {
-                    // Load the state path proving key.
-                    let state_path_proving_key = ProvingKey::from_bytes_le(N::state_path_proving_key_bytes())?;
-                    // Generate the state path batch proof.
-                    let state_path_proof =
-                        state_path_proving_key.prove_batch(STATE_PATH_FUNCTION_NAME, &state_path_assignments, rng)?;
-                    // Construct the transition proof.
-                    TransitionProof::new_birth_and_death(execution_proof, state_path_proof)
-                }
-            };
-
             // Construct the transition.
-            let transition = Transition::from(
-                &console_request,
-                &response,
-                finalize,
-                &output_types,
-                output_registers,
-                proof,
-                &record_origins,
-                *fee,
-            )?;
+            let transition =
+                Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
 
+            // Add the transition commitments.
+            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }

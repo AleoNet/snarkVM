@@ -77,11 +77,6 @@ pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
 ) -> Result<circuit::Assignment<N::Field>> {
     use circuit::Inject;
 
-    // As the local state root feature is currently unused, we check that `local_state_root` is zero,
-    // and that `is_global` is true.
-    ensure!(console_local_state_root.is_zero());
-    ensure!(console_is_global);
-
     // Ensure the circuit environment is clean.
     assert_eq!(A::count(), (0, 1, 0, 0, 0));
     A::reset();
