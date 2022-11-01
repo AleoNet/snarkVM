@@ -185,7 +185,7 @@ impl<N: Network> Process<N> {
                 ensure!(
                     state_path_verifying_key.verify_batch(
                         STATE_PATH_FUNCTION_NAME,
-                        &state_path_verifier_inputs.iter().map(|inputs| inputs.as_slice()).collect::<Vec<_>>(),
+                        &state_path_verifier_inputs,
                         state_path_proof
                     ),
                     "Transition state path is invalid."

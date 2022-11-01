@@ -432,6 +432,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Return the leaf hashes.
         Ok(&self.tree[start..end])
     }
+
+    /// Returns the number of leaves in the Merkle tree.
+    pub const fn number_of_leaves(&self) -> usize {
+        self.number_of_leaves
+    }
 }
 
 /// Returns the depth of the tree, given the size of the tree.
