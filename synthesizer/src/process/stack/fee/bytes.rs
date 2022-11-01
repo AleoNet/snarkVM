@@ -16,27 +16,17 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Execution<N> {
-    /// Reads the execution from a buffer.
+impl<N: Network> FromBytes for Fee<N> {
+    /// Reads the fee from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u16::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid execution version"));
+            return Err(error("Invalid fee version"));
         }
-        // Read the edition.
-        let edition = u16::read_le(&mut reader)?;
-        // Read the number of transitions.
-        let num_transitions = u16::read_le(&mut reader)?;
-        // Ensure the number of transitions is nonzero.
-        if num_transitions == 0 {
-            warn!("Execution (from 'read_le') has no transitions");
-            return Err(error("Execution (from 'read_le') has no transitions"));
-        }
-        // Read the transitions.
-        let transitions =
-            (0..num_transitions).map(|_| Transition::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
+        // Read the transition.
+        let transition = Transition::read_le(&mut reader)?;
         // Read the global state root.
         let global_state_root = N::StateRoot::read_le(&mut reader)?;
         // Read the inclusion proof variant.
@@ -47,25 +37,18 @@ impl<N: Network> FromBytes for Execution<N> {
             1 => Some(Proof::read_le(&mut reader)?),
             _ => return Err(error("Invalid inclusion proof variant '{inclusion_variant}'")),
         };
-        // Return the new `Execution` instance.
-        Self::from(edition, transitions.into_iter(), global_state_root, inclusion_proof)
-            .map_err(|e| error(e.to_string()))
+        // Return the new `Fee` instance.
+        Self::from(transition, global_state_root, inclusion_proof).map_err(|e| error(e.to_string()))
     }
 }
 
-impl<N: Network> ToBytes for Execution<N> {
-    /// Writes the execution to a buffer.
+impl<N: Network> ToBytes for Fee<N> {
+    /// Writes the fee to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
-        // Write the edition.
-        self.edition.write_le(&mut writer)?;
-        // Write the number of transitions.
-        (self.transitions.len() as u16).write_le(&mut writer)?;
-        // Write the transitions.
-        for transition in self.transitions.values() {
-            transition.write_le(&mut writer)?;
-        }
+        // Write the transition.
+        self.transition.write_le(&mut writer)?;
         // Write the global state root.
         self.global_state_root.write_le(&mut writer)?;
         // Write the inclusion proof.
@@ -89,13 +72,13 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        // Construct a new execution.
-        let expected = crate::process::test_helpers::sample_execution();
+        // Construct a new fee.
+        let expected = crate::process::test_helpers::sample_fee();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Execution::read_le(&expected_bytes[..])?);
-        assert!(Execution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, Fee::read_le(&expected_bytes[..])?);
+        assert!(Fee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         Ok(())
     }
 }

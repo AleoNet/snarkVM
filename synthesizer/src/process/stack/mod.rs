@@ -23,6 +23,9 @@ pub use deployment::*;
 mod execution;
 pub use execution::*;
 
+mod fee;
+pub use fee::*;
+
 mod finalize_registers;
 pub use finalize_registers::*;
 
