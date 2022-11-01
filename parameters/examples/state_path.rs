@@ -117,7 +117,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
         *commitment,
         gamma,
         serial_number,
-        Field::zero(),
+        Field::zero().into(),
         true,
     )?;
 

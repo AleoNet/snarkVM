@@ -38,7 +38,7 @@ impl<N: Network> FromBytes for Fee<N> {
             _ => return Err(error("Invalid inclusion proof variant '{inclusion_variant}'")),
         };
         // Return the new `Fee` instance.
-        Self::from(transition, global_state_root, inclusion_proof).map_err(|e| error(e.to_string()))
+        Ok(Self::from(transition, global_state_root, inclusion_proof))
     }
 }
 

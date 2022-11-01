@@ -50,6 +50,7 @@ use console::{
 
 use std::collections::HashMap;
 
+#[derive(Clone)]
 struct InputTask<N: Network> {
     commitment: Field<N>,
     gamma: Group<N>,
@@ -58,6 +59,7 @@ struct InputTask<N: Network> {
     is_local: bool,
 }
 
+#[derive(Clone)]
 pub struct Inclusion<N: Network> {
     /// A map of transition IDs to a list of input tasks.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
@@ -66,13 +68,17 @@ pub struct Inclusion<N: Network> {
 }
 
 impl<N: Network> Inclusion<N> {
+    pub fn new() -> Self {
+        Self { input_tasks: HashMap::new(), output_commitments: HashMap::new() }
+    }
+
     pub fn insert_transition(&mut self, input_ids: &[InputID<N>], transition: &Transition<N>) -> Result<()> {
         // Ensure the transition inputs and input IDs are the same length.
         if input_ids.len() != transition.inputs().len() {
             bail!("Inclusion expected the same number of input IDs as transition inputs")
         }
 
-        for (index, (input, input_id)) in transition.inputs().zip_eq(input_ids).enumerate() {
+        for (index, (input, input_id)) in transition.inputs().iter().zip_eq(input_ids).enumerate() {
             // Filter the inputs for records.
             if let InputID::Record(commitment, gamma, serial_number, ..) = input_id {
                 // Add the record to the input tasks.
@@ -80,8 +86,8 @@ impl<N: Network> Inclusion<N> {
                     commitment: *commitment,
                     gamma: *gamma,
                     serial_number: *serial_number,
-                    leaf: input.to_leaf(index as u8),
-                    is_local: self.output_commitments.contains_key(commitment),
+                    leaf: input.to_transition_leaf(index as u8),
+                    is_local: self.output_commitments.contains_key(&commitment),
                 });
             }
         }
@@ -109,7 +115,7 @@ impl<N: Network> Inclusion<N> {
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
         // Initialize the global state root.
-        let mut global_state_root = Default::default();
+        let mut global_state_root = N::StateRoot::default();
         // Initialize a vector for the assignments.
         let mut assignments = vec![];
 
@@ -122,7 +128,7 @@ impl<N: Network> Inclusion<N> {
                 Some(tasks) => {
                     for task in tasks {
                         // Retrieve the local state root.
-                        let local_state_root = *transaction_tree.root();
+                        let local_state_root = (*transaction_tree.root()).into();
 
                         // Construct the state path.
                         let state_path = match task.is_local {
@@ -135,7 +141,7 @@ impl<N: Network> Inclusion<N> {
                                 // Compute the transition leaf.
                                 let transition_leaf = task.leaf;
                                 // Compute the transition path.
-                                let transition_path = transition.to_path(&transition_leaf);
+                                let transition_path = transition.to_path(&transition_leaf)?;
                                 // Output the state path.
                                 StatePath::new_local(
                                     global_state_root,
@@ -210,7 +216,7 @@ impl<N: Network> Inclusion<N> {
         }
     }
 
-    pub fn verify_batch(execution: &Execution<N>) {
+    pub fn verify_batch(execution: &Execution<N>) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = *execution.global_state_root();
         // Retrieve the inclusion proof.
@@ -259,16 +265,17 @@ impl<N: Network> Inclusion<N> {
                 let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
                 // Verify the inclusion proof.
                 ensure!(
-                    verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, batch_verifier_inputs, &inclusion_proof),
+                    verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, &inclusion_proof),
                     "Inclusion proof is invalid"
                 );
             }
             None => {
                 // Ensure the global state root is zero.
-                if global_state_root != Field::zero() {
+                if *global_state_root != Field::<N>::zero() {
                     bail!("Inclusion expected the global state root in the execution to be zero")
                 }
             }
         }
+        Ok(())
     }
 }

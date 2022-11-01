@@ -23,7 +23,7 @@ use console::{account::Field, network::prelude::*};
 
 use indexmap::IndexMap;
 
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Fee<N: Network> {
     /// The transition.
     transition: Transition<N>,
@@ -34,7 +34,7 @@ pub struct Fee<N: Network> {
 }
 
 impl<N: Network> Fee<N> {
-    /// Initializes a new `Fee` instance with the given transitions.
+    /// Initializes a new `Fee` instance with the given transition, global state root, and inclusion proof.
     pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, inclusion_proof: Option<Proof<N>>) -> Self {
         // Return the new `Fee` instance.
         Self { transition, global_state_root, inclusion_proof }

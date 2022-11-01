@@ -53,16 +53,18 @@ impl<N: Network> Execution<N> {
         global_state_root: N::StateRoot,
         inclusion_proof: Option<Proof<N>>,
     ) -> Result<Self> {
-        // Ensure the transitions is not empty.
-        ensure!(!transitions.is_empty(), "Execution cannot initialize from empty list of transitions");
+        // Construct the execution.
+        let execution = Self {
+            edition,
+            transitions: transitions.map(|t| (*t.id(), t)).collect(),
+            global_state_root,
+            inclusion_proof,
+        };
+        // Ensure the transitions are not empty.
+        ensure!(!execution.transitions.is_empty(), "Execution cannot initialize from empty list of transitions");
         // Return the new `Execution` instance.
         match edition == N::EDITION {
-            true => Ok(Self {
-                edition,
-                transitions: transitions.map(|t| (*t.id(), t)).collect(),
-                global_state_root,
-                inclusion_proof,
-            }),
+            true => Ok(execution),
             false => bail!("Execution cannot initialize with a different edition"),
         }
     }

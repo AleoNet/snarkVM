@@ -72,7 +72,7 @@ pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
     console_commitment: Field<N>,
     console_gamma: Group<N>,
     console_serial_number: Field<N>,
-    console_local_state_root: Field<N>,
+    console_local_state_root: N::TransactionID,
     console_is_global: bool,
 ) -> Result<circuit::Assignment<N::Field>> {
     use circuit::Inject;
@@ -89,7 +89,7 @@ pub fn inject_and_verify_state_path<N: Network, A: circuit::Aleo<Network = N>>(
     let gamma = circuit::Group::<A>::new(circuit::Mode::Private, console_gamma);
 
     // Inject the local state root as `Mode::Public`.
-    let local_state_root = circuit::Field::<A>::new(circuit::Mode::Public, console_local_state_root);
+    let local_state_root = circuit::Field::<A>::new(circuit::Mode::Public, *console_local_state_root);
     // Inject the 'is_global' flag as `Mode::Private`.
     let is_global = circuit::Boolean::<A>::new(circuit::Mode::Private, console_is_global);
 
