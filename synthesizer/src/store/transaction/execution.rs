@@ -181,7 +181,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             }
 
             // Remove the global state root and inclusion proof.
-            self.inclusion_map().remove(&transaction_id)?;
+            self.inclusion_map().remove(transaction_id)?;
 
             // Remove the additional fee ID, if one exists.
             if let Some(additional_fee_id) = optional_additional_fee_id {
@@ -190,7 +190,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 // Remove the additional fee transition.
                 self.transition_store().remove(&additional_fee_id)?;
                 // Remove the additional fee.
-                self.fee_map().remove(&transaction_id)?;
+                self.fee_map().remove(transaction_id)?;
             }
 
             Ok(())

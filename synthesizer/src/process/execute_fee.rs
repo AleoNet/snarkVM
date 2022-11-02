@@ -38,7 +38,7 @@ impl<N: Network> Process<N> {
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
-        let mut authorization = Authorization::new(&[request.clone()]);
+        let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
@@ -117,7 +117,7 @@ impl<N: Network> Process<N> {
         ensure!(fee.fee() >= &0, "The fee must be zero or positive");
 
         // Ensure the inclusion proof is valid.
-        Inclusion::verify_fee(&fee)?;
+        Inclusion::verify_fee(fee)?;
 
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinate();

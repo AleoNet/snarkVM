@@ -19,7 +19,6 @@
 #![allow(clippy::single_element_loop)]
 // TODO (howardwu): Remove me after tracing.
 #![allow(clippy::print_in_format_impl)]
-#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 #[macro_use]
 extern crate tracing;

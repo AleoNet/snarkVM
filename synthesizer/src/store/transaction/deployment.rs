@@ -406,6 +406,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
 /// An in-memory deployment storage.
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct DeploymentMemory<N: Network> {
     /// The ID map.
     id_map: MemoryMap<N::TransactionID, ProgramID<N>>,

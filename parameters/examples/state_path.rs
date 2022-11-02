@@ -23,14 +23,7 @@ use snarkvm_console::{
     program::{Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
     types::Field,
 };
-use snarkvm_synthesizer::{
-    inject_and_verify_state_path,
-    snark::UniversalSRS,
-    Block,
-    ConsensusMemory,
-    ConsensusStore,
-    VM,
-};
+use snarkvm_synthesizer::{snark::UniversalSRS, Block, ConsensusMemory, ConsensusStore, InclusionAssignment, VM};
 
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
@@ -112,14 +105,9 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, *commitment)?;
 
     // Construct the assignment for the state path verification.
-    let assignment = inject_and_verify_state_path::<N, A>(
-        state_path.clone(),
-        *commitment,
-        gamma,
-        serial_number,
-        Field::zero().into(),
-        true,
-    )?;
+    let assignment =
+        InclusionAssignment::new(state_path.clone(), *commitment, gamma, serial_number, Default::default(), true)
+            .to_circuit_assignment::<A>()?;
 
     Ok((assignment, state_path, serial_number))
 }
@@ -140,7 +128,7 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         &state_path_function_name,
-        &vec![N::Field::one(), **state_path.global_state_root(), N::Field::zero(), *serial_number],
+        &[N::Field::one(), **state_path.global_state_root(), *Field::<N>::zero(), *serial_number],
         &proof
     ));
 

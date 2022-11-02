@@ -151,7 +151,7 @@ impl<N: Network> Transition<N> {
                         // Return the private input.
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
-                    (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
+                    (InputID::Record(_, _, serial_number, tag), Value::Record(..)) => {
                         // Return the input record.
                         Ok(Input::Record(*serial_number, *tag))
                     }

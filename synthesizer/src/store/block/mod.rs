@@ -709,7 +709,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
                 let end_height = cow_to_copied!(height);
                 // Determine the start block height to remove.
                 let start_height = end_height
-                    .checked_sub(n)
+                    .checked_sub(n - 1)
                     .ok_or_else(|| anyhow!("Failed to remove last '{n}' blocks: block height underflow"))?;
                 // Ensure the block height matches the number of leaves in the Merkle tree.
                 ensure!(end_height == u32::try_from(tree.number_of_leaves())? - 1, "Block height mismatch");

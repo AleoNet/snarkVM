@@ -126,7 +126,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution) =
+        let (_response, _execution, _inclusion) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
@@ -151,7 +151,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution) =
+        let (_response, _execution, _inclusion) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).

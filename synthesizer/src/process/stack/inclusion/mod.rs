@@ -51,7 +51,7 @@ struct InputTask<N: Network> {
     is_local: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Inclusion<N: Network> {
     /// A map of transition IDs to a list of input tasks.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
@@ -72,20 +72,25 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the same number of input IDs as transition inputs")
         }
 
+        // Initialize the input tasks.
+        let input_tasks = self.input_tasks.entry(*transition.id()).or_default();
+
+        // Process the inputs.
         for (index, (input, input_id)) in transition.inputs().iter().zip_eq(input_ids).enumerate() {
             // Filter the inputs for records.
             if let InputID::Record(commitment, gamma, serial_number, ..) = input_id {
                 // Add the record to the input tasks.
-                self.input_tasks.entry(*transition.id()).or_default().push(InputTask {
+                input_tasks.push(InputTask {
                     commitment: *commitment,
                     gamma: *gamma,
                     serial_number: *serial_number,
                     leaf: input.to_transition_leaf(index as u8),
-                    is_local: self.output_commitments.contains_key(&commitment),
+                    is_local: self.output_commitments.contains_key(commitment),
                 });
             }
         }
 
+        // Process the outputs.
         for (index, output) in transition.outputs().iter().enumerate() {
             // Filter the outputs for records.
             if let Output::Record(commitment, ..) = output {
@@ -171,7 +176,7 @@ impl<N: Network> Inclusion<N> {
                         assignments.push(assignment);
                     }
                 }
-                None => bail!("Missing input state for transition {} in inclusion", transition.id()),
+                None => bail!("Missing input tasks for transition {} in inclusion", transition.id()),
             }
 
             // Insert the leaf into the transaction tree.
@@ -222,7 +227,7 @@ impl<N: Network> Inclusion<N> {
                     bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
                 }
                 // Return the execution.
-                Ok(execution.clone())
+                Ok(execution)
             }
             false => {
                 // Compute the inclusion batch proof.
@@ -386,7 +391,7 @@ impl<N: Network> Inclusion<N> {
                 let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
                 // Verify the inclusion proof.
                 ensure!(
-                    verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, &inclusion_proof),
+                    verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
                     "Inclusion proof is invalid"
                 );
             }
@@ -448,7 +453,7 @@ impl<N: Network> Inclusion<N> {
         let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
         // Verify the inclusion proof.
         ensure!(
-            verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, &inclusion_proof),
+            verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
             "Inclusion proof is invalid"
         );
 
@@ -465,7 +470,7 @@ impl<N: Network> Inclusion<N> {
         // Initialize a vector for the batch assignments.
         let mut batch_assignments = vec![];
 
-        for assignment in assignments.into_iter() {
+        for assignment in assignments.iter() {
             // Ensure the global state root is the same across iterations.
             if *global_state_root != Field::zero() && global_state_root != assignment.state_path.global_state_root() {
                 bail!("Inclusion expected the global state root to be the same across iterations")
@@ -502,7 +507,7 @@ pub struct InclusionAssignment<N: Network> {
 
 impl<N: Network> InclusionAssignment<N> {
     /// Initializes a new inclusion assignment.
-    fn new(
+    pub fn new(
         state_path: StatePath<N>,
         commitment: Field<N>,
         gamma: Group<N>,
@@ -526,7 +531,7 @@ impl<N: Network> InclusionAssignment<N> {
     ///                                    |
     /// [[ serial_number ]] := Commit( commitment || Hash( COFACTOR * gamma ) )
     /// ```
-    fn to_circuit_assignment<A: circuit::Aleo<Network = N>>(&self) -> Result<circuit::Assignment<N::Field>> {
+    pub fn to_circuit_assignment<A: circuit::Aleo<Network = N>>(&self) -> Result<circuit::Assignment<N::Field>> {
         use circuit::Inject;
 
         // Ensure the circuit environment is clean.

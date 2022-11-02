@@ -310,7 +310,6 @@ function compute:
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-                let address = Address::try_from(&caller_private_key).unwrap();
 
                 // Initialize the genesis block.
                 let genesis = crate::vm::test_helpers::sample_genesis_block(rng);

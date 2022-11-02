@@ -435,7 +435,7 @@ mod tests {
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -598,7 +598,7 @@ function hello_world:
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -679,7 +679,7 @@ function hello_world:
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
     }
 
     #[test]
@@ -739,7 +739,7 @@ function hello_world:
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
     }
 
     #[test]
@@ -858,7 +858,7 @@ function compute:
         assert_eq!(r5, candidate[2]);
         assert_eq!(r6, candidate[3]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -1010,7 +1010,7 @@ function transfer:
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -1112,7 +1112,7 @@ finalize compute:
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
@@ -1209,7 +1209,7 @@ finalize compute:
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
@@ -1324,7 +1324,7 @@ finalize mint_public:
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
@@ -1460,7 +1460,7 @@ function mint:
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
