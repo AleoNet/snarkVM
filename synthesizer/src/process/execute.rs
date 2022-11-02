@@ -51,11 +51,6 @@ impl<N: Network> Process<N> {
     /// Verifies the given execution is valid.
     #[inline]
     pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
-        // Retrieve the edition.
-        let edition = execution.edition();
-        // Ensure the edition matches.
-        ensure!(edition == N::EDITION, "Executed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
-
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 

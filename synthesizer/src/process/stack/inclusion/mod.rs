@@ -191,7 +191,7 @@ impl<N: Network> Inclusion<N> {
                     bail!("Inclusion expected the global state root in the execution to be zero")
                 }
                 // Ensure the global state root in the execution matches.
-                if *execution.global_state_root() != global_state_root {
+                if execution.global_state_root() != global_state_root {
                     bail!("Inclusion expected the global state root in the execution to match")
                 }
                 // Ensure the inclusion proof in the execution is 'None'.
@@ -211,14 +211,14 @@ impl<N: Network> Inclusion<N> {
                 // Generate the inclusion batch proof.
                 let inclusion_proof = proving_key.prove_batch(STATE_PATH_FUNCTION_NAME, &assignments, rng)?;
                 // Return the execution.
-                Execution::from(execution.edition(), execution.transitions(), global_state_root, Some(inclusion_proof))
+                Execution::from(execution.into_transitions(), global_state_root, Some(inclusion_proof))
             }
         }
     }
 
     pub fn verify_batch(execution: &Execution<N>) -> Result<()> {
         // Retrieve the global state root.
-        let global_state_root = *execution.global_state_root();
+        let global_state_root = execution.global_state_root();
         // Retrieve the inclusion proof.
         let inclusion_proof = execution.inclusion_proof();
 

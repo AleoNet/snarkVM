@@ -36,7 +36,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Execute the call.
                 let (response, execution, inclusion) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
                 // Compute the inclusion proof and update the execution.
-                let execution = inclusion.prove_batch::<$aleo, _>(&execution, &block_store, rng)?;
+                let execution = inclusion.prove_batch::<$aleo, _, _>(&execution, &block_store, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
@@ -49,15 +49,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         process!(self, logic)
     }
 
-    /// Returns an additional fee for the given private key, credits record, and additional fee amount (in gates).
+    /// Executes a fee for the given private key, credits record, and fee amount (in gates).
     #[inline]
-    pub fn execute_additional_fee<R: Rng + CryptoRng>(
+    pub fn execute_fee<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        additional_fee_in_gates: u64,
+        fee_in_gates: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, AdditionalFee<N>)> {
+    ) -> Result<(Response<N>, Fee<N>)> {
         // Fetch the block store.
         let block_store = self.block_store();
         // Compute the core logic.
@@ -70,21 +70,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let credits = cast_ref!(credits as RecordPlaintext<$network>);
                 let block_store = cast_ref!(block_store as BlockStore<$network, C::BlockStorage>);
 
-                // Execute the call to additional fee.
-                let (response, additional_fee, inclusion) = $process.execute_additional_fee::<$aleo, _>(
-                    private_key,
-                    credits.clone(),
-                    additional_fee_in_gates,
-                    rng,
-                )?;
+                // Execute the call to fee.
+                let (response, fee, inclusion) =
+                    $process.execute_fee::<$aleo, _>(private_key, credits.clone(), fee_in_gates, rng)?;
                 // Compute the inclusion proof and update the execution.
-                let execution = inclusion.prove_batch::<$aleo, _>(&execution, &block_store, rng)?;
+                let execution = inclusion.prove_batch::<$aleo, _, _>(&execution, &block_store, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
-                let additional_fee = cast_ref!(additional_fee as AdditionalFee<N>).clone();
-                // Return the response and additional fee.
-                Ok((response, additional_fee))
+                let fee = cast_ref!(fee as Fee<N>).clone();
+                // Return the response and fee.
+                Ok((response, fee))
             }};
         }
         // Process the logic.

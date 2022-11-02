@@ -25,9 +25,9 @@ impl<N: Network> Transaction<N> {
     /// Returns the Merkle leaf for the given ID of a function or transition in the transaction.
     pub fn to_leaf(&self, id: &Field<N>) -> Result<TransactionLeaf<N>> {
         match self {
-            Self::Deploy(_, deployment, additional_fee) => {
-                // Check if the ID is the transition ID for the additional fee.
-                if *id == **additional_fee.id() {
+            Self::Deploy(_, deployment, fee) => {
+                // Check if the ID is the transition ID for the fee.
+                if *id == **fee.id() {
                     // Return the transaction leaf.
                     return Ok(TransactionLeaf::new_deployment(
                         deployment.program().functions().len() as u16, // The last index.
@@ -91,10 +91,7 @@ impl<N: Network> Transaction<N> {
 
 impl<N: Network> Transaction<N> {
     /// Returns the Merkle tree for the given deployment.
-    pub(super) fn deployment_tree(
-        deployment: &Deployment<N>,
-        additional_fee: &AdditionalFee<N>,
-    ) -> Result<TransactionTree<N>> {
+    pub(super) fn deployment_tree(deployment: &Deployment<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_deployment_size(deployment)?;
         // Retrieve the program.
@@ -115,7 +112,7 @@ impl<N: Network> Transaction<N> {
             .chain(
                 [Ok(TransactionLeaf::new_deployment(
                     program.functions().len() as u16, // The last index.
-                    **additional_fee.id(),
+                    **fee.transition_id(),
                 )
                 .to_bits_le())]
                 .into_iter(),
@@ -125,10 +122,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the Merkle tree for the given execution.
-    pub fn execution_tree(
-        execution: &Execution<N>,
-        additional_fee: &Option<AdditionalFee<N>>,
-    ) -> Result<TransactionTree<N>> {
+    pub fn execution_tree(execution: &Execution<N>, additional_fee: &Option<Fee<N>>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_execution_size(execution)?;
         // Prepare the leaves.
@@ -142,7 +136,7 @@ impl<N: Network> Transaction<N> {
                 // Construct the transaction leaf.
                 let leaf = TransactionLeaf::new_execution(
                     execution.len() as u16, // The last index.
-                    **additional_fee.id(),
+                    **additional_fee.transition_id(),
                 )
                 .to_bits_le();
                 // Add the leaf to the leaves.

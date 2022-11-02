@@ -21,8 +21,7 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 4)?;
-                execution.serialize_field("edition", &self.edition)?;
+                let mut execution = serializer.serialize_struct("Execution", 3)?;
                 execution
                     .serialize_field("transitions", &self.transitions.values().collect::<Vec<&Transition<N>>>())?;
                 execution.serialize_field("global_state_root", &self.global_state_root)?;
@@ -43,8 +42,6 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
             true => {
                 // Parse the execution from a string into a value.
                 let mut execution = serde_json::Value::deserialize(deserializer)?;
-                // Retrieve the edition.
-                let edition = serde_json::from_value(execution["edition"].take()).map_err(de::Error::custom)?;
                 // Retrieve the transitions.
                 let transitions: Vec<_> =
                     serde_json::from_value(execution["transitions"].take()).map_err(de::Error::custom)?;
@@ -55,8 +52,7 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                 let inclusion_proof =
                     serde_json::from_value(execution["inclusion"].take()).map_err(de::Error::custom)?;
                 // Recover the execution.
-                Self::from(edition, transitions.into_iter(), global_state_root, inclusion_proof)
-                    .map_err(de::Error::custom)
+                Self::from(transitions.into_iter(), global_state_root, inclusion_proof).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }

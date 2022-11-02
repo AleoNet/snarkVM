@@ -23,15 +23,12 @@ mod finalize;
 mod verify;
 
 use crate::{
-    block::{AdditionalFee, Transaction},
+    block::Transaction,
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Process},
+    process::{Authorization, Deployment, Execution, Fee, Process},
     program::Program,
-    store::{BlockStore, ConsensusStorage, ConsensusStore},
-    ProgramStore,
-    TransactionStore,
-    TransitionStore,
+    store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
 };
 use console::{
     account::PrivateKey,
@@ -140,7 +137,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ConsensusMemory, Transition};
+    use crate::{program::Program, Block, ConsensusMemory, Fee, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -308,6 +305,68 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
+                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                // Verify.
+                assert!(vm.verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_fee(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+                // Fetch the unspent records.
+                let records = genesis
+                    .transitions()
+                    .cloned()
+                    .flat_map(Transition::into_output_records)
+                    .collect::<IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
+                // Select a record to spend.
+                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+                // Initialize the VM.
+                let mut vm = sample_vm();
+
+                // Update the blocks.
+                vm.block_store().insert(&genesis).unwrap();
+
+                // Update the VM.
+                for transaction in genesis.transactions().values() {
+                    vm.finalize(transaction).unwrap();
+                }
+
+                // Authorize.
+                let authorization = vm
+                    .authorize(
+                        &caller_private_key,
+                        &ProgramID::from_str("credits.aleo").unwrap(),
+                        Identifier::from_str("transfer").unwrap(),
+                        &[
+                            Value::<CurrentNetwork>::Record(record),
+                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                        ],
+                        rng,
+                    )
+                    .unwrap();
+                assert_eq!(authorization.len(), 1);
+
+                // Execute.
+                let (response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng)?;
+
                 let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));

@@ -17,14 +17,14 @@
 mod stack;
 pub use stack::*;
 
-mod additional_fee;
 mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
+mod execute_fee;
 
 use crate::{
-    block::{AdditionalFee, Input},
+    block::Input,
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},

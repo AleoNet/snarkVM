@@ -22,9 +22,9 @@ pub use execution::*;
 
 use crate::{
     atomic_write_batch,
-    block::{AdditionalFee, Transaction},
+    block::Transaction,
     cow_to_copied,
-    process::{Deployment, Execution},
+    process::{Deployment, Execution, Fee},
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{
@@ -351,7 +351,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
                 }
             }
             // Return the edition.
-            TransactionType::Execute => self.storage.execution_store().get_edition(transaction_id),
+            TransactionType::Execute => Ok(None),
         }
     }
 
@@ -384,7 +384,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     }
 
     /// Returns the additional fee for the given `transaction ID`.
-    pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<AdditionalFee<N>>> {
+    pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
         // Retrieve the transaction type.
         let transaction_type = match self.transaction_ids.get(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
@@ -393,7 +393,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         // Retrieve the fee.
         match transaction_type {
             // Return the fee.
-            TransactionType::Deploy => self.storage.deployment_store().get_additional_fee(transaction_id),
+            TransactionType::Deploy => self.storage.deployment_store().get_fee(transaction_id),
             // Return the fee.
             TransactionType::Execute => self.storage.execution_store().get_additional_fee(transaction_id),
         }

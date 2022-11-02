@@ -17,25 +17,24 @@
 use super::*;
 
 impl<N: Network> Process<N> {
-    /// Returns an additional fee given the credits record and the additional fee amount (in gates).
+    /// Executes the fee given the credits record and the fee amount (in gates).
     #[inline]
-    pub fn execute_additional_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        additional_fee_in_gates: u64,
+        fee_in_gates: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, AdditionalFee<N>, Inclusion<N>)> {
-        // Ensure the additional fee has the correct program ID.
+    ) -> Result<(Response<N>, Fee<N>, Inclusion<N>)> {
+        // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
-        // Ensure the additional fee has the correct function.
+        // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee")?;
 
         // Retrieve the input types.
         let input_types = self.get_program(&program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
-        let inputs =
-            vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(additional_fee_in_gates)))?];
+        let inputs = vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
         // Initialize the authorization.
@@ -71,81 +70,71 @@ impl<N: Network> Process<N> {
         Ok((response, execution.peek()?.clone(), inclusion))
     }
 
-    /// Verifies the given additional fee is valid.
+    /// Verifies the given fee is valid.
     #[inline]
-    pub fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> Result<()> {
+    pub fn verify_fee(&self, fee: &Fee<N>) -> Result<()> {
         #[cfg(debug_assertions)]
-        println!("Verifying additional fee for {}/{}...", additional_fee.program_id(), additional_fee.function_name());
+        println!("Verifying fee from {}/{}...", fee.program_id(), fee.function_name());
 
-        // Ensure the additional fee has the correct program ID.
+        // Ensure the fee has the correct program ID.
         let fee_program_id = ProgramID::from_str("credits.aleo")?;
-        ensure!(*additional_fee.program_id() == fee_program_id, "Incorrect program ID for additional fee");
+        ensure!(*fee.program_id() == fee_program_id, "Incorrect program ID for fee");
 
-        // Ensure the additional fee has the correct function.
+        // Ensure the fee has the correct function.
         let fee_function = Identifier::from_str("fee")?;
-        ensure!(*additional_fee.function_name() == fee_function, "Incorrect function name for additional fee");
+        ensure!(*fee.function_name() == fee_function, "Incorrect function name for fee");
 
-        // Ensure the transition ID of the additional fee is correct.
-        ensure!(**additional_fee.id() == additional_fee.to_root()?, "Transition ID of the additional fee is incorrect");
+        // Ensure the transition ID of the fee is correct.
+        ensure!(**fee.id() == fee.to_root()?, "Transition ID of the fee is incorrect");
 
         // Ensure the number of inputs is within the allowed range.
-        ensure!(additional_fee.inputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of inputs");
+        ensure!(fee.inputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of inputs");
         // Ensure the number of outputs is within the allowed range.
-        ensure!(additional_fee.outputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of outputs");
+        ensure!(fee.outputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of outputs");
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
-            &(
-                U16::<N>::new(N::ID),
-                additional_fee.program_id().name(),
-                additional_fee.program_id().network(),
-                additional_fee.function_name(),
-            )
+            &(U16::<N>::new(N::ID), fee.program_id().name(), fee.program_id().network(), fee.function_name())
                 .to_bits_le(),
         )?;
 
         // Ensure each input is valid.
-        if additional_fee
-            .inputs()
-            .iter()
-            .enumerate()
-            .any(|(index, input)| !input.verify(function_id, additional_fee.tcm(), index))
-        {
-            bail!("Failed to verify an additional fee input")
+        if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
+            bail!("Failed to verify a fee input")
         }
         // Ensure each output is valid.
-        let num_inputs = additional_fee.inputs().len();
-        if additional_fee
+        let num_inputs = fee.inputs().len();
+        if fee
             .outputs()
             .iter()
             .enumerate()
-            .any(|(index, output)| !output.verify(function_id, additional_fee.tcm(), num_inputs + index))
+            .any(|(index, output)| !output.verify(function_id, fee.tcm(), num_inputs + index))
         {
-            bail!("Failed to verify an additional fee output")
+            bail!("Failed to verify a fee output")
         }
 
         // Ensure the fee is not negative.
-        ensure!(additional_fee.fee() >= &0, "The fee must be zero or positive");
+        ensure!(fee.fee() >= &0, "The fee must be zero or positive");
 
         // Ensure the inclusion proof is valid.
         Inclusion::verify_batch(&execution)?;
 
         // Compute the x- and y-coordinate of `tpk`.
-        let (tpk_x, tpk_y) = additional_fee.tpk().to_xy_coordinate();
+        let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinate();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **additional_fee.tcm()];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
         // Extend the inputs with the input IDs.
-        inputs.extend(additional_fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
+        inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the inputs with the output IDs.
-        inputs.extend(additional_fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
+        inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
         // Extend the inputs with the fee.
-        inputs.push(*I64::<N>::new(*additional_fee.fee()).to_field()?);
+        inputs.push(*I64::<N>::new(*fee.fee()).to_field()?);
 
         // Retrieve the stack.
-        let stack = self.get_stack(additional_fee.program_id())?;
+        let stack = self.get_stack(fee.program_id())?;
         // Retrieve the function from the stack.
-        let function = stack.get_function(additional_fee.function_name())?;
+        let function = stack.get_function(fee.function_name())?;
         // Ensure the number of function calls in this function is 1.
         if stack.get_number_of_calls(function.name())? != 1 {
             bail!("The number of function calls in '{}/{}' should be 1", stack.program_id(), function.name())
@@ -154,17 +143,17 @@ impl<N: Network> Process<N> {
         #[cfg(debug_assertions)]
         println!("Additional fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-        // Ensure the additional fee contains input records.
+        // Ensure the fee contains input records.
         ensure!(
-            additional_fee.inputs().iter().any(|input| matches!(input, Input::Record(..))),
-            "The additional fee proof is the wrong type (found *no* input records)"
+            fee.inputs().iter().any(|input| matches!(input, Input::Record(..))),
+            "The fee proof is the wrong type (found *no* input records)"
         );
 
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
         // Ensure the transition proof is valid.
         ensure!(
-            verifying_key.verify(function.name(), &inputs, additional_fee.proof()),
+            verifying_key.verify(function.name(), &inputs, fee.proof()),
             "Additional fee is invalid - failed to verify transition proof"
         );
 

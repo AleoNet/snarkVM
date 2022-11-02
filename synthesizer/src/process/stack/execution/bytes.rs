@@ -25,8 +25,6 @@ impl<N: Network> FromBytes for Execution<N> {
         if version != 0 {
             return Err(error("Invalid execution version"));
         }
-        // Read the edition.
-        let edition = u16::read_le(&mut reader)?;
         // Read the number of transitions.
         let num_transitions = u16::read_le(&mut reader)?;
         // Ensure the number of transitions is nonzero.
@@ -48,8 +46,7 @@ impl<N: Network> FromBytes for Execution<N> {
             _ => return Err(error("Invalid inclusion proof variant '{inclusion_variant}'")),
         };
         // Return the new `Execution` instance.
-        Self::from(edition, transitions.into_iter(), global_state_root, inclusion_proof)
-            .map_err(|e| error(e.to_string()))
+        Self::from(transitions.into_iter(), global_state_root, inclusion_proof).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -58,8 +55,6 @@ impl<N: Network> ToBytes for Execution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
-        // Write the edition.
-        self.edition.write_le(&mut writer)?;
         // Write the number of transitions.
         (self.transitions.len() as u16).write_le(&mut writer)?;
         // Write the transitions.

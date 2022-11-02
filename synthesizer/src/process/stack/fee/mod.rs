@@ -40,6 +40,21 @@ impl<N: Network> Fee<N> {
         Self { transition, global_state_root, inclusion_proof }
     }
 
+    /// Returns the transition ID.
+    pub fn transition_id(&self) -> &N::TransitionID {
+        self.transition.id()
+    }
+
+    /// Returns the transition.
+    pub const fn transition(&self) -> &Transition<N> {
+        &self.transition
+    }
+
+    /// Returns the transition, consuming self in the process.
+    pub const fn into_transition(self) -> Transition<N> {
+        self.transition
+    }
+
     /// Returns the global state root.
     pub const fn global_state_root(&self) -> &N::StateRoot {
         &self.global_state_root

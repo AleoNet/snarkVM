@@ -66,7 +66,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         match transaction {
-            Transaction::Deploy(_, deployment, additional_fee) => {
+            Transaction::Deploy(_, deployment, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     warn!("Invalid transaction size (deployment): {error}");
@@ -74,8 +74,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the deployment.
                 self.verify_deployment(deployment)
-                    // Verify the additional fee.
-                    && self.verify_additional_fee(additional_fee)
+                    // Verify the fee.
+                    && self.verify_fee(fee)
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
@@ -86,7 +86,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Verify the additional fee, if it exists.
                 let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => self.verify_additional_fee(additional_fee),
+                    Some(additional_fee) => self.verify_fee(additional_fee),
                     None => true,
                 };
 
@@ -152,17 +152,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    /// Verifies the given additional fee.
+    /// Verifies the given fee.
     #[inline]
-    fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> bool {
+    fn verify_fee(&self, fee: &Fee<N>) -> bool {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 let task = || {
-                    // Prepare the additional fee.
-                    let additional_fee = cast_ref!(&additional_fee as AdditionalFee<$network>);
-                    // Verify the additional fee.
-                    $process.verify_additional_fee(additional_fee)
+                    // Prepare the fee.
+                    let fee = cast_ref!(&fee as Fee<$network>);
+                    // Verify the fee.
+                    $process.verify_fee(fee)
                 };
                 task()
             }};
@@ -172,7 +172,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         match process!(self, logic) {
             Ok(()) => true,
             Err(error) => {
-                warn!("Additional fee verification failed: {error}");
+                warn!("Fee verification failed: {error}");
                 false
             }
         }

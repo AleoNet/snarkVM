@@ -25,8 +25,6 @@ use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Execution<N: Network> {
-    /// The edition.
-    edition: u16,
     /// The transitions.
     transitions: IndexMap<N::TransitionID, Transition<N>>,
     /// The global state root.
@@ -38,45 +36,27 @@ pub struct Execution<N: Network> {
 impl<N: Network> Execution<N> {
     /// Initialize a new `Execution` instance.
     pub fn new() -> Self {
-        Self {
-            edition: N::EDITION,
-            transitions: Default::default(),
-            global_state_root: Default::default(),
-            inclusion_proof: None,
-        }
+        Self { transitions: Default::default(), global_state_root: Default::default(), inclusion_proof: None }
     }
 
     /// Initializes a new `Execution` instance with the given transitions.
     pub fn from(
-        edition: u16,
         transitions: impl Iterator<Item = Transition<N>>,
         global_state_root: N::StateRoot,
         inclusion_proof: Option<Proof<N>>,
     ) -> Result<Self> {
         // Construct the execution.
-        let execution = Self {
-            edition,
-            transitions: transitions.map(|t| (*t.id(), t)).collect(),
-            global_state_root,
-            inclusion_proof,
-        };
+        let execution =
+            Self { transitions: transitions.map(|t| (*t.id(), t)).collect(), global_state_root, inclusion_proof };
         // Ensure the transitions are not empty.
         ensure!(!execution.transitions.is_empty(), "Execution cannot initialize from empty list of transitions");
         // Return the new `Execution` instance.
-        match edition == N::EDITION {
-            true => Ok(execution),
-            false => bail!("Execution cannot initialize with a different edition"),
-        }
-    }
-
-    /// Returns the edition.
-    pub const fn edition(&self) -> u16 {
-        self.edition
+        Ok(execution)
     }
 
     /// Returns the global state root.
-    pub const fn global_state_root(&self) -> &N::StateRoot {
-        &self.global_state_root
+    pub const fn global_state_root(&self) -> N::StateRoot {
+        self.global_state_root
     }
 
     /// Returns the inclusion proof.
