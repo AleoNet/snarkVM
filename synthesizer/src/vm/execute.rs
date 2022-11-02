@@ -24,14 +24,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
-        // Fetch the block store.
-        let block_store = self.block_store();
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the authorization and block store.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
-                let block_store = cast_ref!(block_store as BlockStore<$network, C::BlockStorage>);
+                let block_store = cast_ref!((self.block_store()) as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call.
                 let (response, execution, inclusion) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
@@ -58,8 +56,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         fee_in_gates: u64,
         rng: &mut R,
     ) -> Result<(Response<N>, Fee<N>)> {
-        // Fetch the block store.
-        let block_store = self.block_store();
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -68,7 +64,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the private key, credits record, and block store.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let credits = cast_ref!(credits as RecordPlaintext<$network>);
-                let block_store = cast_ref!(block_store as BlockStore<$network, C::BlockStorage>);
+                let block_store = cast_ref!((self.block_store()) as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call to fee.
                 let (response, fee_transition, inclusion) =

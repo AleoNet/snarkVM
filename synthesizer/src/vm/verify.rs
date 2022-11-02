@@ -129,21 +129,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given execution.
     #[inline]
     fn verify_execution(&self, execution: &Execution<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the execution.
-                    let execution = cast_ref!(&execution as Execution<$network>);
-                    // Verify the execution.
-                    $process.verify_execution(execution)
-                };
-                task()
-            }};
-        }
-
-        // Process the logic.
-        match process!(self, logic) {
+        // Verify the execution.
+        match self.process.read().verify_execution(execution) {
             Ok(()) => true,
             Err(error) => {
                 warn!("Execution verification failed: {error}");
@@ -155,21 +142,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given fee.
     #[inline]
     fn verify_fee(&self, fee: &Fee<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the fee.
-                    let fee = cast_ref!(&fee as Fee<$network>);
-                    // Verify the fee.
-                    $process.verify_fee(fee)
-                };
-                task()
-            }};
-        }
-
-        // Process the logic.
-        match process!(self, logic) {
+        // Verify the fee.
+        match self.process.read().verify_fee(fee) {
             Ok(()) => true,
             Err(error) => {
                 warn!("Fee verification failed: {error}");

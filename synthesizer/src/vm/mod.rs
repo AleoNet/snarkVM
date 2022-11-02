@@ -36,18 +36,15 @@ use console::{
     program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
 };
 
-use core::marker::PhantomData;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
-    /// The process for Aleo Testnet3 (V0).
-    process: Arc<RwLock<Process<console::network::Testnet3>>>,
+    /// The process.
+    process: Arc<RwLock<Process<N>>>,
     /// The consensus store.
     store: ConsensusStore<N, C>,
-    /// PhantomData.
-    _phantom: PhantomData<N>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -70,18 +67,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             };
         }
 
-        // Cast the process into the appropriate network.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the process.
-                let process = cast_ref!(process as Process<$network>);
-
-                // Return the new VM.
-                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), store, _phantom: PhantomData })
-            }};
-        }
-        // Process the logic.
-        process!(self, logic)
+        // Return the new VM.
+        Ok(Self { process: Arc::new(RwLock::new(process)), store })
     }
 
     /// Returns the program store.
