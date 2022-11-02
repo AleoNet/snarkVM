@@ -191,9 +191,9 @@ mod tests {
                 state_path.global_state_root(),
                 *state_path.transaction_id(),
                 state_path.transaction_path().clone(),
-                state_path.transaction_leaf().clone(),
+                *state_path.transaction_leaf(),
                 state_path.transition_path().clone(),
-                state_path.transition_leaf().clone(),
+                *state_path.transition_leaf(),
             )
             .unwrap();
 

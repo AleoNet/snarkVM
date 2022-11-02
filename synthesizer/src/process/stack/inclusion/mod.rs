@@ -329,6 +329,10 @@ impl<N: Network> Inclusion<N> {
         if batch_verifier_inputs.is_empty() && inclusion_proof.is_some() {
             bail!("No input records in the execution. Expected the inclusion proof to be 'None'")
         }
+        // If there are batch verifier inputs, then ensure the inclusion proof is 'Some'.
+        if !batch_verifier_inputs.is_empty() && inclusion_proof.is_none() {
+            bail!("Missing inclusion proof for the execution")
+        }
 
         // Verify the inclusion proof.
         match inclusion_proof {

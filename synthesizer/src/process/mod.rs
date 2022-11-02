@@ -36,7 +36,7 @@ use console::{
     types::{I64, U16, U64},
 };
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 #[cfg(test)]
 use std::collections::HashMap;

@@ -24,7 +24,7 @@ use crate::{
     atomic_write_batch,
     block::Transaction,
     cow_to_copied,
-    process::{Deployment, Execution, Fee},
+    process::{Deployment, Execution},
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{

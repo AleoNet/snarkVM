@@ -33,7 +33,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, InputID, Plaintext, ProgramID, Record, Response, StatePath, Value, ValueType},
+    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
 };
 
 use core::marker::PhantomData;
