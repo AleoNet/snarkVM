@@ -45,7 +45,13 @@ macro_rules! process {
         // Process the logic.
         match N::ID {
             console::network::Testnet3::ID => {
-                $logic!($self.process.read(), console::network::Testnet3, circuit::AleoV0)
+                // Cast the process.
+                let process = (&$self.process as &dyn std::any::Any)
+                    .downcast_ref::<Arc<RwLock<Process<console::network::Testnet3>>>>()
+                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))
+                    .unwrap();
+
+                $logic!(process.read(), console::network::Testnet3, circuit::AleoV0)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
@@ -60,7 +66,13 @@ macro_rules! process_mut {
         // Process the logic.
         match N::ID {
             console::network::Testnet3::ID => {
-                $logic!($self.process.write(), console::network::Testnet3, circuit::AleoV0)
+                // Cast the process.
+                let process = (&$self.process as &dyn std::any::Any)
+                    .downcast_ref::<Arc<RwLock<Process<console::network::Testnet3>>>>()
+                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))
+                    .unwrap();
+
+                $logic!(process.write(), console::network::Testnet3, circuit::AleoV0)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }

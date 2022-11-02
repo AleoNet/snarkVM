@@ -40,7 +40,7 @@ impl<'de, N: Network> Deserialize<'de> for TransactionLeaf<N> {
                 // Parse the leaf from a string into a value.
                 let mut leaf = serde_json::Value::deserialize(deserializer)?;
                 // Recover the leaf.
-                Ok(Self::new(
+                Ok(Self::from(
                     // Retrieve the variant.
                     serde_json::from_value(leaf["variant"].take()).map_err(de::Error::custom)?,
                     // Retrieve the index.

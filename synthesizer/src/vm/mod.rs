@@ -23,34 +23,28 @@ mod finalize;
 mod verify;
 
 use crate::{
-    block::{AdditionalFee, Transaction},
+    block::{Transaction, Transition},
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Process},
+    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process},
     program::Program,
-    store::{BlockStore, ConsensusStorage, ConsensusStore},
-    ProgramStore,
-    TransactionStore,
-    TransitionStore,
+    store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, InputID, Plaintext, ProgramID, Record, Response, StatePath, Value, ValueType},
+    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
 };
 
-use core::marker::PhantomData;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
-    /// The process for Aleo Testnet3 (V0).
-    process: Arc<RwLock<Process<console::network::Testnet3>>>,
+    /// The process.
+    process: Arc<RwLock<Process<N>>>,
     /// The consensus store.
     store: ConsensusStore<N, C>,
-    /// PhantomData.
-    _phantom: PhantomData<N>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -73,18 +67,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             };
         }
 
-        // Cast the process into the appropriate network.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the process.
-                let process = cast_ref!(process as Process<$network>);
-
-                // Return the new VM.
-                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), store, _phantom: PhantomData })
-            }};
-        }
-        // Process the logic.
-        process!(self, logic)
+        // Return the new VM.
+        Ok(Self { process: Arc::new(RwLock::new(process)), store })
     }
 
     /// Returns the program store.
@@ -140,7 +124,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ConsensusMemory, Transition};
+    use crate::{program::Program, Block, ConsensusMemory, Fee, Inclusion, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -313,6 +297,51 @@ function compute:
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
                 transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_fee() -> Fee<CurrentNetwork> {
+        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                let rng = &mut TestRng::default();
+
+                // Initialize a new caller.
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+                // Fetch the unspent records.
+                let records = genesis
+                    .transitions()
+                    .cloned()
+                    .flat_map(Transition::into_output_records)
+                    .collect::<IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
+                // Select a record to spend.
+                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+                // Initialize the VM.
+                let mut vm = sample_vm();
+
+                // Update the blocks.
+                vm.block_store().insert(&genesis).unwrap();
+
+                // Update the VM.
+                for transaction in genesis.transactions().values() {
+                    vm.finalize(transaction).unwrap();
+                }
+
+                // Execute.
+                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng).unwrap();
+                // Verify.
+                Inclusion::verify_fee(&fee).unwrap();
+                // Return the fee.
+                fee
             })
             .clone()
     }

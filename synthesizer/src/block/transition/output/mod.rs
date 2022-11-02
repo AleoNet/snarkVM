@@ -20,7 +20,7 @@ mod string;
 
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Plaintext, Record},
+    program::{Ciphertext, Plaintext, Record, TransitionLeaf},
     types::{Field, Group},
 };
 
@@ -62,6 +62,11 @@ impl<N: Network> Output<N> {
             Output::Record(commitment, ..) => commitment,
             Output::ExternalRecord(id) => id,
         }
+    }
+
+    /// Returns the output as a transition leaf.
+    pub fn to_transition_leaf(&self, index: u8) -> TransitionLeaf<N> {
+        TransitionLeaf::new_with_version(index, self.variant(), *self.id())
     }
 
     /// Returns the commitment and record, if the output is a record.

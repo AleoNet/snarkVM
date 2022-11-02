@@ -22,8 +22,10 @@ mod to_bits;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 
+const VERSION: u8 = 0u8;
+
 /// The Merkle leaf for an input or output ID in the transition.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TransitionLeaf<N: Network> {
     /// The version of the Merkle leaf.
     version: u8,
@@ -37,7 +39,12 @@ pub struct TransitionLeaf<N: Network> {
 
 impl<N: Network> TransitionLeaf<N> {
     /// Initializes a new instance of `TransitionLeaf`.
-    pub const fn new(version: u8, index: u8, variant: u16, id: Field<N>) -> Self {
+    pub const fn new_with_version(index: u8, variant: u16, id: Field<N>) -> Self {
+        Self { version: VERSION, index, variant, id }
+    }
+
+    /// Initializes a new instance of `TransitionLeaf`.
+    pub const fn from(version: u8, index: u8, variant: u16, id: Field<N>) -> Self {
         Self { version, index, variant, id }
     }
 
@@ -71,6 +78,6 @@ mod test_helpers {
 
     pub(super) fn sample_leaf(rng: &mut TestRng) -> TransitionLeaf<CurrentNetwork> {
         // Construct a new leaf.
-        TransitionLeaf::new(rng.gen(), rng.gen(), rng.gen(), Uniform::rand(rng))
+        TransitionLeaf::new_with_version(rng.gen(), rng.gen(), Uniform::rand(rng))
     }
 }

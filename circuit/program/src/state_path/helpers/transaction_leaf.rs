@@ -67,7 +67,7 @@ impl<A: Aleo> Eject for TransactionLeaf<A> {
 
     /// Ejects the transaction leaf.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::new(*self.variant.eject_value(), *self.index.eject_value(), self.id.eject_value())
+        Self::Primitive::from(*self.variant.eject_value(), *self.index.eject_value(), self.id.eject_value())
     }
 }
 

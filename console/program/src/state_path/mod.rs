@@ -229,13 +229,13 @@ pub mod test_helpers {
         };
 
         // Construct the transition path and transaction leaf.
-        let transition_leaf = TransitionLeaf::new(0, 0, 3, commitment);
+        let transition_leaf = TransitionLeaf::new_with_version(0, 3, commitment);
         let transition_tree: TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
         let transition_id = transition_tree.root();
         let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
 
         // Construct the transaction path and transaction leaf.
-        let transaction_leaf = TransactionLeaf::new(1, 0, *transition_id);
+        let transaction_leaf = TransactionLeaf::new_execution(0, *transition_id);
         let transaction_tree: TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
         let transaction_id = *transaction_tree.root();
         let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;
@@ -291,13 +291,13 @@ pub mod test_helpers {
         };
 
         // Construct the transition path and transaction leaf.
-        let transition_leaf = TransitionLeaf::new(0, 0, 3, commitment);
+        let transition_leaf = TransitionLeaf::new_with_version(0, 3, commitment);
         let transition_tree: TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
         let transition_id = transition_tree.root();
         let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
 
         // Construct the transaction path and transaction leaf.
-        let transaction_leaf = TransactionLeaf::new(1, 0, *transition_id);
+        let transaction_leaf = TransactionLeaf::new_execution(0, *transition_id);
         let transaction_tree: TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
         let transaction_id = *transaction_tree.root();
         let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;

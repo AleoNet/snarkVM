@@ -16,43 +16,42 @@
 
 use super::*;
 
-impl<N: Network> Serialize for TransitionLeaf<N> {
-    /// Serializes the leaf into string or bytes.
+impl<N: Network> Serialize for Fee<N> {
+    /// Serializes the fee into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut leaf = serializer.serialize_struct("TransitionLeaf", 6)?;
-                leaf.serialize_field("version", &self.version)?;
-                leaf.serialize_field("index", &self.index)?;
-                leaf.serialize_field("variant", &self.variant)?;
-                leaf.serialize_field("id", &self.id)?;
-                leaf.end()
+                let mut fee = serializer.serialize_struct("Fee", 3)?;
+                fee.serialize_field("transition", &self.transition)?;
+                fee.serialize_field("global_state_root", &self.global_state_root)?;
+                if let Some(inclusion_proof) = &self.inclusion_proof {
+                    fee.serialize_field("inclusion", inclusion_proof)?;
+                }
+                fee.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for TransitionLeaf<N> {
-    /// Deserializes the leaf from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for Fee<N> {
+    /// Deserializes the fee from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                // Parse the leaf from a string into a value.
-                let mut leaf = serde_json::Value::deserialize(deserializer)?;
-                // Recover the leaf.
-                Ok(Self::from(
-                    // Retrieve the version.
-                    serde_json::from_value(leaf["version"].take()).map_err(de::Error::custom)?,
-                    // Retrieve the index.
-                    serde_json::from_value(leaf["index"].take()).map_err(de::Error::custom)?,
-                    // Retrieve the variant.
-                    serde_json::from_value(leaf["variant"].take()).map_err(de::Error::custom)?,
-                    // Retrieve the id.
-                    serde_json::from_value(leaf["id"].take()).map_err(de::Error::custom)?,
-                ))
+                // Parse the fee from a string into a value.
+                let mut fee = serde_json::Value::deserialize(deserializer)?;
+                // Retrieve the transitions.
+                let transition = serde_json::from_value(fee["transition"].take()).map_err(de::Error::custom)?;
+                // Retrieve the global state root.
+                let global_state_root =
+                    serde_json::from_value(fee["global_state_root"].take()).map_err(de::Error::custom)?;
+                // Retrieve the inclusion proof.
+                let inclusion_proof = serde_json::from_value(fee["inclusion"].take()).map_err(de::Error::custom)?;
+                // Recover the fee.
+                Ok(Self::from(transition, global_state_root, inclusion_proof))
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition leaf"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "fee"),
         }
     }
 }
@@ -63,10 +62,8 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let mut rng = TestRng::default();
-
-        // Sample the leaf.
-        let expected = test_helpers::sample_leaf(&mut rng);
+        // Sample the fee.
+        let expected = crate::vm::test_helpers::sample_fee();
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -74,7 +71,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, TransitionLeaf::from_str(expected_string)?);
+        assert_eq!(expected, Fee::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -82,10 +79,8 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let mut rng = TestRng::default();
-
-        // Sample the leaf.
-        let expected = test_helpers::sample_leaf(&mut rng);
+        // Sample the fee.
+        let expected = crate::vm::test_helpers::sample_fee();
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -93,7 +88,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, TransitionLeaf::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, Fee::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())

@@ -26,7 +26,7 @@ impl<N: Network> FromBytes for TransactionLeaf<N> {
         // Read the ID.
         let id = FromBytes::read_le(&mut reader)?;
         // Return the transaction leaf.
-        Ok(Self::new(variant, index, id))
+        Ok(Self::from(variant, index, id))
     }
 }
 

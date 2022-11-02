@@ -16,24 +16,24 @@
 
 use super::*;
 
-impl<N: Network> FromStr for TransitionProof<N> {
+impl<N: Network> FromStr for Fee<N> {
     type Err = Error;
 
-    /// Initializes the transition proof from a JSON-string.
-    fn from_str(proof: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(proof)?)
+    /// Initializes the fee from a JSON-string.
+    fn from_str(fee: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(fee)?)
     }
 }
 
-impl<N: Network> Debug for TransitionProof<N> {
-    /// Prints the transition proof as a JSON-string.
+impl<N: Network> Debug for Fee<N> {
+    /// Prints the fee as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for TransitionProof<N> {
-    /// Displays the transition proof as a JSON-string.
+impl<N: Network> Display for Fee<N> {
+    /// Displays the fee as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }

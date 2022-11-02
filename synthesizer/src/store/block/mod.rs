@@ -54,9 +54,9 @@ macro_rules! bail_with_block {
 /// A trait for block storage.
 pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `block height` to `state root`.
-    type StateRootMap: for<'a> Map<'a, u32, Field<N>>;
+    type StateRootMap: for<'a> Map<'a, u32, N::StateRoot>;
     /// The mapping of `state root` to `block height`.
-    type ReverseStateRootMap: for<'a> Map<'a, Field<N>, u32>;
+    type ReverseStateRootMap: for<'a> Map<'a, N::StateRoot, u32>;
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
@@ -175,7 +175,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Stores the given `(state root, block)` pair into storage.
-    fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
+    fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
         atomic_write_batch!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
@@ -288,7 +288,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block height that contains the given `state root`.
-    fn find_block_height_from_state_root(&self, state_root: Field<N>) -> Result<Option<u32>> {
+    fn find_block_height_from_state_root(&self, state_root: N::StateRoot) -> Result<Option<u32>> {
         match self.reverse_state_root_map().get(&state_root)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
             None => Ok(None),
@@ -315,7 +315,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the state root that contains the given `block height`.
-    fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
+    fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         match self.state_root_map().get(&block_height)? {
             Some(state_root) => Ok(Some(cow_to_copied!(state_root))),
             None => Ok(None),
@@ -523,9 +523,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
     /// The mapping of `block height` to `state root`.
-    state_root_map: MemoryMap<u32, Field<N>>,
+    state_root_map: MemoryMap<u32, N::StateRoot>,
     /// The mapping of `state root` to `block height`.
-    reverse_state_root_map: MemoryMap<Field<N>, u32>,
+    reverse_state_root_map: MemoryMap<N::StateRoot, u32>,
     /// The mapping of `block height` to `block hash`.
     id_map: MemoryMap<u32, N::BlockHash>,
     /// The mapping of `block hash` to `block height`.
@@ -548,8 +548,8 @@ pub struct BlockMemory<N: Network> {
 
 #[rustfmt::skip]
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
-    type StateRootMap = MemoryMap<u32, Field<N>>;
-    type ReverseStateRootMap = MemoryMap<Field<N>, u32>;
+    type StateRootMap = MemoryMap<u32, N::StateRoot>;
+    type ReverseStateRootMap = MemoryMap<N::StateRoot, u32>;
     type IDMap = MemoryMap<u32, N::BlockHash>;
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
@@ -687,7 +687,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
             bail!("Attempted to insert a block at the incorrect height into storage")
         }
         // Insert the (state root, block height) pair.
-        self.storage.insert(*updated_tree.root(), block)?;
+        self.storage.insert((*updated_tree.root()).into(), block)?;
         // Update the block tree.
         *tree = updated_tree;
         // Return success.
@@ -709,7 +709,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
                 let end_height = cow_to_copied!(height);
                 // Determine the start block height to remove.
                 let start_height = end_height
-                    .checked_sub(n)
+                    .checked_sub(n - 1)
                     .ok_or_else(|| anyhow!("Failed to remove last '{n}' blocks: block height underflow"))?;
                 // Ensure the block height matches the number of leaves in the Merkle tree.
                 ensure!(end_height == u32::try_from(tree.number_of_leaves())? - 1, "Block height mismatch");
@@ -782,7 +782,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block height that contains the given `state root`.
-    pub fn find_block_height_from_state_root(&self, state_root: Field<N>) -> Result<Option<u32>> {
+    pub fn find_block_height_from_state_root(&self, state_root: N::StateRoot) -> Result<Option<u32>> {
         self.storage.find_block_height_from_state_root(state_root)
     }
 
@@ -801,8 +801,13 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the current state root.
+    pub fn current_state_root(&self) -> N::StateRoot {
+        (*self.tree.read().root()).into()
+    }
+
     /// Returns the state root that contains the given `block height`.
-    pub fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
+    pub fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         self.storage.get_state_root(block_height)
     }
 
@@ -854,8 +859,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given state root exists.
-    pub fn contains_state_root(&self, state_root: Field<N>) -> Result<bool> {
-        self.storage.reverse_state_root_map().contains_key(&state_root)
+    pub fn contains_state_root(&self, state_root: &N::StateRoot) -> Result<bool> {
+        self.storage.reverse_state_root_map().contains_key(state_root)
     }
 
     /// Returns `true` if the given block height exists.
@@ -876,7 +881,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns an iterator over the state roots, for all blocks in `self`.
-    pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+    pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, N::StateRoot>> {
         self.storage.reverse_state_root_map().keys()
     }
 

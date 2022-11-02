@@ -236,11 +236,6 @@ impl<N: Network> Block<N> {
         self.transactions.transition_public_keys()
     }
 
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.transactions.origins()
-    }
-
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.tags()

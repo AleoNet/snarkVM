@@ -66,7 +66,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         match transaction {
-            Transaction::Deploy(_, deployment, additional_fee) => {
+            Transaction::Deploy(_, deployment, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     warn!("Invalid transaction size (deployment): {error}");
@@ -74,8 +74,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the deployment.
                 self.verify_deployment(deployment)
-                    // Verify the additional fee.
-                    && self.verify_additional_fee(additional_fee)
+                    // Verify the fee.
+                    && self.verify_fee(fee)
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
@@ -86,7 +86,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Verify the additional fee, if it exists.
                 let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => self.verify_additional_fee(additional_fee),
+                    Some(additional_fee) => self.verify_fee(additional_fee),
                     None => true,
                 };
 
@@ -129,21 +129,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given execution.
     #[inline]
     fn verify_execution(&self, execution: &Execution<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the execution.
-                    let execution = cast_ref!(&execution as Execution<$network>);
-                    // Verify the execution.
-                    $process.verify_execution(execution)
-                };
-                task()
-            }};
-        }
-
-        // Process the logic.
-        match process!(self, logic) {
+        // Verify the execution.
+        match self.process.read().verify_execution::<true>(execution) {
             Ok(()) => true,
             Err(error) => {
                 warn!("Execution verification failed: {error}");
@@ -152,27 +139,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    /// Verifies the given additional fee.
+    /// Verifies the given fee.
     #[inline]
-    fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the additional fee.
-                    let additional_fee = cast_ref!(&additional_fee as AdditionalFee<$network>);
-                    // Verify the additional fee.
-                    $process.verify_additional_fee(additional_fee)
-                };
-                task()
-            }};
-        }
-
-        // Process the logic.
-        match process!(self, logic) {
+    fn verify_fee(&self, fee: &Fee<N>) -> bool {
+        // Verify the fee.
+        match self.process.read().verify_fee(fee) {
             Ok(()) => true,
             Err(error) => {
-                warn!("Additional fee verification failed: {error}");
+                warn!("Fee verification failed: {error}");
                 false
             }
         }

@@ -34,40 +34,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// This method assumes the given deployment **is valid**.
     #[inline]
     fn finalize_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
-        // TODO (howardwu): TEMPORARY - Find a proper workaround for trait `P: ProgramStorage<N>`
-        //   requiring trait `N: Network` instead of `console::network::Testnet3`.
-        // Process the logic.
-        match N::ID {
-            console::network::Testnet3::ID => {
-                // let process = cast_ref!((self.process) as Arc<RwLock<Process<N>>>);
-                let process = (&self.process as &dyn std::any::Any)
-                    .downcast_ref::<Arc<RwLock<Process<N>>>>()
-                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!(self.process)))?;
-
-                process.write().finalize_deployment::<C::ProgramStorage>(self.program_store(), deployment)
-            }
-            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
-        }
+        self.process.write().finalize_deployment::<C::ProgramStorage>(self.program_store(), deployment)
     }
 
     /// Finalizes the execution in the VM.
     /// This method assumes the given execution **is valid**.
     #[inline]
     fn finalize_execution(&mut self, execution: &Execution<N>) -> Result<()> {
-        // TODO (howardwu): TEMPORARY - Find a proper workaround for trait `P: ProgramStorage<N>`
-        //   requiring trait `N: Network` instead of `console::network::Testnet3`.
-        // Process the logic.
-        match N::ID {
-            console::network::Testnet3::ID => {
-                // let process = cast_ref!((self.process) as Arc<RwLock<Process<N>>>);
-                let process = (&self.process as &dyn std::any::Any)
-                    .downcast_ref::<Arc<RwLock<Process<N>>>>()
-                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!(self.process)))?;
-
-                process.write().finalize_execution::<C::ProgramStorage>(self.program_store(), execution)
-            }
-            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
-        }
+        self.process.write().finalize_execution::<C::ProgramStorage>(self.program_store(), execution)
     }
 }
 

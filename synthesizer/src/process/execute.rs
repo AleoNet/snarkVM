@@ -23,7 +23,7 @@ impl<N: Network> Process<N> {
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>)> {
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
 
@@ -32,26 +32,26 @@ impl<N: Network> Process<N> {
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        // Retrieve the stack.
-        let stack = self.get_stack(request.program_id())?;
+        // Initialize the inclusion.
+        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the call stack.
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
         // Execute the circuit.
-        let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
+        let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
         // Extract the execution.
         let execution = execution.read().clone();
         // Ensure the execution is not empty.
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
+        // Extract the inclusion.
+        let inclusion = inclusion.read().clone();
 
-        Ok((response, execution))
+        Ok((response, execution, inclusion))
     }
 
     /// Verifies the given execution is valid.
+    /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
-        // Retrieve the edition.
-        let edition = execution.edition();
-        // Ensure the edition matches.
-        ensure!(edition == N::EDITION, "Executed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
-
+    pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -70,11 +70,13 @@ impl<N: Network> Process<N> {
             );
         }
 
+        // Ensure the inclusion proof is valid.
+        if VERIFY_INCLUSION {
+            Inclusion::verify_execution(execution)?;
+        }
+
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();
-
-        // The output record commitments of the transitions.
-        let mut transition_record_commitments = IndexSet::new();
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
@@ -199,66 +201,11 @@ impl<N: Network> Process<N> {
 
             // Retrieve the verifying key.
             let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-
-            match transition.proof() {
-                TransitionProof::Birth(execution_proof) => {
-                    // Ensure the transition contains no input records.
-                    ensure!(
-                        !transition.inputs().iter().any(|input| matches!(input, Input::Record(..))),
-                        "The transition proof is the wrong type (found input records)"
-                    );
-                    // Ensure the execution proof is valid.
-                    ensure!(
-                        verifying_key.verify(function.name(), &inputs, execution_proof),
-                        "Transition is invalid - failed to verify execution proof"
-                    );
-                }
-                TransitionProof::BirthAndDeath { execution_proof, state_path_proof } => {
-                    // Ensure the transition contains input records.
-                    ensure!(
-                        transition.inputs().iter().any(|input| matches!(input, Input::Record(..))),
-                        "The transition proof is the wrong type (found *no* input records)"
-                    );
-                    // Ensure the execution proof is valid.
-                    ensure!(
-                        verifying_key.verify(function.name(), &inputs, execution_proof),
-                        "Transition is invalid - failed to verify execution proof"
-                    );
-
-                    // Retrieve the state path inputs for the transition.
-                    let mut state_path_verifier_inputs = vec![];
-                    for input in transition.inputs() {
-                        if let Input::Record(serial_number, _, origin) = input {
-                            // Check that the origin is valid.
-                            if let Origin::Commitment(commitment) = origin {
-                                ensure!(
-                                    transition_record_commitments.contains(commitment),
-                                    "The commitment origin does not exist locally in the transitions."
-                                );
-                            }
-
-                            state_path_verifier_inputs.push(origin.verifier_inputs(serial_number));
-                        }
-                    }
-                    ensure!(!state_path_verifier_inputs.is_empty(), "Transition is invalid - missing state root(s)");
-
-                    // TODO (howardwu): Cache this in the process.
-                    // Load the state path verifying key.
-                    let state_path_verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
-                    // Ensure the state path proof is valid.
-                    ensure!(
-                        state_path_verifying_key.verify_batch(
-                            STATE_PATH_FUNCTION_NAME,
-                            &state_path_verifier_inputs,
-                            state_path_proof
-                        ),
-                        "Transition state path is invalid."
-                    );
-                }
-            }
-
-            // Add the output commitments to the set of transition record commitments.
-            transition_record_commitments.extend(transition.commitments().copied());
+            // Ensure the transition proof is valid.
+            ensure!(
+                verifying_key.verify(function.name(), &inputs, transition.proof()),
+                "Transition is invalid - failed to verify transition proof"
+            );
         }
         Ok(())
     }

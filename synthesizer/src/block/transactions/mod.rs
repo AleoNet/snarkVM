@@ -20,7 +20,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    block::{Origin, Transaction, Transition},
+    block::{Transaction, Transition},
     process::{Deployment, Execution},
 };
 use console::{
@@ -103,11 +103,6 @@ impl<N: Network> Transactions<N> {
         self.transactions().flat_map(Transaction::transition_public_keys)
     }
 
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.transitions().flat_map(Transition::origins)
-    }
-
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().flat_map(Transition::tags)
@@ -174,11 +169,6 @@ impl<N: Network> Transactions<N> {
     /// Returns a consuming iterator over the transition public keys, for all transactions.
     pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
         self.into_transactions().flat_map(Transaction::into_transition_public_keys)
-    }
-
-    /// Returns a consuming iterator over the origins, for all transition inputs that are records.
-    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
-        self.into_transitions().flat_map(Transition::into_origins)
     }
 
     /// Returns a consuming iterator over the tags, for all transition inputs that are records.

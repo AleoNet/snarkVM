@@ -28,7 +28,7 @@ impl<N: Network> FromBytes for TransitionLeaf<N> {
         // Read the ID.
         let id = FromBytes::read_le(&mut reader)?;
         // Return the transition leaf.
-        Ok(Self::new(version, index, variant, id))
+        Ok(Self::from(version, index, variant, id))
     }
 }
 

@@ -92,13 +92,13 @@ impl<A: Aleo> Inject for StatePath<A> {
             previous_block_hash: Field::new(mode, *state_path.previous_block_hash()),
             header_root: Field::new(mode, *state_path.header_root()),
             header_path: HeaderPath::new(mode, state_path.header_path().clone()),
-            header_leaf: HeaderLeaf::new(mode, state_path.header_leaf().clone()),
+            header_leaf: HeaderLeaf::new(mode, *state_path.header_leaf()),
             transactions_path: TransactionsPath::new(mode, state_path.transactions_path().clone()),
             transaction_id: Field::new(mode, **state_path.transaction_id()),
             transaction_path: TransactionPath::new(mode, state_path.transaction_path().clone()),
-            transaction_leaf: TransactionLeaf::new(mode, state_path.transaction_leaf().clone()),
+            transaction_leaf: TransactionLeaf::new(mode, *state_path.transaction_leaf()),
             transition_path: TransitionPath::new(mode, state_path.transition_path().clone()),
-            transition_leaf: TransitionLeaf::new(mode, state_path.transition_leaf().clone()),
+            transition_leaf: TransitionLeaf::new(mode, *state_path.transition_leaf()),
         }
     }
 }

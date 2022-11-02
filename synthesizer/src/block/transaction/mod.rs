@@ -20,8 +20,8 @@ mod serialize;
 mod string;
 
 use crate::{
-    block::{Origin, Transition},
-    process::{Authorization, Deployment, Execution},
+    block::Transition,
+    process::{Authorization, Deployment, Execution, Fee},
     program::Program,
     vm::VM,
     ConsensusStorage,
@@ -43,30 +43,27 @@ use console::{
     types::{Field, Group},
 };
 
-/// An additional fee to be included in the transaction.
-pub type AdditionalFee<N> = Transition<N>;
-
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Box<Deployment<N>>, AdditionalFee<N>),
+    Deploy(N::TransactionID, Box<Deployment<N>>, Fee<N>),
     /// The transaction execution represents a call to an Aleo program.
-    Execute(N::TransactionID, Execution<N>, Option<AdditionalFee<N>>),
+    Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn from_deployment(deployment: Deployment<N>, additional_fee: AdditionalFee<N>) -> Result<Self> {
+    pub fn from_deployment(deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
-        let id = *Self::deployment_tree(&deployment, &additional_fee)?.root();
+        let id = *Self::deployment_tree(&deployment, &fee)?.root();
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id.into(), Box::new(deployment), additional_fee))
+        Ok(Self::Deploy(id.into(), Box::new(deployment), fee))
     }
 
     /// Initializes a new execution transaction.
-    pub fn from_execution(execution: Execution<N>, additional_fee: Option<AdditionalFee<N>>) -> Result<Self> {
+    pub fn from_execution(execution: Execution<N>, additional_fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
         // Compute the transaction ID.
@@ -85,15 +82,15 @@ impl<N: Network> Transaction<N> {
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
-        (credits, additional_fee_in_gates): (Record<N, Plaintext<N>>, u64),
+        (credits, fee_in_gates): (Record<N, Plaintext<N>>, u64),
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
-        // Compute the additional fee.
-        let (_, additional_fee) = vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?;
+        // Compute the fee.
+        let (_, fee) = vm.execute_fee(private_key, credits, fee_in_gates, rng)?;
         // Initialize the transaction.
-        Self::from_deployment(deployment, additional_fee)
+        Self::from_deployment(deployment, fee)
     }
 
     /// Initializes a new execution transaction from an authorization.
@@ -121,7 +118,7 @@ impl<N: Network> Transaction<N> {
         // Compute the additional fee, if it is present.
         let additional_fee = match additional_fee {
             Some((credits, additional_fee_in_gates)) => {
-                Some(vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?.1)
+                Some(vm.execute_fee(private_key, credits, additional_fee_in_gates, rng)?.1)
             }
             None => None,
         };
@@ -130,7 +127,6 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
-    #[allow(clippy::too_many_arguments)]
     pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
@@ -176,9 +172,9 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
-            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
+            Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
             Self::Execute(_, execution, additional_fee) => {
-                IterWrap::Execute(execution.transitions().chain(additional_fee))
+                IterWrap::Execute(execution.transitions().chain(additional_fee.as_ref().map(|f| f.transition())))
             }
         }
     }
@@ -203,11 +199,6 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().flat_map(Transition::tags)
-    }
-
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.transitions().flat_map(Transition::origins)
     }
 
     /* Output */
@@ -247,9 +238,9 @@ impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
         match self {
-            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
+            Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
             Self::Execute(_, execution, additional_fee) => {
-                IterWrap::Execute(execution.into_transitions().chain(additional_fee))
+                IterWrap::Execute(execution.into_transitions().chain(additional_fee.map(|f| f.into_transition())))
             }
         }
     }
@@ -262,11 +253,6 @@ impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over the transition public keys, for all transitions.
     pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
         self.into_transitions().map(Transition::into_tpk)
-    }
-
-    /// Returns a consuming iterator over the origins, for all transition inputs that are records.
-    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
-        self.into_transitions().flat_map(Transition::into_origins)
     }
 
     /// Returns a consuming iterator over the tags, for all transition inputs that are records.
