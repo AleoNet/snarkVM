@@ -570,3 +570,37 @@ impl<N: Network> InclusionAssignment<N> {
         Ok(A::eject_assignment_and_reset())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::TestRng;
+
+    #[test]
+    fn test_inclusion_verify_execution() {
+        let rng = &mut TestRng::default();
+        // Fetch an execution transaction.
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+
+        match execution_transaction {
+            Transaction::Execute(_, execution, _) => {
+                assert!(Inclusion::verify_execution(&execution).is_ok());
+            }
+            _ => panic!("Expected an execution transaction"),
+        }
+    }
+
+    #[test]
+    fn test_inclusion_verify_fee() {
+        let rng = &mut TestRng::default();
+        // Fetch a deployment transaction.
+        let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+
+        match deployment_transaction {
+            Transaction::Deploy(_, _, fee) => {
+                assert!(Inclusion::verify_fee(&fee).is_ok());
+            }
+            _ => panic!("Expected a deployment transaction"),
+        }
+    }
+}
