@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use console::{
-    network::prelude::*,
-    program::{Request, StatePath},
-    types::Field,
-};
+use console::{network::prelude::*, program::Request};
 
-use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::{collections::VecDeque, sync::Arc};
 

@@ -179,8 +179,10 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             }
 
             // Store the fee.
-            self.fee_map()
-                .insert(*transaction_id, (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof()))?;
+            self.fee_map().insert(
+                *transaction_id,
+                (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
+            )?;
             // Store the fee transition.
             self.transition_store().insert(fee)?;
 
@@ -208,7 +210,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to locate program '{program_id}' for transaction '{transaction_id}'"),
         };
         // Retrieve the fee transition ID.
-        let fee_id = match self.fee_map().get(transaction_id)? {
+        let (transition_id, _, _) = match self.fee_map().get(transaction_id)? {
             Some(fee_id) => cow_to_copied!(fee_id),
             None => bail!("Failed to locate the fee transition ID for transaction '{transaction_id}'"),
         };
@@ -235,7 +237,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             // Remove the fee.
             self.fee_map().remove(transaction_id)?;
             // Remove the fee transition.
-            self.transition_store().remove(&fee_id)?;
+            self.transition_store().remove(&transition_id)?;
 
             Ok(())
         });

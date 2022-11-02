@@ -44,8 +44,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
     /// The mapping of `transaction ID` to `(global state root, (optional) inclusion proof)`.
     type InclusionMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
-    /// The mapping of `transaction ID` to `(fee transition ID, global state root, inclusion proof)`.
-    type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
+    /// The mapping of `transaction ID` to `(global state root, inclusion proof)`.
+    type FeeMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
 
     /// Initializes the execution storage.
     fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
@@ -58,6 +58,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
     /// Returns the inclusion map.
     fn inclusion_map(&self) -> &Self::InclusionMap;
+    /// Returns the fee map.
+    fn fee_map(&self) -> &Self::FeeMap;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16> {
@@ -70,6 +72,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_id_map().start_atomic();
         self.transition_store().start_atomic();
         self.inclusion_map().start_atomic();
+        self.fee_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -78,6 +81,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             || self.reverse_id_map().is_atomic_in_progress()
             || self.transition_store().is_atomic_in_progress()
             || self.inclusion_map().is_atomic_in_progress()
+            || self.fee_map().is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.
@@ -86,6 +90,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_id_map().abort_atomic();
         self.transition_store().abort_atomic();
         self.inclusion_map().abort_atomic();
+        self.fee_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -93,7 +98,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         self.id_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
         self.transition_store().finish_atomic()?;
-        self.inclusion_map().finish_atomic()
+        self.inclusion_map().finish_atomic()?;
+        self.fee_map().finish_atomic()
     }
 
     /// Stores the given `execution transaction` pair into storage.
@@ -138,9 +144,14 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             // Store the additional fee, if one exists.
             if let Some(additional_fee) = optional_additional_fee {
                 // Store the additional fee ID.
-                self.reverse_id_map().insert(*additional_fee.id(), *transaction_id)?;
+                self.reverse_id_map().insert(*additional_fee.transition_id(), *transaction_id)?;
                 // Store the additional fee transition.
                 self.transition_store().insert(additional_fee)?;
+                // Store the additional fee.
+                self.fee_map().insert(
+                    *transaction_id,
+                    (additional_fee.global_state_root(), additional_fee.inclusion_proof().cloned()),
+                )?;
             }
 
             Ok(())
@@ -178,6 +189,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 self.reverse_id_map().remove(&additional_fee_id)?;
                 // Remove the additional fee transition.
                 self.transition_store().remove(&additional_fee_id)?;
+                // Remove the additional fee.
+                self.fee_map().remove(&transaction_id)?;
             }
 
             Ok(())
@@ -254,13 +267,21 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Construct the transaction.
         let transaction = match optional_additional_fee_id {
             Some(additional_fee_id) => {
+                // Retrieve the additional fee transition.
+                let additional_fee_transition = match self.transition_store().get_transition(&additional_fee_id)? {
+                    Some(additional_fee_transition) => additional_fee_transition,
+                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
+                };
                 // Retrieve the additional fee.
-                let additional_fee = match self.transition_store().get_transition(&additional_fee_id)? {
-                    Some(additional_fee) => additional_fee,
+                let (global_state_root, inclusion_proof) = match self.fee_map().get(&additional_fee_id)? {
+                    Some(fee) => cow_to_cloned!(fee),
                     None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
                 };
                 // Construct the transaction.
-                Transaction::from_execution(execution, Some(additional_fee))?
+                Transaction::from_execution(
+                    execution,
+                    Some(Fee::from(additional_fee_transition, global_state_root, inclusion_proof)),
+                )?
             }
             None => Transaction::from_execution(execution, None)?,
         };
@@ -285,6 +306,8 @@ pub struct ExecutionMemory<N: Network> {
     transition_store: TransitionStore<N, TransitionMemory<N>>,
     /// The inclusion map.
     inclusion_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
+    /// The fee map.
+    fee_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
 }
 
 #[rustfmt::skip]
@@ -293,6 +316,7 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
     type TransitionStorage = TransitionMemory<N>;
     type InclusionMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
+    type FeeMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
 
     /// Initializes the execution storage.
     fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
@@ -301,6 +325,7 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
             reverse_id_map: MemoryMap::default(),
             transition_store,
             inclusion_map: MemoryMap::default(),
+            fee_map: MemoryMap::default(),
         })
     }
 
@@ -322,6 +347,11 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     /// Returns the inclusion map.
     fn inclusion_map(&self) -> &Self::InclusionMap {
         &self.inclusion_map
+    }
+
+    /// Returns the fee map.
+    fn fee_map(&self) -> &Self::FeeMap {
+        &self.fee_map
     }
 }
 
@@ -398,27 +428,6 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the execution for the given `transaction ID`.
     pub fn get_execution(&self, transaction_id: &N::TransactionID) -> Result<Option<Execution<N>>> {
         self.storage.get_execution(transaction_id)
-    }
-
-    /// Returns the additional fee for the given `transaction ID`.
-    pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
-        // Retrieve the optional additional fee ID.
-        let (_, optional_additional_fee_id) = match self.storage.id_map().get(transaction_id)? {
-            Some(ids) => cow_to_cloned!(ids),
-            None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
-        };
-
-        // Construct the additional fee.
-        match optional_additional_fee_id {
-            Some(additional_fee_id) => {
-                // Retrieve the additional fee.
-                match self.storage.transition_store().get_transition(&additional_fee_id)? {
-                    Some(additional_fee) => Ok(Some(additional_fee)),
-                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
-                }
-            }
-            None => Ok(None),
-        }
     }
 }
 

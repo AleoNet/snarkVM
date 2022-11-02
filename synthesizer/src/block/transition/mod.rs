@@ -25,7 +25,7 @@ mod merkle;
 mod serialize;
 mod string;
 
-use crate::{process::Inclusion, snark::Proof};
+use crate::snark::Proof;
 use console::{
     network::prelude::*,
     program::{
@@ -47,8 +47,6 @@ use console::{
     },
     types::{Field, Group},
 };
-
-use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {

@@ -25,7 +25,7 @@ impl<N: Network> Process<N> {
         credits: Record<N, Plaintext<N>>,
         fee_in_gates: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, Fee<N>, Inclusion<N>)> {
+    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>)> {
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
@@ -88,9 +88,9 @@ impl<N: Network> Process<N> {
         ensure!(**fee.id() == fee.to_root()?, "Transition ID of the fee is incorrect");
 
         // Ensure the number of inputs is within the allowed range.
-        ensure!(fee.inputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of inputs");
+        ensure!(fee.inputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of inputs");
         // Ensure the number of outputs is within the allowed range.
-        ensure!(fee.outputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of outputs");
+        ensure!(fee.outputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of outputs");
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
@@ -117,7 +117,7 @@ impl<N: Network> Process<N> {
         ensure!(fee.fee() >= &0, "The fee must be zero or positive");
 
         // Ensure the inclusion proof is valid.
-        Inclusion::verify_batch(&execution)?;
+        Inclusion::verify_fee(&fee)?;
 
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinate();
@@ -141,7 +141,7 @@ impl<N: Network> Process<N> {
         }
 
         #[cfg(debug_assertions)]
-        println!("Additional fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
+        println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
         // Ensure the fee contains input records.
         ensure!(
@@ -154,7 +154,7 @@ impl<N: Network> Process<N> {
         // Ensure the transition proof is valid.
         ensure!(
             verifying_key.verify(function.name(), &inputs, fee.proof()),
-            "Additional fee is invalid - failed to verify transition proof"
+            "Fee is invalid - failed to verify transition proof"
         );
 
         Ok(())

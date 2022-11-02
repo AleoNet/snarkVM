@@ -36,7 +36,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Execute the call.
                 let (response, execution, inclusion) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
                 // Compute the inclusion proof and update the execution.
-                let execution = inclusion.prove_batch::<$aleo, _, _>(&execution, &block_store, rng)?;
+                let execution = inclusion.prove_execution::<$aleo, _, _>(&execution, &block_store, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
@@ -71,10 +71,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let block_store = cast_ref!(block_store as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call to fee.
-                let (response, fee, inclusion) =
+                let (response, fee_transition, inclusion) =
                     $process.execute_fee::<$aleo, _>(private_key, credits.clone(), fee_in_gates, rng)?;
                 // Compute the inclusion proof and update the execution.
-                let execution = inclusion.prove_batch::<$aleo, _, _>(&execution, &block_store, rng)?;
+                let fee = inclusion.prove_fee::<$aleo, _, _>(&fee_transition, &block_store, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();

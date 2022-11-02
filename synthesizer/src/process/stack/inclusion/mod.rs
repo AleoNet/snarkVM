@@ -17,14 +17,11 @@
 use crate::{
     BlockStorage,
     BlockStore,
-    CallStack,
     Execution,
+    Fee,
     Input,
-    Operand,
     Output,
-    Proof,
     ProvingKey,
-    RegisterTypes,
     Stack,
     Transaction,
     Transition,
@@ -32,30 +29,24 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{
-        Entry,
-        InputID,
-        Literal,
-        Plaintext,
-        Register,
-        StatePath,
-        TransactionLeaf,
-        TransitionLeaf,
-        Value,
-        STATE_PATH_FUNCTION_NAME,
-        TRANSACTION_DEPTH,
-    },
-    types::{Address, Field, Group},
+    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, STATE_PATH_FUNCTION_NAME, TRANSACTION_DEPTH},
+    types::{Field, Group},
 };
 
+use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
 
 #[derive(Clone)]
 struct InputTask<N: Network> {
+    /// The commitment.
     commitment: Field<N>,
+    /// The gamma value.
     gamma: Group<N>,
+    /// The serial number.
     serial_number: Field<N>,
+    /// The transition leaf.
     leaf: TransitionLeaf<N>,
+    /// A boolean indicating whether the input was produced by the current transaction.
     is_local: bool,
 }
 
@@ -68,10 +59,12 @@ pub struct Inclusion<N: Network> {
 }
 
 impl<N: Network> Inclusion<N> {
+    /// Initializes a new `Inclusion` instance.
     pub fn new() -> Self {
         Self { input_tasks: HashMap::new(), output_commitments: HashMap::new() }
     }
 
+    /// Inserts the transition to build state for the inclusion proof.
     pub fn insert_transition(&mut self, input_ids: &[InputID<N>], transition: &Transition<N>) -> Result<()> {
         // Ensure the transition inputs and input IDs are the same length.
         if input_ids.len() != transition.inputs().len() {
@@ -103,7 +96,8 @@ impl<N: Network> Inclusion<N> {
         Ok(())
     }
 
-    pub fn prove_batch<A: circuit::Aleo<Network = N>, B: BlockStorage<N>, R: Rng + CryptoRng>(
+    /// Returns a new execution with an inclusion proof, for the given execution.
+    pub fn prove_execution<A: circuit::Aleo<Network = N>, B: BlockStorage<N>, R: Rng + CryptoRng>(
         &self,
         execution: &Execution<N>,
         block_store: &BlockStore<N, B>,
@@ -164,7 +158,7 @@ impl<N: Network> Inclusion<N> {
                         global_state_root = state_path.global_state_root();
 
                         // Construct the assignment for the state path.
-                        let assignment = crate::inject_and_verify_state_path::<N, A>(
+                        let assignment = Self::inject_and_verify_state_path::<A>(
                             state_path,
                             task.commitment,
                             task.gamma,
@@ -216,7 +210,86 @@ impl<N: Network> Inclusion<N> {
         }
     }
 
-    pub fn verify_batch(execution: &Execution<N>) -> Result<()> {
+    /// Returns a new fee with an inclusion proof, for the given transition.
+    pub fn prove_fee<A: circuit::Aleo<Network = N>, B: BlockStorage<N>, R: Rng + CryptoRng>(
+        &self,
+        fee_transition: &Transition<N>,
+        block_store: &BlockStore<N, B>,
+        rng: &mut R,
+    ) -> Result<Fee<N>> {
+        // Ensure the fee has the correct program ID.
+        let fee_program_id = ProgramID::from_str("credits.aleo")?;
+        ensure!(*fee_transition.program_id() == fee_program_id, "Incorrect program ID for fee");
+
+        // Ensure the fee has the correct function.
+        let fee_function = Identifier::from_str("fee")?;
+        ensure!(*fee_transition.function_name() == fee_function, "Incorrect function name for fee");
+
+        // Ensure the transition ID of the fee is correct.
+        ensure!(**fee_transition.id() == fee_transition.to_root()?, "Transition ID of the fee is incorrect");
+
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(fee_transition.inputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of inputs");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(fee_transition.outputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of outputs");
+
+        // Initialize an empty transaction tree.
+        let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
+        // Initialize the global state root.
+        let mut global_state_root = N::StateRoot::default();
+        // Initialize a vector for the assignments.
+        let mut assignments = vec![];
+
+        // Process the input tasks.
+        match self.input_tasks.get(fee_transition.id()) {
+            Some(tasks) => {
+                for task in tasks {
+                    // Retrieve the local state root.
+                    let local_state_root = (*transaction_tree.root()).into();
+                    // Construct the state path.
+                    let state_path = block_store.get_state_path_for_commitment(&task.commitment)?;
+
+                    // Ensure the global state root is the same across iterations.
+                    if *global_state_root != Field::zero() && global_state_root != state_path.global_state_root() {
+                        bail!("Inclusion expected the global state root to be the same across iterations")
+                    }
+
+                    // Update the global state root.
+                    global_state_root = state_path.global_state_root();
+
+                    // Construct the assignment for the state path.
+                    let assignment = Self::inject_and_verify_state_path::<A>(
+                        state_path,
+                        task.commitment,
+                        task.gamma,
+                        task.serial_number,
+                        local_state_root,
+                        !task.is_local,
+                    )?;
+
+                    // Add the assignment to the assignments.
+                    assignments.push(assignment);
+                }
+            }
+            None => bail!("Missing input state for fee transition {} in inclusion", fee_transition.id()),
+        }
+
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the fee to *not* be zero")
+        }
+
+        // Load the inclusion proving key.
+        let proving_key = ProvingKey::from_bytes_le(N::state_path_proving_key_bytes())?;
+        // Generate the inclusion batch proof.
+        let inclusion_proof = proving_key.prove_batch(STATE_PATH_FUNCTION_NAME, &assignments, rng)?;
+        // Return the fee.
+        Ok(Fee::from(fee_transition.clone(), global_state_root, Some(inclusion_proof)))
+    }
+
+    /// Checks the inclusion proof for the execution.
+    /// Note: This does *not* check that the global state root exists in the ledger.
+    pub fn verify_execution(execution: &Execution<N>) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
         // Retrieve the inclusion proof.
@@ -260,6 +333,11 @@ impl<N: Network> Inclusion<N> {
         // Verify the inclusion proof.
         match inclusion_proof {
             Some(inclusion_proof) => {
+                // Ensure the global state root is not zero.
+                if *global_state_root == Field::zero() {
+                    bail!("Inclusion expected the global state root in the fee to *not* be zero")
+                }
+
                 // TODO (howardwu): Cache this in the process.
                 // Load the inclusion verifying key.
                 let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
@@ -277,5 +355,121 @@ impl<N: Network> Inclusion<N> {
             }
         }
         Ok(())
+    }
+
+    /// Checks the inclusion proof for the fee.
+    /// Note: This does *not* check that the global state root exists in the ledger.
+    pub fn verify_fee(fee: &Fee<N>) -> Result<()> {
+        // Retrieve the global state root.
+        let global_state_root = fee.global_state_root();
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the fee to *not* be zero")
+        }
+
+        // Retrieve the inclusion proof.
+        let inclusion_proof = match fee.inclusion_proof() {
+            Some(inclusion_proof) => inclusion_proof,
+            None => bail!("Inclusion expected the fee to contain an inclusion proof"),
+        };
+
+        // Initialize an empty transaction tree.
+        let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
+        // Initialize a vector for the batch verifier inputs.
+        let mut batch_verifier_inputs = vec![];
+
+        // Retrieve the local state root.
+        let local_state_root = *transaction_tree.root();
+
+        // Construct the batch verifier inputs.
+        for input in fee.inputs() {
+            // Filter the inputs for records.
+            if let Input::Record(serial_number, _) = input {
+                // Add the public inputs to the batch verifier inputs.
+                batch_verifier_inputs.push(vec![
+                    N::Field::one(),
+                    **global_state_root,
+                    *local_state_root,
+                    **serial_number,
+                ]);
+            }
+        }
+
+        // Ensure there are batch verifier inputs.
+        if batch_verifier_inputs.is_empty() {
+            bail!("Inclusion expected the fee to contain input records")
+        }
+
+        // TODO (howardwu): Cache this in the process.
+        // Load the inclusion verifying key.
+        let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
+        // Verify the inclusion proof.
+        ensure!(
+            verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, &inclusion_proof),
+            "Inclusion proof is invalid"
+        );
+
+        Ok(())
+    }
+}
+
+impl<N: Network> Inclusion<N> {
+    /// The circuit for state path verification.
+    ///
+    /// # Diagram
+    /// The `[[ ]]` notation is used to denote public inputs.
+    /// ```ignore
+    ///             [[ global_state_root ]] || [[ local_state_root ]]
+    ///                        |                          |
+    ///                        -------- is_global --------
+    ///                                     |
+    ///                                state_path
+    ///                                    |
+    /// [[ serial_number ]] := Commit( commitment || Hash( COFACTOR * gamma ) )
+    /// ```
+    pub fn inject_and_verify_state_path<A: circuit::Aleo<Network = N>>(
+        console_state_path: StatePath<N>,
+        console_commitment: Field<N>,
+        console_gamma: Group<N>,
+        console_serial_number: Field<N>,
+        console_local_state_root: N::TransactionID,
+        console_is_global: bool,
+    ) -> Result<circuit::Assignment<N::Field>> {
+        use circuit::Inject;
+
+        // Ensure the circuit environment is clean.
+        assert_eq!(A::count(), (0, 1, 0, 0, 0));
+        A::reset();
+
+        // Inject the state path as `Mode::Private` (with a global state root as `Mode::Public`).
+        let state_path = circuit::StatePath::<A>::new(circuit::Mode::Private, console_state_path);
+        // Inject the commitment as `Mode::Private`.
+        let commitment = circuit::Field::<A>::new(circuit::Mode::Private, console_commitment);
+        // Inject the gamma as `Mode::Private`.
+        let gamma = circuit::Group::<A>::new(circuit::Mode::Private, console_gamma);
+
+        // Inject the local state root as `Mode::Public`.
+        let local_state_root = circuit::Field::<A>::new(circuit::Mode::Public, *console_local_state_root);
+        // Inject the 'is_global' flag as `Mode::Private`.
+        let is_global = circuit::Boolean::<A>::new(circuit::Mode::Private, console_is_global);
+
+        // Inject the serial number as `Mode::Public`.
+        let serial_number = circuit::Field::<A>::new(circuit::Mode::Public, console_serial_number);
+        // Compute the candidate serial number.
+        let candidate_serial_number =
+            circuit::Record::<A, circuit::Plaintext<A>>::serial_number_from_gamma(&gamma, commitment.clone());
+        // Enforce that the candidate serial number is equal to the serial number.
+        A::assert_eq(&candidate_serial_number, &serial_number);
+
+        // Enforce the starting leaf is the claimed commitment.
+        A::assert_eq(state_path.transition_leaf().id(), commitment);
+        // Enforce the state path from leaf to root is correct.
+        A::assert(state_path.verify(&is_global, &local_state_root));
+
+        #[cfg(debug_assertions)]
+        Stack::log_circuit::<A, _>(&format!("State Path for {console_serial_number}"));
+
+        // Eject the assignment and reset the circuit environment.
+        Ok(A::eject_assignment_and_reset())
     }
 }

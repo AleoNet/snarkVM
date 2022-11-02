@@ -24,7 +24,7 @@ mod execute;
 mod execute_fee;
 
 use crate::{
-    block::Input,
+    block::{Input, Transition},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
@@ -32,17 +32,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{
-        Identifier,
-        Plaintext,
-        ProgramID,
-        Record,
-        Request,
-        Response,
-        StatePath,
-        Value,
-        STATE_PATH_FUNCTION_NAME,
-    },
+    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{I64, U16, U64},
 };
 
@@ -249,7 +239,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::PrivateKey,
         network::Testnet3,
-        program::{Identifier, InputID, Value},
+        program::{Identifier, Value},
     };
 
     use once_cell::sync::OnceCell;

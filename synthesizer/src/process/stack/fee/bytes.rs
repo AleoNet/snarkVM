@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         // Construct a new fee.
-        let expected = crate::process::test_helpers::sample_fee();
+        let expected = crate::vm::test_helpers::sample_fee();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

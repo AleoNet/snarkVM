@@ -137,7 +137,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ConsensusMemory, Fee, Transition};
+    use crate::{program::Program, Block, ConsensusMemory, Fee, Inclusion, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -314,10 +314,12 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_fee(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+    pub(crate) fn sample_fee() -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
+                let rng = &mut TestRng::default();
+
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
@@ -348,30 +350,12 @@ function compute:
                     vm.finalize(transaction).unwrap();
                 }
 
-                // Authorize.
-                let authorization = vm
-                    .authorize(
-                        &caller_private_key,
-                        &ProgramID::from_str("credits.aleo").unwrap(),
-                        Identifier::from_str("transfer").unwrap(),
-                        &[
-                            Value::<CurrentNetwork>::Record(record),
-                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                        ],
-                        rng,
-                    )
-                    .unwrap();
-                assert_eq!(authorization.len(), 1);
-
                 // Execute.
-                let (response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng)?;
-
-                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
-                // Return the transaction.
-                transaction
+                Inclusion::verify_fee(&fee).unwrap();
+                // Return the fee.
+                fee
             })
             .clone()
     }

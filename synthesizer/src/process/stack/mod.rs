@@ -69,7 +69,6 @@ use console::{
         Entry,
         EntryType,
         Identifier,
-        InputID,
         Literal,
         Locator,
         Owner,
@@ -81,10 +80,8 @@ use console::{
         RegisterType,
         Request,
         Response,
-        StatePath,
         Value,
         ValueType,
-        STATE_PATH_FUNCTION_NAME,
     },
     types::{Field, Group, U64},
 };

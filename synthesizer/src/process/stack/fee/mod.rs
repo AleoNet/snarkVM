@@ -19,9 +19,7 @@ mod serialize;
 mod string;
 
 use crate::{snark::Proof, Transition};
-use console::{account::Field, network::prelude::*};
-
-use indexmap::IndexMap;
+use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Fee<N: Network> {
@@ -56,8 +54,8 @@ impl<N: Network> Fee<N> {
     }
 
     /// Returns the global state root.
-    pub const fn global_state_root(&self) -> &N::StateRoot {
-        &self.global_state_root
+    pub const fn global_state_root(&self) -> N::StateRoot {
+        self.global_state_root
     }
 
     /// Returns the inclusion proof.

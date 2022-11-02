@@ -70,7 +70,7 @@ impl<N: Network> Process<N> {
         }
 
         // Ensure the inclusion proof is valid.
-        Inclusion::verify_batch(&execution)?;
+        Inclusion::verify_execution(execution)?;
 
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();

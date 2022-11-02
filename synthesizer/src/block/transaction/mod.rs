@@ -173,9 +173,9 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
-            Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee).into_iter()),
+            Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
             Self::Execute(_, execution, additional_fee) => {
-                IterWrap::Execute(execution.transitions().chain(additional_fee.map(|f| f.transition())))
+                IterWrap::Execute(execution.transitions().chain(additional_fee.as_ref().map(|f| f.transition())))
             }
         }
     }
@@ -239,7 +239,7 @@ impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
         match self {
-            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
+            Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
             Self::Execute(_, execution, additional_fee) => {
                 IterWrap::Execute(execution.into_transitions().chain(additional_fee.map(|f| f.into_transition())))
             }
