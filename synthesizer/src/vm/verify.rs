@@ -155,7 +155,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::vm::test_helpers::sample_program;
+    use crate::{vm::test_helpers::sample_program, Transaction};
     use snarkvm_utilities::TestRng;
 
     #[test]
@@ -168,10 +168,27 @@ mod tests {
         // Ensure the transaction verifies.
         assert!(vm.verify(&deployment_transaction));
 
-        // Fetch a execution transaction.
+        // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         // Ensure the transaction verifies.
         assert!(vm.verify(&execution_transaction));
+    }
+
+    #[test]
+    fn test_verify_execution() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Fetch a execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+
+        match transaction {
+            Transaction::Execute(_, execution, _) => {
+                // Verify the execution.
+                assert!(vm.verify_execution(&execution));
+            }
+            _ => panic!("Expected an execution transaction"),
+        }
     }
 
     #[test]
