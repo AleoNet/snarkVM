@@ -130,7 +130,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     fn verify_execution(&self, execution: &Execution<N>) -> bool {
         // Verify the execution.
-        match self.process.read().verify_execution(execution) {
+        match self.process.read().verify_execution::<true>(execution) {
             Ok(()) => true,
             Err(error) => {
                 warn!("Execution verification failed: {error}");

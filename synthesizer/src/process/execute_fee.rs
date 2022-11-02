@@ -71,6 +71,7 @@ impl<N: Network> Process<N> {
     }
 
     /// Verifies the given fee is valid.
+    /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
     pub fn verify_fee(&self, fee: &Fee<N>) -> Result<()> {
         #[cfg(debug_assertions)]

@@ -49,8 +49,9 @@ impl<N: Network> Process<N> {
     }
 
     /// Verifies the given execution is valid.
+    /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -70,7 +71,9 @@ impl<N: Network> Process<N> {
         }
 
         // Ensure the inclusion proof is valid.
-        Inclusion::verify_execution(execution)?;
+        if VERIFY_INCLUSION {
+            Inclusion::verify_execution(execution)?;
+        }
 
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();
