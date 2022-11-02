@@ -143,66 +143,18 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
         tree.resize(tree_size, self.empty_hash);
 
-        // Initialize a timer for the while loop.
-        let timer = timer!("while");
-
         // Initialize a precompute index to track the starting index of each precomputed level.
-        let mut precompute_index = match self.number_of_leaves.checked_next_power_of_two() {
+        let precompute_index = match self.number_of_leaves.checked_next_power_of_two() {
             Some(num_leaves) => num_leaves - 1,
             None => bail!("Integer overflow when computing the Merkle tree precompute index"),
         };
         // Initialize a start index to track the starting index of the current level.
-        let mut start_index = num_nodes;
+        let start_index = num_nodes;
         // Initialize a middle index to separate the precomputed indices from the new indices that need to be computed.
-        let mut middle_index = num_nodes + self.number_of_leaves;
+        let middle_index = num_nodes + self.number_of_leaves;
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
-        while let (Some(start), Some(middle)) = (parent(start_index), parent(middle_index)) {
-            // Compute the end index of the current level.
-            let end = left_child(start);
-
-            // If the current level has precomputed indices, copy them instead of recomputing them.
-            if let Some(precompute_start) = parent(precompute_index) {
-                // Compute the end index of the precomputed level.
-                let precompute_end = precompute_start + (middle - start);
-                // Copy the hashes for each node in the current level.
-                tree[start..middle].copy_from_slice(&self.tree[precompute_start..precompute_end]);
-                // Update the precompute index for the next level.
-                precompute_index = precompute_start;
-            } else {
-                // Ensure the start index is equal to the middle index, as all precomputed indices have been processed.
-                ensure!(start == middle, "Failed to process all precomputed indices in the Merkle tree");
-            }
-            lap!(timer, "Precompute: {start} -> {middle}");
-
-            // Construct the children for the new indices in the current level.
-            let tuples = (middle..end).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
-            // Process the indices that need to be computed for the current level.
-            // If any level requires computing more than 100 nodes, borrow the tree for performance.
-            match tuples.len() >= 100 {
-                // Option 1: Borrow the tree to compute and store the hashes for the new indices in the current level.
-                true => cfg_iter_mut!(tree[middle..end]).zip_eq(cfg_iter!(tuples)).try_for_each(
-                    |(node, (left, right))| {
-                        *node = self.path_hasher.hash_children(left, right)?;
-                        Ok::<_, Error>(())
-                    },
-                )?,
-                // Option 2: Compute and store the hashes for the new indices in the current level.
-                false => tree[middle..end].iter_mut().zip_eq(&tuples).try_for_each(|(node, (left, right))| {
-                    *node = self.path_hasher.hash_children(left, right)?;
-                    Ok::<_, Error>(())
-                })?,
-            }
-            lap!(timer, "Compute: {middle} -> {end}");
-
-            // Update the start index for the next level.
-            start_index = start;
-            // Update the middle index for the next level.
-            middle_index = middle;
-        }
-
-        // End the timer for the while loop.
-        finish!(timer);
+        self.compute_updated_tree(&mut tree, start_index, middle_index, precompute_index)?;
 
         // Compute the root hash, by iterating from the root level up to `DEPTH`.
         let mut root_hash = tree[0];
@@ -264,66 +216,18 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
         tree.resize(tree_size, self.empty_hash);
 
-        // Initialize a timer for the while loop.
-        let timer = timer!("while");
-
         // Initialize a precompute index to track the starting index of each precomputed level.
-        let mut precompute_index = match self.number_of_leaves.checked_next_power_of_two() {
+        let precompute_index = match self.number_of_leaves.checked_next_power_of_two() {
             Some(num_leaves) => num_leaves - 1,
             None => bail!("Integer overflow when computing the Merkle tree precompute index"),
         };
         // Initialize a start index to track the starting index of the current level.
-        let mut start_index = num_nodes;
+        let start_index = num_nodes;
         // Initialize a middle index to separate the precomputed indices from the new indices that need to be computed.
-        let mut middle_index = num_nodes + updated_number_of_leaves;
+        let middle_index = num_nodes + updated_number_of_leaves;
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
-        while let (Some(start), Some(middle)) = (parent(start_index), parent(middle_index)) {
-            // Compute the end index of the current level.
-            let end = left_child(start);
-
-            // If the current level has precomputed indices, copy them instead of recomputing them.
-            if let Some(precompute_start) = parent(precompute_index) {
-                // Compute the end index of the precomputed level.
-                let precompute_end = precompute_start + (middle - start);
-                // Copy the hashes for each node in the current level.
-                tree[start..middle].copy_from_slice(&self.tree[precompute_start..precompute_end]);
-                // Update the precompute index for the next level.
-                precompute_index = precompute_start;
-            } else {
-                // Ensure the start index is equal to the middle index, as all precomputed indices have been processed.
-                ensure!(start == middle, "Failed to process all precomputed indices in the Merkle tree");
-            }
-            lap!(timer, "Precompute: {start} -> {middle}");
-
-            // Construct the children for the new indices in the current level.
-            let tuples = (middle..end).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
-            // Process the indices that need to be computed for the current level.
-            // If any level requires computing more than 100 nodes, borrow the tree for performance.
-            match tuples.len() >= 100 {
-                // Option 1: Borrow the tree to compute and store the hashes for the new indices in the current level.
-                true => cfg_iter_mut!(tree[middle..end]).zip_eq(cfg_iter!(tuples)).try_for_each(
-                    |(node, (left, right))| {
-                        *node = self.path_hasher.hash_children(left, right)?;
-                        Ok::<_, Error>(())
-                    },
-                )?,
-                // Option 2: Compute and store the hashes for the new indices in the current level.
-                false => tree[middle..end].iter_mut().zip_eq(&tuples).try_for_each(|(node, (left, right))| {
-                    *node = self.path_hasher.hash_children(left, right)?;
-                    Ok::<_, Error>(())
-                })?,
-            }
-            lap!(timer, "Compute: {middle} -> {end}");
-
-            // Update the start index for the next level.
-            start_index = start;
-            // Update the middle index for the next level.
-            middle_index = middle;
-        }
-
-        // End the timer for the while loop.
-        finish!(timer);
+        self.compute_updated_tree(&mut tree, start_index, middle_index, precompute_index)?;
 
         // Compute the root hash, by iterating from the root level up to `DEPTH`.
         let mut root_hash = tree[0];
@@ -436,6 +340,70 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     /// Returns the number of leaves in the Merkle tree.
     pub const fn number_of_leaves(&self) -> usize {
         self.number_of_leaves
+    }
+
+    #[timed]
+    #[inline]
+    /// Compute and store the hashes for each level, iterating from the penultimate level to the root level.
+    fn compute_updated_tree(
+        &self,
+        tree: &mut [Field<E>],
+        mut start_index: usize,
+        mut middle_index: usize,
+        mut precompute_index: usize,
+    ) -> Result<()> {
+        // Initialize a timer for the while loop.
+        let timer = timer!("while");
+
+        // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
+        while let (Some(start), Some(middle)) = (parent(start_index), parent(middle_index)) {
+            // Compute the end index of the current level.
+            let end = left_child(start);
+
+            // If the current level has precomputed indices, copy them instead of recomputing them.
+            if let Some(precompute_start) = parent(precompute_index) {
+                // Compute the end index of the precomputed level.
+                let precompute_end = precompute_start + (middle - start);
+                // Copy the hashes for each node in the current level.
+                tree[start..middle].copy_from_slice(&self.tree[precompute_start..precompute_end]);
+                // Update the precompute index for the next level.
+                precompute_index = precompute_start;
+            } else {
+                // Ensure the start index is equal to the middle index, as all precomputed indices have been processed.
+                ensure!(start == middle, "Failed to process all precomputed indices in the Merkle tree");
+            }
+            lap!(timer, "Precompute: {start} -> {middle}");
+
+            // Construct the children for the new indices in the current level.
+            let tuples = (middle..end).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
+            // Process the indices that need to be computed for the current level.
+            // If any level requires computing more than 100 nodes, borrow the tree for performance.
+            match tuples.len() >= 100 {
+                // Option 1: Borrow the tree to compute and store the hashes for the new indices in the current level.
+                true => cfg_iter_mut!(tree[middle..end]).zip_eq(cfg_iter!(tuples)).try_for_each(
+                    |(node, (left, right))| {
+                        *node = self.path_hasher.hash_children(left, right)?;
+                        Ok::<_, Error>(())
+                    },
+                )?,
+                // Option 2: Compute and store the hashes for the new indices in the current level.
+                false => tree[middle..end].iter_mut().zip_eq(&tuples).try_for_each(|(node, (left, right))| {
+                    *node = self.path_hasher.hash_children(left, right)?;
+                    Ok::<_, Error>(())
+                })?,
+            }
+            lap!(timer, "Compute: {middle} -> {end}");
+
+            // Update the start index for the next level.
+            start_index = start;
+            // Update the middle index for the next level.
+            middle_index = middle;
+        }
+
+        // End the timer for the while loop.
+        finish!(timer);
+
+        Ok(())
     }
 }
 
