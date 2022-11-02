@@ -23,10 +23,10 @@ mod finalize;
 mod verify;
 
 use crate::{
-    block::Transaction,
+    block::{Transaction, Transition},
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Fee, Process},
+    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
 };

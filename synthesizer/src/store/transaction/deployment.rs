@@ -211,7 +211,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         };
         // Retrieve the fee transition ID.
         let (transition_id, _, _) = match self.fee_map().get(transaction_id)? {
-            Some(fee_id) => cow_to_copied!(fee_id),
+            Some(fee_id) => cow_to_cloned!(fee_id),
             None => bail!("Failed to locate the fee transition ID for transaction '{transaction_id}'"),
         };
 
@@ -371,7 +371,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
         // Retrieve the fee transition ID.
         let (fee_transition_id, global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
-            Some(fee) => cow_to_copied!(fee),
+            Some(fee) => cow_to_cloned!(fee),
             None => return Ok(None),
         };
         // Retrieve the fee transition.

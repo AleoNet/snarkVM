@@ -49,7 +49,7 @@ impl<N: Network> Fee<N> {
     }
 
     /// Returns the transition, consuming self in the process.
-    pub const fn into_transition(self) -> Transition<N> {
+    pub fn into_transition(self) -> Transition<N> {
         self.transition
     }
 

@@ -27,14 +27,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the authorization and block store.
+                // Prepare the authorization.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
-                let block_store = cast_ref!((self.block_store()) as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call.
                 let (response, execution, inclusion) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+
+                // Prepare the assignments.
+                let assignments = {
+                    let execution = cast_ref!(execution as Execution<N>);
+                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
+                    inclusion.prepare_execution(execution, self.block_store())?
+                };
+                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
+
                 // Compute the inclusion proof and update the execution.
-                let execution = inclusion.prove_execution::<$aleo, _, _>(&execution, &block_store, rng)?;
+                let execution = inclusion.prove_execution::<$aleo, _>(execution, assignments, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
@@ -61,16 +69,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             ($process:expr, $network:path, $aleo:path) => {{
                 type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
 
-                // Prepare the private key, credits record, and block store.
+                // Prepare the private key and credits record.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let credits = cast_ref!(credits as RecordPlaintext<$network>);
-                let block_store = cast_ref!((self.block_store()) as BlockStore<$network, C::BlockStorage>);
 
                 // Execute the call to fee.
                 let (response, fee_transition, inclusion) =
                     $process.execute_fee::<$aleo, _>(private_key, credits.clone(), fee_in_gates, rng)?;
-                // Compute the inclusion proof and update the execution.
-                let fee = inclusion.prove_fee::<$aleo, _, _>(&fee_transition, &block_store, rng)?;
+
+                // Prepare the assignments.
+                let assignments = {
+                    let fee_transition = cast_ref!(fee_transition as Transition<N>);
+                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
+                    inclusion.prepare_fee(fee_transition, self.block_store())?
+                };
+                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
+
+                // Compute the inclusion proof and construct the fee.
+                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, rng)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
