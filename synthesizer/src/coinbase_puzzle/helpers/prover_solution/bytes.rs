@@ -22,7 +22,7 @@ impl<N: Network> FromBytes for ProverSolution<N> {
         let partial_solution: PartialSolution<N> = FromBytes::read_le(&mut reader)?;
         let proof = KZGProof::read_le(&mut reader)?;
 
-        Ok(Self { partial_solution, proof })
+        Ok(Self::new(partial_solution, proof))
     }
 }
 

@@ -50,6 +50,7 @@ pub use core::{
         BitXor,
         BitXorAssign,
         Deref,
+        DerefMut,
         Div,
         DivAssign,
         Mul,

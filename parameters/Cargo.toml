@@ -46,6 +46,10 @@ version = "1"
 [dependencies.cfg-if]
 version = "1.0"
 
+[dependencies.colored]
+version = "2"
+optional = true
+
 [dependencies.hex]
 version = "0.4.3"
 
@@ -114,7 +118,7 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "remote" ]
+default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
 wasm = [

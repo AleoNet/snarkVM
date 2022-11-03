@@ -46,7 +46,7 @@ pub fn hash_to_polynomial<F: PrimeField>(input: &[u8], degree: u32) -> DensePoly
     DensePolynomial::from_coefficients_vec(coefficients)
 }
 
-pub fn hash_commitment<E: PairingEngine>(commitment: KZGCommitment<E>) -> Result<E::Fr> {
+pub fn hash_commitment<E: PairingEngine>(commitment: &KZGCommitment<E>) -> Result<E::Fr> {
     // Convert the commitment into bytes.
     let mut bytes = Vec::with_capacity(96);
     commitment.serialize_uncompressed(&mut bytes)?;

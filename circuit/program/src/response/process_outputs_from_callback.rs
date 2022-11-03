@@ -19,13 +19,19 @@ use super::*;
 impl<A: Aleo> Response<A> {
     /// Returns the injected circuit outputs, given the number of inputs, caller, tvk, tcm, outputs, and output types.
     pub fn process_outputs_from_callback(
+        network_id: &U16<A>,
         program_id: &ProgramID<A>,
+        function_name: &Identifier<A>,
         num_inputs: usize,
         tvk: &Field<A>,
         tcm: &Field<A>,
         outputs: Vec<console::Value<A::Network>>,        // Note: Console type
         output_types: &[console::ValueType<A::Network>], // Note: Console type
     ) -> Vec<Value<A>> {
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id =
+            A::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le());
+
         match outputs
             .iter()
             .zip_eq(output_types)
@@ -41,8 +47,9 @@ impl<A: Aleo> Response<A> {
 
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Construct the preimage as `(output || tcm || index)`.
-                        let mut preimage = output.to_fields();
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id.clone()];
+                        preimage.extend(output.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(output_index);
 
@@ -63,8 +70,9 @@ impl<A: Aleo> Response<A> {
 
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Construct the preimage as `(output || tcm || index)`.
-                        let mut preimage = output.to_fields();
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id.clone()];
+                        preimage.extend(output.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(output_index);
 
@@ -85,8 +93,8 @@ impl<A: Aleo> Response<A> {
 
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Compute the output view key as `Hash(tvk || index)`.
-                        let output_view_key = A::hash_psd2(&[tvk.clone(), output_index]);
+                        // Compute the output view key as `Hash(function ID || tvk || index)`.
+                        let output_view_key = A::hash_psd4(&[function_id.clone(), tvk.clone(), output_index]);
                         // Compute the ciphertext.
                         let ciphertext = match &output {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key),
@@ -123,8 +131,9 @@ impl<A: Aleo> Response<A> {
 
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Construct the preimage as `(output || tvk || index)`.
-                        let mut preimage = output.to_fields();
+                        // Construct the preimage as `(function ID || output || tvk || index)`.
+                        let mut preimage = vec![function_id.clone()];
+                        preimage.extend(output.to_fields());
                         preimage.push(tvk.clone());
                         preimage.push(output_index);
 
@@ -214,22 +223,39 @@ mod tests {
                 console::Register::Locator(9),
             ];
 
+            // Construct a network ID.
+            let network_id = console::U16::new(<Circuit as Environment>::Network::ID);
             // Construct a program ID.
             let program_id = console::ProgramID::from_str("test.aleo")?;
+            // Construct a function name.
+            let function_name = console::Identifier::from_str("check")?;
 
             // Construct the response.
-            let response =
-                console::Response::new(&program_id, 4, &tvk, &tcm, outputs.clone(), &output_types, &output_registers)?;
+            let response = console::Response::new(
+                &network_id,
+                &program_id,
+                &function_name,
+                4,
+                &tvk,
+                &tcm,
+                outputs.clone(),
+                &output_types,
+                &output_registers,
+            )?;
             // assert!(response.verify());
 
-            // Inject the program ID, `tvk`, `tcm`.
+            // Inject the network ID, program ID, function name, `tvk`, `tcm`.
+            let network_id = U16::<Circuit>::constant(network_id);
             let program_id = ProgramID::<Circuit>::new(mode, program_id);
+            let function_name = Identifier::<Circuit>::new(mode, function_name);
             let tvk = Field::<Circuit>::new(mode, tvk);
             let tcm = Field::<Circuit>::new(mode, tcm);
 
             Circuit::scope(format!("Response {i}"), || {
                 let outputs = Response::process_outputs_from_callback(
+                    &network_id,
                     &program_id,
+                    &function_name,
                     4,
                     &tvk,
                     &tcm,
@@ -245,8 +271,17 @@ mod tests {
 
             // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, response.outputs().to_vec());
-            let candidate_b =
-                Response::from_outputs(&program_id, 4, &tvk, &tcm, outputs, &output_types, &output_registers);
+            let candidate_b = Response::from_outputs(
+                &network_id,
+                &program_id,
+                &function_name,
+                4,
+                &tvk,
+                &tcm,
+                outputs,
+                &output_types,
+                &output_registers,
+            );
             assert_eq!(response, candidate_b.eject_value());
 
             Circuit::reset();
@@ -260,16 +295,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 15943, 5, 4241, 4258)
+        check_from_callback(Mode::Constant, 16611, 5, 4241, 4258)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 15943, 5, 5466, 5483)
+        check_from_callback(Mode::Public, 16611, 5, 5536, 5553)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 15943, 5, 5466, 5483)
+        check_from_callback(Mode::Private, 19959, 5, 5536, 5553)
     }
 }

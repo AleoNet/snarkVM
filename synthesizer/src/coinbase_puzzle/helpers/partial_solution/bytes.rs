@@ -23,7 +23,7 @@ impl<N: Network> FromBytes for PartialSolution<N> {
         let nonce = u64::read_le(&mut reader)?;
         let commitment = KZGCommitment::read_le(&mut reader)?;
 
-        Ok(Self { address, nonce, commitment })
+        Ok(Self::new(address, nonce, commitment))
     }
 }
 

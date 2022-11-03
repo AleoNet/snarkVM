@@ -73,6 +73,28 @@ pub trait Network:
     /// The network edition.
     const EDITION: u16;
 
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str;
+
+    /// The fixed timestamp of the genesis block.
+    const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+    /// The genesis block coinbase target.
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
+    /// The genesis block proof target.
+    const GENESIS_PROOF_TARGET: u64 = 0; // 00 0000 0000
+
+    /// The starting supply of Aleo credits.
+    const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
+
+    /// The anchor time per block in seconds, which must be greater than the round time per block.
+    const ANCHOR_TIME: u16 = 20;
+    /// The coinbase puzzle degree.
+    const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
+    /// The maximum number of prover solutions that can be included per block.
+    const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
+    /// The number of blocks per epoch (1 hour).
+    const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
+
     /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.
     const MAX_DATA_DEPTH: usize = 32;
@@ -111,6 +133,12 @@ pub trait Network:
 
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;
+
+    /// Returns the `proving key` bytes for the inclusion circuit.
+    fn inclusion_proving_key_bytes() -> &'static Vec<u8>;
+
+    /// Returns the `verifying key` bytes for the inclusion circuit.
+    fn inclusion_verifying_key_bytes() -> &'static Vec<u8>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;

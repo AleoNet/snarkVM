@@ -56,7 +56,7 @@ impl<N: Network> ProverSolution<N> {
         let prover_polynomial = self.partial_solution.to_prover_polynomial(epoch_challenge)?;
 
         // Compute the challenge point.
-        let challenge_point = hash_commitment(self.commitment())?;
+        let challenge_point = hash_commitment(&self.commitment())?;
 
         // Evaluate the epoch and prover polynomials at the challenge point.
         let epoch_evaluation = epoch_challenge.epoch_polynomial().evaluate(challenge_point);

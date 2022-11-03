@@ -23,7 +23,7 @@ impl<N: Network> Process<N> {
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>)> {
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
 
@@ -32,26 +32,26 @@ impl<N: Network> Process<N> {
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        // Retrieve the stack.
-        let stack = self.get_stack(request.program_id())?;
+        // Initialize the inclusion.
+        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the call stack.
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
         // Execute the circuit.
-        let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
+        let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
         // Extract the execution.
         let execution = execution.read().clone();
         // Ensure the execution is not empty.
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
+        // Extract the inclusion.
+        let inclusion = inclusion.read().clone();
 
-        Ok((response, execution))
+        Ok((response, execution, inclusion))
     }
 
     /// Verifies the given execution is valid.
+    /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
-        // Retrieve the edition.
-        let edition = execution.edition();
-        // Ensure the edition matches.
-        ensure!(edition == N::EDITION, "Executed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
-
+    pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -70,6 +70,11 @@ impl<N: Network> Process<N> {
             );
         }
 
+        // Ensure the inclusion proof is valid.
+        if VERIFY_INCLUSION {
+            Inclusion::verify_execution(execution)?;
+        }
+
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();
 
@@ -85,8 +90,24 @@ impl<N: Network> Process<N> {
             // Ensure the number of outputs is within the allowed range.
             ensure!(transition.outputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
 
+            // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+            let function_id = N::hash_bhp1024(
+                &(
+                    U16::<N>::new(N::ID),
+                    transition.program_id().name(),
+                    transition.program_id().network(),
+                    transition.function_name(),
+                )
+                    .to_bits_le(),
+            )?;
+
             // Ensure each input is valid.
-            if transition.inputs().iter().enumerate().any(|(index, input)| !input.verify(transition.tcm(), index)) {
+            if transition
+                .inputs()
+                .iter()
+                .enumerate()
+                .any(|(index, input)| !input.verify(function_id, transition.tcm(), index))
+            {
                 bail!("Failed to verify a transition input")
             }
             // Ensure each output is valid.
@@ -95,7 +116,7 @@ impl<N: Network> Process<N> {
                 .outputs()
                 .iter()
                 .enumerate()
-                .any(|(index, output)| !output.verify(transition.tcm(), num_inputs + index))
+                .any(|(index, output)| !output.verify(function_id, transition.tcm(), num_inputs + index))
             {
                 bail!("Failed to verify a transition output")
             }
@@ -132,7 +153,7 @@ impl<N: Network> Process<N> {
             if num_function_calls > 0 {
                 // This loop takes the last `num_function_call` transitions, and reverses them
                 // to order them in the order they were defined in the function.
-                for transition in (*queue).iter().rev().take(num_function_calls).rev() {
+                for transition in queue.transitions().rev().take(num_function_calls).rev() {
                     // [Inputs] Extend the verifier inputs with the input IDs of the external call.
                     inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
                     // [Inputs] Extend the verifier inputs with the output IDs of the external call.
@@ -179,11 +200,11 @@ impl<N: Network> Process<N> {
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
             // Retrieve the verifying key.
-            let verifying_key = self.get_verifying_key(transition.program_id(), transition.function_name())?;
-            // Ensure the proof is valid.
+            let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
+            // Ensure the transition proof is valid.
             ensure!(
-                verifying_key.verify(transition.function_name(), &inputs, transition.proof()),
-                "Transition is invalid"
+                verifying_key.verify(function.name(), &inputs, transition.proof()),
+                "Transition is invalid - failed to verify transition proof"
             );
         }
         Ok(())
@@ -218,8 +239,7 @@ impl<N: Network> Process<N> {
         // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
         //  Currently this loop assumes a linearly execution stack.
         // Finalize each transition, starting from the last one.
-        #[allow(clippy::into_iter_on_ref)]
-        for transition in execution.into_iter().rev() {
+        for transition in execution.transitions().rev() {
             #[cfg(debug_assertions)]
             println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
 

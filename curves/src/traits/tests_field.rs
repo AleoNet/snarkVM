@@ -202,7 +202,7 @@ fn random_string_tests<F: PrimeField>(rng: &mut TestRng) {
         let n: u64 = rng.gen();
 
         let a = F::from_str(&format!("{}", n)).map_err(|_| ()).unwrap();
-        let b = F::from_repr(n.into()).unwrap();
+        let b = F::from_bigint(n.into()).unwrap();
 
         assert_eq!(a, b);
     }
@@ -532,7 +532,7 @@ pub fn field_test<F: Field>(a: F, b: F, rng: &mut TestRng) {
 }
 
 pub fn fft_field_test<F: PrimeField + FftField>() {
-    let modulus_minus_one_div_two = F::from_repr(F::modulus_minus_one_div_two()).unwrap();
+    let modulus_minus_one_div_two = F::from_bigint(F::modulus_minus_one_div_two()).unwrap();
     assert!(!modulus_minus_one_div_two.is_zero());
 
     // modulus - 1 == 2^s * t
@@ -542,10 +542,10 @@ pub fn fft_field_test<F: PrimeField + FftField>() {
     assert!(two_adicity > 0);
     let two_s_minus_one = F::from(2_u32).pow([(two_adicity - 1) as u64]);
     let trace = modulus_minus_one_div_two * two_s_minus_one.inverse().unwrap();
-    assert_eq!(trace, F::from_repr(F::trace()).unwrap());
+    assert_eq!(trace, F::from_bigint(F::trace()).unwrap());
 
     // (trace - 1) / 2 == trace_minus_one_div_two
-    let trace_minus_one_div_two = F::from_repr(F::trace_minus_one_div_two()).unwrap();
+    let trace_minus_one_div_two = F::from_bigint(F::trace_minus_one_div_two()).unwrap();
     assert!(!trace_minus_one_div_two.is_zero());
     assert_eq!((trace - F::one()) / F::one().double(), trace_minus_one_div_two);
 
@@ -555,17 +555,17 @@ pub fn fft_field_test<F: PrimeField + FftField>() {
     let two_adic_root_of_unity = F::two_adic_root_of_unity();
     assert!(!two_adic_root_of_unity.is_zero());
     assert_eq!(two_adic_root_of_unity.pow([1 << two_adicity]), F::one());
-    assert_eq!(generator.pow(trace.to_repr().as_ref()), two_adic_root_of_unity);
+    assert_eq!(generator.pow(trace.to_bigint().as_ref()), two_adic_root_of_unity);
 }
 
 pub fn primefield_test<F: PrimeField>(rng: &mut TestRng) {
     let one = F::one();
-    assert_eq!(F::from_repr(one.to_repr()).unwrap(), one);
+    assert_eq!(F::from_bigint(one.to_bigint()).unwrap(), one);
     assert_eq!(F::from_str("1").ok().unwrap(), one);
     assert_eq!(F::from_str(&one.to_string()).ok().unwrap(), one);
 
     let two = F::one().double();
-    assert_eq!(F::from_repr(two.to_repr()).unwrap(), two);
+    assert_eq!(F::from_bigint(two.to_bigint()).unwrap(), two);
     assert_eq!(F::from_str("2").ok().unwrap(), two);
     assert_eq!(F::from_str(&two.to_string()).ok().unwrap(), two);
 

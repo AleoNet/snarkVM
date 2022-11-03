@@ -23,7 +23,7 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
-use crate::{UniversalSRS, MAX_PROVER_SOLUTIONS};
+use crate::UniversalSRS;
 use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, has_duplicates, Network, Result, ToBytes},
@@ -65,7 +65,8 @@ impl<N: Network> CoinbasePuzzle<N> {
     }
 
     /// Load the coinbase puzzle proving and verifying keys.
-    pub fn load(max_degree: u32) -> Result<Self> {
+    pub fn load() -> Result<Self> {
+        let max_degree = N::COINBASE_PUZZLE_DEGREE;
         // Load the universal SRS.
         let universal_srs = UniversalSRS::<N>::load()?;
         // Trim the universal SRS to the maximum degree.
@@ -131,7 +132,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
         let (commitment, _rand) =
             KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &Default::default(), None)?;
-        let point = hash_commitment(commitment)?;
+        let point = hash_commitment(&commitment)?;
         let product_eval_at_point = polynomial.evaluate(point) * epoch_challenge.epoch_polynomial().evaluate(point);
 
         let proof = KZG10::open_lagrange(
@@ -163,10 +164,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
 
         // Ensure the number of prover solutions does not exceed `MAX_PROVER_SOLUTIONS`.
-        if prover_solutions.len() > MAX_PROVER_SOLUTIONS {
+        if prover_solutions.len() > N::MAX_PROVER_SOLUTIONS {
             bail!(
-                "Cannot accumulate beyond {MAX_PROVER_SOLUTIONS} prover solutions, found {}.",
-                prover_solutions.len()
+                "Cannot accumulate beyond {} prover solutions, found {}.",
+                prover_solutions.len(),
+                N::MAX_PROVER_SOLUTIONS
             );
         }
 
@@ -188,7 +190,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             .unzip();
 
         // Compute the challenge points.
-        let mut challenges = hash_commitments(partial_solutions.iter().map(|solution| solution.commitment()))?;
+        let mut challenges = hash_commitments(partial_solutions.iter().map(|solution| *solution.commitment()))?;
         ensure!(challenges.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge as the accumulator challenge point.
@@ -251,10 +253,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
 
         // Ensure the number of partial solutions does not exceed `MAX_PROVER_SOLUTIONS`.
-        if coinbase_solution.len() > MAX_PROVER_SOLUTIONS {
+        if coinbase_solution.len() > N::MAX_PROVER_SOLUTIONS {
             bail!(
-                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {MAX_PROVER_SOLUTIONS})",
-                coinbase_solution.len()
+                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
+                coinbase_solution.len(),
+                N::MAX_PROVER_SOLUTIONS
             );
         }
 
@@ -264,8 +267,13 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
 
         // Ensure the coinbase proof meets the required coinbase target.
-        if coinbase_solution.to_cumulative_target()? < coinbase_target as u128 {
+        if coinbase_solution.to_cumulative_proof_target()? < coinbase_target as u128 {
             bail!("The coinbase proof does not meet the coinbase target");
+        }
+
+        // Ensure the puzzle commitments are unique.
+        if has_duplicates(coinbase_solution.puzzle_commitments()) {
+            bail!("The coinbase solution contains duplicate puzzle commitments");
         }
 
         // Compute the prover polynomials.
@@ -280,7 +288,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         // Compute the challenge points.
         let mut challenge_points =
-            hash_commitments(coinbase_solution.partial_solutions().iter().map(|solution| solution.commitment()))?;
+            hash_commitments(coinbase_solution.partial_solutions().iter().map(|solution| *solution.commitment()))?;
         ensure!(
             challenge_points.len() == coinbase_solution.partial_solutions().len() + 1,
             "Invalid number of challenge points"
@@ -304,7 +312,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         // Compute the accumulator commitment.
         let commitments: Vec<_> =
             cfg_iter!(coinbase_solution.partial_solutions()).map(|solution| solution.commitment().0).collect();
-        let fs_challenges = challenge_points.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
+        let fs_challenges = challenge_points.into_iter().map(|f| f.to_bigint()).collect::<Vec<_>>();
         let accumulator_commitment =
             KZGCommitment::<N::PairingCurve>(VariableBase::msm(&commitments, &fs_challenges).into());
 

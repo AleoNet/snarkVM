@@ -29,10 +29,16 @@ impl<N: Network> Record<N, Ciphertext<N>> {
                 // Compute the 0th randomizer.
                 let randomizer = N::hash_many_psd8(&[N::encryption_domain(), record_view_key], 1);
                 // Decrypt the owner.
-                match Address::from_field(&(ciphertext[0] - randomizer[0])) {
-                    Ok(owner) => &owner == address,
-                    Err(_) => false,
-                }
+                let owner_x = ciphertext[0] - randomizer[0];
+                // Compare the x coordinates of computed and supplied addresses.
+                // We can skip recomputing the address from `owner_x` due to the following reasoning.
+                // First, the transaction SNARK that generated the ciphertext would have checked that the ciphertext encrypts a valid address.
+                // Now, since a valid address is an element of the prime-order subgroup of the curve, we know that the encrypted x-coordinate corresponds to a prime-order element.
+                // Finally, since the SNARK + hybrid encryption
+                // together are an authenticated encryption scheme, we know that the ciphertext has not been malleated.
+                // Thus overall we know that if the x-coordinate matches that of `address`, then the underlying `address`es must also match.
+                // Therefore we can skip recomputing the address from `owner_x` and instead compare the x-coordinates directly.
+                owner_x == address.to_x_coordinate()
             }
         }
     }

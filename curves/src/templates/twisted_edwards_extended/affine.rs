@@ -265,7 +265,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new(other.to_repr()))
+        self.mul_bits(BitIteratorBE::new(other.to_bigint()))
     }
 }
 

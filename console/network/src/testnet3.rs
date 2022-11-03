@@ -124,6 +124,8 @@ impl Network for Testnet3 {
     const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
 
@@ -145,6 +147,16 @@ impl Network for Testnet3 {
         snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
             .get(&function_name)
             .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the `proving key` bytes for the inclusion circuit.
+    fn inclusion_proving_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_PROVING_KEY
+    }
+
+    /// Returns the `verifying key` bytes for the inclusion circuit.
+    fn inclusion_verifying_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_VERIFYING_KEY
     }
 
     /// Returns the powers of `G`.

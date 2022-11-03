@@ -141,7 +141,9 @@ impl<N: Network> Stack<N> {
 
         // Compute the response.
         Response::new(
+            request.network_id(),
             self.program.id(),
+            function.name(),
             request.inputs().len(),
             request.tvk(),
             request.tcm(),

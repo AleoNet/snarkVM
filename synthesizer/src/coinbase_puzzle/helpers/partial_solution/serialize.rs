@@ -24,7 +24,7 @@ impl<N: Network> Serialize for PartialSolution<N> {
                 let mut partial_prover_solution = serializer.serialize_struct("PartialSolution", 3)?;
                 partial_prover_solution.serialize_field("address", &self.address)?;
                 partial_prover_solution.serialize_field("nonce", &self.nonce)?;
-                partial_prover_solution.serialize_field("commitment", &self.commitment.0)?;
+                partial_prover_solution.serialize_field("commitment", &self.commitment)?;
                 partial_prover_solution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -37,14 +37,12 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let partial_prover_solution = serde_json::Value::deserialize(deserializer)?;
+                let mut partial_prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(partial_prover_solution["address"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(partial_prover_solution["nonce"].clone()).map_err(de::Error::custom)?,
-                    KZGCommitment(
-                        serde_json::from_value(partial_prover_solution["commitment"].clone())
-                            .map_err(de::Error::custom)?,
-                    ),
+                    serde_json::from_value(partial_prover_solution["address"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(partial_prover_solution["nonce"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value::<PuzzleCommitment<N>>(partial_prover_solution["commitment"].take())
+                        .map_err(de::Error::custom)?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial solution"),

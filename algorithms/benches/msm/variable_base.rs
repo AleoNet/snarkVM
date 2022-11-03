@@ -31,7 +31,7 @@ fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(size: usi
         .take(1000)
         .flatten()
         .collect::<Vec<_>>();
-    let scalars = (0..size).into_iter().map(|_| F::rand(&mut rng).to_repr()).collect::<Vec<_>>();
+    let scalars = (0..size).into_iter().map(|_| F::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
     (bases, scalars)
 }
 

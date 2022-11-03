@@ -45,7 +45,7 @@ impl<E: Environment> Elligator2<E> {
         let b = montgomery_b_inverse.square();
 
         // Define the MODULUS_MINUS_ONE_DIV_TWO as a constant.
-        let modulus_minus_one_div_two = match E::BaseField::from_repr(E::BaseField::modulus_minus_one_div_two()) {
+        let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
             Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
             None => E::halt("Failed to initialize MODULUS_MINUS_ONE_DIV_TWO as a constant"),
         };
