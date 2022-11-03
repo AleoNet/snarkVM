@@ -65,7 +65,7 @@ impl<N: Network> Process<N> {
         // Ensure the execution contains 1 transition.
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
         // Extract the inclusion.
-        let inclusion = inclusion.read().clone();
+        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
 
         Ok((response, execution.peek()?.clone(), inclusion))
     }
