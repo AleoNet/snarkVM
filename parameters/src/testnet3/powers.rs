@@ -55,8 +55,10 @@ const MAXIMUM_DEGREE: usize = DEGREE_28;
 const NUM_UNIVERSAL_SRS_GAMMA: usize = 84;
 
 lazy_static::lazy_static! {
-    static ref UNIVERSAL_SRS_15: Vec<u8> = Degree15::load_bytes().expect("Failed to load universal SRS of degree 15");
-    static ref UNIVERSAL_SRS_GAMMA: Vec<u8> = Gamma::load_bytes().expect("Failed to load universal SRS gamma powers");
+    static ref POWERS_OF_BETA_G: Vec<u8> = Degree15::load_bytes().expect("Failed to load powers of beta in universal SRS");
+    static ref POWERS_OF_BETA_GAMMA_G: Vec<u8> = Gamma::load_bytes().expect("Failed to load powers of beta wrt gamma * G in universal SRS");
+    static ref NEG_POWERS_OF_BETA_H: Vec<u8> = NegBeta::load_bytes().expect("Failed to load negative powers of beta in universal SRS");
+    static ref BETA_H: Vec<u8> = BetaH::load_bytes().expect("Failed to load negative powers of beta in universal SRS");
 }
 
 /// A vector of powers of beta G.
@@ -70,6 +72,10 @@ pub struct PowersOfG<E: PairingEngine> {
     powers_of_beta_g: Vec<E::G1Affine>,
     /// Group elements of form `{ \beta^i \gamma G }`, where `i` is from 0 to `degree`, used for hiding.
     powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
+    /// Group elements of form `{ \beta^{max_degree - i} H }`, where `i` lies is of the form `2^k - 1` for `k` in `1` to `log_2(max_degree)`.
+    negative_powers_of_beta_h: BTreeMap<usize, E::G2Affine>,
+    /// beta * h
+    beta_h: E::G2Affine,
 }
 
 impl<E: PairingEngine> PowersOfG<E> {
@@ -77,6 +83,8 @@ impl<E: PairingEngine> PowersOfG<E> {
     pub fn setup(
         powers_of_beta_g: Vec<E::G1Affine>,
         powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
+        negative_powers_of_beta_h: BTreeMap<usize, E::G2Affine>,
+        beta_h: E::G2Affine,
     ) -> Result<Self> {
         // Initialize the powers.
         let powers = Self {
@@ -84,6 +92,8 @@ impl<E: PairingEngine> PowersOfG<E> {
             current_degree: powers_of_beta_g.len(),
             powers_of_beta_g,
             powers_of_beta_times_gamma_g,
+            negative_powers_of_beta_h,
+            beta_h,
         };
         // Return the powers.
         Ok(powers)
@@ -101,12 +111,34 @@ impl<E: PairingEngine> PowersOfG<E> {
         // Ensure the number of elements is correct.
         ensure!(powers_of_beta_g.len() == DEGREE_15, "Incorrect number of powers in the recovered SRS");
 
+        // Reconstruct powers of beta_times_gamma_g
+        // TODO: Just store all the powers, not just for degree 15.
+        let powers_of_beta_times_gamma_g = Self::regenerate_powers_of_beta_times_gamma_g(DEGREE_15)?;
+
+
+        // Reconstruct negative powers of beta_h
+        let mut reader = BufReader::new(&NEG_POWERS_OF_BETA_H[..]);
+        // Deserialize the group elements.
+        let map_size = usize::read_le(&mut reader);
+        let negative_powers_of_beta_h = BTreeMap::new();
+        assert_eq!(map_size, 0);
+        for _ in 0..map_size {
+            let power = usize::read_le(&mut reader)?;
+            let element = E::G2Affine::read_le(&mut reader)?;
+            negative_powers_of_beta_h.insert(power, element)
+        }
+
+        let beta_h = E::G2Affine::read_le(BufReader::new(&BETA_H))?;
+    
+
         // Initialize the powers.
         let powers = Self {
             is_setup: false,
             current_degree: DEGREE_15,
             powers_of_beta_g,
-            powers_of_beta_times_gamma_g: Self::regenerate_powers_of_beta_times_gamma_g(DEGREE_15)?,
+            powers_of_beta_times_gamma_g,
+            negative_powers_of_beta_h,
+            beta_h
         };
         // Return the powers.
         Ok(powers)

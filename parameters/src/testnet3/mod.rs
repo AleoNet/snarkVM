@@ -52,6 +52,10 @@ impl_remote!(Degree27, REMOTE_URL, "resources/", "universal", "srs", "27");
 impl_remote!(Degree28, REMOTE_URL, "resources/", "universal", "srs", "28");
 // Gamma
 impl_local!(Gamma, "resources/", "universal", "srs", "gamma");
+// Negative powers of beta in G2
+impl_local!(NegBeta, "resources/", "universal", "srs", "neg_powers_of_beta");
+// Negative powers of beta in G2
+impl_local!(BetaH, "resources/", "universal", "srs", "beta");
 
 // Trial
 impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "resources/", "universal", "srs", "trial");
