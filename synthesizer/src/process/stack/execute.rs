@@ -218,7 +218,9 @@ impl<N: Network> Stack<N> {
 
         // Construct the response.
         let response = circuit::Response::from_outputs(
+            request.network_id(),
             request.program_id(),
+            request.function_name(),
             num_inputs,
             request.tvk(),
             request.tcm(),
@@ -412,16 +414,23 @@ impl<N: Network> Stack<N> {
             assignments.write().push(assignment);
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
-            let proof = proving_key.prove(function.name(), &assignment, rng)?;
+            let proof = match proving_key.prove(function.name(), &assignment, rng) {
+                Ok(proof) => proof,
+                Err(error) => bail!("Execution proof failed - {error}"),
+            };
+
             // Construct the transition.
             let transition =
                 Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
+
+            // Add the transition commitments.
+            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }
@@ -432,7 +441,7 @@ impl<N: Network> Stack<N> {
 
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
-    fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
+    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 
         // Determine if the circuit is satisfied.

@@ -2076,6 +2076,7 @@ dependencies = [
  "anyhow",
  "rand",
  "snarkvm-circuit-account",
+ "snarkvm-circuit-collections",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
  "snarkvm-console-account",
@@ -2276,6 +2277,7 @@ dependencies = [
  "once_cell",
  "serde_json",
  "snarkvm-console-account",
+ "snarkvm-console-collections",
  "snarkvm-console-network",
  "snarkvm-console-types",
 ]

@@ -38,19 +38,10 @@ use crate::{
 };
 use console::{
     account::{Address, PrivateKey, Signature},
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::Value,
     types::{Field, Group},
 };
-
-/// The depth of the Merkle tree for the blocks.
-const BLOCKS_DEPTH: u8 = 32;
-
-/// The Merkle tree for the block state.
-pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
-/// The Merkle path for the state tree blocks.
-pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -243,11 +234,6 @@ impl<N: Network> Block<N> {
     /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.transition_public_keys()
-    }
-
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.transactions.origins()
     }
 
     /// Returns an iterator over the tags, for all transition inputs that are records.

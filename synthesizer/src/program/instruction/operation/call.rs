@@ -374,8 +374,12 @@ impl<N: Network> Call<N> {
 
             use circuit::Inject;
 
+            // Inject the network ID as `Mode::Constant`.
+            let network_id = circuit::U16::constant(*request.network_id());
             // Inject the program ID as `Mode::Constant`.
             let program_id = circuit::ProgramID::constant(*substack.program_id());
+            // Inject the function name as `Mode::Constant`.
+            let function_name = circuit::Identifier::constant(*function.name());
 
             // Ensure the number of public variables remains the same.
             ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
@@ -395,20 +399,26 @@ impl<N: Network> Call<N> {
                 .map(|input_id| circuit::InputID::new(circuit::Mode::Public, *input_id))
                 .collect::<Vec<_>>();
             // Ensure the candidate input IDs match their computed inputs.
-            A::assert(circuit::Request::check_input_ids(
+            let (check_input_ids, _) = circuit::Request::check_input_ids::<false>(
+                &network_id,
+                &program_id,
+                &function_name,
                 &input_ids,
                 &inputs,
                 &function.input_types(),
                 &caller,
-                &program_id,
                 &sk_tag,
                 &tvk,
                 &tcm,
-            ));
+                None,
+            );
+            A::assert(check_input_ids);
 
             // Inject the outputs as `Mode::Private` (with the output IDs as `Mode::Public`).
             let outputs = circuit::Response::process_outputs_from_callback(
+                &network_id,
                 &program_id,
+                &function_name,
                 num_inputs,
                 &tvk,
                 &tcm,
