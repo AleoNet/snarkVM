@@ -235,6 +235,9 @@ pub(super) fn batch_add<G: AffineCurve>(
             if number_of_bases_in_batch >= batch_size / 2 {
                 // We need instructions for copying data in the case of noops.
                 // We encode noops/copies as !0u32
+                dbg!(instr.len());
+                dbg!(scratch_space.capacity());
+                dbg!(new_bases.capacity());
                 batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
 
                 instr.clear();
