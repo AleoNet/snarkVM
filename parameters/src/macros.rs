@@ -36,7 +36,11 @@ macro_rules! impl_store_and_remote_fetch {
             use snarkvm_utilities::Write;
 
             #[cfg(not(feature = "no_std_out"))]
-            println!("{} - Storing parameters ({:?})", module_path!(), file_path);
+            {
+                use colored::*;
+                let output = format!("{} - Storing parameters ({:?})", module_path!(), file_path);
+                println!("{}", output.dimmed());
+            }
 
             // Ensure the folders up to the file path all exist.
             let mut directory_path = file_path.to_path_buf();
@@ -55,13 +59,18 @@ macro_rules! impl_store_and_remote_fetch {
         fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
             let mut easy = curl::easy::Easy::new();
             easy.url(url)?;
+
             #[cfg(not(feature = "no_std_out"))]
             {
+                use colored::*;
+
                 easy.progress(true)?;
                 easy.progress_function(|total_download, current_download, _, _| {
                     let percent = (current_download / total_download) * 100.0;
                     let size_in_megabytes = total_download as u64 / 1_048_576;
-                    print!("\r{} - {:.2}% complete ({:#} MB total)", module_path!(), percent, size_in_megabytes);
+                    let output =
+                        format!("\r{} - {:.2}% complete ({:#} MB total)", module_path!(), percent, size_in_megabytes);
+                    print!("{}", output.dimmed());
                     true
                 })?;
             }
@@ -123,21 +132,15 @@ macro_rules! impl_load_bytes_logic_remote {
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
             eprintln!(
-                "\nATTENTION - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
-                $filename, $filename, file_path
+                "\n⚠️  Attention - \"{}\" does not exist. Downloading and storing it in {:?}.\n",
+                $filename, file_path
             );
 
             // Load remote file
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
-                    #[cfg(not(feature = "no_std_out"))]
-                    println!("{} - Downloading parameters...", module_path!());
-
                     let mut buffer = vec![];
                     Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, $filename))?;
-
-                    #[cfg(not(feature = "no_std_out"))]
-                    println!("\n{} - Download complete", module_path!());
 
                     // Ensure the checksum matches.
                     let candidate_checksum = checksum!(&buffer);
@@ -149,7 +152,7 @@ macro_rules! impl_load_bytes_logic_remote {
                         Ok(()) => buffer,
                         Err(_) => {
                             eprintln!(
-                                "\nATTENTION - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
+                                "\n❗ Error - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
                                 $filename, file_path
                             );
                             buffer

@@ -32,25 +32,16 @@ mod serialize;
 mod string;
 
 use crate::{
-    coinbase_puzzle::CoinbaseSolution,
+    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     process::{Deployment, Execution},
     vm::VM,
 };
 use console::{
     account::{Address, PrivateKey, Signature},
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::Value,
     types::{Field, Group},
 };
-
-/// The depth of the Merkle tree for the blocks.
-const BLOCKS_DEPTH: u8 = 32;
-
-/// The Merkle tree for the block state.
-pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
-/// The Merkle path for the state tree blocks.
-pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -193,6 +184,11 @@ impl<N: Network> Block<N> {
         self.header.proof_target()
     }
 
+    /// Returns the Unix timestamp (UTC) of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.header.last_coinbase_timestamp()
+    }
+
     /// Returns the Unix timestamp (UTC) for this block.
     pub const fn timestamp(&self) -> i64 {
         self.header.timestamp()
@@ -200,6 +196,11 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns the puzzle commitments in this block.
+    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
+        self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
+    }
+
     /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
@@ -233,11 +234,6 @@ impl<N: Network> Block<N> {
     /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.transition_public_keys()
-    }
-
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.transactions.origins()
     }
 
     /// Returns an iterator over the tags, for all transition inputs that are records.

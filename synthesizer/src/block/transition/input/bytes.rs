@@ -54,16 +54,8 @@ impl<N: Network> FromBytes for Input<N> {
                 let serial_number: Field<N> = FromBytes::read_le(&mut reader)?;
                 // Read the tag.
                 let tag: Field<N> = FromBytes::read_le(&mut reader)?;
-                // Read the origin type.
-                let origin_type = u8::read_le(&mut reader)?;
-                // Read the origin.
-                match origin_type {
-                    0 => Self::Record(serial_number, tag, Origin::Commitment(FromBytes::read_le(&mut reader)?)),
-                    1 => Self::Record(serial_number, tag, Origin::StateRoot(FromBytes::read_le(&mut reader)?)),
-                    _ => {
-                        return Err(error(format!("Failed to decode transition input with origin type {origin_type}")));
-                    }
-                }
+                // Return the record.
+                Self::Record(serial_number, tag)
             }
             4 => Self::ExternalRecord(FromBytes::read_le(&mut reader)?),
             5.. => return Err(error(format!("Failed to decode transition input variant {variant}"))),
@@ -109,20 +101,10 @@ impl<N: Network> ToBytes for Input<N> {
                     None => false.write_le(&mut writer),
                 }
             }
-            Self::Record(serial_number, tag, origin) => {
+            Self::Record(serial_number, tag) => {
                 (3 as Variant).write_le(&mut writer)?;
                 serial_number.write_le(&mut writer)?;
-                tag.write_le(&mut writer)?;
-                match origin {
-                    Origin::Commitment(commitment) => {
-                        0u8.write_le(&mut writer)?;
-                        commitment.write_le(&mut writer)
-                    }
-                    Origin::StateRoot(root) => {
-                        1u8.write_le(&mut writer)?;
-                        root.write_le(&mut writer)
-                    }
-                }
+                tag.write_le(&mut writer)
             }
             Self::ExternalRecord(input_commitment) => {
                 (4 as Variant).write_le(&mut writer)?;

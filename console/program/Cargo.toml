@@ -6,8 +6,16 @@ description = "Program operations for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[features]
+default = []
+test = []
+
 [dependencies.snarkvm-console-account]
 path = "../account"
+version = "0.9.0"
+
+[dependencies.snarkvm-console-collections]
+path = "../collections"
 version = "0.9.0"
 
 [dependencies.snarkvm-console-network]

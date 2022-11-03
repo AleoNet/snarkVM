@@ -66,7 +66,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         match transaction {
-            Transaction::Deploy(_, deployment, additional_fee) => {
+            Transaction::Deploy(_, deployment, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     warn!("Invalid transaction size (deployment): {error}");
@@ -74,8 +74,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the deployment.
                 self.verify_deployment(deployment)
-                    // Verify the additional fee.
-                    && self.verify_additional_fee(additional_fee)
+                    // Verify the fee.
+                    && self.verify_fee(fee)
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
@@ -86,7 +86,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Verify the additional fee, if it exists.
                 let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => self.verify_additional_fee(additional_fee),
+                    Some(additional_fee) => self.verify_fee(additional_fee),
                     None => true,
                 };
 
@@ -129,22 +129,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given execution.
     #[inline]
     fn verify_execution(&self, execution: &Execution<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the execution.
-                    let execution = cast_ref!(&execution as Execution<$network>);
-                    // Verify the execution.
-                    $process.verify_execution(execution)
-                };
-                task()
-            }};
-        }
-
-        // Process the logic.
-        match process!(self, logic) {
-            Ok(()) => true,
+        // Verify the execution.
+        match self.process.read().verify_execution::<true>(execution) {
+            // Ensure the global state root exists in the block store.
+            Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
+                Ok(true) => true,
+                Ok(false) => {
+                    warn!("Execution verification failed: global state root not found");
+                    false
+                }
+                Err(error) => {
+                    warn!("Execution verification failed: {error}");
+                    false
+                }
+            },
             Err(error) => {
                 warn!("Execution verification failed: {error}");
                 false
@@ -152,27 +150,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    /// Verifies the given additional fee.
+    /// Verifies the given fee.
     #[inline]
-    fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the additional fee.
-                    let additional_fee = cast_ref!(&additional_fee as AdditionalFee<$network>);
-                    // Verify the additional fee.
-                    $process.verify_additional_fee(additional_fee)
-                };
-                task()
-            }};
-        }
-
-        // Process the logic.
-        match process!(self, logic) {
-            Ok(()) => true,
+    fn verify_fee(&self, fee: &Fee<N>) -> bool {
+        // Verify the fee.
+        match self.process.read().verify_fee(fee) {
+            // Ensure the global state root exists in the block store.
+            Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
+                Ok(true) => true,
+                Ok(false) => {
+                    warn!("Fee verification failed: global state root not found");
+                    false
+                }
+                Err(error) => {
+                    warn!("Fee verification failed: {error}");
+                    false
+                }
+            },
             Err(error) => {
-                warn!("Additional fee verification failed: {error}");
+                warn!("Fee verification failed: {error}");
                 false
             }
         }
@@ -181,20 +177,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::vm::test_helpers::sample_program;
+    use crate::{vm::test_helpers::sample_program, Inclusion, Transaction};
     use snarkvm_utilities::TestRng;
 
     #[test]
     fn test_verify() {
         let rng = &mut TestRng::default();
-        let vm = crate::vm::test_helpers::sample_vm();
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
         assert!(vm.verify(&deployment_transaction));
 
-        // Fetch a execution transaction.
+        // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         // Ensure the transaction verifies.
         assert!(vm.verify(&execution_transaction));
@@ -213,5 +209,26 @@ mod tests {
 
         // Ensure the deployment is valid.
         assert!(vm.verify_deployment(&deployment));
+    }
+
+    #[test]
+    fn test_verify_execution() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+
+        match transaction {
+            Transaction::Execute(_, execution, _) => {
+                // Ensure the inclusion proof exists.
+                assert!(execution.inclusion_proof().is_some());
+                // Verify the inclusion.
+                assert!(Inclusion::verify_execution(&execution).is_ok());
+                // Verify the execution.
+                assert!(vm.verify_execution(&execution));
+            }
+            _ => panic!("Expected an execution transaction"),
+        }
     }
 }

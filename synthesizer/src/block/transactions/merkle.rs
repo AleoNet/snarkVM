@@ -16,14 +16,6 @@
 
 use super::*;
 
-/// The depth of the Merkle tree for transactions in a block.
-pub(super) const TRANSACTIONS_DEPTH: u8 = 16;
-
-/// The Merkle tree for transactions in a block.
-type TransactionsTree<N> = BHPMerkleTree<N, TRANSACTIONS_DEPTH>;
-/// The Merkle path for transaction in a block.
-pub type TransactionsPath<N> = MerklePath<N, TRANSACTIONS_DEPTH>;
-
 impl<N: Network> Transactions<N> {
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
     pub fn to_root(&self) -> Result<Field<N>> {
@@ -31,8 +23,11 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the Merkle path for the transactions leaf.
-    pub fn to_path(&self, index: usize, leaf: impl ToBits) -> Result<TransactionsPath<N>> {
-        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    pub fn to_path(&self, transaction_id: N::TransactionID) -> Result<TransactionsPath<N>> {
+        match self.transactions.get_index_of(&transaction_id) {
+            Some(transaction_index) => self.to_tree()?.prove(transaction_index, &transaction_id.to_bits_le()),
+            None => bail!("The transaction '{transaction_id}' is not in the block transactions"),
+        }
     }
 
     /// The Merkle tree of transaction IDs for the block.

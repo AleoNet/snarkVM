@@ -137,13 +137,8 @@ macro_rules! impl_sw_curve_serializer {
                     let (y, flags) = P::BaseField::deserialize_with_flags::<_, SWFlags>(&mut reader)?;
                     Affine::<P>::new(x, y, flags.is_infinity())
                 };
-                if !snarkvm_utilities::PROCESSING_SNARK_PARAMS.with(|p| p.load(std::sync::atomic::Ordering::Relaxed))
-                    && validate == Validate::Yes
-                {
+                if validate == Validate::Yes {
                     point.check()?;
-                } else {
-                    snarkvm_utilities::SNARK_PARAMS_AFFINE_COUNT
-                        .with(|p| p.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
                 }
                 Ok(point)
             }

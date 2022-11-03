@@ -22,7 +22,7 @@ pub use execution::*;
 
 use crate::{
     atomic_write_batch,
-    block::{AdditionalFee, Transaction},
+    block::Transaction,
     cow_to_copied,
     process::{Deployment, Execution},
     program::Program,
@@ -351,7 +351,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
                 }
             }
             // Return the edition.
-            TransactionType::Execute => self.storage.execution_store().get_edition(transaction_id),
+            TransactionType::Execute => Ok(None),
         }
     }
 
@@ -381,22 +381,6 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         function_name: &Identifier<N>,
     ) -> Result<Option<Certificate<N>>> {
         self.storage.deployment_store().get_certificate(program_id, function_name)
-    }
-
-    /// Returns the additional fee for the given `transaction ID`.
-    pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<AdditionalFee<N>>> {
-        // Retrieve the transaction type.
-        let transaction_type = match self.transaction_ids.get(transaction_id)? {
-            Some(transaction_type) => cow_to_copied!(transaction_type),
-            None => bail!("Failed to get the type for transaction '{transaction_id}'"),
-        };
-        // Retrieve the fee.
-        match transaction_type {
-            // Return the fee.
-            TransactionType::Deploy => self.storage.deployment_store().get_additional_fee(transaction_id),
-            // Return the fee.
-            TransactionType::Execute => self.storage.execution_store().get_additional_fee(transaction_id),
-        }
     }
 }
 
@@ -514,7 +498,7 @@ mod tests {
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {
-                execution.clone().into_transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
+                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
             }
             _ => panic!("Incorrect transaction type"),
         };

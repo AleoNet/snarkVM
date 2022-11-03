@@ -271,6 +271,11 @@ impl<N: Network> CoinbasePuzzle<N> {
             bail!("The coinbase proof does not meet the coinbase target");
         }
 
+        // Ensure the puzzle commitments are unique.
+        if has_duplicates(coinbase_solution.puzzle_commitments()) {
+            bail!("The coinbase solution contains duplicate puzzle commitments");
+        }
+
         // Compute the prover polynomials.
         let prover_polynomials = cfg_iter!(coinbase_solution.partial_solutions())
             // Ensure that each of the prover solutions meets the required proof target.

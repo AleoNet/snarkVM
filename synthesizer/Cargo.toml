@@ -101,6 +101,11 @@ version = "1.0"
 [dependencies.tracing]
 version = "0.1"
 
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../console"
+features = [ "test" ]
+
 [dev-dependencies.bincode]
 version = "1.3"
 

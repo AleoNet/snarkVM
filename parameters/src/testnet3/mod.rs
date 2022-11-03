@@ -99,3 +99,16 @@ lazy_static! {
         map
     };
 }
+
+// Inclusion
+impl_remote_keys!(InclusionProver, InclusionVerifier, "inclusion");
+
+/// The function name for the inclusion circuit.
+pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
+
+lazy_static! {
+    pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =
+        InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
+    pub static ref TESTNET3_INCLUSION_VERIFYING_KEY: Vec<u8> =
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
+}

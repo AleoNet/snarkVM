@@ -96,8 +96,9 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = input.to_fields()?;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
                         // Hash the input to a field element.
@@ -115,8 +116,9 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = input.to_fields()?;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
                         // Hash the input to a field element.
@@ -134,8 +136,8 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Compute the input view key as `Hash(tvk || index)`.
-                        let input_view_key = N::hash_psd2(&[self.tvk, index])?;
+                        // Compute the input view key as `Hash(function ID || tvk || index)`.
+                        let input_view_key = N::hash_psd4(&[function_id, self.tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &input {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
@@ -201,8 +203,9 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Construct the preimage as `(input || tvk || index)`.
-                        let mut preimage = input.to_fields()?;
+                        // Construct the preimage as `(function ID || input || tvk || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(input.to_fields()?);
                         preimage.push(self.tvk);
                         preimage.push(index);
                         // Hash the input to a field element.
