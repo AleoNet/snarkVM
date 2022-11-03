@@ -203,8 +203,8 @@ impl<N: Network> Output<N> {
             Output::Constant(_, None)
             | Output::Public(_, None)
             | Output::Private(_, None)
-            | Output::Record(..)
-            | Output::ExternalRecord(..) => Ok(true),
+            | Output::Record(_, _, _)
+            | Output::ExternalRecord(_) => Ok(true),
         };
 
         match result {

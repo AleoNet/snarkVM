@@ -104,7 +104,7 @@ lazy_static! {
 impl_remote_keys!(InclusionProver, InclusionVerifier, "inclusion");
 
 /// The function name for the inclusion circuit.
-pub const TESTNET3_INCLUSION_FUNCTION_NAME: &'static str = "inclusion";
+pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
 
 lazy_static! {
     pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =

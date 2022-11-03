@@ -21,7 +21,7 @@ impl<N: Network> Serialize for TransitionLeaf<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut leaf = serializer.serialize_struct("TransitionLeaf", 6)?;
+                let mut leaf = serializer.serialize_struct("TransitionLeaf", 4)?;
                 leaf.serialize_field("version", &self.version)?;
                 leaf.serialize_field("index", &self.index)?;
                 leaf.serialize_field("variant", &self.variant)?;

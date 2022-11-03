@@ -162,8 +162,8 @@ impl<N: Network> Input<N> {
             Input::Constant(_, None)
             | Input::Public(_, None)
             | Input::Private(_, None)
-            | Input::Record(..)
-            | Input::ExternalRecord(..) => Ok(true),
+            | Input::Record(_, _)
+            | Input::ExternalRecord(_) => Ok(true),
         };
 
         match result() {
