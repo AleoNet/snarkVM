@@ -198,7 +198,7 @@ impl<
     /// Returns the current value for the given key if it is scheduled
     /// to be inserted as part of an atomic batch.
     ///
-    fn get_batched<Q>(&self, key: &Q) -> Option<V>
+    fn get_batched<Q>(&self, key: &Q) -> Option<Option<V>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
@@ -211,12 +211,11 @@ impl<
             // The final operation related to the key is the final state of the key.
             for op in ops.into_iter().rev() {
                 match op {
-                    BatchOperation::Remove(k) if k.borrow() == key => return None,
-                    BatchOperation::Insert(k, v) if k.borrow() == key => return Some(v),
+                    BatchOperation::Remove(k) if k.borrow() == key => return Some(None),
+                    BatchOperation::Insert(k, v) if k.borrow() == key => return Some(Some(v)),
                     _ => continue,
                 }
             }
-
             None
         } else {
             None
@@ -281,6 +280,113 @@ mod tests {
     }
 
     #[test]
+    fn test_insert_and_get_speculative() {
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+
+        // Sanity check.
+        assert!(map.iter().next().is_none());
+
+        /* test atomic insertions */
+
+        // Start an atomic write batch.
+        map.start_atomic();
+
+        // Insert an item into the map.
+        map.insert(0, "0".to_string()).unwrap();
+
+        // Check that the item is not yet in the map.
+        assert!(map.get(&0).unwrap().is_none());
+        // Check that the item is in the batch.
+        assert_eq!(map.get_batched(&0), Some(Some("0".to_string())));
+        // Check that the item can be speculatively retrieved.
+        assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+
+        // Queue (since a batch is in progress) NUM_ITEMS insertions.
+        for i in 1..10 {
+            // Update the item in the map.
+            map.insert(0, i.to_string()).unwrap();
+
+            // Check that the item is not yet in the map.
+            assert!(map.get(&0).unwrap().is_none());
+            // Check that the updated item is in the batch.
+            assert_eq!(map.get_batched(&0), Some(Some(i.to_string())));
+            // Check that the updated item can be speculatively retrieved.
+            assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned(i.to_string())));
+        }
+
+        // The map should still contain no items.
+        assert!(map.iter().next().is_none());
+
+        // Finish the current atomic write batch.
+        map.finish_atomic().unwrap();
+
+        // Check that the item is present in the map now.
+        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("9".to_string())));
+        // Check that the item is not in the batch.
+        assert_eq!(map.get_batched(&0), None);
+        // Check that the item can be speculatively retrieved.
+        assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("9".to_string())));
+    }
+
+    #[test]
+    fn test_remove_and_get_speculative() {
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+
+        // Sanity check.
+        assert!(map.iter().next().is_none());
+
+        // Insert an item into the map.
+        map.insert(0, "0".to_string()).unwrap();
+
+        // Check that the item is present in the map .
+        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+        // Check that the item is not in the batch.
+        assert_eq!(map.get_batched(&0), None);
+        // Check that the item can be speculatively retrieved.
+        assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+
+        /* test atomic removals */
+
+        // Start an atomic write batch.
+        map.start_atomic();
+
+        // Remove the item from the map.
+        map.remove(&0).unwrap();
+
+        // Check that the item still exists in the map.
+        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+        // Check that the item is removed in the batch.
+        assert_eq!(map.get_batched(&0), Some(None));
+        // Check that the item is removed when speculatively retrieved.
+        assert_eq!(map.get_speculative(&0).unwrap(), None);
+
+        // Try removing the item again.
+        map.remove(&0).unwrap();
+
+        // Check that the item still exists in the map.
+        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+        // Check that the item is removed in the batch.
+        assert_eq!(map.get_batched(&0), Some(None));
+        // Check that the item is removed when speculatively retrieved.
+        assert_eq!(map.get_speculative(&0).unwrap(), None);
+
+        // Finish the current atomic write batch.
+        map.finish_atomic().unwrap();
+
+        // Check that the item is not present in the map now.
+        assert!(map.get(&0).unwrap().is_none());
+        // Check that the item is not in the batch.
+        assert_eq!(map.get_batched(&0), None);
+        // Check that the item is removed when speculatively retrieved.
+        assert_eq!(map.get_speculative(&0).unwrap(), None);
+
+        // Check that the map is empty now.
+        assert!(map.iter().next().is_none());
+    }
+
+    #[test]
     fn test_atomic_writes_are_batched() {
         // The number of items that will be inserted into the map.
         const NUM_ITEMS: usize = 10;
@@ -300,7 +406,7 @@ mod tests {
         for i in 0..NUM_ITEMS {
             map.insert(i, i.to_string()).unwrap();
             // Ensure that the item is queued for insertion.
-            assert_eq!(map.get_batched(&i), Some(i.to_string()));
+            assert_eq!(map.get_batched(&i), Some(Some(i.to_string())));
             // Ensure that the item can be found with a speculative get.
             assert_eq!(map.get_speculative(&i).unwrap(), Some(Cow::Owned(i.to_string())));
         }
@@ -325,7 +431,7 @@ mod tests {
         for i in 0..NUM_ITEMS {
             map.remove(&i).unwrap();
             // Ensure that the item is NOT queued for insertion.
-            assert_eq!(map.get_batched(&i), None);
+            assert_eq!(map.get_batched(&i), Some(None));
         }
 
         // The map should still contains all the items.
