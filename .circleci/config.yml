@@ -135,7 +135,7 @@ jobs:
   snarkvm:
     docker:
       - image: cimg/rust:1.64
-    resource_class: xlarge
+    resource_class: 2xlarge
     steps:
       - run_serial:
           workspace_member: .
@@ -284,7 +284,7 @@ jobs:
     docker:
       - image: cimg/rust:1.64
     resource_class: xlarge
-    parallelism: 50 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
+    parallelism: 25 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
       - run_parallel:
           workspace_member: circuit/types/integers
@@ -482,8 +482,8 @@ jobs:
   synthesizer:
     docker:
       - image: cimg/rust:1.64
-    resource_class: 2xlarge
-    parallelism: 4
+    resource_class: xlarge
+    parallelism: 20
     steps:
       - run_parallel:
           workspace_member: synthesizer
