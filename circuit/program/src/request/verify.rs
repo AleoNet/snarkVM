@@ -25,15 +25,7 @@ impl<A: Aleo> Request<A> {
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
-            &[
-                self.network_id.to_bits_le(),
-                self.program_id.name().to_bits_le(),
-                self.program_id.network().to_bits_le(),
-                self.function_name.to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
+            &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
         );
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.

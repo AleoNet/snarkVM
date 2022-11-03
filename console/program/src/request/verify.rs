@@ -63,15 +63,8 @@ impl<N: Network> Request<N> {
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
-            &[
-                U16::<N>::new(N::ID).to_bits_le(),
-                self.program_id.name().to_bits_le(),
-                self.program_id.network().to_bits_le(),
-                self.function_name.to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
+            &(U16::<N>::new(N::ID), self.program_id.name(), self.program_id.network(), &self.function_name)
+                .to_bits_le(),
         ) {
             Ok(function_id) => function_id,
             Err(error) => {
