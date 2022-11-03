@@ -26,6 +26,9 @@ use snarkvm_utilities::{
     BitIteratorBE,
 };
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 fn naive_variable_base_msm<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
@@ -37,51 +40,49 @@ fn naive_variable_base_msm<G: AffineCurve>(
     }
     acc
 }
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[cfg(feature = "parallel")]
-    use rayon::prelude::*;
 
-    #[test]
-    fn variable_base_test_with_bls12() {
-        const SAMPLES: usize = 1 << 20;
-
+const SAMPLES: usize = 1 << 20;
+#[test]
+fn variable_base_test_with_bls12() {
+    
+    let mut rng = TestRng::default();
+    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
+    let g = cfg_into_iter!(0..SAMPLES)
+    .step_by(1 << 15)
+    .flat_map(|_| {
         let mut rng = TestRng::default();
-        let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
-        let g = cfg_into_iter!(0..SAMPLES)
-            .step_by(1 << 15)
-            .flat_map(|_| {
-                let mut rng = TestRng::default();
-                (0..(SAMPLES / (1 << 15))).map(|_| G1Projective::rand(&mut rng)).collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        let g = G1Projective::batch_normalization_into_affine(g);
+        (0..(1 << 15)).map(|_| G1Projective::rand(&mut rng)).collect::<Vec<_>>()
+    })
+    .collect::<Vec<_>>();
+    let g = G1Projective::batch_normalization_into_affine(g);
+    
+    dbg!(g.len());
+    dbg!(v.len());
+    let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
+    let fast = VariableBase::msm(g.as_slice(), v.as_slice());
+    
+    assert_eq!(naive.to_affine(), fast.to_affine());
+}
 
-        let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
-        let fast = VariableBase::msm(g.as_slice(), v.as_slice());
-
-        assert_eq!(naive.to_affine(), fast.to_affine());
-    }
-
-    #[test]
-    fn variable_base_test_with_bls12_unequal_numbers() {
-        const SAMPLES: usize = 1 << 20;
-
+#[test]
+fn variable_base_test_with_bls12_unequal_numbers() {
+    
+    let mut rng = TestRng::default();
+    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
+    let g = cfg_into_iter!(0..SAMPLES)
+    .step_by(1 << 15)
+    .flat_map(|_| {
         let mut rng = TestRng::default();
-        let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
-        let g = cfg_into_iter!(0..SAMPLES)
-            .step_by(1 << 15)
-            .flat_map(|_| {
-                let mut rng = TestRng::default();
-                (0..(SAMPLES / (1 << 15))).map(|_| G1Projective::rand(&mut rng)).collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        let g = G1Projective::batch_normalization_into_affine(g);
+        (0..(1 << 15)).map(|_| G1Projective::rand(&mut rng)).collect::<Vec<_>>()
+    })
+    .collect::<Vec<_>>();
+    dbg!(g.len());
+    dbg!(v.len());
 
-        let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
-        let fast = VariableBase::msm(g.as_slice(), v.as_slice());
-
-        assert_eq!(naive.to_affine(), fast.to_affine());
-    }
+    let g = G1Projective::batch_normalization_into_affine(g);
+    
+    let naive = naive_variable_base_msm(&g[..(1 << 15)], v.as_slice());
+    let fast = VariableBase::msm(&g[..(1 << 15)], v.as_slice());
+    
+    assert_eq!(naive.to_affine(), fast.to_affine());
 }

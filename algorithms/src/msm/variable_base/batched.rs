@@ -279,6 +279,7 @@ pub(super) fn batch_add<G: AffineCurve>(
                 if local_counter != 2 {
                     all_ones = false;
                 }
+                println!("Hello!!!!!!!!!!!!");
                 let is_odd = local_counter % 2 == 1;
                 let half = local_counter / 2;
                 for i in 0..half {
@@ -366,7 +367,10 @@ fn batched_window<G: AffineCurve>(
     (res, window_size)
 }
 
-pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+pub fn msm<G: AffineCurve>(mut bases: &[G], mut scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+    let min = std::cmp::min(bases.len(), scalars.len());
+    bases = &bases[..min];
+    scalars = &scalars[..min];
     if bases.len() < 15 {
         let num_bits = G::ScalarField::size_in_bits();
         let bigint_size = <G::ScalarField as PrimeField>::BigInteger::NUM_LIMBS * 64;
