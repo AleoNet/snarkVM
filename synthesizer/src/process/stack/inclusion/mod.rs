@@ -37,7 +37,7 @@ use console::{
 use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct InputTask<N: Network> {
     /// The commitment.
     commitment: Field<N>,
@@ -51,7 +51,7 @@ struct InputTask<N: Network> {
     is_local: bool,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Inclusion<N: Network> {
     /// A map of transition IDs to a list of input tasks.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
