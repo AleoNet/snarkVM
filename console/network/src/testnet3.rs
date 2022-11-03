@@ -124,6 +124,8 @@ impl Network for Testnet3 {
     const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
 

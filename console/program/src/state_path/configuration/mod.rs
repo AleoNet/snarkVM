@@ -17,9 +17,6 @@
 use snarkvm_console_collections::merkle_tree::MerklePath;
 use snarkvm_console_network::BHPMerkleTree;
 
-/// The function name for the state path verification circuit.
-pub const STATE_PATH_FUNCTION_NAME: &str = "state_path";
-
 /// The depth of the Merkle tree for the blocks.
 pub const BLOCKS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for the block header.

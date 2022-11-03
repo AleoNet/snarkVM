@@ -30,7 +30,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, STATE_PATH_FUNCTION_NAME, TRANSACTION_DEPTH},
+    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 
@@ -391,7 +391,7 @@ impl<N: Network> Inclusion<N> {
                 let verifying_key = VerifyingKey::from_bytes_le(N::inclusion_verifying_key_bytes())?;
                 // Verify the inclusion proof.
                 ensure!(
-                    verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
+                    verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
                     "Inclusion proof is invalid"
                 );
             }
@@ -453,7 +453,7 @@ impl<N: Network> Inclusion<N> {
         let verifying_key = VerifyingKey::from_bytes_le(N::inclusion_verifying_key_bytes())?;
         // Verify the inclusion proof.
         ensure!(
-            verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
+            verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
             "Inclusion proof is invalid"
         );
 
@@ -490,7 +490,7 @@ impl<N: Network> Inclusion<N> {
         // Load the inclusion proving key.
         let proving_key = ProvingKey::from_bytes_le(N::inclusion_proving_key_bytes())?;
         // Generate the inclusion batch proof.
-        let inclusion_proof = proving_key.prove_batch(STATE_PATH_FUNCTION_NAME, &batch_assignments, rng)?;
+        let inclusion_proof = proving_key.prove_batch(N::INCLUSION_FUNCTION_NAME, &batch_assignments, rng)?;
         // Return the global state root and inclusion proof.
         Ok((global_state_root, inclusion_proof))
     }

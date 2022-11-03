@@ -20,7 +20,7 @@ use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
     prelude::{One, Zero},
-    program::{Identifier, StatePath, STATE_PATH_FUNCTION_NAME},
+    program::{Identifier, StatePath},
     types::Field,
 };
 use snarkvm_synthesizer::{snark::UniversalSRS, Block, ConsensusMemory, ConsensusStore, InclusionAssignment, VM};
@@ -99,7 +99,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Compute the serial number.
     let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, *commitment)?;
 
-    // Construct the assignment for the state path verification.
+    // Construct the assignment for the inclusion circuit.
     let assignment =
         InclusionAssignment::new(state_path.clone(), *commitment, gamma, serial_number, Default::default(), true)
             .to_circuit_assignment::<A>()?;
@@ -107,22 +107,22 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     Ok((assignment, state_path, serial_number))
 }
 
-/// Synthesizes the circuit keys for the state path circuit. (cargo run --release --example state_path [network])
-pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
+/// Synthesizes the circuit keys for the inclusion circuit. (cargo run --release --example inclusion [network])
+pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Load the universal SRS.
     let universal_srs = UniversalSRS::<N>::load()?;
 
-    // Sample the assignment for the state path verification.
+    // Sample the assignment for the inclusion circuit.
     let (assignment, state_path, serial_number) = sample_assignment::<N, A>()?;
 
     // Synthesize the proving and verifying key.
-    let state_path_function_name = Identifier::from_str(STATE_PATH_FUNCTION_NAME)?;
-    let (proving_key, verifying_key) = universal_srs.to_circuit_key(&state_path_function_name, &assignment)?;
+    let inclusion_function_name = Identifier::from_str(N::INCLUSION_FUNCTION_NAME)?;
+    let (proving_key, verifying_key) = universal_srs.to_circuit_key(&inclusion_function_name, &assignment)?;
 
     // Ensure the proving key and verifying keys are valid.
-    let proof = proving_key.prove(&state_path_function_name, &assignment, &mut thread_rng())?;
+    let proof = proving_key.prove(&inclusion_function_name, &assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
-        &state_path_function_name,
+        &inclusion_function_name,
         &[N::Field::one(), **state_path.global_state_root(), *Field::<N>::zero(), *serial_number],
         &proof
     ));
@@ -144,17 +144,17 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     });
 
     println!("{}", serde_json::to_string_pretty(&metadata)?);
-    write_metadata(&format!("{STATE_PATH_FUNCTION_NAME}.metadata"), &metadata)?;
-    write_remote(&format!("{STATE_PATH_FUNCTION_NAME}.prover"), &proving_key_checksum, &proving_key_bytes)?;
-    write_remote(&format!("{STATE_PATH_FUNCTION_NAME}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
+    write_metadata(&format!("{inclusion_function_name}.metadata"), &metadata)?;
+    write_remote(&format!("{inclusion_function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
+    write_remote(&format!("{inclusion_function_name}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
 
     commands.push(format!(
         "snarkup upload \"{}\"",
-        versioned_filename(&format!("{STATE_PATH_FUNCTION_NAME}.prover"), &proving_key_checksum)
+        versioned_filename(&format!("{inclusion_function_name}.prover"), &proving_key_checksum)
     ));
     commands.push(format!(
         "snarkup upload \"{}\"",
-        versioned_filename(&format!("{STATE_PATH_FUNCTION_NAME}.verifier"), &verifying_key_checksum)
+        versioned_filename(&format!("{inclusion_function_name}.verifier"), &verifying_key_checksum)
     ));
 
     // Print the commands.
@@ -169,8 +169,8 @@ pub fn state_path<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     Ok(())
 }
 
-/// Run the following command to generate the state path circuit keys.
-/// `cargo run --example state_path [network]`
+/// Run the following command to generate the inclusion circuit keys.
+/// `cargo run --example inclusion [network]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -181,7 +181,7 @@ pub fn main() -> Result<()> {
 
     match args[1].as_str() {
         "testnet3" => {
-            state_path::<Testnet3, snarkvm_circuit::AleoV0>()?;
+            inclusion::<Testnet3, snarkvm_circuit::AleoV0>()?;
         }
         _ => panic!("Invalid network"),
     };

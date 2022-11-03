@@ -73,6 +73,9 @@ pub trait Network:
     /// The network edition.
     const EDITION: u16;
 
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str;
+
     /// The fixed timestamp of the genesis block.
     const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
     /// The genesis block coinbase target.

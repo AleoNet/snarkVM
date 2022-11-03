@@ -76,9 +76,6 @@ impl_remote_keys!(SplitProver, SplitVerifier, "split");
 // Fee
 impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 
-// Inclusion
-impl_remote_keys!(InclusionProver, InclusionVerifier, "state_path");
-
 lazy_static! {
     pub static ref TESTNET3_CREDITS_PROGRAM: indexmap::IndexMap<String, (Vec<u8>, Vec<u8>)> = {
         macro_rules! insert_remote_keys {
@@ -101,6 +98,15 @@ lazy_static! {
         insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         map
     };
+}
+
+// Inclusion
+impl_remote_keys!(InclusionProver, InclusionVerifier, "inclusion");
+
+/// The function name for the inclusion circuit.
+pub const TESTNET3_INCLUSION_FUNCTION_NAME: &'static str = "inclusion";
+
+lazy_static! {
     pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =
         InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
     pub static ref TESTNET3_INCLUSION_VERIFYING_KEY: Vec<u8> =
