@@ -50,6 +50,7 @@ impl<N: Network> From<(Vec<OutputID<N>>, Vec<Value<N>>)> for Response<N> {
 impl<N: Network> Response<N> {
     /// Initializes a new response.
     pub fn new(
+        network_id: &U16<N>,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
         num_inputs: usize,
@@ -60,9 +61,8 @@ impl<N: Network> Response<N> {
         output_registers: &[Register<N>],
     ) -> Result<Self> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
-        let function_id = N::hash_bhp1024(
-            &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
-        )?;
+        let function_id =
+            N::hash_bhp1024(&(*network_id, program_id.name(), program_id.network(), function_name).to_bits_le())?;
 
         // Compute the output IDs.
         let output_ids = outputs

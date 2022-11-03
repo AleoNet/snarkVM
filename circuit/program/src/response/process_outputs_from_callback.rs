@@ -232,6 +232,7 @@ mod tests {
 
             // Construct the response.
             let response = console::Response::new(
+                &network_id,
                 &program_id,
                 &function_name,
                 4,
