@@ -76,8 +76,8 @@ impl_remote_keys!(SplitProver, SplitVerifier, "split");
 // Fee
 impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 
-// State Path
-impl_remote_keys!(StatePathProver, StatePathVerifer, "state_path");
+// Inclusion
+impl_remote_keys!(InclusionProver, InclusionVerifier, "state_path");
 
 lazy_static! {
     pub static ref TESTNET3_CREDITS_PROGRAM: indexmap::IndexMap<String, (Vec<u8>, Vec<u8>)> = {
@@ -101,8 +101,8 @@ lazy_static! {
         insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         map
     };
-    pub static ref TESTNET3_STATE_PATH_PROVING_KEY: Vec<u8> =
-        StatePathProver::load_bytes().expect("Failed to load proving key");
-    pub static ref TESTNET3_STATE_PATH_VERIFYING_KEY: Vec<u8> =
-        StatePathVerifer::load_bytes().expect("Failed to load verifying key");
+    pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =
+        InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
+    pub static ref TESTNET3_INCLUSION_VERIFYING_KEY: Vec<u8> =
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }

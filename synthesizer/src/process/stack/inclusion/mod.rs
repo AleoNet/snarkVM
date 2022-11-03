@@ -388,7 +388,7 @@ impl<N: Network> Inclusion<N> {
 
                 // TODO (howardwu): Cache this in the process.
                 // Load the inclusion verifying key.
-                let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
+                let verifying_key = VerifyingKey::from_bytes_le(N::inclusion_verifying_key_bytes())?;
                 // Verify the inclusion proof.
                 ensure!(
                     verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
@@ -450,7 +450,7 @@ impl<N: Network> Inclusion<N> {
 
         // TODO (howardwu): Cache this in the process.
         // Load the inclusion verifying key.
-        let verifying_key = VerifyingKey::from_bytes_le(N::state_path_verifying_key_bytes())?;
+        let verifying_key = VerifyingKey::from_bytes_le(N::inclusion_verifying_key_bytes())?;
         // Verify the inclusion proof.
         ensure!(
             verifying_key.verify_batch(STATE_PATH_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
@@ -488,7 +488,7 @@ impl<N: Network> Inclusion<N> {
         }
 
         // Load the inclusion proving key.
-        let proving_key = ProvingKey::from_bytes_le(N::state_path_proving_key_bytes())?;
+        let proving_key = ProvingKey::from_bytes_le(N::inclusion_proving_key_bytes())?;
         // Generate the inclusion batch proof.
         let inclusion_proof = proving_key.prove_batch(STATE_PATH_FUNCTION_NAME, &batch_assignments, rng)?;
         // Return the global state root and inclusion proof.
