@@ -284,7 +284,6 @@ jobs:
     docker:
       - image: cimg/rust:1.64
     resource_class: 2xlarge
-#    parallelism: 25 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
       - run_serial:
           workspace_member: circuit/types/integers
