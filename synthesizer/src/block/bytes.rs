@@ -102,4 +102,17 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn test_genesis_bytes() -> Result<()> {
+        // Load the genesis block.
+        let genesis_block = Block::<CurrentNetwork>::read_le(CurrentNetwork::genesis_bytes()).unwrap();
+
+        // Check the byte representation.
+        let expected_bytes = genesis_block.to_bytes_le()?;
+        assert_eq!(genesis_block, Block::read_le(&expected_bytes[..])?);
+        assert!(Block::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
+        Ok(())
+    }
 }

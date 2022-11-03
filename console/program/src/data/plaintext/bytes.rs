@@ -26,7 +26,7 @@ impl<N: Network> FromBytes for Plaintext<N> {
             0 => Self::Literal(Literal::read_le(&mut reader)?, Default::default()),
             1 => {
                 // Read the number of members in the interface.
-                let num_members = u16::read_le(&mut reader)?;
+                let num_members = u8::read_le(&mut reader)?;
                 // Read the members.
                 let mut members = IndexMap::with_capacity(num_members as usize);
                 for _ in 0..num_members {
@@ -62,8 +62,8 @@ impl<N: Network> ToBytes for Plaintext<N> {
                 1u8.write_le(&mut writer)?;
 
                 // Write the number of members in the interface.
-                u16::try_from(interface.len())
-                    .or_halt_with::<N>("Plaintext interface length exceeds u16::MAX.")
+                u8::try_from(interface.len())
+                    .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX.")
                     .write_le(&mut writer)?;
 
                 // Write each member.

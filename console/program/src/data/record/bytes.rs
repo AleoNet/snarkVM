@@ -24,7 +24,7 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
         // Read the gates.
         let gates = Balance::read_le(&mut reader)?;
         // Read the number of entries in the record data.
-        let num_entries = u16::read_le(&mut reader)?;
+        let num_entries = u8::read_le(&mut reader)?;
         // Read the record data.
         let mut data = IndexMap::with_capacity(num_entries as usize);
         for _ in 0..num_entries {
@@ -68,7 +68,7 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
         // Write the gates.
         self.gates.write_le(&mut writer)?;
         // Write the number of entries in the record data.
-        u16::try_from(self.data.len()).or_halt_with::<N>("Record length exceeds u16::MAX").write_le(&mut writer)?;
+        u8::try_from(self.data.len()).or_halt_with::<N>("Record length exceeds u8::MAX").write_le(&mut writer)?;
         // Write each entry.
         for (entry_name, entry_value) in &self.data {
             // Write the entry name.

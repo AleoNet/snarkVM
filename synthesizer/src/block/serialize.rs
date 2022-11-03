@@ -72,6 +72,9 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_serde_json() -> Result<()> {
@@ -103,6 +106,39 @@ mod tests {
             assert_eq!(expected, Block::read_le(&expected_bytes[..])?);
             assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_genesis_serde_json() -> Result<()> {
+        // Load the genesis block.
+        let genesis_block = Block::<CurrentNetwork>::read_le(CurrentNetwork::genesis_bytes()).unwrap();
+
+        // Serialize
+        let expected_string = &genesis_block.to_string();
+        let candidate_string = serde_json::to_string(&genesis_block)?;
+
+        // Deserialize
+        assert_eq!(genesis_block, Block::from_str(expected_string)?);
+        assert_eq!(genesis_block, serde_json::from_str(&candidate_string)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_genesis_bincode() -> Result<()> {
+        // Load the genesis block.
+        let genesis_block = Block::<CurrentNetwork>::read_le(CurrentNetwork::genesis_bytes()).unwrap();
+
+        // Serialize
+        let expected_bytes = genesis_block.to_bytes_le()?;
+        let expected_bytes_with_size_encoding = bincode::serialize(&genesis_block)?;
+        assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
+
+        // Deserialize
+        assert_eq!(genesis_block, Block::read_le(&expected_bytes[..])?);
+        assert_eq!(genesis_block, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
+
         Ok(())
     }
 }
