@@ -100,6 +100,10 @@ pub trait MapRead<
     /// Returns the current value for the given key if it is scheduled
     /// to be inserted as part of an atomic batch.
     ///
+    /// If the key does not exist, returns `None`.
+    /// If the key is removed in the batch, returns `Some(None)`.
+    /// If the key is inserted in the batch, returns `Some(Some(value))`.
+    ///
     fn get_batched<Q>(&self, key: &Q) -> Option<Option<V>>
     where
         K: Borrow<Q>,
