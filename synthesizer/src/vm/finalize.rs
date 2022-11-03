@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::atomic_write_batch;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Finalizes the given transactions into the VM.

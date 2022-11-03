@@ -48,7 +48,6 @@ impl<N: Network> Package<N> {
         let process = self.get_process()?;
         // Authorize the function call.
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs, rng)?;
-        // TODO (raychu86): Add state paths for input records. Currently there is no way to retrieve block state in this execute call.
 
         // Retrieve the program.
         let program = process.get_program(program_id)?;

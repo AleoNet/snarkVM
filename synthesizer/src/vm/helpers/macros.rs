@@ -57,24 +57,3 @@ macro_rules! process {
         }
     }};
 }
-
-/// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
-#[macro_export]
-macro_rules! process_mut {
-    // Example: process!(self, logic)
-    ($self:ident, $logic:ident) => {{
-        // Process the logic.
-        match N::ID {
-            console::network::Testnet3::ID => {
-                // Cast the process.
-                let process = (&$self.process as &dyn std::any::Any)
-                    .downcast_ref::<Arc<RwLock<Process<console::network::Testnet3>>>>()
-                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))
-                    .unwrap();
-
-                $logic!(process.write(), console::network::Testnet3, circuit::AleoV0)
-            }
-            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
-        }
-    }};
-}

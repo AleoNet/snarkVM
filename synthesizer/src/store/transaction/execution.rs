@@ -44,7 +44,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
     /// The mapping of `transaction ID` to `(global state root, (optional) inclusion proof)`.
     type InclusionMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
-    /// The mapping of `transaction ID` to `(global state root, inclusion proof)`.
+    /// The mapping of `transaction ID` to `(global state root, (optional) inclusion proof)`.
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
 
     /// Initializes the execution storage.
@@ -212,7 +212,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the transition IDs and optional additional fee ID.
         let (transition_ids, _) = match self.id_map().get(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
-            None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
+            None => return Ok(None),
         };
 
         // Retrieve the global state root and inclusion proof.
