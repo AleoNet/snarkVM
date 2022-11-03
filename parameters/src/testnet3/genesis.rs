@@ -17,7 +17,7 @@
 pub struct GenesisBytes;
 
 impl GenesisBytes {
-    pub fn load_bytes() -> &'static [u8] {
+    pub const fn load_bytes() -> &'static [u8] {
         include_bytes!("./resources/block.genesis")
     }
 }
@@ -29,6 +29,6 @@ mod tests {
     #[test]
     fn test_genesis_block() {
         let bytes = GenesisBytes::load_bytes();
-        assert_eq!(1779, bytes.len() as u64, "Update me if serialization has changed");
+        assert_eq!(1778, bytes.len() as u64, "Update me if serialization has changed");
     }
 }
