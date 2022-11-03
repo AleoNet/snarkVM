@@ -37,6 +37,7 @@ static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 pub struct VariableBase;
 
 impl VariableBase {
+    #[allow(clippy::if_same_then_else)]
     pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
         // For BLS12-377, we perform variable base MSM using a batched addition technique.
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
@@ -50,7 +51,7 @@ impl VariableBase {
                     }
                 }
             }
-            batched::msm(bases, scalars)
+            standard::msm(bases, scalars)
         }
         // For all other curves, we perform variable base MSM using Pippenger's algorithm.
         else {
