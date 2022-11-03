@@ -22,41 +22,33 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
         atomic_write_batch!(self, {
+            // Acquire the write lock on the process.
+            let mut process = self.process.write();
+
             for transaction in transactions.values() {
                 // Finalize the transaction.
                 match transaction {
-                    Transaction::Deploy(_, deployment, _) => self.finalize_deployment(deployment)?,
-                    Transaction::Execute(_, execution, _) => self.finalize_execution(execution)?,
+                    Transaction::Deploy(_, deployment, _) => {
+                        process.finalize_deployment(self.program_store(), deployment)?
+                    }
+                    Transaction::Execute(_, execution, _) => {
+                        process.finalize_execution(self.program_store(), execution)?
+                    }
                 }
             }
             Ok(())
         });
         Ok(())
     }
-
-    /// Finalizes the deployment in the VM.
-    /// This method assumes the given deployment **is valid**.
-    #[inline]
-    fn finalize_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
-        self.process.write().finalize_deployment::<C::ProgramStorage>(self.program_store(), deployment)
-    }
-
-    /// Finalizes the execution in the VM.
-    /// This method assumes the given execution **is valid**.
-    #[inline]
-    fn finalize_execution(&self, execution: &Execution<N>) -> Result<()> {
-        self.process.write().finalize_execution::<C::ProgramStorage>(self.program_store(), execution)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::test_helpers::sample_program;
     use snarkvm_utilities::TestRng;
 
     #[test]
-    fn test_finalize_deployment_transaction() {
+    fn test_finalize() {
         let rng = &mut TestRng::default();
 
         let vm = crate::vm::test_helpers::sample_vm();
@@ -69,26 +61,5 @@ mod tests {
 
         // Ensure the VM can't redeploy the same transaction.
         assert!(vm.finalize(&Transactions::from(&[deployment_transaction])).is_err());
-    }
-
-    #[test]
-    fn test_finalize_deployment_program() {
-        let rng = &mut TestRng::default();
-        let vm = crate::vm::test_helpers::sample_vm();
-
-        // Fetch the program from the deployment.
-        let program = sample_program();
-
-        // Deploy the program.
-        let deployment = vm.deploy(&program, rng).unwrap();
-
-        // Ensure the program does not exists.
-        assert!(!vm.contains_program(program.id()));
-
-        // Finalize the deployment.
-        vm.finalize_deployment(&deployment).unwrap();
-
-        // Ensure the program exists.
-        assert!(vm.contains_program(program.id()));
     }
 }
