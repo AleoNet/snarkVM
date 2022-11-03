@@ -131,7 +131,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     fn verify_execution(&self, execution: &Execution<N>) -> bool {
         // Verify the execution.
         match self.process.read().verify_execution::<true>(execution) {
-            Ok(()) => true,
+            // Ensure the global state root exists in the block store.
+            Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
+                Ok(true) => true,
+                Ok(false) => {
+                    warn!("Execution verification failed: global state root not found");
+                    false
+                }
+                Err(error) => {
+                    warn!("Execution verification failed: {error}");
+                    false
+                }
+            },
             Err(error) => {
                 warn!("Execution verification failed: {error}");
                 false
@@ -144,7 +155,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     fn verify_fee(&self, fee: &Fee<N>) -> bool {
         // Verify the fee.
         match self.process.read().verify_fee(fee) {
-            Ok(()) => true,
+            // Ensure the global state root exists in the block store.
+            Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
+                Ok(true) => true,
+                Ok(false) => {
+                    warn!("Fee verification failed: global state root not found");
+                    false
+                }
+                Err(error) => {
+                    warn!("Fee verification failed: {error}");
+                    false
+                }
+            },
             Err(error) => {
                 warn!("Fee verification failed: {error}");
                 false
@@ -161,7 +183,7 @@ mod tests {
     #[test]
     fn test_verify() {
         let rng = &mut TestRng::default();
-        let vm = crate::vm::test_helpers::sample_vm();
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
@@ -172,27 +194,6 @@ mod tests {
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         // Ensure the transaction verifies.
         assert!(vm.verify(&execution_transaction));
-    }
-
-    #[test]
-    fn test_verify_execution() {
-        let rng = &mut TestRng::default();
-        let vm = crate::vm::test_helpers::sample_vm();
-
-        // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
-
-        match transaction {
-            Transaction::Execute(_, execution, _) => {
-                // Ensure the inclusion proof exists.
-                assert!(execution.inclusion_proof().is_some());
-                // Verify the inclusion.
-                assert!(Inclusion::verify_execution(&execution).is_ok());
-                // Verify the execution.
-                assert!(vm.verify_execution(&execution));
-            }
-            _ => panic!("Expected an execution transaction"),
-        }
     }
 
     #[test]
@@ -208,5 +209,26 @@ mod tests {
 
         // Ensure the deployment is valid.
         assert!(vm.verify_deployment(&deployment));
+    }
+
+    #[test]
+    fn test_verify_execution() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+
+        match transaction {
+            Transaction::Execute(_, execution, _) => {
+                // Ensure the inclusion proof exists.
+                assert!(execution.inclusion_proof().is_some());
+                // Verify the inclusion.
+                assert!(Inclusion::verify_execution(&execution).is_ok());
+                // Verify the execution.
+                assert!(vm.verify_execution(&execution));
+            }
+            _ => panic!("Expected an execution transaction"),
+        }
     }
 }

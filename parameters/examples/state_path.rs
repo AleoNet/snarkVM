@@ -75,7 +75,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Initialize the consensus store.
     let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
     // Initialize a new VM.
-    let mut vm = VM::from(store)?;
+    let vm = VM::from(store)?;
 
     // Initialize an RNG.
     let rng = &mut thread_rng();
@@ -84,13 +84,8 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Return the block.
     let genesis_block = Block::genesis(&vm, &caller_private_key, rng)?;
 
-    // Add the genesis block to the block tree.
-    vm.block_store().insert(&genesis_block)?;
-
     // Update the VM.
-    for transaction in genesis_block.transactions().values() {
-        vm.finalize(transaction)?;
-    }
+    vm.add_next_block(&genesis_block)?;
 
     // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;

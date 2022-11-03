@@ -15,61 +15,67 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::atomic_write_batch;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Finalizes the transaction into the VM.
-    /// This method assumes the given transaction **is valid**.
+    /// Finalizes the given transactions into the VM.
+    /// This method assumes the given transactions **are valid**.
     #[inline]
-    pub fn finalize(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction is valid.
-        ensure!(self.verify(transaction), "Invalid transaction: failed to verify");
-        // Finalize the transaction.
-        match transaction {
-            Transaction::Deploy(_, deployment, _) => self.finalize_deployment(deployment),
-            Transaction::Execute(_, execution, _) => self.finalize_execution(execution),
-        }
+    pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
+        atomic_write_batch!(self, {
+            for transaction in transactions.values() {
+                // Finalize the transaction.
+                match transaction {
+                    Transaction::Deploy(_, deployment, _) => self.finalize_deployment(deployment)?,
+                    Transaction::Execute(_, execution, _) => self.finalize_execution(execution)?,
+                }
+            }
+            Ok(())
+        });
+        Ok(())
     }
 
     /// Finalizes the deployment in the VM.
     /// This method assumes the given deployment **is valid**.
     #[inline]
-    fn finalize_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
+    fn finalize_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
         self.process.write().finalize_deployment::<C::ProgramStorage>(self.program_store(), deployment)
     }
 
     /// Finalizes the execution in the VM.
     /// This method assumes the given execution **is valid**.
     #[inline]
-    fn finalize_execution(&mut self, execution: &Execution<N>) -> Result<()> {
+    fn finalize_execution(&self, execution: &Execution<N>) -> Result<()> {
         self.process.write().finalize_execution::<C::ProgramStorage>(self.program_store(), execution)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::vm::test_helpers::sample_program;
     use snarkvm_utilities::TestRng;
 
     #[test]
-    fn test_finalize() {
+    fn test_finalize_deployment_transaction() {
         let rng = &mut TestRng::default();
 
-        let mut vm = crate::vm::test_helpers::sample_vm();
+        let vm = crate::vm::test_helpers::sample_vm();
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         // Finalize the transaction.
-        vm.finalize(&deployment_transaction).unwrap();
+        vm.finalize(&Transactions::from(&[deployment_transaction.clone()])).unwrap();
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(&deployment_transaction).is_err());
+        assert!(vm.finalize(&Transactions::from(&[deployment_transaction])).is_err());
     }
 
     #[test]
-    fn test_finalize_deployment() {
+    fn test_finalize_deployment_program() {
         let rng = &mut TestRng::default();
-        let mut vm = crate::vm::test_helpers::sample_vm();
+        let vm = crate::vm::test_helpers::sample_vm();
 
         // Fetch the program from the deployment.
         let program = sample_program();

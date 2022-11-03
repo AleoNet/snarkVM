@@ -82,10 +82,8 @@ pub(crate) mod test_helpers {
 
             // Initialize the ledger.
             let mut ledger = Self { vm };
-
             // Add the genesis block.
             ledger.add_next_block(&genesis)?;
-
             // Return the ledger.
             Ok(ledger)
         }
@@ -94,24 +92,7 @@ pub(crate) mod test_helpers {
     impl<N: Network> TestLedger<N> {
         /// Adds the given block as the next block in the chain.
         pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
-            /* ATOMIC CODE SECTION */
-
-            // Add the block to the ledger. This code section executes atomically.
-            {
-                let mut ledger = self.clone();
-
-                // Update the blocks.
-                ledger.vm.block_store().insert(block)?;
-
-                // Update the VM.
-                for transaction in block.transactions().values() {
-                    ledger.vm.finalize(transaction)?;
-                }
-
-                *self = Self { vm: ledger.vm };
-            }
-
-            Ok(())
+            self.vm.add_next_block(block)
         }
 
         /// Returns the block for the given block height.

@@ -23,7 +23,7 @@ mod finalize;
 mod verify;
 
 use crate::{
-    block::{Transaction, Transition},
+    block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process},
@@ -43,7 +43,7 @@ use std::sync::Arc;
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process.
     process: Arc<RwLock<Process<N>>>,
-    /// The consensus store.
+    /// The VM store.
     store: ConsensusStore<N, C>,
 }
 
@@ -71,30 +71,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         Ok(Self { process: Arc::new(RwLock::new(process)), store })
     }
 
-    /// Returns the program store.
-    #[inline]
-    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
-        self.store.program_store()
-    }
-
-    /// Returns the block store.
-    #[inline]
-    pub fn block_store(&self) -> &BlockStore<N, C::BlockStorage> {
-        self.store.block_store()
-    }
-
-    /// Returns the transaction store.
-    #[inline]
-    pub fn transaction_store(&self) -> &TransactionStore<N, C::TransactionStorage> {
-        self.store.transaction_store()
-    }
-
-    /// Returns the transition store.
-    #[inline]
-    pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
-        self.store.transition_store()
-    }
-
     /// Returns `true` if a program with the given program ID exists.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
@@ -119,6 +95,67 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
     }
+
+    /// Adds the given block into the VM.
+    #[inline]
+    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // First, insert the block.
+        self.block_store().insert(block)?;
+        // Next, finalize the transactions.
+        match self.finalize(block.transactions()) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                // Rollback the block.
+                self.block_store().remove_last_n(1)?;
+                // Return the error.
+                Err(error)
+            }
+        }
+    }
+
+    /// Returns the program store.
+    #[inline]
+    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
+        self.store.program_store()
+    }
+
+    /// Returns the block store.
+    #[inline]
+    pub fn block_store(&self) -> &BlockStore<N, C::BlockStorage> {
+        self.store.block_store()
+    }
+
+    /// Returns the transaction store.
+    #[inline]
+    pub fn transaction_store(&self) -> &TransactionStore<N, C::TransactionStorage> {
+        self.store.transaction_store()
+    }
+
+    /// Returns the transition store.
+    #[inline]
+    pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
+        self.store.transition_store()
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.store.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.store.is_atomic_in_progress()
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.store.abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.store.finish_atomic()
+    }
 }
 
 #[cfg(test)]
@@ -137,6 +174,7 @@ pub(crate) mod test_helpers {
     pub(crate) type CurrentNetwork = Testnet3;
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
+        // Initialize a new VM.
         VM::from(ConsensusStore::open(None).unwrap()).unwrap()
     }
 
@@ -160,6 +198,19 @@ pub(crate) mod test_helpers {
                 Block::genesis(&vm, &caller_private_key, rng).unwrap()
             })
             .clone()
+    }
+
+    pub(crate) fn sample_vm_with_genesis_block(
+        rng: &mut TestRng,
+    ) -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+        // Return the VM.
+        vm
     }
 
     pub(crate) fn sample_program() -> Program<CurrentNetwork> {
@@ -221,15 +272,9 @@ function compute:
                 let additional_fee = (credits, 10);
 
                 // Initialize the VM.
-                let mut vm = sample_vm();
-
-                // Update the blocks.
-                vm.block_store().insert(&genesis).unwrap();
-
+                let vm = sample_vm();
                 // Update the VM.
-                for transaction in genesis.transactions().values() {
-                    vm.finalize(transaction).unwrap();
-                }
+                vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
@@ -265,15 +310,9 @@ function compute:
                 let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
 
                 // Initialize the VM.
-                let mut vm = sample_vm();
-
-                // Update the blocks.
-                vm.block_store().insert(&genesis).unwrap();
-
+                let vm = sample_vm();
                 // Update the VM.
-                for transaction in genesis.transactions().values() {
-                    vm.finalize(transaction).unwrap();
-                }
+                vm.add_next_block(&genesis).unwrap();
 
                 // Authorize.
                 let authorization = vm
@@ -326,15 +365,9 @@ function compute:
                 let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
 
                 // Initialize the VM.
-                let mut vm = sample_vm();
-
-                // Update the blocks.
-                vm.block_store().insert(&genesis).unwrap();
-
+                let vm = sample_vm();
                 // Update the VM.
-                for transaction in genesis.transactions().values() {
-                    vm.finalize(transaction).unwrap();
-                }
+                vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
                 let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng).unwrap();
