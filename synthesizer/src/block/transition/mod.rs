@@ -15,25 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod input;
-pub use input::{Input, Origin};
-
-mod leaf;
-pub use leaf::*;
-
-mod merkle;
-pub use merkle::*;
+pub use input::Input;
 
 pub mod output;
 pub use output::Output;
 
 mod bytes;
+mod merkle;
 mod serialize;
 mod string;
 
-use crate::Proof;
+use crate::snark::Proof;
 use console::{
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::{
         Ciphertext,
         Identifier,
@@ -44,8 +38,12 @@ use console::{
         Register,
         Request,
         Response,
+        TransitionLeaf,
+        TransitionPath,
+        TransitionTree,
         Value,
         ValueType,
+        TRANSITION_DEPTH,
     },
     types::{Field, Group},
 };
@@ -89,7 +87,7 @@ impl<N: Network> Transition<N> {
         fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
+        let id = *Self::function_tree(&inputs, &outputs)?.root();
         // Return the transition.
         Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee })
     }
@@ -104,9 +102,14 @@ impl<N: Network> Transition<N> {
         proof: Proof<N>,
         fee: i64,
     ) -> Result<Self> {
+        let network_id = *request.network_id();
         let program_id = *request.program_id();
         let function_name = *request.function_name();
         let num_inputs = request.inputs().len();
+
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id =
+            N::hash_bhp1024(&(network_id, program_id.name(), program_id.network(), function_name).to_bits_le())?;
 
         let inputs = request
             .input_ids()
@@ -120,7 +123,7 @@ impl<N: Network> Transition<N> {
                         // Construct the constant input.
                         let input = Input::Constant(*input_hash, Some(plaintext.clone()));
                         // Ensure the input is valid.
-                        match input.verify(request.tcm(), index) {
+                        match input.verify(function_id, request.tcm(), index) {
                             true => Ok(input),
                             false => bail!("Malformed constant transition input: '{input}'"),
                         }
@@ -129,7 +132,7 @@ impl<N: Network> Transition<N> {
                         // Construct the public input.
                         let input = Input::Public(*input_hash, Some(plaintext.clone()));
                         // Ensure the input is valid.
-                        match input.verify(request.tcm(), index) {
+                        match input.verify(function_id, request.tcm(), index) {
                             true => Ok(input),
                             false => bail!("Malformed public transition input: '{input}'"),
                         }
@@ -137,8 +140,9 @@ impl<N: Network> Transition<N> {
                     (InputID::Private(input_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
-                        let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
+                        // Compute the ciphertext, with the input view key as `Hash(function ID || tvk || index)`.
+                        let ciphertext =
+                            plaintext.encrypt_symmetric(N::hash_psd4(&[function_id, *request.tvk(), index])?)?;
                         // Compute the ciphertext hash.
                         let ciphertext_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the ciphertext hash matches.
@@ -146,8 +150,9 @@ impl<N: Network> Transition<N> {
                         // Return the private input.
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
-                    (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
-                        Ok(Input::Record(*serial_number, *tag, Origin::Commitment(*commitment)))
+                    (InputID::Record(_, _, serial_number, tag), Value::Record(..)) => {
+                        // Return the input record.
+                        Ok(Input::Record(*serial_number, *tag))
                     }
                     (InputID::ExternalRecord(input_hash), Value::Record(..)) => Ok(Input::ExternalRecord(*input_hash)),
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),
@@ -169,7 +174,7 @@ impl<N: Network> Transition<N> {
                         // Construct the constant output.
                         let output = Output::Constant(*output_hash, Some(plaintext.clone()));
                         // Ensure the output is valid.
-                        match output.verify(request.tcm(), num_inputs + index) {
+                        match output.verify(function_id, request.tcm(), num_inputs + index) {
                             true => Ok(output),
                             false => bail!("Malformed constant transition output: '{output}'"),
                         }
@@ -178,7 +183,7 @@ impl<N: Network> Transition<N> {
                         // Construct the public output.
                         let output = Output::Public(*output_hash, Some(plaintext.clone()));
                         // Ensure the output is valid.
-                        match output.verify(request.tcm(), num_inputs + index) {
+                        match output.verify(function_id, request.tcm(), num_inputs + index) {
                             true => Ok(output),
                             false => bail!("Malformed public transition output: '{output}'"),
                         }
@@ -186,8 +191,9 @@ impl<N: Network> Transition<N> {
                     (OutputID::Private(output_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
-                        let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
+                        // Compute the ciphertext, with the input view key as `Hash(function ID || tvk || index)`.
+                        let ciphertext =
+                            plaintext.encrypt_symmetric(N::hash_psd4(&[function_id, *request.tvk(), index])?)?;
                         // Compute the ciphertext hash.
                         let ciphertext_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the ciphertext hash matches.
@@ -226,8 +232,9 @@ impl<N: Network> Transition<N> {
                     (OutputID::ExternalRecord(hash), Value::Record(record)) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
-                        // Construct the preimage as `(output || tvk || index)`.
-                        let mut preimage = record.to_fields()?;
+                        // Construct the preimage as `(function ID || output || tvk || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(record.to_fields()?);
                         preimage.push(*request.tvk());
                         preimage.push(index);
                         // Hash the output to a field element.
@@ -316,11 +323,6 @@ impl<N: Network> Transition<N> {
         self.inputs.iter().flat_map(Input::serial_number)
     }
 
-    /// Returns an iterator over the origins, for inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
-        self.inputs.iter().flat_map(Input::origin)
-    }
-
     /// Returns an iterator over the tags, for inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.inputs.iter().flat_map(Input::tag)
@@ -372,11 +374,6 @@ impl<N: Network> Transition<N> {
     /// Returns a consuming iterator over the tags, for inputs that are records.
     pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
         self.inputs.into_iter().flat_map(Input::into_tag)
-    }
-
-    /// Returns a consuming iterator over the origins, for inputs that are records.
-    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
-        self.inputs.into_iter().flat_map(Input::into_origin)
     }
 
     /* Output */

@@ -100,7 +100,7 @@ impl<
             true => self.atomic_batch.lock().push(BatchOperation::Remove(*key)),
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                self.map.write().remove(key);
+                self.map.write().shift_remove(key);
             }
         }
         Ok(())

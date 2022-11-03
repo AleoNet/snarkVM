@@ -14,16 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod origin;
-pub use origin::*;
-
 mod bytes;
 mod serialize;
 mod string;
 
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Plaintext},
+    program::{Ciphertext, Plaintext, TransitionLeaf},
     types::Field,
 };
 
@@ -38,8 +35,8 @@ pub enum Input<N: Network> {
     Public(Field<N>, Option<Plaintext<N>>),
     /// The ciphertext hash and (optional) ciphertext.
     Private(Field<N>, Option<Ciphertext<N>>),
-    /// The serial number, tag, and the origin of the record.
-    Record(Field<N>, Field<N>, Origin<N>),
+    /// The serial number and tag of the record.
+    Record(Field<N>, Field<N>),
     /// The input commitment to the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
 }
@@ -51,7 +48,7 @@ impl<N: Network> Input<N> {
             Input::Constant(..) => 0,
             Input::Public(..) => 1,
             Input::Private(..) => 2,
-            Input::Record(..) => 3,
+            Input::Record(..) => 3, // <- Changing this will invalidate 'console::StatePath' and 'circuit::StatePath'.
             Input::ExternalRecord(..) => 4,
         }
     }
@@ -67,26 +64,15 @@ impl<N: Network> Input<N> {
         }
     }
 
-    /// Returns the origin, if the input is a record.
-    pub const fn origin(&self) -> Option<&Origin<N>> {
-        match self {
-            Input::Record(_, _, origin) => Some(origin),
-            _ => None,
-        }
-    }
-
-    /// Returns the origin, if the input is a record, and consumes `self`.
-    pub fn into_origin(self) -> Option<Origin<N>> {
-        match self {
-            Input::Record(_, _, origin) => Some(origin),
-            _ => None,
-        }
+    /// Returns the input as a transition leaf.
+    pub fn to_transition_leaf(&self, index: u8) -> TransitionLeaf<N> {
+        TransitionLeaf::new_with_version(index, self.variant(), *self.id())
     }
 
     /// Returns the tag, if the input is a record.
     pub const fn tag(&self) -> Option<&Field<N>> {
         match self {
-            Input::Record(_, tag, _) => Some(tag),
+            Input::Record(_, tag) => Some(tag),
             _ => None,
         }
     }
@@ -94,7 +80,7 @@ impl<N: Network> Input<N> {
     /// Returns the tag, if the input is a record, and consumes `self`.
     pub fn into_tag(self) -> Option<Field<N>> {
         match self {
-            Input::Record(_, tag, _) => Some(tag),
+            Input::Record(_, tag) => Some(tag),
             _ => None,
         }
     }
@@ -122,7 +108,7 @@ impl<N: Network> Input<N> {
 
     /// Returns `true` if the input is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
+    pub fn verify(&self, function_id: Field<N>, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
         let result = || match self {
             Input::Constant(hash, Some(input)) => {
@@ -130,8 +116,9 @@ impl<N: Network> Input<N> {
                     Ok(fields) => {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = fields;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Ensure the hash matches.
@@ -148,8 +135,9 @@ impl<N: Network> Input<N> {
                     Ok(fields) => {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = fields;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Ensure the hash matches.
@@ -171,7 +159,11 @@ impl<N: Network> Input<N> {
                     Err(error) => Err(error),
                 }
             }
-            _ => Ok(true),
+            Input::Constant(_, None)
+            | Input::Public(_, None)
+            | Input::Private(_, None)
+            | Input::Record(_, _)
+            | Input::ExternalRecord(_) => Ok(true),
         };
 
         match result() {
@@ -209,10 +201,6 @@ pub(crate) mod test_helpers {
         // Sample a random ciphertext.
         let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
         let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
-        // Sample a random origin (commitment).
-        let origin_commitment = Origin::Commitment(Uniform::rand(rng));
-        // Sample a random origin (state root).
-        let origin_state_root = Origin::StateRoot(Uniform::rand(rng));
 
         vec![
             (transition_id, input),
@@ -222,8 +210,7 @@ pub(crate) mod test_helpers {
             (Uniform::rand(rng), Input::Public(plaintext_hash, Some(plaintext))),
             (Uniform::rand(rng), Input::Private(Uniform::rand(rng), None)),
             (Uniform::rand(rng), Input::Private(ciphertext_hash, Some(ciphertext))),
-            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng), origin_commitment)),
-            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng), origin_state_root)),
+            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng))),
             (Uniform::rand(rng), Input::ExternalRecord(Uniform::rand(rng))),
         ]
     }

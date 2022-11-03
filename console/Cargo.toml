@@ -48,6 +48,7 @@ default = [
 ]
 parallel = [ "snarkvm-console-collections/parallel" ]
 wasm = [ "snarkvm-console-network/wasm" ]
+test = [ "snarkvm-console-program/test" ]
 
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]

@@ -16,6 +16,10 @@ optional = true
 path = "../account"
 version = "0.9.0"
 
+[dependencies.snarkvm-circuit-collections]
+path = "../collections"
+version = "0.9.0"
+
 [dependencies.snarkvm-circuit-network]
 path = "../network"
 version = "0.9.0"
@@ -27,6 +31,11 @@ version = "0.9.0"
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
 version = "0.9.0"
+
+[dev-dependencies.console]
+package = "snarkvm-console-program"
+path = "../../console/program"
+features = [ "test" ]
 
 [dev-dependencies.snarkvm-console-account]
 path = "../../console/account"

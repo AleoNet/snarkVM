@@ -30,11 +30,19 @@ use crate::{
         TransitionStore,
     },
 };
-use console::{account::Signature, network::prelude::*, types::Field};
+use console::{
+    account::Signature,
+    network::prelude::*,
+    program::{BlockTree, HeaderLeaf, StatePath},
+    types::Field,
+};
 
 use anyhow::Result;
-use core::marker::PhantomData;
-use std::borrow::Cow;
+use parking_lot::RwLock;
+use std::{borrow::Cow, sync::Arc};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 macro_rules! bail_with_block {
     ($message:expr, $self:ident, $hash:expr) => {{
@@ -46,9 +54,9 @@ macro_rules! bail_with_block {
 /// A trait for block storage.
 pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `block height` to `state root`.
-    type StateRootMap: for<'a> Map<'a, u32, Field<N>>;
+    type StateRootMap: for<'a> Map<'a, u32, N::StateRoot>;
     /// The mapping of `state root` to `block height`.
-    type ReverseStateRootMap: for<'a> Map<'a, Field<N>, u32>;
+    type ReverseStateRootMap: for<'a> Map<'a, N::StateRoot, u32>;
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
@@ -167,7 +175,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Stores the given `(state root, block)` pair into storage.
-    fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
+    fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
         atomic_write_batch!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
@@ -280,7 +288,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block height that contains the given `state root`.
-    fn find_block_height_from_state_root(&self, state_root: Field<N>) -> Result<Option<u32>> {
+    fn find_block_height_from_state_root(&self, state_root: N::StateRoot) -> Result<Option<u32>> {
         match self.reverse_state_root_map().get(&state_root)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
             None => Ok(None),
@@ -307,11 +315,93 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the state root that contains the given `block height`.
-    fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
+    fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         match self.state_root_map().get(&block_height)? {
             Some(state_root) => Ok(Some(cow_to_copied!(state_root))),
             None => Ok(None),
         }
+    }
+
+    /// Returns a state path for the given `commitment`.
+    fn get_state_path_for_commitment(&self, commitment: &Field<N>, block_tree: &BlockTree<N>) -> Result<StatePath<N>> {
+        // Ensure the commitment exists.
+        if !self.transition_store().contains_commitment(commitment)? {
+            bail!("Commitment '{commitment}' does not exist");
+        }
+
+        // Find the transition that contains the commitment.
+        let transition_id = self.transition_store().find_transition_id(commitment)?;
+        // Find the transaction that contains the transition.
+        let transaction_id = match self.transaction_store().find_transaction_id(&transition_id)? {
+            Some(transaction_id) => transaction_id,
+            None => bail!("The transaction ID for commitment '{commitment}' is missing in storage"),
+        };
+        // Find the block that contains the transaction.
+        let block_hash = match self.find_block_hash(&transaction_id)? {
+            Some(block_hash) => block_hash,
+            None => bail!("The block hash for commitment '{commitment}' is missing in storage"),
+        };
+
+        // Retrieve the transition.
+        let transition = match self.transition_store().get_transition(&transition_id)? {
+            Some(transition) => transition,
+            None => bail!("The transition '{transition_id}' for commitment '{commitment}' is missing in storage"),
+        };
+        // Retrieve the block.
+        let block = match self.get_block(&block_hash)? {
+            Some(block) => block,
+            None => bail!("The block '{block_hash}' for commitment '{commitment}' is missing in storage"),
+        };
+
+        // Construct the global state root and block path.
+        let global_state_root = *block_tree.root();
+        let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
+
+        // Ensure the global state root exists in storage.
+        if !self.reverse_state_root_map().contains_key(&global_state_root)? {
+            bail!("The global state root '{global_state_root}' for commitment '{commitment}' is missing in storage");
+        }
+
+        // Construct the transition path and transaction leaf.
+        let transition_leaf = transition.to_leaf(commitment, false)?;
+        let transition_path = transition.to_path(&transition_leaf)?;
+
+        // Construct the transactions path.
+        let transactions = block.transactions();
+        let transactions_path = match transactions.to_path(transaction_id) {
+            Ok(transactions_path) => transactions_path,
+            Err(_) => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the block"),
+        };
+
+        // Construct the transaction path and transaction leaf.
+        let transaction = match transactions.get(&transaction_id) {
+            Some(transaction) => transaction,
+            None => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the block"),
+        };
+        let transaction_leaf = transaction.to_leaf(transition.id())?;
+        let transaction_path = transaction.to_path(&transaction_leaf)?;
+
+        // Construct the block header path.
+        let block_header = block.header();
+        let header_root = block_header.to_root()?;
+        let header_leaf = HeaderLeaf::<N>::new(1, block_header.transactions_root());
+        let header_path = block_header.to_path(&header_leaf)?;
+
+        Ok(StatePath::from(
+            global_state_root.into(),
+            block_path,
+            block.hash(),
+            block.previous_hash(),
+            header_root,
+            header_path,
+            header_leaf,
+            transactions_path,
+            transaction.id(),
+            transaction_path,
+            transaction_leaf,
+            transition_path,
+            transition_leaf,
+        ))
     }
 
     /// Returns the previous block hash of the given `block height`.
@@ -433,9 +523,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
     /// The mapping of `block height` to `state root`.
-    state_root_map: MemoryMap<u32, Field<N>>,
+    state_root_map: MemoryMap<u32, N::StateRoot>,
     /// The mapping of `state root` to `block height`.
-    reverse_state_root_map: MemoryMap<Field<N>, u32>,
+    reverse_state_root_map: MemoryMap<N::StateRoot, u32>,
     /// The mapping of `block height` to `block hash`.
     id_map: MemoryMap<u32, N::BlockHash>,
     /// The mapping of `block hash` to `block height`.
@@ -458,8 +548,8 @@ pub struct BlockMemory<N: Network> {
 
 #[rustfmt::skip]
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
-    type StateRootMap = MemoryMap<u32, Field<N>>;
-    type ReverseStateRootMap = MemoryMap<Field<N>, u32>;
+    type StateRootMap = MemoryMap<u32, N::StateRoot>;
+    type ReverseStateRootMap = MemoryMap<N::StateRoot, u32>;
     type IDMap = MemoryMap<u32, N::BlockHash>;
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
@@ -554,8 +644,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
 pub struct BlockStore<N: Network, B: BlockStorage<N>> {
     /// The block storage.
     storage: B,
-    /// PhantomData.
-    _phantom: PhantomData<N>,
+    /// The block tree.
+    tree: Arc<RwLock<BlockTree<N>>>,
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
@@ -563,23 +653,95 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     pub fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the block storage.
         let storage = B::open(dev)?;
+
+        // Compute the block tree.
+        let tree = {
+            // Prepare an iterator over the block heights.
+            let heights = storage.id_map().keys();
+            // Prepare the leaves of the block tree.
+            let hashes = match heights.max() {
+                Some(height) => cfg_into_iter!(0..=cow_to_copied!(height))
+                    .map(|height| match storage.get_block_hash(height)? {
+                        Some(hash) => Ok(hash.to_bits_le()),
+                        None => bail!("Missing block hash for block {height}"),
+                    })
+                    .collect::<Result<Vec<Vec<bool>>>>()?,
+                None => vec![],
+            };
+            // Construct the block tree.
+            Arc::new(RwLock::new(N::merkle_tree_bhp(&hashes)?))
+        };
+
         // Return the block store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self { storage, tree })
     }
 
-    /// Initializes a block store from storage.
-    pub fn from(storage: B) -> Self {
-        Self { storage, _phantom: PhantomData }
+    /// Stores the given block into storage.
+    pub fn insert(&self, block: &Block<N>) -> Result<()> {
+        // Acquire the write lock on the block tree.
+        let mut tree = self.tree.write();
+        // Prepare an updated Merkle tree containing the new block hash.
+        let updated_tree = tree.prepare_append(&[block.hash().to_bits_le()])?;
+        // Ensure the next block height is correct.
+        if block.height() != u32::try_from(updated_tree.number_of_leaves())? - 1 {
+            bail!("Attempted to insert a block at the incorrect height into storage")
+        }
+        // Insert the (state root, block height) pair.
+        self.storage.insert((*updated_tree.root()).into(), block)?;
+        // Update the block tree.
+        *tree = updated_tree;
+        // Return success.
+        Ok(())
     }
 
-    /// Stores the given `(state root, block)` pair into storage.
-    pub fn insert(&self, state_root: Field<N>, block: &Block<N>) -> Result<()> {
-        self.storage.insert(state_root, block)
-    }
+    /// Removes the last 'n' blocks from storage.
+    pub fn remove_last_n(&self, n: u32) -> Result<()> {
+        // Ensure 'n' is non-zero.
+        ensure!(n > 0, "Cannot remove zero blocks");
 
-    /// Removes the block for the given `block hash`.
-    pub fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
-        self.storage.remove(block_hash)
+        // Acquire the write lock on the block tree.
+        let mut tree = self.tree.write();
+
+        // Determine the block heights to remove.
+        let heights = match self.storage.id_map().keys().max() {
+            Some(height) => {
+                // Determine the end block height to remove.
+                let end_height = cow_to_copied!(height);
+                // Determine the start block height to remove.
+                let start_height = end_height
+                    .checked_sub(n - 1)
+                    .ok_or_else(|| anyhow!("Failed to remove last '{n}' blocks: block height underflow"))?;
+                // Ensure the block height matches the number of leaves in the Merkle tree.
+                ensure!(end_height == u32::try_from(tree.number_of_leaves())? - 1, "Block height mismatch");
+                // Output the block heights.
+                start_height..=end_height
+            }
+            None => bail!("Failed to remove last '{n}' blocks: no blocks in storage"),
+        };
+
+        // Fetch the block hashes to remove.
+        let hashes = cfg_into_iter!(heights)
+            .map(|height| match self.storage.get_block_hash(height)? {
+                Some(hash) => Ok(hash),
+                None => bail!("Failed to remove last '{n}' blocks: missing block hash for block {height}"),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Prepare an updated Merkle tree removing the last 'n' block hashes.
+        let updated_tree = tree.prepare_remove_last_n(usize::try_from(n)?)?;
+
+        atomic_write_batch!(self, {
+            // Remove the blocks, in descending order.
+            for block_hash in hashes.iter().rev() {
+                self.storage.remove(block_hash)?;
+            }
+            Ok(())
+        });
+
+        // Update the block tree.
+        *tree = updated_tree;
+        // Return success.
+        Ok(())
     }
 
     /// Returns the transaction store.
@@ -620,7 +782,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block height that contains the given `state root`.
-    pub fn find_block_height_from_state_root(&self, state_root: Field<N>) -> Result<Option<u32>> {
+    pub fn find_block_height_from_state_root(&self, state_root: N::StateRoot) -> Result<Option<u32>> {
         self.storage.find_block_height_from_state_root(state_root)
     }
 
@@ -639,9 +801,19 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the current state root.
+    pub fn current_state_root(&self) -> N::StateRoot {
+        (*self.tree.read().root()).into()
+    }
+
     /// Returns the state root that contains the given `block height`.
-    pub fn get_state_root(&self, block_height: u32) -> Result<Option<Field<N>>> {
+    pub fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         self.storage.get_state_root(block_height)
+    }
+
+    /// Returns a state path for the given `commitment`.
+    pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        self.storage.get_state_path_for_commitment(commitment, &self.tree.read())
     }
 
     /// Returns the previous block hash of the given `block height`.
@@ -687,8 +859,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given state root exists.
-    pub fn contains_state_root(&self, state_root: Field<N>) -> Result<bool> {
-        self.storage.reverse_state_root_map().contains_key(&state_root)
+    pub fn contains_state_root(&self, state_root: &N::StateRoot) -> Result<bool> {
+        self.storage.reverse_state_root_map().contains_key(state_root)
     }
 
     /// Returns `true` if the given block height exists.
@@ -709,7 +881,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns an iterator over the state roots, for all blocks in `self`.
-    pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+    pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, N::StateRoot>> {
         self.storage.reverse_state_root_map().keys()
     }
 
@@ -749,14 +921,14 @@ mod tests {
         assert_eq!(None, candidate);
 
         // Insert the block.
-        block_store.insert(rng.gen(), &block).unwrap();
+        block_store.insert(&block).unwrap();
 
         // Retrieve the block.
         let candidate = block_store.get_block(&block_hash).unwrap();
         assert_eq!(Some(block), candidate);
 
         // Remove the block.
-        block_store.remove(&block_hash).unwrap();
+        block_store.remove_last_n(1).unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -786,7 +958,7 @@ mod tests {
         }
 
         // Insert the block.
-        block_store.insert(rng.gen(), &block).unwrap();
+        block_store.insert(&block).unwrap();
 
         for transaction_id in block.transaction_ids() {
             // Find the block hash.
@@ -795,7 +967,7 @@ mod tests {
         }
 
         // Remove the block.
-        block_store.remove(&block_hash).unwrap();
+        block_store.remove_last_n(1).unwrap();
 
         for transaction_id in block.transaction_ids() {
             // Ensure the block hash is not found.

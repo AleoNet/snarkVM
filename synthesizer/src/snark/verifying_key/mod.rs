@@ -59,7 +59,7 @@ impl<N: Network> VerifyingKey<N> {
     }
 
     /// Returns `true` if the batch proof is valid for the given public inputs.
-    pub fn verify_batch(&self, function_name: &Identifier<N>, inputs: &[&[N::Field]], proof: &Proof<N>) -> bool {
+    pub fn verify_batch(&self, function_name: &str, inputs: &[Vec<N::Field>], proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
