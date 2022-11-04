@@ -72,7 +72,7 @@ impl<N: Network> Execution<N> {
     }
 
     /// Returns the `Transition` corresponding to the given transition ID.
-    pub fn find(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
+    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
         self.transitions.get(id)
     }
 
