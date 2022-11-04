@@ -46,6 +46,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             false => E::halt(format!("Inputs to this BHP cannot exceed {} bits", Self::MAX_BITS)),
         }
 
+        // Declare the 1 constant field element.
+        let one = Field::one();
         // Declare the 1/2 constant field element.
         let one_half = Field::constant(console::Field::<E::Network>::half());
 
@@ -155,9 +157,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                 match &sum {
                     Some((sum_x, sum_y)) => {
                         // Convert the accumulated sum into a point on the twisted Edwards curve.
-                        // TODO: If we know that sum_y is nonzero, then we can replace with `sum_x * sum_y.inverse()`.
-                        let edwards_x = sum_x / sum_y; // 5 constraints;
-                        Group::from_x_coordinate(edwards_x) // 3 constraints
+                        let edwards_x = sum_x * sum_y.inverse(); // 1 constraint (`sum_y` is never 0)
+                        let edwards_y = (sum_x - &one) / (sum_x + &one); // 1 constraint (`sum_x` is never -1)
+                        Group::from_xy_coordinates(edwards_x, edwards_y) // 0 constraints (this is safe)
                     }
                     None => E::halt("Invalid iteration of BHP detected, a window was not evaluated"),
                 }

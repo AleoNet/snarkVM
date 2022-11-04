@@ -15,6 +15,7 @@ optional = true
 [dependencies.snarkvm-circuit-types]
 path = "../types"
 version = "0.9.0"
+features = [ "unchecked" ]
 
 [dependencies.snarkvm-fields]
 path = "../../fields"

@@ -56,12 +56,61 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
-        // Initialize the x- and y-coordinate field elements.
-        let (x, y) = group.to_xy_coordinate();
-        let x = Field::new(mode, x);
-        let y = Field::new(mode, y);
+        if mode.is_public() {
+            // Inject the point.
+            let point = {
+                // Initialize the (x, y) coordinates of the point as field elements.
+                let (x, y) = group.to_xy_coordinates();
+                // Inject the `(x, y)` coordinates as field elements.
+                Self { x: Field::new(mode, x), y: Field::new(mode, y) }
+            };
 
-        Self::from_xy_coordinates(x, y)
+            // Inject the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)` as a witness.
+            let (x_inv, y_inv) = witness!(|point| point.div_by_cofactor().to_xy_coordinates());
+            // Initialize `point_inv` from `(x_inv, y_inv)`.
+            let point_inv = Self { x: x_inv, y: y_inv };
+
+            // Ensure `point_inv` is on the curve.
+            Self::enforce_on_curve(&point_inv.x, &point_inv.y);
+
+            // Ensure the `point == point_inv * COFACTOR`.
+            E::assert_eq(&point, &point_inv.mul_by_cofactor());
+
+            // Return the point.
+            point
+        } else {
+            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
+            let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
+            // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
+            let point_inv = Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) };
+
+            // Ensure `point_inv` is on the curve.
+            Self::enforce_on_curve(&point_inv.x, &point_inv.y);
+
+            // Return the `point` as `point_inv * COFACTOR`.
+            point_inv.mul_by_cofactor()
+        }
+    }
+}
+
+impl<E: Environment> Group<E> {
+    /// Checks `(x, y)` is on the curve.
+    ///
+    /// Ensure ax^2 + y^2 = 1 + dx^2y^2
+    /// by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
+    fn enforce_on_curve(x: &Field<E>, y: &Field<E>) {
+        let a = Field::constant(console::Field::new(E::EDWARDS_A));
+        let d = Field::constant(console::Field::new(E::EDWARDS_D));
+
+        let x2 = x.square();
+        let y2 = y.square();
+
+        let first = y2;
+        let second = (d * &x2) - &Field::one();
+        let third = (a * x2) - Field::one();
+
+        // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
+        E::enforce(|| (first, second, third));
     }
 }
 
@@ -76,7 +125,7 @@ impl<E: Environment> Eject for Group<E> {
 
     /// Ejects the group as a constant group element.
     fn eject_value(&self) -> Self::Primitive {
-        console::Group::from_xy_coordinates((self.x.eject_value(), self.y.eject_value()))
+        console::Group::from_xy_coordinates(self.x.eject_value(), self.y.eject_value())
     }
 }
 

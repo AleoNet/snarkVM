@@ -17,6 +17,7 @@
 use super::*;
 
 pub mod from_bits;
+pub mod from_unchecked;
 pub mod from_x_coordinate;
 pub mod from_xy_coordinates;
 pub mod mul_by_cofactor;

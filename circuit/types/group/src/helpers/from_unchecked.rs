@@ -18,10 +18,11 @@ use super::*;
 
 impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
-    /// For safety, the resulting point is always enforced to be on the curve with constraints.
-    pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
-        // Recover point from the `(x, y)` coordinates as a witness.
-        witness!(|x, y| console::Group::from_xy_coordinates(x, y))
+    /// Note: The resulting point is **not** enforced to be on the curve with constraints.
+    #[doc(hidden)]
+    #[cfg(any(test, feature = "unchecked"))]
+    pub fn from_xy_coordinates_unchecked(x: Field<E>, y: Field<E>) -> Self {
+        Self { x, y }
     }
 }
 
@@ -32,7 +33,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_from_xy_coordinates(
+    fn check_from_xy_coordinates_unchecked(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -50,7 +51,7 @@ mod tests {
             let y_coordinate = Field::new(mode, point.to_y_coordinate());
 
             Circuit::scope(format!("{mode} {i}"), || {
-                let affine = Group::<Circuit>::from_xy_coordinates(x_coordinate, y_coordinate);
+                let affine = Group::<Circuit>::from_xy_coordinates_unchecked(x_coordinate, y_coordinate);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
@@ -58,17 +59,17 @@ mod tests {
     }
 
     #[test]
-    fn test_from_xy_coordinates_constant() {
-        check_from_xy_coordinates(Mode::Constant, 2, 0, 0, 0);
+    fn test_from_xy_coordinates_unchecked_constant() {
+        check_from_xy_coordinates_unchecked(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_xy_coordinates_public() {
-        check_from_xy_coordinates(Mode::Public, 2, 0, 2, 3);
+    fn test_from_xy_coordinates_unchecked_public() {
+        check_from_xy_coordinates_unchecked(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_xy_coordinates_private() {
-        check_from_xy_coordinates(Mode::Private, 2, 0, 2, 3);
+    fn test_from_xy_coordinates_unchecked_private() {
+        check_from_xy_coordinates_unchecked(Mode::Private, 0, 0, 0, 0);
     }
 }

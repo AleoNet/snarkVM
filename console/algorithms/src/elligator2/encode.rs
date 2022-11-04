@@ -117,6 +117,6 @@ impl<E: Environment> Elligator2<E> {
         let x = u * v.inverse().map_err(|_| anyhow!("Elligator2 failed: v == 0"))?;
         let y = (u - one) * (u + one).inverse().map_err(|_| anyhow!("Elligator2 failed: (u + 1) == 0"))?;
 
-        Ok((Group::from_xy_coordinates((x, y)), sign_high))
+        Ok((Group::from_xy_coordinates(x, y), sign_high))
     }
 }

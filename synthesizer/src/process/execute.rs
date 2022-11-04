@@ -128,7 +128,7 @@ impl<N: Network> Process<N> {
             }
 
             // Compute the x- and y-coordinate of `tpk`.
-            let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinate();
+            let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
 
             // [Inputs] Construct the verifier inputs to verify the proof.
             let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];

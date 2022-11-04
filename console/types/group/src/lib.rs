@@ -24,7 +24,7 @@ mod from_bits;
 mod from_field;
 mod from_fields;
 mod from_x_coordinate;
-mod from_xy_coordinate;
+mod from_xy_coordinates;
 mod parse;
 mod random;
 mod serialize;
@@ -34,7 +34,7 @@ mod to_bits;
 mod to_field;
 mod to_fields;
 mod to_x_coordinate;
-mod to_xy_coordinate;
+mod to_xy_coordinates;
 mod to_y_coordinate;
 mod zero;
 

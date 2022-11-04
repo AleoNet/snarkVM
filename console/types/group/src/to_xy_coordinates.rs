@@ -17,8 +17,11 @@
 use super::*;
 
 impl<E: Environment> Group<E> {
-    /// Initializes a new group from the `(x, y)` affine coordinates.
-    pub fn from_xy_coordinates((x, y): (Field<E>, Field<E>)) -> Self {
-        Self { group: E::Affine::from_coordinates((*x, *y)).into() }
+    /// Returns the *x-coordinate* and *y-coordinate* in the affine coordinates of the group.
+    pub fn to_xy_coordinates(&self) -> (Field<E>, Field<E>) {
+        // Convert to affine.
+        let affine = self.group.to_affine();
+        // Returns the (x, y) coordinates.
+        (Field::new(affine.to_x_coordinate()), Field::new(affine.to_y_coordinate()))
     }
 }
