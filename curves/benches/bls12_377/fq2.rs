@@ -16,17 +16,15 @@
 
 use snarkvm_curves::bls12_377::Fq2;
 use snarkvm_fields::{Field, SquareRootField};
-use snarkvm_utilities::rand::Uniform;
+use snarkvm_utilities::rand::{TestRng, Uniform};
 
 use criterion::Criterion;
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
 use std::ops::{AddAssign, MulAssign, SubAssign};
 
 pub(crate) fn bench_fq2_add_assign(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<(Fq2, Fq2)> = (0..SAMPLES).map(|_| (Fq2::rand(&mut rng), Fq2::rand(&mut rng))).collect();
 
@@ -44,7 +42,7 @@ pub(crate) fn bench_fq2_add_assign(c: &mut Criterion) {
 pub(crate) fn bench_fq2_sub_assign(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<(Fq2, Fq2)> = (0..SAMPLES).map(|_| (Fq2::rand(&mut rng), Fq2::rand(&mut rng))).collect();
 
@@ -62,7 +60,7 @@ pub(crate) fn bench_fq2_sub_assign(c: &mut Criterion) {
 pub(crate) fn bench_fq2_mul_assign(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<(Fq2, Fq2)> = (0..SAMPLES).map(|_| (Fq2::rand(&mut rng), Fq2::rand(&mut rng))).collect();
 
@@ -80,7 +78,7 @@ pub(crate) fn bench_fq2_mul_assign(c: &mut Criterion) {
 pub(crate) fn bench_fq2_double(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<Fq2> = (0..SAMPLES).map(|_| Fq2::rand(&mut rng)).collect();
 
@@ -98,7 +96,7 @@ pub(crate) fn bench_fq2_double(c: &mut Criterion) {
 pub(crate) fn bench_fq2_square(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<Fq2> = (0..SAMPLES).map(|_| Fq2::rand(&mut rng)).collect();
 
@@ -116,7 +114,7 @@ pub(crate) fn bench_fq2_square(c: &mut Criterion) {
 pub(crate) fn bench_fq2_inverse(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<Fq2> = (0..SAMPLES).map(|_| Fq2::rand(&mut rng)).collect();
 
@@ -133,7 +131,7 @@ pub(crate) fn bench_fq2_inverse(c: &mut Criterion) {
 pub(crate) fn bench_fq2_sqrt(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = TestRng::default();
 
     let v: Vec<Fq2> = (0..SAMPLES).map(|_| Fq2::rand(&mut rng)).collect();
 

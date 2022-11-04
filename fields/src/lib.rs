@@ -59,8 +59,8 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-impl_field_into_biginteger!(Fp256, BigInteger256, Fp256Parameters);
-impl_field_into_biginteger!(Fp384, BigInteger384, Fp384Parameters);
+impl_field_to_biginteger!(Fp256, BigInteger256, Fp256Parameters);
+impl_field_to_biginteger!(Fp384, BigInteger384, Fp384Parameters);
 
 impl_primefield_serializer!(Fp256, Fp256Parameters, 32);
 impl_primefield_serializer!(Fp384, Fp384Parameters, 48);

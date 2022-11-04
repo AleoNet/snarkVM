@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Ensure empty value fails.
         assert!(Integer::<CurrentEnvironment, i8>::parse(Integer::<CurrentEnvironment, i8>::type_name()).is_err());
@@ -96,9 +96,9 @@ mod tests {
     fn test_display() {
         /// Attempts to construct a integer from the given element,
         /// format it in display mode, and recover a integer from it.
-        fn check_display<E: Environment, I: IntegerType>() {
+        fn check_display<E: Environment, I: IntegerType>(rng: &mut TestRng) {
             for _ in 0..ITERATIONS {
-                let element = Uniform::rand(&mut test_rng());
+                let element = Uniform::rand(rng);
 
                 let candidate = Integer::<E, I>::new(element);
                 assert_eq!(format!("{element}{}", Integer::<E, I>::type_name()), format!("{candidate}"));
@@ -108,17 +108,19 @@ mod tests {
             }
         }
 
-        check_display::<CurrentEnvironment, u8>();
-        check_display::<CurrentEnvironment, u16>();
-        check_display::<CurrentEnvironment, u32>();
-        check_display::<CurrentEnvironment, u64>();
-        check_display::<CurrentEnvironment, u128>();
+        let mut rng = TestRng::default();
 
-        check_display::<CurrentEnvironment, i8>();
-        check_display::<CurrentEnvironment, i16>();
-        check_display::<CurrentEnvironment, i32>();
-        check_display::<CurrentEnvironment, i64>();
-        check_display::<CurrentEnvironment, i128>();
+        check_display::<CurrentEnvironment, u8>(&mut rng);
+        check_display::<CurrentEnvironment, u16>(&mut rng);
+        check_display::<CurrentEnvironment, u32>(&mut rng);
+        check_display::<CurrentEnvironment, u64>(&mut rng);
+        check_display::<CurrentEnvironment, u128>(&mut rng);
+
+        check_display::<CurrentEnvironment, i8>(&mut rng);
+        check_display::<CurrentEnvironment, i16>(&mut rng);
+        check_display::<CurrentEnvironment, i32>(&mut rng);
+        check_display::<CurrentEnvironment, i64>(&mut rng);
+        check_display::<CurrentEnvironment, i128>(&mut rng);
     }
 
     #[test]

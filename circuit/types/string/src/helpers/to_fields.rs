@@ -35,8 +35,6 @@ mod tests {
     use snarkvm_circuit_environment::Circuit;
     use snarkvm_utilities::{bytes_from_bits_le, FromBytes};
 
-    use rand::Rng;
-
     fn native_string_to_fields(string: &str) -> Vec<console::Field<<Circuit as Environment>::Network>> {
         string
             .to_string()
@@ -78,10 +76,10 @@ mod tests {
 
     #[test]
     fn test_to_fields_constant() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Constant, console::StringType::new(&given));
@@ -90,10 +88,10 @@ mod tests {
 
     #[test]
     fn test_to_fields_public() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Public, console::StringType::new(&given));
@@ -102,10 +100,10 @@ mod tests {
 
     #[test]
     fn test_to_fields_private() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
 
         let expected = native_string_to_fields(&given);
         let candidate = StringType::<Circuit>::new(Mode::Private, console::StringType::new(&given));

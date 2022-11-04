@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Network, ProgramID, ToBytes};
-use snarkvm_compiler::Program;
+use crate::{
+    prelude::{FromBytes, Network, ProgramID, ToBytes},
+    synthesizer::Program,
+};
 
 use anyhow::{anyhow, ensure, Result};
 use std::{
@@ -113,7 +115,7 @@ impl<N: Network> AVMFile<N> {
             // If the path exists, remove it.
             if path.exists() {
                 // Remove the file.
-                fs::remove_file(&path)?;
+                fs::remove_file(path)?;
             }
             Ok(())
         }
@@ -150,7 +152,7 @@ impl<N: Network> AVMFile<N> {
             .to_string();
 
         // Read the program bytes.
-        let program_bytes = fs::read(&file)?;
+        let program_bytes = fs::read(file)?;
         // Parse the program bytes.
         let program = Program::from_bytes_le(&program_bytes)?;
 
@@ -172,7 +174,7 @@ impl<N: Network> AVMFile<N> {
         // Ensure the file name matches the expected file name.
         ensure!(file_name == self.file_name, "File name does not match.");
 
-        Ok(File::create(&path)?.write_all(&self.program.to_bytes_le()?)?)
+        Ok(File::create(path)?.write_all(&self.program.to_bytes_le()?)?)
     }
 }
 

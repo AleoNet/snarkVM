@@ -57,7 +57,7 @@ pub struct SonicKZG10<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
 
 impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     pub fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalParams<E>, PCError> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, true, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZGDegreeBounds::Marlin, true, rng).map_err(Into::into)
     }
 
     pub fn trim(
@@ -295,7 +295,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                         a.1 += (E::Fr::one(), &b.1);
                         a
                     });
-                let comm = kzg10::Commitment(comm.to_affine());
+                let comm = kzg10::KZGCommitment(comm.to_affine());
 
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
@@ -644,7 +644,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     fn normalize_commitments(commitments: Vec<E::G1Projective>) -> impl Iterator<Item = Commitment<E>> {
         let comms = E::G1Projective::batch_normalization_into_affine(commitments);
-        comms.into_iter().map(|c| kzg10::Commitment(c))
+        comms.into_iter().map(|c| kzg10::KZGCommitment(c))
     }
 }
 
@@ -658,7 +658,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         point: E::Fr,
         values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
+        proof: &kzg10::KZGProof<E>,
         randomizer: Option<E::Fr>,
         fs_rng: &mut S,
     ) {
@@ -750,7 +750,7 @@ mod tests {
     use super::{CommitterKey, SonicKZG10};
     use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq};
-    use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
+    use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
 
     use rand::distributions::Distribution;
 
@@ -759,7 +759,7 @@ mod tests {
 
     #[test]
     fn test_committer_key_serialization() {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
         let max_degree = rand::distributions::Uniform::from(8..=64).sample(rng);
         let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
 

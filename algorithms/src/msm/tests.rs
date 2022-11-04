@@ -21,7 +21,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{
-    rand::{test_rng, Uniform},
+    rand::{TestRng, Uniform},
     BitIteratorBE,
 };
 
@@ -41,9 +41,9 @@ fn naive_variable_base_msm<G: AffineCurve>(
 fn variable_base_test_with_bls12() {
     const SAMPLES: usize = 1 << 10;
 
-    let mut rng = test_rng();
+    let mut rng = TestRng::default();
 
-    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
+    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
     let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).to_affine()).collect::<Vec<_>>();
 
     let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
@@ -56,9 +56,9 @@ fn variable_base_test_with_bls12() {
 fn variable_base_test_with_bls12_unequal_numbers() {
     const SAMPLES: usize = 1 << 10;
 
-    let mut rng = test_rng();
+    let mut rng = TestRng::default();
 
-    let v = (0..SAMPLES - 1).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
+    let v = (0..SAMPLES - 1).map(|_| Fr::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
     let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).to_affine()).collect::<Vec<_>>();
 
     let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());

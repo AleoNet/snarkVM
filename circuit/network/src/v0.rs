@@ -40,7 +40,6 @@ use snarkvm_circuit_types::{
     Group,
     Scalar,
 };
-use snarkvm_fields::FieldParameters;
 
 use core::fmt;
 
@@ -89,9 +88,6 @@ thread_local! {
 pub struct AleoV0;
 
 impl Aleo for AleoV0 {
-    /// The maximum number of bits in data (must not exceed u16::MAX).
-    const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::BaseField as PrimeField>::Parameters::CAPACITY;
-
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self> {
         BCM_DOMAIN.with(|domain| domain.clone())
@@ -274,13 +270,9 @@ impl Aleo for AleoV0 {
 
 impl Environment for AleoV0 {
     type Affine = <E as Environment>::Affine;
-    type AffineParameters = <E as Environment>::AffineParameters;
     type BaseField = <E as Environment>::BaseField;
     type Network = <E as Environment>::Network;
     type ScalarField = <E as Environment>::ScalarField;
-
-    /// The maximum number of characters allowed in a string.
-    const NUM_STRING_BYTES: u32 = E::NUM_STRING_BYTES;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {

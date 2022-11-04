@@ -94,7 +94,7 @@ mod tests {
     use super::*;
     use crate::{Circuit, Literal};
     use snarkvm_circuit_types::{Address, Field, U64};
-    use snarkvm_utilities::{test_crypto_rng, test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -104,9 +104,10 @@ mod tests {
         view_key: &ViewKey<A>,
         owner: Owner<A, Plaintext<A>>,
         gates: Balance<A, Plaintext<A>>,
+        rng: &mut TestRng,
     ) -> Result<()> {
         // Prepare the record.
-        let randomizer = Scalar::new(Mode::Private, Uniform::rand(&mut test_rng()));
+        let randomizer = Scalar::new(Mode::Private, Uniform::rand(rng));
         let record = Record {
             owner,
             gates,
@@ -114,16 +115,13 @@ mod tests {
                 vec![
                     (
                         Identifier::from_str("a")?,
-                        Entry::Private(Plaintext::from(Literal::Field(Field::new(
-                            Mode::Private,
-                            Uniform::rand(&mut test_rng()),
-                        )))),
+                        Entry::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
                     ),
                     (
                         Identifier::from_str("b")?,
                         Entry::Private(Plaintext::from(Literal::Scalar(Scalar::new(
                             Mode::Private,
-                            Uniform::rand(&mut test_rng()),
+                            Uniform::rand(rng),
                         )))),
                     ),
                 ]
@@ -141,11 +139,11 @@ mod tests {
 
     #[test]
     fn test_encrypt_and_decrypt() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let mut rng = TestRng::default();
 
         for _ in 0..ITERATIONS {
             // Generate a private key, view key, and address.
-            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
+            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(&mut rng)?;
             let view_key = snarkvm_console_account::ViewKey::try_from(private_key)?;
             let address = snarkvm_console_account::Address::try_from(private_key)?;
 
@@ -156,18 +154,16 @@ mod tests {
             // Public owner and public gates.
             {
                 let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
-                let gates =
-                    Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut test_rng()) >> 12)));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates)?;
+                let gates = Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut rng) >> 12)));
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
             }
 
             // Private owner and public gates.
             {
                 let owner =
                     Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
-                let gates =
-                    Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut test_rng()) >> 12)));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates)?;
+                let gates = Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut rng) >> 12)));
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
             }
 
             // Public owner and private gates.
@@ -175,9 +171,9 @@ mod tests {
                 let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
                 let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(
                     Mode::Private,
-                    console::U64::new(u64::rand(&mut test_rng()) >> 12),
+                    console::U64::new(u64::rand(&mut rng) >> 12),
                 ))));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
             }
 
             // Private owner and private gates.
@@ -186,9 +182,9 @@ mod tests {
                     Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
                 let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(
                     Mode::Private,
-                    console::U64::new(u64::rand(&mut test_rng()) >> 12),
+                    console::U64::new(u64::rand(&mut rng) >> 12),
                 ))));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
             }
         }
         Ok(())

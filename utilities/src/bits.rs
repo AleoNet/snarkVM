@@ -260,7 +260,7 @@ impl FromBits for Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_rng, Uniform};
+    use crate::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -269,9 +269,9 @@ mod tests {
     #[test]
     fn test_integers() -> Result<()> {
         macro_rules! check_integer {
-            ($integer:tt) => {{
+            ($integer:tt, $rng:expr) => {{
                 for _ in 0..ITERATIONS {
-                    let expected: $integer = Uniform::rand(&mut test_rng());
+                    let expected: $integer = Uniform::rand($rng);
 
                     let bits_le = expected.to_bits_le();
                     assert_eq!(expected, $integer::from_bits_le(&bits_le)?);
@@ -282,17 +282,19 @@ mod tests {
             }};
         }
 
-        check_integer!(u8);
-        check_integer!(u16);
-        check_integer!(u32);
-        check_integer!(u64);
-        check_integer!(u128);
+        let mut rng = TestRng::default();
 
-        check_integer!(i8);
-        check_integer!(i16);
-        check_integer!(i32);
-        check_integer!(i64);
-        check_integer!(i128);
+        check_integer!(u8, &mut rng);
+        check_integer!(u16, &mut rng);
+        check_integer!(u32, &mut rng);
+        check_integer!(u64, &mut rng);
+        check_integer!(u128, &mut rng);
+
+        check_integer!(i8, &mut rng);
+        check_integer!(i16, &mut rng);
+        check_integer!(i32, &mut rng);
+        check_integer!(i64, &mut rng);
+        check_integer!(i128, &mut rng);
 
         Ok(())
     }

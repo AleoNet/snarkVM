@@ -38,13 +38,21 @@ pub trait Environment:
         ScalarField = Self::Scalar,
         Coordinates = (Self::Field, Self::Field),
     >;
-    type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
-        + TwistedEdwardsParameters<BaseField = Self::Field>;
     type BigInteger: BigInteger;
     type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
     type PairingCurve: PairingEngine<Fr = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
     type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
+
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::Field;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::Field;
+
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::Field;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::Field;
 
     /// The maximum number of bytes allowed in a string.
     const MAX_STRING_BYTES: u32 = u8::MAX as u32;
@@ -60,10 +68,18 @@ pub struct Console;
 
 impl Environment for Console {
     type Affine = EdwardsAffine;
-    type AffineParameters = EdwardsParameters;
     type BigInteger = <Self::Field as PrimeField>::BigInteger;
     type Field = <Self::Affine as AffineCurve>::BaseField;
     type PairingCurve = Bls12_377;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
+
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::Field = <EdwardsParameters as TwistedEdwardsParameters>::EDWARDS_A;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::Field = <EdwardsParameters as TwistedEdwardsParameters>::EDWARDS_D;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::Field = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_A;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::Field = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_B;
 }

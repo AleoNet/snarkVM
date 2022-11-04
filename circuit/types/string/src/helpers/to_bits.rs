@@ -49,18 +49,16 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-    use rand::Rng;
-
     const ITERATIONS: u32 = 128;
 
     fn check_to_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::NUM_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
-            assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
+            assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
@@ -79,13 +77,13 @@ mod tests {
     }
 
     fn check_to_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::NUM_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
-            assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
+            assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 

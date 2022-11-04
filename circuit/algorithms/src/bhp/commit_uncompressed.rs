@@ -41,7 +41,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompr
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -63,11 +63,13 @@ mod tests {
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..num_input_bits).map(|_| bool::rand(&mut rng)).collect::<Vec<bool>>();
             // Sample a randomizer.
-            let randomizer = Uniform::rand(&mut test_rng());
+            let randomizer = Uniform::rand(&mut rng);
             // Compute the expected commitment.
             let expected = native.commit_uncompressed(&input, &randomizer).expect("Failed to commit native input");
             // Prepare the circuit input.

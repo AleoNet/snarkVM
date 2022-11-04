@@ -19,7 +19,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Projective,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{Field, One, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
@@ -95,7 +95,9 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self {
         let (x, y, infinity) = coordinates;
-        Self { x, y, infinity }
+        let point = Self { x, y, infinity };
+        assert!(point.is_on_curve());
+        point
     }
 
     #[inline]
@@ -214,7 +216,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
                 let x_sq = b.x.square();
                 b.x -= &b.y; // x - y
                 a.x = b.y.double(); // denominator = 2y
-                a.y = x_sq.double() + x_sq + P::COEFF_A; // numerator = 3x^2 + a
+                a.y = x_sq.double() + x_sq + P::WEIERSTRASS_A; // numerator = 3x^2 + a
                 b.y -= &(a.y * half); // y - (3x^2 + a)/2
                 a.y *= *inversion_tmp; // (3x^2 + a) * tmp
                 *inversion_tmp *= &a.x; // update tmp
@@ -274,7 +276,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new_without_leading_zeros(other.to_repr()))
+        self.to_projective().mul(other)
     }
 }
 

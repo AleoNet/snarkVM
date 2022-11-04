@@ -23,14 +23,16 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
         let data_bits_le = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_le(), entry.to_bits_le()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
             .flatten()
             .collect::<Vec<_>>();
 
         // Construct the record bits.
         let mut bits_le = self.owner.to_bits_le();
         bits_le.extend(self.gates.to_bits_le());
-        bits_le.extend((data_bits_le.len() as u32).to_bits_le());
+        bits_le.extend(
+            u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le(),
+        );
         bits_le.extend(data_bits_le);
         bits_le.extend(self.nonce.to_bits_le());
         bits_le
@@ -42,14 +44,16 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
         let data_bits_be = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_be(), entry.to_bits_be()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
             .flatten()
             .collect::<Vec<_>>();
 
         // Construct the record bits.
         let mut bits_be = self.owner.to_bits_be();
         bits_be.extend(self.gates.to_bits_be());
-        bits_be.extend((data_bits_be.len() as u32).to_bits_be());
+        bits_be.extend(
+            u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be(),
+        );
         bits_be.extend(data_bits_be);
         bits_be.extend(self.nonce.to_bits_be());
         bits_be
@@ -63,14 +67,16 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
         let data_bits_le = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_le(), entry.to_bits_le()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
             .flatten()
             .collect::<Vec<_>>();
 
         // Construct the record bits.
         let mut bits_le = self.owner.to_bits_le();
         bits_le.extend(self.gates.to_bits_le());
-        bits_le.extend((data_bits_le.len() as u32).to_bits_le());
+        bits_le.extend(
+            u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le(),
+        );
         bits_le.extend(data_bits_le);
         bits_le.extend(self.nonce.to_bits_le());
         bits_le
@@ -82,14 +88,16 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
         let data_bits_be = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_be(), entry.to_bits_be()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
             .flatten()
             .collect::<Vec<_>>();
 
         // Construct the record bits.
         let mut bits_be = self.owner.to_bits_be();
         bits_be.extend(self.gates.to_bits_be());
-        bits_be.extend((data_bits_be.len() as u32).to_bits_be());
+        bits_be.extend(
+            u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be(),
+        );
         bits_be.extend(data_bits_be);
         bits_be.extend(self.nonce.to_bits_be());
         bits_be

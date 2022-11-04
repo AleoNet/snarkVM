@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
+#![warn(clippy::cast_possible_truncation)]
 
 mod arithmetic;
 mod bitwise;
@@ -61,13 +62,13 @@ impl<E: Environment> Visibility for Group<E> {
 
 impl<E: Environment> Group<E> {
     /// The coefficient A for the twisted Edwards curve equation.
-    pub const EDWARDS_A: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_A);
+    pub const EDWARDS_A: Field<E> = Field::<E>::new(E::EDWARDS_A);
     /// The coefficient D for the twisted Edwards curve equation.
-    pub const EDWARDS_D: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D);
+    pub const EDWARDS_D: Field<E> = Field::<E>::new(E::EDWARDS_D);
     /// The coefficient A for the Montgomery curve equation.
-    pub const MONTGOMERY_A: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_A);
+    pub const MONTGOMERY_A: Field<E> = Field::<E>::new(E::MONTGOMERY_A);
     /// The coefficient B for the Montgomery curve equation.
-    pub const MONTGOMERY_B: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_B);
+    pub const MONTGOMERY_B: Field<E> = Field::<E>::new(E::MONTGOMERY_B);
 
     /// Initializes a new group.
     pub fn new(group: E::Affine) -> Self {

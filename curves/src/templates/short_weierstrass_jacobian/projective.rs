@@ -18,8 +18,8 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -294,12 +294,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             self.x -= &v.double();
 
             // Y3 = r*(V-X3)-2*Y1*J
-            j *= &self.y; // J = 2*Y1*J
-            j.double_in_place();
-            self.y = v;
-            self.y -= self.x;
-            self.y *= &r;
-            self.y -= &j;
+            self.y = P::BaseField::sum_of_products([r, -self.y.double()].iter(), [(v - self.x), j].iter());
 
             // Z3 = (Z1+H)^2-Z1Z1-HH
             self.z += &h;
@@ -323,7 +318,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             return;
         }
 
-        if P::COEFF_A.is_zero() {
+        if P::WEIERSTRASS_A.is_zero() {
             // A = X1^2
             let mut a = self.x.square();
 
@@ -349,7 +344,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             self.z.double_in_place();
 
             // X3 = F-2*D
-            self.x = f - d - d;
+            self.x = f - d.double();
 
             // Y3 = E*(D-X3)-8*C
             c.double_in_place();
@@ -479,7 +474,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for Projective<P> {
             self.x = r.square() - j - (v.double());
 
             // Y3 = r*(V - X3) - 2*S1*J
-            self.y = r * (v - self.x) - (s1 * j).double();
+            self.y = P::BaseField::sum_of_products([r, -s1.double()].iter(), [(v - self.x), j].iter());
 
             // Z3 = ((Z1+Z2)^2 - Z1Z1 - Z2Z2)*H
             self.z = ((self.z + other.z).square() - z1z1 - z2z2) * h;
@@ -511,15 +506,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
-        let mut res = Self::zero();
-        for i in BitIteratorBE::new_without_leading_zeros(other.to_repr()) {
-            res.double_in_place();
-            if i {
-                res += self;
-            }
-        }
-
-        res
+        P::mul_projective(self, other)
     }
 }
 

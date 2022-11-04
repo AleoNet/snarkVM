@@ -45,7 +45,7 @@ impl<E: Environment> Elligator2<E> {
         let b = montgomery_b_inverse.square();
 
         // Define the MODULUS_MINUS_ONE_DIV_TWO as a constant.
-        let modulus_minus_one_div_two = match E::BaseField::from_repr(E::BaseField::modulus_minus_one_div_two()) {
+        let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
             Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
             None => E::halt("Failed to initialize MODULUS_MINUS_ONE_DIV_TWO as a constant"),
         };
@@ -97,7 +97,7 @@ impl<E: Environment> Elligator2<E> {
         // Convert the Montgomery element (u, v) to the twisted Edwards element (x, y).
         let x = &u / v;
         let y = (&u - &one) / (u + &one);
-        let encoding = Group::from_xy_coordinates(x, y);
+        let encoding = Group::from_xy_coordinates_unchecked(x, y); // This is safe.
 
         // Cofactor clear the twisted Edwards element (x, y).
         encoding.mul_by_cofactor()
@@ -108,14 +108,16 @@ impl<E: Environment> Elligator2<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     const ITERATIONS: u64 = 1_000;
 
     fn check_encode(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given = Uniform::rand(&mut test_rng());
+            let given = Uniform::rand(&mut rng);
 
             // Compute the expected native result.
             let (expected, _sign) = console::Elligator2::<<Circuit as Environment>::Network>::encode(&given).unwrap();

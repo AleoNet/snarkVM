@@ -35,9 +35,11 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_from_field() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let expected = Group::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let expected = Group::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
             let candidate = Group::<CurrentEnvironment>::from_field(&expected.to_field()?)?;
             assert_eq!(expected, candidate);
         }

@@ -29,7 +29,7 @@ pub mod sub;
 pub mod ternary;
 
 #[cfg(test)]
-use console::{test_rng, Uniform};
+use console::{TestRng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
@@ -38,7 +38,6 @@ use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_scalar::Scalar;
-use snarkvm_curves::TwistedEdwardsParameters;
 
 #[derive(Clone)]
 pub struct Group<E: Environment> {
@@ -69,8 +68,8 @@ impl<E: Environment> Inject for Group<E> {
         // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
         //
         {
-            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
-            let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
+            let a = Field::constant(console::Field::new(E::EDWARDS_A));
+            let d = Field::constant(console::Field::new(E::EDWARDS_D));
 
             let x2 = point_inv.x.square();
             let y2 = point_inv.y.square();
@@ -192,48 +191,52 @@ mod tests {
 
     #[test]
     fn test_new() {
+        let mut rng = TestRng::default();
+
         // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             Circuit::scope(&format!("Constant {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(4, 0, 0, 0);
+                assert_scope!(10, 0, 0, 0);
             });
         }
 
         // Public variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             Circuit::scope(&format!("Public {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 2, 2, 3);
+                assert_scope!(4, 2, 12, 13);
             });
         }
 
         // Private variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             Circuit::scope(&format!("Private {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 0, 4, 3);
+                assert_scope!(4, 0, 14, 13);
             });
         }
     }
 
     #[test]
     fn test_display() {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let point = Uniform::rand(&mut test_rng());
+            let point = Uniform::rand(&mut rng);
 
             // Constant
             check_display(Mode::Constant, point);
@@ -322,9 +325,11 @@ mod tests {
 
         // Random
 
+        let mut rng = TestRng::default();
+
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let point = Uniform::rand(&mut test_rng());
+                let point = Uniform::rand(&mut rng);
                 let expected = Group::<Circuit>::new(mode, point);
 
                 let (_, candidate) = Group::<Circuit>::parse(&format!("{expected}")).unwrap();

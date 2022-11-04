@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
+#![warn(clippy::cast_possible_truncation)]
 
 mod arithmetic;
 mod bitwise;
@@ -104,5 +105,12 @@ impl<E: Environment> Deref for Field<E> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.field
+    }
+}
+
+impl<E: Environment> DerefMut for Field<E> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.field
     }
 }

@@ -20,7 +20,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
+const REMOTE_URL: &str = "https://vm.aleo.org/testnet3/parameters";
 
 // Degree 15
 impl_local!(Degree15, "resources/", "universal", "srs", "15");
@@ -54,27 +54,27 @@ impl_remote!(Degree28, REMOTE_URL, "resources/", "universal", "srs", "28");
 impl_local!(Gamma, "resources/", "universal", "srs", "gamma");
 
 // Trial
-impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "resources/", "universal", "srs", "trial");
+impl_remote!(TrialSRS, REMOTE_URL, "resources/", "universal", "srs", "trial");
 
 macro_rules! impl_remote_keys {
     ($pname: ident, $vname: ident, $fname: tt) => {
-        impl_remote!($pname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "prover");
-        impl_remote!($vname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "verifier");
+        impl_remote!($pname, REMOTE_URL, "resources/", $fname, "prover");
+        impl_remote!($vname, REMOTE_URL, "resources/", $fname, "verifier");
     };
 }
 
-// Combine
-impl_remote_keys!(CombineProver, CombineVerifier, "combine");
-// Fee
-impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 // Genesis
 impl_remote_keys!(GenesisProver, GenesisVerifier, "genesis");
 // Mint
 impl_remote_keys!(MintProver, MintVerifier, "mint");
-// Split
-impl_remote_keys!(SplitProver, SplitVerifier, "split");
 // Transfer
 impl_remote_keys!(TransferProver, TransferVerifier, "transfer");
+// Join
+impl_remote_keys!(JoinProver, JoinVerifier, "join");
+// Split
+impl_remote_keys!(SplitProver, SplitVerifier, "split");
+// Fee
+impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 
 lazy_static! {
     pub static ref TESTNET3_CREDITS_PROGRAM: indexmap::IndexMap<String, (Vec<u8>, Vec<u8>)> = {
@@ -90,12 +90,25 @@ lazy_static! {
             };
         }
         let mut map = indexmap::IndexMap::new();
-        insert_remote_keys!(map, CombineProver, CombineVerifier, "combine");
-        insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         insert_remote_keys!(map, GenesisProver, GenesisVerifier, "genesis");
         insert_remote_keys!(map, MintProver, MintVerifier, "mint");
-        insert_remote_keys!(map, SplitProver, SplitVerifier, "split");
         insert_remote_keys!(map, TransferProver, TransferVerifier, "transfer");
+        insert_remote_keys!(map, JoinProver, JoinVerifier, "join");
+        insert_remote_keys!(map, SplitProver, SplitVerifier, "split");
+        insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         map
     };
+}
+
+// Inclusion
+impl_remote_keys!(InclusionProver, InclusionVerifier, "inclusion");
+
+/// The function name for the inclusion circuit.
+pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
+
+lazy_static! {
+    pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =
+        InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
+    pub static ref TESTNET3_INCLUSION_VERIFYING_KEY: Vec<u8> =
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }

@@ -115,7 +115,7 @@ impl PoseidonGrainLFSR {
                 let bigint = F::BigInteger::from_bits_le(&bits)?;
                 bits.clear();
                 // Ensure the number is in the field.
-                if let Some(element) = F::from_repr(bigint) {
+                if let Some(element) = F::from_bigint(bigint) {
                     output.push(element);
                     break;
                 }

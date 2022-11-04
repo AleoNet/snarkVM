@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ParserResult;
+use crate::{string_parser::is_char_supported, ParserResult};
 
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until},
+    bytes::complete::tag,
     character::complete::{anychar, char, line_ending, multispace1},
-    combinator::{cut, map, recognize, value},
+    combinator::{cut, map, recognize, value, verify},
     error::{ErrorKind, VerboseError, VerboseErrorKind},
     multi::fold_many0,
     sequence::{preceded, terminated},
@@ -48,11 +48,27 @@ impl Sanitizer {
     pub fn parse_comment(string: &str) -> ParserResult<&str> {
         preceded(
             char('/'),
-            alt((
-                preceded(char('/'), cut(Self::str_till_eol)),
-                preceded(char('*'), cut(terminated(take_until("*/"), tag("*/")))),
-            )),
+            alt((preceded(char('/'), cut(Self::str_till_eol)), preceded(char('*'), cut(Self::str_till_star_slash)))),
         )(string)
+    }
+
+    /// Parse a safe character (in the sense explained in [string_parser::is_char_supported]).
+    /// Returns an error if no character is found or a non-safe character is found.
+    /// The character is returned, along with the remaining input.
+    ///
+    /// This is used for otherwise unconstrained characters
+    /// in (line and block) comments and in string literals.
+    ///
+    /// Note also that the `nom` documentation for `anychar` says that
+    /// it matches one byte as a character.
+    /// However, simple experiments show that it matches a Unicode character,
+    /// e.g. attempting to parse `"\u{4141}"` yields one CJK character and exhausts the input,
+    /// as opposed to returning `A` and leaving another `A` in the input.
+    pub fn parse_safe_char(string: &str) -> ParserResult<char> {
+        fn is_safe(ch: &char) -> bool {
+            is_char_supported(*ch)
+        }
+        verify(anychar, is_safe)(string)
     }
 }
 
@@ -102,8 +118,22 @@ impl Sanitizer {
     ///
     /// Discard any leading newline.
     fn str_till_eol(string: &str) -> ParserResult<&str> {
-        map(recognize(Self::till(alt((value((), tag("\\\n")), value((), anychar))), Self::eol)), |i| {
-            if i.as_bytes().last() == Some(&b'\n') { &i[0..i.len() - 1] } else { i }
+        map(
+            recognize(Self::till(alt((value((), tag("\\\n")), value((), Sanitizer::parse_safe_char))), Self::eol)),
+            |i| {
+                if i.as_bytes().last() == Some(&b'\n') { &i[0..i.len() - 1] } else { i }
+            },
+        )(string)
+    }
+
+    /// Parse a string until `*/` is encountered.
+    ///
+    /// This is used to parse the body of a block comment, after the opening `/*`.
+    ///
+    /// Return the body of the comment, i.e. what is between `/*` and `*/`.
+    fn str_till_star_slash(string: &str) -> ParserResult<&str> {
+        map(recognize(Self::till(value((), Sanitizer::parse_safe_char), tag("*/"))), |i| {
+            &i[0..i.len() - 2] // subtract 2 to discard the closing `*/`
         })(string)
     }
 
@@ -119,6 +149,65 @@ impl Sanitizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_safe_char() {
+        // test correct acceptance of ASCII and non-ASCII:
+        assert_eq!(("", 'A'), Sanitizer::parse_safe_char("A").unwrap());
+        assert_eq!((" and more", 'A'), Sanitizer::parse_safe_char("A and more").unwrap());
+        assert_eq!(("", '\u{4141}'), Sanitizer::parse_safe_char("\u{4141}").unwrap());
+        assert_eq!((" and more", '\u{4141}'), Sanitizer::parse_safe_char("\u{4141} and more").unwrap());
+
+        // test rejection and acceptance of ASCII control characters:
+        assert!(Sanitizer::parse_safe_char("\x00").is_err());
+        assert!(Sanitizer::parse_safe_char("\x01").is_err());
+        assert!(Sanitizer::parse_safe_char("\x02").is_err());
+        assert!(Sanitizer::parse_safe_char("\x03").is_err());
+        assert!(Sanitizer::parse_safe_char("\x04").is_err());
+        assert!(Sanitizer::parse_safe_char("\x05").is_err());
+        assert!(Sanitizer::parse_safe_char("\x06").is_err());
+        assert!(Sanitizer::parse_safe_char("\x07").is_err());
+        assert!(Sanitizer::parse_safe_char("\x08").is_err());
+        assert!(Sanitizer::parse_safe_char("\x09").is_ok());
+        assert!(Sanitizer::parse_safe_char("\x0a").is_ok());
+        assert!(Sanitizer::parse_safe_char("\x0b").is_err());
+        assert!(Sanitizer::parse_safe_char("\x0c").is_err());
+        assert!(Sanitizer::parse_safe_char("\x0d").is_ok());
+        assert!(Sanitizer::parse_safe_char("\x0e").is_err());
+        assert!(Sanitizer::parse_safe_char("\x0f").is_err());
+        assert!(Sanitizer::parse_safe_char("\x10").is_err());
+        assert!(Sanitizer::parse_safe_char("\x11").is_err());
+        assert!(Sanitizer::parse_safe_char("\x12").is_err());
+        assert!(Sanitizer::parse_safe_char("\x13").is_err());
+        assert!(Sanitizer::parse_safe_char("\x14").is_err());
+        assert!(Sanitizer::parse_safe_char("\x15").is_err());
+        assert!(Sanitizer::parse_safe_char("\x16").is_err());
+        assert!(Sanitizer::parse_safe_char("\x17").is_err());
+        assert!(Sanitizer::parse_safe_char("\x18").is_err());
+        assert!(Sanitizer::parse_safe_char("\x19").is_err());
+        assert!(Sanitizer::parse_safe_char("\x1a").is_err());
+        assert!(Sanitizer::parse_safe_char("\x1b").is_err());
+        assert!(Sanitizer::parse_safe_char("\x1c").is_err());
+        assert!(Sanitizer::parse_safe_char("\x1d").is_err());
+        assert!(Sanitizer::parse_safe_char("\x1e").is_err());
+        assert!(Sanitizer::parse_safe_char("\x1f").is_err());
+        assert!(Sanitizer::parse_safe_char("\x7f").is_err());
+
+        // test rejection of bidi characters, and acceptance of the ones just above/below:
+        assert!(Sanitizer::parse_safe_char("\u{2029}").is_ok());
+        assert!(Sanitizer::parse_safe_char("\u{202a}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{202b}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{202c}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{202d}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{202e}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{202f}").is_ok());
+        assert!(Sanitizer::parse_safe_char("\u{2065}").is_ok());
+        assert!(Sanitizer::parse_safe_char("\u{2066}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{2067}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{2068}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{2069}").is_err());
+        assert!(Sanitizer::parse_safe_char("\u{206a}").is_ok());
+    }
 
     #[test]
     fn test_sanitize() {
@@ -164,5 +253,15 @@ mod tests {
         assert_eq!(("hello world", "/* hello */\n"), Sanitizer::parse_comments("/* hello */\nhello world").unwrap());
         assert_eq!(("hello world", "/** hello */\n"), Sanitizer::parse_comments("/** hello */\nhello world").unwrap());
         assert_eq!(("/\nhello world", ""), Sanitizer::parse_comments("/\nhello world").unwrap());
+        assert_eq!(
+            ("hello world", "// hel\u{4141}lo\n"),
+            Sanitizer::parse_comments("// hel\u{4141}lo\nhello world").unwrap()
+        );
+        assert!(Sanitizer::parse_comments("// hel\x08lo\nhello world").is_err());
+        assert!(Sanitizer::parse_comments("// hel\u{2066}lo\nhello world").is_err());
+        assert!(Sanitizer::parse_comments("/* hel\x7flo */\nhello world").is_err());
+        assert!(Sanitizer::parse_comments("/* hel\u{202d}lo */\nhello world").is_err());
+        assert!(Sanitizer::parse_comments("/** hel\x00lo */\nhello world").is_err());
+        assert!(Sanitizer::parse_comments("/** hel\u{202a}lo */\nhello world").is_err());
     }
 }

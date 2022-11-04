@@ -45,10 +45,10 @@ mod tests {
 
     const ITERATIONS: u64 = 1000;
 
-    fn check_serde_json<I: IntegerType>() -> Result<()> {
+    fn check_serde_json<I: IntegerType>(rng: &mut TestRng) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new integer.
-            let expected = Integer::<CurrentEnvironment, I>::new(Uniform::rand(&mut test_rng()));
+            let expected = Integer::<CurrentEnvironment, I>::new(Uniform::rand(rng));
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -62,10 +62,10 @@ mod tests {
         Ok(())
     }
 
-    fn check_bincode<I: IntegerType>() -> Result<()> {
+    fn check_bincode<I: IntegerType>(rng: &mut TestRng) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new integer.
-            let expected = Integer::<CurrentEnvironment, I>::new(Uniform::rand(&mut test_rng()));
+            let expected = Integer::<CurrentEnvironment, I>::new(Uniform::rand(rng));
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;
@@ -80,33 +80,37 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        check_serde_json::<u8>()?;
-        check_serde_json::<u16>()?;
-        check_serde_json::<u32>()?;
-        check_serde_json::<u64>()?;
-        check_serde_json::<u128>()?;
+        let mut rng = TestRng::default();
 
-        check_serde_json::<i8>()?;
-        check_serde_json::<i16>()?;
-        check_serde_json::<i32>()?;
-        check_serde_json::<i64>()?;
-        check_serde_json::<i128>()?;
+        check_serde_json::<u8>(&mut rng)?;
+        check_serde_json::<u16>(&mut rng)?;
+        check_serde_json::<u32>(&mut rng)?;
+        check_serde_json::<u64>(&mut rng)?;
+        check_serde_json::<u128>(&mut rng)?;
+
+        check_serde_json::<i8>(&mut rng)?;
+        check_serde_json::<i16>(&mut rng)?;
+        check_serde_json::<i32>(&mut rng)?;
+        check_serde_json::<i64>(&mut rng)?;
+        check_serde_json::<i128>(&mut rng)?;
         Ok(())
     }
 
     #[test]
     fn test_bincode() -> Result<()> {
-        check_bincode::<u8>()?;
-        check_bincode::<u16>()?;
-        check_bincode::<u32>()?;
-        check_bincode::<u64>()?;
-        check_bincode::<u128>()?;
+        let mut rng = TestRng::default();
 
-        check_bincode::<i8>()?;
-        check_bincode::<i16>()?;
-        check_bincode::<i32>()?;
-        check_bincode::<i64>()?;
-        check_bincode::<i128>()?;
+        check_bincode::<u8>(&mut rng)?;
+        check_bincode::<u16>(&mut rng)?;
+        check_bincode::<u32>(&mut rng)?;
+        check_bincode::<u64>(&mut rng)?;
+        check_bincode::<u128>(&mut rng)?;
+
+        check_bincode::<i8>(&mut rng)?;
+        check_bincode::<i16>(&mut rng)?;
+        check_bincode::<i32>(&mut rng)?;
+        check_bincode::<i64>(&mut rng)?;
+        check_bincode::<i128>(&mut rng)?;
         Ok(())
     }
 }

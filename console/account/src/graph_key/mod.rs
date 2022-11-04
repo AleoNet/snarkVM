@@ -25,8 +25,6 @@ use crate::ViewKey;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 
-use base58::{FromBase58, ToBase58};
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct GraphKey<N: Network> {
     /// The graph key `sk_tag` := Hash(view_key || ctr).

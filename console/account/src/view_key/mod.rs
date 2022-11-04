@@ -28,8 +28,6 @@ use crate::PrivateKey;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Scalar};
 
-use base58::{FromBase58, ToBase58};
-
 /// The account view key used to decrypt records and ciphertext.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ViewKey<N: Network>(Scalar<N>);
@@ -61,9 +59,11 @@ mod tests {
 
     #[test]
     fn test_from_scalar() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let expected = ViewKey::try_from(private_key)?;
 
             // Check the scalar representation.

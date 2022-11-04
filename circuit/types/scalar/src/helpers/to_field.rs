@@ -56,21 +56,21 @@ mod tests {
 
     #[test]
     fn test_to_field_constant() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_field("Constant", &expected.to_bits_le(), &candidate);
     }
 
     #[test]
     fn test_to_field_public() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_field("Public", &expected.to_bits_le(), &candidate);
     }
 
     #[test]
     fn test_to_field_private() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_field("Private", &expected.to_bits_le(), &candidate);
     }

@@ -110,10 +110,10 @@ mod tests {
 
     #[test]
     fn test_from_bits() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(rng)?;
 
             // Address
             check_serialization(Literal::<CurrentNetwork>::Address(Address::try_from(private_key)?))?;
@@ -147,7 +147,7 @@ mod tests {
             check_serialization(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let string: String = (0..(CurrentNetwork::MAX_STRING_BYTES) / 4).map(|_| rng.gen::<char>()).collect();
+            let string = rng.next_string(CurrentNetwork::MAX_STRING_BYTES / 4, false);
             check_serialization(Literal::<CurrentNetwork>::String(StringType::new(&string)))?;
         }
         Ok(())

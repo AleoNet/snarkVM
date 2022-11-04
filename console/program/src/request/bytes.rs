@@ -84,12 +84,15 @@ impl<N: Network> ToBytes for Request<N> {
         // Write the function name.
         self.function_name.write_le(&mut writer)?;
 
-        // Write the number of inputs.
-        (self.input_ids.len() as u16).write_le(&mut writer)?;
         // Ensure the input IDs and inputs are the same length.
         if self.input_ids.len() != self.inputs.len() {
             return Err(error("Invalid request: mismatching number of input IDs and inputs"));
         }
+
+        // Write the number of inputs.
+        u16::try_from(self.input_ids.len())
+            .or_halt_with::<N>("Request inputs length exceeds u16")
+            .write_le(&mut writer)?;
         // Write the input IDs.
         for input_id in &self.input_ids {
             input_id.write_le(&mut writer)?;
@@ -121,7 +124,9 @@ mod tests {
 
     #[test]
     fn test_bytes() {
-        for expected in test_helpers::sample_requests().into_iter() {
+        let mut rng = TestRng::default();
+
+        for expected in test_helpers::sample_requests(&mut rng).into_iter() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Request::read_le(&expected_bytes[..]).unwrap());

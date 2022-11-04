@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes};
-use snarkvm_compiler::{Program, VerifyingKey};
+use crate::{
+    prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes},
+    synthesizer::{Program, VerifyingKey},
+};
 
 use anyhow::{anyhow, bail, ensure, Result};
 use std::{
@@ -111,7 +113,7 @@ impl<N: Network> VerifierFile<N> {
             // Ensure the path is well-formed.
             Self::check_path(path)?;
             // Remove the file.
-            Ok(fs::remove_file(&path)?)
+            Ok(fs::remove_file(path)?)
         }
     }
 }
@@ -137,7 +139,7 @@ impl<N: Network> VerifierFile<N> {
         // Ensure the path is well-formed.
         Self::check_path(file)?;
         // Parse the verifier file bytes.
-        let verifier = Self::from_bytes_le(&fs::read(&file)?)?;
+        let verifier = Self::from_bytes_le(&fs::read(file)?)?;
 
         // Retrieve the file stem.
         let file_stem = file
@@ -169,7 +171,7 @@ impl<N: Network> VerifierFile<N> {
         ensure!(self.function_name.to_string() == file_stem, "Function name does not match file stem.");
 
         // Write to the file (overwriting if it already exists).
-        Ok(File::create(&path)?.write_all(&self.to_bytes_le()?)?)
+        Ok(File::create(path)?.write_all(&self.to_bytes_le()?)?)
     }
 }
 
@@ -193,8 +195,10 @@ impl<N: Network> ToBytes for VerifierFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{test_crypto_rng, FromStr, Parser};
-    use snarkvm_compiler::Process;
+    use crate::{
+        prelude::{FromStr, Parser, TestRng},
+        synthesizer::Process,
+    };
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::AleoV0;
@@ -234,7 +238,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Sample the verifying key.
-        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the verifying key.
         let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();

@@ -23,7 +23,7 @@ mod sign;
 mod string;
 mod verify;
 
-use crate::{Identifier, ProgramID, Value, ValueType};
+use crate::{Identifier, Plaintext, ProgramID, Record, Value, ValueType};
 use snarkvm_console_account::{Address, ComputeKey, GraphKey, PrivateKey, Signature, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
@@ -172,9 +172,7 @@ mod test_helpers {
 
     const ITERATIONS: u64 = 1000;
 
-    pub(super) fn sample_requests() -> Vec<Request<CurrentNetwork>> {
-        let rng = &mut test_crypto_rng();
-
+    pub(super) fn sample_requests(rng: &mut TestRng) -> Vec<Request<CurrentNetwork>> {
         (0..ITERATIONS)
             .map(|i| {
                 // Sample a random private key and address.

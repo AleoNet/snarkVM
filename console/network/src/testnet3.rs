@@ -28,6 +28,8 @@ use snarkvm_console_algorithms::{
     BHP768,
 };
 
+use once_cell::sync::OnceCell;
+
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
@@ -92,12 +94,20 @@ impl Testnet3 {
 
 impl Environment for Testnet3 {
     type Affine = <Console as Environment>::Affine;
-    type AffineParameters = <Console as Environment>::AffineParameters;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
     type PairingCurve = <Console as Environment>::PairingCurve;
     type Projective = <Console as Environment>::Projective;
     type Scalar = <Console as Environment>::Scalar;
+
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::Field = Console::EDWARDS_A;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::Field = Console::EDWARDS_D;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::Field = Console::MONTGOMERY_A;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::Field = Console::MONTGOMERY_B;
 }
 
 impl Network for Testnet3 {
@@ -114,8 +124,40 @@ impl Network for Testnet3 {
     const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
+
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8] {
+        snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
+    }
+
+    /// Returns the universal SRS bytes.
+    fn universal_srs_bytes() -> &'static [u8] {
+        static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
+        UNIVERSAL_SRS
+            .get_or_try_init(snarkvm_parameters::testnet3::TrialSRS::load_bytes)
+            .expect("Failed to load the universal SRS bytes")
+    }
+
+    /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
+    fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)> {
+        snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the `proving key` bytes for the inclusion circuit.
+    fn inclusion_proving_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_PROVING_KEY
+    }
+
+    /// Returns the `verifying key` bytes for the inclusion circuit.
+    fn inclusion_verifying_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_VERIFYING_KEY
+    }
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>> {
@@ -327,7 +369,7 @@ mod tests {
     #[test]
     fn test_g_scalar_multiply() {
         // Compute G^r.
-        let scalar = Scalar::rand(&mut test_rng());
+        let scalar = Scalar::rand(&mut TestRng::default());
         let group = CurrentNetwork::g_scalar_multiply(&scalar);
         assert_eq!(group, CurrentNetwork::g_powers()[0] * scalar);
     }

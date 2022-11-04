@@ -235,7 +235,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                                     // so it's okay to just use `zip` here.
                                     cfg_iter_mut!(e).zip(&p.coeffs).for_each(|(e, f)| *e += *c * f)
                                 } else {
-                                    let mut e: DensePolynomial<F> = p.to_owned().into_owned();
+                                    let mut e: DensePolynomial<F> = p.clone().into_owned();
                                     cfg_iter_mut!(e).for_each(|e| *e *= c);
                                     dense_polys.insert(degree_bound, e);
                                 }
@@ -248,7 +248,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                         if let Some(e) = lagrange_polys.get_mut(&domain) {
                             cfg_iter_mut!(e).zip_eq(&evaluations.evaluations).for_each(|(e, f)| *e += *c * f)
                         } else {
-                            let mut e = evaluations.to_owned().into_owned().evaluations;
+                            let mut e = evaluations.clone().into_owned().evaluations;
                             cfg_iter_mut!(e).for_each(|e| *e *= c);
                             lagrange_polys.insert(domain, e);
                         }
@@ -401,7 +401,7 @@ impl<'a, F: PrimeField> PolynomialWithBasis<'a, F> {
             Self::Lagrange { evaluations } => {
                 let domain = evaluations.domain();
                 let degree = domain.size() as u64;
-                let multiplier = (point.pow(&[degree]) - F::one()) / F::from(degree);
+                let multiplier = (point.pow([degree]) - F::one()) / F::from(degree);
                 let powers: Vec<_> = domain.elements().collect();
                 let mut denominators = cfg_iter!(powers).map(|pow| point - pow).collect::<Vec<_>>();
                 snarkvm_fields::batch_inversion(&mut denominators);

@@ -44,9 +44,11 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_le();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -59,9 +61,11 @@ mod tests {
     }
 
     fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_be();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -75,31 +79,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 3, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 11, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 2, 0, 255, 256);
+        check_from_bits_le(Mode::Public, 4, 0, 267, 266);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 2, 0, 255, 256);
+        check_from_bits_le(Mode::Private, 4, 0, 267, 266);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 3, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 11, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 2, 0, 255, 256);
+        check_from_bits_be(Mode::Public, 4, 0, 267, 266);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 2, 0, 255, 256);
+        check_from_bits_be(Mode::Private, 4, 0, 267, 266);
     }
 }

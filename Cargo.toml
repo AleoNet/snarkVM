@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.7.5"
+version = "0.9.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,8 +12,14 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
-include = [ "Cargo.toml", "snarkvm", "README.md", "LICENSE.md" ]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
@@ -55,10 +61,10 @@ members = [
   "fields",
   "parameters",
   "r1cs",
+  "synthesizer",
   "utilities",
-  "utilities/derives", # excluded from [features], for internal use primarily
-  "vm/compiler", # for internal use primarily
-  "wasm", # excluded from [features], WASM contexts will typically import this crate directly
+  "utilities/derives",
+  "wasm"
 ]
 
 [lib]
@@ -67,86 +73,112 @@ path = "vm/lib.rs"
 [[bin]]
 name = "vm"
 path = "vm/cli/main.rs"
-required-features = ["cli"]
+required-features = [ "cli" ]
 
 [features]
-default = ["cli", "parallel", "parameters"]
-full = ["algorithms", "circuit", "console", "curves", "fields", "parameters", "r1cs", "utilities"]
+default = [ "cli", "parallel", "parameters" ]
+full = [
+  "algorithms",
+  "circuit",
+  "console",
+  "curves",
+  "fields",
+  "parameters",
+  "r1cs",
+  "synthesizer",
+  "utilities"
+]
+cli = [
+  # External
+  "anyhow",
+  "clap",
+  "colored",
+  "rand",
+  "self_update",
+  "serde_json",
+  "thiserror",
+  # Internal
+  "circuit",
+  "console",
+  "synthesizer",
+]
+aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
+parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
+parallel = [
+  "rayon",
+  "snarkvm-algorithms/parallel",
+  "snarkvm-fields/parallel",
+  "snarkvm-synthesizer/parallel",
+  "snarkvm-utilities/parallel"
+]
+noconfig = [ ]
 
-## snarkVM CLI ##
-cli = ["anyhow", "circuit", "console", "clap", "colored", "rand", "self_update", "serde_json", "thiserror"]
-# Toggles CLI logging.
-aleo-cli = ["snarkvm-compiler/aleo-cli"]
-
-## snarkVM workspace ##
-algorithms = ["snarkvm-algorithms"]
-circuit = ["snarkvm-circuit"]
-console = ["snarkvm-console"]
-curves = ["snarkvm-curves"]
-fields = ["snarkvm-fields"]
-parameters = ["snarkvm-parameters"]
-r1cs = ["snarkvm-r1cs"]
-utilities = ["snarkvm-utilities"]
-
-## snarkVM workspace specific ##
-cuda = ["snarkvm-algorithms/cuda"]
-parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
-parallel = ["rayon", "snarkvm-compiler/parallel", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]
-
-## CI ##
-noconfig = []
+# Internal Dependencies
+algorithms = [ "snarkvm-algorithms" ]
+circuit = [ "snarkvm-circuit" ]
+console = [ "snarkvm-console" ]
+curves = [ "snarkvm-curves" ]
+fields = [ "snarkvm-fields" ]
+parameters = [ "snarkvm-parameters" ]
+r1cs = [ "snarkvm-r1cs" ]
+synthesizer = [ "snarkvm-synthesizer" ]
+utilities = [ "snarkvm-utilities" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
+default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.7.5"
+version = "0.9.0"
+optional = true
+
+[dependencies.snarkvm-synthesizer]
+path = "./synthesizer"
+version = "0.9.0"
+default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.7.5"
+version = "0.9.0"
 optional = true
 
-[dependencies.snarkvm-compiler]
-path = "./vm/compiler"
-version = "0.7.5"
-
 [dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.66"
 optional = true
 
 [dependencies.clap]
 version = "3.2"
-features = ["derive"]
+features = [ "derive" ]
 optional = true
 
 [dependencies.colored]
@@ -155,7 +187,7 @@ optional = true
 
 [dependencies.indexmap]
 version = "1.8"
-features = ["rayon"]
+features = [ "rayon" ]
 
 [dependencies.once_cell]
 version = "1.13"
@@ -172,7 +204,7 @@ version = "1"
 optional = true
 
 [dependencies.self_update]
-version = "0.30"
+version = "0.32"
 optional = true
 
 [dependencies.serde_json]
@@ -185,7 +217,7 @@ optional = true
 
 [dependencies.ureq]
 version = "2.5"
-features = ["json"]
+features = [ "json" ]
 
 [dev-dependencies.bincode]
 version = "1.3"

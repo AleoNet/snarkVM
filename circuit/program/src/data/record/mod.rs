@@ -28,12 +28,14 @@ mod encrypt;
 mod equal;
 mod find;
 mod num_randomizers;
+mod serial_number;
+mod tag;
 mod to_bits;
 mod to_commitment;
 mod to_fields;
 
 use crate::{Ciphertext, Identifier, Plaintext, ProgramID, Visibility};
-use snarkvm_circuit_account::ViewKey;
+use snarkvm_circuit_account::{PrivateKey, ViewKey};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, Group, Scalar, U32};
 

@@ -73,9 +73,11 @@ mod tests {
 
     #[test]
     fn test_try_from() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new compute key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let candidate = ComputeKey::try_from(private_key)?;
 
             // Check that sk_prf matches.

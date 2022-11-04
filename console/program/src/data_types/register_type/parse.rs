@@ -20,8 +20,6 @@ impl<N: Network> Parser for RegisterType<N> {
     /// Parses a string into a register type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the mode from the string (ordering matters).
         alt((
             map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),

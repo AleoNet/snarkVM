@@ -60,7 +60,7 @@ impl<N: Network> ToBytes for Interface<N> {
         self.name.write_le(&mut writer)?;
 
         // Write the number of members.
-        (self.members.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.members.len()).or_halt_with::<N>("Interface length exceeds u16").write_le(&mut writer)?;
         // Write the members as bytes.
         for (identifier, plaintext_type) in &self.members {
             // Write the identifier.

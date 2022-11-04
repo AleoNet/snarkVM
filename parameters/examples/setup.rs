@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm::{
-    circuit::Aleo,
-    prelude::{Network, Process, Program, Testnet3},
-};
 use snarkvm_algorithms::{
     crypto_hash::sha256::sha256,
     snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
     SNARK,
 };
+use snarkvm_circuit::Aleo;
+use snarkvm_console::network::{Network, Testnet3};
+use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
 use serde_json::{json, Value};
@@ -90,7 +89,7 @@ pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
     const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
     const TRIAL_SRS: &str = "universal.srs.trial";
 
-    let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
+    let mut rng = snarkvm_utilities::TestRng::fixed(1245897092);
 
     use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin};
     use snarkvm_console::network::Environment;
@@ -127,7 +126,7 @@ pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
 /// Synthesizes the circuit keys for the credits program. (cargo run --release --example setup credits)
 pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize an RNG.
-    let rng = &mut snarkvm_utilities::test_crypto_rng_fixed();
+    let rng = &mut snarkvm_utilities::TestRng::fixed(1245897092);
     // Initialize the process.
     let process = Process::setup::<A, _>(rng)?;
     // Initialize the program.
@@ -196,7 +195,7 @@ pub fn main() -> Result<()> {
 
     match args[1].as_str() {
         "trial_srs" => trial_srs::<Testnet3>(args[2].as_str().parse::<usize>()?)?,
-        "credits" => credits_program::<Testnet3, snarkvm::circuit::AleoV0>()?,
+        "credits" => credits_program::<Testnet3, snarkvm_circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };
 

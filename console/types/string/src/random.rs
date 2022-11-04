@@ -19,7 +19,7 @@ use super::*;
 impl<E: Environment> Distribution<StringType<E>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StringType<E> {
-        // Sample a random number up to 1/4 of the maximum bytes.
+        // Sample a random number up to 1/4th of the maximum bytes.
         let num_bytes = rng.gen_range(1..(E::MAX_STRING_BYTES / 4) as usize);
         // Sample a random string.
         StringType::new(&rng.sample_iter(&Alphanumeric).take(num_bytes).map(char::from).collect::<String>())
@@ -35,17 +35,19 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: usize = 100;
 
     #[test]
     fn test_random() {
         // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS as usize);
+        let mut set = HashSet::with_capacity(ITERATIONS);
+
+        let mut rng = TestRng::default();
 
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let string: StringType<CurrentEnvironment> = Uniform::rand(&mut test_crypto_rng());
+            let string: StringType<CurrentEnvironment> = Uniform::rand(&mut rng);
             assert!(!set.contains(&string), "{}", string);
 
             // Add the new random value to the set.

@@ -188,7 +188,7 @@ impl<E: Environment> Pow<Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Field<E>) -> Self::Output {
-        Field::new(self.field.pow(other.field.to_repr()))
+        Field::new(self.field.pow(other.field.to_bigint()))
     }
 }
 
@@ -198,7 +198,7 @@ impl<E: Environment> Pow<&Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: &Field<E>) -> Self::Output {
-        Field::new(self.field.pow(other.field.to_repr()))
+        Field::new(self.field.pow(other.field.to_bigint()))
     }
 }
 
@@ -277,5 +277,22 @@ impl<'a, E: Environment> Product<&'a Field<E>> for Field<E> {
     #[inline]
     fn product<I: Iterator<Item = &'a Field<E>>>(iter: I) -> Self {
         iter.fold(Field::one(), |a, b| a * b)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network_environment::Console;
+
+    type CurrentEnvironment = Console;
+
+    #[test]
+    fn test_div_by_zero_fails() {
+        let one = Field::<CurrentEnvironment>::one();
+        let zero = Field::<CurrentEnvironment>::zero();
+
+        let result = std::panic::catch_unwind(|| one / zero);
+        assert!(result.is_err()); // Probe further for specific error type here, if desired
     }
 }

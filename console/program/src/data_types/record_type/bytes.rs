@@ -82,7 +82,7 @@ impl<N: Network> ToBytes for RecordType<N> {
         self.gates.write_le(&mut writer)?;
 
         // Write the number of entries.
-        (self.entries.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.entries.len()).or_halt_with::<N>("Record length exceeds u16").write_le(&mut writer)?;
         // Write the entries as bytes.
         for (identifier, value_type) in &self.entries {
             // Write the identifier.
