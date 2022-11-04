@@ -24,7 +24,7 @@ impl<E: Environment> Elligator2<E> {
         debug_assert!(console::Group::<E::Network>::EDWARDS_D.legendre().is_qnr());
 
         // Ensure the input is nonzero.
-        E::assert(!input.is_zero());
+        E::assert_neq(input, &Field::<E>::zero());
 
         // Define `1` as a constant.
         let one = Field::one();
@@ -56,7 +56,7 @@ impl<E: Environment> Elligator2<E> {
             let ur2 = edwards_d * input.square();
             let one_plus_ur2 = &one + &ur2;
             // Verify A^2 * ur^2 != B(1 + ur^2)^2.
-            E::assert((a.square() * &ur2).is_not_equal(&(&b * one_plus_ur2.square())));
+            E::assert_neq(a.square() * &ur2, &b * one_plus_ur2.square());
 
             // Let v = -A / (1 + ur^2).
             let v = -&a / one_plus_ur2;
@@ -75,7 +75,7 @@ impl<E: Environment> Elligator2<E> {
             let y = -&e * rhs.square_root();
 
             // Ensure v * e * x * y != 0.
-            E::assert((&v * &e * &x * &y).is_not_equal(&Field::zero()));
+            E::assert_neq(&v * &e * &x * &y, Field::<E>::zero());
 
             // Ensure (x, y) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
             let y2 = y.square();

@@ -287,9 +287,9 @@ impl<N: Network> Stack<N> {
                 // Compute the finalize inputs checksum.
                 let finalize_checksum = A::hash_bhp1024(&circuit_finalize_input_bits);
                 // Inject the finalize inputs checksum as `Mode::Public`.
-                let circuit_checksum = circuit::Field::new(circuit::Mode::Public, finalize_checksum.eject_value());
+                let circuit_checksum = circuit::Field::<A>::new(circuit::Mode::Public, finalize_checksum.eject_value());
                 // Enforce the injected checksum matches the original checksum.
-                A::assert(circuit_checksum.is_equal(&finalize_checksum));
+                A::assert_eq(circuit_checksum, finalize_checksum);
 
                 #[cfg(debug_assertions)]
                 Self::log_circuit::<A, _>("Finalize");

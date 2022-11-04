@@ -71,7 +71,7 @@ impl<E: Environment> DivAssign<&Self> for Field<E> {
             // and ensuring that `quotient * other == self`.
             false => {
                 // Enforce that `other` is not zero.
-                E::assert(!other.is_zero());
+                E::assert_neq(other, &Field::<E>::zero());
 
                 // Construct the quotient as a witness.
                 let quotient = witness!(|self, other| {
