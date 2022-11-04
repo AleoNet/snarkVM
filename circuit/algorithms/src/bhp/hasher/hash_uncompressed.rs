@@ -157,7 +157,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                         // Convert the accumulated sum into a point on the twisted Edwards curve.
                         // TODO: If we know that sum_y is nonzero, then we can replace with `sum_x * sum_y.inverse()`.
                         let edwards_x = sum_x / sum_y; // 5 constraints;
-                        Group::from_x_coordinate_unchecked(edwards_x) // 3 constraints - this is safe.
+                        let edwards_y = (sum_x - &one) / (sum_x + &one); // 5 constraints
+                        Group::from_xy_coordinates_unchecked(edwards_x, edwards_y) // 0 constraints - this is safe.
                     }
                     None => E::halt("Invalid iteration of BHP detected, a window was not evaluated"),
                 }

@@ -70,9 +70,6 @@ impl<E: Environment> DivAssign<&Self> for Field<E> {
             // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
             // and ensuring that `quotient * other == self`.
             false => {
-                // Enforce that `other` is not zero.
-                E::assert(!other.is_zero());
-
                 // Construct the quotient as a witness.
                 let quotient = witness!(|self, other| {
                     // Note: This band-aid was added to prevent a panic when `other` is zero.
@@ -97,7 +94,7 @@ impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> 
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
-            (_, _) => Count::is(0, 0, 3, 5),
+            (_, _) => Count::is(0, 0, 1, 1),
         }
     }
 }
