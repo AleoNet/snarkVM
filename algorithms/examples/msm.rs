@@ -86,7 +86,7 @@ pub fn main() -> Result<()> {
 
     println!("\nPerforming the vMSM...");
 
-    for _ in 0..num_iterations {
+    for i in 0..num_iterations {
         let timer = std::time::Instant::now();
 
         // Parse the variant.
@@ -96,7 +96,7 @@ pub fn main() -> Result<()> {
             _ => panic!("Invalid variant: use 'batched' or 'standard'"),
         };
 
-        println!("Performed the vMSM in {} milliseconds.", timer.elapsed().as_millis());
+        println!("{i} - Performed the vMSM in {} milliseconds.", timer.elapsed().as_millis());
     }
 
     Ok(())
