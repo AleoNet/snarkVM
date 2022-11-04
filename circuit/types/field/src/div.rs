@@ -58,18 +58,18 @@ impl<E: Environment> DivAssign<Self> for Field<E> {
 
 impl<E: Environment> DivAssign<&Self> for Field<E> {
     fn div_assign(&mut self, other: &Self) {
-        match other.is_constant() {
+        match (self.is_constant(), other.is_constant()) {
             // If `other` is a constant and zero, halt since the inverse of zero is undefined.
-            true if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
+            (_, true) if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
             // If `other` is a constant and non-zero, we can perform the multiplication and inversion
             // without paying for any private variables or constraints.
-            // TODO: Can the case where self is constant and other is not constant be optimized in the same way?
-            true => {
+            // If `self` is a constant, we can perform the multiplication and inversion for 1 constraint.
+            (_, true) | (true, false) => {
                 *self *= other.inverse();
             }
             // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
             // and ensuring that `quotient * other == self`.
-            false => {
+            (false, false) => {
                 // Enforce that `other` is not zero.
                 E::assert_neq(other, &Field::<E>::zero());
 
