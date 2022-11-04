@@ -169,6 +169,16 @@ impl<N: Network> Transaction<N> {
         }
     }
 
+    /// Returns the transaction fee, which is the sum of the transition fees.
+    pub fn fee(&self) -> Result<i64> {
+        // Compute the sum of the transition fees.
+        self.transitions().map(Transition::fee).try_fold(0i64, |cumulative, fee| {
+            cumulative.checked_add(*fee).ok_or_else(|| anyhow!("Transaction fee overflowed"))
+        })
+    }
+}
+
+impl<N: Network> Transaction<N> {
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
@@ -226,11 +236,6 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over the transition commitments, for all transitions.
     pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().map(Transition::tcm)
-    }
-
-    /// Returns an iterator over the fees, for all transitions.
-    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
-        self.transitions().map(Transition::fee)
     }
 }
 
