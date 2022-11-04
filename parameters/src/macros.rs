@@ -38,8 +38,8 @@ macro_rules! impl_store_and_remote_fetch {
             #[cfg(not(feature = "no_std_out"))]
             {
                 use colored::*;
-                let output = format!("{} - Storing parameters ({:?})", module_path!(), file_path);
-                println!("{}", output.dimmed());
+                let output = format!("{:>15} - Storing file in {:?}", "Installation", file_path);
+                println!("\n{}", output.dimmed());
             }
 
             // Ensure the folders up to the file path all exist.
@@ -64,12 +64,17 @@ macro_rules! impl_store_and_remote_fetch {
             {
                 use colored::*;
 
+                let output = format!("{:>15} - Downloading \"{}\"", "Installation", url);
+                println!("{}", output.dimmed());
+
                 easy.progress(true)?;
                 easy.progress_function(|total_download, current_download, _, _| {
                     let percent = (current_download / total_download) * 100.0;
                     let size_in_megabytes = total_download as u64 / 1_048_576;
-                    let output =
-                        format!("\r{} - {:.2}% complete ({:#} MB total)", module_path!(), percent, size_in_megabytes);
+                    let output = format!(
+                        "\r{:>15} - {:.2}% complete ({:#} MB total)",
+                        "Installation", percent, size_in_megabytes
+                    );
                     print!("{}", output.dimmed());
                     true
                 })?;
@@ -131,16 +136,24 @@ macro_rules! impl_load_bytes_logic_remote {
             std::fs::read(file_path)?
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
-            eprintln!(
-                "\n⚠️  Attention - \"{}\" does not exist. Downloading and storing it in {:?}.\n",
-                $filename, file_path
-            );
+             #[cfg(not(feature = "no_std_out"))]
+            {
+                use colored::*;
+                let path = format!("(in {:?})", file_path);
+                eprintln!(
+                    "\n⚠️  Attention - \"{}\" does not exist. Downloading and storing it {}.\n",
+                    $filename, path.dimmed()
+                );
+            }
+
+            // Construct the URL.
+            let url = format!("{}/{}", $remote_url, $filename);
 
             // Load remote file
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
                     let mut buffer = vec![];
-                    Self::remote_fetch(&mut buffer, &format!("{}/{}", $remote_url, $filename))?;
+                    Self::remote_fetch(&mut buffer, &url)?;
 
                     // Ensure the checksum matches.
                     let candidate_checksum = checksum!(&buffer);
@@ -160,7 +173,6 @@ macro_rules! impl_load_bytes_logic_remote {
                     }
                 } else if #[cfg(feature = "wasm")] {
                     let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
-                    let url = String::from($remote_url);
 
                     // NOTE(julesdesmit): I'm leaking memory here so that I can get a
                     // static reference to the url, which is needed to pass it into
