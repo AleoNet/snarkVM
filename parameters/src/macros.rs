@@ -39,7 +39,7 @@ macro_rules! impl_store_and_remote_fetch {
             {
                 use colored::*;
                 let output = format!("{:>15} - Storing file in {:?}", "Installation", file_path);
-                println!("\n{}", output.dimmed());
+                println!("{}", output.dimmed());
             }
 
             // Ensure the folders up to the file path all exist.
