@@ -176,7 +176,9 @@ impl<N: Network> Transaction<N> {
             cumulative.checked_add(*fee).ok_or_else(|| anyhow!("Transaction fee overflowed"))
         })
     }
+}
 
+impl<N: Network> Transaction<N> {
     /// Returns the transition with the corresponding transition ID.
     pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
         match self {
