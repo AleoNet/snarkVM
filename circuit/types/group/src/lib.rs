@@ -56,39 +56,33 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
+        // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
+        let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
+        // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
+        let point_inv = Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) };
+
+        // Ensure `point_inv` is on the curve.
+        Self::enforce_on_curve(&point_inv.x, &point_inv.y);
+
+        // Return the `point` as `point_inv * COFACTOR`.
+        let point = point_inv.mul_by_cofactor();
+
         if mode.is_public() {
-            // Inject the point.
-            let point = {
+            // Inject the point as `Mode::Public`.
+            let public_point = {
                 // Initialize the (x, y) coordinates of the point as field elements.
                 let (x, y) = group.to_xy_coordinates();
                 // Inject the `(x, y)` coordinates as field elements.
                 Self { x: Field::new(mode, x), y: Field::new(mode, y) }
             };
 
-            // Inject the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)` as a witness.
-            let (x_inv, y_inv) = witness!(|point| point.div_by_cofactor().to_xy_coordinates());
-            // Initialize `point_inv` from `(x_inv, y_inv)`.
-            let point_inv = Self { x: x_inv, y: y_inv };
+            // Ensure the `point == public_point`.
+            E::assert_eq(&point, &public_point);
 
-            // Ensure `point_inv` is on the curve.
-            Self::enforce_on_curve(&point_inv.x, &point_inv.y);
-
-            // Ensure the `point == point_inv * COFACTOR`.
-            E::assert_eq(&point, &point_inv.mul_by_cofactor());
-
-            // Return the point.
-            point
+            // Return the public point.
+            public_point
         } else {
-            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
-            let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
-            // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
-            let point_inv = Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) };
-
-            // Ensure `point_inv` is on the curve.
-            Self::enforce_on_curve(&point_inv.x, &point_inv.y);
-
-            // Return the `point` as `point_inv * COFACTOR`.
-            point_inv.mul_by_cofactor()
+            point
         }
     }
 }
