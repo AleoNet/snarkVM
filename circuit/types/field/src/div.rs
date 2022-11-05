@@ -57,36 +57,15 @@ impl<E: Environment> DivAssign<Self> for Field<E> {
 }
 
 impl<E: Environment> DivAssign<&Self> for Field<E> {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn div_assign(&mut self, other: &Self) {
-        match (self.is_constant(), other.is_constant()) {
+        match other.is_constant() {
             // If `other` is a constant and zero, halt since the inverse of zero is undefined.
-            (_, true) if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
-            // If `other` is a constant and non-zero, we can perform the multiplication and inversion
-            // without paying for any private variables or constraints.
-            // If `self` is a constant, we can perform the multiplication and inversion for 1 constraint.
-            (_, true) | (true, false) => {
-                *self *= other.inverse();
-            }
-            // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
-            // and ensuring that `quotient * other == self`.
-            (false, false) => {
-                // Enforce that `other` is not zero.
-                E::assert_neq(other, &Field::<E>::zero());
-
-                // Construct the quotient as a witness.
-                let quotient = witness!(|self, other| {
-                    // Note: This band-aid was added to prevent a panic when `other` is zero.
-                    let other = if other.is_zero() { console::Field::one() } else { other };
-                    self / other
-                });
-
-                // Ensure the quotient is correct by enforcing:
-                // `quotient * other == self`.
-                E::enforce(|| (&quotient, other, &*self));
-
-                // Assign the quotient to `self`.
-                *self = quotient;
-            }
+            true if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
+            // If `other` is a constant and non-zero, we can perform multiplication and inversion for 0 constraints.
+            // If `self` is a constant, we can perform multiplication and inversion for 1 constraint.
+            // Otherwise, we can perform multiplication and inversion for 2 constraints.
+            _ => *self *= other.inverse(),
         }
     }
 }
