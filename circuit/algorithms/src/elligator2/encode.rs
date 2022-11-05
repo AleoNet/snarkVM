@@ -97,7 +97,9 @@ impl<E: Environment> Elligator2<E> {
         // Convert the Montgomery element (u, v) to the twisted Edwards element (x, y).
         let x = &u / v;
         let y = (&u - &one) / (u + &one);
-        let encoding = Group::from_xy_coordinates_unchecked(x, y); // This is safe.
+
+        // Recover the point and check that it is 1) on the curve, and 2) in the correct subgroup.
+        let encoding = Group::from_xy_coordinates(x, y);
 
         // Cofactor clear the twisted Edwards element (x, y).
         encoding.mul_by_cofactor()
