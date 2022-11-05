@@ -56,10 +56,16 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
-        // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
-        let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
         // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
-        let point_inv = Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) };
+        let point_inv = {
+            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
+            let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
+            // If the mode is `Public`, then allocate them privately, as we will allocate a `Public` point at the end.
+            match mode.is_public() {
+                true => Self { x: Field::new(Mode::Private, x_inv), y: Field::new(Mode::Private, y_inv) },
+                false => Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) },
+            }
+        };
 
         // Ensure `point_inv` is on the curve.
         Self::enforce_on_curve(&point_inv.x, &point_inv.y);
@@ -222,7 +228,7 @@ mod tests {
             Circuit::scope(&format!("Constant {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(4, 0, 0, 0);
+                assert_scope!(10, 0, 0, 0);
             });
         }
 
@@ -234,7 +240,7 @@ mod tests {
             Circuit::scope(&format!("Public {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 2, 2, 3);
+                assert_scope!(4, 2, 14, 14);
             });
         }
 
@@ -246,7 +252,7 @@ mod tests {
             Circuit::scope(&format!("Private {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 0, 4, 3);
+                assert_scope!(4, 0, 14, 13);
             });
         }
     }

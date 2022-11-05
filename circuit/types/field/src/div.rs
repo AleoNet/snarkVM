@@ -76,7 +76,8 @@ impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> 
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
-            (_, _) => Count::is(0, 0, 3, 5),
+            (Mode::Constant, _) => Count::is(0, 0, 1, 1),
+            (_, _) => Count::is(0, 0, 2, 2),
         }
     }
 }
