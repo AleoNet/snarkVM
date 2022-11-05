@@ -20,7 +20,6 @@ impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
     /// Note: The resulting point is **not** enforced to be on the curve with constraints.
     #[doc(hidden)]
-    #[cfg(any(test, feature = "unchecked"))]
     pub fn from_xy_coordinates_unchecked(x: Field<E>, y: Field<E>) -> Self {
         Self { x, y }
     }
