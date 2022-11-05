@@ -104,6 +104,8 @@ pub trait Network:
     #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
+    /// The maximum number of functions in a program.
+    const MAX_FUNCTIONS: usize = 15;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.

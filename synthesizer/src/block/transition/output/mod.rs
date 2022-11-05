@@ -147,7 +147,7 @@ impl<N: Network> Output<N> {
     /// If the optional value exists, this method checks that it hashes to the output ID.
     pub fn verify(&self, function_id: Field<N>, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
-        let result = match self {
+        let result = || match self {
             Output::Constant(hash, Some(output)) => {
                 match output.to_fields() {
                     Ok(fields) => {
@@ -203,11 +203,15 @@ impl<N: Network> Output<N> {
             Output::Constant(_, None)
             | Output::Public(_, None)
             | Output::Private(_, None)
-            | Output::Record(_, _, _)
-            | Output::ExternalRecord(_) => Ok(true),
+            | Output::Record(_, _, None) => {
+                // This enforces that the transition *must* contain the value for this transition output.
+                // A similar rule is enforced for the transition input.
+                bail!("A transition output value is missing")
+            }
+            Output::ExternalRecord(_) => Ok(true),
         };
 
-        match result {
+        match result() {
             Ok(is_hash_valid) => is_hash_valid,
             Err(error) => {
                 eprintln!("{error}");

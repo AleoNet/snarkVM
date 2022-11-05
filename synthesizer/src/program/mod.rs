@@ -505,6 +505,9 @@ impl<N: Network> Program<N> {
         // Retrieve the function name.
         let function_name = *function.name();
 
+        // Ensure the program has not exceeded the maximum number of functions.
+        ensure!(self.functions.len() < N::MAX_FUNCTIONS, "Program exceeds the maximum number of functions");
+
         // Ensure the function name is new.
         ensure!(self.is_unique_name(&function_name), "'{function_name}' is already in use.");
         // Ensure the function name is not a reserved opcode.

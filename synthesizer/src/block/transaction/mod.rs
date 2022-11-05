@@ -169,6 +169,41 @@ impl<N: Network> Transaction<N> {
         }
     }
 
+    /// Returns the transaction fee, which is the sum of the transition fees.
+    pub fn fee(&self) -> Result<i64> {
+        // Compute the sum of the transition fees.
+        self.transitions().map(Transition::fee).try_fold(0i64, |cumulative, fee| {
+            cumulative.checked_add(*fee).ok_or_else(|| anyhow!("Transaction fee overflowed"))
+        })
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns the transition with the corresponding transition ID.
+    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
+        match self {
+            // Check the fee.
+            Self::Deploy(_, _, fee) => match fee.id() == id {
+                true => Some(fee.transition()),
+                false => None,
+            },
+            // Check the execution and fee.
+            Self::Execute(_, execution, fee) => execution.find_transition(id).or_else(|| {
+                fee.as_ref().and_then(|fee| match fee.id() == id {
+                    true => Some(fee.transition()),
+                    false => None,
+                })
+            }),
+        }
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns an iterator over the transition IDs, for all transitions.
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
+        self.transitions().map(Transition::id)
+    }
+
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
@@ -177,11 +212,6 @@ impl<N: Network> Transaction<N> {
                 IterWrap::Execute(execution.transitions().chain(additional_fee.as_ref().map(|f| f.transition())))
             }
         }
-    }
-
-    /// Returns an iterator over the transition IDs, for all transitions.
-    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.transitions().map(Transition::id)
     }
 
     /* Input */
@@ -227,14 +257,14 @@ impl<N: Network> Transaction<N> {
     pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().map(Transition::tcm)
     }
-
-    /// Returns an iterator over the fees, for all transitions.
-    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
-        self.transitions().map(Transition::fee)
-    }
 }
 
 impl<N: Network> Transaction<N> {
+    /// Returns a consuming iterator over the transition IDs, for all transitions.
+    pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
+        self.into_transitions().map(Transition::into_id)
+    }
+
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
         match self {
@@ -243,11 +273,6 @@ impl<N: Network> Transaction<N> {
                 IterWrap::Execute(execution.into_transitions().chain(additional_fee.map(|f| f.into_transition())))
             }
         }
-    }
-
-    /// Returns a consuming iterator over the transition IDs, for all transitions.
-    pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
-        self.into_transitions().map(Transition::into_id)
     }
 
     /// Returns a consuming iterator over the transition public keys, for all transitions.
