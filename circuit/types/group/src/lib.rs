@@ -125,7 +125,7 @@ impl<E: Environment> Eject for Group<E> {
 
     /// Ejects the group as a constant group element.
     fn eject_value(&self) -> Self::Primitive {
-        console::Group::from_xy_coordinates(self.x.eject_value(), self.y.eject_value())
+        console::Group::from_xy_coordinates_unchecked(self.x.eject_value(), self.y.eject_value())
     }
 }
 
