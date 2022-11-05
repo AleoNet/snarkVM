@@ -172,6 +172,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
@@ -215,6 +216,8 @@ mod tests {
                 let candidate = circuit.hash_uncompressed(&circuit_input);
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
                 assert_eq!(expected, candidate.eject_value());
+                assert!(candidate.eject_value().to_affine().is_on_curve());
+                assert!(candidate.eject_value().to_affine().is_in_correct_subgroup_assuming_on_curve());
             });
         }
         Ok(())
@@ -222,16 +225,16 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_constant() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Constant, 6303, 0, 0, 0)
+        check_hash_uncompressed::<32, 48>(Mode::Constant, 6239, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_uncompressed_public() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 129, 0, 7962, 8026)
+        check_hash_uncompressed::<32, 48>(Mode::Public, 65, 0, 7834, 7834)
     }
 
     #[test]
     fn test_hash_uncompressed_private() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7962, 8026)
+        check_hash_uncompressed::<32, 48>(Mode::Private, 65, 0, 7834, 7834)
     }
 }
