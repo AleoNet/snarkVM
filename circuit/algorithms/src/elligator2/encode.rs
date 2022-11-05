@@ -99,10 +99,7 @@ impl<E: Environment> Elligator2<E> {
         let y = (&u - &one) / (u + &one);
 
         // Recover the point and check that it is 1) on the curve, and 2) in the correct subgroup.
-        let encoding = Group::from_xy_coordinates(x, y);
-
-        // Cofactor clear the twisted Edwards element (x, y).
-        encoding.mul_by_cofactor()
+        Group::from_xy_coordinates(x, y)
     }
 }
 
