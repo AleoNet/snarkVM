@@ -23,7 +23,7 @@ impl<N: Network> Parser for Program<N> {
         // A helper to parse a program.
         enum P<N: Network> {
             M(Mapping<N>),
-            I(Interface<N>),
+            I(Struct<N>),
             R(RecordType<N>),
             C(Closure<N>),
             F(Function<N>),
@@ -44,10 +44,10 @@ impl<N: Network> Parser for Program<N> {
         // Parse the semicolon ';' keyword from the string.
         let (string, _) = tag(";")(string)?;
 
-        // Parse the interface or function from the string.
+        // Parse the struct or function from the string.
         let (string, components) = many1(alt((
             map(Mapping::parse, |mapping| P::<N>::M(mapping)),
-            map(Interface::parse, |interface| P::<N>::I(interface)),
+            map(Struct::parse, |struct_| P::<N>::I(struct_)),
             map(RecordType::parse, |record| P::<N>::R(record)),
             map(Closure::parse, |closure| P::<N>::C(closure)),
             map(Function::parse, |function| P::<N>::F(function)),
@@ -69,7 +69,7 @@ impl<N: Network> Parser for Program<N> {
             for component in components.iter() {
                 let result = match component {
                     P::M(mapping) => program.add_mapping(mapping.clone()),
-                    P::I(interface) => program.add_interface(interface.clone()),
+                    P::I(struct_) => program.add_struct(struct_.clone()),
                     P::R(record) => program.add_record(record.clone()),
                     P::C(closure) => program.add_closure(closure.clone()),
                     P::F(function) => program.add_function(function.clone()),
@@ -152,10 +152,10 @@ impl<N: Network> Display for Program<N> {
                         return Err(fmt::Error);
                     }
                 },
-                ProgramDefinition::Interface => match self.interfaces.get(identifier) {
-                    Some(interface) => program.push_str(&format!("{interface}\n\n")),
+                ProgramDefinition::Struct => match self.structs.get(identifier) {
+                    Some(struct_) => program.push_str(&format!("{struct_}\n\n")),
                     None => {
-                        eprintln!("Interface '{}' is not defined.", identifier);
+                        eprintln!("Struct '{}' is not defined.", identifier);
                         return Err(fmt::Error);
                     }
                 },
@@ -203,7 +203,7 @@ mod tests {
             r"
 program to_parse.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 
@@ -215,8 +215,8 @@ function compute:
         .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
-        // Ensure the program contains the interface.
-        assert!(program.contains_interface(&Identifier::from_str("message")?));
+        // Ensure the program contains the struct.
+        assert!(program.contains_struct(&Identifier::from_str("message")?));
         // Ensure the program contains the function.
         assert!(program.contains_function(&Identifier::from_str("compute")?));
 
@@ -247,7 +247,7 @@ function compute:
     fn test_program_display() -> Result<()> {
         let expected = r"program to_parse.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 

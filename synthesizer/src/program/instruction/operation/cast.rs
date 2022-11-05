@@ -87,16 +87,16 @@ impl<N: Network> Cast<N> {
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
+                ensure!(!inputs.is_empty(), "Casting to an struct requires at least one operand");
 
-                // Retrieve the interface and ensure it is defined in the program.
-                let interface = stack.program().get_interface(&interface_name)?;
+                // Retrieve the struct and ensure it is defined in the program.
+                let struct_ = stack.program().get_struct(&struct_name)?;
 
-                // Initialize the interface members.
+                // Initialize the struct members.
                 let mut members = IndexMap::new();
-                for (member, (member_name, member_type)) in inputs.iter().zip_eq(interface.members()) {
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
                     // Compute the register type.
                     let register_type = RegisterType::Plaintext(*member_type);
                     // Retrieve the plaintext value from the entry.
@@ -107,23 +107,23 @@ impl<N: Network> Cast<N> {
                             // Output the plaintext.
                             plaintext.clone()
                         }
-                        // Ensure the interface member is not a record.
-                        Value::Record(..) => bail!("Casting a record into an interface member is illegal"),
+                        // Ensure the struct member is not a record.
+                        Value::Record(..) => bail!("Casting a record into an struct member is illegal"),
                     };
-                    // Append the member to the interface members.
+                    // Append the member to the struct members.
                     members.insert(*member_name, plaintext);
                 }
 
-                // Construct the interface.
-                let interface = Plaintext::Interface(members, Default::default());
-                // Store the interface.
-                registers.store(stack, &self.destination, Value::Plaintext(interface))
+                // Construct the struct.
+                let struct_ = Plaintext::Struct(members, Default::default());
+                // Store the struct.
+                registers.store(stack, &self.destination, Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
                 ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
 
-                // Retrieve the interface and ensure it is defined in the program.
+                // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
 
                 // Initialize the record owner.
@@ -213,16 +213,16 @@ impl<N: Network> Cast<N> {
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+            RegisterType::Plaintext(PlaintextType::Struct(struct_)) => {
                 // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
+                ensure!(!inputs.is_empty(), "Casting to an struct requires at least one operand");
 
-                // Retrieve the interface and ensure it is defined in the program.
-                let interface = stack.program().get_interface(&interface_name)?;
+                // Retrieve the struct and ensure it is defined in the program.
+                let struct_ = stack.program().get_struct(&struct_)?;
 
-                // Initialize the interface members.
+                // Initialize the struct members.
                 let mut members = IndexMap::new();
-                for (member, (member_name, member_type)) in inputs.iter().zip_eq(interface.members()) {
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
                     // Compute the register type.
                     let register_type = RegisterType::Plaintext(*member_type);
                     // Retrieve the plaintext value from the entry.
@@ -236,25 +236,25 @@ impl<N: Network> Cast<N> {
                             // Output the plaintext.
                             plaintext.clone()
                         }
-                        // Ensure the interface member is not a record.
+                        // Ensure the struct member is not a record.
                         circuit::Value::Record(..) => {
-                            bail!("Casting a record into an interface member is illegal")
+                            bail!("Casting a record into an struct member is illegal")
                         }
                     };
-                    // Append the member to the interface members.
+                    // Append the member to the struct members.
                     members.insert(circuit::Identifier::constant(*member_name), plaintext);
                 }
 
-                // Construct the interface.
-                let interface = circuit::Plaintext::Struct(members, Default::default());
-                // Store the interface.
-                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(interface))
+                // Construct the struct.
+                let struct_ = circuit::Plaintext::Struct(members, Default::default());
+                // Store the struct.
+                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
                 ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
 
-                // Retrieve the interface and ensure it is defined in the program.
+                // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
 
                 // Initialize the record owner.
@@ -356,26 +356,26 @@ impl<N: Network> Cast<N> {
         // Ensure the output type is defined in the program.
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                // Retrieve the interface and ensure it is defined in the program.
-                let interface = stack.program().get_interface(&interface_name)?;
-                // Ensure the input types match the interface.
-                for ((_, member_type), input_type) in interface.members().iter().zip_eq(input_types) {
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                // Retrieve the struct and ensure it is defined in the program.
+                let struct_ = stack.program().get_struct(&struct_name)?;
+                // Ensure the input types match the struct.
+                for ((_, member_type), input_type) in struct_.members().iter().zip_eq(input_types) {
                     match input_type {
                         // Ensure the plaintext type matches the member type.
                         RegisterType::Plaintext(plaintext_type) => {
                             ensure!(
                                 member_type == plaintext_type,
-                                "Interface '{interface_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
+                                "Struct '{struct_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
                             )
                         }
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
-                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
+                            "Struct '{struct_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
                         ),
                         // Ensure the input type cannot be an external record (this is unsupported behavior).
                         RegisterType::ExternalRecord(locator) => bail!(
-                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
+                            "Struct '{struct_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
                         ),
                     }
                 }

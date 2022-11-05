@@ -161,12 +161,12 @@ impl<N: Network> Stack<N> {
             PlaintextType::Literal(literal_type) => {
                 Plaintext::Literal(Literal::sample(*literal_type, rng), Default::default())
             }
-            // Sample an interface.
-            PlaintextType::Interface(interface_name) => {
-                // Retrieve the interface.
-                let interface = self.program.get_interface(interface_name)?;
-                // Sample each member of the interface.
-                let members = interface
+            // Sample an struct.
+            PlaintextType::Struct(struct_name) => {
+                // Retrieve the struct.
+                let struct_ = self.program.get_struct(struct_name)?;
+                // Sample each member of the struct.
+                let members = struct_
                     .members()
                     .iter()
                     .map(|(member_name, member_type)| {
@@ -177,7 +177,7 @@ impl<N: Network> Stack<N> {
                     })
                     .collect::<Result<IndexMap<_, _>>>()?;
 
-                Plaintext::Interface(members, Default::default())
+                Plaintext::Struct(members, Default::default())
             }
         };
         // Return the plaintext.

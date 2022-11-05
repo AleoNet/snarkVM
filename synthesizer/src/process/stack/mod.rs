@@ -182,7 +182,7 @@ impl<N: Network> CallStack<N> {
 
 #[derive(Clone)]
 pub struct Stack<N: Network> {
-    /// The program (record types, interfaces, functions).
+    /// The program (record types, structs, functions).
     program: Program<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,

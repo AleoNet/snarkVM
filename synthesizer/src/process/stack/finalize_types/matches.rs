@@ -17,36 +17,36 @@
 use super::*;
 
 impl<N: Network> FinalizeTypes<N> {
-    /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.
-    pub fn matches_interface(&self, stack: &Stack<N>, operands: &[Operand<N>], interface: &Interface<N>) -> Result<()> {
+    /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
+    pub fn matches_struct(&self, stack: &Stack<N>, operands: &[Operand<N>], struct_: &Struct<N>) -> Result<()> {
         // Ensure the operands is not empty.
         if operands.is_empty() {
-            bail!("Casting to an interface requires at least one operand")
+            bail!("Casting to an struct requires at least one operand")
         }
 
-        // Retrieve the interface name.
-        let interface_name = interface.name();
-        // Ensure the interface name is valid.
-        ensure!(!Program::is_reserved_keyword(interface_name), "Interface name '{interface_name}' is reserved");
+        // Retrieve the struct name.
+        let struct_name = struct_.name();
+        // Ensure the struct name is valid.
+        ensure!(!Program::is_reserved_keyword(struct_name), "Struct name '{struct_name}' is reserved");
 
-        // Ensure the number of interface members does not exceed the maximum.
+        // Ensure the number of struct members does not exceed the maximum.
         let num_members = operands.len();
-        ensure!(num_members <= N::MAX_DATA_ENTRIES, "'{interface_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
+        ensure!(num_members <= N::MAX_DATA_ENTRIES, "'{struct_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
 
-        // Ensure the number of interface members match.
-        let expected_num_members = interface.members().len();
+        // Ensure the number of struct members match.
+        let expected_num_members = struct_.members().len();
         if expected_num_members != num_members {
-            bail!("'{interface_name}' expected {expected_num_members} members, found {num_members} members")
+            bail!("'{struct_name}' expected {expected_num_members} members, found {num_members} members")
         }
 
-        // Ensure the operand types match the interface.
-        for (operand, (member_name, member_type)) in operands.iter().zip_eq(interface.members()) {
+        // Ensure the operand types match the struct.
+        for (operand, (member_name, member_type)) in operands.iter().zip_eq(struct_.members()) {
             match operand {
                 // Ensure the literal type matches the member type.
                 Operand::Literal(literal) => {
                     ensure!(
                         PlaintextType::Literal(literal.to_type()) == *member_type,
-                        "Interface member '{interface_name}.{member_name}' expects a {member_type}, but found '{operand}' in the operand.",
+                        "Struct member '{struct_name}.{member_name}' expects a {member_type}, but found '{operand}' in the operand.",
                     )
                 }
                 // Ensure the register type matches the member type.
@@ -56,12 +56,12 @@ impl<N: Network> FinalizeTypes<N> {
                     // Ensure the register type is not a record.
                     ensure!(
                         !matches!(register_type, RegisterType::Record(..)),
-                        "Casting a record into an interface is illegal"
+                        "Casting a record into an struct is illegal"
                     );
                     // Ensure the register type matches the member type.
                     ensure!(
                         register_type == RegisterType::Plaintext(*member_type),
-                        "Interface member '{interface_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{operand}'.",
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the program ID type (address) matches the member type.
@@ -71,7 +71,7 @@ impl<N: Network> FinalizeTypes<N> {
                     // Ensure the program ID type matches the member type.
                     ensure!(
                         program_ref_type == RegisterType::Plaintext(*member_type),
-                        "Interface member '{interface_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the caller type (address) matches the member type.
@@ -81,7 +81,7 @@ impl<N: Network> FinalizeTypes<N> {
                     // Ensure the caller type matches the member type.
                     ensure!(
                         caller_type == RegisterType::Plaintext(*member_type),
-                        "Interface member '{interface_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
                     )
                 }
             }

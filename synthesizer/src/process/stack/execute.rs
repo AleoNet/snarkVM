@@ -264,7 +264,7 @@ impl<N: Network> Stack<N> {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
                         circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => {
                             bail!(
-                                "'{}/{}' attempts to pass an 'interface' into 'finalize'",
+                                "'{}/{}' attempts to pass an 'struct' into 'finalize'",
                                 self.program_id(),
                                 function.name()
                             );
