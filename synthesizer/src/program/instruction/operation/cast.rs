@@ -246,7 +246,7 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Construct the interface.
-                let interface = circuit::Plaintext::Interface(members, Default::default());
+                let interface = circuit::Plaintext::Struct(members, Default::default());
                 // Store the interface.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(interface))
             }

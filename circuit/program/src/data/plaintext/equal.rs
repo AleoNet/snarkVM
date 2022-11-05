@@ -23,7 +23,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
     fn is_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_equal(b),
-            (Self::Interface(a, _), Self::Interface(b, _)) => match a.len() == b.len() {
+            (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each member for equality.
                     let mut equal = Boolean::constant(true);
@@ -34,7 +34,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(false),
             },
-            (Self::Literal(..), _) | (Self::Interface(..), _) => Boolean::constant(false),
+            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::constant(false),
         }
     }
 
@@ -42,7 +42,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_not_equal(b),
-            (Self::Interface(a, _), Self::Interface(b, _)) => match a.len() == b.len() {
+            (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each member for inequality.
                     let mut not_equal = Boolean::constant(false);
@@ -53,7 +53,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(true),
             },
-            (Self::Literal(..), _) | (Self::Interface(..), _) => Boolean::constant(true),
+            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::constant(true),
         }
     }
 }
