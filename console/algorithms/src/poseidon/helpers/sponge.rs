@@ -120,7 +120,7 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
             let e = self.state[0].deref_mut();
-            *e = e.pow(&[self.parameters.alpha]);
+            *e = e.pow([self.parameters.alpha]);
         }
     }
 

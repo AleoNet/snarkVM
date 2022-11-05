@@ -17,8 +17,8 @@
 mod finalize_type;
 pub use finalize_type::FinalizeType;
 
-mod interface;
-pub use interface::Interface;
+mod struct_;
+pub use struct_::Struct;
 
 mod literal_type;
 pub use literal_type::LiteralType;

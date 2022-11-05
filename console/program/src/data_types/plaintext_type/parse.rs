@@ -23,7 +23,7 @@ impl<N: Network> Parser for PlaintextType<N> {
         // Parse to determine the plaintext type (order matters).
         alt((
             map(LiteralType::parse, |type_| Self::Literal(type_)),
-            map(Identifier::parse, |identifier| Self::Interface(identifier)),
+            map(Identifier::parse, |identifier| Self::Struct(identifier)),
         ))(string)
     }
 }
@@ -58,8 +58,8 @@ impl<N: Network> Display for PlaintextType<N> {
         match self {
             // Prints the literal, i.e. field
             Self::Literal(literal) => Display::fmt(literal, f),
-            // Prints the interface, i.e. signature
-            Self::Interface(interface) => Display::fmt(interface, f),
+            // Prints the struct, i.e. signature
+            Self::Struct(struct_) => Display::fmt(struct_, f),
         }
     }
 }
@@ -79,7 +79,7 @@ mod tests {
         );
         assert_eq!(
             PlaintextType::parse("signature"),
-            Ok(("", PlaintextType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?)))
+            Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("signature")?)))
         );
         Ok(())
     }
@@ -100,7 +100,7 @@ mod tests {
             PlaintextType::<CurrentNetwork>::parse("field.private")
         );
 
-        // Interface type must not contain visibility.
+        // Struct type must not contain visibility.
         assert_eq!(
             Ok((".constant", Identifier::<CurrentNetwork>::from_str("signature")?)),
             Identifier::<CurrentNetwork>::parse("signature.constant")
@@ -138,10 +138,10 @@ mod tests {
         assert!(PlaintextType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface = PlaintextType::<CurrentNetwork>::parse(
+        let struct_ = PlaintextType::<CurrentNetwork>::parse(
             "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy",
         );
-        assert!(interface.is_err());
+        assert!(struct_.is_err());
 
         Ok(())
     }
@@ -150,7 +150,7 @@ mod tests {
     fn test_display() -> Result<()> {
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
         assert_eq!(
-            PlaintextType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).to_string(),
+            PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("signature")?).to_string(),
             "signature"
         );
         Ok(())

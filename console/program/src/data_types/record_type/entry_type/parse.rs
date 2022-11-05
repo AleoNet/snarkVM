@@ -87,7 +87,7 @@ mod tests {
             EntryType::<CurrentNetwork>::parse("field.private")
         );
 
-        // Interface type.
+        // Struct type.
         assert_eq!(
             Ok(("", EntryType::<CurrentNetwork>::from_str("signature.constant")?)),
             EntryType::<CurrentNetwork>::parse("signature.constant")
@@ -108,7 +108,7 @@ mod tests {
     fn test_parse_fails() -> Result<()> {
         // Literal type must contain visibility.
         assert!(EntryType::<CurrentNetwork>::parse("field").is_err());
-        // Interface type must contain visibility.
+        // Struct type must contain visibility.
         assert!(EntryType::<CurrentNetwork>::parse("signature").is_err());
         // Record type must contain record keyword.
         assert!(EntryType::<CurrentNetwork>::parse("token").is_err());
@@ -137,10 +137,10 @@ mod tests {
         assert!(EntryType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface = EntryType::<CurrentNetwork>::parse(
+        let struct_ = EntryType::<CurrentNetwork>::parse(
             "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy.private",
         );
-        assert!(interface.is_err());
+        assert!(struct_.is_err());
 
         Ok(())
     }

@@ -32,7 +32,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
     fn is_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_equal(b),
-            (Self::Interface(a, _), Self::Interface(b, _)) => match a.len() == b.len() {
+            (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each member for equality.
                     let mut equal = Boolean::new(true);
@@ -43,7 +43,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                 }
                 false => Boolean::new(false),
             },
-            (Self::Literal(..), _) | (Self::Interface(..), _) => Boolean::new(false),
+            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::new(false),
         }
     }
 
@@ -51,7 +51,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_not_equal(b),
-            (Self::Interface(a, _), Self::Interface(b, _)) => match a.len() == b.len() {
+            (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each member for equality.
                     let mut not_equal = Boolean::new(false);
@@ -62,7 +62,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                 }
                 false => Boolean::new(true),
             },
-            (Self::Literal(..), _) | (Self::Interface(..), _) => Boolean::new(true),
+            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::new(true),
         }
     }
 }

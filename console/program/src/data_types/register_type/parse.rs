@@ -82,7 +82,7 @@ mod tests {
             RegisterType::<CurrentNetwork>::parse("field")
         );
 
-        // Interface type.
+        // Struct type.
         assert_eq!(
             Ok(("", RegisterType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("signature")?))),
             RegisterType::<CurrentNetwork>::parse("signature")
@@ -129,10 +129,10 @@ mod tests {
         assert!(RegisterType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface = RegisterType::<CurrentNetwork>::parse(
+        let struct_ = RegisterType::<CurrentNetwork>::parse(
             "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy.private",
         );
-        assert!(interface.is_err());
+        assert!(struct_.is_err());
 
         Ok(())
     }

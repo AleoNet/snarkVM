@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Interface<N> {
-    /// Reads an interface from a buffer.
+impl<N: Network> FromBytes for Struct<N> {
+    /// Reads an struct from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the name of the interface.
+        // Read the name of the struct.
         let name = Identifier::read_le(&mut reader)?;
 
         // Read the number of members.
@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for Interface<N> {
         // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
         if num_members as usize > N::MAX_DATA_ENTRIES {
             return Err(error(format!(
-                "Interface exceeds size: expected <= {}, found {num_members}",
+                "Struct exceeds size: expected <= {}, found {num_members}",
                 N::MAX_DATA_ENTRIES
             )));
         }
@@ -40,7 +40,7 @@ impl<N: Network> FromBytes for Interface<N> {
             let plaintext_type = PlaintextType::read_le(&mut reader)?;
             // Insert the member, and ensure the member has no duplicate names.
             if members.insert(identifier, plaintext_type).is_some() {
-                return Err(error(format!("Duplicate identifier in interface '{name}'")));
+                return Err(error(format!("Duplicate identifier in struct '{name}'")));
             };
         }
 
@@ -48,19 +48,19 @@ impl<N: Network> FromBytes for Interface<N> {
     }
 }
 
-impl<N: Network> ToBytes for Interface<N> {
-    /// Writes the interface to a buffer.
+impl<N: Network> ToBytes for Struct<N> {
+    /// Writes the struct to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
         if self.members.len() > N::MAX_DATA_ENTRIES {
-            return Err(error("Failed to serialize interface: too many members"));
+            return Err(error("Failed to serialize struct: too many members"));
         }
 
-        // Write the name of the interface.
+        // Write the name of the struct.
         self.name.write_le(&mut writer)?;
 
         // Write the number of members.
-        u16::try_from(self.members.len()).or_halt_with::<N>("Interface length exceeds u16").write_le(&mut writer)?;
+        u16::try_from(self.members.len()).or_halt_with::<N>("Struct length exceeds u16").write_le(&mut writer)?;
         // Write the members as bytes.
         for (identifier, plaintext_type) in &self.members {
             // Write the identifier.
@@ -82,8 +82,8 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let expected =
-            Interface::<CurrentNetwork>::from_str("interface message:\n    first as field;\n    second as field;")?;
-        let candidate = Interface::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+            Struct::<CurrentNetwork>::from_str("struct message:\n    first as field;\n    second as field;")?;
+        let candidate = Struct::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
         Ok(())
     }

@@ -38,8 +38,8 @@ use once_cell::sync::OnceCell;
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
-    /// A interface.
-    Interface(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// A struct.
+    Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
@@ -77,7 +77,7 @@ mod tests {
             Plaintext::<CurrentNetwork>::Literal(Literal::Field(Field::new(Uniform::rand(&mut rng))), OnceCell::new());
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        let value = Plaintext::<CurrentNetwork>::Interface(
+        let value = Plaintext::<CurrentNetwork>::Struct(
             IndexMap::from_iter(
                 vec![
                     (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
@@ -95,19 +95,19 @@ mod tests {
         );
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        let value = Plaintext::<CurrentNetwork>::Interface(
+        let value = Plaintext::<CurrentNetwork>::Struct(
             IndexMap::from_iter(
                 vec![
                     (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
                     (
                         Identifier::from_str("b")?,
-                        Plaintext::<CurrentNetwork>::Interface(
+                        Plaintext::<CurrentNetwork>::Struct(
                             IndexMap::from_iter(
                                 vec![
                                     (Identifier::from_str("c")?, Plaintext::<CurrentNetwork>::from_str("true")?),
                                     (
                                         Identifier::from_str("d")?,
-                                        Plaintext::<CurrentNetwork>::Interface(
+                                        Plaintext::<CurrentNetwork>::Struct(
                                             IndexMap::from_iter(
                                                 vec![
                                                     (
