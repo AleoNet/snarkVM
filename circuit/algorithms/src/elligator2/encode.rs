@@ -99,7 +99,11 @@ impl<E: Environment> Elligator2<E> {
         let y = (&u - &one) / (u + &one);
 
         // Recover the point and check that it is 1) on the curve, and 2) in the correct subgroup.
-        Group::from_xy_coordinates(x, y)
+        let encoding = Group::from_xy_coordinates_unchecked(x, y);
+        // Ensure the encoding is on the curve.
+        encoding.enforce_on_curve();
+        // Cofactor clear the twisted Edwards element (x, y).
+        encoding.mul_by_cofactor()
     }
 }
 
@@ -141,11 +145,11 @@ mod tests {
 
     #[test]
     fn test_encode_public() {
-        check_encode(Mode::Public, 263, 0, 377, 392);
+        check_encode(Mode::Public, 263, 0, 370, 373);
     }
 
     #[test]
     fn test_encode_private() {
-        check_encode(Mode::Private, 263, 0, 377, 392);
+        check_encode(Mode::Private, 263, 0, 370, 373);
     }
 }

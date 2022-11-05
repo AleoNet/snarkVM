@@ -68,7 +68,7 @@ impl<E: Environment> Inject for Group<E> {
         };
 
         // Ensure `point_inv` is on the curve.
-        Self::enforce_on_curve(&point_inv.x, &point_inv.y);
+        point_inv.enforce_on_curve();
 
         // Return the `point` as `point_inv * COFACTOR`.
         let point = point_inv.mul_by_cofactor();
@@ -98,12 +98,12 @@ impl<E: Environment> Group<E> {
     ///
     /// Ensure ax^2 + y^2 = 1 + dx^2y^2
     /// by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
-    fn enforce_on_curve(x: &Field<E>, y: &Field<E>) {
+    pub fn enforce_on_curve(&self) {
         let a = Field::constant(console::Field::new(E::EDWARDS_A));
         let d = Field::constant(console::Field::new(E::EDWARDS_D));
 
-        let x2 = x.square();
-        let y2 = y.square();
+        let x2 = self.x.square();
+        let y2 = self.y.square();
 
         let first = y2;
         let second = (d * &x2) - &Field::one();
