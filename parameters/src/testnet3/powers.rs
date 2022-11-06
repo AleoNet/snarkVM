@@ -318,7 +318,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             // If the range contains the midpoint, then we must download all the powers.
             // (because we round up to the next power of two).
             self.download_up_to(range.end)?;
-            self.shifted_powers_of_beta_g = Vec::new();
+            self.shifted_powers_of_beta_g.clear();
         } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
             // If the range is closer to the shifted powers, then we download the shifted powers.
             self.download_from(range.start)?;
