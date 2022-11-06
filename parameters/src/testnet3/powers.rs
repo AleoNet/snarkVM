@@ -368,6 +368,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         for num_powers in &download_queue {
             // Download the universal SRS powers if they're not
             // already on disk.
+            #[cfg(debug_assertions)]
+            println!("Loading {num_powers} powers");
             let additional_bytes = match *num_powers {
                 NUM_POWERS_16 => Degree16::load_bytes()?,
                 NUM_POWERS_17 => Degree17::load_bytes()?,
@@ -438,6 +440,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         let mut final_powers = vec![];
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
         for num_powers in &download_queue {
+            #[cfg(debug_assertions)]
+            println!("Loading {num_powers} shifted powers");
             // Download the universal SRS powers if they're not already on disk.
             let additional_bytes = match *num_powers {
                 NUM_POWERS_16 => ShiftedDegree16::load_bytes()?,
