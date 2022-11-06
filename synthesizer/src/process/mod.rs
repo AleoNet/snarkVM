@@ -378,7 +378,7 @@ mod tests {
     type CurrentAleo = AleoV0;
 
     #[test]
-    fn test_process_execute_genesis() {
+    fn test_process_execute_mint() {
         // Initialize a new program.
         let program = Program::<CurrentNetwork>::credits().unwrap();
 
@@ -400,7 +400,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("genesis").unwrap(),
+                Identifier::from_str("mint").unwrap(),
                 &[r0.clone(), r1.clone()],
                 rng,
             )
@@ -457,7 +457,7 @@ mod tests {
     owner as address.private;
     gates as u64.private;
 
-  function genesis:
+  function mint:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
@@ -470,7 +470,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("genesis").unwrap(),
+                Identifier::from_str("mint").unwrap(),
                 &[r0, r1],
                 rng,
             )
@@ -479,7 +479,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/genesis' is not satisfied on the given inputs (26610 constraints).")
+            format!("'token.aleo/mint' is not satisfied on the given inputs (26610 constraints).")
         );
     }
 

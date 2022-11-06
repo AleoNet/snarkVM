@@ -63,8 +63,6 @@ macro_rules! impl_remote_keys {
     };
 }
 
-// Genesis
-impl_remote_keys!(GenesisProver, GenesisVerifier, "genesis");
 // Mint
 impl_remote_keys!(MintProver, MintVerifier, "mint");
 // Transfer
@@ -90,7 +88,6 @@ lazy_static! {
             };
         }
         let mut map = indexmap::IndexMap::new();
-        insert_remote_keys!(map, GenesisProver, GenesisVerifier, "genesis");
         insert_remote_keys!(map, MintProver, MintVerifier, "mint");
         insert_remote_keys!(map, TransferProver, TransferVerifier, "transfer");
         insert_remote_keys!(map, JoinProver, JoinVerifier, "join");
