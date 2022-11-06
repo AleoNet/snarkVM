@@ -110,6 +110,11 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.powers_of_beta_g.read().unwrap().num_powers()
     }
 
+    /// Returns the maximum possible number of contiguous powers of beta G starting from the 0-th power.
+    pub fn max_num_powers(&self) -> usize {
+        MAX_NUM_POWERS
+    }
+
     /// Returns the powers of beta * gamma G.
     pub fn powers_of_beta_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
         &self.powers_of_beta_times_gamma_g
@@ -282,8 +287,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             Ok(&self.powers_of_beta_g[range])
         } else {
             // In this case, the shifted powers still reside in self.shifted_powers_of_beta_g.
-            let lower = range.start - self.shifted_powers_of_beta_g.len();
-            let upper = range.end - self.shifted_powers_of_beta_g.len();
+            let lower = self.shifted_powers_of_beta_g.len() - (MAX_NUM_POWERS - range.start);
+            let upper = self.shifted_powers_of_beta_g.len() - (MAX_NUM_POWERS - range.end);
             Ok(&self.shifted_powers_of_beta_g[lower..upper])
         }
     }

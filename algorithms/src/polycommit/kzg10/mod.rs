@@ -508,13 +508,21 @@ mod tests {
     impl<E: PairingEngine> KZG10<E> {
         /// Specializes the public parameters for a given maximum degree `d` for polynomials
         /// `d` should be less that `pp.max_degree()`.
-        pub(crate) fn trim(pp: &UniversalParams<E>, mut supported_degree: usize) -> (Powers<E>, VerifierKey<E>) {
+        pub(crate) fn trim(
+            pp: &UniversalParams<E>,
+            mut supported_degree: usize,
+            hiding_bound: Option<usize>,
+        ) -> (Powers<E>, VerifierKey<E>) {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
             let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1).unwrap().to_vec();
-            let powers_of_beta_times_gamma_g =
-                (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g()[&i]).collect();
+
+            let powers_of_beta_times_gamma_g = if let Some(hiding_bound) = hiding_bound {
+                (0..=(hiding_bound + 1)).map(|i| pp.powers_of_beta_times_gamma_g()[&i]).collect()
+            } else {
+                vec![]
+            };
 
             let powers = Powers {
                 powers_of_beta_g: Cow::Owned(powers_of_beta_g),
@@ -552,9 +560,9 @@ mod tests {
                 degree = usize::rand(rng) % 20;
             }
             let pp = KZG10::<E>::load_srs(degree, &KZGDegreeBounds::None)?;
-            let (ck, vk) = KZG10::trim(&pp, degree);
-            let p = DensePolynomial::rand(degree, rng);
             let hiding_bound = Some(1);
+            let (ck, vk) = KZG10::trim(&pp, degree, hiding_bound);
+            let p = DensePolynomial::rand(degree, rng);
             let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
@@ -575,9 +583,9 @@ mod tests {
         for _ in 0..100 {
             let degree = 50;
             let pp = KZG10::<E>::load_srs(degree, &KZGDegreeBounds::None)?;
-            let (ck, vk) = KZG10::trim(&pp, 2);
-            let p = DensePolynomial::rand(1, rng);
             let hiding_bound = Some(1);
+            let (ck, vk) = KZG10::trim(&pp, 2, hiding_bound);
+            let p = DensePolynomial::rand(1, rng);
             let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
@@ -596,12 +604,13 @@ mod tests {
     fn batch_check_test_template<E: PairingEngine>() -> Result<(), PCError> {
         let rng = &mut TestRng::default();
         for _ in 0..10 {
+            let hiding_bound = Some(1);
             let mut degree = 0;
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
             let pp = KZG10::<E>::load_srs(degree, &KZGDegreeBounds::None)?;
-            let (ck, vk) = KZG10::trim(&pp, degree);
+            let (ck, vk) = KZG10::trim(&pp, degree, hiding_bound);
 
             let mut comms = Vec::new();
             let mut values = Vec::new();
@@ -610,7 +619,6 @@ mod tests {
 
             for _ in 0..10 {
                 let p = DensePolynomial::rand(degree, rng);
-                let hiding_bound = Some(1);
                 let (comm, rand) =
                     KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
@@ -649,7 +657,7 @@ mod tests {
 
         let max_degree = 123;
         let pp = KZG_Bls12_377::load_srs(max_degree, &KZGDegreeBounds::None).unwrap();
-        let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree);
+        let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree, None);
 
         let p = DensePolynomial::<Fr>::rand(max_degree + 1, rng);
         assert!(p.degree() > max_degree);

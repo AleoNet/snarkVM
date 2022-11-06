@@ -283,8 +283,7 @@ where
                 None
             };
 
-            let hiding_bound =
-                if num_points_in_query_set >= degree { Some(degree) } else { Some(num_points_in_query_set) };
+            let hiding_bound = Some(1);
             println!("Hiding bound: {:?}", hiding_bound);
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
@@ -402,8 +401,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
                 None
             };
 
-            let hiding_bound =
-                if num_points_in_query_set >= degree { Some(degree) } else { Some(num_points_in_query_set) };
+            let hiding_bound = Some(1);
             println!("Hiding bound: {:?}", hiding_bound);
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))

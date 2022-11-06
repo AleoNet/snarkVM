@@ -96,7 +96,7 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     pub fn max_degree(&self) -> usize {
-        self.powers.num_powers() - 1
+        self.powers.max_num_powers() - 1
     }
 
     pub fn supported_degree_bounds(&self) -> &[usize] {
