@@ -87,7 +87,7 @@ mod marlin {
                     let rng = &mut snarkvm_utilities::rand::TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
                     let fs_parameters = FS::sample_parameters();
 
                     for _ in 0..50 {
@@ -163,7 +163,7 @@ mod marlin {
                     let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
 
                     let circ =
                         Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
@@ -190,7 +190,7 @@ mod marlin {
                     let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
 
                     let circ =
                         Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
@@ -314,7 +314,7 @@ mod marlin_recursion {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
         for _ in 0..100 {
@@ -344,7 +344,7 @@ mod marlin_recursion {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
         let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
@@ -365,7 +365,7 @@ mod marlin_recursion {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
         let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 

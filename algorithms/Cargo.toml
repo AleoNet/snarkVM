@@ -75,6 +75,7 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0"
+features = ["backtrace"]
 
 [dependencies.crossbeam-channel]
 version = "0.5"

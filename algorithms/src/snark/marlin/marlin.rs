@@ -37,7 +37,6 @@ use crate::{
 };
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use rand_core::RngCore;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
@@ -80,12 +79,11 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
     /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>>(
         c: &C,
-        rng: &mut R,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let circuit = AHPForR1CS::<_, MM>::index(c)?;
-        let srs = Self::universal_setup(&circuit.max_degree(), rng)?;
+        let srs = Self::universal_setup(&circuit.max_degree())?;
         Self::circuit_setup(&srs, c)
     }
 
@@ -103,7 +101,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
         let index = AHPForR1CS::<_, MM>::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
             universal_srs
-                .increase_degree(index.max_degree())
+                .download_powers_for(0..index.max_degree())
                 .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), index.max_degree()))?;
         }
 
@@ -223,13 +221,10 @@ where
     type VerifierInput = Input;
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
 
-    fn universal_setup<R: Rng + CryptoRng>(
-        max_degree: &Self::UniversalSetupConfig,
-        rng: &mut R,
-    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
+    fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
 
-        let srs = SonicKZG10::<E, FS>::setup(*max_degree, rng).map_err(Into::into);
+        let srs = SonicKZG10::<E, FS>::load_srs(*max_degree).map_err(Into::into);
         end_timer!(setup_time);
         srs
     }
@@ -239,7 +234,7 @@ where
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
-            SRS::CircuitSpecific(rng) => Self::circuit_specific_setup(circuit, rng),
+            SRS::CircuitSpecific(_rng) => Self::circuit_specific_setup(circuit),
             SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
         }
         .map_err(SNARKError::from)

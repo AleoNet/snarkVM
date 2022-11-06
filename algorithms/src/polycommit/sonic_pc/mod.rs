@@ -56,8 +56,8 @@ pub struct SonicKZG10<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
 }
 
 impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
-    pub fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalParams<E>, PCError> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZGDegreeBounds::Marlin, true, rng).map_err(Into::into)
+    pub fn load_srs(max_degree: usize) -> Result<UniversalParams<E>, PCError> {
+        kzg10::KZG10::load_srs(max_degree, &kzg10::KZGDegreeBounds::Marlin).map_err(Into::into)
     }
 
     pub fn trim(
@@ -70,7 +70,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let trim_time = start_timer!(|| "Trimming public parameters");
         let mut max_degree = pp.max_degree();
         if supported_degree > max_degree {
-            pp.download_up_to(supported_degree).map_err(|_| PCError::TrimmingDegreeTooLarge)?;
+            pp.download_powers_for(0..supported_degree).map_err(|_| PCError::TrimmingDegreeTooLarge)?;
             max_degree = pp.max_degree();
         }
 
@@ -102,14 +102,14 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 let shifted_powers_of_beta_g = pp.powers_of_beta_g(lowest_shift_degree, pp.max_degree() + 1)?.to_vec();
                 let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
-                let _max_gamma_g = pp.get_powers_times_gamma_g().keys().last().unwrap();
+                let _max_gamma_g = pp.powers_of_beta_times_gamma_g().keys().last().unwrap();
                 for degree_bound in enforced_degree_bounds {
                     let shift_degree = max_degree - degree_bound;
                     let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
                     for i in 0..=supported_hiding_bound + 1 {
                         // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
                         if shift_degree + i < max_degree + 2 {
-                            powers_for_degree_bound.push(pp.get_powers_times_gamma_g()[&(shift_degree + i)]);
+                            powers_for_degree_bound.push(pp.powers_of_beta_times_gamma_g()[&(shift_degree + i)]);
                         }
                     }
                     shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
@@ -125,7 +125,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?.to_vec();
         let powers_of_beta_times_gamma_g =
-            (0..=supported_hiding_bound + 1).map(|i| pp.get_powers_times_gamma_g()[&i]).collect();
+            (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_beta_times_gamma_g()[&i]).collect();
 
         let mut lagrange_bases_at_beta_g = BTreeMap::new();
         for size in supported_lagrange_sizes {
@@ -155,16 +155,16 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         let g = pp.power_of_beta_g(0)?;
         let h = pp.h;
-        let beta_h = pp.beta_h;
-        let gamma_g = pp.get_powers_times_gamma_g()[&0];
+        let beta_h = pp.beta_h();
+        let gamma_g = pp.powers_of_beta_times_gamma_g()[&0];
         let prepared_h = pp.prepared_h.clone();
         let prepared_beta_h = pp.prepared_beta_h.clone();
 
-        let degree_bounds_and_neg_powers_of_h = if pp.inverse_neg_powers_of_beta_h.is_empty() {
+        let degree_bounds_and_neg_powers_of_h = if pp.neg_powers_of_beta_h().is_empty() {
             None
         } else {
             Some(
-                pp.inverse_neg_powers_of_beta_h
+                pp.neg_powers_of_beta_h()
                     .iter()
                     .map(|(d, affine)| (*d, *affine))
                     .collect::<Vec<(usize, E::G2Affine)>>(),
@@ -765,7 +765,7 @@ mod tests {
 
         let lagrange_size = |d: usize| if d.is_power_of_two() { d } else { d.next_power_of_two() >> 1 };
 
-        let pp = PC_Bls12_377::setup(max_degree, rng).unwrap();
+        let pp = PC_Bls12_377::load_srs(max_degree).unwrap();
 
         let (ck, _vk) = PC_Bls12_377::trim(&pp, supported_degree, [lagrange_size(supported_degree)], 0, None).unwrap();
 

@@ -22,13 +22,20 @@ use snarkvm_utilities::{
     Compress,
     FromBytes,
     Read,
+    SerializationError,
     ToBytes,
+    Valid,
     Validate,
     Write,
 };
 
 use anyhow::{anyhow, bail, ensure, Result};
-use std::{collections::BTreeMap, io::BufReader, ops::Range};
+use std::{
+    collections::BTreeMap,
+    io::BufReader,
+    ops::Range,
+    sync::{Arc, RwLock},
+};
 
 const NUM_POWERS_15: usize = 1 << 15;
 const NUM_POWERS_16: usize = 1 << 16;
@@ -57,10 +64,10 @@ lazy_static::lazy_static! {
 }
 
 /// A vector of powers of beta G.
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, Clone)]
 pub struct PowersOfG<E: PairingEngine> {
     /// The powers of beta G.
-    powers_of_beta_g: PowersOfBetaG<E>,
+    powers_of_beta_g: Arc<RwLock<PowersOfBetaG<E>>>,
     /// Group elements of form `{ \beta^i \gamma G }`, where `i` is from 0 to `degree`,
     /// This is used for hiding.
     powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
@@ -74,15 +81,15 @@ pub struct PowersOfG<E: PairingEngine> {
 impl<E: PairingEngine> PowersOfG<E> {
     /// Initializes the hard-coded instance of the powers.
     pub fn load() -> Result<Self> {
-        let powers_of_beta_g = PowersOfBetaG::load()?;
+        let powers_of_beta_g = Arc::new(RwLock::new(PowersOfBetaG::load()?));
 
         // Reconstruct powers of beta_times_gamma_g
         let reader = BufReader::new(&POWERS_OF_BETA_GAMMA_G[..]);
-        let powers_of_beta_times_gamma_g = BTreeMap::deserialize_compressed_unchecked(reader)?;
+        let powers_of_beta_times_gamma_g = BTreeMap::deserialize_uncompressed_unchecked(reader)?;
 
         // Reconstruct negative powers of beta_h
         let reader = BufReader::new(&NEG_POWERS_OF_BETA_H[..]);
-        let negative_powers_of_beta_h = BTreeMap::deserialize_compressed_unchecked(reader)?;
+        let negative_powers_of_beta_h = BTreeMap::deserialize_uncompressed_unchecked(reader)?;
 
         let beta_h = E::G2Affine::deserialize_uncompressed_unchecked(BufReader::new(&BETA_H[..]))?;
 
@@ -92,9 +99,87 @@ impl<E: PairingEngine> PowersOfG<E> {
         Ok(powers)
     }
 
+    /// Download the powers of beta G specified by `range`.
+    pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
+        let mut powers_of_beta_g = self.powers_of_beta_g.write().unwrap();
+        powers_of_beta_g.download_powers_for(&range)
+    }
+
+    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
+    pub fn num_powers(&self) -> usize {
+        self.powers_of_beta_g.read().unwrap().num_powers()
+    }
+
     /// Returns the powers of beta * gamma G.
-    pub fn powers_times_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
+    pub fn powers_of_beta_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
         &self.powers_of_beta_times_gamma_g
+    }
+
+    /// Returns the `index`-th power of beta * G.
+    pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
+        self.powers_of_beta_g.write().unwrap().power(index)
+    }
+
+    /// Returns the powers of `beta * G` that lie within `range`.
+    pub fn powers_of_beta_g(&self, range: Range<usize>) -> Result<Vec<E::G1Affine>> {
+        self.powers_of_beta_g
+            .write()
+            .map_err(|_| anyhow!("could not get lock"))
+            .and_then(|mut e| Ok(e.powers(range)?.to_vec()))
+    }
+
+    pub fn negative_powers_of_beta_h(&self) -> &BTreeMap<usize, E::G2Affine> {
+        &self.negative_powers_of_beta_h
+    }
+
+    pub fn beta_h(&self) -> E::G2Affine {
+        self.beta_h
+    }
+}
+
+impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, mode: Compress) -> Result<(), SerializationError> {
+        self.powers_of_beta_g.read().unwrap().serialize_with_mode(&mut writer, mode)?;
+        self.powers_of_beta_times_gamma_g.serialize_with_mode(&mut writer, mode)?;
+        self.negative_powers_of_beta_h.serialize_with_mode(&mut writer, mode)?;
+        self.beta_h.serialize_with_mode(&mut writer, mode)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self, mode: Compress) -> usize {
+        self.powers_of_beta_g.write().unwrap().serialized_size(mode)
+            + self.powers_of_beta_times_gamma_g.serialized_size(mode)
+            + self.negative_powers_of_beta_h.serialized_size(mode)
+            + self.beta_h.serialized_size(mode)
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let powers_of_beta_g =
+            Arc::new(RwLock::new(PowersOfBetaG::deserialize_with_mode(&mut reader, compress, Validate::No)?));
+        let powers_of_beta_times_gamma_g = BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?;
+        let negative_powers_of_beta_h = BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?;
+        let beta_h = E::G2Affine::deserialize_with_mode(&mut reader, compress, Validate::No)?;
+        let powers = Self { powers_of_beta_g, powers_of_beta_times_gamma_g, negative_powers_of_beta_h, beta_h };
+        if let Validate::Yes = validate {
+            powers.check()?;
+        }
+        Ok(powers)
+    }
+}
+
+impl<E: PairingEngine> Valid for PowersOfG<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        self.powers_of_beta_g.read().unwrap().check()?;
+        self.powers_of_beta_times_gamma_g.check()?;
+        self.negative_powers_of_beta_h.check()?;
+        self.beta_h.check()?;
+        Ok(())
     }
 }
 
@@ -112,7 +197,7 @@ impl<E: PairingEngine> ToBytes for PowersOfG<E> {
     }
 }
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PowersOfBetaG<E: PairingEngine> {
     /// Group elements of form `[G, \beta * G, \beta^2 * G, ..., \beta^d G]`.
     powers_of_beta_g: Vec<E::G1Affine>,
@@ -122,6 +207,11 @@ pub struct PowersOfBetaG<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> PowersOfBetaG<E> {
+    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
+    pub fn num_powers(&self) -> usize {
+        self.powers_of_beta_g.len()
+    }
+
     /// Initializes the hard-coded instance of the powers.
     fn load() -> Result<Self> {
         let mut reader = BufReader::new(&POWERS_OF_BETA_G_15[..]);
@@ -171,11 +261,11 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     }
 
     fn distance_from_normal_of(&self, range: &Range<usize>) -> usize {
-        (range.end as isize - self.available_powers().0.end as isize).abs() as usize
+        (range.end as isize - self.available_powers().0.end as isize).unsigned_abs()
     }
 
     fn distance_from_shifted_of(&self, range: &Range<usize>) -> usize {
-        (range.start as isize - self.available_powers().1.start as isize).abs() as usize
+        (range.start as isize - self.available_powers().1.start as isize).unsigned_abs()
     }
 
     /// Assumes that we have the requisite powers.
@@ -192,8 +282,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             Ok(&self.powers_of_beta_g[range])
         } else {
             // In this case, the shifted powers still reside in self.shifted_powers_of_beta_g.
-            let lower = range.start - &self.shifted_powers_of_beta_g.len();
-            let upper = range.end - &self.shifted_powers_of_beta_g.len();
+            let lower = range.start - self.shifted_powers_of_beta_g.len();
+            let upper = range.end - self.shifted_powers_of_beta_g.len();
             Ok(&self.shifted_powers_of_beta_g[lower..upper])
         }
     }
@@ -212,27 +302,35 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
     pub fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         if range.is_empty() {
-            return Ok(&&self.powers_of_beta_g[0..0]);
+            return Ok(&self.powers_of_beta_g[0..0]);
         }
         ensure!(range.start < range.end, "Lower power must be less than upper power");
         ensure!(range.end <= MAX_NUM_POWERS, "Upper bound must be less than the maximum number of powers");
         if !self.contains_powers(&range) {
             // We must download the powers.
-            let half_max = MAX_NUM_POWERS / 2;
-            if (range.start <= half_max) && (range.end > half_max) {
-                // If the range contains the midpoint, then we must download all the powers.
-                // (because we round up to the next power of two).
-                self.download_up_to(range.end)?;
-                self.shifted_powers_of_beta_g = Vec::new();
-            } else if self.distance_from_shifted_of(&range) < self.distance_from_normal_of(&range) {
-                // If the range is closer to the shifted powers, then we download the shifted powers.
-                self.download_up_to(range.start)?;
-            } else {
-                // Otherwise, we download the normal powers.
-                self.download_up_to(range.end)?;
-            }
+            self.download_powers_for(&range)?;
         }
         if self.contains_in_normal_powers(&range) { self.normal_powers(range) } else { self.shifted_powers(range) }
+    }
+
+    pub fn download_powers_for(&mut self, range: &Range<usize>) -> Result<()> {
+        if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
+            return Ok(());
+        }
+        let half_max = MAX_NUM_POWERS / 2;
+        if (range.start <= half_max) && (range.end > half_max) {
+            // If the range contains the midpoint, then we must download all the powers.
+            // (because we round up to the next power of two).
+            self.download_up_to(range.end)?;
+            self.shifted_powers_of_beta_g = Vec::new();
+        } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
+            // If the range is closer to the shifted powers, then we download the shifted powers.
+            self.download_up_to(range.start)?;
+        } else {
+            // Otherwise, we download the normal powers.
+            self.download_up_to(range.end)?;
+        }
+        Ok(())
     }
 
     /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,

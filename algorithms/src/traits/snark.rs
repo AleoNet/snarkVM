@@ -72,10 +72,7 @@ pub trait SNARK {
     type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;
 
-    fn universal_setup<R: Rng + CryptoRng>(
-        config: &Self::UniversalSetupConfig,
-        rng: &mut R,
-    ) -> Result<Self::UniversalSetupParameters, SNARKError>;
+    fn universal_setup(config: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError>;
 
     fn setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         circuit: &C,
