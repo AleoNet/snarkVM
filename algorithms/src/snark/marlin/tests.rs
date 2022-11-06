@@ -310,14 +310,14 @@ mod marlin_recursion {
     type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
     type FS = PoseidonSponge<Fq, 2, 1>;
 
-    fn test_circuit(num_constraints: usize, num_variables: usize) {
+    fn test_circuit_n_times(num_constraints: usize, num_variables: usize, num_times: usize) {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        for _ in 0..100 {
+        for _ in 0..num_times {
             let a = Fr::rand(rng);
             let b = Fr::rand(rng);
             let mut c = a;
@@ -338,6 +338,10 @@ mod marlin_recursion {
             println!("\nShould not verify (i.e. verifier messages should print below):");
             assert!(!MarlinInst::verify(&fs_parameters, &index_vk, [a, a], &proof).unwrap());
         }
+    }
+
+    fn test_circuit(num_constraints: usize, num_variables: usize) {
+        test_circuit_n_times(num_constraints, num_variables, 100)
     }
 
     fn test_serde_json(num_constraints: usize, num_variables: usize) {
@@ -438,9 +442,7 @@ mod marlin_recursion {
         let num_constraints = 1 << 16;
         let num_variables = 1 << 16;
 
-        test_circuit(num_constraints, num_variables);
-        test_serde_json(num_constraints, num_variables);
-        test_bincode(num_constraints, num_variables);
+        test_circuit_n_times(num_constraints, num_variables, 1);
     }
 
     // #[test]
