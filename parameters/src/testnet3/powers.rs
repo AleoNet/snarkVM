@@ -32,7 +32,6 @@ use snarkvm_utilities::{
 use anyhow::{anyhow, bail, ensure, Result};
 use std::{
     collections::BTreeMap,
-    io::BufReader,
     ops::Range,
     sync::{Arc, RwLock},
 };
@@ -83,15 +82,13 @@ impl<E: PairingEngine> PowersOfG<E> {
     pub fn load() -> Result<Self> {
         let powers_of_beta_g = Arc::new(RwLock::new(PowersOfBetaG::load()?));
 
-        // Reconstruct powers of beta_times_gamma_g
-        let reader = BufReader::new(&POWERS_OF_BETA_GAMMA_G[..]);
-        let powers_of_beta_times_gamma_g = BTreeMap::deserialize_uncompressed_unchecked(reader)?;
+        // Reconstruct powers of beta_times_gamma_g.
+        let powers_of_beta_times_gamma_g = BTreeMap::deserialize_uncompressed_unchecked(&**POWERS_OF_BETA_GAMMA_G)?;
 
-        // Reconstruct negative powers of beta_h
-        let reader = BufReader::new(&NEG_POWERS_OF_BETA_H[..]);
-        let negative_powers_of_beta_h = BTreeMap::deserialize_uncompressed_unchecked(reader)?;
+        // Reconstruct negative powers of beta_h.
+        let negative_powers_of_beta_h = BTreeMap::deserialize_uncompressed_unchecked(&**NEG_POWERS_OF_BETA_H)?;
 
-        let beta_h = E::G2Affine::deserialize_uncompressed_unchecked(BufReader::new(&BETA_H[..]))?;
+        let beta_h = E::G2Affine::deserialize_uncompressed_unchecked(&**BETA_H)?;
 
         // Initialize the powers.
         let powers = Self { powers_of_beta_g, powers_of_beta_times_gamma_g, negative_powers_of_beta_h, beta_h };
@@ -219,15 +216,13 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Initializes the hard-coded instance of the powers.
     fn load() -> Result<Self> {
-        let mut reader = BufReader::new(&POWERS_OF_BETA_G_15[..]);
         // Deserialize the group elements.
-        let powers_of_beta_g = Vec::deserialize_uncompressed_unchecked(&mut reader)?;
+        let powers_of_beta_g = Vec::deserialize_uncompressed_unchecked(&**POWERS_OF_BETA_G_15)?;
 
         // Ensure the number of elements is correct.
         ensure!(powers_of_beta_g.len() == NUM_POWERS_15, "Incorrect number of powers in the recovered SRS");
 
-        let mut reader = BufReader::new(&SHIFTED_POWERS_OF_BETA_G_15[..]);
-        let shifted_powers_of_beta_g = Vec::deserialize_uncompressed_unchecked(&mut reader)?;
+        let shifted_powers_of_beta_g = Vec::deserialize_uncompressed_unchecked(&**SHIFTED_POWERS_OF_BETA_G_15)?;
         ensure!(shifted_powers_of_beta_g.len() == NUM_POWERS_15, "Incorrect number of powers in the recovered SRS");
         Ok(PowersOfBetaG { powers_of_beta_g, shifted_powers_of_beta_g })
     }
@@ -387,10 +382,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
             };
 
-            // Initialize a `BufReader`.
-            let mut reader = BufReader::new(&additional_bytes[..]);
             // Deserialize the group elements.
-            let additional_powers = Vec::deserialize_uncompressed_unchecked(&mut reader)?;
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
 
             // Extend the powers.
             self.powers_of_beta_g.extend(&additional_powers);
@@ -437,7 +430,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         }
         download_queue.reverse(); // We want to download starting from the smallest power.
 
-        let mut final_powers = vec![];
+        let mut final_powers = Vec::with_capacity(extra_powers_to_download);
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
         for num_powers in &download_queue {
             #[cfg(debug_assertions)]
@@ -458,10 +451,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 NUM_POWERS_27 => ShiftedDegree27::load_bytes()?,
                 _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
             };
-            // Initialize a `BufReader`.
-            let mut reader = BufReader::new(&additional_bytes[..]);
             // Deserialize the group elements.
-            let additional_powers = Vec::deserialize_uncompressed_unchecked(&mut reader)?;
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
 
             if final_powers.is_empty() {
                 final_powers = additional_powers;
@@ -469,7 +460,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 final_powers.extend(additional_powers);
             }
         }
-        final_powers.extend(self.shifted_powers_of_beta_g.drain(..self.shifted_powers_of_beta_g.len()));
+        final_powers.extend(self.shifted_powers_of_beta_g.iter());
         self.shifted_powers_of_beta_g = final_powers;
         Ok(())
     }
