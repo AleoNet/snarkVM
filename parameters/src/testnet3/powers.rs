@@ -300,12 +300,12 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     }
 
     /// Returns the power of beta times G specified by `target`.
-    pub fn power(&mut self, target: usize) -> Result<E::G1Affine> {
+    fn power(&mut self, target: usize) -> Result<E::G1Affine> {
         self.powers(target..(target + 1)).map(|s| s[0])
     }
 
     /// Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
-    pub fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+    fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         if range.is_empty() {
             return Ok(&self.powers_of_beta_g[0..0]);
         }
@@ -340,7 +340,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
     /// and updates `Self` in place with the new powers.
-    pub fn download_up_to(&mut self, end: usize) -> Result<()> {
+    fn download_up_to(&mut self, end: usize) -> Result<()> {
         let total_powers = end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
         if total_powers > MAX_NUM_POWERS {
             return Err(anyhow!("Requesting more powers than exist in the SRS"));
@@ -401,7 +401,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// This method downloads the universal SRS powers from
     /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
     /// and updates `Self` in place with the new powers.
-    pub fn download_from(&mut self, start: usize) -> Result<()> {
+    fn download_from(&mut self, start: usize) -> Result<()> {
         ensure!(start <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
 
         // The possible powers are:
