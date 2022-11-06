@@ -16,73 +16,53 @@
 
 use super::*;
 
-impl<E: Environment> Div<Field<E>> for Field<E> {
+impl<E: Environment> DivUnchecked<Field<E>> for Field<E> {
     type Output = Field<E>;
 
-    fn div(self, other: Field<E>) -> Self::Output {
-        self / &other
-    }
-}
-
-impl<E: Environment> Div<&Field<E>> for Field<E> {
-    type Output = Field<E>;
-
-    fn div(self, other: &Field<E>) -> Self::Output {
-        &self / other
-    }
-}
-
-impl<E: Environment> Div<Field<E>> for &Field<E> {
-    type Output = Field<E>;
-
-    fn div(self, other: Field<E>) -> Self::Output {
-        self / &other
-    }
-}
-
-impl<E: Environment> Div<&Field<E>> for &Field<E> {
-    type Output = Field<E>;
-
-    fn div(self, other: &Field<E>) -> Self::Output {
-        let mut output = self.clone();
-        output /= other;
-        output
-    }
-}
-
-impl<E: Environment> DivAssign<Self> for Field<E> {
-    fn div_assign(&mut self, other: Self) {
-        *self /= &other;
-    }
-}
-
-impl<E: Environment> DivAssign<&Self> for Field<E> {
-    #[allow(clippy::suspicious_op_assign_impl)]
-    fn div_assign(&mut self, other: &Self) {
-        match other.is_constant() {
+    /// Performs unchecked division of two field elements.
+    /// This method does **not** enforce the case of `0 / 0`.
+    #[doc(hidden)]
+    fn div_unchecked(&self, other: &Field<E>) -> Self::Output {
+        match (self.is_constant(), other.is_constant()) {
             // If `other` is a constant and zero, halt since the inverse of zero is undefined.
-            true if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
-            // If `other` is a constant and non-zero, we can perform multiplication and inversion for 0 constraints.
-            // If `self` is a constant, we can perform multiplication and inversion for 1 constraint.
-            // Otherwise, we can perform multiplication and inversion for 2 constraints.
-            _ => *self *= other.inverse(),
+            (_, true) if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
+            // If `other` is a constant and non-zero, we can perform the multiplication and inversion
+            // without paying for any private variables or constraints.
+            // If `self` is a constant, we can perform the multiplication and inversion for 1 constraint.
+            (_, true) | (true, false) => self * other.inverse(),
+            // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
+            // and ensuring that `quotient * other == self`.
+            (false, false) => {
+                // Construct the quotient as a witness.
+                let quotient: Field<E> = witness!(|self, other| {
+                    // Note: This band-aid was added to prevent a panic when `other` is zero.
+                    let other = if other.is_zero() { console::Field::one() } else { other };
+                    self / other
+                });
+
+                // Ensure the quotient is correct by enforcing:
+                // `quotient * other == self`.
+                E::enforce(|| (&quotient, other, self));
+
+                // Return the quotient.
+                quotient
+            }
         }
     }
 }
 
-impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metrics<dyn DivUnchecked<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
-            (Mode::Constant, _) => Count::is(0, 0, 1, 1),
-            (_, _) => Count::is(0, 0, 2, 2),
+            (_, _) => Count::is(0, 0, 1, 1),
         }
     }
 }
 
-impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> OutputMode<dyn DivUnchecked<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
@@ -107,7 +87,7 @@ mod tests {
 
     const ITERATIONS: u64 = 1000;
 
-    fn check_div(
+    fn check_div_unchecked(
         name: &str,
         first: &console::Field<<Circuit as Environment>::Network>,
         second: &console::Field<<Circuit as Environment>::Network>,
@@ -120,60 +100,23 @@ mod tests {
         match second.is_zero() {
             true => match mode_b.is_constant() {
                 true => {
-                    let result = std::panic::catch_unwind(|| Field::div(a.clone(), b));
+                    let result = std::panic::catch_unwind(|| a.div_unchecked(b));
                     assert!(result.is_err());
                 }
                 false => {
                     Circuit::scope(name, || {
-                        let _ = a / b;
-                        assert_count_fails!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+                        let _ = a.div_unchecked(b);
+                        assert_count_fails!(DivUnchecked(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
                     });
                 }
             },
             false => {
                 let expected = *first / *second;
                 Circuit::scope(name, || {
-                    let candidate = a / b;
+                    let candidate = a.div_unchecked(b);
                     assert_eq!(expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
-                    assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-                    assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
-                });
-            }
-        }
-    }
-
-    fn check_div_assign(
-        name: &str,
-        first: &console::Field<<Circuit as Environment>::Network>,
-        second: &console::Field<<Circuit as Environment>::Network>,
-        mode_a: Mode,
-        mode_b: Mode,
-    ) {
-        let a = &Field::<Circuit>::new(mode_a, *first);
-        let b = &Field::<Circuit>::new(mode_b, *second);
-
-        match second.is_zero() {
-            true => match mode_b.is_constant() {
-                true => {
-                    let result = std::panic::catch_unwind(|| Field::div_assign(&mut a.clone(), b));
-                    assert!(result.is_err());
-                }
-                false => {
-                    Circuit::scope(name, || {
-                        let mut candidate = a.clone();
-                        candidate /= b;
-                        assert_count_fails!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-                    });
-                }
-            },
-            false => {
-                let expected = *first / *second;
-                Circuit::scope(name, || {
-                    let mut candidate = a.clone();
-                    candidate /= b;
-                    assert_eq!(expected, candidate.eject_value(), "({} /= {})", a.eject_value(), b.eject_value());
-                    assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-                    assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
+                    assert_count!(DivUnchecked(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+                    assert_output_mode!(DivUnchecked(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
                 });
             }
         }
@@ -187,73 +130,67 @@ mod tests {
             let second = Uniform::rand(&mut rng);
 
             let name = format!("Div: a / b {}", i);
-            check_div(&name, &first, &second, mode_a, mode_b);
-            let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, &first, &second, mode_a, mode_b);
+            check_div_unchecked(&name, &first, &second, mode_a, mode_b);
 
             // Check division by one.
             let one = console::Field::<<Circuit as Environment>::Network>::one();
             let name = format!("Div By One {}", i);
-            check_div(&name, &first, &one, mode_a, mode_b);
-            let name = format!("DivAssign By One {}", i);
-            check_div_assign(&name, &first, &one, mode_a, mode_b);
+            check_div_unchecked(&name, &first, &one, mode_a, mode_b);
 
             // Check division by zero.
             let zero = console::Field::<<Circuit as Environment>::Network>::zero();
             let name = format!("Div By Zero {}", i);
-            check_div(&name, &first, &zero, mode_a, mode_b);
-            let name = format!("DivAssign By Zero {}", i);
-            check_div_assign(&name, &first, &zero, mode_a, mode_b);
+            check_div_unchecked(&name, &first, &zero, mode_a, mode_b);
         }
     }
 
     #[test]
-    fn test_constant_div_constant() {
+    fn test_constant_div_unchecked_constant() {
         run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_div_public() {
+    fn test_constant_div_unchecked_public() {
         run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_constant_div_private() {
+    fn test_constant_div_unchecked_private() {
         run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_public_div_constant() {
+    fn test_public_div_unchecked_constant() {
         run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_public_div_public() {
+    fn test_public_div_unchecked_public() {
         run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_public_div_private() {
+    fn test_public_div_unchecked_private() {
         run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
-    fn test_private_div_constant() {
+    fn test_private_div_unchecked_constant() {
         run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
-    fn test_private_div_public() {
+    fn test_private_div_unchecked_public() {
         run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
-    fn test_private_div_private() {
+    fn test_private_div_unchecked_private() {
         run_test(Mode::Private, Mode::Private);
     }
 
     #[test]
-    fn test_div_by_zero_fails() {
+    fn test_div_unchecked_by_zero_fails() {
         let zero = console::Field::<<Circuit as Environment>::Network>::zero();
         let one = console::Field::<<Circuit as Environment>::Network>::one();
 

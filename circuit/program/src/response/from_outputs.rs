@@ -265,16 +265,16 @@ mod tests {
 
     #[test]
     fn test_from_outputs_constant() -> Result<()> {
-        check_from_outputs(Mode::Constant, 20000, 6, 9400, 9400)
+        check_from_outputs(Mode::Constant, 26000, 6, 9500, 9500)
     }
 
     #[test]
     fn test_from_outputs_public() -> Result<()> {
-        check_from_outputs(Mode::Public, 19221, 6, 13772, 13821)
+        check_from_outputs(Mode::Public, 24781, 6, 13708, 13725)
     }
 
     #[test]
     fn test_from_outputs_private() -> Result<()> {
-        check_from_outputs(Mode::Private, 19221, 6, 13772, 13821)
+        check_from_outputs(Mode::Private, 24781, 6, 13708, 13725)
     }
 }

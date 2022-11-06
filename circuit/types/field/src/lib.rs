@@ -23,6 +23,7 @@ mod helpers;
 pub mod add;
 pub mod compare;
 pub mod div;
+pub mod div_unchecked;
 pub mod double;
 pub mod equal;
 pub mod inverse;
