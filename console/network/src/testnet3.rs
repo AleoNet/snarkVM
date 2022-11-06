@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_algorithms::snark::marlin;
 use snarkvm_console_algorithms::{
     Blake2Xs,
     Pedersen128,
@@ -132,12 +133,10 @@ impl Network for Testnet3 {
         snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
     }
 
-    /// Returns the universal SRS bytes.
-    fn universal_srs_bytes() -> &'static [u8] {
-        static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
-        UNIVERSAL_SRS
-            .get_or_try_init(snarkvm_parameters::testnet3::TrialSRS::load_bytes)
-            .expect("Failed to load the universal SRS bytes")
+    /// Returns the universal SRS.
+    fn universal_srs() -> &'static marlin::UniversalSRS<Self::PairingCurve> {
+        static UNIVERSAL_SRS: OnceCell<marlin::UniversalSRS<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        UNIVERSAL_SRS.get_or_try_init(marlin::UniversalSRS::load).expect("Failed to load the universal SRS")
     }
 
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.

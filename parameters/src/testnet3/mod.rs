@@ -60,9 +60,6 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 // Negative powers of beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
-// Trial
-// impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "resources/", "universal", "srs", "trial");
-
 macro_rules! impl_remote_keys {
     ($pname: ident, $vname: ident, $fname: tt) => {
         impl_remote!($pname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "prover");
