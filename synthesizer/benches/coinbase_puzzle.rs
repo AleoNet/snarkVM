@@ -49,11 +49,9 @@ fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Te
 
 #[cfg(feature = "setup")]
 fn coinbase_puzzle_trim(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
+    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
@@ -70,7 +68,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
+    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
@@ -89,7 +87,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
+    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };
@@ -118,7 +116,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config, rng).unwrap();
+    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     for degree in [(1 << 13) - 1] {
         let config = PuzzleConfig { degree };

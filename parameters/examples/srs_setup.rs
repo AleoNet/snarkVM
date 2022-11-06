@@ -79,8 +79,8 @@ pub fn usrs() -> Result<()> {
                 "size": file_size,
             });
 
-            write_metadata(&metadata_path.to_str().unwrap(), &metadata)?;
-            write_remote(&path.to_str().unwrap(), &checksum, &file_bytes)?;
+            write_metadata(metadata_path.to_str().unwrap(), &metadata)?;
+            write_remote(path.to_str().unwrap(), &checksum, &file_bytes)?;
         }
     }
 

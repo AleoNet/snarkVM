@@ -26,7 +26,7 @@ fn test_coinbase_puzzle() {
 
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config, &mut rng).unwrap();
+    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     for log_degree in 5..10 {
         let degree = (1 << log_degree) - 1;
@@ -59,7 +59,7 @@ fn test_edge_case_for_degree() {
     // Generate srs.
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
-    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config, &mut rng).unwrap();
+    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     // Generate PK and VK.
     let degree = (1 << 13) - 1; // IF YOU ADD `- 1` THIS WILL PASS

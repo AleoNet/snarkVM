@@ -125,10 +125,10 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?.to_vec();
         let powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
             .map(|i| {
-                pp.powers_of_beta_times_gamma_g().get(&i).copied().ok_or_else(|| PCError::HidingBoundToolarge {
-                    hiding_poly_degree: supported_hiding_bound,
-                    num_powers: 0,
-                })
+                pp.powers_of_beta_times_gamma_g()
+                    .get(&i)
+                    .copied()
+                    .ok_or(PCError::HidingBoundToolarge { hiding_poly_degree: supported_hiding_bound, num_powers: 0 })
             })
             .collect::<Result<Vec<_>, _>>()?;
 
