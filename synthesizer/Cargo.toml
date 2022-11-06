@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.9.0"
+version = "0.9.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -32,34 +32,33 @@ harness = false
 name = "coinbase_puzzle"
 path = "benches/coinbase_puzzle.rs"
 harness = false
-# cargo bench --bench coinbase_puzzle --features=setup
-required-features = ["setup"]
+required-features = [ "setup" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "0.9.0"
+version = "0.9.1"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.9.0"
+version = "0.9.1"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.9.0"
+version = "0.9.1"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.0"
+version = "0.9.1"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.0"
+version = "0.9.1"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.0"
+version = "0.9.1"
 default-features = false
 
 [dependencies.anyhow]
@@ -101,6 +100,11 @@ version = "1.0"
 [dependencies.tracing]
 version = "0.1"
 
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../console"
+features = [ "test" ]
+
 [dev-dependencies.bincode]
 version = "1.3"
 
@@ -115,4 +119,4 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 aleo-cli = [ ]
-setup = []
+setup = [ ]

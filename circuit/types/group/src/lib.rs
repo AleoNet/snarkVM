@@ -56,12 +56,61 @@ impl<E: Environment> Inject for Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
-        // Initialize the x- and y-coordinate field elements.
-        let (x, y) = group.to_xy_coordinate();
-        let x = Field::new(mode, x);
-        let y = Field::new(mode, y);
+        // Inject `point_inv` from the `(x_inv, y_inv)` coordinates as field elements.
+        let point_inv = {
+            // Compute the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)`.
+            let (x_inv, y_inv) = group.div_by_cofactor().to_xy_coordinates();
+            // If the mode is `Public`, then allocate them privately, as we will allocate a `Public` point at the end.
+            match mode.is_public() {
+                true => Self { x: Field::new(Mode::Private, x_inv), y: Field::new(Mode::Private, y_inv) },
+                false => Self { x: Field::new(mode, x_inv), y: Field::new(mode, y_inv) },
+            }
+        };
 
-        Self::from_xy_coordinates(x, y)
+        // Ensure `point_inv` is on the curve.
+        point_inv.enforce_on_curve();
+
+        // Return the `point` as `point_inv * COFACTOR`.
+        let point = point_inv.mul_by_cofactor();
+
+        if mode.is_public() {
+            // Inject the point as `Mode::Public`.
+            let public_point = {
+                // Initialize the (x, y) coordinates of the point as field elements.
+                let (x, y) = group.to_xy_coordinates();
+                // Inject the `(x, y)` coordinates as field elements.
+                Self { x: Field::new(mode, x), y: Field::new(mode, y) }
+            };
+
+            // Ensure the `point == public_point`.
+            E::assert_eq(&point, &public_point);
+
+            // Return the public point.
+            public_point
+        } else {
+            point
+        }
+    }
+}
+
+impl<E: Environment> Group<E> {
+    /// Checks `(x, y)` is on the curve.
+    ///
+    /// Ensure ax^2 + y^2 = 1 + dx^2y^2
+    /// by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
+    pub fn enforce_on_curve(&self) {
+        let a = Field::constant(console::Field::new(E::EDWARDS_A));
+        let d = Field::constant(console::Field::new(E::EDWARDS_D));
+
+        let x2 = self.x.square();
+        let y2 = self.y.square();
+
+        let first = y2;
+        let second = (d * &x2) - &Field::one();
+        let third = (a * x2) - Field::one();
+
+        // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
+        E::enforce(|| (first, second, third));
     }
 }
 
@@ -76,7 +125,7 @@ impl<E: Environment> Eject for Group<E> {
 
     /// Ejects the group as a constant group element.
     fn eject_value(&self) -> Self::Primitive {
-        console::Group::from_xy_coordinates((self.x.eject_value(), self.y.eject_value()))
+        console::Group::from_xy_coordinates_unchecked(self.x.eject_value(), self.y.eject_value())
     }
 }
 
@@ -179,7 +228,7 @@ mod tests {
             Circuit::scope(&format!("Constant {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(4, 0, 0, 0);
+                assert_scope!(10, 0, 0, 0);
             });
         }
 
@@ -191,7 +240,7 @@ mod tests {
             Circuit::scope(&format!("Public {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 2, 2, 3);
+                assert_scope!(4, 2, 14, 14);
             });
         }
 
@@ -203,7 +252,7 @@ mod tests {
             Circuit::scope(&format!("Private {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 0, 4, 3);
+                assert_scope!(4, 0, 14, 13);
             });
         }
     }

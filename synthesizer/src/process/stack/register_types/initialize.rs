@@ -95,9 +95,9 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type is a literal (for now).
                 match register_type {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Interface(..)) => {
+                    RegisterType::Plaintext(PlaintextType::Struct(..)) => {
                         bail!(
-                            "'{}/{}' attempts to pass an 'interface' into 'finalize'",
+                            "'{}/{}' attempts to pass an 'struct' into 'finalize'",
                             stack.program_id(),
                             function.name()
                         );
@@ -181,10 +181,10 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                // Ensure the interface is defined in the program.
-                if !stack.program().contains_interface(interface_name) {
-                    bail!("Interface '{interface_name}' in '{}' is not defined.", stack.program_id())
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                // Ensure the struct is defined in the program.
+                if !stack.program().contains_struct(struct_name) {
+                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
             RegisterType::Record(identifier) => {
@@ -227,10 +227,10 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                // Ensure the interface is defined in the program.
-                if !stack.program().contains_interface(interface_name) {
-                    bail!("Interface '{interface_name}' in '{}' is not defined.", stack.program_id())
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                // Ensure the struct is defined in the program.
+                if !stack.program().contains_struct(struct_name) {
+                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
             RegisterType::Record(identifier) => {
@@ -402,15 +402,15 @@ impl<N: Network> RegisterTypes<N> {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         bail!("Casting to literal is currently unsupported")
                     }
-                    RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                        // Ensure the interface name exists in the program.
-                        if !stack.program().contains_interface(interface_name) {
-                            bail!("Interface '{interface_name}' is not defined.")
+                    RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                        // Ensure the struct name exists in the program.
+                        if !stack.program().contains_struct(struct_name) {
+                            bail!("Struct '{struct_name}' is not defined.")
                         }
-                        // Retrieve the interface.
-                        let interface = stack.program().get_interface(interface_name)?;
-                        // Ensure the operand types match the interface.
-                        self.matches_interface(stack, instruction.operands(), &interface)?;
+                        // Retrieve the struct.
+                        let struct_ = stack.program().get_struct(struct_name)?;
+                        // Ensure the operand types match the struct.
+                        self.matches_struct(stack, instruction.operands(), &struct_)?;
                     }
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.

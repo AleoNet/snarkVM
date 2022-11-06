@@ -17,21 +17,16 @@
 mod metadata;
 pub use metadata::*;
 
-mod leaf;
-pub use leaf::*;
-
-mod merkle;
-pub use merkle::*;
-
 mod bytes;
 mod genesis;
+mod merkle;
 mod serialize;
 mod string;
 
 use crate::block::Transactions;
 use console::{
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
+    program::{HeaderLeaf, HeaderPath, HeaderTree, HEADER_DEPTH},
     types::Field,
 };
 

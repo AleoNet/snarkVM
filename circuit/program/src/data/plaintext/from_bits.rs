@@ -44,7 +44,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Interface
+        // Struct
         else if variant == [false, true] {
             let num_members = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
             counter += 8;
@@ -70,7 +70,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let cache = OnceCell::new();
             match cache.set(bits_le.to_vec()) {
                 // Return the member.
-                Ok(_) => Self::Interface(members, cache),
+                Ok(_) => Self::Struct(members, cache),
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
@@ -105,7 +105,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Interface
+        // Struct
         else if variant == [false, true] {
             let num_members = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
             counter += 8;
@@ -131,7 +131,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let cache = OnceCell::new();
             match cache.set(bits_be.to_vec()) {
                 // Return the member.
-                Ok(_) => Self::Interface(members, cache),
+                Ok(_) => Self::Struct(members, cache),
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }

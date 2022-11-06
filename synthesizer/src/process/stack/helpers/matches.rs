@@ -209,52 +209,52 @@ impl<N: Network> Stack<N> {
                         false => bail!("'{plaintext_type}' is invalid: expected {literal_type}, found {literal}"),
                     }
                 }
-                // If `plaintext` is an interface, this is a mismatch.
-                Plaintext::Interface(..) => bail!("'{plaintext_type}' is invalid: expected literal, found interface"),
+                // If `plaintext` is a struct, this is a mismatch.
+                Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected literal, found struct"),
             },
-            PlaintextType::Interface(interface_name) => {
-                // Ensure the interface name is valid.
-                ensure!(!Program::is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
+            PlaintextType::Struct(struct_name) => {
+                // Ensure the struct name is valid.
+                ensure!(!Program::is_reserved_keyword(struct_name), "Struct '{struct_name}' is reserved");
 
-                // Retrieve the interface from the program.
-                let interface = match self.program().get_interface(interface_name) {
-                    Ok(interface) => interface,
-                    Err(..) => bail!("Interface '{interface_name}' is not defined in the program"),
+                // Retrieve the struct from the program.
+                let struct_ = match self.program().get_struct(struct_name) {
+                    Ok(struct_) => struct_,
+                    Err(..) => bail!("Struct '{struct_name}' is not defined in the program"),
                 };
 
-                // Ensure the interface name matches.
-                if interface.name() != interface_name {
-                    bail!("Expected interface '{interface_name}', found interface '{}'", interface.name())
+                // Ensure the struct name matches.
+                if struct_.name() != struct_name {
+                    bail!("Expected struct '{struct_name}', found struct '{}'", struct_.name())
                 }
 
-                // Retrieve the interface members.
+                // Retrieve the struct members.
                 let members = match plaintext {
-                    Plaintext::Literal(..) => bail!("'{interface_name}' is invalid: expected interface, found literal"),
-                    Plaintext::Interface(members, ..) => members,
+                    Plaintext::Literal(..) => bail!("'{struct_name}' is invalid: expected struct, found literal"),
+                    Plaintext::Struct(members, ..) => members,
                 };
 
-                // Ensure the number of interface members does not exceed the maximum.
+                // Ensure the number of struct members does not exceed the maximum.
                 let num_members = members.len();
                 ensure!(
                     num_members <= N::MAX_DATA_ENTRIES,
-                    "'{interface_name}' cannot exceed {} entries",
+                    "'{struct_name}' cannot exceed {} entries",
                     N::MAX_DATA_ENTRIES
                 );
 
-                // Ensure the number of interface members match.
-                let expected_num_members = interface.members().len();
+                // Ensure the number of struct members match.
+                let expected_num_members = struct_.members().len();
                 if expected_num_members != num_members {
-                    bail!("'{interface_name}' expected {expected_num_members} members, found {num_members} members")
+                    bail!("'{struct_name}' expected {expected_num_members} members, found {num_members} members")
                 }
 
-                // Ensure the interface members match, in the same order.
+                // Ensure the struct members match, in the same order.
                 for (i, ((expected_name, expected_type), (member_name, member))) in
-                    interface.members().iter().zip_eq(members.iter()).enumerate()
+                    struct_.members().iter().zip_eq(members.iter()).enumerate()
                 {
                     // Ensure the member name matches.
                     if expected_name != member_name {
                         bail!(
-                            "Member '{i}' in '{interface_name}' is incorrect: expected '{expected_name}', found '{member_name}'"
+                            "Member '{i}' in '{struct_name}' is incorrect: expected '{expected_name}', found '{member_name}'"
                         )
                     }
                     // Ensure the member name is valid.

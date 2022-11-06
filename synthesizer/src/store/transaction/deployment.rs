@@ -16,12 +16,12 @@
 
 use crate::{
     atomic_write_batch,
-    block::{AdditionalFee, Transaction},
+    block::Transaction,
     cow_to_cloned,
     cow_to_copied,
-    process::Deployment,
+    process::{Deployment, Fee},
     program::Program,
-    snark::{Certificate, VerifyingKey},
+    snark::{Certificate, Proof, VerifyingKey},
     store::{
         helpers::{memory_map::MemoryMap, Map, MapRead},
         TransitionMemory,
@@ -53,8 +53,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type VerifyingKeyMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     /// The mapping of `(program ID, function name, edition)` to `certificate`.
     type CertificateMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
-    /// The mapping of `transaction ID` to `additional fee ID`.
-    type AdditionalFeeMap: for<'a> Map<'a, N::TransactionID, N::TransitionID>;
+    /// The mapping of `transaction ID` to `(fee transition ID, global state root, inclusion proof)`.
+    type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
 
@@ -73,8 +73,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn verifying_key_map(&self) -> &Self::VerifyingKeyMap;
     /// Returns the certificate map.
     fn certificate_map(&self) -> &Self::CertificateMap;
-    /// Returns the additional fee map.
-    fn additional_fee_map(&self) -> &Self::AdditionalFeeMap;
+    /// Returns the fee map.
+    fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
@@ -91,7 +91,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.program_map().start_atomic();
         self.verifying_key_map().start_atomic();
         self.certificate_map().start_atomic();
-        self.additional_fee_map().start_atomic();
+        self.fee_map().start_atomic();
         self.transition_store().start_atomic();
     }
 
@@ -103,7 +103,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             || self.program_map().is_atomic_in_progress()
             || self.verifying_key_map().is_atomic_in_progress()
             || self.certificate_map().is_atomic_in_progress()
-            || self.additional_fee_map().is_atomic_in_progress()
+            || self.fee_map().is_atomic_in_progress()
             || self.transition_store().is_atomic_in_progress()
     }
 
@@ -115,7 +115,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.program_map().abort_atomic();
         self.verifying_key_map().abort_atomic();
         self.certificate_map().abort_atomic();
-        self.additional_fee_map().abort_atomic();
+        self.fee_map().abort_atomic();
         self.transition_store().abort_atomic();
     }
 
@@ -127,17 +127,15 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.program_map().finish_atomic()?;
         self.verifying_key_map().finish_atomic()?;
         self.certificate_map().finish_atomic()?;
-        self.additional_fee_map().finish_atomic()?;
+        self.fee_map().finish_atomic()?;
         self.transition_store().finish_atomic()
     }
 
     /// Stores the given `deployment transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a deployment.
-        let (transaction_id, deployment, additional_fee) = match transaction {
-            Transaction::Deploy(transaction_id, deployment, additional_fee) => {
-                (transaction_id, deployment, additional_fee)
-            }
+        let (transaction_id, deployment, fee) = match transaction {
+            Transaction::Deploy(transaction_id, deployment, fee) => (transaction_id, deployment, fee),
             Transaction::Execute(..) => {
                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
             }
@@ -180,10 +178,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 self.certificate_map().insert((program_id, *function_name, edition), certificate.clone())?;
             }
 
-            // Store the additional fee ID.
-            self.additional_fee_map().insert(*transaction_id, *additional_fee.id())?;
-            // Store the additional fee transition.
-            self.transition_store().insert(additional_fee.clone())?;
+            // Store the fee.
+            self.fee_map().insert(
+                *transaction_id,
+                (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
+            )?;
+            // Store the fee transition.
+            self.transition_store().insert(fee)?;
 
             Ok(())
         });
@@ -208,10 +209,10 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             Some(program) => cow_to_cloned!(program),
             None => bail!("Failed to locate program '{program_id}' for transaction '{transaction_id}'"),
         };
-        // Retrieve the additional fee ID.
-        let additional_fee_id = match self.additional_fee_map().get(transaction_id)? {
-            Some(additional_fee_id) => cow_to_copied!(additional_fee_id),
-            None => bail!("Failed to locate the additional fee ID for transaction '{transaction_id}'"),
+        // Retrieve the fee transition ID.
+        let (transition_id, _, _) = match self.fee_map().get(transaction_id)? {
+            Some(fee_id) => cow_to_cloned!(fee_id),
+            None => bail!("Failed to locate the fee transition ID for transaction '{transaction_id}'"),
         };
 
         atomic_write_batch!(self, {
@@ -233,10 +234,10 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 self.certificate_map().remove(&(program_id, *function_name, edition))?;
             }
 
-            // Remove the additional fee ID.
-            self.additional_fee_map().remove(transaction_id)?;
-            // Remove the additional fee transition.
-            self.transition_store().remove(&additional_fee_id)?;
+            // Remove the fee.
+            self.fee_map().remove(transaction_id)?;
+            // Remove the fee transition.
+            self.transition_store().remove(&transition_id)?;
 
             Ok(())
         });
@@ -366,17 +367,17 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         Ok(Some(Deployment::new(edition, program, verifying_keys)?))
     }
 
-    /// Returns the additional fee for the given `transaction ID`.
-    fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<AdditionalFee<N>>> {
-        // Retrieve the additional fee ID.
-        let additional_fee_id = match self.additional_fee_map().get(transaction_id)? {
-            Some(additional_fee_id) => cow_to_copied!(additional_fee_id),
+    /// Returns the fee for the given `transaction ID`.
+    fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
+        // Retrieve the fee transition ID.
+        let (fee_transition_id, global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
+            Some(fee) => cow_to_cloned!(fee),
             None => return Ok(None),
         };
-        // Retrieve the additional fee transition.
-        match self.transition_store().get_transition(&additional_fee_id)? {
-            Some(transition) => Ok(Some(transition)),
-            None => bail!("Failed to locate the additional fee transition for transaction '{transaction_id}'"),
+        // Retrieve the fee transition.
+        match self.transition_store().get_transition(&fee_transition_id)? {
+            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, inclusion_proof))),
+            None => bail!("Failed to locate the fee transition for transaction '{transaction_id}'"),
         }
     }
 
@@ -387,14 +388,14 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             Some(deployment) => deployment,
             None => return Ok(None),
         };
-        // Retrieve the additional fee.
-        let additional_fee = match self.get_additional_fee(transaction_id)? {
-            Some(additional_fee) => additional_fee,
-            None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
+        // Retrieve the fee.
+        let fee = match self.get_fee(transaction_id)? {
+            Some(fee) => fee,
+            None => bail!("Failed to get the fee for transaction '{transaction_id}'"),
         };
 
         // Construct the deployment transaction.
-        let deployment_transaction = Transaction::from_deployment(deployment, additional_fee)?;
+        let deployment_transaction = Transaction::from_deployment(deployment, fee)?;
         // Ensure the transaction ID matches.
         match *transaction_id == deployment_transaction.id() {
             true => Ok(Some(deployment_transaction)),
@@ -405,6 +406,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
 /// An in-memory deployment storage.
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct DeploymentMemory<N: Network> {
     /// The ID map.
     id_map: MemoryMap<N::TransactionID, ProgramID<N>>,
@@ -418,8 +420,8 @@ pub struct DeploymentMemory<N: Network> {
     verifying_key_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>,
     /// The certificate map.
     certificate_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>,
-    /// The additional fee map.
-    additional_fee_map: MemoryMap<N::TransactionID, N::TransitionID>,
+    /// The fee map.
+    fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
     /// The transition store.
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
@@ -432,7 +434,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
     type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
-    type AdditionalFeeMap = MemoryMap<N::TransactionID, N::TransitionID>;
+    type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the deployment storage.
@@ -444,7 +446,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             program_map: MemoryMap::default(),
             verifying_key_map: MemoryMap::default(),
             certificate_map: MemoryMap::default(),
-            additional_fee_map: MemoryMap::default(),
+            fee_map: MemoryMap::default(),
             transition_store,
         })
     }
@@ -479,9 +481,9 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
         &self.certificate_map
     }
 
-    /// Returns the additional fee map.
-    fn additional_fee_map(&self) -> &Self::AdditionalFeeMap {
-        &self.additional_fee_map
+    /// Returns the fee map.
+    fn fee_map(&self) -> &Self::FeeMap {
+        &self.fee_map
     }
 
     /// Returns the transition store.
@@ -593,9 +595,9 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         self.storage.get_certificate(program_id, function_name)
     }
 
-    /// Returns the additional fee for the given `transaction ID`.
-    pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<AdditionalFee<N>>> {
-        self.storage.get_additional_fee(transaction_id)
+    /// Returns the fee for the given `transaction ID`.
+    pub fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
+        self.storage.get_fee(transaction_id)
     }
 }
 

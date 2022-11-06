@@ -44,7 +44,7 @@ impl<E: Environment, I: IntegerType> RemWrapped<Self> for Integer<E, I> {
                 } else {
                     // Check that `other` is not zero.
                     // Note that all other implementations of `rem_wrapped` and `rem_checked` invoke this check.
-                    E::assert(other.is_not_equal(&Self::zero()));
+                    E::assert_neq(other, &Self::zero());
 
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {

@@ -33,6 +33,9 @@ pub use request::*;
 mod response;
 pub use response::*;
 
+mod state_path;
+pub use state_path::*;
+
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean};
 

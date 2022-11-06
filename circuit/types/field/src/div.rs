@@ -57,36 +57,15 @@ impl<E: Environment> DivAssign<Self> for Field<E> {
 }
 
 impl<E: Environment> DivAssign<&Self> for Field<E> {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn div_assign(&mut self, other: &Self) {
         match other.is_constant() {
             // If `other` is a constant and zero, halt since the inverse of zero is undefined.
             true if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
-            // If `other` is a constant and non-zero, we can perform the multiplication and inversion
-            // without paying for any private variables or constraints.
-            // TODO: Can the case where self is constant and other is not constant be optimized in the same way?
-            true => {
-                *self *= other.inverse();
-            }
-            // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
-            // and ensuring that `quotient * other == self`.
-            false => {
-                // Enforce that `other` is not zero.
-                E::assert(!other.is_zero());
-
-                // Construct the quotient as a witness.
-                let quotient = witness!(|self, other| {
-                    // Note: This band-aid was added to prevent a panic when `other` is zero.
-                    let other = if other.is_zero() { console::Field::one() } else { other };
-                    self / other
-                });
-
-                // Ensure the quotient is correct by enforcing:
-                // `quotient * other == self`.
-                E::enforce(|| (&quotient, other, &*self));
-
-                // Assign the quotient to `self`.
-                *self = quotient;
-            }
+            // If `other` is a constant and non-zero, we can perform multiplication and inversion for 0 constraints.
+            // If `self` is a constant, we can perform multiplication and inversion for 1 constraint.
+            // Otherwise, we can perform multiplication and inversion for 2 constraints.
+            _ => *self *= other.inverse(),
         }
     }
 }
@@ -97,7 +76,8 @@ impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> 
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
-            (_, _) => Count::is(0, 0, 3, 5),
+            (Mode::Constant, _) => Count::is(0, 0, 1, 1),
+            (_, _) => Count::is(0, 0, 2, 2),
         }
     }
 }

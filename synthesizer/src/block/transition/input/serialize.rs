@@ -48,12 +48,11 @@ impl<N: Network> Serialize for Input<N> {
                     }
                     input.end()
                 }
-                Self::Record(id, tag, origin) => {
-                    let mut input = serializer.serialize_struct("Input", 4)?;
+                Self::Record(id, tag) => {
+                    let mut input = serializer.serialize_struct("Input", 3)?;
                     input.serialize_field("type", "record")?;
                     input.serialize_field("id", &id)?;
                     input.serialize_field("tag", &tag)?;
-                    input.serialize_field("origin", &origin)?;
                     input.end()
                 }
                 Self::ExternalRecord(id) => {
@@ -92,11 +91,9 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("record") => Input::Record(
-                        id,
-                        serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["origin"].take()).map_err(de::Error::custom)?,
-                    ),
+                    Some("record") => {
+                        Input::Record(id, serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?)
+                    }
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
                 };

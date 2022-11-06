@@ -62,7 +62,7 @@ mod tests {
         "u128",
         "scalar",
         "string",
-        // Interface
+        // Struct
         "signature",
         "message",
         "item",

@@ -37,7 +37,7 @@ mod serialize;
 
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, Interface, PlaintextType, ProgramID, RecordType},
+    program::{EntryType, Identifier, PlaintextType, ProgramID, RecordType, Struct},
 };
 
 use indexmap::IndexMap;
@@ -46,8 +46,8 @@ use indexmap::IndexMap;
 enum ProgramDefinition {
     /// A program mapping.
     Mapping,
-    /// A program interface.
-    Interface,
+    /// A program struct.
+    Struct,
     /// A program record.
     Record,
     /// A program closure.
@@ -66,8 +66,8 @@ pub struct Program<N: Network> {
     identifiers: IndexMap<Identifier<N>, ProgramDefinition>,
     /// A map of the declared mappings for the program.
     mappings: IndexMap<Identifier<N>, Mapping<N>>,
-    /// A map of the declared interfaces for the program.
-    interfaces: IndexMap<Identifier<N>, Interface<N>>,
+    /// A map of the declared structs for the program.
+    structs: IndexMap<Identifier<N>, Struct<N>>,
     /// A map of the declared record types for the program.
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared closures for the program.
@@ -90,7 +90,7 @@ impl<N: Network> Program<N> {
             imports: IndexMap::new(),
             identifiers: IndexMap::new(),
             mappings: IndexMap::new(),
-            interfaces: IndexMap::new(),
+            structs: IndexMap::new(),
             records: IndexMap::new(),
             closures: IndexMap::new(),
             functions: IndexMap::new(),
@@ -107,12 +107,6 @@ program credits.aleo;
 record credits:
     owner as address.private;
     gates as u64.private;
-
-function genesis:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as credits.record;
-    output r2 as credits.record;
 
 function mint:
     input r0 as address.private;
@@ -191,9 +185,9 @@ function fee:
         self.mappings.contains_key(name)
     }
 
-    /// Returns `true` if the program contains a interface with the given name.
-    pub fn contains_interface(&self, name: &Identifier<N>) -> bool {
-        self.interfaces.contains_key(name)
+    /// Returns `true` if the program contains a struct with the given name.
+    pub fn contains_struct(&self, name: &Identifier<N>) -> bool {
+        self.structs.contains_key(name)
     }
 
     /// Returns `true` if the program contains a record with the given name.
@@ -221,17 +215,16 @@ function fee:
         Ok(mapping)
     }
 
-    /// Returns the interface with the given name.
-    pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
-        // Attempt to retrieve the interface.
-        let interface =
-            self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))?;
-        // Ensure the interface name matches.
-        ensure!(interface.name() == name, "Expected interface '{name}', but found interface '{}'", interface.name());
-        // Ensure the interface contains members.
-        ensure!(!interface.members().is_empty(), "Interface '{name}' is missing members.");
-        // Return the interface.
-        Ok(interface)
+    /// Returns the struct with the given name.
+    pub fn get_struct(&self, name: &Identifier<N>) -> Result<Struct<N>> {
+        // Attempt to retrieve the struct.
+        let struct_ = self.structs.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
+        // Ensure the struct name matches.
+        ensure!(struct_.name() == name, "Expected struct '{name}', but found struct '{}'", struct_.name());
+        // Ensure the struct contains members.
+        ensure!(!struct_.members().is_empty(), "Struct '{name}' is missing members.");
+        // Return the struct.
+        Ok(struct_)
     }
 
     /// Returns the record with the given name.
@@ -338,52 +331,52 @@ impl<N: Network> Program<N> {
         Ok(())
     }
 
-    /// Adds a new interface to the program.
+    /// Adds a new struct to the program.
     ///
     /// # Errors
-    /// This method will halt if the interface was previously added.
-    /// This method will halt if the interface name is already in use in the program.
-    /// This method will halt if the interface name is a reserved opcode or keyword.
-    /// This method will halt if any interfaces in the interface's members are not already defined.
+    /// This method will halt if the struct was previously added.
+    /// This method will halt if the struct name is already in use in the program.
+    /// This method will halt if the struct name is a reserved opcode or keyword.
+    /// This method will halt if any structs in the struct's members are not already defined.
     #[inline]
-    fn add_interface(&mut self, interface: Interface<N>) -> Result<()> {
-        // Retrieve the interface name.
-        let interface_name = *interface.name();
+    fn add_struct(&mut self, struct_: Struct<N>) -> Result<()> {
+        // Retrieve the struct name.
+        let struct_name = *struct_.name();
 
-        // Ensure the interface name is new.
-        ensure!(self.is_unique_name(&interface_name), "'{interface_name}' is already in use.");
-        // Ensure the interface name is not a reserved opcode.
-        ensure!(!Self::is_reserved_opcode(&interface_name.to_string()), "'{interface_name}' is a reserved opcode.");
-        // Ensure the interface name is not a reserved keyword.
-        ensure!(!Self::is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
+        // Ensure the struct name is new.
+        ensure!(self.is_unique_name(&struct_name), "'{struct_name}' is already in use.");
+        // Ensure the struct name is not a reserved opcode.
+        ensure!(!Self::is_reserved_opcode(&struct_name.to_string()), "'{struct_name}' is a reserved opcode.");
+        // Ensure the struct name is not a reserved keyword.
+        ensure!(!Self::is_reserved_keyword(&struct_name), "'{struct_name}' is a reserved keyword.");
 
-        // Ensure the interface contains members.
-        ensure!(!interface.members().is_empty(), "Interface '{interface_name}' is missing members.");
+        // Ensure the struct contains members.
+        ensure!(!struct_.members().is_empty(), "Struct '{struct_name}' is missing members.");
 
-        // Ensure all interface members are well-formed.
+        // Ensure all struct members are well-formed.
         // Note: This design ensures cyclic references are not possible.
-        for (identifier, plaintext_type) in interface.members() {
+        for (identifier, plaintext_type) in struct_.members() {
             // Ensure the member name is not a reserved keyword.
             ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
                 PlaintextType::Literal(..) => continue,
-                PlaintextType::Interface(member_identifier) => {
-                    // Ensure the member interface name exists in the program.
-                    if !self.interfaces.contains_key(member_identifier) {
-                        bail!("'{member_identifier}' in interface '{}' is not defined.", interface_name)
+                PlaintextType::Struct(member_identifier) => {
+                    // Ensure the member struct name exists in the program.
+                    if !self.structs.contains_key(member_identifier) {
+                        bail!("'{member_identifier}' in struct '{}' is not defined.", struct_name)
                     }
                 }
             }
         }
 
-        // Add the interface name to the identifiers.
-        if self.identifiers.insert(interface_name, ProgramDefinition::Interface).is_some() {
-            bail!("'{}' already exists in the program.", interface_name)
+        // Add the struct name to the identifiers.
+        if self.identifiers.insert(struct_name, ProgramDefinition::Struct).is_some() {
+            bail!("'{}' already exists in the program.", struct_name)
         }
-        // Add the interface to the program.
-        if self.interfaces.insert(interface_name, interface).is_some() {
-            bail!("'{}' already exists in the program.", interface_name)
+        // Add the struct to the program.
+        if self.structs.insert(struct_name, struct_).is_some() {
+            bail!("'{}' already exists in the program.", struct_name)
         }
         Ok(())
     }
@@ -422,9 +415,9 @@ impl<N: Network> Program<N> {
                 | EntryType::Public(plaintext_type)
                 | EntryType::Private(plaintext_type) => match plaintext_type {
                     PlaintextType::Literal(..) => continue,
-                    PlaintextType::Interface(identifier) => {
-                        if !self.interfaces.contains_key(identifier) {
-                            bail!("Interface '{identifier}' in record '{record_name}' is not defined.")
+                    PlaintextType::Struct(identifier) => {
+                        if !self.structs.contains_key(identifier) {
+                            bail!("Struct '{identifier}' in record '{record_name}' is not defined.")
                         }
                     }
                 },
@@ -505,6 +498,9 @@ impl<N: Network> Program<N> {
         // Retrieve the function name.
         let function_name = *function.name();
 
+        // Ensure the program has not exceeded the maximum number of functions.
+        ensure!(self.functions.len() < N::MAX_FUNCTIONS, "Program exceeds the maximum number of functions");
+
         // Ensure the function name is new.
         ensure!(self.is_unique_name(&function_name), "'{function_name}' is already in use.");
         // Ensure the function name is not a reserved opcode.
@@ -569,7 +565,7 @@ impl<N: Network> Program<N> {
         "gates",
         // Program
         "function",
-        "interface",
+        "struct",
         "closure",
         "program",
         "aleo",
@@ -623,8 +619,7 @@ impl<N: Network> Program<N> {
     /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
     #[inline]
     pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        (program_id.to_string() == "credits.aleo" && function_name.to_string() == "genesis")
-            || (program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint")
+        program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint"
     }
 }
 
@@ -639,7 +634,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Execution};
+    use crate::{CallStack, Execution, Inclusion};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},
@@ -678,11 +673,11 @@ mapping message:
     }
 
     #[test]
-    fn test_program_interface() -> Result<()> {
-        // Create a new interface.
-        let interface = Interface::<CurrentNetwork>::from_str(
+    fn test_program_struct() -> Result<()> {
+        // Create a new struct.
+        let struct_ = Struct::<CurrentNetwork>::from_str(
             r"
-interface message:
+struct message:
     first as field;
     second as field;",
         )?;
@@ -690,12 +685,12 @@ interface message:
         // Initialize a new program.
         let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
-        // Add the interface to the program.
-        program.add_interface(interface.clone())?;
-        // Ensure the interface was added.
-        assert!(program.contains_interface(&Identifier::from_str("message")?));
-        // Ensure the retrieved interface matches.
-        assert_eq!(interface, program.get_interface(&Identifier::from_str("message")?)?);
+        // Add the struct to the program.
+        program.add_struct(struct_.clone())?;
+        // Ensure the struct was added.
+        assert!(program.contains_struct(&Identifier::from_str("message")?));
+        // Ensure the retrieved struct matches.
+        assert_eq!(struct_, program.get_struct(&Identifier::from_str("message")?)?);
 
         Ok(())
     }
@@ -878,13 +873,13 @@ function swap:
     }
 
     #[test]
-    fn test_program_evaluate_interface_and_function() {
+    fn test_program_evaluate_struct_and_function() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
 program example.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 
@@ -1119,9 +1114,9 @@ function compute:
 
         // Re-run to ensure state continues to work.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        let response = stack
-            .execute_function::<CurrentAleo, _>(CallStack::execute(authorization, execution).unwrap(), rng)
-            .unwrap();
+        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        let call_stack = CallStack::execute(authorization, execution, inclusion).unwrap();
+        let response = stack.execute_function::<CurrentAleo, _>(call_stack, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);

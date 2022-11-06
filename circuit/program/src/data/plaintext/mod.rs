@@ -35,8 +35,8 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Sc
 pub enum Plaintext<A: Aleo> {
     /// A plaintext literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
-    /// A plaintext interface.
-    Interface(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
+    /// A plaintext struct.
+    Struct(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
 }
 
 #[cfg(console)]
@@ -47,9 +47,7 @@ impl<A: Aleo> Inject for Plaintext<A> {
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
-            Self::Primitive::Interface(interface, _) => {
-                Self::Interface(Inject::new(mode, interface), Default::default())
-            }
+            Self::Primitive::Struct(struct_, _) => Self::Struct(Inject::new(mode, struct_), Default::default()),
         }
     }
 }
@@ -62,7 +60,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_mode(&self) -> Mode {
         match self {
             Self::Literal(literal, _) => literal.eject_mode(),
-            Self::Interface(interface, _) => interface
+            Self::Struct(struct_, _) => struct_
                 .iter()
                 .map(|(identifier, value)| (identifier, value).eject_mode())
                 .collect::<Vec<_>>()
@@ -74,10 +72,9 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_value(&self) -> Self::Primitive {
         match self {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
-            Self::Interface(interface, _) => console::Plaintext::Interface(
-                interface.iter().map(|pair| pair.eject_value()).collect(),
-                Default::default(),
-            ),
+            Self::Struct(struct_, _) => {
+                console::Plaintext::Struct(struct_.iter().map(|pair| pair.eject_value()).collect(), Default::default())
+            }
         }
     }
 }
@@ -123,7 +120,7 @@ mod tests {
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Plaintext::<Circuit>::Interface(
+        let value = Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![
                     (
@@ -150,7 +147,7 @@ mod tests {
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Plaintext::<Circuit>::Interface(
+        let value = Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![
                     (
@@ -162,7 +159,7 @@ mod tests {
                     ),
                     (
                         Identifier::new(Mode::Private, "b".try_into()?),
-                        Plaintext::<Circuit>::Interface(
+                        Plaintext::<Circuit>::Struct(
                             IndexMap::from_iter(
                                 vec![
                                     (
@@ -174,7 +171,7 @@ mod tests {
                                     ),
                                     (
                                         Identifier::new(Mode::Private, "d".try_into()?),
-                                        Plaintext::<Circuit>::Interface(
+                                        Plaintext::<Circuit>::Struct(
                                             IndexMap::from_iter(
                                                 vec![
                                                     (

@@ -21,15 +21,15 @@ mod serialize;
 use crate::{Identifier, LiteralType};
 use snarkvm_console_network::prelude::*;
 
-/// A `ValueType` defines the type parameter for an entry in an `Interface`.
+/// A `ValueType` defines the type parameter for an entry in an `Struct`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PlaintextType<N: Network> {
     /// A literal type contains its type name.
     /// The format of the type is `<type_name>`.
     Literal(LiteralType),
-    /// An interface type contains its identifier.
+    /// An struct type contains its identifier.
     /// The format of the type is `<identifier>`.
-    Interface(Identifier<N>),
+    Struct(Identifier<N>),
 }
 
 impl<N: Network> From<LiteralType> for PlaintextType<N> {
@@ -40,8 +40,8 @@ impl<N: Network> From<LiteralType> for PlaintextType<N> {
 }
 
 impl<N: Network> From<Identifier<N>> for PlaintextType<N> {
-    /// Initializes a plaintext type from an interface type.
-    fn from(interface: Identifier<N>) -> Self {
-        PlaintextType::Interface(interface)
+    /// Initializes a plaintext type from a struct type.
+    fn from(struct_: Identifier<N>) -> Self {
+        PlaintextType::Struct(struct_)
     }
 }

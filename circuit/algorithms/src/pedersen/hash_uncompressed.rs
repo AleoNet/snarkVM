@@ -62,26 +62,22 @@ impl<E: Environment, const NUM_BITS: u8> Metrics<dyn HashUncompressed<Input = Bo
             .fold(Count::zero(), |cumulative, count| cumulative + count);
 
         // Determine the modes of each of the group elements.
-        let modes = case
-            .iter()
-            .map(|mode| {
-                // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-                // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
-                match mode.is_constant() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
-                }
-            })
-            .collect::<Vec<_>>();
+        let mut modes = case.iter().map(|mode| {
+            // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
+            // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
+            match mode.is_constant() {
+                true => Mode::Constant,
+                false => Mode::Private,
+            }
+        });
 
         // Calculate the cost of summing the group elements.
-        let sum_counts = match modes.split_first() {
-            Some((start_mode, modes)) => {
+        let sum_counts = match modes.next() {
+            Some(start_mode) => {
                 modes
-                    .iter()
-                    .fold((*start_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
-                        let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
-                        let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
+                    .fold((start_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
+                        let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
+                        let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                         (mode, cumulative + sum_count)
                     })
                     .1
