@@ -229,12 +229,12 @@ where
         srs
     }
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>>(
         circuit: &C,
-        srs: &mut SRS<R, Self::UniversalSetupParameters>,
+        srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
-            SRS::CircuitSpecific(_rng) => Self::circuit_specific_setup(circuit),
+            SRS::CircuitSpecific => Self::circuit_specific_setup(circuit),
             SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
         }
         .map_err(SNARKError::from)
@@ -842,7 +842,7 @@ pub mod test {
 
             // Generate the circuit parameters.
 
-            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific(&mut rng)).unwrap();
+            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific).unwrap();
 
             // Test native proof and verification.
             let fs_parameters = FS::sample_parameters();
