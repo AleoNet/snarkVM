@@ -558,7 +558,7 @@ dependencies = [
  "hashbrown",
  "lock_api",
  "once_cell",
- "parking_lot_core 0.9.4",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1023,9 +1023,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if",
- "js-sys",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
@@ -1315,37 +1312,12 @@ checksum = "3baf96e39c5359d2eb0dd6ccb42c62b91d9678aa68160d261b9e0ccbf9e9dea9"
 
 [[package]]
 name = "parking_lot"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
-dependencies = [
- "instant",
- "lock_api",
- "parking_lot_core 0.8.5",
-]
-
-[[package]]
-name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.4",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d76e8e1493bcac0d2766c42737f34458f1c8c50c0d23bcb24ea953affb273216"
-dependencies = [
- "cfg-if",
- "instant",
- "libc",
- "redox_syscall",
- "smallvec",
- "winapi",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1875,7 +1847,7 @@ dependencies = [
  "futures",
  "lazy_static",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot",
  "serial_test_derive",
 ]
 
@@ -1927,7 +1899,7 @@ dependencies = [
  "colored",
  "indexmap",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot",
  "rand",
  "rayon",
  "rusty-hook",
@@ -1962,7 +1934,7 @@ dependencies = [
  "hex",
  "itertools",
  "lazy_static",
- "parking_lot 0.12.1",
+ "parking_lot",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -2417,7 +2389,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "lazy_static",
- "parking_lot 0.11.2",
+ "parking_lot",
  "paste",
  "rand",
  "reqwest",
@@ -2459,7 +2431,7 @@ dependencies = [
  "criterion",
  "indexmap",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot",
  "paste",
  "rand",
  "rayon",
