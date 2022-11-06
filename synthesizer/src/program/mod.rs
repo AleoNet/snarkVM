@@ -108,12 +108,6 @@ record credits:
     owner as address.private;
     gates as u64.private;
 
-function genesis:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as credits.record;
-    output r2 as credits.record;
-
 function mint:
     input r0 as address.private;
     input r1 as u64.private;
@@ -625,8 +619,7 @@ impl<N: Network> Program<N> {
     /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
     #[inline]
     pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        (program_id.to_string() == "credits.aleo" && function_name.to_string() == "genesis")
-            || (program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint")
+        program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint"
     }
 }
 
