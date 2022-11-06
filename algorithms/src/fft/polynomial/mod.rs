@@ -37,7 +37,7 @@ mod multiplier;
 pub use multiplier::*;
 
 /// Represents either a sparse polynomial or a dense one.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Polynomial<'a, F: Field> {
     /// Represents the case where `self` is a sparse polynomial
     Sparse(Cow<'a, SparsePolynomial<F>>),

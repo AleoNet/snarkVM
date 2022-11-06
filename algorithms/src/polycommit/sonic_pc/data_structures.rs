@@ -58,7 +58,7 @@ impl<E: PairingEngine> Prepare for Commitment<E> {
 }
 
 /// `CommitterKey` is used to commit to, and create evaluation proofs for, a given polynomial.
-#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,

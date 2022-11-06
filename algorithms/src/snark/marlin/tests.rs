@@ -445,29 +445,34 @@ mod marlin_recursion {
         test_circuit_n_times(num_constraints, num_variables, 1);
     }
 
-    // #[test]
-    // /// Test on a constraint system that will trigger outlining.
-    // fn prove_and_test_outlining() {
-    //     let rng = &mut TestRng::default();
-    //
-    //     let universal_srs = MarlinInst::universal_setup(150, 150, 150, rng).unwrap();
-    //
-    //     let circ = OutlineTestCircuit {
-    //         field_phantom: PhantomData,
-    //     };
-    //
-    //     let (index_pk, index_vk) = MarlinInst::index(&universal_srs, circ.clone()).unwrap();
-    //     println!("Called index");
-    //
-    //     let proof = MarlinInst::prove(&index_pk, circ, rng).unwrap();
-    //     println!("Called prover");
-    //
-    //     let mut inputs = Vec::new();
-    //     for i in 0u128..5u128 {
-    //         inputs.push(Fr::from(i));
-    //     }
-    //
-    //     assert!(MarlinInst::verify(&index_vk, &inputs, &proof).unwrap());
-    //     println!("Called verifier");
-    // }
+    #[test]
+    fn check_indexing() {
+        let rng = &mut TestRng::default();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let fs_parameters = FS::sample_parameters();
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let mut c = a;
+        c.mul_assign(&b);
+        let mut d = c;
+        d.mul_assign(&b);
+
+        let num_constraints = 2usize.pow(13);
+        let num_variables = 2usize.pow(13);
+        let circuit = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+
+        let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        println!("Called circuit setup");
+
+        let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
+        println!("Called prover");
+
+        universal_srs.download_powers_for(0..2usize.pow(18)).unwrap();
+        let (new_pk, new_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        assert_eq!(index_pk, new_pk);
+        assert_eq!(index_vk, new_vk);
+        assert!(MarlinInst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
+        assert!(MarlinInst::verify(&fs_parameters, &new_vk, [c, d], &proof).unwrap());
+    }
 }
