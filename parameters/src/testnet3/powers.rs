@@ -272,7 +272,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         );
 
         if range.start < MAX_NUM_POWERS / 2 {
-            assert!(self.shifted_powers_of_beta_g.is_empty());
+            ensure!(self.shifted_powers_of_beta_g.is_empty());
             // In this case, we have downloaded all the powers, and so
             // all the powers reside in self.powers_of_beta_g.
             Ok(&self.powers_of_beta_g[range])
@@ -318,7 +318,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             // If the range contains the midpoint, then we must download all the powers.
             // (because we round up to the next power of two).
             self.download_up_to(range.end)?;
-            self.shifted_powers_of_beta_g.clear();
+            self.shifted_powers_of_beta_g = Vec::new();
         } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
             // If the range is closer to the shifted powers, then we download the shifted powers.
             self.download_from(range.start)?;
@@ -351,7 +351,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             download_queue.push(next_num_powers);
             next_num_powers *= 2;
         }
-        assert_eq!(total_powers * 2, next_num_powers);
+        ensure!(total_powers * 2 == next_num_powers, "Ensure the while loop terminates at the correct power of two");
 
         self.powers_of_beta_g.reserve(total_powers - self.powers_of_beta_g.len());
 
