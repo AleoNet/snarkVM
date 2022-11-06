@@ -23,8 +23,9 @@ use anyhow::Result;
 use serde_json::{json, Value};
 use snarkvm_utilities::ToBytes;
 use std::{
+    fs,
     fs::File,
-    io::{BufWriter, Write},
+    io::{BufWriter, Read, Write},
     path::PathBuf,
 };
 
@@ -57,6 +58,31 @@ fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
 fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
     file.write_all(&serde_json::to_vec_pretty(metadata)?)?;
+    Ok(())
+}
+
+/// (Do not use) Writes the metadata files. (cargo run --release --example setup usrs)
+pub fn usrs() -> Result<()> {
+    let paths = fs::read_dir("../src/testnet3/resources/").unwrap();
+    for path in paths {
+        let path = path?.path();
+        if let Some("usrs") = path.extension().and_then(|s| s.to_str()) {
+            let metadata_path = path.with_extension("metadata");
+            let mut file = File::open(&path)?;
+            let file_size = file.metadata().unwrap().len() as usize;
+            let mut file_bytes = Vec::with_capacity(file_size);
+            file.read_to_end(&mut file_bytes)?;
+            let checksum = checksum(&file_bytes);
+
+            let metadata = json!({
+                "checksum": checksum,
+                "size": file_size,
+            });
+
+            write_metadata(metadata_path.to_str().unwrap(), &metadata)?;
+            write_remote(path.to_str().unwrap(), &checksum, &file_bytes)?;
+        }
+    }
     Ok(())
 }
 
@@ -122,7 +148,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 }
 
 /// Run the following command to perform a setup.
-/// `cargo run --example setup [parameter] [network]`
+/// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
@@ -131,6 +157,7 @@ pub fn main() -> Result<()> {
     }
 
     match args[1].as_str() {
+        "usrs" => usrs()?,
         "credits" => credits_program::<Testnet3, snarkvm_circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };
