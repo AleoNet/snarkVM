@@ -47,7 +47,7 @@ mod tests {
     fn test_serde_json() -> Result<()> {
         let program_string = r"program to_parse.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 
@@ -75,7 +75,7 @@ function compute:
     fn test_bincode() -> Result<()> {
         let program_string = r"program to_parse.aleo;
 
-interface message:
+struct message:
     first as field;
     second as field;
 

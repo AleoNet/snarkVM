@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Interface<N> {
-    /// Serializes the interface into string or bytes.
+impl<N: Network> Serialize for Struct<N> {
+    /// Serializes the struct into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
@@ -26,12 +26,12 @@ impl<N: Network> Serialize for Interface<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Interface<N> {
-    /// Deserializes the interface from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for Struct<N> {
+    /// Deserializes the struct from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "interface"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "struct"),
         }
     }
 }
@@ -44,7 +44,7 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &["interface message: owner as address; is_new as boolean; total_supply as u64;"];
+    const TEST_CASES: &[&str] = &["struct message: owner as address; is_new as boolean; total_supply as u64;"];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
@@ -79,14 +79,14 @@ mod tests {
     #[test]
     fn test_serde_json() {
         for case in TEST_CASES.iter() {
-            check_serde_json(Interface::<CurrentNetwork>::from_str(case).unwrap());
+            check_serde_json(Struct::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 
     #[test]
     fn test_bincode() {
         for case in TEST_CASES.iter() {
-            check_bincode(Interface::<CurrentNetwork>::from_str(case).unwrap());
+            check_bincode(Struct::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 }

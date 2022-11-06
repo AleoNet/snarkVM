@@ -23,12 +23,12 @@ use console::{
     program::{
         EntryType,
         Identifier,
-        Interface,
         LiteralType,
         PlaintextType,
         RecordType,
         Register,
         RegisterType,
+        Struct,
         ValueType,
     },
 };
@@ -116,12 +116,12 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the plaintext type is not a literal, as the register references a member.
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
                 // Traverse the member path to output the register type.
-                RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                    // Retrieve the member type from the interface.
-                    match stack.program().get_interface(interface_name)?.members().get(path_name) {
+                RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                    // Retrieve the member type from the struct.
+                    match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
                         Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                        None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
+                        None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }
                 RegisterType::Record(record_name) => {

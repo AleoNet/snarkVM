@@ -27,7 +27,7 @@ impl<N: Network> FinalizeRegisters<N> {
     pub fn load_literal(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Literal<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            Value::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
+            Value::Plaintext(Plaintext::Struct(..)) => bail!("Operand must be a literal"),
             Value::Record(..) => bail!("Operand must be a literal"),
         }
     }

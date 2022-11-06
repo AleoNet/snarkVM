@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> Parser for Interface<N> {
-    /// Parses an interface as:
+impl<N: Network> Parser for Struct<N> {
+    /// Parses a struct as:
     /// ```text
-    ///   interface message:
+    ///   struct message:
     ///       owner as address;
     ///       amount as u64;
     /// ```
@@ -53,7 +53,7 @@ impl<N: Network> Parser for Interface<N> {
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the interface name from the string.
+        // Parse the struct name from the string.
         let (string, name) = Identifier::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
@@ -63,23 +63,23 @@ impl<N: Network> Parser for Interface<N> {
         let (string, members) = map_res(many1(parse_tuple), |members| {
             // Ensure the members has no duplicate names.
             if has_duplicates(members.iter().map(|(identifier, _)| identifier)) {
-                return Err(error(format!("Duplicate identifier found in interface '{}'", name)));
+                return Err(error(format!("Duplicate identifier found in struct '{}'", name)));
             }
             // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
             if members.len() > N::MAX_DATA_ENTRIES {
-                return Err(error("Failed to parse interface: too many members"));
+                return Err(error("Failed to parse struct: too many members"));
             }
             Ok(members)
         })(string)?;
-        // Return the interface.
+        // Return the struct.
         Ok((string, Self { name, members: IndexMap::from_iter(members.into_iter()) }))
     }
 }
 
-impl<N: Network> FromStr for Interface<N> {
+impl<N: Network> FromStr for Struct<N> {
     type Err = Error;
 
-    /// Returns an interface from a string literal.
+    /// Returns a struct from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -93,16 +93,16 @@ impl<N: Network> FromStr for Interface<N> {
     }
 }
 
-impl<N: Network> Debug for Interface<N> {
-    /// Prints the interface as a string.
+impl<N: Network> Debug for Struct<N> {
+    /// Prints the struct as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 #[allow(clippy::format_push_string)]
-impl<N: Network> Display for Interface<N> {
-    /// Prints the interface as a string.
+impl<N: Network> Display for Struct<N> {
+    /// Prints the struct as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut output = format!("{} {}:\n", Self::type_name(), self.name);
         for (identifier, plaintext_type) in &self.members {
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        let expected = Interface::<CurrentNetwork> {
+        let expected = Struct::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             members: IndexMap::from_iter(
                 vec![
@@ -133,9 +133,9 @@ mod tests {
             ),
         };
 
-        let (remainder, candidate) = Interface::<CurrentNetwork>::parse(
+        let (remainder, candidate) = Struct::<CurrentNetwork>::parse(
             r"
-interface message:
+struct message:
     sender as address;
     amount as u64;
 ",
@@ -148,52 +148,50 @@ interface message:
     #[test]
     fn test_parse_fails() {
         // Must be non-empty.
-        assert!(Interface::<CurrentNetwork>::parse("").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("interface message:").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("struct message:").is_err());
 
         // Invalid characters.
-        assert!(Interface::<CurrentNetwork>::parse("{}").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("_").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("__").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("___").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("-").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("--").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("---").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("*").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("**").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("***").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("{}").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("_").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("__").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("___").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("-").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("--").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("---").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("*").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("**").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("***").is_err());
 
         // Must not start with a number.
-        assert!(Interface::<CurrentNetwork>::parse("1").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("2").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("3").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("1foo").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("12").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("111").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("1").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("2").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("3").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("1foo").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("12").is_err());
+        assert!(Struct::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface =
-            Interface::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
-        assert!(interface.is_err());
+        let struct_ =
+            Struct::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        assert!(struct_.is_err());
     }
 
     #[test]
     fn test_display() {
-        let expected = "interface message:\n    first as field;\n    second as field;";
-        let message = Interface::<CurrentNetwork>::parse(expected).unwrap().1;
+        let expected = "struct message:\n    first as field;\n    second as field;";
+        let message = Struct::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
     }
 
     #[test]
     fn test_display_fails() {
         // Duplicate identifier.
-        let candidate =
-            Interface::<CurrentNetwork>::parse("interface message:\n    first as field;\n    first as field;");
+        let candidate = Struct::<CurrentNetwork>::parse("struct message:\n    first as field;\n    first as field;");
         assert!(candidate.is_err());
         // Visibility in plaintext type.
-        let candidate = Interface::<CurrentNetwork>::parse(
-            "interface message:\n    first as field.public;\n    first as field.private;",
-        );
+        let candidate =
+            Struct::<CurrentNetwork>::parse("struct message:\n    first as field.public;\n    first as field.private;");
         assert!(candidate.is_err());
     }
 }

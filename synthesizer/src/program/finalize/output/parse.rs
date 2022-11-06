@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(0));
         assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field.public")?);
 
-        // Interface
+        // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
         assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(1));
         assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("signature.public")?);
@@ -117,7 +117,7 @@ mod tests {
         let output = Output::<CurrentNetwork>::parse("output r0 as field.public;").unwrap().1;
         assert_eq!(format!("{}", output), "output r0 as field.public;");
 
-        // Interface
+        // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
         assert_eq!(format!("{}", output), "output r1 as signature.public;");
 

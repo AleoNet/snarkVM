@@ -47,8 +47,8 @@ impl<N: Network> FromBytes for Program<N> {
             match variant {
                 // Read the mapping.
                 0 => program.add_mapping(Mapping::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
-                // Read the interface.
-                1 => program.add_interface(Interface::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
+                // Read the struct.
+                1 => program.add_struct(Struct::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the record.
                 2 => program.add_record(RecordType::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the closure.
@@ -93,14 +93,14 @@ impl<N: Network> ToBytes for Program<N> {
                     }
                     None => return Err(error(format!("Mapping '{identifier}' is not defined"))),
                 },
-                ProgramDefinition::Interface => match self.interfaces.get(identifier) {
-                    Some(interface) => {
+                ProgramDefinition::Struct => match self.structs.get(identifier) {
+                    Some(struct_) => {
                         // Write the variant.
                         1u8.write_le(&mut writer)?;
-                        // Write the interface.
-                        interface.write_le(&mut writer)?;
+                        // Write the struct.
+                        struct_.write_le(&mut writer)?;
                     }
-                    None => return Err(error(format!("Interface '{identifier}' is not defined."))),
+                    None => return Err(error(format!("Struct '{identifier}' is not defined."))),
                 },
                 ProgramDefinition::Record => match self.records.get(identifier) {
                     Some(record) => {

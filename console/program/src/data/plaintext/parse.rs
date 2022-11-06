@@ -36,8 +36,8 @@ impl<N: Network> Parser for Plaintext<N> {
             Ok((string, (identifier, plaintext)))
         }
 
-        /// Parses a plaintext as an interface: `{ identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
-        fn parse_interface<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
+        /// Parses a plaintext as a struct: `{ identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
+        fn parse_struct<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the "{" from the string.
@@ -46,9 +46,9 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, members) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
-                    return Err(error("Duplicate member in interface"));
+                    return Err(error("Duplicate member in struct"));
                 }
-                // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
+                // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
                 match members.len() <= N::MAX_DATA_ENTRIES {
                     true => Ok(members),
                     false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
@@ -59,7 +59,7 @@ impl<N: Network> Parser for Plaintext<N> {
             // Parse the '}' from the string.
             let (string, _) = tag("}")(string)?;
             // Output the plaintext.
-            Ok((string, Plaintext::Interface(IndexMap::from_iter(members.into_iter()), Default::default())))
+            Ok((string, Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default())))
         }
 
         // Parse the whitespace from the string.
@@ -68,8 +68,8 @@ impl<N: Network> Parser for Plaintext<N> {
         alt((
             // Parse a plaintext literal.
             map(Literal::parse, |literal| Self::Literal(literal, Default::default())),
-            // Parse a plaintext interface.
-            parse_interface,
+            // Parse a plaintext struct.
+            parse_struct,
         ))(string)
     }
 }
@@ -114,14 +114,14 @@ impl<N: Network> Plaintext<N> {
         match self {
             // Prints the literal, i.e. 10field
             Self::Literal(literal, ..) => write!(f, "{:indent$}{literal}", "", indent = depth * INDENT),
-            // Prints the interface, i.e. { first: 10i64, second: 198u64 }
-            Self::Interface(interface, ..) => {
+            // Prints the struct, i.e. { first: 10i64, second: 198u64 }
+            Self::Struct(struct_, ..) => {
                 // Print the opening brace.
                 write!(f, "{{")?;
                 // Print the members.
-                interface.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
+                struct_.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
                     match plaintext {
-                        Self::Literal(literal, ..) => match i == interface.len() - 1 {
+                        Self::Literal(literal, ..) => match i == struct_.len() - 1 {
                             true => {
                                 // Print the last member without a comma.
                                 write!(f, "\n{:indent$}{name}: {literal}", "", indent = (depth + 1) * INDENT)?;
@@ -131,13 +131,13 @@ impl<N: Network> Plaintext<N> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal},", "", indent = (depth + 1) * INDENT),
                         },
-                        Self::Interface(..) => {
+                        Self::Struct(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
                             plaintext.fmt_internal(f, depth + 1)?;
                             // Print the closing brace.
-                            match i == interface.len() - 1 {
+                            match i == struct_.len() - 1 {
                                 // Print the last member without a comma.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
                                 // Print the member with a comma.
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_interface() -> Result<()> {
+    fn test_parse_struct() -> Result<()> {
         // Sanity check.
         let expected = r"{
   foo: 5u8

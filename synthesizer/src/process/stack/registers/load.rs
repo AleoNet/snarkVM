@@ -27,7 +27,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     pub fn load_literal(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Literal<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            Value::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
+            Value::Plaintext(Plaintext::Struct(..)) => bail!("Operand must be a literal"),
             Value::Record(..) => bail!("Operand must be a literal"),
         }
     }
@@ -99,7 +99,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     pub fn load_literal_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::program::Literal<A>> {
         match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
-            circuit::Value::Plaintext(circuit::Plaintext::Interface(..)) => bail!("Operand must be a literal"),
+            circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => bail!("Operand must be a literal"),
             circuit::Value::Record(..) => bail!("Operand must be a literal"),
         }
     }

@@ -107,7 +107,7 @@ mod tests {
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(0));
         assert_eq!(input.register_type(), &RegisterType::<CurrentNetwork>::from_str("field")?);
 
-        // Interface
+        // Struct
         let input = Input::<CurrentNetwork>::parse("input r1 as signature;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(1));
         assert_eq!(input.register_type(), &RegisterType::<CurrentNetwork>::from_str("signature")?);
@@ -126,7 +126,7 @@ mod tests {
         let input = Input::<CurrentNetwork>::from_str("input r0 as field;")?;
         assert_eq!("input r0 as field;", input.to_string());
 
-        // Interface
+        // Struct
         let input = Input::<CurrentNetwork>::from_str("input r1 as signature;")?;
         assert_eq!("input r1 as signature;", input.to_string());
 
