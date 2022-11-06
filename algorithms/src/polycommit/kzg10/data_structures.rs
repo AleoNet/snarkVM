@@ -154,8 +154,6 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     }
 }
 
-impl<E: PairingEngine> UniversalParams<E> {}
-
 /// `Powers` is used to commit to and create evaluation proofs for a given polynomial.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Powers<'a, E: PairingEngine> {
