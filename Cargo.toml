@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.9.0"
+version = "0.9.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -89,7 +89,6 @@ full = [
   "utilities"
 ]
 cli = [
-  # External
   "anyhow",
   "clap",
   "colored",
@@ -97,10 +96,9 @@ cli = [
   "self_update",
   "serde_json",
   "thiserror",
-  # Internal
   "circuit",
   "console",
-  "synthesizer",
+  "synthesizer"
 ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
 cuda = [ "snarkvm-algorithms/cuda" ]
@@ -113,8 +111,6 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 noconfig = [ ]
-
-# Internal Dependencies
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -127,49 +123,49 @@ utilities = [ "snarkvm-utilities" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "0.9.0"
+version = "0.9.1"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.9.0"
+version = "0.9.1"
 optional = true
 
 [dependencies.anyhow]

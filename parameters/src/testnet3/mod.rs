@@ -20,7 +20,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
+const REMOTE_URL: &str = "https://vm.aleo.org/testnet3/parameters";
 
 // Degree 15
 impl_local!(Degree15, "resources/", "universal", "srs", "15");
@@ -54,12 +54,12 @@ impl_remote!(Degree28, REMOTE_URL, "resources/", "universal", "srs", "28");
 impl_local!(Gamma, "resources/", "universal", "srs", "gamma");
 
 // Trial
-impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "resources/", "universal", "srs", "trial");
+impl_remote!(TrialSRS, REMOTE_URL, "resources/", "universal", "srs", "trial");
 
 macro_rules! impl_remote_keys {
     ($pname: ident, $vname: ident, $fname: tt) => {
-        impl_remote!($pname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "prover");
-        impl_remote!($vname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "verifier");
+        impl_remote!($pname, REMOTE_URL, "resources/", $fname, "prover");
+        impl_remote!($vname, REMOTE_URL, "resources/", $fname, "verifier");
     };
 }
 

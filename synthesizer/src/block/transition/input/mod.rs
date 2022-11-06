@@ -159,11 +159,12 @@ impl<N: Network> Input<N> {
                     Err(error) => Err(error),
                 }
             }
-            Input::Constant(_, None)
-            | Input::Public(_, None)
-            | Input::Private(_, None)
-            | Input::Record(_, _)
-            | Input::ExternalRecord(_) => Ok(true),
+            Input::Constant(_, None) | Input::Public(_, None) | Input::Private(_, None) => {
+                // This enforces that the transition *must* contain the value for this transition input.
+                // A similar rule is enforced for the transition output.
+                bail!("A transition input value is missing")
+            }
+            Input::Record(_, _) | Input::ExternalRecord(_) => Ok(true),
         };
 
         match result() {
