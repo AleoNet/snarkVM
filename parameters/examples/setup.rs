@@ -24,7 +24,7 @@ use serde_json::{json, Value};
 use snarkvm_utilities::ToBytes;
 use std::{
     fs::File,
-    io::{BufWriter, Read, Write},
+    io::{BufWriter, Write},
     path::PathBuf,
 };
 
