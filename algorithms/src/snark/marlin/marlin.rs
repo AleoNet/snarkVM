@@ -565,7 +565,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof);
+        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         end_timer!(prover_time);
 
@@ -581,6 +581,10 @@ where
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;
         if public_inputs.is_empty() {
             return Err(SNARKError::EmptyBatch);
+        }
+
+        if public_inputs.len() != proof.batch_size()? {
+            return Err(SNARKError::BatchSizeMismatch);
         }
 
         let comms = &proof.commitments;

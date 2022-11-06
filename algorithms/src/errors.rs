@@ -40,6 +40,9 @@ pub enum SNARKError {
     #[error("Batch size was zero; must be at least 1")]
     EmptyBatch,
 
+    #[error("Batch size was different between public input and proof")]
+    BatchSizeMismatch,
+
     #[error("terminated")]
     Terminated,
 }
