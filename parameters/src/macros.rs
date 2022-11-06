@@ -142,7 +142,7 @@ macro_rules! impl_load_bytes_logic_remote {
                 use colored::*;
                 let path = format!("(in {:?})", file_path);
                 eprintln!(
-                    "\n⚠️  Attention - \"{}\" does not exist. Downloading and storing it {}.\n",
+                    "\n⚠️  \"{}\" does not exist. Downloading and storing it {}.\n",
                     $filename, path.dimmed()
                 );
             }

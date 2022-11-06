@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    crypto_hash::sha256::sha256,
-    snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
-    SNARK,
-};
+use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
 use snarkvm_console::network::{Network, Testnet3};
 use snarkvm_synthesizer::{Process, Program};
@@ -82,45 +78,6 @@ pub fn kzg_powers_metadata() {
 
         write_metadata(&degree_metadata, &metadata).unwrap();
     }
-}
-
-/// Runs the trial SRS setup. (cargo run --release --example setup trial_srs 524288)
-pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
-    const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
-    const TRIAL_SRS: &str = "universal.srs.trial";
-
-    let mut rng = snarkvm_utilities::TestRng::fixed(1245897092);
-
-    use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin};
-    use snarkvm_console::network::Environment;
-    use snarkvm_curves::PairingEngine;
-    use snarkvm_utilities::{CanonicalSerialize, Compress};
-
-    type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
-    type Fr<N> = <N as Environment>::Field;
-    type FS<N> = PoseidonSponge<Fq<N>, 2, 1>;
-    type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, MarlinHidingMode, [Fr<N>]>;
-
-    let timer = std::time::Instant::now();
-    let max_degree = AHPForR1CS::<N::Field, MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates).unwrap();
-    let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
-    println!("Called universal setup: {} ms", timer.elapsed().as_millis());
-
-    let mut srs_bytes = vec![];
-    universal_srs.serialize_with_mode(&mut srs_bytes, Compress::No)?;
-
-    let srs_checksum = checksum(&srs_bytes);
-
-    let srs_metadata = json!({
-        "checksum": srs_checksum,
-        "size": srs_bytes.len(),
-    });
-
-    println!("{}", serde_json::to_string_pretty(&srs_metadata)?);
-    write_metadata(TRIAL_SRS_METADATA, &srs_metadata)?;
-    write_remote(TRIAL_SRS, &srs_checksum, &srs_bytes)?;
-
-    Ok(())
 }
 
 /// Synthesizes the circuit keys for the credits program. (cargo run --release --example setup credits)
@@ -194,7 +151,6 @@ pub fn main() -> Result<()> {
     }
 
     match args[1].as_str() {
-        "trial_srs" => trial_srs::<Testnet3>(args[2].as_str().parse::<usize>()?)?,
         "credits" => credits_program::<Testnet3, snarkvm_circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };
