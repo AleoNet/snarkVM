@@ -18,7 +18,7 @@ use super::*;
 
 impl<E: Environment> Group<E> {
     /// Returns the *x-coordinate* and *y-coordinate* in the affine coordinates of the group.
-    pub fn to_xy_coordinate(&self) -> (Field<E>, Field<E>) {
+    pub fn to_xy_coordinates(&self) -> (Field<E>, Field<E>) {
         // Convert to affine.
         let affine = self.group.to_affine();
         // Returns the (x, y) coordinates.

@@ -117,6 +117,11 @@ impl<E: Environment> Elligator2<E> {
         let x = u * v.inverse().map_err(|_| anyhow!("Elligator2 failed: v == 0"))?;
         let y = (u - one) * (u + one).inverse().map_err(|_| anyhow!("Elligator2 failed: (u + 1) == 0"))?;
 
-        Ok((Group::from_xy_coordinates((x, y)), sign_high))
+        // Recover the point from the twisted Edwards element (x, y).
+        let point = Group::from_xy_coordinates_unchecked(x, y);
+        // Ensure the recovered point is on the curve.
+        ensure!(point.to_affine().is_on_curve(), "Elligator2 failed: point is not on the curve");
+        // Return the recovered point.
+        Ok((point, sign_high))
     }
 }

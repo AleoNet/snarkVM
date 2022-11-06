@@ -37,6 +37,13 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
+/// Binary operator for dividing two values, without checking specific conditions.
+pub trait DivUnchecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_unchecked(&self, rhs: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for dividing two values, enforcing an overflow never occurs.
 pub trait DivChecked<Rhs: ?Sized = Self> {
     type Output;

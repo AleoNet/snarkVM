@@ -121,7 +121,7 @@ impl<N: Network> Process<N> {
         Inclusion::verify_fee(fee)?;
 
         // Compute the x- and y-coordinate of `tpk`.
-        let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinate();
+        let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
