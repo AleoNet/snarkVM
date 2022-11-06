@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.9.0"
+version = "0.9.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,17 +25,17 @@ edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.0"
+version = "0.9.1"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.0"
+version = "0.9.1"
 
 [dependencies.aleo-std]
 version = "0.1.15"
 default-features = false
-features = ["storage"]
+features = [ "storage" ]
 
 [dependencies.anyhow]
 version = "1"
@@ -121,8 +121,4 @@ version = "0.8"
 default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [
-  "reqwest",
-  "wasm-bindgen-futures",
-  "parking_lot"
-]
+wasm = [ "reqwest", "wasm-bindgen-futures", "parking_lot" ]

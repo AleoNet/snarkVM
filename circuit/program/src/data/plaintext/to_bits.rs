@@ -31,7 +31,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     bits_le
                 })
                 .clone(),
-            Self::Interface(members, bits_le) => bits_le
+            Self::Struct(members, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
                     bits_le.extend(U8::constant(console::U8::new(members.len() as u8)).to_bits_le());
@@ -60,7 +60,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     bits_be
                 })
                 .clone(),
-            Self::Interface(members, bits_be) => bits_be
+            Self::Struct(members, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
                     bits_be.extend(U8::constant(console::U8::new(members.len() as u8)).to_bits_be());

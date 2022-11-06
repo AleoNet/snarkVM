@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(0));
         assert_eq!(output.value_type(), &ValueType::<CurrentNetwork>::from_str("field.private")?);
 
-        // Interface
+        // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.private;").unwrap().1;
         assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(1));
         assert_eq!(output.value_type(), &ValueType::<CurrentNetwork>::from_str("signature.private")?);
@@ -117,7 +117,7 @@ mod tests {
         let output = Output::<CurrentNetwork>::parse("output r0 as field.private;").unwrap().1;
         assert_eq!(format!("{}", output), "output r0 as field.private;");
 
-        // Interface
+        // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.private;").unwrap().1;
         assert_eq!(format!("{}", output), "output r1 as signature.private;");
 

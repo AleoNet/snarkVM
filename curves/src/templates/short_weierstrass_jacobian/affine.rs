@@ -93,11 +93,21 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     type ScalarField = P::ScalarField;
 
     /// Initializes a new affine group element from the given coordinates.
-    fn from_coordinates(coordinates: Self::Coordinates) -> Self {
+    fn from_coordinates(coordinates: Self::Coordinates) -> Option<Self> {
         let (x, y, infinity) = coordinates;
         let point = Self { x, y, infinity };
-        assert!(point.is_on_curve());
-        point
+        // Check that the point is on the curve, and in the correct subgroup.
+        match point.is_on_curve() && point.is_in_correct_subgroup_assuming_on_curve() {
+            true => Some(point),
+            false => None,
+        }
+    }
+
+    /// Initializes a new affine group element from the given coordinates.
+    /// Note: The resulting point is **not** enforced to be on the curve or in the correct subgroup.
+    fn from_coordinates_unchecked(coordinates: Self::Coordinates) -> Self {
+        let (x, y, infinity) = coordinates;
+        Self { x, y, infinity }
     }
 
     #[inline]

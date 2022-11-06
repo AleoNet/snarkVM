@@ -35,7 +35,7 @@ pub mod prelude {
 }
 
 use crate::environment::prelude::*;
-use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, AlgebraicSponge};
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
@@ -73,6 +73,9 @@ pub trait Network:
     /// The network edition.
     const EDITION: u16;
 
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str;
+
     /// The fixed timestamp of the genesis block.
     const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
     /// The genesis block coinbase target.
@@ -101,6 +104,8 @@ pub trait Network:
     #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
+    /// The maximum number of functions in a program.
+    const MAX_FUNCTIONS: usize = 15;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.
@@ -125,11 +130,17 @@ pub trait Network:
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
 
-    /// Returns the universal SRS bytes.
-    fn universal_srs_bytes() -> &'static [u8];
+    /// Returns the universal SRS.
+    fn universal_srs() -> &'static marlin::UniversalSRS<Self::PairingCurve>;
 
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;
+
+    /// Returns the `proving key` bytes for the inclusion circuit.
+    fn inclusion_proving_key_bytes() -> &'static Vec<u8>;
+
+    /// Returns the `verifying key` bytes for the inclusion circuit.
+    fn inclusion_verifying_key_bytes() -> &'static Vec<u8>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;

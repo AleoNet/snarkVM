@@ -25,8 +25,6 @@ impl<N: Network> FromBytes for Execution<N> {
         if version != 0 {
             return Err(error("Invalid execution version"));
         }
-        // Read the edition.
-        let edition = u16::read_le(&mut reader)?;
         // Read the number of transitions.
         let num_transitions = u16::read_le(&mut reader)?;
         // Ensure the number of transitions is nonzero.
@@ -37,8 +35,18 @@ impl<N: Network> FromBytes for Execution<N> {
         // Read the transitions.
         let transitions =
             (0..num_transitions).map(|_| Transition::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
+        // Read the global state root.
+        let global_state_root = N::StateRoot::read_le(&mut reader)?;
+        // Read the inclusion proof variant.
+        let inclusion_variant = u8::read_le(&mut reader)?;
+        // Read the inclusion proof.
+        let inclusion_proof = match inclusion_variant {
+            0 => None,
+            1 => Some(Proof::read_le(&mut reader)?),
+            _ => return Err(error("Invalid inclusion proof variant '{inclusion_variant}'")),
+        };
         // Return the new `Execution` instance.
-        Self::from(edition, &transitions).map_err(|e| error(e.to_string()))
+        Self::from(transitions.into_iter(), global_state_root, inclusion_proof).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -47,12 +55,23 @@ impl<N: Network> ToBytes for Execution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
-        // Write the edition.
-        self.edition.write_le(&mut writer)?;
         // Write the number of transitions.
         (self.transitions.len() as u16).write_le(&mut writer)?;
         // Write the transitions.
-        self.transitions.write_le(&mut writer)
+        for transition in self.transitions.values() {
+            transition.write_le(&mut writer)?;
+        }
+        // Write the global state root.
+        self.global_state_root.write_le(&mut writer)?;
+        // Write the inclusion proof.
+        match self.inclusion_proof {
+            None => 0u8.write_le(&mut writer)?,
+            Some(ref proof) => {
+                1u8.write_le(&mut writer)?;
+                proof.write_le(&mut writer)?;
+            }
+        }
+        Ok(())
     }
 }
 

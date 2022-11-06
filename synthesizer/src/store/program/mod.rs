@@ -122,7 +122,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         }
 
         // Retrieve the mapping names for the program ID.
-        let mut mapping_names = match self.program_id_map().get(program_id)? {
+        let mut mapping_names = match self.program_id_map().get_speculative(program_id)? {
             // If the program ID already exists, retrieve the mapping names.
             Some(mapping_names) => cow_to_cloned!(mapping_names),
             // If the program ID does not exist, initialize the mapping names.
@@ -169,7 +169,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot insert again.")
         }
         // Retrieve the key-value IDs for the mapping ID.
-        let mut key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+        let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot insert key-value."),
         };
@@ -215,7 +215,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
         // Retrieve the key-value IDs for the mapping ID.
-        let mut key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+        let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => {
                 bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot update key-value.")
@@ -261,7 +261,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // Compute the key ID.
         let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
         // Retrieve the key-value IDs for the mapping ID.
-        let mut key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+        let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove key-value."),
         };
@@ -295,13 +295,13 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping."),
         };
         // Retrieve the key-value IDs for the mapping ID.
-        let key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+        let key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
             Some(key_value_ids) => key_value_ids,
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping."),
         };
 
         // Retrieve the mapping names.
-        let mut mapping_names = match self.program_id_map().get(program_id)? {
+        let mut mapping_names = match self.program_id_map().get_speculative(program_id)? {
             Some(mapping_names) => cow_to_cloned!(mapping_names),
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
@@ -335,7 +335,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// along with all associated mappings and key-value pairs in storage.
     fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
         // Retrieve the mapping names.
-        let mapping_names = match self.program_id_map().get(program_id)? {
+        let mapping_names = match self.program_id_map().get_speculative(program_id)? {
             Some(mapping_names) => mapping_names,
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
@@ -354,7 +354,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
                     }
                 };
                 // Retrieve the key-value IDs for the mapping ID.
-                let key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+                let key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
                     Some(key_value_ids) => key_value_ids,
                     None => {
                         bail!(
@@ -411,7 +411,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the mapping names for the given `program ID`.
     fn get_mapping_names(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
         // Retrieve the mapping names.
-        match self.program_id_map().get(program_id)? {
+        match self.program_id_map().get_speculative(program_id)? {
             Some(names) => Ok(Some(cow_to_cloned!(names))),
             None => Ok(None),
         }
@@ -419,7 +419,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the mapping ID for the given `program ID` and `mapping name`.
     fn get_mapping_id(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<Option<Field<N>>> {
-        match self.mapping_id_map().get(&(*program_id, *mapping_name))? {
+        match self.mapping_id_map().get_speculative(&(*program_id, *mapping_name))? {
             Some(mapping_id) => Ok(Some(cow_to_copied!(mapping_id))),
             None => Ok(None),
         }
@@ -448,7 +448,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the key for the given `key ID`.
     fn get_key(&self, key_id: &Field<N>) -> Result<Option<Plaintext<N>>> {
-        match self.key_map().get(key_id)? {
+        match self.key_map().get_speculative(key_id)? {
             Some(key) => Ok(Some(cow_to_cloned!(key))),
             None => Ok(None),
         }
@@ -471,7 +471,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the value for the given `key ID`.
     fn get_value_from_key_id(&self, key_id: &Field<N>) -> Result<Option<Value<N>>> {
-        match self.value_map().get(key_id)? {
+        match self.value_map().get_speculative(key_id)? {
             Some(value) => Ok(Some(cow_to_cloned!(value))),
             None => Ok(None),
         }

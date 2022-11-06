@@ -29,7 +29,7 @@ impl<N: Network> Block<N> {
         // Prepare the program ID.
         let program_id = FromStr::from_str("credits.aleo")?;
         // Prepare the function name.
-        let function_name = FromStr::from_str("genesis")?;
+        let function_name = FromStr::from_str("mint")?;
         // Prepare the function inputs.
         let inputs = [Value::from_str(&caller.to_string())?, Value::from_str(&format!("{}_u64", N::STARTING_SUPPLY))?];
         // Authorize the call to start.
@@ -71,14 +71,22 @@ impl<N: Network> Block<N> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_utilities::TestRng;
+    use super::*;
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_genesis() {
         let mut rng = TestRng::default();
 
-        let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
+        // Load the genesis block.
+        let genesis_block = Block::<CurrentNetwork>::read_le(CurrentNetwork::genesis_bytes()).unwrap();
+        assert!(genesis_block.is_genesis());
+
+        // Sample a new genesis block.
+        let new_genesis_block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         // println!("{}", serde_json::to_string_pretty(&block).unwrap());
-        assert!(block.is_genesis());
+        assert!(new_genesis_block.is_genesis());
     }
 }

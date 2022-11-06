@@ -21,7 +21,7 @@ mod output;
 pub use output::*;
 
 use crate::{
-    block::{Input, Origin, Output, Transition},
+    block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
     snark::Proof,
@@ -146,7 +146,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Stores the given `transition` into storage.
-    fn insert(&self, transition: Transition<N>) -> Result<()> {
+    fn insert(&self, transition: &Transition<N>) -> Result<()> {
         // Check if an atomic batch write is already in progress.
         let is_part_of_atomic_batch = self.is_atomic_in_progress();
 
@@ -474,7 +474,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     /// Stores the given `transition` into storage.
-    pub fn insert(&self, transition: Transition<N>) -> Result<()> {
+    pub fn insert(&self, transition: &Transition<N>) -> Result<()> {
         self.storage.insert(transition)
     }
 
@@ -737,11 +737,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.inputs.tags()
     }
 
-    /// Returns an iterator over the origins, for all transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
-        self.inputs.origins()
-    }
-
     /* Output */
 
     /// Returns an iterator over the constant outputs, for all transitions.
@@ -830,7 +825,7 @@ mod tests {
             assert_eq!(None, candidate);
 
             // Insert the transition.
-            transition_store.insert(transition.clone()).unwrap();
+            transition_store.insert(transition).unwrap();
 
             // Retrieve the transition.
             let candidate = transition_store.get(&transition_id).unwrap();
@@ -854,7 +849,7 @@ mod tests {
             assert_eq!(None, candidate);
 
             // Insert the transition.
-            transition_store.insert(transition.clone()).unwrap();
+            transition_store.insert(transition).unwrap();
 
             // Ensure the transition exists.
             let candidate = transition_store.get(&transition_id).unwrap();

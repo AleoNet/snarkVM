@@ -42,7 +42,7 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Interface
+        // Struct
         else if variant == [false, true] {
             let num_members = u8::from_bits_le(&bits_le[counter..counter + 8])?;
             counter += 8;
@@ -62,15 +62,15 @@ impl<N: Network> FromBits for Plaintext<N> {
                 counter += member_size as usize;
 
                 if members.insert(identifier, value).is_some() {
-                    bail!("Duplicate identifier in interface.");
+                    bail!("Duplicate identifier in struct.");
                 }
             }
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_le.to_vec()) {
-                // Return the interface.
-                Ok(_) => Ok(Self::Interface(members, cache)),
+                // Return the struct.
+                Ok(_) => Ok(Self::Struct(members, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
@@ -105,7 +105,7 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Interface
+        // Struct
         else if variant == [false, true] {
             let num_members = u8::from_bits_be(&bits_be[counter..counter + 8])?;
             counter += 8;
@@ -125,15 +125,15 @@ impl<N: Network> FromBits for Plaintext<N> {
                 counter += member_size as usize;
 
                 if members.insert(identifier, value).is_some() {
-                    bail!("Duplicate identifier in interface.");
+                    bail!("Duplicate identifier in struct.");
                 }
             }
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_be.to_vec()) {
-                // Return the interface.
-                Ok(_) => Ok(Self::Interface(members, cache)),
+                // Return the struct.
+                Ok(_) => Ok(Self::Struct(members, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }

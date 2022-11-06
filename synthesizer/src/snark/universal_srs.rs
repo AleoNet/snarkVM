@@ -70,12 +70,8 @@ impl<N: Network> Deref for UniversalSRS<N> {
             #[cfg(feature = "aleo-cli")]
             let timer = std::time::Instant::now();
 
-            // Load the universal SRS bytes.
-            let srs = N::universal_srs_bytes();
-
-            // Recover the universal SRS.
-            let universal_srs = CanonicalDeserialize::deserialize_with_mode(srs, Compress::No, Validate::No)
-                .expect("Failed to initialize universal SRS");
+            // Load the universal SRS.
+            let universal_srs = N::universal_srs().clone();
 
             #[cfg(feature = "aleo-cli")]
             println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());

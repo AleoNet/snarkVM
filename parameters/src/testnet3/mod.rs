@@ -20,8 +20,9 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
+const REMOTE_URL: &str = "https://vm.aleo.org/testnet3/parameters";
 
+// Degrees
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
 impl_remote!(Degree16, REMOTE_URL, "resources/", "powers-of-beta-16", "usrs");
 impl_remote!(Degree17, REMOTE_URL, "resources/", "powers-of-beta-17", "usrs");
@@ -37,6 +38,7 @@ impl_remote!(Degree26, REMOTE_URL, "resources/", "powers-of-beta-26", "usrs");
 impl_remote!(Degree27, REMOTE_URL, "resources/", "powers-of-beta-27", "usrs");
 impl_remote!(Degree28, REMOTE_URL, "resources/", "powers-of-beta-28", "usrs");
 
+// Shifted Degrees
 impl_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
 impl_remote!(ShiftedDegree16, REMOTE_URL, "resources/", "shifted-powers-of-beta-16", "usrs");
 impl_remote!(ShiftedDegree17, REMOTE_URL, "resources/", "shifted-powers-of-beta-17", "usrs");
@@ -51,27 +53,20 @@ impl_remote!(ShiftedDegree25, REMOTE_URL, "resources/", "shifted-powers-of-beta-
 impl_remote!(ShiftedDegree26, REMOTE_URL, "resources/", "shifted-powers-of-beta-26", "usrs");
 impl_remote!(ShiftedDegree27, REMOTE_URL, "resources/", "shifted-powers-of-beta-27", "usrs");
 
-// Powers of Beta times Gamma * G
+// Powers of Beta Times Gamma * G
 impl_local!(Gamma, "resources/", "powers-of-beta-gamma", "usrs");
-
-// Negative powers of beta in G2
+// Negative Powers of Beta in G2
 impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
-
-// Negative powers of beta in G2
+// Negative Powers of Beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
-
-// Trial
-// impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "resources/", "universal", "srs", "trial");
 
 macro_rules! impl_remote_keys {
     ($pname: ident, $vname: ident, $fname: tt) => {
-        impl_remote!($pname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "prover");
-        impl_remote!($vname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "verifier");
+        impl_remote!($pname, REMOTE_URL, "resources/", $fname, "prover");
+        impl_remote!($vname, REMOTE_URL, "resources/", $fname, "verifier");
     };
 }
 
-// Genesis
-impl_remote_keys!(GenesisProver, GenesisVerifier, "genesis");
 // Mint
 impl_remote_keys!(MintProver, MintVerifier, "mint");
 // Transfer
@@ -97,7 +92,6 @@ lazy_static! {
             };
         }
         let mut map = indexmap::IndexMap::new();
-        insert_remote_keys!(map, GenesisProver, GenesisVerifier, "genesis");
         insert_remote_keys!(map, MintProver, MintVerifier, "mint");
         insert_remote_keys!(map, TransferProver, TransferVerifier, "transfer");
         insert_remote_keys!(map, JoinProver, JoinVerifier, "join");
@@ -105,4 +99,17 @@ lazy_static! {
         insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
         map
     };
+}
+
+// Inclusion
+impl_remote_keys!(InclusionProver, InclusionVerifier, "inclusion");
+
+/// The function name for the inclusion circuit.
+pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
+
+lazy_static! {
+    pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =
+        InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
+    pub static ref TESTNET3_INCLUSION_VERIFYING_KEY: Vec<u8> =
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }

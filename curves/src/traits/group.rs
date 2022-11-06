@@ -147,7 +147,11 @@ pub trait AffineCurve:
     type Coordinates;
 
     /// Initializes a new affine group element from the given coordinates.
-    fn from_coordinates(coordinates: Self::Coordinates) -> Self;
+    fn from_coordinates(coordinates: Self::Coordinates) -> Option<Self>;
+
+    /// Initializes a new affine group element from the given coordinates.
+    /// Note: The resulting point is **not** enforced to be on the curve or in the correct subgroup.
+    fn from_coordinates_unchecked(coordinates: Self::Coordinates) -> Self;
 
     /// Returns the cofactor of the curve.
     fn cofactor() -> &'static [u64];

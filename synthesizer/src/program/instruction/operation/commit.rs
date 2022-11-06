@@ -96,10 +96,9 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
-        // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
         // Retrieve the input and randomizer.
-        let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
+        let input = registers.load(stack, &self.operands[0])?;
+        let randomizer = registers.load(stack, &self.operands[1])?;
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
@@ -134,11 +133,9 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
-        // Load the operands values.
-        let inputs: Vec<_> =
-            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
         // Retrieve the input and randomizer.
-        let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
+        let input = registers.load_circuit(stack, &self.operands[0])?;
+        let randomizer = registers.load_circuit(stack, &self.operands[1])?;
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {

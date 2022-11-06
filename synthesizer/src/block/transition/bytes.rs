@@ -72,6 +72,7 @@ impl<N: Network> FromBytes for Transition<N> {
 
         // Read the proof.
         let proof = FromBytes::read_le(&mut reader)?;
+
         // Read the transition public key.
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
@@ -131,6 +132,7 @@ impl<N: Network> ToBytes for Transition<N> {
 
         // Write the proof.
         self.proof.write_le(&mut writer)?;
+
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;
         // Write the transition commitment.

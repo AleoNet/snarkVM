@@ -135,7 +135,7 @@ jobs:
   snarkvm:
     docker:
       - image: cimg/rust:1.64
-    resource_class: xlarge
+    resource_class: 2xlarge
     steps:
       - run_serial:
           workspace_member: .
@@ -283,10 +283,9 @@ jobs:
   circuit-types-integers:
     docker:
       - image: cimg/rust:1.64
-    resource_class: xlarge
-    parallelism: 50 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
+    resource_class: 2xlarge
     steps:
-      - run_parallel:
+      - run_serial:
           workspace_member: circuit/types/integers
           cache_key: snarkvm-circuit-types-integers-cache
           flags: -- --ignored
@@ -483,9 +482,8 @@ jobs:
     docker:
       - image: cimg/rust:1.64
     resource_class: 2xlarge
-    parallelism: 4
     steps:
-      - run_parallel:
+      - run_serial:
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-cache
 

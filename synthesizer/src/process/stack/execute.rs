@@ -218,7 +218,9 @@ impl<N: Network> Stack<N> {
 
         // Construct the response.
         let response = circuit::Response::from_outputs(
+            request.network_id(),
             request.program_id(),
+            request.function_name(),
             num_inputs,
             request.tvk(),
             request.tcm(),
@@ -260,9 +262,9 @@ impl<N: Network> Stack<N> {
                     // Ensure the value is a literal (for now).
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
-                        circuit::Value::Plaintext(circuit::Plaintext::Interface(..)) => {
+                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => {
                             bail!(
-                                "'{}/{}' attempts to pass an 'interface' into 'finalize'",
+                                "'{}/{}' attempts to pass an 'struct' into 'finalize'",
                                 self.program_id(),
                                 function.name()
                             );
@@ -285,9 +287,9 @@ impl<N: Network> Stack<N> {
                 // Compute the finalize inputs checksum.
                 let finalize_checksum = A::hash_bhp1024(&circuit_finalize_input_bits);
                 // Inject the finalize inputs checksum as `Mode::Public`.
-                let circuit_checksum = circuit::Field::new(circuit::Mode::Public, finalize_checksum.eject_value());
+                let circuit_checksum = circuit::Field::<A>::new(circuit::Mode::Public, finalize_checksum.eject_value());
                 // Enforce the injected checksum matches the original checksum.
-                A::assert(circuit_checksum.is_equal(&finalize_checksum));
+                A::assert_eq(circuit_checksum, finalize_checksum);
 
                 #[cfg(debug_assertions)]
                 Self::log_circuit::<A, _>("Finalize");
@@ -412,16 +414,23 @@ impl<N: Network> Stack<N> {
             assignments.write().push(assignment);
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
-            let proof = proving_key.prove(function.name(), &assignment, rng)?;
+            let proof = match proving_key.prove(function.name(), &assignment, rng) {
+                Ok(proof) => proof,
+                Err(error) => bail!("Execution proof failed - {error}"),
+            };
+
             // Construct the transition.
             let transition =
                 Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
+
+            // Add the transition commitments.
+            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }
@@ -432,7 +441,7 @@ impl<N: Network> Stack<N> {
 
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
-    fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
+    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 
         // Determine if the circuit is satisfied.

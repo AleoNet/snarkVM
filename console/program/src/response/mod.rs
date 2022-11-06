@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ProgramID, Register, Value, ValueType};
+use crate::{Identifier, ProgramID, Register, Value, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -50,7 +50,9 @@ impl<N: Network> From<(Vec<OutputID<N>>, Vec<Value<N>>)> for Response<N> {
 impl<N: Network> Response<N> {
     /// Initializes a new response.
     pub fn new(
+        network_id: &U16<N>,
         program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
         num_inputs: usize,
         tvk: &Field<N>,
         tcm: &Field<N>,
@@ -58,6 +60,10 @@ impl<N: Network> Response<N> {
         output_types: &[ValueType<N>],
         output_registers: &[Register<N>],
     ) -> Result<Self> {
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id =
+            N::hash_bhp1024(&(*network_id, program_id.name(), program_id.network(), function_name).to_bits_le())?;
+
         // Compute the output IDs.
         let output_ids = outputs
             .iter()
@@ -75,8 +81,9 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16(
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
-                        // Construct the preimage as `(output || tcm || index)`.
-                        let mut preimage = output.to_fields()?;
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Hash the output to a field element.
@@ -94,8 +101,9 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16(
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
-                        // Construct the preimage as `(output || tcm || index)`.
-                        let mut preimage = output.to_fields()?;
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);
                         // Hash the output to a field element.
@@ -112,8 +120,8 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16(
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
-                        // Compute the output view key as `Hash(tvk || index)`.
-                        let output_view_key = N::hash_psd2(&[*tvk, index])?;
+                        // Compute the output view key as `Hash(function ID || tvk || index)`.
+                        let output_view_key = N::hash_psd4(&[function_id, *tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &output {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
@@ -159,8 +167,9 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16(
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
-                        // Construct the preimage as `(output || tvk || index)`.
-                        let mut preimage = output.to_fields()?;
+                        // Construct the preimage as `(function ID || output || tvk || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
                         preimage.push(*tvk);
                         preimage.push(index);
                         // Hash the output to a field element.

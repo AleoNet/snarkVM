@@ -16,14 +16,6 @@
 
 use super::*;
 
-/// The depth of the Merkle tree for the block header.
-const HEADER_DEPTH: u8 = 3;
-
-/// The Merkle tree for the block header.
-type HeaderTree<N> = BHPMerkleTree<N, HEADER_DEPTH>;
-/// The Merkle path for the block header.
-pub type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
-
 impl<N: Network> Header<N> {
     /// Returns the block header root.
     pub fn to_root(&self) -> Result<Field<N>> {

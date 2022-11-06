@@ -21,6 +21,7 @@ use console::network::prelude::*;
 use core::{borrow::Borrow, hash::Hash};
 use std::borrow::Cow;
 
+#[derive(Clone)]
 pub enum BatchOperation<K: Copy + Clone + PartialEq + Eq + Hash + Send + Sync, V: Clone + PartialEq + Eq + Send + Sync>
 {
     Insert(K, V),
@@ -94,6 +95,42 @@ pub trait MapRead<
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Returns the current value for the given key if it is scheduled
+    /// to be inserted as part of an atomic batch.
+    ///
+    /// If the key does not exist, returns `None`.
+    /// If the key is removed in the batch, returns `Some(None)`.
+    /// If the key is inserted in the batch, returns `Some(Some(value))`.
+    ///
+    fn get_batched<Q>(&self, key: &Q) -> Option<Option<V>>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Returns the value for the given key from the atomic batch first, if it exists,
+    /// or return from the map, otherwise.
+    ///
+    fn get_speculative<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
+    {
+        // Return early in case of errors in order to not conceal them.
+        let map_value = self.get(key)?;
+
+        // Retrieve the atomic batch value, if it exists.
+        let atomic_batch_value = self.get_batched(key);
+
+        // Return the atomic batch value, if it exists, or the map value, otherwise.
+        match atomic_batch_value {
+            Some(Some(value)) => Ok(Some(Cow::Owned(value))),
+            Some(None) => Ok(None),
+            None => Ok(map_value),
+        }
+    }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.

@@ -40,7 +40,7 @@ use crate::{
         Serializer,
         Value,
     },
-    synthesizer::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey},
+    synthesizer::{CallOperator, Execution, Inclusion, Instruction, Process, Program, ProvingKey, VerifyingKey},
 };
 
 use anyhow::{bail, ensure, Error, Result};

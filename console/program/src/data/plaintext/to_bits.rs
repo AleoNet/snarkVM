@@ -29,15 +29,15 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_le
                 })
                 .clone(),
-            Self::Interface(interface, bits_le) => bits_le
+            Self::Struct(struct_, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![false, true]; // Variant bits.
                     bits_le.extend(
-                        u8::try_from(interface.len())
-                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
+                        u8::try_from(struct_.len())
+                            .or_halt_with::<N>("Plaintext struct length exceeds u8::MAX")
                             .to_bits_le(),
                     );
-                    for (identifier, value) in interface {
+                    for (identifier, value) in struct_ {
                         let value_bits = value.to_bits_le();
                         bits_le.extend(identifier.size_in_bits().to_bits_le());
                         bits_le.extend(identifier.to_bits_le());
@@ -66,15 +66,15 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_be
                 })
                 .clone(),
-            Self::Interface(interface, bits_be) => bits_be
+            Self::Struct(struct_, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![false, true]; // Variant bits.
                     bits_be.extend(
-                        u8::try_from(interface.len())
-                            .or_halt_with::<N>("Plaintext interface length exceeds u8::MAX")
+                        u8::try_from(struct_.len())
+                            .or_halt_with::<N>("Plaintext struct length exceeds u8::MAX")
                             .to_bits_be(),
                     );
-                    for (identifier, value) in interface {
+                    for (identifier, value) in struct_ {
                         let value_bits = value.to_bits_be();
                         bits_be.extend(identifier.size_in_bits().to_bits_be());
                         bits_be.extend(identifier.to_bits_be());

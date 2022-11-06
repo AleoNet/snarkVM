@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_algorithms::snark::marlin;
 use snarkvm_console_algorithms::{
     Blake2Xs,
     Pedersen128,
@@ -124,6 +125,8 @@ impl Network for Testnet3 {
     const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
     const NAME: &'static str = "Aleo Testnet3";
 
@@ -132,12 +135,10 @@ impl Network for Testnet3 {
         snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
     }
 
-    /// Returns the universal SRS bytes.
-    fn universal_srs_bytes() -> &'static [u8] {
-        static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
-        UNIVERSAL_SRS
-            .get_or_try_init(snarkvm_parameters::testnet3::TrialSRS::load_bytes)
-            .expect("Failed to load the universal SRS bytes")
+    /// Returns the universal SRS.
+    fn universal_srs() -> &'static marlin::UniversalSRS<Self::PairingCurve> {
+        static UNIVERSAL_SRS: OnceCell<marlin::UniversalSRS<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        UNIVERSAL_SRS.get_or_try_init(marlin::UniversalSRS::load).expect("Failed to load the universal SRS")
     }
 
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
@@ -145,6 +146,16 @@ impl Network for Testnet3 {
         snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
             .get(&function_name)
             .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the `proving key` bytes for the inclusion circuit.
+    fn inclusion_proving_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_PROVING_KEY
+    }
+
+    /// Returns the `verifying key` bytes for the inclusion circuit.
+    fn inclusion_verifying_key_bytes() -> &'static Vec<u8> {
+        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_VERIFYING_KEY
     }
 
     /// Returns the powers of `G`.

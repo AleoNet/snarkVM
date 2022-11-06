@@ -17,14 +17,14 @@
 mod stack;
 pub use stack::*;
 
-mod additional_fee;
 mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
+mod execute_fee;
 
 use crate::{
-    block::AdditionalFee,
+    block::{Input, Transition},
     program::{Instruction, Operand, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
@@ -33,7 +33,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
-    types::{I64, U64},
+    types::{I64, U16, U64},
 };
 
 use indexmap::IndexMap;
@@ -334,7 +334,7 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.
                 execution
@@ -378,7 +378,7 @@ mod tests {
     type CurrentAleo = AleoV0;
 
     #[test]
-    fn test_process_execute_genesis() {
+    fn test_process_execute_mint() {
         // Initialize a new program.
         let program = Program::<CurrentNetwork>::credits().unwrap();
 
@@ -400,7 +400,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("genesis").unwrap(),
+                Identifier::from_str("mint").unwrap(),
                 &[r0.clone(), r1.clone()],
                 rng,
             )
@@ -431,11 +431,11 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<true>(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -457,7 +457,7 @@ mod tests {
     owner as address.private;
     gates as u64.private;
 
-  function genesis:
+  function mint:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
@@ -470,7 +470,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("genesis").unwrap(),
+                Identifier::from_str("mint").unwrap(),
                 &[r0, r1],
                 rng,
             )
@@ -479,7 +479,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/genesis' is not satisfied on the given inputs (26479 constraints).")
+            format!("'token.aleo/mint' is not satisfied on the given inputs (26610 constraints).")
         );
     }
 
@@ -592,13 +592,13 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<false>(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -674,12 +674,12 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<false>(&execution).unwrap();
     }
 
     #[test]
@@ -688,7 +688,7 @@ function hello_world:
         let program = Program::<CurrentNetwork>::from_str(
             r"program id.aleo;
 
-  interface data:
+  struct data:
     owner as address;
 
   function initialize:
@@ -734,12 +734,12 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<true>(&execution).unwrap();
     }
 
     #[test]
@@ -850,7 +850,7 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[0]);
@@ -858,7 +858,7 @@ function compute:
         assert_eq!(r5, candidate[2]);
         assert_eq!(r6, candidate[3]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<false>(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -1004,13 +1004,13 @@ function transfer:
         assert_eq!(authorization.len(), 5);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
 
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<false>(&execution).unwrap();
 
         // use circuit::Environment;
         //
@@ -1107,12 +1107,12 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<true>(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
@@ -1204,12 +1204,12 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<true>(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
@@ -1319,12 +1319,12 @@ finalize mint_public:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<true>(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();
@@ -1455,12 +1455,12 @@ function mint:
         assert_eq!(authorization.len(), 2);
 
         // Execute the request.
-        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
         // Verify the execution.
-        assert!(process.verify_execution(&execution).is_ok());
+        process.verify_execution::<true>(&execution).unwrap();
 
         // Now, finalize the execution.
         process.finalize_execution(&store, &execution).unwrap();

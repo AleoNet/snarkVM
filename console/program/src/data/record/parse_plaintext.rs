@@ -93,7 +93,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
                 return Err(error("Duplicate entry type found in record"));
             }
-            // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
+            // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
             match entries.len() <= N::MAX_DATA_ENTRIES {
                 true => Ok(entries),
                 false => Err(error(format!("Found a record that exceeds size ({})", entries.len()))),
@@ -180,10 +180,10 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 Entry::Constant(Plaintext::Literal(..))
                 | Entry::Public(Plaintext::Literal(..))
                 | Entry::Private(Plaintext::Literal(..)) => write!(f, "{entry}")?,
-                // If the entry is an interface, print the entry with indentation.
-                Entry::Constant(Plaintext::Interface(..))
-                | Entry::Public(Plaintext::Interface(..))
-                | Entry::Private(Plaintext::Interface(..)) => entry.fmt_internal(f, depth + 1)?,
+                // If the entry is a struct, print the entry with indentation.
+                Entry::Constant(Plaintext::Struct(..))
+                | Entry::Public(Plaintext::Struct(..))
+                | Entry::Private(Plaintext::Struct(..)) => entry.fmt_internal(f, depth + 1)?,
             }
             // Print the comma.
             write!(f, ",")?;
@@ -235,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_with_interface_entry() -> Result<()> {
+    fn test_parse_with_struct_entry() -> Result<()> {
         let expected = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public,
   gates: 99u64.private,
