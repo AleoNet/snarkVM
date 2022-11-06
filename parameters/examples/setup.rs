@@ -60,26 +60,6 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     Ok(())
 }
 
-pub fn kzg_powers_metadata() {
-    for i in 16..=28 {
-        let degree_file_name = format!("powers_of_g_{}", i);
-        let degree_metadata = format!("powers_of_g_{}_metadata", i);
-        let mut degree_file = File::open(degree_file_name).unwrap();
-        let degree_file_size = degree_file.metadata().unwrap().len() as usize;
-        let mut degree_file_bytes = Vec::with_capacity(degree_file_size);
-        degree_file.read_to_end(&mut degree_file_bytes).unwrap();
-        let checksum = checksum(&degree_file_bytes);
-
-        let metadata = json!({
-            "degree": i as usize,
-            "checksum": checksum,
-            "size": degree_file_size,
-        });
-
-        write_metadata(&degree_metadata, &metadata).unwrap();
-    }
-}
-
 /// Synthesizes the circuit keys for the credits program. (cargo run --release --example setup credits)
 pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize an RNG.
@@ -93,7 +73,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize a vector for the commands.
     let mut commands = vec![];
 
-    // Synthesize the 'credits.aleo' function keys.
+    // Store the 'credits.aleo' circuit keys.
     for (function_name, _) in program.functions().iter() {
         // let timer = std::time::Instant::now();
         // process.synthesize_key::<A, _>(program_id, function_name, rng)?;
