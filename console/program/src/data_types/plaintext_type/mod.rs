@@ -40,7 +40,7 @@ impl<N: Network> From<LiteralType> for PlaintextType<N> {
 }
 
 impl<N: Network> From<Identifier<N>> for PlaintextType<N> {
-    /// Initializes a plaintext type from an struct type.
+    /// Initializes a plaintext type from a struct type.
     fn from(struct_: Identifier<N>) -> Self {
         PlaintextType::Struct(struct_)
     }

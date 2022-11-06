@@ -161,7 +161,7 @@ impl<N: Network> Stack<N> {
             PlaintextType::Literal(literal_type) => {
                 Plaintext::Literal(Literal::sample(*literal_type, rng), Default::default())
             }
-            // Sample an struct.
+            // Sample a struct.
             PlaintextType::Struct(struct_name) => {
                 // Retrieve the struct.
                 let struct_ = self.program.get_struct(struct_name)?;

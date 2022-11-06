@@ -25,8 +25,8 @@ impl<A: Aleo> Plaintext<A> {
         }
 
         match self {
-            // Halts if the value is not an struct.
-            Self::Literal(..) => A::halt("Literal is not an struct"),
+            // Halts if the value is not a struct.
+            Self::Literal(..) => A::halt("Literal is not a struct"),
             // Retrieve the value of the member (from the value).
             Self::Struct(members, ..) => {
                 // Initialize the members starting from the top-level.
@@ -37,11 +37,11 @@ impl<A: Aleo> Plaintext<A> {
 
                 // Iterate through the path to retrieve the value.
                 for (i, identifier) in path.iter().enumerate() {
-                    // If this is not the last item in the path, ensure the value is an struct.
+                    // If this is not the last item in the path, ensure the value is a struct.
                     if i != path.len() - 1 {
                         match submembers.get(identifier) {
-                            // Halts if the member is not an struct.
-                            Some(Self::Literal(..)) => bail!("'{identifier}' must be an struct"),
+                            // Halts if the member is not a struct.
+                            Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
                             // Retrieve the member and update `submembers` for the next iteration.
                             Some(Self::Struct(members, ..)) => submembers = members,
                             // Halts if the member does not exist.

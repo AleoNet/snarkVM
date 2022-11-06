@@ -53,14 +53,14 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             let (string, (plaintext, mode)) = alt((
                 // Parse a literal.
                 parse_literal,
-                // Parse an struct.
+                // Parse a struct.
                 parse_struct,
             ))(string)?;
             // Return the identifier, plaintext, and visibility.
             Ok((string, (identifier, plaintext, mode)))
         }
 
-        /// Parses an entry as an struct: `{ identifier_0: plaintext_0.visibility, ..., identifier_n: plaintext_n.visibility }`.
+        /// Parses an entry as a struct: `{ identifier_0: plaintext_0.visibility, ..., identifier_n: plaintext_n.visibility }`.
         /// Observe the `visibility` is the same for all members of the plaintext value.
         fn parse_struct<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
             // Parse the whitespace and comments from the string.
@@ -102,7 +102,7 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
         let (string, (plaintext, mode)) = alt((
             // Parse a literal.
             parse_literal,
-            // Parse an struct.
+            // Parse a struct.
             parse_struct,
         ))(string)?;
 

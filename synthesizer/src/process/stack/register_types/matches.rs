@@ -21,7 +21,7 @@ impl<N: Network> RegisterTypes<N> {
     pub fn matches_struct(&self, stack: &Stack<N>, operands: &[Operand<N>], struct_: &Struct<N>) -> Result<()> {
         // Ensure the operands is not empty.
         if operands.is_empty() {
-            bail!("Casting to an struct requires at least one operand")
+            bail!("Casting to a struct requires at least one operand")
         }
 
         // Retrieve the struct name.
@@ -56,7 +56,7 @@ impl<N: Network> RegisterTypes<N> {
                     // Ensure the register type is not a record.
                     ensure!(
                         !matches!(register_type, RegisterType::Record(..)),
-                        "Casting a record into an struct is illegal"
+                        "Casting a record into a struct is illegal"
                     );
                     // Ensure the register type matches the member type.
                     ensure!(

@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Parser for Struct<N> {
-    /// Parses an struct as:
+    /// Parses a struct as:
     /// ```text
     ///   struct message:
     ///       owner as address;
@@ -79,7 +79,7 @@ impl<N: Network> Parser for Struct<N> {
 impl<N: Network> FromStr for Struct<N> {
     type Err = Error;
 
-    /// Returns an struct from a string literal.
+    /// Returns a struct from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {

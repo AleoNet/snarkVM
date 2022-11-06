@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> FromBytes for Struct<N> {
-    /// Reads an struct from a buffer.
+    /// Reads a struct from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the name of the struct.
         let name = Identifier::read_le(&mut reader)?;

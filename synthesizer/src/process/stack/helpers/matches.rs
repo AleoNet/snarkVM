@@ -209,7 +209,7 @@ impl<N: Network> Stack<N> {
                         false => bail!("'{plaintext_type}' is invalid: expected {literal_type}, found {literal}"),
                     }
                 }
-                // If `plaintext` is an struct, this is a mismatch.
+                // If `plaintext` is a struct, this is a mismatch.
                 Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected literal, found struct"),
             },
             PlaintextType::Struct(struct_name) => {

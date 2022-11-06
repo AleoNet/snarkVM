@@ -89,7 +89,7 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to an struct requires at least one operand");
+                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_name)?;
@@ -108,7 +108,7 @@ impl<N: Network> Cast<N> {
                             plaintext.clone()
                         }
                         // Ensure the struct member is not a record.
-                        Value::Record(..) => bail!("Casting a record into an struct member is illegal"),
+                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
                     };
                     // Append the member to the struct members.
                     members.insert(*member_name, plaintext);
@@ -215,7 +215,7 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_)) => {
                 // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to an struct requires at least one operand");
+                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_)?;
@@ -238,7 +238,7 @@ impl<N: Network> Cast<N> {
                         }
                         // Ensure the struct member is not a record.
                         circuit::Value::Record(..) => {
-                            bail!("Casting a record into an struct member is illegal")
+                            bail!("Casting a record into a struct member is illegal")
                         }
                     };
                     // Append the member to the struct members.

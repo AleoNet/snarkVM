@@ -180,7 +180,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 Entry::Constant(Plaintext::Literal(..))
                 | Entry::Public(Plaintext::Literal(..))
                 | Entry::Private(Plaintext::Literal(..)) => write!(f, "{entry}")?,
-                // If the entry is an struct, print the entry with indentation.
+                // If the entry is a struct, print the entry with indentation.
                 Entry::Constant(Plaintext::Struct(..))
                 | Entry::Public(Plaintext::Struct(..))
                 | Entry::Private(Plaintext::Struct(..)) => entry.fmt_internal(f, depth + 1)?,

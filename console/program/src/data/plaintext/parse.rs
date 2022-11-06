@@ -36,7 +36,7 @@ impl<N: Network> Parser for Plaintext<N> {
             Ok((string, (identifier, plaintext)))
         }
 
-        /// Parses a plaintext as an struct: `{ identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
+        /// Parses a plaintext as a struct: `{ identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
         fn parse_struct<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
