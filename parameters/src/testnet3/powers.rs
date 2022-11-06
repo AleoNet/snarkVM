@@ -330,7 +330,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             self.shifted_powers_of_beta_g = Vec::new();
         } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
             // If the range is closer to the shifted powers, then we download the shifted powers.
-            self.download_up_to(range.start)?;
+            self.download_from(range.start)?;
         } else {
             // Otherwise, we download the normal powers.
             self.download_up_to(range.end)?;
@@ -342,7 +342,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// and updates `Self` in place with the new powers.
     pub fn download_up_to(&mut self, end: usize) -> Result<()> {
         let total_powers = end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
-        if total_powers >= MAX_NUM_POWERS {
+        if total_powers > MAX_NUM_POWERS {
             return Err(anyhow!("Requesting more powers than exist in the SRS"));
         }
         // Initialize the first degree to download.

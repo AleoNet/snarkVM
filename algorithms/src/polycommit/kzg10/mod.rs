@@ -93,10 +93,7 @@ pub struct KZG10<E: PairingEngine>(PhantomData<E>);
 impl<E: PairingEngine> KZG10<E> {
     /// Constructs public parameters when given as input the maximum degree `degree`
     /// for the polynomial commitment scheme.
-    pub fn load_srs(
-        max_degree: usize,
-        supported_degree_bounds_config: &KZGDegreeBounds,
-    ) -> Result<UniversalParams<E>, PCError> {
+    pub fn load_srs(max_degree: usize) -> Result<UniversalParams<E>, PCError> {
         let params = UniversalParams::load()?;
         params.download_powers_for(0..(max_degree + 1))?;
         // TODO: check that params match supported_degree bounds.
@@ -543,7 +540,7 @@ mod tests {
     #[test]
     fn test_kzg10_universal_params_serialization() {
         let degree = 4;
-        let pp = KZG_Bls12_377::load_srs(degree, &KZGDegreeBounds::None).unwrap();
+        let pp = KZG_Bls12_377::load_srs(degree).unwrap();
 
         let pp_bytes = pp.to_bytes_le().unwrap();
         let pp_recovered: UniversalParams<Bls12_377> = FromBytes::read_le(&pp_bytes[..]).unwrap();
@@ -559,7 +556,7 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::load_srs(degree, &KZGDegreeBounds::None)?;
+            let pp = KZG10::<E>::load_srs(degree)?;
             let hiding_bound = Some(1);
             let (ck, vk) = KZG10::trim(&pp, degree, hiding_bound);
             let p = DensePolynomial::rand(degree, rng);
@@ -582,7 +579,7 @@ mod tests {
         let rng = &mut TestRng::default();
         for _ in 0..100 {
             let degree = 50;
-            let pp = KZG10::<E>::load_srs(degree, &KZGDegreeBounds::None)?;
+            let pp = KZG10::<E>::load_srs(degree)?;
             let hiding_bound = Some(1);
             let (ck, vk) = KZG10::trim(&pp, 2, hiding_bound);
             let p = DensePolynomial::rand(1, rng);
@@ -609,7 +606,7 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::load_srs(degree, &KZGDegreeBounds::None)?;
+            let pp = KZG10::<E>::load_srs(degree)?;
             let (ck, vk) = KZG10::trim(&pp, degree, hiding_bound);
 
             let mut comms = Vec::new();
@@ -656,7 +653,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let max_degree = 123;
-        let pp = KZG_Bls12_377::load_srs(max_degree, &KZGDegreeBounds::None).unwrap();
+        let pp = KZG_Bls12_377::load_srs(max_degree).unwrap();
         let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree, None);
 
         let p = DensePolynomial::<Fr>::rand(max_degree + 1, rng);

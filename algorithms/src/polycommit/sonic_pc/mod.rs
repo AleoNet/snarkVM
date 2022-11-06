@@ -57,7 +57,7 @@ pub struct SonicKZG10<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
 
 impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     pub fn load_srs(max_degree: usize) -> Result<UniversalParams<E>, PCError> {
-        kzg10::KZG10::load_srs(max_degree, &kzg10::KZGDegreeBounds::Marlin).map_err(Into::into)
+        kzg10::KZG10::load_srs(max_degree).map_err(Into::into)
     }
 
     pub fn trim(

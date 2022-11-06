@@ -433,6 +433,16 @@ mod marlin_recursion {
         test_bincode(num_constraints, num_variables);
     }
 
+    #[test]
+    fn prove_and_verify_with_large_matrix() {
+        let num_constraints = 1 << 16;
+        let num_variables = 1 << 16;
+
+        test_circuit(num_constraints, num_variables);
+        test_serde_json(num_constraints, num_variables);
+        test_bincode(num_constraints, num_variables);
+    }
+
     // #[test]
     // /// Test on a constraint system that will trigger outlining.
     // fn prove_and_test_outlining() {
