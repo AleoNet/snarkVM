@@ -96,7 +96,6 @@ impl<E: PairingEngine> KZG10<E> {
     pub fn load_srs(max_degree: usize) -> Result<UniversalParams<E>, PCError> {
         let params = UniversalParams::load()?;
         params.download_powers_for(0..(max_degree + 1))?;
-        // TODO: check that params match supported_degree bounds.
         Ok(params)
     }
 
