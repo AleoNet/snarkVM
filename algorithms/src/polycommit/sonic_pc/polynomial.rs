@@ -64,7 +64,7 @@ impl PolynomialInfo {
 /// A polynomial along with information about its degree bound (if any), and the
 /// maximum number of queries that will be made to it. This latter number determines
 /// the amount of protection that will be provided to a commitment for this polynomial.
-#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct LabeledPolynomial<F: Field> {
     pub info: PolynomialInfo,
     pub polynomial: Polynomial<'static, F>,

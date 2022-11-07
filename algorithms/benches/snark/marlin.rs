@@ -30,7 +30,7 @@ use snarkvm_utilities::{ops::MulAssign, TestRng, Uniform};
 
 use criterion::Criterion;
 
-type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
 
 #[derive(Copy, Clone)]
@@ -69,12 +69,11 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<Constr
 }
 
 fn snark_universal_setup(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
 
     c.bench_function("snark_universal_setup", move |b| {
         b.iter(|| {
-            MarlinInst::universal_setup(&max_degree, rng).unwrap();
+            MarlinInst::universal_setup(&max_degree).unwrap();
         })
     });
 }
@@ -86,7 +85,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let y = Fr::rand(rng);
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+    let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
     for size in [100, 1_000, 10_000] {
         let num_constraints = size;
@@ -108,7 +107,7 @@ fn snark_prove(c: &mut Criterion) {
         let y = Fr::rand(rng);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
@@ -130,7 +129,7 @@ fn snark_verify(c: &mut Criterion) {
         z.mul_assign(&y);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
@@ -152,7 +151,7 @@ fn snark_certificate_prove(c: &mut Criterion) {
     let y = Fr::rand(rng);
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+    let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
     let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
 
@@ -175,7 +174,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
     let y = Fr::rand(rng);
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+    let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
     let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
 

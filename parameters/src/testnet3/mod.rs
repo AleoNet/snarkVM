@@ -22,39 +22,43 @@ pub use powers::*;
 
 const REMOTE_URL: &str = "https://vm.aleo.org/testnet3/parameters";
 
-// Degree 15
-impl_local!(Degree15, "resources/", "universal", "srs", "15");
-// Degree 16
-impl_remote!(Degree16, REMOTE_URL, "resources/", "universal", "srs", "16");
-// Degree 17
-impl_remote!(Degree17, REMOTE_URL, "resources/", "universal", "srs", "17");
-// Degree 18
-impl_remote!(Degree18, REMOTE_URL, "resources/", "universal", "srs", "18");
-// Degree 19
-impl_remote!(Degree19, REMOTE_URL, "resources/", "universal", "srs", "19");
-// Degree 20
-impl_remote!(Degree20, REMOTE_URL, "resources/", "universal", "srs", "20");
-// Degree 21
-impl_remote!(Degree21, REMOTE_URL, "resources/", "universal", "srs", "21");
-// Degree 22
-impl_remote!(Degree22, REMOTE_URL, "resources/", "universal", "srs", "22");
-// Degree 23
-impl_remote!(Degree23, REMOTE_URL, "resources/", "universal", "srs", "23");
-// Degree 24
-impl_remote!(Degree24, REMOTE_URL, "resources/", "universal", "srs", "24");
-// Degree 25
-impl_remote!(Degree25, REMOTE_URL, "resources/", "universal", "srs", "25");
-// Degree 26
-impl_remote!(Degree26, REMOTE_URL, "resources/", "universal", "srs", "26");
-// Degree 27
-impl_remote!(Degree27, REMOTE_URL, "resources/", "universal", "srs", "27");
-// Degree 28
-impl_remote!(Degree28, REMOTE_URL, "resources/", "universal", "srs", "28");
-// Gamma
-impl_local!(Gamma, "resources/", "universal", "srs", "gamma");
+// Degrees
+impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
+impl_remote!(Degree16, REMOTE_URL, "resources/", "powers-of-beta-16", "usrs");
+impl_remote!(Degree17, REMOTE_URL, "resources/", "powers-of-beta-17", "usrs");
+impl_remote!(Degree18, REMOTE_URL, "resources/", "powers-of-beta-18", "usrs");
+impl_remote!(Degree19, REMOTE_URL, "resources/", "powers-of-beta-19", "usrs");
+impl_remote!(Degree20, REMOTE_URL, "resources/", "powers-of-beta-20", "usrs");
+impl_remote!(Degree21, REMOTE_URL, "resources/", "powers-of-beta-21", "usrs");
+impl_remote!(Degree22, REMOTE_URL, "resources/", "powers-of-beta-22", "usrs");
+impl_remote!(Degree23, REMOTE_URL, "resources/", "powers-of-beta-23", "usrs");
+impl_remote!(Degree24, REMOTE_URL, "resources/", "powers-of-beta-24", "usrs");
+impl_remote!(Degree25, REMOTE_URL, "resources/", "powers-of-beta-25", "usrs");
+impl_remote!(Degree26, REMOTE_URL, "resources/", "powers-of-beta-26", "usrs");
+impl_remote!(Degree27, REMOTE_URL, "resources/", "powers-of-beta-27", "usrs");
+impl_remote!(Degree28, REMOTE_URL, "resources/", "powers-of-beta-28", "usrs");
 
-// Trial
-impl_remote!(TrialSRS, REMOTE_URL, "resources/", "universal", "srs", "trial");
+// Shifted Degrees
+impl_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
+impl_remote!(ShiftedDegree16, REMOTE_URL, "resources/", "shifted-powers-of-beta-16", "usrs");
+impl_remote!(ShiftedDegree17, REMOTE_URL, "resources/", "shifted-powers-of-beta-17", "usrs");
+impl_remote!(ShiftedDegree18, REMOTE_URL, "resources/", "shifted-powers-of-beta-18", "usrs");
+impl_remote!(ShiftedDegree19, REMOTE_URL, "resources/", "shifted-powers-of-beta-19", "usrs");
+impl_remote!(ShiftedDegree20, REMOTE_URL, "resources/", "shifted-powers-of-beta-20", "usrs");
+impl_remote!(ShiftedDegree21, REMOTE_URL, "resources/", "shifted-powers-of-beta-21", "usrs");
+impl_remote!(ShiftedDegree22, REMOTE_URL, "resources/", "shifted-powers-of-beta-22", "usrs");
+impl_remote!(ShiftedDegree23, REMOTE_URL, "resources/", "shifted-powers-of-beta-23", "usrs");
+impl_remote!(ShiftedDegree24, REMOTE_URL, "resources/", "shifted-powers-of-beta-24", "usrs");
+impl_remote!(ShiftedDegree25, REMOTE_URL, "resources/", "shifted-powers-of-beta-25", "usrs");
+impl_remote!(ShiftedDegree26, REMOTE_URL, "resources/", "shifted-powers-of-beta-26", "usrs");
+impl_remote!(ShiftedDegree27, REMOTE_URL, "resources/", "shifted-powers-of-beta-27", "usrs");
+
+// Powers of Beta Times Gamma * G
+impl_local!(Gamma, "resources/", "powers-of-beta-gamma", "usrs");
+// Negative Powers of Beta in G2
+impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
+// Negative Powers of Beta in G2
+impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
 macro_rules! impl_remote_keys {
     ($pname: ident, $vname: ident, $fname: tt) => {

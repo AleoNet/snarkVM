@@ -21,7 +21,6 @@ use console::{
     program::Identifier,
 };
 use snarkvm_algorithms::{snark::marlin, traits::SNARK};
-use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
@@ -29,9 +28,7 @@ use std::sync::Arc;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
-type Fr<N> = <N as Environment>::Field;
-type Marlin<N> =
-    marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode, [Fr<N>]>;
+type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode>;
 
 mod certificate;
 pub use certificate::Certificate;

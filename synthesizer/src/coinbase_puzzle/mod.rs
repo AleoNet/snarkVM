@@ -37,11 +37,6 @@ use snarkvm_algorithms::{
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, Zero};
 
-#[cfg(any(test, feature = "setup"))]
-use console::prelude::{CryptoRng, Rng};
-#[cfg(any(test, feature = "setup"))]
-use snarkvm_algorithms::polycommit::kzg10;
-
 use std::sync::Arc;
 
 #[cfg(feature = "parallel")]
@@ -58,10 +53,12 @@ pub enum CoinbasePuzzle<N: Network> {
 impl<N: Network> CoinbasePuzzle<N> {
     /// Initializes a new `SRS` for the coinbase puzzle.
     #[cfg(any(test, feature = "setup"))]
-    pub fn setup<R: Rng + CryptoRng>(config: PuzzleConfig, rng: &mut R) -> Result<SRS<N::PairingCurve>> {
+    pub fn setup(config: PuzzleConfig) -> Result<SRS<N::PairingCurve>> {
         // The SRS must support committing to the product of two degree `n` polynomials.
         // Thus, the SRS must support committing to a polynomial of degree `2n - 1`.
-        Ok(KZG10::setup((2 * config.degree - 1).try_into()?, &kzg10::KZGDegreeBounds::None, false, rng)?)
+        let total_degree = (2 * config.degree - 1).try_into()?;
+        let srs = KZG10::load_srs(total_degree)?;
+        Ok(srs)
     }
 
     /// Load the coinbase puzzle proving and verifying keys.
@@ -90,7 +87,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             g: srs.power_of_beta_g(0)?,
             gamma_g: <N::PairingCurve as PairingEngine>::G1Affine::zero(), // We don't use gamma_g later on since we are not hiding.
             h: srs.h,
-            beta_h: srs.beta_h,
+            beta_h: srs.beta_h(),
             prepared_h: srs.prepared_h.clone(),
             prepared_beta_h: srs.prepared_beta_h.clone(),
         };

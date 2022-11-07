@@ -90,7 +90,7 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
     }
 }
 
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `row` polynomial.
     pub row: EvaluationsOnDomain<F>,
@@ -115,7 +115,7 @@ impl<F: PrimeField> MatrixEvals<F> {
 
 /// Contains information about the arithmetization of the matrix M^*.
 /// Here `M^*(i, j) := M(j, i) * u_H(j, j)`. For more details, see [\[COS20\]](https://eprint.iacr.org/2019/1076).
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the row indices of M^*.
     pub row: LabeledPolynomial<F>,

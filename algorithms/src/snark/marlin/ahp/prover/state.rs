@@ -74,7 +74,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
 
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F>>>,
+    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
 
     /// Randomizers for z_b.
     /// The length of this list must be equal to the batch size.

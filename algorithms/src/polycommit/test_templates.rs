@@ -70,7 +70,7 @@ pub struct TestComponents<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
 pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -> Result<(), PCError> {
     let rng = &mut TestRng::default();
     let max_degree = 100;
-    let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
+    let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
 
     for _ in 0..10 {
         let supported_degree = distributions::Uniform::from(1..=max_degree).sample(rng);
@@ -129,7 +129,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
     let mut test_components = Vec::new();
 
     let rng = &mut TestRng::default();
-    let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
+    let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
 
     for _ in 0..num_iters {
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
@@ -241,7 +241,7 @@ where
 
     let rng = &mut TestRng::default();
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
-    let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
+    let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let supported_degree_bounds = pp.supported_degree_bounds();
 
     for _ in 0..num_iters {
@@ -283,8 +283,7 @@ where
                 None
             };
 
-            let hiding_bound =
-                if num_points_in_query_set >= degree { Some(degree) } else { Some(num_points_in_query_set) };
+            let hiding_bound = Some(1);
             println!("Hiding bound: {:?}", hiding_bound);
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
@@ -360,7 +359,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
 
     let rng = &mut TestRng::default();
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
-    let pp = SonicKZG10::<E, S>::setup(max_degree, rng)?;
+    let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let supported_degree_bounds = pp.supported_degree_bounds();
 
     for _ in 0..num_iters {
@@ -402,8 +401,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
                 None
             };
 
-            let hiding_bound =
-                if num_points_in_query_set >= degree { Some(degree) } else { Some(num_points_in_query_set) };
+            let hiding_bound = Some(1);
             println!("Hiding bound: {:?}", hiding_bound);
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))

@@ -142,7 +142,7 @@ macro_rules! impl_load_bytes_logic_remote {
                 use colored::*;
                 let path = format!("(in {:?})", file_path);
                 eprintln!(
-                    "\n⚠️  Attention - \"{}\" does not exist. Downloading and storing it {}.\n",
+                    "\n⚠️  \"{}\" does not exist. Downloading and storing it {}.\n",
                     $filename, path.dimmed()
                 );
             }
@@ -217,6 +217,35 @@ macro_rules! impl_load_bytes_logic_remote {
 
 #[macro_export]
 macro_rules! impl_local {
+    ($name: ident, $local_dir: expr, $fname: tt, "usrs") => {
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub struct $name;
+
+        impl $name {
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
+
+                let metadata: serde_json::Value =
+                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                let expected_checksum: String =
+                    metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
+                let expected_size: usize =
+                    metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
+
+                let buffer = include_bytes!(concat!($local_dir, $fname, ".", "usrs"));
+
+                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+            }
+        }
+
+        paste::item! {
+            #[cfg(test)]
+            #[test]
+            fn [< test_ $fname _usrs >]() {
+                assert!($name::load_bytes().is_ok());
+            }
+        }
+    };
     ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt) => {
         #[derive(Clone, Debug, PartialEq, Eq)]
         pub struct $name;
@@ -246,14 +275,18 @@ macro_rules! impl_local {
             }
         }
     };
-    ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt, $fdegree: tt) => {
-        #[derive(Clone, Debug, PartialEq, Eq)]
+}
+
+#[macro_export]
+macro_rules! impl_remote {
+    ($name: ident, $remote_url: expr, $local_dir: expr, $fname: tt, "usrs") => {
         pub struct $name;
 
         impl $name {
+            impl_store_and_remote_fetch!();
+
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str =
-                    include_str!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree, ".metadata"));
+                const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
                 let metadata: serde_json::Value =
                     serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
@@ -262,24 +295,30 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
 
-                let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree));
+                // Construct the versioned filename.
+                let filename = match expected_checksum.get(0..7) {
+                    Some(sum) => format!("{}.{}.{}", $fname, "usrs", sum),
+                    _ => format!("{}.{}", $fname, "usrs"),
+                };
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_remote!(
+                    $remote_url,
+                    $local_dir,
+                    &filename,
+                    metadata,
+                    expected_checksum,
+                    expected_size
+                );
             }
         }
-
         paste::item! {
             #[cfg(test)]
             #[test]
-            fn [< test_ $fname _ $ftype _ $fdegree >]() {
+            fn [< test_ $fname _usrs >]() {
                 assert!($name::load_bytes().is_ok());
             }
         }
     };
-}
-
-#[macro_export]
-macro_rules! impl_remote {
     ($name: ident, $remote_url: expr, $local_dir: expr, $fname: tt, $ftype: tt) => {
         pub struct $name;
 
@@ -317,48 +356,6 @@ macro_rules! impl_remote {
             #[cfg(test)]
             #[test]
             fn [< test_ $fname _ $ftype >]() {
-                assert!($name::load_bytes().is_ok());
-            }
-        }
-    };
-    ($name: ident, $remote_url: expr, $local_dir: expr, $fname: tt, $ftype: tt, $fdegree: tt) => {
-        pub struct $name;
-
-        impl $name {
-            impl_store_and_remote_fetch!();
-
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
-                const METADATA: &'static str =
-                    include_str!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree, ".metadata"));
-
-                let metadata: serde_json::Value =
-                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
-                let expected_checksum: String =
-                    metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
-                let expected_size: usize =
-                    metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
-
-                // Construct the versioned filename.
-                let filename = match expected_checksum.get(0..7) {
-                    Some(sum) => format!("{}.{}.{}.{}", $fname, $ftype, $fdegree, sum),
-                    _ => format!("{}.{}.{}", $fname, $ftype, $fdegree),
-                };
-
-                impl_load_bytes_logic_remote!(
-                    $remote_url,
-                    $local_dir,
-                    &filename,
-                    metadata,
-                    expected_checksum,
-                    expected_size
-                );
-            }
-        }
-
-        paste::item! {
-            #[cfg(test)]
-            #[test]
-            fn [< test_ $fname _ $ftype _ $fdegree >]() {
                 assert!($name::load_bytes().is_ok());
             }
         }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{polycommit::sonic_pc, snark::marlin::ahp};
+use crate::{polycommit::sonic_pc, snark::marlin::ahp, SNARKError};
 
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
@@ -238,8 +238,24 @@ impl<E: PairingEngine> Proof<E> {
         evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::ThirdMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
-    ) -> Self {
-        Self { batch_size, commitments, evaluations, msg, pc_proof }
+    ) -> Result<Self, SNARKError> {
+        if commitments.witness_commitments.len() != batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        if evaluations.z_b_evals.len() != batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        Ok(Self { batch_size, commitments, evaluations, msg, pc_proof })
+    }
+
+    pub fn batch_size(&self) -> Result<usize, SNARKError> {
+        if self.commitments.witness_commitments.len() != self.batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        if self.evaluations.z_b_evals.len() != self.batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        Ok(self.batch_size)
     }
 }
 

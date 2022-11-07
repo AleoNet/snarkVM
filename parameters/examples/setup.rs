@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    crypto_hash::sha256::sha256,
-    snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
-    SNARK,
-};
+use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
 use snarkvm_console::network::{Network, Testnet3};
 use snarkvm_synthesizer::{Process, Program};
@@ -27,6 +23,7 @@ use anyhow::Result;
 use serde_json::{json, Value};
 use snarkvm_utilities::ToBytes;
 use std::{
+    fs,
     fs::File,
     io::{BufWriter, Read, Write},
     path::PathBuf,
@@ -64,62 +61,28 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     Ok(())
 }
 
-pub fn kzg_powers_metadata() {
-    for i in 16..=28 {
-        let degree_file_name = format!("powers_of_g_{}", i);
-        let degree_metadata = format!("powers_of_g_{}_metadata", i);
-        let mut degree_file = File::open(degree_file_name).unwrap();
-        let degree_file_size = degree_file.metadata().unwrap().len() as usize;
-        let mut degree_file_bytes = Vec::with_capacity(degree_file_size);
-        degree_file.read_to_end(&mut degree_file_bytes).unwrap();
-        let checksum = checksum(&degree_file_bytes);
+/// (Do not use) Writes the metadata files. (cargo run --release --example setup usrs)
+pub fn usrs() -> Result<()> {
+    let paths = fs::read_dir("../src/testnet3/resources/").unwrap();
+    for path in paths {
+        let path = path?.path();
+        if let Some("usrs") = path.extension().and_then(|s| s.to_str()) {
+            let metadata_path = path.with_extension("metadata");
+            let mut file = File::open(&path)?;
+            let file_size = file.metadata().unwrap().len() as usize;
+            let mut file_bytes = Vec::with_capacity(file_size);
+            file.read_to_end(&mut file_bytes)?;
+            let checksum = checksum(&file_bytes);
 
-        let metadata = json!({
-            "degree": i as usize,
-            "checksum": checksum,
-            "size": degree_file_size,
-        });
+            let metadata = json!({
+                "checksum": checksum,
+                "size": file_size,
+            });
 
-        write_metadata(&degree_metadata, &metadata).unwrap();
+            write_metadata(metadata_path.to_str().unwrap(), &metadata)?;
+            write_remote(path.to_str().unwrap(), &checksum, &file_bytes)?;
+        }
     }
-}
-
-/// Runs the trial SRS setup. (cargo run --release --example setup trial_srs 524288)
-pub fn trial_srs<N: Network>(num_gates: usize) -> Result<()> {
-    const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
-    const TRIAL_SRS: &str = "universal.srs.trial";
-
-    let mut rng = snarkvm_utilities::TestRng::fixed(1245897092);
-
-    use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin};
-    use snarkvm_console::network::Environment;
-    use snarkvm_curves::PairingEngine;
-    use snarkvm_utilities::{CanonicalSerialize, Compress};
-
-    type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
-    type Fr<N> = <N as Environment>::Field;
-    type FS<N> = PoseidonSponge<Fq<N>, 2, 1>;
-    type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, MarlinHidingMode, [Fr<N>]>;
-
-    let timer = std::time::Instant::now();
-    let max_degree = AHPForR1CS::<N::Field, MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates).unwrap();
-    let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
-    println!("Called universal setup: {} ms", timer.elapsed().as_millis());
-
-    let mut srs_bytes = vec![];
-    universal_srs.serialize_with_mode(&mut srs_bytes, Compress::No)?;
-
-    let srs_checksum = checksum(&srs_bytes);
-
-    let srs_metadata = json!({
-        "checksum": srs_checksum,
-        "size": srs_bytes.len(),
-    });
-
-    println!("{}", serde_json::to_string_pretty(&srs_metadata)?);
-    write_metadata(TRIAL_SRS_METADATA, &srs_metadata)?;
-    write_remote(TRIAL_SRS, &srs_checksum, &srs_bytes)?;
-
     Ok(())
 }
 
@@ -136,7 +99,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize a vector for the commands.
     let mut commands = vec![];
 
-    // Synthesize the 'credits.aleo' function keys.
+    // Store the 'credits.aleo' circuit keys.
     for (function_name, _) in program.functions().iter() {
         // let timer = std::time::Instant::now();
         // process.synthesize_key::<A, _>(program_id, function_name, rng)?;
@@ -185,7 +148,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 }
 
 /// Run the following command to perform a setup.
-/// `cargo run --example setup [parameter] [network]`
+/// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
@@ -194,7 +157,7 @@ pub fn main() -> Result<()> {
     }
 
     match args[1].as_str() {
-        "trial_srs" => trial_srs::<Testnet3>(args[2].as_str().parse::<usize>()?)?,
+        "usrs" => usrs()?,
         "credits" => credits_program::<Testnet3, snarkvm_circuit::AleoV0>()?,
         _ => panic!("Invalid parameter"),
     };

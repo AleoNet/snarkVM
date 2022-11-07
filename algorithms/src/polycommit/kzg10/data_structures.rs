@@ -26,19 +26,16 @@ use snarkvm_utilities::{
     error,
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    Compress,
     FromBytes,
-    SerializationError,
     ToBytes,
     ToMinimalBits,
-    Validate,
 };
 
 use anyhow::Result;
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::{collections::BTreeMap, io, sync::Arc};
+use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Clone, Debug)]
@@ -47,87 +44,32 @@ pub struct UniversalParams<E: PairingEngine> {
     /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// This struct provides an abstraction over the powers which are located on-disk
     /// to reduce memory usage.
-    pub powers: Arc<RwLock<PowersOfG<E>>>,
+    powers: Arc<RwLock<PowersOfG<E>>>,
     /// The generator of G2.
     pub h: E::G2Affine,
-    /// \beta times the above generator of G2.
-    pub beta_h: E::G2Affine,
     /// Supported degree bounds.
-    pub supported_degree_bounds: Vec<usize>,
-    /// Group elements of the form `{ \beta^{max_degree -i} G2 }`, where `i` is the supported degree bound.
-    /// This one is used for deriving the verifying key.
-    pub inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine>,
+    supported_degree_bounds: Vec<usize>,
     /// The generator of G2, prepared for use in pairings.
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
-impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
-    fn serialize_with_mode<W: Write>(&self, mut writer: W, mode: Compress) -> Result<(), SerializationError> {
-        self.powers.read().serialize_with_mode(&mut writer, mode)?;
-        self.h.serialize_with_mode(&mut writer, mode)?;
-        self.beta_h.serialize_with_mode(&mut writer, mode)?;
-        self.supported_degree_bounds.serialize_with_mode(&mut writer, mode)?;
-        self.inverse_neg_powers_of_beta_h.serialize_with_mode(&mut writer, mode)?;
-        self.prepared_h.serialize_with_mode(&mut writer, mode)?;
-        self.prepared_beta_h.serialize_with_mode(&mut writer, mode)
-    }
-
-    fn serialized_size(&self, mode: Compress) -> usize {
-        self.powers.read().serialized_size(mode)
-            + self.h.serialized_size(mode)
-            + self.beta_h.serialized_size(mode)
-            + self.supported_degree_bounds.serialized_size(mode)
-            + self.inverse_neg_powers_of_beta_h.serialized_size(mode)
-            + self.prepared_h.serialized_size(mode)
-            + self.prepared_beta_h.serialized_size(mode)
-    }
-}
-
-impl<E: PairingEngine> snarkvm_utilities::Valid for UniversalParams<E> {
-    fn check(&self) -> Result<(), SerializationError> {
-        self.powers.read().check()?;
-        self.h.check()?;
-        self.beta_h.check()?;
-        self.supported_degree_bounds.check()?;
-        self.inverse_neg_powers_of_beta_h.check()?;
-        self.prepared_h.check()?;
-        self.prepared_beta_h.check()
-    }
-}
-
-impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
-    fn deserialize_with_mode<R: Read>(
-        mut reader: R,
-        compress: Compress,
-        validate: Validate,
-    ) -> Result<Self, SerializationError> {
-        let powers: PowersOfG<E> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let beta_h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let supported_degree_bounds: Vec<usize> =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine> =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let prepared_h: <E::G2Affine as PairingCurve>::Prepared =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-
-        Ok(Self {
-            powers: Arc::new(RwLock::new(powers)),
-            h,
-            beta_h,
-            supported_degree_bounds,
-            inverse_neg_powers_of_beta_h,
-            prepared_h,
-            prepared_beta_h,
-        })
-    }
-}
-
 impl<E: PairingEngine> UniversalParams<E> {
+    pub fn load() -> Result<Self> {
+        let powers = Arc::new(RwLock::new(PowersOfG::<E>::load()?));
+        let h = E::G2Affine::prime_subgroup_generator();
+        let prepared_h = h.prepare();
+        let prepared_beta_h = powers.read().beta_h().prepare();
+        let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
+
+        Ok(Self { powers, h, supported_degree_bounds, prepared_h, prepared_beta_h })
+    }
+
+    pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
+        self.powers.write().download_powers_for(range)
+    }
+
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
         let basis = domain
             .ifft(&self.powers_of_beta_g(0, domain.size())?.iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());
@@ -139,28 +81,37 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
-        self.powers.write().powers_of_beta_g(lower, upper)
+        Ok(self.powers.write().powers_of_beta_g(lower..upper)?.to_vec())
     }
 
-    pub fn get_powers_times_gamma_g(&self) -> BTreeMap<usize, E::G1Affine> {
-        self.powers.read().powers_times_gamma_g().clone()
+    pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
+        self.powers.read().powers_of_beta_gamma_g()
     }
 
-    pub fn download_up_to(&self, degree: usize) -> Result<()> {
-        self.powers.write().download_up_to(degree)
+    pub fn beta_h(&self) -> E::G2Affine {
+        self.powers.read().beta_h()
+    }
+
+    pub fn neg_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
+        self.powers.read().negative_powers_of_beta_h()
+    }
+
+    pub fn max_degree(&self) -> usize {
+        self.powers.read().max_num_powers() - 1
+    }
+
+    pub fn supported_degree_bounds(&self) -> &[usize] {
+        &self.supported_degree_bounds
     }
 }
 
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         // Deserialize `powers`.
-        let powers: PowersOfG<E> = FromBytes::read_le(&mut reader)?;
+        let powers = Arc::new(RwLock::new(PowersOfG::read_le(&mut reader)?));
 
         // Deserialize `h`.
         let h: E::G2Affine = FromBytes::read_le(&mut reader)?;
-
-        // Deserialize `beta_h`.
-        let beta_h: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
         // Deserialize `supported_degree_bounds`.
         let supported_degree_bounds_len: u32 = FromBytes::read_le(&mut reader)?;
@@ -170,31 +121,13 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
             supported_degree_bounds.push(degree_bound as usize);
         }
 
-        // Deserialize `inverse_neg_powers_of_beta_h`.
-        let mut inverse_neg_powers_of_beta_h = BTreeMap::new();
-        let inverse_neg_powers_of_h_num_elements: u32 = FromBytes::read_le(&mut reader)?;
-        for _ in 0..inverse_neg_powers_of_h_num_elements {
-            let key: u32 = FromBytes::read_le(&mut reader)?;
-            let neg_power_of_h: E::G2Affine = FromBytes::read_le(&mut reader)?;
-
-            inverse_neg_powers_of_beta_h.insert(key as usize, neg_power_of_h);
-        }
-
         // Deserialize `prepared_h`.
         let prepared_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
         // Deserialize `prepared_beta_h`.
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            powers: Arc::new(RwLock::new(powers)),
-            h,
-            beta_h,
-            supported_degree_bounds,
-            inverse_neg_powers_of_beta_h,
-            prepared_h,
-            prepared_beta_h,
-        })
+        Ok(Self { powers, h, supported_degree_bounds, prepared_h, prepared_beta_h })
     }
 }
 
@@ -206,20 +139,10 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
         // Serialize `h`.
         self.h.write_le(&mut writer)?;
 
-        // Serialize `beta_h`.
-        self.beta_h.write_le(&mut writer)?;
-
         // Serialize `supported_degree_bounds`.
         (self.supported_degree_bounds.len() as u32).write_le(&mut writer)?;
         for degree_bound in &self.supported_degree_bounds {
             (*degree_bound as u32).write_le(&mut writer)?;
-        }
-
-        // Serialize `inverse_neg_powers_of_beta_h`.
-        (self.inverse_neg_powers_of_beta_h.len() as u32).write_le(&mut writer)?;
-        for (key, inverse_neg_power_of_g) in &self.inverse_neg_powers_of_beta_h {
-            (*key as u32).write_le(&mut writer)?;
-            inverse_neg_power_of_g.write_le(&mut writer)?;
         }
 
         // Serialize `prepared_h`.
@@ -229,20 +152,6 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
         self.prepared_beta_h.write_le(&mut writer)?;
 
         Ok(())
-    }
-}
-
-impl<E: PairingEngine> UniversalParams<E> {
-    pub fn max_degree(&self) -> usize {
-        self.powers.read().degree() - 1
-    }
-
-    pub fn supported_degree_bounds(&self) -> &[usize] {
-        &self.supported_degree_bounds
-    }
-
-    pub fn increase_degree(&self, degree: usize) -> Result<()> {
-        self.download_up_to(degree)
     }
 }
 

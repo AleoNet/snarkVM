@@ -28,8 +28,6 @@ use snarkvm_console_algorithms::{
     BHP768,
 };
 
-use once_cell::sync::OnceCell;
-
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
@@ -132,14 +130,6 @@ impl Network for Testnet3 {
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
         snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
-    }
-
-    /// Returns the universal SRS bytes.
-    fn universal_srs_bytes() -> &'static [u8] {
-        static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
-        UNIVERSAL_SRS
-            .get_or_try_init(snarkvm_parameters::testnet3::TrialSRS::load_bytes)
-            .expect("Failed to load the universal SRS bytes")
     }
 
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
