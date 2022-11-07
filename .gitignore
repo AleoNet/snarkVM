@@ -6,4 +6,5 @@
 **/*.prover.*
 **/*.verifier.*
 **universal.srs.*.*
+*.usrs
 !**universal.srs.*.metadata
