@@ -32,7 +32,10 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use rand_core::{RngCore, SeedableRng};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    borrow::Borrow,
+    collections::{BTreeMap, BTreeSet},
+};
 
 mod data_structures;
 pub use data_structures::*;
@@ -337,9 +340,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             )
             .unwrap();
             let challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
-            #[allow(clippy::or_fun_call)] // clippy recommends using panic instead.
-            let p = p.polynomial().as_dense().expect(&format!("{} is not dense", p.label()));
-            (challenge, p, r)
+            (challenge, p.polynomial().to_dense(), r)
         })))
     }
 
@@ -624,12 +625,13 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 }
 
 impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
-    fn combine_polynomials<'a>(
-        coeffs_polys_rands: impl IntoIterator<Item = (E::Fr, &'a DensePolynomial<E::Fr>, &'a Randomness<E>)>,
+    fn combine_polynomials<'a, B: Borrow<DensePolynomial<E::Fr>>>(
+        coeffs_polys_rands: impl IntoIterator<Item = (E::Fr, B, &'a Randomness<E>)>,
     ) -> (DensePolynomial<E::Fr>, Randomness<E>) {
         let mut combined_poly = DensePolynomial::zero();
         let mut combined_rand = Randomness::empty();
         for (coeff, poly, rand) in coeffs_polys_rands {
+            let poly = poly.borrow();
             if coeff.is_one() {
                 combined_poly += poly;
                 combined_rand += rand;
