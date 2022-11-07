@@ -7,8 +7,8 @@ license = "GPL-3.0"
 edition = "2021"
 
 [features]
-default = [ "snarkvm-algorithms/polycommit_full" ]
-wasm = [ "snarkvm-algorithms/polycommit_wasm", "snarkvm-parameters/wasm" ]
+default = [ ]
+wasm = [ "snarkvm-parameters/wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
