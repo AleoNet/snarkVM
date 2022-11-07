@@ -33,21 +33,22 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use core::ops::{Add, AddAssign};
+use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::{collections::BTreeMap, io, ops::Range};
+use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug)]
 pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`,
     /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// This struct provides an abstraction over the powers which are located on-disk
     /// to reduce memory usage.
-    pub powers: PowersOfG<E>,
+    powers: Arc<RwLock<PowersOfG<E>>>,
     /// The generator of G2.
     pub h: E::G2Affine,
     /// Supported degree bounds.
-    pub supported_degree_bounds: Vec<usize>,
+    supported_degree_bounds: Vec<usize>,
     /// The generator of G2, prepared for use in pairings.
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
@@ -56,17 +57,17 @@ pub struct UniversalParams<E: PairingEngine> {
 
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn load() -> Result<Self> {
-        let powers = PowersOfG::<E>::load()?;
+        let powers = Arc::new(RwLock::new(PowersOfG::<E>::load()?));
         let h = E::G2Affine::prime_subgroup_generator();
         let prepared_h = h.prepare();
-        let prepared_beta_h = powers.beta_h().prepare();
+        let prepared_beta_h = powers.read().beta_h().prepare();
         let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
         Ok(Self { powers, h, supported_degree_bounds, prepared_h, prepared_beta_h })
     }
 
     pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
-        self.powers.download_powers_for(range)
+        self.powers.write().download_powers_for(range)
     }
 
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
@@ -76,27 +77,27 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     pub fn power_of_beta_g(&self, which_power: usize) -> Result<E::G1Affine> {
-        self.powers.power_of_beta_g(which_power)
+        self.powers.write().power_of_beta_g(which_power)
     }
 
     pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
-        self.powers.powers_of_beta_g(lower..upper)
+        Ok(self.powers.write().powers_of_beta_g(lower..upper)?.to_vec())
     }
 
-    pub fn powers_of_beta_times_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
-        self.powers.powers_of_beta_gamma_g()
+    pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
+        self.powers.read().powers_of_beta_gamma_g()
     }
 
     pub fn beta_h(&self) -> E::G2Affine {
-        self.powers.beta_h()
+        self.powers.read().beta_h()
     }
 
-    pub fn neg_powers_of_beta_h(&self) -> &BTreeMap<usize, E::G2Affine> {
-        self.powers.negative_powers_of_beta_h()
+    pub fn neg_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
+        self.powers.read().negative_powers_of_beta_h()
     }
 
     pub fn max_degree(&self) -> usize {
-        self.powers.max_num_powers() - 1
+        self.powers.read().max_num_powers() - 1
     }
 
     pub fn supported_degree_bounds(&self) -> &[usize] {
@@ -107,7 +108,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         // Deserialize `powers`.
-        let powers: PowersOfG<E> = FromBytes::read_le(&mut reader)?;
+        let powers = Arc::new(RwLock::new(PowersOfG::read_le(&mut reader)?));
 
         // Deserialize `h`.
         let h: E::G2Affine = FromBytes::read_le(&mut reader)?;
@@ -133,7 +134,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize powers.
-        self.powers.write_le(&mut writer)?;
+        self.powers.read().write_le(&mut writer)?;
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;

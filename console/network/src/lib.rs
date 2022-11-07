@@ -35,7 +35,7 @@ pub mod prelude {
 }
 
 use crate::environment::prelude::*;
-use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, AlgebraicSponge};
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
@@ -129,9 +129,6 @@ pub trait Network:
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
-
-    /// Returns the universal SRS.
-    fn universal_srs() -> &'static marlin::UniversalSRS<Self::PairingCurve>;
 
     /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
     fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;

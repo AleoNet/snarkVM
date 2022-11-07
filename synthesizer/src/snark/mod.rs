@@ -21,7 +21,6 @@ use console::{
     program::Identifier,
 };
 use snarkvm_algorithms::{snark::marlin, traits::SNARK};
-use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;

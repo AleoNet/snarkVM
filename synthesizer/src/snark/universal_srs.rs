@@ -48,16 +48,15 @@ impl<N: Network> UniversalSRS<N> {
 
 impl<N: Network> FromBytes for UniversalSRS<N> {
     /// Reads the universal SRS from a buffer.
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        let srs = CanonicalDeserialize::deserialize_with_mode(reader, Compress::No, Validate::No)?;
-        Ok(Self { srs: Arc::new(OnceCell::with_value(srs)) })
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { srs: Arc::new(OnceCell::with_value(FromBytes::read_le(&mut reader)?)) })
     }
 }
 
 impl<N: Network> ToBytes for UniversalSRS<N> {
     /// Writes the universal SRS to a buffer.
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        Ok(self.serialize_with_mode(writer, Compress::No)?)
+        self.deref().write_le(writer)
     }
 }
 
@@ -71,7 +70,7 @@ impl<N: Network> Deref for UniversalSRS<N> {
             let timer = std::time::Instant::now();
 
             // Load the universal SRS.
-            let universal_srs = N::universal_srs().clone();
+            let universal_srs = marlin::UniversalSRS::load().expect("Failed to load the universal SRS");
 
             #[cfg(feature = "aleo-cli")]
             println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());

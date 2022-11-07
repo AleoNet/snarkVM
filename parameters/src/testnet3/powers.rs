@@ -30,7 +30,6 @@ use snarkvm_utilities::{
 };
 
 use anyhow::{anyhow, bail, ensure, Result};
-use parking_lot::RwLock;
 use std::{collections::BTreeMap, ops::Range, sync::Arc};
 
 const NUM_POWERS_15: usize = 1 << 15;
@@ -63,7 +62,7 @@ lazy_static::lazy_static! {
 #[derive(Debug, Clone)]
 pub struct PowersOfG<E: PairingEngine> {
     /// The powers of beta G.
-    powers_of_beta_g: Arc<RwLock<PowersOfBetaG<E>>>,
+    powers_of_beta_g: PowersOfBetaG<E>,
     /// Group elements of form `{ \beta^i \gamma G }`, where `i` is from 0 to `degree`,
     /// This is used for hiding.
     powers_of_beta_times_gamma_g: Arc<BTreeMap<usize, E::G1Affine>>,
@@ -77,7 +76,7 @@ pub struct PowersOfG<E: PairingEngine> {
 impl<E: PairingEngine> PowersOfG<E> {
     /// Initializes the hard-coded instance of the powers.
     pub fn load() -> Result<Self> {
-        let powers_of_beta_g = Arc::new(RwLock::new(PowersOfBetaG::load()?));
+        let powers_of_beta_g = PowersOfBetaG::load()?;
 
         // Reconstruct powers of beta_times_gamma_g.
         let powers_of_beta_times_gamma_g =
@@ -96,13 +95,13 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Download the powers of beta G specified by `range`.
-    pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
-        self.powers_of_beta_g.write().download_powers_for(&range)
+    pub fn download_powers_for(&mut self, range: Range<usize>) -> Result<()> {
+        self.powers_of_beta_g.download_powers_for(&range)
     }
 
     /// Returns the number of contiguous powers of beta G starting from the 0-th power.
     pub fn num_powers(&self) -> usize {
-        self.powers_of_beta_g.read().num_powers()
+        self.powers_of_beta_g.num_powers()
     }
 
     /// Returns the maximum possible number of contiguous powers of beta G starting from the 0-th power.
@@ -111,22 +110,22 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Returns the powers of beta * gamma G.
-    pub fn powers_of_beta_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
-        &self.powers_of_beta_times_gamma_g
+    pub fn powers_of_beta_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
+        self.powers_of_beta_times_gamma_g.clone()
     }
 
     /// Returns the `index`-th power of beta * G.
-    pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
-        self.powers_of_beta_g.write().power(index)
+    pub fn power_of_beta_g(&mut self, index: usize) -> Result<E::G1Affine> {
+        self.powers_of_beta_g.power(index)
     }
 
     /// Returns the powers of `beta * G` that lie within `range`.
-    pub fn powers_of_beta_g(&self, range: Range<usize>) -> Result<Vec<E::G1Affine>> {
-        Ok(self.powers_of_beta_g.write().powers(range)?.to_vec())
+    pub fn powers_of_beta_g(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        self.powers_of_beta_g.powers(range)
     }
 
-    pub fn negative_powers_of_beta_h(&self) -> &BTreeMap<usize, E::G2Affine> {
-        &self.negative_powers_of_beta_h
+    pub fn negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
+        self.negative_powers_of_beta_h.clone()
     }
 
     pub fn beta_h(&self) -> E::G2Affine {
@@ -136,7 +135,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
 impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, mode: Compress) -> Result<(), SerializationError> {
-        self.powers_of_beta_g.read().serialize_with_mode(&mut writer, mode)?;
+        self.powers_of_beta_g.serialize_with_mode(&mut writer, mode)?;
         self.powers_of_beta_times_gamma_g.serialize_with_mode(&mut writer, mode)?;
         self.negative_powers_of_beta_h.serialize_with_mode(&mut writer, mode)?;
         self.beta_h.serialize_with_mode(&mut writer, mode)?;
@@ -144,7 +143,7 @@ impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
     }
 
     fn serialized_size(&self, mode: Compress) -> usize {
-        self.powers_of_beta_g.read().serialized_size(mode)
+        self.powers_of_beta_g.serialized_size(mode)
             + self.powers_of_beta_times_gamma_g.serialized_size(mode)
             + self.negative_powers_of_beta_h.serialized_size(mode)
             + self.beta_h.serialized_size(mode)
@@ -157,8 +156,7 @@ impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let powers_of_beta_g =
-            Arc::new(RwLock::new(PowersOfBetaG::deserialize_with_mode(&mut reader, compress, Validate::No)?));
+        let powers_of_beta_g = PowersOfBetaG::deserialize_with_mode(&mut reader, compress, Validate::No)?;
         let powers_of_beta_times_gamma_g =
             Arc::new(BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?);
         let negative_powers_of_beta_h = Arc::new(BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?);
@@ -173,11 +171,10 @@ impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
 
 impl<E: PairingEngine> Valid for PowersOfG<E> {
     fn check(&self) -> Result<(), SerializationError> {
-        self.powers_of_beta_g.read().check()?;
+        self.powers_of_beta_g.check()?;
         self.powers_of_beta_times_gamma_g.check()?;
         self.negative_powers_of_beta_h.check()?;
-        self.beta_h.check()?;
-        Ok(())
+        self.beta_h.check()
     }
 }
 
@@ -306,7 +303,10 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             // We must download the powers.
             self.download_powers_for(&range)?;
         }
-        if self.contains_in_normal_powers(&range) { self.normal_powers(range) } else { self.shifted_powers(range) }
+        match self.contains_in_normal_powers(&range) {
+            true => self.normal_powers(range),
+            false => self.shifted_powers(range),
+        }
     }
 
     pub fn download_powers_for(&mut self, range: &Range<usize>) -> Result<()> {
@@ -317,50 +317,54 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         if (range.start <= half_max) && (range.end > half_max) {
             // If the range contains the midpoint, then we must download all the powers.
             // (because we round up to the next power of two).
-            self.download_up_to(range.end)?;
+            self.download_powers_up_to(range.end)?;
             self.shifted_powers_of_beta_g = Vec::new();
         } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
             // If the range is closer to the shifted powers, then we download the shifted powers.
-            self.download_from(range.start)?;
+            self.download_shifted_powers_from(range.start)?;
         } else {
             // Otherwise, we download the normal powers.
-            self.download_up_to(range.end)?;
+            self.download_powers_up_to(range.end)?;
         }
         Ok(())
     }
 
     /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
     /// and updates `Self` in place with the new powers.
-    fn download_up_to(&mut self, end: usize) -> Result<()> {
-        let total_powers = end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
-        if total_powers > MAX_NUM_POWERS {
-            return Err(anyhow!("Requesting more powers than exist in the SRS"));
-        }
-        // Initialize the first degree to download.
-        let mut next_num_powers = std::cmp::max(
-            self.powers_of_beta_g
-                .len()
-                .checked_next_power_of_two()
-                .ok_or_else(|| anyhow!("The current degree is too large"))?,
-            NUM_POWERS_16,
-        );
+    fn download_powers_up_to(&mut self, end: usize) -> Result<()> {
+        // Determine the new power of two.
+        let next_power_of_two = end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+        // Ensure the total number of powers is less than the maximum number of powers.
+        ensure!(next_power_of_two <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
+
+        // Retrieve the current power of two.
+        let current_power_of_two = self
+            .powers_of_beta_g
+            .len()
+            .checked_next_power_of_two()
+            .ok_or_else(|| anyhow!("The current degree is too large"))?;
+
+        // Initialize a vector for the powers of two to be downloaded.
         let mut download_queue = Vec::with_capacity(14);
-        // Determine the number of powers to download.
-        // Download the powers until the target is reached.
-        while next_num_powers <= total_powers {
-            download_queue.push(next_num_powers);
-            next_num_powers *= 2;
+
+        // Initialize the first degree to download.
+        let mut accumulator = std::cmp::max(current_power_of_two, NUM_POWERS_16);
+        // Determine the powers of two to download.
+        while accumulator <= next_power_of_two {
+            download_queue.push(accumulator);
+            accumulator *= 2;
         }
-        ensure!(total_powers * 2 == next_num_powers, "Ensure the while loop terminates at the correct power of two");
+        ensure!(next_power_of_two * 2 == accumulator, "Ensure the loop terminates at the right power of two");
 
-        self.powers_of_beta_g.reserve(total_powers - self.powers_of_beta_g.len());
+        // Reserve capacity for the new powers of two.
+        self.powers_of_beta_g.reserve(next_power_of_two - self.powers_of_beta_g.len());
 
-        // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
+        // Download the powers of two.
         for num_powers in &download_queue {
-            // Download the universal SRS powers if they're not
-            // already on disk.
             #[cfg(debug_assertions)]
             println!("Loading {num_powers} powers");
+
+            // Download the universal SRS powers if they're not already on disk.
             let additional_bytes = match *num_powers {
                 NUM_POWERS_16 => Degree16::load_bytes()?,
                 NUM_POWERS_17 => Degree17::load_bytes()?,
@@ -380,7 +384,6 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
-
             // Extend the powers.
             self.powers_of_beta_g.extend(&additional_powers);
         }
@@ -390,7 +393,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// This method downloads the universal SRS powers from
     /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
     /// and updates `Self` in place with the new powers.
-    fn download_from(&mut self, start: usize) -> Result<()> {
+    fn download_shifted_powers_from(&mut self, start: usize) -> Result<()> {
+        // Ensure the total number of powers is less than the maximum number of powers.
         ensure!(start <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
 
         // The possible powers are:
@@ -408,9 +412,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         // (2^28 - 2^26)..(2^28 - 2^25) = 2^25 powers
         // (2^28 - 2^27)..(2^28 - 2^26) = 2^26 powers
 
-        // Figure out the number of powers to download.
-        // This works as follows.
-        // Let `start = 2^28 - k`.
+        // Figure out the number of powers to download, as follows:
+        // Let `start := 2^28 - k`.
         // We know that `shifted_powers_of_beta_g.len() = 2^s` such that `2^s < k`.
         // That is, we have already downloaded the powers `2^28 - 2^s` up to `2^28`.
         // Then, we have to download the powers 2^s..k.next_power_of_two().
@@ -431,6 +434,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         for num_powers in &download_queue {
             #[cfg(debug_assertions)]
             println!("Loading {num_powers} shifted powers");
+
             // Download the universal SRS powers if they're not already on disk.
             let additional_bytes = match *num_powers {
                 NUM_POWERS_16 => ShiftedDegree16::load_bytes()?,
@@ -447,6 +451,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 NUM_POWERS_27 => ShiftedDegree27::load_bytes()?,
                 _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
             };
+
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
 

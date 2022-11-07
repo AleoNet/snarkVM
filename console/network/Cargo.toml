@@ -14,7 +14,7 @@ wasm = [ "snarkvm-algorithms/polycommit_wasm", "snarkvm-parameters/wasm" ]
 path = "../../algorithms"
 version = "0.9.1"
 default-features = false
-features = [ "snark" ]
+features = [ "crypto_hash" ]
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
