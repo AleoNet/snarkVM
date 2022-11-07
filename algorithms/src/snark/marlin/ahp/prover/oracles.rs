@@ -39,7 +39,7 @@ impl<F: PrimeField> FirstOracles<F> {
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
-    pub fn iter_for_open<'a>(&'a self) -> impl Iterator<Item = &'a LabeledPolynomial<F>> {
+    pub fn iter_for_open(&self) -> impl Iterator<Item = &'_ LabeledPolynomial<F>> {
         self.batches.iter().flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
     }
 

@@ -187,11 +187,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         PoolResult::Witness(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
     }
 
-    fn calculate_z_m<'a>(
+    fn calculate_z_m(
         label: impl ToString,
         evaluations: Vec<F>,
         will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
+        state: &prover::State<'_, F, MM>,
         r: Option<F>,
     ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;

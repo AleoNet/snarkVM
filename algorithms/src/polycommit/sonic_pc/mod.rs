@@ -337,6 +337,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             )
             .unwrap();
             let challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
+            #[allow(clippy::or_fun_call)] // clippy recommends using panic instead.
             let p = p.polynomial().as_dense().expect(&format!("{} is not dense", p.label()));
             (challenge, p, r)
         })))

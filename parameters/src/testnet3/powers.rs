@@ -333,9 +333,10 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// and updates `Self` in place with the new powers.
     fn download_powers_up_to(&mut self, end: usize) -> Result<()> {
         // Determine the new power of two.
-        let next_power_of_two = end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+        let final_power_of_two =
+            end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
         // Ensure the total number of powers is less than the maximum number of powers.
-        ensure!(next_power_of_two <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
+        ensure!(final_power_of_two <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
 
         // Retrieve the current power of two.
         let current_power_of_two = self
@@ -348,16 +349,16 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         let mut download_queue = Vec::with_capacity(14);
 
         // Initialize the first degree to download.
-        let mut accumulator = std::cmp::max(current_power_of_two, NUM_POWERS_16);
+        let mut accumulator = current_power_of_two * 2;
         // Determine the powers of two to download.
-        while accumulator <= next_power_of_two {
+        while accumulator <= final_power_of_two {
             download_queue.push(accumulator);
             accumulator *= 2;
         }
-        ensure!(next_power_of_two * 2 == accumulator, "Ensure the loop terminates at the right power of two");
+        ensure!(final_power_of_two * 2 == accumulator, "Ensure the loop terminates at the right power of two");
 
         // Reserve capacity for the new powers of two.
-        self.powers_of_beta_g.reserve(next_power_of_two - self.powers_of_beta_g.len());
+        self.powers_of_beta_g.reserve(final_power_of_two - self.powers_of_beta_g.len());
 
         // Download the powers of two.
         for num_powers in &download_queue {

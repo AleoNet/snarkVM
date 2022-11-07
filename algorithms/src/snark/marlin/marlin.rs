@@ -56,6 +56,8 @@ use super::Certificate;
 
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
+pub struct MarlinSNARK<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode>(
+    #[doc(hidden)] PhantomData<(E, FS, MM)>,
 );
 
 impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNARK<E, FS, MM> {
@@ -559,6 +561,11 @@ where
 
         let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
+
+        #[cfg(debug_assertions)]
+        if !Self::verify_batch(fs_parameters, &circuit_proving_key.circuit_verifying_key, &public_input, &proof)? {
+            println!("Invalid proof")
+        }
         end_timer!(prover_time);
 
         Ok(proof)
