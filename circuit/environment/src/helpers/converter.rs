@@ -223,7 +223,7 @@ mod tests {
         use snarkvm_utilities::rand::TestRng;
 
         type FS = PoseidonSponge<Fq, 2, 1>;
-        type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+        type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 
         let rng = &mut TestRng::default();
 

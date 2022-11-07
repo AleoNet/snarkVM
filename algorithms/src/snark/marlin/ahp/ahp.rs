@@ -72,7 +72,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// must be with respect to the number of formatted public inputs.
     pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, AHPError> {
         let padded_matrix_dim = matrices::padded_matrix_dim(num_variables, num_constraints);
-        let zk_bound = 1;
+        let zk_bound = Self::zk_bound().unwrap_or(0);
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
             .ok_or(AHPError::PolynomialDegreeTooLarge)?;
         let non_zero_domain_size =
@@ -80,11 +80,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         Ok(*[
             2 * constraint_domain_size + zk_bound - 2,
-            if MM::ZK { 3 * constraint_domain_size + 2 * zk_bound - 3 } else { 0 }, //  mask_poly
+            if MM::ZK { constraint_domain_size + 3 } else { 0 }, //  mask_poly
             constraint_domain_size,
             constraint_domain_size,
-            non_zero_domain_size - 1,
-            non_zero_domain_size, //  due to vanishing polynomial; for convenience, we increase the number by one regardless of the mode.
+            non_zero_domain_size - 1, // non-zero polynomials
         ]
         .iter()
         .max()

@@ -73,9 +73,9 @@ mod marlin {
 
     use core::ops::MulAssign;
 
-    type MarlinSonicInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+    type MarlinSonicInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 
-    type MarlinSonicPoswInst = MarlinSNARK<Bls12_377, FS, MarlinNonHidingMode, [Fr]>;
+    type MarlinSonicPoswInst = MarlinSNARK<Bls12_377, FS, MarlinNonHidingMode>;
 
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
 
@@ -291,7 +291,7 @@ mod marlin {
     }
 }
 
-mod marlin_recursion {
+mod marlin_hiding {
     use super::*;
     use crate::{
         crypto_hash::PoseidonSponge,
@@ -307,7 +307,7 @@ mod marlin_recursion {
     use core::ops::MulAssign;
     use std::str::FromStr;
 
-    type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+    type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
     type FS = PoseidonSponge<Fq, 2, 1>;
 
     fn test_circuit_n_times(num_constraints: usize, num_variables: usize, num_times: usize) {
@@ -445,22 +445,24 @@ mod marlin_recursion {
         test_circuit_n_times(num_constraints, num_variables, 1);
     }
 
+    fn setup_test(num_constraints: usize, num_variables: usize) -> (Circuit<Fr>, Fr, Fr) {
+        let rng = &mut TestRng::default();
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let c = a * b;
+        let d = c * b;
+
+        (Circuit { a: Some(a), b: Some(b), num_constraints, num_variables }, c, d)
+    }
+
     #[test]
     fn check_indexing() {
         let rng = &mut TestRng::default();
+        let (circuit, c, d) = setup_test(1 << 13, 1 << 13);
+
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
-        let a = Fr::rand(rng);
-        let b = Fr::rand(rng);
-        let mut c = a;
-        c.mul_assign(&b);
-        let mut d = c;
-        d.mul_assign(&b);
-
-        let num_constraints = 2usize.pow(13);
-        let num_variables = 2usize.pow(13);
-        let circuit = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -474,5 +476,36 @@ mod marlin_recursion {
         assert_eq!(index_vk, new_vk);
         assert!(MarlinInst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
         assert!(MarlinInst::verify(&fs_parameters, &new_vk, [c, d], &proof).unwrap());
+    }
+
+    #[test]
+    fn test_srs_downloads() {
+        let rng = &mut TestRng::default();
+
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let fs_parameters = FS::sample_parameters();
+
+        // Indexing, proving, and verifying for a circuit with 1 << 13 constraints and 1 << 13 variables.
+        let (circuit1, c1, d1) = setup_test(2usize.pow(15) - 10, 2usize.pow(15) - 10);
+        let (pk1, vk1) = MarlinInst::circuit_setup(&universal_srs, &circuit1).unwrap();
+        println!("Called circuit setup");
+
+        let proof1 = MarlinInst::prove(&fs_parameters, &pk1, &circuit1, rng).unwrap();
+        println!("Called prover");
+        assert!(MarlinInst::verify(&fs_parameters, &vk1, [c1, d1], &proof1).unwrap());
+
+        /*****************************************************************************/
+
+        // Indexing, proving, and verifying for a circuit with 1 << 19 constraints and 1 << 19 variables.
+        let (circuit2, c2, d2) = setup_test(2usize.pow(19) - 10, 2usize.pow(19) - 10);
+        let (pk2, vk2) = MarlinInst::circuit_setup(&universal_srs, &circuit2).unwrap();
+        println!("Called circuit setup");
+
+        let proof2 = MarlinInst::prove(&fs_parameters, &pk2, &circuit2, rng).unwrap();
+        println!("Called prover");
+        assert!(MarlinInst::verify(&fs_parameters, &vk2, [c2, d2], &proof2).unwrap());
+        /*****************************************************************************/
+        assert!(MarlinInst::verify(&fs_parameters, &vk1, [c1, d1], &proof1).unwrap());
     }
 }

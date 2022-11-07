@@ -30,7 +30,7 @@ use snarkvm_utilities::{ops::MulAssign, TestRng, Uniform};
 
 use criterion::Criterion;
 
-type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
 
 #[derive(Copy, Clone)]

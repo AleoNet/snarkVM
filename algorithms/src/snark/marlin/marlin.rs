@@ -56,16 +56,9 @@ use super::Certificate;
 
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
-pub struct MarlinSNARK<
-    E: PairingEngine,
-    FS: AlgebraicSponge<E::Fq, 2>,
-    MM: MarlinMode,
-    Input: ToConstraintField<E::Fr> + ?Sized,
->(#[doc(hidden)] PhantomData<(E, FS, MM, Input)>);
+);
 
-impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToConstraintField<E::Fr> + ?Sized>
-    MarlinSNARK<E, FS, MM, Input>
-{
+impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNARK<E, FS, MM> {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
@@ -201,13 +194,12 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
     }
 }
 
-impl<E: PairingEngine, FS, MM, Input> SNARK for MarlinSNARK<E, FS, MM, Input>
+impl<E: PairingEngine, FS, MM> SNARK for MarlinSNARK<E, FS, MM>
 where
     E::Fr: PrimeField,
     E::Fq: PrimeField,
     FS: AlgebraicSponge<E::Fq, 2>,
     MM: MarlinMode,
-    Input: ToConstraintField<E::Fr> + ?Sized,
 {
     type BaseField = E::Fq;
     type Certificate = Certificate<E>;
@@ -218,7 +210,7 @@ where
     type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<E>;
-    type VerifierInput = Input;
+    type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
 
     fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
@@ -824,7 +816,7 @@ pub mod test {
     }
 
     type FS = PoseidonSponge<Fq, 2, 1>;
-    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
+    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 
     #[test]
     fn marlin_snark_test() {
@@ -850,7 +842,7 @@ pub mod test {
             let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&fs_parameters, &vk.clone(), &vec![c], &proof).unwrap(),
+                TestSNARK::verify(&fs_parameters, &vk.clone(), [c].as_ref(), &proof).unwrap(),
                 "The native verification check fails."
             );
         }
