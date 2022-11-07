@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::store::helpers::{BatchOperation, Map, MapRead};
+use crate::store::helpers::{Map, MapRead};
 use console::network::prelude::*;
 use indexmap::IndexMap;
 
@@ -36,7 +36,7 @@ pub struct MemoryMap<
 > {
     map: Arc<RwLock<IndexMap<K, V>>>,
     batch_in_progress: Arc<AtomicBool>,
-    atomic_batch: Arc<Mutex<Vec<BatchOperation<K, V>>>>,
+    atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
 }
 
 impl<
@@ -79,7 +79,9 @@ impl<
 
         match is_batch {
             // If a batch is in progress, add the key-value pair to the batch.
-            true => self.atomic_batch.lock().push(BatchOperation::Insert(key, value)),
+            true => {
+                self.atomic_batch.lock().insert(key, Some(value));
+            }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
                 self.map.write().insert(key, value);
@@ -96,8 +98,10 @@ impl<
         let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
 
         match is_batch {
-            // If a batch is in progress, add the key-value pair to the batch.
-            true => self.atomic_batch.lock().push(BatchOperation::Remove(*key)),
+            // If a batch is in progress, add the key-None pair to the batch.
+            true => {
+                self.atomic_batch.lock().insert(*key, None);
+            }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
                 self.map.write().shift_remove(key);
@@ -131,7 +135,7 @@ impl<
     ///
     fn abort_atomic(&self) {
         // Clear the atomic batch.
-        self.atomic_batch.lock().clear();
+        *self.atomic_batch.lock() = Default::default();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
     }
@@ -149,8 +153,8 @@ impl<
             // Perform all the queued operations.
             for operation in operations {
                 match operation {
-                    BatchOperation::Insert(key, value) => locked_map.insert(key, value),
-                    BatchOperation::Remove(key) => locked_map.remove(&key),
+                    (key, Some(value)) => locked_map.insert(key, value),
+                    (key, None) => locked_map.remove(&key),
                 };
             }
         }
@@ -208,22 +212,7 @@ impl<
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         // Return early if there is no atomic batch in progress.
-        if self.batch_in_progress.load(Ordering::SeqCst) {
-            // Clone the batch to not hold the lock.
-            let ops = self.atomic_batch.lock().clone();
-
-            // The final operation related to the key is the final state of the key.
-            for op in ops.into_iter().rev() {
-                match op {
-                    BatchOperation::Remove(k) if k.borrow() == key => return Some(None),
-                    BatchOperation::Insert(k, v) if k.borrow() == key => return Some(Some(v)),
-                    _ => continue,
-                }
-            }
-            None
-        } else {
-            None
-        }
+        if self.batch_in_progress.load(Ordering::SeqCst) { self.atomic_batch.lock().get(key).cloned() } else { None }
     }
 
     ///

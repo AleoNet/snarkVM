@@ -21,13 +21,6 @@ use console::network::prelude::*;
 use core::{borrow::Borrow, hash::Hash};
 use std::borrow::Cow;
 
-#[derive(Clone)]
-pub enum BatchOperation<K: Copy + Clone + PartialEq + Eq + Hash + Send + Sync, V: Clone + PartialEq + Eq + Send + Sync>
-{
-    Insert(K, V),
-    Remove(K),
-}
-
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
