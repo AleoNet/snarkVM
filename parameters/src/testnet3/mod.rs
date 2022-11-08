@@ -20,7 +20,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
+const REMOTE_URL: &str = "https://entropy-releases.s3.us-west-2.amazonaws.com/vm-parameters/";
 
 // Degree 15
 impl_local!(Degree15, "resources/", "universal", "srs", "15");
