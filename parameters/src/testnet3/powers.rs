@@ -353,12 +353,16 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         // Determine the powers of two to download.
         while accumulator <= final_power_of_two {
             download_queue.push(accumulator);
-            accumulator *= 2;
+            accumulator =
+                accumulator.checked_mul(2).ok_or_else(|| anyhow!("Overflowed while requesting a larger degree"))?;
         }
         ensure!(final_power_of_two * 2 == accumulator, "Ensure the loop terminates at the right power of two");
 
         // Reserve capacity for the new powers of two.
-        self.powers_of_beta_g.reserve(final_power_of_two - self.powers_of_beta_g.len());
+        let additional_size = final_power_of_two
+            .checked_sub(self.powers_of_beta_g.len())
+            .ok_or_else(|| anyhow!("final_power_of_two is smaller than existing powers"))?;
+        self.powers_of_beta_g.reserve(additional_size);
 
         // Download the powers of two.
         for num_powers in &download_queue {
@@ -388,6 +392,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             // Extend the powers.
             self.powers_of_beta_g.extend(&additional_powers);
         }
+        ensure!(self.powers_of_beta_g.len() == final_power_of_two, "Loaded an incorrect number of powers");
         Ok(())
     }
 
@@ -418,19 +423,25 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         // We know that `shifted_powers_of_beta_g.len() = 2^s` such that `2^s < k`.
         // That is, we have already downloaded the powers `2^28 - 2^s` up to `2^28`.
         // Then, we have to download the powers 2^s..k.next_power_of_two().
-        let extra_powers_to_download = (MAX_NUM_POWERS - start)
+        let final_num_powers = MAX_NUM_POWERS
+            .checked_sub(start)
+            .ok_or_else(|| {
+                anyhow!("Requesting too many powers: `start ({start}) > MAX_NUM_POWERS ({MAX_NUM_POWERS})`")
+            })?
             .checked_next_power_of_two()
             .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
 
         let mut download_queue = Vec::with_capacity(14);
         let mut existing_num_powers = self.shifted_powers_of_beta_g.len();
-        while existing_num_powers < extra_powers_to_download {
-            existing_num_powers *= 2;
+        while existing_num_powers < final_num_powers {
+            existing_num_powers = existing_num_powers
+                .checked_mul(2)
+                .ok_or_else(|| anyhow!("Overflowed while requesting additional powers"))?;
             download_queue.push(existing_num_powers);
         }
         download_queue.reverse(); // We want to download starting from the smallest power.
 
-        let mut final_powers = Vec::with_capacity(extra_powers_to_download);
+        let mut final_powers = Vec::with_capacity(final_num_powers);
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
         for num_powers in &download_queue {
             #[cfg(debug_assertions)]
@@ -464,6 +475,11 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         }
         final_powers.extend(self.shifted_powers_of_beta_g.iter());
         self.shifted_powers_of_beta_g = final_powers;
+
+        ensure!(
+            self.shifted_powers_of_beta_g.len() == final_num_powers,
+            "Loaded an incorrect number of shifted powers"
+        );
         Ok(())
     }
 }
