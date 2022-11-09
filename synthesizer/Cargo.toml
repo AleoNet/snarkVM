@@ -68,6 +68,9 @@ version = "1.0.66"
 version = "0.10"
 default-features = false
 
+[dependencies.blake2b_simd]
+version = "0.5"
+
 [dependencies.colored]
 version = "2"
 
