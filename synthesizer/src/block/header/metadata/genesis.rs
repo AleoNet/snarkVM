@@ -106,7 +106,7 @@ mod tests {
         assert_eq!(metadata.round(), 0);
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
-        assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
+        assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
         assert_eq!(metadata.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
     }
