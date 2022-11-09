@@ -21,7 +21,7 @@ impl<N: Network> Serialize for Metadata<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut metadata = serializer.serialize_struct("Certificate", 8)?;
+                let mut metadata = serializer.serialize_struct("Metadata", 8)?;
                 metadata.serialize_field("network", &self.network)?;
                 metadata.serialize_field("round", &self.round)?;
                 metadata.serialize_field("height", &self.height)?;
