@@ -49,6 +49,7 @@ pub struct Metadata<N: Network> {
 
 impl<N: Network> Metadata<N> {
     /// Initializes a new metadata with the given inputs.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         network: u16,
         round: u64,
