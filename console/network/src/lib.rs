@@ -87,7 +87,7 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
 
     /// The anchor time per block in seconds, which must be greater than the round time per block.
-    const ANCHOR_TIME: u16 = 20;
+    const ANCHOR_TIME: u16 = 25;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.

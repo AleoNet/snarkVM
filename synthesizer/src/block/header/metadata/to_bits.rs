@@ -25,6 +25,7 @@ impl<N: Network> ToBits for Metadata<N> {
             self.height.to_bits_le(),                  // 4 bytes
             self.coinbase_target.to_bits_le(),         // 8 bytes
             self.proof_target.to_bits_le(),            // 8 bytes
+            self.last_coinbase_target.to_bits_le(),    // 8 bytes
             self.last_coinbase_timestamp.to_bits_le(), // 8 bytes
             self.timestamp.to_bits_le(),               // 8 bytes
         ]
@@ -39,6 +40,7 @@ impl<N: Network> ToBits for Metadata<N> {
             self.height.to_bits_be(),                  // 4 bytes
             self.coinbase_target.to_bits_be(),         // 8 bytes
             self.proof_target.to_bits_be(),            // 8 bytes
+            self.last_coinbase_target.to_bits_be(),    // 8 bytes
             self.last_coinbase_timestamp.to_bits_be(), // 8 bytes
             self.timestamp.to_bits_be(),               // 8 bytes
         ]

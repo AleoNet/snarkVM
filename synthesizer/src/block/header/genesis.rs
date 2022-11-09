@@ -55,7 +55,7 @@ mod tests {
         // Previous state root, transactions root, and accumulator point size.
         (Field::<N>::size_in_bytes() * 3)
             // Metadata size.
-            + 2 + 4 + 8 + 8 + 8 + 8 + 8
+            + 2 + 4 + 8 + 8 + 8 + 8 + 8 + 8
             // Add an additional 4 bytes for versioning.
             + 2 + 2
     }
@@ -89,6 +89,8 @@ mod tests {
         assert_eq!(header.round(), 0);
         assert_eq!(header.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(header.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
+        assert_eq!(header.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
+        assert_eq!(header.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
         assert_eq!(header.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
 
         // Ensure the genesis block does *not* contain the following.

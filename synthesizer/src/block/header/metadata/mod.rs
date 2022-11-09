@@ -37,6 +37,8 @@ pub struct Metadata<N: Network> {
     coinbase_target: u64,
     /// The proof target for this block - 8 bytes.
     proof_target: u64,
+    /// The coinbase target for the last coinbase - 8 bytes.
+    last_coinbase_target: u64,
     /// The Unix timestamp (UTC) for the last coinbase - 8 bytes.
     last_coinbase_timestamp: i64,
     /// The Unix timestamp (UTC) for this block - 8 bytes.
@@ -47,12 +49,14 @@ pub struct Metadata<N: Network> {
 
 impl<N: Network> Metadata<N> {
     /// Initializes a new metadata with the given inputs.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         network: u16,
         round: u64,
         height: u32,
         coinbase_target: u64,
         proof_target: u64,
+        last_coinbase_target: u64,
         last_coinbase_timestamp: i64,
         timestamp: i64,
     ) -> Result<Self> {
@@ -63,6 +67,7 @@ impl<N: Network> Metadata<N> {
             height,
             coinbase_target,
             proof_target,
+            last_coinbase_target,
             last_coinbase_timestamp,
             timestamp,
             _phantom: PhantomData,
@@ -89,6 +94,10 @@ impl<N: Network> Metadata<N> {
                     && self.coinbase_target >= N::GENESIS_COINBASE_TARGET
                     // Ensure the proof target is at or above the minimum.
                     && self.proof_target >= N::GENESIS_PROOF_TARGET
+                    // Ensure the coinbase target is larger than the proof target.
+                    && self.coinbase_target > self.proof_target
+                    // Ensure the last coinbase target is at or above the minimum.
+                    && self.last_coinbase_target >= N::GENESIS_COINBASE_TARGET
                     // Ensure the last coinbase timestamp is after the genesis timestamp.
                     && self.last_coinbase_timestamp >= N::GENESIS_TIMESTAMP
                     // Ensure the timestamp in the block is after the genesis timestamp.
@@ -122,6 +131,11 @@ impl<N: Network> Metadata<N> {
     /// Returns the proof target for this block.
     pub const fn proof_target(&self) -> u64 {
         self.proof_target
+    }
+
+    /// Returns the coinbase target of the last coinbase.
+    pub const fn last_coinbase_target(&self) -> u64 {
+        self.last_coinbase_target
     }
 
     /// Returns the Unix timestamp (UTC) of the last coinbase.

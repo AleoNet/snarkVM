@@ -21,12 +21,13 @@ impl<N: Network> Serialize for Metadata<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut metadata = serializer.serialize_struct("Certificate", 6)?;
+                let mut metadata = serializer.serialize_struct("Metadata", 8)?;
                 metadata.serialize_field("network", &self.network)?;
                 metadata.serialize_field("round", &self.round)?;
                 metadata.serialize_field("height", &self.height)?;
                 metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
                 metadata.serialize_field("proof_target", &self.proof_target)?;
+                metadata.serialize_field("last_coinbase_target", &self.last_coinbase_target)?;
                 metadata.serialize_field("last_coinbase_timestamp", &self.last_coinbase_timestamp)?;
                 metadata.serialize_field("timestamp", &self.timestamp)?;
                 metadata.end()
@@ -48,6 +49,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     serde_json::from_value(metadata["height"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["coinbase_target"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["proof_target"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["last_coinbase_target"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["last_coinbase_timestamp"].take()).map_err(de::Error::custom)?,
                     serde_json::from_value(metadata["timestamp"].take()).map_err(de::Error::custom)?,
                 )

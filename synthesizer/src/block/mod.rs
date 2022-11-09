@@ -184,6 +184,11 @@ impl<N: Network> Block<N> {
         self.header.proof_target()
     }
 
+    /// Returns the coinbase target of the last coinbase.
+    pub const fn last_coinbase_target(&self) -> u64 {
+        self.header.last_coinbase_target()
+    }
+
     /// Returns the Unix timestamp (UTC) of the last coinbase.
     pub const fn last_coinbase_timestamp(&self) -> i64 {
         self.header.last_coinbase_timestamp()

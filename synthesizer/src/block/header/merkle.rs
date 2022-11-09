@@ -101,6 +101,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
+            let coinbase_target = u64::rand(rng);
+            let proof_target = rng.gen_range(0..coinbase_target);
+
             let header = Header::<CurrentNetwork>::from(
                 Field::rand(rng),
                 Field::rand(rng),
@@ -109,7 +112,8 @@ mod tests {
                     CurrentNetwork::ID,
                     u64::rand(rng),
                     u32::rand(rng),
-                    u64::rand(rng),
+                    coinbase_target,
+                    proof_target,
                     u64::rand(rng),
                     rng.gen_range(0..i64::MAX),
                     rng.gen_range(0..i64::MAX),

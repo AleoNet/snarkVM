@@ -25,11 +25,21 @@ impl<N: Network> Metadata<N> {
         let height = 0;
         let coinbase_target = N::GENESIS_COINBASE_TARGET;
         let proof_target = N::GENESIS_PROOF_TARGET;
+        let last_coinbase_target = N::GENESIS_COINBASE_TARGET;
         let last_coinbase_timestamp = N::GENESIS_TIMESTAMP;
         let timestamp = N::GENESIS_TIMESTAMP;
 
         // Return the genesis metadata.
-        Self::new(network, round, height, coinbase_target, proof_target, last_coinbase_timestamp, timestamp)
+        Self::new(
+            network,
+            round,
+            height,
+            coinbase_target,
+            proof_target,
+            last_coinbase_target,
+            last_coinbase_timestamp,
+            timestamp,
+        )
     }
 
     /// Returns `true` if the metadata is a genesis metadata.
@@ -44,6 +54,8 @@ impl<N: Network> Metadata<N> {
             && self.coinbase_target == N::GENESIS_COINBASE_TARGET
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
             && self.proof_target == N::GENESIS_PROOF_TARGET
+            // Ensure the last coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
+            && self.last_coinbase_target == N::GENESIS_COINBASE_TARGET
             // Ensure the last coinbase timestamp in the genesis block is `GENESIS_TIMESTAMP`.
             && self.last_coinbase_timestamp == N::GENESIS_TIMESTAMP
             // Ensure the timestamp in the genesis block is `GENESIS_TIMESTAMP`.
@@ -62,7 +74,7 @@ mod tests {
     /// Update this method if the contents of the metadata have changed.
     fn get_expected_size<N: Network>() -> usize {
         // Metadata size.
-        2 + 4 + 8 + 8 + 8 + 8 + 8
+        2 + 4 + 8 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
             + 2
     }
@@ -94,6 +106,7 @@ mod tests {
         assert_eq!(metadata.round(), 0);
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
+        assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
         assert_eq!(metadata.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
     }
