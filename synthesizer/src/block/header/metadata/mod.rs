@@ -133,7 +133,7 @@ impl<N: Network> Metadata<N> {
 
     /// Returns the coinbase target of the last coinbase.
     pub const fn last_coinbase_target(&self) -> u64 {
-        self.coinbase_target
+        self.last_coinbase_target
     }
 
     /// Returns the Unix timestamp (UTC) of the last coinbase.
