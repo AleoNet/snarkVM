@@ -7,14 +7,14 @@ license = "GPL-3.0"
 edition = "2021"
 
 [features]
-default = [ ]
-wasm = [ "snarkvm-parameters/wasm" ]
+default = [ "snarkvm-algorithms/polycommit_full" ]
+wasm = [ "snarkvm-algorithms/polycommit_wasm", "snarkvm-parameters/wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 version = "0.9.4"
 default-features = false
-features = [ "crypto_hash" ]
+features = [ "snark" ]
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
