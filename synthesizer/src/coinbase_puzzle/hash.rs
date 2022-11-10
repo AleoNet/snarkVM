@@ -56,8 +56,6 @@ pub fn hash_commitment<E: PairingEngine>(commitment: &KZGCommitment<E>) -> Resul
     ensure!(bytes.len() == 96, "Invalid commitment byte length for hashing");
 
     // Return the hash of the commitment.
-    //Ok(E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&bytes)))
-
     let result = Params::new().hash_length(64).hash(&bytes);
     let input_hash = result.as_bytes();
     Ok(E::Fr::from_bytes_le_mod_order(input_hash))
