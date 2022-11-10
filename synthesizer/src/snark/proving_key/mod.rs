@@ -23,12 +23,14 @@ mod serialize;
 #[derive(Clone)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
-    proving_key: marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>,
+    proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
 }
 
 impl<N: Network> ProvingKey<N> {
     /// Initializes a new proving key.
-    pub(super) const fn new(proving_key: marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>) -> Self {
+    pub(crate) const fn new(
+        proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
+    ) -> Self {
         Self { proving_key }
     }
 

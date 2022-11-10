@@ -26,7 +26,7 @@ impl<N: Network> FromBytes for VerifyingKey<N> {
             return Err(error("Invalid verifying key version"));
         }
         // Read the verifying key.
-        let verifying_key = FromBytes::read_le(&mut reader)?;
+        let verifying_key = Arc::new(FromBytes::read_le(&mut reader)?);
         // Return the verifying key.
         Ok(Self { verifying_key })
     }

@@ -35,11 +35,18 @@ pub mod prelude {
 }
 
 use crate::environment::prelude::*;
-use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonSponge,
+    snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
+    AlgebraicSponge,
+};
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
 use snarkvm_curves::PairingEngine;
+
+use once_cell::sync::OnceCell;
+use std::sync::Arc;
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
@@ -138,6 +145,12 @@ pub trait Network:
 
     /// Returns the `verifying key` bytes for the inclusion circuit.
     fn inclusion_verifying_key_bytes() -> &'static Vec<u8>;
+
+    /// Returns the `proving key` for the inclusion circuit.
+    fn inclusion_proving_key() -> &'static Arc<CircuitProvingKey<Self::PairingCurve, MarlinHidingMode>>;
+
+    /// Returns the `verifying key` for the inclusion circuit.
+    fn inclusion_verifying_key() -> &'static Arc<CircuitVerifyingKey<Self::PairingCurve, MarlinHidingMode>>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;

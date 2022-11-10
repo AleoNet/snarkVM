@@ -23,13 +23,13 @@ mod serialize;
 #[derive(Clone, PartialEq, Eq)]
 pub struct VerifyingKey<N: Network> {
     /// The verifying key for the function.
-    verifying_key: marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>,
+    verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
 }
 
 impl<N: Network> VerifyingKey<N> {
     /// Initializes a new verifying key.
-    pub(super) const fn new(
-        verifying_key: marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>,
+    pub(crate) const fn new(
+        verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
     ) -> Self {
         Self { verifying_key }
     }

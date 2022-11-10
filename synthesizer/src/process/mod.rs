@@ -111,6 +111,11 @@ impl<N: Network> Process<N> {
             stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
         }
 
+        // Initialize the inclusion proving key.
+        let _ = N::inclusion_proving_key();
+        // Initialize the inclusion verifying key.
+        let _ = N::inclusion_verifying_key();
+
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
         // Return the process.
