@@ -149,6 +149,32 @@ impl Network for Testnet3 {
         &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_VERIFYING_KEY
     }
 
+    /// Returns the `proving key` for the inclusion circuit.
+    fn inclusion_proving_key() -> &'static Arc<CircuitProvingKey<Self::PairingCurve, MarlinHidingMode>> {
+        static INSTANCE: OnceCell<Arc<CircuitProvingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
+            OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first 2 bytes, which is the encoded version.
+            Arc::new(
+                CircuitProvingKey::from_bytes_le(&Self::inclusion_proving_key_bytes()[2..])
+                    .expect("Failed to load inclusion proving key."),
+            )
+        })
+    }
+
+    /// Returns the `verifying key` for the inclusion circuit.
+    fn inclusion_verifying_key() -> &'static Arc<CircuitVerifyingKey<Self::PairingCurve, MarlinHidingMode>> {
+        static INSTANCE: OnceCell<Arc<CircuitVerifyingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
+            OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first 2 bytes, which is the encoded version.
+            Arc::new(
+                CircuitVerifyingKey::from_bytes_le(&Self::inclusion_verifying_key_bytes()[2..])
+                    .expect("Failed to load inclusion verifying key."),
+            )
+        })
+    }
+
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>> {
         &GENERATOR_G
