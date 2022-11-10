@@ -230,8 +230,11 @@ impl<N: Network> Inclusion<N> {
                 Ok(execution)
             }
             false => {
+                // Fetch the inclusion proving key.
+                let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+
                 // Compute the inclusion batch proof.
-                let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(assignments, rng)?;
+                let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
                 // Return the execution.
                 Execution::from(execution.into_transitions(), global_state_root, Some(inclusion_proof))
             }
@@ -325,8 +328,11 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the assignments for the fee to *not* be empty")
         }
 
+        // Fetch the inclusion proving key.
+        let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+
         // Compute the inclusion batch proof.
-        let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(assignments, rng)?;
+        let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
         // Return the fee.
         Ok(Fee::from(fee_transition, global_state_root, Some(inclusion_proof)))
     }
@@ -386,9 +392,8 @@ impl<N: Network> Inclusion<N> {
                     bail!("Inclusion expected the global state root in the fee to *not* be zero")
                 }
 
-                // TODO (howardwu): Cache this in the process.
-                // Load the inclusion verifying key.
-                let verifying_key = VerifyingKey::from_bytes_le(N::inclusion_verifying_key_bytes())?;
+                // Fetch the inclusion verifying key.
+                let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
                 // Verify the inclusion proof.
                 ensure!(
                     verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
@@ -448,9 +453,8 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the fee to contain input records")
         }
 
-        // TODO (howardwu): Cache this in the process.
-        // Load the inclusion verifying key.
-        let verifying_key = VerifyingKey::from_bytes_le(N::inclusion_verifying_key_bytes())?;
+        // Fetch the inclusion verifying key.
+        let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
         // Verify the inclusion proof.
         ensure!(
             verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
@@ -462,6 +466,7 @@ impl<N: Network> Inclusion<N> {
 
     /// Returns the global state root and inclusion proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        proving_key: &ProvingKey<N>,
         assignments: &[InclusionAssignment<N>],
         rng: &mut R,
     ) -> Result<(N::StateRoot, Proof<N>)> {
@@ -487,8 +492,6 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
-        // Load the inclusion proving key.
-        let proving_key = ProvingKey::from_bytes_le(N::inclusion_proving_key_bytes())?;
         // Generate the inclusion batch proof.
         let inclusion_proof = proving_key.prove_batch(N::INCLUSION_FUNCTION_NAME, &batch_assignments, rng)?;
         // Return the global state root and inclusion proof.
