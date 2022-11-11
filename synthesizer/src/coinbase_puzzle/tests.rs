@@ -20,6 +20,8 @@ use snarkvm_utilities::Uniform;
 
 use rand::RngCore;
 
+const ITERATIONS: u64 = 100;
+
 #[test]
 fn test_coinbase_puzzle() {
     let mut rng = TestRng::default();
@@ -40,7 +42,7 @@ fn test_coinbase_puzzle() {
                     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
                     let nonce = u64::rand(&mut rng);
-                    puzzle.prove(&epoch_challenge, address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
                 })
                 .collect::<Vec<_>>();
             let full_solution = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
@@ -71,7 +73,7 @@ fn test_edge_case_for_degree() {
     let epoch_challenge = EpochChallenge::new(rng.gen(), Default::default(), degree).unwrap();
 
     // Generate a prover solution.
-    let prover_solution = puzzle.prove(&epoch_challenge, address, rng.gen()).unwrap();
+    let prover_solution = puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
     let coinbase_solution = puzzle.accumulate_unchecked(&epoch_challenge, &[prover_solution]).unwrap();
     assert!(puzzle.verify(&coinbase_solution, &epoch_challenge, 0u64, 0u64).unwrap());
 }

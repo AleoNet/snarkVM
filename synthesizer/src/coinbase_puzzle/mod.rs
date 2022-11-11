@@ -103,13 +103,13 @@ impl<N: Network> CoinbasePuzzle<N> {
         Ok(Self::Prover(Arc::new(pk)))
     }
 
-    // TODO (raychu86): Create a "candidate_prove", just output the commitment -> then finalize the prove.
     /// Returns a prover solution to the coinbase puzzle.
     pub fn prove(
         &self,
         epoch_challenge: &EpochChallenge<N>,
         address: Address<N>,
         nonce: u64,
+        minimum_proof_target: Option<u64>,
     ) -> Result<ProverSolution<N>> {
         // Retrieve the coinbase proving key.
         let pk = match self {
@@ -129,6 +129,18 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
         let (commitment, _rand) =
             KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &Default::default(), None)?;
+
+        let partial_solution = PartialSolution::new(address, nonce, commitment);
+
+        // Check that the minimum target is met.
+        if let Some(proof_target) = minimum_proof_target {
+            let prover_solution_target = partial_solution.to_target()?;
+            ensure!(
+                partial_solution.to_target()? >= proof_target,
+                "Prover solution was below the necessary proof target ({prover_solution_target} < {proof_target})"
+            );
+        }
+
         let point = hash_commitment(&commitment)?;
         let product_eval_at_point = polynomial.evaluate(point) * epoch_challenge.epoch_polynomial().evaluate(point);
 
@@ -143,7 +155,7 @@ impl<N: Network> CoinbasePuzzle<N> {
 
         debug_assert!(KZG10::check(&pk.verifying_key, &commitment, point, product_eval_at_point, &proof)?);
 
-        Ok(ProverSolution::new(PartialSolution::new(address, nonce, commitment), proof))
+        Ok(ProverSolution::new(partial_solution, proof))
     }
 
     /// Returns a coinbase solution for the given epoch challenge and prover solutions.
