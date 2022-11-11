@@ -73,17 +73,14 @@ fn test_prover_solution_minimum_target() {
             let address = Address::try_from(private_key).unwrap();
             let nonce = u64::rand(&mut rng);
 
-            // Assert that the puzzle can always be solved with a minimum target of 0.
-            assert!(puzzle.prove(&epoch_challenge, address, nonce, Some(0)).is_ok());
+            let solution = puzzle.prove(&epoch_challenge, address, nonce, None).unwrap();
+            let proof_target = solution.to_target().unwrap();
 
-            // Assert that the puzzle can't be solved with a maximum target of u64::MAX.
-            // Unless the target is exactly u64::MAX.
-            let proof_result = puzzle.prove(&epoch_challenge, address, nonce, Some(u64::MAX));
-            if let Ok(proof) = proof_result {
-                assert_eq!(proof.to_target().unwrap(), u64::MAX);
-            } else {
-                assert!(proof_result.is_err());
-            }
+            // Assert that the operation will pass if the minimum target is low enough.
+            assert!(puzzle.prove(&epoch_challenge, address, nonce, Some(proof_target.saturating_sub(1))).is_ok());
+
+            // Assert that the operation will fail if the minimum target is too high.
+            assert!(puzzle.prove(&epoch_challenge, address, nonce, Some(proof_target.saturating_add(1))).is_err());
         }
     }
 }
