@@ -133,11 +133,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         let partial_solution = PartialSolution::new(address, nonce, commitment);
 
         // Check that the minimum target is met.
-        if let Some(proof_target) = minimum_proof_target {
-            let prover_solution_target = partial_solution.to_target()?;
+        if let Some(minimum_target) = minimum_proof_target {
+            let proof_target = partial_solution.to_target()?;
             ensure!(
-                prover_solution_target >= proof_target,
-                "Prover solution was below the necessary proof target ({prover_solution_target} < {proof_target})"
+                proof_target >= minimum_target,
+                "Prover solution was below the necessary proof target ({proof_target} < {minimum_target})"
             );
         }
 
