@@ -201,6 +201,19 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns the transition with the corresponding transition ID.
+    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
+        let transitions =
+            self.transactions().iter().map(|transaction| transaction.find_transition(id)).flatten().collect::<Vec<_>>();
+        match transitions.len() {
+            0 => None,
+            1 => Some(transitions[0]),
+            _ => N::halt("Multiple transitions found with the same transition ID"),
+        }
+    }
+}
+
+impl<N: Network> Block<N> {
     /// Returns the puzzle commitments in this block.
     pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
         self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
@@ -264,5 +277,58 @@ impl<N: Network> Block<N> {
     /// Returns an iterator over the fees, for all transitions.
     pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
         self.transactions.fees()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console::account::ViewKey;
+
+    #[test]
+    fn test_find_transition() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let _view_key = ViewKey::try_from(&private_key).unwrap();
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Prepare the program ID.
+        let program_id = FromStr::from_str("credits.aleo").unwrap();
+        // Prepare the function name.
+        let function_name = FromStr::from_str("mint").unwrap();
+        // Prepare the function inputs.
+        let inputs = [Value::from_str(&address.to_string()).unwrap(), Value::from_str("1_u64").unwrap()];
+        // Authorize the call to start.
+        let authorization = vm.authorize(&private_key, &program_id, function_name, &inputs, rng).unwrap();
+
+        // Construct the transaction.
+        let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+        // Construct the transactions.
+        let transactions = Transactions::from(&[transaction.clone()]);
+        // Construct the block.
+        let block = Block::new(
+            &private_key,
+            Default::default(),
+            Header::genesis(&transactions).unwrap(),
+            transactions.clone(),
+            None,
+            rng,
+        )
+        .unwrap();
+
+        // Retrieve the transition.
+        let transitions = transaction.transitions().collect::<Vec<_>>();
+        assert_eq!(transitions.len(), 1);
+
+        for transition in transitions {
+            // Ensure the transition is found.
+            assert_eq!(block.find_transition(&transition.id()), Some(transition));
+            assert_eq!(transactions.find_transition(&transition.id()), Some(transition));
+            assert_eq!(transaction.find_transition(&transition.id()), Some(transition));
+        }
     }
 }

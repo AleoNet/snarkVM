@@ -59,6 +59,18 @@ impl<'a, N: Network> FromIterator<&'a Transaction<N>> for Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
+    /// Returns the transition with the corresponding transition ID.
+    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
+        let transitions = self.iter().map(|transaction| transaction.find_transition(id)).flatten().collect::<Vec<_>>();
+        match transitions.len() {
+            0 => None,
+            1 => Some(transitions[0]),
+            _ => N::halt("Multiple transitions found with the same transition ID"),
+        }
+    }
+}
+
+impl<N: Network> Transactions<N> {
     /// The maximum number of transactions allowed in a block.
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
