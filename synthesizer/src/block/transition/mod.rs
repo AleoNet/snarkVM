@@ -311,6 +311,44 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
+    /// Returns `true` if the transition contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        self.inputs.iter().any(|input| match input {
+            Input::Constant(_, _) => false,
+            Input::Public(_, _) => false,
+            Input::Private(_, _) => false,
+            Input::Record(input_sn, _) => input_sn == serial_number,
+            Input::ExternalRecord(_) => false,
+        })
+    }
+
+    /// Returns `true` if the transition contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        self.outputs.iter().any(|output| match output {
+            Output::Constant(_, _) => false,
+            Output::Public(_, _) => false,
+            Output::Private(_, _) => false,
+            Output::Record(output_cm, _, _) => output_cm == commitment,
+            Output::ExternalRecord(_) => false,
+        })
+    }
+}
+
+impl<N: Network> Transition<N> {
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        self.outputs.iter().find_map(|output| match output {
+            Output::Constant(_, _) => None,
+            Output::Public(_, _) => None,
+            Output::Private(_, _) => None,
+            Output::Record(output_cm, _, Some(record)) if output_cm == commitment => Some(record),
+            Output::Record(_, _, _) => None,
+            Output::ExternalRecord(_) => None,
+        })
+    }
+}
+
+impl<N: Network> Transition<N> {
     /* Input */
 
     /// Returns the input IDs.

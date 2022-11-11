@@ -71,7 +71,7 @@ impl<N: Network> Execution<N> {
         self.transitions.contains_key(transition_id)
     }
 
-    /// Returns the `Transition` corresponding to the given transition ID.
+    /// Returns the `Transition` corresponding to the given transition ID. This method is `O(1)`.
     pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
         self.transitions.get(id)
     }

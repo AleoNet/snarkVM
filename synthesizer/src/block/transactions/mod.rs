@@ -29,7 +29,11 @@ use console::{
     types::{Field, Group},
 };
 
+use console::program::{Ciphertext, Record};
 use indexmap::IndexMap;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
@@ -59,13 +63,88 @@ impl<'a, N: Network> FromIterator<&'a Transaction<N>> for Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
+    /// Returns `true` if the transactions contains the given transition ID.
+    pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().any(|tx| tx.contains_transition(transition_id)),
+            false => self.values().any(|tx| tx.contains_transition(transition_id)),
+        }
+    }
+
+    /// Returns `true` if the transactions contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().any(|tx| tx.contains_serial_number(serial_number)),
+            false => self.values().any(|tx| tx.contains_serial_number(serial_number)),
+        }
+    }
+
+    /// Returns `true` if the transactions contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().any(|tx| tx.contains_commitment(commitment)),
+            false => self.values().any(|tx| tx.contains_commitment(commitment)),
+        }
+    }
+}
+
+impl<N: Network> Transactions<N> {
+    /// Returns the transaction with the given transition ID.
+    pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().find_any(|tx| tx.contains_transition(transition_id)),
+            false => self.values().find(|tx| tx.contains_transition(transition_id)),
+        }
+    }
+
+    /// Returns the transaction with the given serial number.
+    pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().find_any(|tx| tx.contains_serial_number(serial_number)),
+            false => self.values().find(|tx| tx.contains_serial_number(serial_number)),
+        }
+    }
+
+    /// Returns the transaction with the given commitment.
+    pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().find_any(|tx| tx.contains_commitment(commitment)),
+            false => self.values().find(|tx| tx.contains_commitment(commitment)),
+        }
+    }
+
     /// Returns the transition with the corresponding transition ID.
-    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
-        let transitions = self.iter().map(|transaction| transaction.find_transition(id)).flatten().collect::<Vec<_>>();
-        match transitions.len() {
-            0 => None,
-            1 => Some(transitions[0]),
-            _ => N::halt("Multiple transitions found with the same transition ID"),
+    pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().filter_map(|tx| tx.find_transition(transition_id)).find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_transition(transition_id)),
+        }
+    }
+
+    /// Returns the transition for the given serial number.
+    pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
+        match cfg!(feature = "parallel") {
+            true => self
+                .par_values()
+                .filter_map(|tx| tx.find_transition_for_serial_number(serial_number))
+                .find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_transition_for_serial_number(serial_number)),
+        }
+    }
+
+    /// Returns the transition for the given commitment.
+    pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().filter_map(|tx| tx.find_transition_for_commitment(commitment)).find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_transition_for_commitment(commitment)),
+        }
+    }
+
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().filter_map(|tx| tx.find_record(commitment)).find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_record(commitment)),
         }
     }
 }

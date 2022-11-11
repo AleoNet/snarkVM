@@ -39,7 +39,7 @@ use crate::{
 use console::{
     account::{Address, PrivateKey, Signature},
     network::prelude::*,
-    program::Value,
+    program::{Ciphertext, Record, Value},
     types::{Field, Group},
 };
 
@@ -201,15 +201,56 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns `true` if the block contains the given transition ID.
+    pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
+        self.transactions.contains_transition(transition_id)
+    }
+
+    /// Returns `true` if the block contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        self.transactions.contains_serial_number(serial_number)
+    }
+
+    /// Returns `true` if the block contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        self.transactions.contains_commitment(commitment)
+    }
+}
+
+impl<N: Network> Block<N> {
+    /// Returns the transaction with the given transition ID.
+    pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
+        self.transactions.find_transaction_for_transition_id(transition_id)
+    }
+
+    /// Returns the transaction with the given serial number.
+    pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
+        self.transactions.find_transaction_for_serial_number(serial_number)
+    }
+
+    /// Returns the transaction with the given commitment.
+    pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
+        self.transactions.find_transaction_for_commitment(commitment)
+    }
+
     /// Returns the transition with the corresponding transition ID.
-    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
-        let transitions =
-            self.transactions().iter().map(|transaction| transaction.find_transition(id)).flatten().collect::<Vec<_>>();
-        match transitions.len() {
-            0 => None,
-            1 => Some(transitions[0]),
-            _ => N::halt("Multiple transitions found with the same transition ID"),
-        }
+    pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
+        self.transactions.find_transition(transition_id)
+    }
+
+    /// Returns the transition for the given serial number.
+    pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
+        self.transactions.find_transition_for_serial_number(serial_number)
+    }
+
+    /// Returns the transition for the given commitment.
+    pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
+        self.transactions.find_transition_for_commitment(commitment)
+    }
+
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        self.transactions.find_record(commitment)
     }
 }
 
@@ -326,9 +367,9 @@ mod tests {
 
         for transition in transitions {
             // Ensure the transition is found.
-            assert_eq!(block.find_transition(&transition.id()), Some(transition));
-            assert_eq!(transactions.find_transition(&transition.id()), Some(transition));
-            assert_eq!(transaction.find_transition(&transition.id()), Some(transition));
+            assert_eq!(block.find_transition(transition.id()), Some(transition));
+            assert_eq!(transactions.find_transition(transition.id()), Some(transition));
+            assert_eq!(transaction.find_transition(transition.id()), Some(transition));
         }
     }
 }
