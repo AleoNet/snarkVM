@@ -338,10 +338,10 @@ impl<N: Network> CoinbasePuzzle<N> {
     }
 
     /// Returns the coinbase verifying key.
-    pub fn coinbase_verifying_key(&self) -> Result<&CoinbaseVerifyingKey<N>> {
+    pub fn coinbase_verifying_key(&self) -> &CoinbaseVerifyingKey<N> {
         match self {
-            Self::Prover(coinbase_proving_key) => Ok(&coinbase_proving_key.verifying_key),
-            Self::Verifier(coinbase_verifying_key) => Ok(coinbase_verifying_key),
+            Self::Prover(coinbase_proving_key) => &coinbase_proving_key.verifying_key,
+            Self::Verifier(coinbase_verifying_key) => coinbase_verifying_key,
         }
     }
 }
