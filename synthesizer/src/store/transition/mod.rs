@@ -165,7 +165,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             // Store the outputs.
             self.output_store().insert(transition_id, transition.outputs())?;
             // Store the finalize inputs.
-            self.finalize_map().insert(transition_id, transition.finalize().clone())?;
+            self.finalize_map().insert(transition_id, transition.finalize().cloned())?;
             // Store the proof.
             self.proof_map().insert(transition_id, transition.proof().clone())?;
             // Store `tpk`.

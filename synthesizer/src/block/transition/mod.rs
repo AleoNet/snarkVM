@@ -285,8 +285,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Return the inputs for finalize, if they exist.
-    pub const fn finalize(&self) -> &Option<Vec<Value<N>>> {
-        &self.finalize
+    pub const fn finalize(&self) -> Option<&Vec<Value<N>>> {
+        self.finalize.as_ref()
     }
 
     /// Returns the proof.
@@ -346,7 +346,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns an iterator over the output records, as a tuple of `(commitment, record)`.
-    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+    pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
         self.outputs.iter().flat_map(Output::record)
     }
 
@@ -389,7 +389,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns a consuming iterator over the output records, as a tuple of `(commitment, record)`.
-    pub fn into_output_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+    pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
         self.outputs.into_iter().flat_map(Output::into_record)
     }
 

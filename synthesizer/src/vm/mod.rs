@@ -261,11 +261,8 @@ function compute:
                 let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
 
                 // Fetch the unspent records.
-                let records = genesis
-                    .transitions()
-                    .cloned()
-                    .flat_map(Transition::into_output_records)
-                    .collect::<IndexMap<_, _>>();
+                let records =
+                    genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
 
                 // Prepare the additional fee.
@@ -300,11 +297,8 @@ function compute:
                 let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
 
                 // Fetch the unspent records.
-                let records = genesis
-                    .transitions()
-                    .cloned()
-                    .flat_map(Transition::into_output_records)
-                    .collect::<IndexMap<_, _>>();
+                let records =
+                    genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
 
                 // Select a record to spend.
@@ -355,11 +349,8 @@ function compute:
                 let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
 
                 // Fetch the unspent records.
-                let records = genesis
-                    .transitions()
-                    .cloned()
-                    .flat_map(Transition::into_output_records)
-                    .collect::<IndexMap<_, _>>();
+                let records =
+                    genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
 
                 // Select a record to spend.

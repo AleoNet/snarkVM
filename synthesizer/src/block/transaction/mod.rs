@@ -30,6 +30,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{
+        Ciphertext,
         Identifier,
         Plaintext,
         ProgramID,
@@ -243,6 +244,11 @@ impl<N: Network> Transaction<N> {
         self.transitions().flat_map(Transition::commitments)
     }
 
+    /// Returns an iterator over the records, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+        self.transitions().flat_map(Transition::records)
+    }
+
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transitions().flat_map(Transition::nonces)
@@ -293,6 +299,11 @@ impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
     pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
         self.into_transitions().flat_map(Transition::into_commitments)
+    }
+
+    /// Returns a consuming iterator over the records, for all transition outputs that are records.
+    pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+        self.into_transitions().flat_map(Transition::into_records)
     }
 
     /// Returns a consuming iterator over the nonces, for all transition outputs that are records.
