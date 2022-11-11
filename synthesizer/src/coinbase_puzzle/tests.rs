@@ -55,6 +55,40 @@ fn test_coinbase_puzzle() {
 }
 
 #[test]
+fn test_prover_solution_minimum_target() {
+    let mut rng = TestRng::default();
+
+    let max_degree = 1 << 15;
+    let max_config = PuzzleConfig { degree: max_degree };
+    let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+
+    for log_degree in 5..10 {
+        let degree = (1 << log_degree) - 1;
+        let config = PuzzleConfig { degree };
+        let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, config).unwrap();
+        let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
+
+        for _ in 0..ITERATIONS {
+            let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+            let address = Address::try_from(private_key).unwrap();
+            let nonce = u64::rand(&mut rng);
+
+            // Assert that the puzzle can always be solved with a minimum target of 0.
+            assert!(puzzle.prove(&epoch_challenge, address, nonce, Some(0)).is_ok());
+
+            // Assert that the puzzle can't be solved with a maximum target of u64::MAX.
+            // Unless the target is exactly u64::MAX.
+            let proof_result = puzzle.prove(&epoch_challenge, address, nonce, Some(u64::MAX));
+            if let Ok(proof) = proof_result {
+                assert_eq!(proof.to_target().unwrap(), u64::MAX);
+            } else {
+                assert!(proof_result.is_err());
+            }
+        }
+    }
+}
+
+#[test]
 fn test_edge_case_for_degree() {
     let mut rng = rand::thread_rng();
 

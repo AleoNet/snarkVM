@@ -136,7 +136,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         if let Some(proof_target) = minimum_proof_target {
             let prover_solution_target = partial_solution.to_target()?;
             ensure!(
-                partial_solution.to_target()? >= proof_target,
+                prover_solution_target >= proof_target,
                 "Prover solution was below the necessary proof target ({prover_solution_target} < {proof_target})"
             );
         }
