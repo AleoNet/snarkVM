@@ -35,9 +35,8 @@ pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) 
             let mut input_with_counter = [0u8; 36];
             input_with_counter[..32].copy_from_slice(&hash);
             input_with_counter[32..].copy_from_slice(&counter.to_le_bytes());
-            let result = Params::new().hash_length(64).hash(&input_with_counter);
-            let input_hash = result.as_bytes();
-            F::from_bytes_le_mod_order(input_hash)
+            let input_hash = Params::new().hash_length(64).hash(&input_with_counter);
+            F::from_bytes_le_mod_order(input_hash.as_bytes())
         })
         .collect()
 }
@@ -83,4 +82,55 @@ pub fn hash_commitments<E: PairingEngine>(
 
     // Hash the commitment bytes into coefficients.
     Ok(hash_to_coefficients(&bytes, num_commitments + 1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::bls12_377::Fr;
+
+    /// Computes the hash to coefficients without `blake2b_simd`.
+    pub fn hash_to_coefficients_no_simd<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Vec<F> {
+        // Hash the input.
+        let hash = blake2::Blake2s256::digest(input);
+        // Hash with a counter and return the coefficients.
+        cfg_into_iter!(0..num_coefficients)
+            .map(|counter| {
+                let mut input_with_counter = [0u8; 36];
+                input_with_counter[..32].copy_from_slice(&hash);
+                input_with_counter[32..].copy_from_slice(&counter.to_le_bytes());
+                F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(input_with_counter))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_hash_to_coefficients() {
+        let input = b"test";
+        let coefficients = hash_to_coefficients::<Fr>(input, 10);
+        assert_eq!(coefficients.len(), 10);
+    }
+
+    #[test]
+    fn test_hash_to_coefficients_blake2b() {
+        for i in (1..100).step_by(8) {
+            let input = (0..i).map(|_| rand::random::<u8>()).collect::<Vec<_>>();
+            for j in (1..20000).step_by(101) {
+                // Compute the coefficients using the `blake2b_simd` crate.
+                let time = std::time::Instant::now();
+                let coefficients = hash_to_coefficients::<Fr>(&input, j);
+                let time_a = time.elapsed();
+
+                // Compute the coefficients without using the `blake2b_simd` crate.
+                let time = std::time::Instant::now();
+                let coefficients_no_simd = hash_to_coefficients_no_simd::<Fr>(&input, j);
+                let time_b = time.elapsed();
+
+                // Ensure the coefficients are the same.
+                assert_eq!(coefficients, coefficients_no_simd);
+                // Log the time taken.
+                println!("{i} {j} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
+            }
+        }
+    }
 }
