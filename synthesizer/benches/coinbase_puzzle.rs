@@ -76,7 +76,7 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
 
         c.bench_function(&format!("CoinbasePuzzle::Prove 2^{}", ((degree + 1) as f64).log2()), |b| {
             let (epoch_challenge, address, nonce) = sample_inputs(degree, rng);
-            b.iter(|| puzzle.prove(&epoch_challenge, address, nonce).unwrap())
+            b.iter(|| puzzle.prove(&epoch_challenge, address, nonce, None).unwrap())
         });
     }
 }
@@ -98,7 +98,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);
-                    puzzle.prove(&epoch_challenge, address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
                 })
                 .collect::<Vec<_>>();
 
@@ -127,7 +127,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);
-                    puzzle.prove(&epoch_challenge, address, nonce).unwrap()
+                    puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
                 })
                 .collect::<Vec<_>>();
             let solution = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
