@@ -69,7 +69,10 @@ version = "0.10"
 default-features = false
 
 [dependencies.blake2b_simd]
-version = "0.5"
+version = "1"
+
+[dependencies.blake2s_simd]
+version = "1"
 
 [dependencies.colored]
 version = "2"
