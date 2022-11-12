@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_coinbase_puzzle_simd() {
+    fn test_prove_simd() {
         let mut rng = TestRng::default();
 
         let max_degree = 1 << 14;
