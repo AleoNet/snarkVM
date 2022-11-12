@@ -57,6 +57,18 @@ impl<N: Network, B: BlockStorage<N>> From<&BlockStore<N, B>> for InclusionQuery<
     }
 }
 
+impl<N: Network, B: BlockStorage<N>> From<reqwest::Url> for InclusionQuery<N, B> {
+    fn from(url: reqwest::Url) -> Self {
+        Self::REST(url.to_string())
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> From<&reqwest::Url> for InclusionQuery<N, B> {
+    fn from(url: &reqwest::Url) -> Self {
+        Self::REST(url.to_string())
+    }
+}
+
 impl<N: Network, B: BlockStorage<N>> From<String> for InclusionQuery<N, B> {
     fn from(url: String) -> Self {
         Self::REST(url)

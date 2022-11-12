@@ -94,6 +94,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
+    /// Returns the process.
+    #[inline]
+    pub fn process(&self) -> Arc<RwLock<Process<N>>> {
+        self.process.clone()
+    }
+
     /// Returns the program store.
     #[inline]
     pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
