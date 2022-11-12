@@ -37,6 +37,62 @@ use console::{
 use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
 
+#[derive(Clone)]
+pub enum InclusionQuery<N: Network, B: BlockStorage<N>> {
+    /// The block store from the VM.
+    VM(BlockStore<N, B>),
+    /// The base URL of the node.
+    REST(String),
+}
+
+impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for InclusionQuery<N, B> {
+    fn from(block_store: BlockStore<N, B>) -> Self {
+        Self::VM(block_store)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> From<&BlockStore<N, B>> for InclusionQuery<N, B> {
+    fn from(block_store: &BlockStore<N, B>) -> Self {
+        Self::VM(block_store.clone())
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> From<String> for InclusionQuery<N, B> {
+    fn from(url: String) -> Self {
+        Self::REST(url)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> From<&str> for InclusionQuery<N, B> {
+    fn from(url: &str) -> Self {
+        Self::REST(url.to_string())
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> InclusionQuery<N, B> {
+    /// Returns the current state root.
+    pub fn current_state_root(&self) -> Result<N::StateRoot> {
+        match self {
+            Self::VM(block_store) => Ok(block_store.current_state_root()),
+            Self::REST(url) => match N::ID {
+                3 => Ok(reqwest::blocking::get(format!("{url}/testnet3/latest/stateRoot"))?.json()?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
+        }
+    }
+
+    /// Returns a state path for the given `commitment`.
+    pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        match self {
+            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            Self::REST(url) => match N::ID {
+                3 => Ok(reqwest::blocking::get(format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 struct InputTask<N: Network> {
     /// The commitment.
@@ -103,11 +159,13 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the inclusion assignments for the given execution.
-    pub fn prepare_execution<B: BlockStorage<N>>(
+    pub fn prepare_execution<B: BlockStorage<N>, Q: Into<InclusionQuery<N, B>>>(
         &self,
         execution: &Execution<N>,
-        block_store: &BlockStore<N, B>,
+        query: Q,
     ) -> Result<Vec<InclusionAssignment<N>>> {
+        let query = query.into();
+
         // Ensure the number of leaves is within the Merkle tree size.
         Transaction::check_execution_size(execution)?;
 
@@ -133,7 +191,7 @@ impl<N: Network> Inclusion<N> {
                         let state_path = match task.is_local {
                             true => {
                                 // Retrieve the global state root.
-                                let global_state_root = block_store.current_state_root();
+                                let global_state_root = query.current_state_root()?;
                                 // Compute the transaction path.
                                 let transaction_path =
                                     transaction_tree.prove(transition_index, &transaction_leaf.to_bits_le())?;
@@ -151,7 +209,7 @@ impl<N: Network> Inclusion<N> {
                                     transition_leaf,
                                 )?
                             }
-                            false => block_store.get_state_path_for_commitment(&task.commitment)?,
+                            false => query.get_state_path_for_commitment(&task.commitment)?,
                         };
 
                         // Ensure the global state root is the same across iterations.
@@ -242,10 +300,10 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the inclusion assignments for the given fee transition.
-    pub fn prepare_fee<B: BlockStorage<N>>(
+    pub fn prepare_fee<B: BlockStorage<N>, Q: Into<InclusionQuery<N, B>>>(
         &self,
         fee_transition: &Transition<N>,
-        block_store: &BlockStore<N, B>,
+        query: Q,
     ) -> Result<Vec<InclusionAssignment<N>>> {
         // Ensure the fee has the correct program ID.
         let fee_program_id = ProgramID::from_str("credits.aleo")?;
@@ -265,11 +323,13 @@ impl<N: Network> Inclusion<N> {
         // Process the input tasks.
         match self.input_tasks.get(fee_transition.id()) {
             Some(tasks) => {
+                let query = query.into();
+
                 for task in tasks {
                     // Retrieve the local state root.
                     let local_state_root = (*transaction_tree.root()).into();
                     // Construct the state path.
-                    let state_path = block_store.get_state_path_for_commitment(&task.commitment)?;
+                    let state_path = query.get_state_path_for_commitment(&task.commitment)?;
 
                     // Ensure the global state root is the same across iterations.
                     if *global_state_root != Field::zero() && global_state_root != state_path.global_state_root() {

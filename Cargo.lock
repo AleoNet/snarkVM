@@ -2442,6 +2442,7 @@ dependencies = [
  "paste",
  "rand",
  "rayon",
+ "reqwest",
  "serde",
  "serde_json",
  "snarkvm-algorithms",

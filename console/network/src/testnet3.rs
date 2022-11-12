@@ -125,7 +125,7 @@ impl Network for Testnet3 {
     /// The function name for the inclusion circuit.
     const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
-    const NAME: &'static str = "Aleo Testnet3";
+    const NAME: &'static str = "Aleo Testnet 3";
 
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
