@@ -25,11 +25,10 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
+    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
     types::{Field, Group},
 };
 
-use console::program::{Ciphertext, Record};
 use indexmap::IndexMap;
 
 #[cfg(feature = "parallel")]
@@ -89,7 +88,7 @@ impl<N: Network> Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
-    /// Returns the transaction with the given transition ID.
+    /// Returns the transaction with the given transition ID, if it exists.
     pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
         match cfg!(feature = "parallel") {
             true => self.par_values().find_any(|tx| tx.contains_transition(transition_id)),
@@ -97,7 +96,7 @@ impl<N: Network> Transactions<N> {
         }
     }
 
-    /// Returns the transaction with the given serial number.
+    /// Returns the transaction with the given serial number, if it exists.
     pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
         match cfg!(feature = "parallel") {
             true => self.par_values().find_any(|tx| tx.contains_serial_number(serial_number)),
@@ -105,7 +104,7 @@ impl<N: Network> Transactions<N> {
         }
     }
 
-    /// Returns the transaction with the given commitment.
+    /// Returns the transaction with the given commitment, if it exists.
     pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
         match cfg!(feature = "parallel") {
             true => self.par_values().find_any(|tx| tx.contains_commitment(commitment)),
@@ -113,7 +112,7 @@ impl<N: Network> Transactions<N> {
         }
     }
 
-    /// Returns the transition with the corresponding transition ID.
+    /// Returns the transition with the corresponding transition ID, if it exists.
     pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
         match cfg!(feature = "parallel") {
             true => self.par_values().filter_map(|tx| tx.find_transition(transition_id)).find_any(|_| true),
@@ -121,7 +120,7 @@ impl<N: Network> Transactions<N> {
         }
     }
 
-    /// Returns the transition for the given serial number.
+    /// Returns the transition for the given serial number, if it exists.
     pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
         match cfg!(feature = "parallel") {
             true => self
@@ -132,7 +131,7 @@ impl<N: Network> Transactions<N> {
         }
     }
 
-    /// Returns the transition for the given commitment.
+    /// Returns the transition for the given commitment, if it exists.
     pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
         match cfg!(feature = "parallel") {
             true => self.par_values().filter_map(|tx| tx.find_transition_for_commitment(commitment)).find_any(|_| true),

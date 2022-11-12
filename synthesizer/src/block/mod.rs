@@ -218,32 +218,32 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
-    /// Returns the transaction with the given transition ID.
+    /// Returns the transaction with the given transition ID, if it exists.
     pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
         self.transactions.find_transaction_for_transition_id(transition_id)
     }
 
-    /// Returns the transaction with the given serial number.
+    /// Returns the transaction with the given serial number, if it exists.
     pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
         self.transactions.find_transaction_for_serial_number(serial_number)
     }
 
-    /// Returns the transaction with the given commitment.
+    /// Returns the transaction with the given commitment, if it exists.
     pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
         self.transactions.find_transaction_for_commitment(commitment)
     }
 
-    /// Returns the transition with the corresponding transition ID.
+    /// Returns the transition with the corresponding transition ID, if it exists.
     pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
         self.transactions.find_transition(transition_id)
     }
 
-    /// Returns the transition for the given serial number.
+    /// Returns the transition for the given serial number, if it exists.
     pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
         self.transactions.find_transition_for_serial_number(serial_number)
     }
 
-    /// Returns the transition for the given commitment.
+    /// Returns the transition for the given commitment, if it exists.
     pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
         self.transactions.find_transition_for_commitment(commitment)
     }

@@ -205,7 +205,7 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> Transaction<N> {
-    /// Returns the transition with the corresponding transition ID. This method is `O(1)`.
+    /// Returns the transition with the corresponding transition ID, if it exists.
     pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
         match self {
             // Check the fee.
@@ -223,12 +223,12 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns the transition for the given serial number.
+    /// Returns the transition for the given serial number, if it exists.
     pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
         self.transitions().find(|transition| transition.contains_serial_number(serial_number))
     }
 
-    /// Returns the transition for the given commitment.
+    /// Returns the transition for the given commitment, if it exists.
     pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
         self.transitions().find(|transition| transition.contains_commitment(commitment))
     }
