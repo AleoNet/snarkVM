@@ -30,6 +30,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{
+        Ciphertext,
         Identifier,
         Plaintext,
         ProgramID,
@@ -179,22 +180,62 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> Transaction<N> {
-    /// Returns the transition with the corresponding transition ID.
-    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
+    /// Returns `true` if the transaction contains the given transition ID.
+    pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
         match self {
             // Check the fee.
-            Self::Deploy(_, _, fee) => match fee.id() == id {
+            Self::Deploy(_, _, fee) => fee.id() == transition_id,
+            // Check the execution and fee.
+            Self::Execute(_, execution, fee) => {
+                execution.contains_transition(transition_id)
+                    || fee.as_ref().map_or(false, |fee| fee.id() == transition_id)
+            }
+        }
+    }
+
+    /// Returns `true` if the transaction contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        self.transitions().any(|transition| transition.contains_serial_number(serial_number))
+    }
+
+    /// Returns `true` if the transaction contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        self.transitions().any(|transition| transition.contains_commitment(commitment))
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns the transition with the corresponding transition ID, if it exists.
+    pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
+        match self {
+            // Check the fee.
+            Self::Deploy(_, _, fee) => match fee.id() == transition_id {
                 true => Some(fee.transition()),
                 false => None,
             },
             // Check the execution and fee.
-            Self::Execute(_, execution, fee) => execution.find_transition(id).or_else(|| {
-                fee.as_ref().and_then(|fee| match fee.id() == id {
+            Self::Execute(_, execution, fee) => execution.find_transition(transition_id).or_else(|| {
+                fee.as_ref().and_then(|fee| match fee.id() == transition_id {
                     true => Some(fee.transition()),
                     false => None,
                 })
             }),
         }
+    }
+
+    /// Returns the transition for the given serial number, if it exists.
+    pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
+        self.transitions().find(|transition| transition.contains_serial_number(serial_number))
+    }
+
+    /// Returns the transition for the given commitment, if it exists.
+    pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
+        self.transitions().find(|transition| transition.contains_commitment(commitment))
+    }
+
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        self.transitions().find_map(|transition| transition.find_record(commitment))
     }
 }
 
@@ -241,6 +282,11 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().flat_map(Transition::commitments)
+    }
+
+    /// Returns an iterator over the records, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+        self.transitions().flat_map(Transition::records)
     }
 
     /// Returns an iterator over the nonces, for all transition outputs that are records.
@@ -293,6 +339,11 @@ impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
     pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
         self.into_transitions().flat_map(Transition::into_commitments)
+    }
+
+    /// Returns a consuming iterator over the records, for all transition outputs that are records.
+    pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+        self.into_transitions().flat_map(Transition::into_records)
     }
 
     /// Returns a consuming iterator over the nonces, for all transition outputs that are records.

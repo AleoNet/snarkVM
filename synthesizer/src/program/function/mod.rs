@@ -86,8 +86,8 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the function finalize logic.
-    pub const fn finalize(&self) -> &Option<(FinalizeCommand<N>, Finalize<N>)> {
-        &self.finalize
+    pub const fn finalize(&self) -> Option<&(FinalizeCommand<N>, Finalize<N>)> {
+        self.finalize.as_ref()
     }
 
     /// Returns the function finalize command.

@@ -285,8 +285,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Return the inputs for finalize, if they exist.
-    pub const fn finalize(&self) -> &Option<Vec<Value<N>>> {
-        &self.finalize
+    pub const fn finalize(&self) -> Option<&Vec<Value<N>>> {
+        self.finalize.as_ref()
     }
 
     /// Returns the proof.
@@ -307,6 +307,44 @@ impl<N: Network> Transition<N> {
     /// Returns the network fee.
     pub const fn fee(&self) -> &i64 {
         &self.fee
+    }
+}
+
+impl<N: Network> Transition<N> {
+    /// Returns `true` if the transition contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        self.inputs.iter().any(|input| match input {
+            Input::Constant(_, _) => false,
+            Input::Public(_, _) => false,
+            Input::Private(_, _) => false,
+            Input::Record(input_sn, _) => input_sn == serial_number,
+            Input::ExternalRecord(_) => false,
+        })
+    }
+
+    /// Returns `true` if the transition contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        self.outputs.iter().any(|output| match output {
+            Output::Constant(_, _) => false,
+            Output::Public(_, _) => false,
+            Output::Private(_, _) => false,
+            Output::Record(output_cm, _, _) => output_cm == commitment,
+            Output::ExternalRecord(_) => false,
+        })
+    }
+}
+
+impl<N: Network> Transition<N> {
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        self.outputs.iter().find_map(|output| match output {
+            Output::Constant(_, _) => None,
+            Output::Public(_, _) => None,
+            Output::Private(_, _) => None,
+            Output::Record(output_cm, _, Some(record)) if output_cm == commitment => Some(record),
+            Output::Record(_, _, _) => None,
+            Output::ExternalRecord(_) => None,
+        })
     }
 }
 
@@ -346,7 +384,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns an iterator over the output records, as a tuple of `(commitment, record)`.
-    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+    pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
         self.outputs.iter().flat_map(Output::record)
     }
 
@@ -389,7 +427,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns a consuming iterator over the output records, as a tuple of `(commitment, record)`.
-    pub fn into_output_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+    pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
         self.outputs.into_iter().flat_map(Output::into_record)
     }
 

@@ -25,11 +25,14 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
+    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
     types::{Field, Group},
 };
 
 use indexmap::IndexMap;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
@@ -59,11 +62,98 @@ impl<'a, N: Network> FromIterator<&'a Transaction<N>> for Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
+    /// Returns `true` if the transactions contains the given transition ID.
+    pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().any(|tx| tx.contains_transition(transition_id)),
+            false => self.values().any(|tx| tx.contains_transition(transition_id)),
+        }
+    }
+
+    /// Returns `true` if the transactions contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().any(|tx| tx.contains_serial_number(serial_number)),
+            false => self.values().any(|tx| tx.contains_serial_number(serial_number)),
+        }
+    }
+
+    /// Returns `true` if the transactions contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().any(|tx| tx.contains_commitment(commitment)),
+            false => self.values().any(|tx| tx.contains_commitment(commitment)),
+        }
+    }
+}
+
+impl<N: Network> Transactions<N> {
+    /// Returns the transaction with the given transition ID, if it exists.
+    pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().find_any(|tx| tx.contains_transition(transition_id)),
+            false => self.values().find(|tx| tx.contains_transition(transition_id)),
+        }
+    }
+
+    /// Returns the transaction with the given serial number, if it exists.
+    pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().find_any(|tx| tx.contains_serial_number(serial_number)),
+            false => self.values().find(|tx| tx.contains_serial_number(serial_number)),
+        }
+    }
+
+    /// Returns the transaction with the given commitment, if it exists.
+    pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().find_any(|tx| tx.contains_commitment(commitment)),
+            false => self.values().find(|tx| tx.contains_commitment(commitment)),
+        }
+    }
+
+    /// Returns the transition with the corresponding transition ID, if it exists.
+    pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().filter_map(|tx| tx.find_transition(transition_id)).find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_transition(transition_id)),
+        }
+    }
+
+    /// Returns the transition for the given serial number, if it exists.
+    pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
+        match cfg!(feature = "parallel") {
+            true => self
+                .par_values()
+                .filter_map(|tx| tx.find_transition_for_serial_number(serial_number))
+                .find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_transition_for_serial_number(serial_number)),
+        }
+    }
+
+    /// Returns the transition for the given commitment, if it exists.
+    pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().filter_map(|tx| tx.find_transition_for_commitment(commitment)).find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_transition_for_commitment(commitment)),
+        }
+    }
+
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        match cfg!(feature = "parallel") {
+            true => self.par_values().filter_map(|tx| tx.find_record(commitment)).find_any(|_| true),
+            false => self.values().find_map(|tx| tx.find_record(commitment)),
+        }
+    }
+}
+
+impl<N: Network> Transactions<N> {
     /// The maximum number of transactions allowed in a block.
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
-    pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+    pub fn iter(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
         self.transactions.values()
     }
 
@@ -74,7 +164,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over all transactions in `self` that are deployments.
     pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
-        self.transactions().filter_map(|transaction| match transaction {
+        self.iter().filter_map(|transaction| match transaction {
             Transaction::Deploy(_, deployment, _) => Some(deployment.as_ref()),
             _ => None,
         })
@@ -82,7 +172,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over all transactions in `self` that are executions.
     pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
-        self.transactions().filter_map(|transaction| match transaction {
+        self.iter().filter_map(|transaction| match transaction {
             Transaction::Execute(_, execution, _) => Some(execution),
             _ => None,
         })
@@ -90,17 +180,17 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
-        self.transactions().flat_map(Transaction::transitions)
+        self.iter().flat_map(Transaction::transitions)
     }
 
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.transactions().flat_map(Transaction::transition_ids)
+        self.iter().flat_map(Transaction::transition_ids)
     }
 
     /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transactions().flat_map(Transaction::transition_public_keys)
+        self.iter().flat_map(Transaction::transition_public_keys)
     }
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
@@ -129,12 +219,17 @@ impl<N: Network> Transactions<N> {
     }
 }
 
-impl<N: Network> Transactions<N> {
+impl<N: Network> IntoIterator for Transactions<N> {
+    type IntoIter = indexmap::map::IntoValues<N::TransactionID, Self::Item>;
+    type Item = Transaction<N>;
+
     /// Returns a consuming iterator over all transactions, for all transactions in `self`.
-    pub fn into_transactions(self) -> impl Iterator<Item = Transaction<N>> {
+    fn into_iter(self) -> Self::IntoIter {
         self.transactions.into_values()
     }
+}
 
+impl<N: Network> Transactions<N> {
     /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
     pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
         self.transactions.into_keys()
@@ -142,7 +237,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a consuming iterator over all transactions in `self` that are deployments.
     pub fn into_deployments(self) -> impl Iterator<Item = Deployment<N>> {
-        self.into_transactions().filter_map(|transaction| match transaction {
+        self.into_iter().filter_map(|transaction| match transaction {
             Transaction::Deploy(_, deployment, _) => Some(*deployment),
             _ => None,
         })
@@ -150,7 +245,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a consuming iterator over all transactions in `self` that are executions.
     pub fn into_executions(self) -> impl Iterator<Item = Execution<N>> {
-        self.into_transactions().filter_map(|transaction| match transaction {
+        self.into_iter().filter_map(|transaction| match transaction {
             Transaction::Execute(_, execution, _) => Some(execution),
             _ => None,
         })
@@ -158,17 +253,17 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
-        self.into_transactions().flat_map(Transaction::into_transitions)
+        self.into_iter().flat_map(Transaction::into_transitions)
     }
 
     /// Returns a consuming iterator over the transition IDs, for all transitions.
     pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
-        self.into_transactions().flat_map(Transaction::into_transition_ids)
+        self.into_iter().flat_map(Transaction::into_transition_ids)
     }
 
     /// Returns a consuming iterator over the transition public keys, for all transactions.
     pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
-        self.into_transactions().flat_map(Transaction::into_transition_public_keys)
+        self.into_iter().flat_map(Transaction::into_transition_public_keys)
     }
 
     /// Returns a consuming iterator over the tags, for all transition inputs that are records.

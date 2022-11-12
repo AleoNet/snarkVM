@@ -101,12 +101,12 @@ fn block_transactions_serialization(c: &mut Criterion) {
 }
 
 fn transaction_serialization(c: &mut Criterion) {
-    let transaction = load_genesis_block().transactions().transactions().next().unwrap().clone();
+    let transaction = load_genesis_block().transactions().iter().next().unwrap().clone();
     bench_serialization(c, "Transaction", transaction);
 }
 
 fn transition_serialization(c: &mut Criterion) {
-    let transaction = load_genesis_block().transactions().transactions().next().unwrap().clone();
+    let transaction = load_genesis_block().transactions().iter().next().unwrap().clone();
     let transition = transaction.transitions().next().unwrap().clone();
     bench_serialization(c, "Transition", transition);
 }

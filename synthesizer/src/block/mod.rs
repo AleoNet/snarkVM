@@ -39,7 +39,7 @@ use crate::{
 use console::{
     account::{Address, PrivateKey, Signature},
     network::prelude::*,
-    program::Value,
+    program::{Ciphertext, Record, Value},
     types::{Field, Group},
 };
 
@@ -201,6 +201,60 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns `true` if the block contains the given transition ID.
+    pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
+        self.transactions.contains_transition(transition_id)
+    }
+
+    /// Returns `true` if the block contains the given serial number.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        self.transactions.contains_serial_number(serial_number)
+    }
+
+    /// Returns `true` if the block contains the given commitment.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        self.transactions.contains_commitment(commitment)
+    }
+}
+
+impl<N: Network> Block<N> {
+    /// Returns the transaction with the given transition ID, if it exists.
+    pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
+        self.transactions.find_transaction_for_transition_id(transition_id)
+    }
+
+    /// Returns the transaction with the given serial number, if it exists.
+    pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
+        self.transactions.find_transaction_for_serial_number(serial_number)
+    }
+
+    /// Returns the transaction with the given commitment, if it exists.
+    pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
+        self.transactions.find_transaction_for_commitment(commitment)
+    }
+
+    /// Returns the transition with the corresponding transition ID, if it exists.
+    pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
+        self.transactions.find_transition(transition_id)
+    }
+
+    /// Returns the transition for the given serial number, if it exists.
+    pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
+        self.transactions.find_transition_for_serial_number(serial_number)
+    }
+
+    /// Returns the transition for the given commitment, if it exists.
+    pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
+        self.transactions.find_transition_for_commitment(commitment)
+    }
+
+    /// Returns the record with the corresponding commitment, if it exists.
+    pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
+        self.transactions.find_record(commitment)
+    }
+}
+
+impl<N: Network> Block<N> {
     /// Returns the puzzle commitments in this block.
     pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
         self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
@@ -264,5 +318,199 @@ impl<N: Network> Block<N> {
     /// Returns an iterator over the fees, for all transitions.
     pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
         self.transactions.fees()
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use crate::vm::test_helpers::CurrentNetwork;
+    use console::account::ViewKey;
+    use once_cell::sync::OnceCell;
+
+    /// Samples a random block,
+    pub(crate) fn sample_block_and_transaction(
+        rng: &mut TestRng,
+    ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>) {
+        static INSTANCE: OnceCell<(Block<CurrentNetwork>, Transaction<CurrentNetwork>)> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                let _view_key = ViewKey::try_from(&private_key).unwrap();
+                let address = Address::try_from(&private_key).unwrap();
+
+                // Initialize the VM.
+                let vm = crate::vm::test_helpers::sample_vm();
+                // Prepare the program ID.
+                let program_id = FromStr::from_str("credits.aleo").unwrap();
+                // Prepare the function name.
+                let function_name = FromStr::from_str("mint").unwrap();
+                // Prepare the function inputs.
+                let inputs = [Value::from_str(&address.to_string()).unwrap(), Value::from_str("1_u64").unwrap()];
+                // Authorize the call to start.
+                let authorization = vm.authorize(&private_key, &program_id, function_name, &inputs, rng).unwrap();
+
+                // Construct the transaction.
+                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                // Construct the transactions.
+                let transactions = Transactions::from(&[transaction.clone()]);
+                // Construct the block.
+                let block = Block::new(
+                    &private_key,
+                    Default::default(),
+                    Header::genesis(&transactions).unwrap(),
+                    transactions.clone(),
+                    None,
+                    rng,
+                )
+                .unwrap();
+                (block, transaction)
+            })
+            .clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use indexmap::IndexMap;
+
+    #[test]
+    fn test_find_transaction_for_transition_id() {
+        let rng = &mut TestRng::default();
+
+        let (block, transaction) = crate::block::test_helpers::sample_block_and_transaction(rng);
+        let transactions = block.transactions();
+
+        // Retrieve the transitions.
+        let transitions = transaction.transitions().collect::<Vec<_>>();
+        assert!(!transitions.is_empty());
+
+        // Ensure the transaction is found.
+        for transition in transitions {
+            assert_eq!(block.find_transaction_for_transition_id(transition.id()), Some(&transaction));
+            assert_eq!(transactions.find_transaction_for_transition_id(transition.id()), Some(&transaction));
+        }
+
+        // Ensure the transaction is not found.
+        for _ in 0..10 {
+            let transition_id = &rng.gen();
+            assert_eq!(block.find_transaction_for_transition_id(transition_id), None);
+            assert_eq!(transactions.find_transaction_for_transition_id(transition_id), None);
+        }
+    }
+
+    #[test]
+    fn test_find_transaction_for_commitment() {
+        let rng = &mut TestRng::default();
+
+        let (block, transaction) = crate::block::test_helpers::sample_block_and_transaction(rng);
+        let transactions = block.transactions();
+
+        // Retrieve the commitments.
+        let commitments = transaction.commitments().collect::<Vec<_>>();
+        assert!(!commitments.is_empty());
+
+        // Ensure the commitments are found.
+        for commitment in commitments {
+            assert_eq!(block.find_transaction_for_commitment(commitment), Some(&transaction));
+            assert_eq!(transactions.find_transaction_for_commitment(commitment), Some(&transaction));
+        }
+
+        // Ensure the commitments are not found.
+        for _ in 0..10 {
+            let commitment = &rng.gen();
+            assert_eq!(block.find_transaction_for_commitment(commitment), None);
+            assert_eq!(transactions.find_transaction_for_commitment(commitment), None);
+        }
+    }
+
+    #[test]
+    fn test_find_transition() {
+        let rng = &mut TestRng::default();
+
+        let (block, transaction) = crate::block::test_helpers::sample_block_and_transaction(rng);
+        let transactions = block.transactions();
+
+        // Retrieve the transitions.
+        let transitions = transaction.transitions().collect::<Vec<_>>();
+        assert!(!transitions.is_empty());
+
+        // Ensure the transitions are found.
+        for transition in transitions {
+            assert_eq!(block.find_transition(transition.id()), Some(transition));
+            assert_eq!(transactions.find_transition(transition.id()), Some(transition));
+            assert_eq!(transaction.find_transition(transition.id()), Some(transition));
+        }
+
+        // Ensure the transitions are not found.
+        for _ in 0..10 {
+            let transition_id = &rng.gen();
+            assert_eq!(block.find_transition(transition_id), None);
+            assert_eq!(transactions.find_transition(transition_id), None);
+            assert_eq!(transaction.find_transition(transition_id), None);
+        }
+    }
+
+    #[test]
+    fn test_find_transition_for_commitment() {
+        let rng = &mut TestRng::default();
+
+        let (block, transaction) = crate::block::test_helpers::sample_block_and_transaction(rng);
+        let transactions = block.transactions();
+
+        // Retrieve the transitions.
+        let transitions = transaction.transitions().collect::<Vec<_>>();
+        assert!(!transitions.is_empty());
+
+        for transition in transitions {
+            // Retrieve the commitments.
+            let commitments = transition.commitments().collect::<Vec<_>>();
+            assert!(!commitments.is_empty());
+
+            // Ensure the commitments are found.
+            for commitment in commitments {
+                assert_eq!(block.find_transition_for_commitment(commitment), Some(transition));
+                assert_eq!(transactions.find_transition_for_commitment(commitment), Some(transition));
+                assert_eq!(transaction.find_transition_for_commitment(commitment), Some(transition));
+            }
+        }
+
+        // Ensure the commitments are not found.
+        for _ in 0..10 {
+            let commitment = &rng.gen();
+            assert_eq!(block.find_transition_for_commitment(commitment), None);
+            assert_eq!(transactions.find_transition_for_commitment(commitment), None);
+            assert_eq!(transaction.find_transition_for_commitment(commitment), None);
+        }
+    }
+
+    #[test]
+    fn test_find_record() {
+        let rng = &mut TestRng::default();
+
+        let (block, transaction) = crate::block::test_helpers::sample_block_and_transaction(rng);
+        let transactions = block.transactions();
+
+        // Retrieve the records.
+        let records = transaction.records().collect::<IndexMap<_, _>>();
+        assert!(!records.is_empty());
+
+        // Ensure the records are found.
+        for (commitment, record) in records {
+            assert_eq!(block.find_record(commitment), Some(record));
+            assert_eq!(transactions.find_record(commitment), Some(record));
+            assert_eq!(transaction.find_record(commitment), Some(record));
+        }
+
+        // Ensure the records are not found.
+        for _ in 0..10 {
+            let commitment = &rng.gen();
+            assert_eq!(block.find_record(commitment), None);
+            assert_eq!(transactions.find_record(commitment), None);
+            assert_eq!(transaction.find_record(commitment), None);
+        }
     }
 }
