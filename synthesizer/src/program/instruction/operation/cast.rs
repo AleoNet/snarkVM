@@ -448,7 +448,8 @@ impl<N: Network> Parser for Cast<N> {
         // Parse the operands from the string.
         let (string, operands) = map_res(many1(parse_operand), |operands: Vec<Operand<N>>| {
             // Ensure the number of operands is within the bounds.
-            match operands.len() <= N::MAX_OPERANDS {
+            // Since a cast operation creates an interface or record, the maximum number of operands is `MAX_DATA_ENTRIES`.
+            match operands.len() <= N::MAX_DATA_ENTRIES {
                 true => Ok(operands),
                 false => Err(error("Failed to parse 'cast' opcode: too many operands")),
             }
@@ -596,5 +597,40 @@ mod tests {
             RegisterType::Record(Identifier::from_str("token").unwrap()),
             "The value type is incorrect"
         );
+    }
+
+    #[test]
+    fn test_parse_max_operands() {
+        let mut string = "cast ".to_string();
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES);
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+            string.push_str(&format!("r{} ", i));
+            operands.push(Operand::Register(Register::Locator(i as u64)));
+        }
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES));
+        let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES, "The number of operands is incorrect");
+        assert_eq!(cast.operands, operands, "The operands are incorrect");
+        assert_eq!(
+            cast.destination,
+            Register::Locator(CurrentNetwork::MAX_DATA_ENTRIES as u64),
+            "The destination register is incorrect"
+        );
+        assert_eq!(
+            cast.register_type,
+            RegisterType::Record(Identifier::from_str("token").unwrap()),
+            "The value type is incorrect"
+        );
+    }
+
+    #[test]
+    fn test_parse_too_many_operands() {
+        let mut string = "cast ".to_string();
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+            string.push_str(&format!("r{} ", i));
+        }
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 1));
+        assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
     }
 }
