@@ -1921,6 +1921,7 @@ dependencies = [
  "snarkvm-r1cs",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
+ "snarkvm-wasm",
  "tempfile",
  "thiserror",
  "ureq",

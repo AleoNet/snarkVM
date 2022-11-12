@@ -169,37 +169,47 @@ impl<N: Network> Process<N> {
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    pub fn get_stack(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Stack<N>> {
+        // Prepare the program ID.
+        let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Retrieve the stack.
-        let stack = self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        let stack = self.stacks.get(&program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
         // Ensure the program ID matches.
-        ensure!(stack.program_id() == program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
+        ensure!(stack.program_id() == &program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
         // Return the stack.
         Ok(stack)
     }
 
     /// Returns the program for the given program ID.
     #[inline]
-    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+    pub fn get_program(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Program<N>> {
         self.get_stack(program_id).map(Stack::program)
     }
 
     /// Returns the proving key for the given program ID and function name.
     #[inline]
-    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+    pub fn get_proving_key(
+        &self,
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
+    ) -> Result<ProvingKey<N>> {
+        // Prepare the function name.
+        let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Return the proving key.
-        self.get_stack(program_id)?.get_proving_key(function_name)
+        self.get_stack(program_id)?.get_proving_key(&function_name)
     }
 
     /// Returns the verifying key for the given program ID and function name.
     #[inline]
     pub fn get_verifying_key(
         &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
     ) -> Result<VerifyingKey<N>> {
+        // Prepare the function name.
+        let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Return the verifying key.
-        self.get_stack(program_id)?.get_verifying_key(function_name)
+        self.get_stack(program_id)?.get_verifying_key(&function_name)
     }
 
     /// Inserts the given proving key, for the given program ID and function name.

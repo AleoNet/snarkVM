@@ -131,8 +131,8 @@ impl<N: Network> Transaction<N> {
     pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
-        program_id: &ProgramID<N>,
-        function_name: Identifier<N>,
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
         inputs: &[Value<N>],
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
         rng: &mut R,

@@ -342,14 +342,10 @@ pub(crate) mod test_helpers {
 
                 // Initialize the VM.
                 let vm = crate::vm::test_helpers::sample_vm();
-                // Prepare the program ID.
-                let program_id = FromStr::from_str("credits.aleo").unwrap();
-                // Prepare the function name.
-                let function_name = FromStr::from_str("mint").unwrap();
                 // Prepare the function inputs.
                 let inputs = [Value::from_str(&address.to_string()).unwrap(), Value::from_str("1_u64").unwrap()];
                 // Authorize the call to start.
-                let authorization = vm.authorize(&private_key, &program_id, function_name, &inputs, rng).unwrap();
+                let authorization = vm.authorize(&private_key, "credits.aleo", "mint", &inputs, rng).unwrap();
 
                 // Construct the transaction.
                 let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
