@@ -88,10 +88,21 @@ pub fn hash_commitments<E: PairingEngine>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{CoinbasePuzzle, EpochChallenge, PartialSolution, ProverSolution, PuzzleConfig};
+    use console::{
+        account::{Address, PrivateKey},
+        network::Network,
+        prelude::{TestRng, Uniform},
+    };
+    use snarkvm_algorithms::polycommit::kzg10::KZG10;
     use snarkvm_curves::bls12_377::Fr;
+
+    use rand::RngCore;
     use std::time::Duration;
 
-    /// Computes the hash to coefficients without `blake2b_simd`.
+    type CurrentNetwork = console::network::Testnet3;
+
+    /// Computes the hash to coefficients without `blake2*_simd`.
     pub fn hash_to_coefficients_no_simd<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Vec<F> {
         // Hash the input.
         let hash = blake2::Blake2s256::digest(input);
@@ -106,6 +117,59 @@ mod tests {
             .collect()
     }
 
+    /// Computes the hash of the commitment without `blake2*_simd`.
+    pub fn hash_commitment<E: PairingEngine>(commitment: &KZGCommitment<E>) -> Result<E::Fr> {
+        // Convert the commitment into bytes.
+        let mut bytes = Vec::with_capacity(96);
+        commitment.serialize_uncompressed(&mut bytes)?;
+        ensure!(bytes.len() == 96, "Invalid commitment byte length for hashing");
+
+        // Return the hash of the commitment.
+        Ok(E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&bytes)))
+    }
+
+    /// Compute the proof without `blake2*_simd`.
+    pub fn prove_no_simd<N: Network>(
+        puzzle: &CoinbasePuzzle<N>,
+        epoch_challenge: &EpochChallenge<N>,
+        address: Address<N>,
+        nonce: u64,
+    ) -> Result<ProverSolution<N>> {
+        // Retrieve the coinbase proving key.
+        let pk = match puzzle {
+            CoinbasePuzzle::Prover(coinbase_proving_key) => coinbase_proving_key,
+            CoinbasePuzzle::Verifier(_) => bail!("Cannot prove the coinbase puzzle with a verifier"),
+        };
+
+        let polynomial = CoinbasePuzzle::prover_polynomial(epoch_challenge, address, nonce)?;
+
+        let product_evaluations = {
+            let polynomial_evaluations = pk.product_domain.in_order_fft_with_pc(&polynomial, &pk.fft_precomputation);
+            let product_evaluations = pk.product_domain.mul_polynomials_in_evaluation_domain(
+                &polynomial_evaluations,
+                &epoch_challenge.epoch_polynomial_evaluations().evaluations,
+            );
+            product_evaluations
+        };
+        let (commitment, _rand) =
+            KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &Default::default(), None)?;
+        let point = hash_commitment(&commitment)?;
+        let product_eval_at_point = polynomial.evaluate(point) * epoch_challenge.epoch_polynomial().evaluate(point);
+
+        let proof = KZG10::open_lagrange(
+            &pk.lagrange_basis(),
+            pk.product_domain_elements(),
+            &product_evaluations,
+            point,
+            product_eval_at_point,
+        )?;
+        ensure!(!proof.is_hiding(), "The prover solution must contain a non-hiding proof");
+
+        debug_assert!(KZG10::check(&pk.verifying_key, &commitment, point, product_eval_at_point, &proof)?);
+
+        Ok(ProverSolution::new(PartialSolution::new(address, nonce, commitment), proof))
+    }
+
     #[test]
     fn test_hash_to_coefficients() {
         let input = b"test";
@@ -114,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hash_to_coefficients_blake2b() {
+    fn test_hash_to_coefficients_simd() {
         for num_coefficients in (1..10000).step_by(101) {
             for num_bytes in (1..1000).step_by(80) {
                 // Prepare the time loggers.
@@ -125,12 +189,12 @@ mod tests {
                     // Sample a different random input between iterations.
                     let input = (0..num_bytes).map(|_| rand::random::<u8>()).collect::<Vec<_>>();
 
-                    // Compute the coefficients using the `blake2b_simd` crate.
+                    // Compute the coefficients using the `blake2*_simd` crate.
                     let time = std::time::Instant::now();
                     let coefficients = hash_to_coefficients::<Fr>(&input, num_coefficients);
                     time_a += time.elapsed();
 
-                    // Compute the coefficients without using the `blake2b_simd` crate.
+                    // Compute the coefficients without using the `blake2*_simd` crate.
                     let time = std::time::Instant::now();
                     let coefficients_no_simd = hash_to_coefficients_no_simd::<Fr>(&input, num_coefficients);
                     time_b += time.elapsed();
@@ -142,6 +206,55 @@ mod tests {
                 // Log the time taken.
                 println!("{num_coefficients} {num_bytes} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
             }
+        }
+    }
+
+    #[test]
+    fn test_coinbase_puzzle_simd() {
+        let mut rng = TestRng::default();
+
+        let max_degree = 1 << 14;
+        let max_config = PuzzleConfig { degree: max_degree };
+        let srs = CoinbasePuzzle::<CurrentNetwork>::setup(max_config).unwrap();
+
+        let degree = (1 << 13) - 1;
+        let config = PuzzleConfig { degree };
+        let puzzle = CoinbasePuzzle::<CurrentNetwork>::trim(&srs, config).unwrap();
+        let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
+
+        for batch_size in 1..10 {
+            // Prepare the time loggers.
+            let mut time_a = Duration::new(0, 0);
+            let mut time_b = Duration::new(0, 0);
+
+            // Compute the solutions using the `blake2*_simd` crate.
+            let time = std::time::Instant::now();
+            let solutions = (0..batch_size)
+                .map(|_| {
+                    let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
+                    let address = Address::try_from(private_key).unwrap();
+                    let nonce = u64::rand(&mut rng);
+                    puzzle.prove(&epoch_challenge, address, nonce).unwrap()
+                })
+                .collect::<Vec<_>>();
+            time_a += time.elapsed();
+
+            // Compute the coefficients without using the `blake2*_simd` crate.
+            let time = std::time::Instant::now();
+            let solutions_no_simd = (0..batch_size)
+                .map(|_| {
+                    let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
+                    let address = Address::try_from(private_key).unwrap();
+                    let nonce = u64::rand(&mut rng);
+                    prove_no_simd(&puzzle, &epoch_challenge, address, nonce).unwrap()
+                })
+                .collect::<Vec<_>>();
+            time_b += time.elapsed();
+
+            // Ensure the solutions are the same.
+            assert_eq!(solutions, solutions_no_simd);
+            // Log the time taken.
+            println!("{batch_size} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
         }
     }
 }
