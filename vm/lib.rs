@@ -47,6 +47,8 @@ pub use snarkvm_r1cs as r1cs;
 pub use snarkvm_synthesizer as synthesizer;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
+#[cfg(feature = "wasm")]
+pub use snarkvm_wasm as wasm;
 
 pub mod errors {
     #[cfg(feature = "algorithms")]
