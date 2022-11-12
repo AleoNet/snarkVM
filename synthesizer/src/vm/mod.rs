@@ -315,11 +315,12 @@ function compute:
                         &caller_private_key,
                         "credits.aleo",
                         "transfer",
-                        &[
+                        [
                             Value::<CurrentNetwork>::Record(record),
                             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
                             Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                        ],
+                        ]
+                        .into_iter(),
                         rng,
                     )
                     .unwrap();

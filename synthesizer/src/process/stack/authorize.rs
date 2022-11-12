@@ -23,7 +23,7 @@ impl<N: Network> Stack<N> {
         &self,
         private_key: &PrivateKey<N>,
         function_name: impl TryInto<Identifier<N>>,
-        inputs: &[Value<N>],
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Ensure the program contains functions.

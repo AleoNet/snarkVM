@@ -133,7 +133,7 @@ impl<N: Network> Transaction<N> {
         private_key: &PrivateKey<N>,
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
-        inputs: &[Value<N>],
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
         rng: &mut R,
     ) -> Result<Self> {

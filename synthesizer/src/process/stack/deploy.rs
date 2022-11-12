@@ -117,8 +117,14 @@ impl<N: Network> Stack<N> {
                 .collect::<Result<Vec<_>>>()?;
 
             // Compute the request, with a burner private key.
-            let request =
-                Request::sign(&burner_private_key, *program_id, *function.name(), &inputs, &input_types, rng)?;
+            let request = Request::sign(
+                &burner_private_key,
+                *program_id,
+                *function.name(),
+                inputs.into_iter(),
+                &input_types,
+                rng,
+            )?;
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
             // Initialize the call stack.

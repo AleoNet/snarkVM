@@ -27,9 +27,9 @@ impl<N: Network> Block<N> {
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
         // Prepare the function inputs.
-        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str(&format!("{}_u64", N::STARTING_SUPPLY))?];
+        let inputs = [caller.to_string(), format!("{}_u64", N::STARTING_SUPPLY)];
         // Authorize the call to start.
-        let authorization = vm.authorize(private_key, "credits.aleo", "mint", &inputs, rng)?;
+        let authorization = vm.authorize(private_key, "credits.aleo", "mint", inputs, rng)?;
         // Execute the genesis function.
         let transaction = Transaction::execute_authorization(vm, authorization, rng)?;
 

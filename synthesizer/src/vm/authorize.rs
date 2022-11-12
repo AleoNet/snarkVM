@@ -24,13 +24,26 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
-        inputs: &[Value<N>],
+        inputs: impl IntoIterator<
+            Item = impl TryInto<Value<N>>,
+            IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
+        >,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Prepare the function name.
         let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
+        // Prepare the inputs.
+        let inputs = inputs
+            .into_iter()
+            .enumerate()
+            .map(|(index, input)| {
+                input
+                    .try_into()
+                    .map_err(|_| anyhow!("Failed to parse input #{index} for '{program_id}/{function_name}'"))
+            })
+            .collect::<Result<Vec<_>>>()?;
 
         // Compute the core logic.
         macro_rules! logic {
@@ -45,7 +58,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Compute the authorization.
                 let authorization =
-                    $process.authorize::<$aleo, _>(private_key, program_id, function_name, inputs, rng)?;
+                    $process.authorize::<$aleo, _>(private_key, program_id, function_name, inputs.iter(), rng)?;
 
                 // Return the authorization.
                 Ok(cast_ref!(authorization as Authorization<N>).clone())

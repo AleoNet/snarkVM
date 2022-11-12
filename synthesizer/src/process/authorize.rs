@@ -24,7 +24,7 @@ impl<N: Network> Process<N> {
         private_key: &PrivateKey<N>,
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
-        inputs: &[Value<N>],
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Authorize the call.

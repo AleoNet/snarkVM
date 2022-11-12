@@ -300,7 +300,7 @@ impl<N: Network> Call<N> {
                             &private_key,
                             *substack.program_id(),
                             *function.name(),
-                            &inputs,
+                            inputs.iter(),
                             &function.input_types(),
                             rng,
                         )?;
@@ -325,7 +325,7 @@ impl<N: Network> Call<N> {
                             &private_key,
                             *substack.program_id(),
                             *function.name(),
-                            &inputs,
+                            inputs.iter(),
                             &function.input_types(),
                             rng,
                         )?;

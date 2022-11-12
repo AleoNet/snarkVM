@@ -256,7 +256,7 @@ mod tests {
             let input_private = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
             let input_record = Value::from_str(&record_string).unwrap();
             let input_external_record = Value::from_str(&record_string).unwrap();
-            let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
+            let inputs = [input_constant, input_public, input_private, input_record, input_external_record];
 
             // Construct the input types.
             let input_types = vec![
@@ -268,7 +268,8 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
+            let request =
+                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
             assert!(request.verify(&input_types));
         }
     }

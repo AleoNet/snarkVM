@@ -34,9 +34,9 @@ impl<N: Network> Process<N> {
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
-        let inputs = vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
+        let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
+        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.
