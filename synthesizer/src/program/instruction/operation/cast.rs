@@ -466,7 +466,7 @@ impl<N: Network> Parser for Cast<N> {
         // Check that the number of operands does not exceed the maximum number of data entries.
         let max_operands = match register_type {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which do not count as data entries.
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         match operands.len() <= max_operands {
@@ -511,7 +511,7 @@ impl<N: Network> Display for Cast<N> {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which do not count as data entries.
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
@@ -553,7 +553,7 @@ impl<N: Network> FromBytes for Cast<N> {
         // Ensure the number of operands is within the bounds for the register type.
         let max_operands = match register_type {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which do not count as data entries.
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         if num_operands.is_zero() || num_operands > max_operands {
@@ -571,7 +571,7 @@ impl<N: Network> ToBytes for Cast<N> {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which do not count as data entries.
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
