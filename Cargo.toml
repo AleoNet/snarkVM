@@ -80,7 +80,10 @@ default = [
   "circuit",
   "console",
   "synthesizer",
-  "cli", "parallel", "parameters" ]
+  "cli",
+  "parallel",
+  "parameters"
+]
 full = [
   "algorithms",
   "circuit",
