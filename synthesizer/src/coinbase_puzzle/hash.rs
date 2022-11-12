@@ -180,12 +180,12 @@ mod tests {
     #[test]
     fn test_hash_to_coefficients_simd() {
         for num_coefficients in (1..10000).step_by(101) {
-            for num_bytes in (1..1000).step_by(80) {
+            for num_bytes in (1..1000).step_by(101) {
                 // Prepare the time loggers.
                 let mut time_a = Duration::new(0, 0);
                 let mut time_b = Duration::new(0, 0);
 
-                for _ in 0..10 {
+                for _ in 0..100 {
                     // Sample a different random input between iterations.
                     let input = (0..num_bytes).map(|_| rand::random::<u8>()).collect::<Vec<_>>();
 
@@ -222,30 +222,34 @@ mod tests {
         let puzzle = CoinbasePuzzle::<CurrentNetwork>::trim(&srs, config).unwrap();
         let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
 
-        for batch_size in 1..10 {
+        for batch_size in (1..10).step_by(2) {
             // Prepare the time loggers.
             let mut time_a = Duration::new(0, 0);
             let mut time_b = Duration::new(0, 0);
 
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
-            let address = Address::try_from(private_key).unwrap();
-            let nonce = u64::rand(&mut rng);
+            for _ in 0..100 {
+                let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
+                let address = Address::try_from(private_key).unwrap();
+                let nonce = u64::rand(&mut rng);
 
-            // Compute the solutions using the `blake2*_simd` crate.
-            let time = std::time::Instant::now();
-            let solutions =
-                (0..batch_size).map(|_| puzzle.prove(&epoch_challenge, address, nonce).unwrap()).collect::<Vec<_>>();
-            time_a += time.elapsed();
+                // Compute the solutions using the `blake2*_simd` crate.
+                let time = std::time::Instant::now();
+                let solutions = (0..batch_size)
+                    .map(|_| puzzle.prove(&epoch_challenge, address, nonce).unwrap())
+                    .collect::<Vec<_>>();
+                time_a += time.elapsed();
 
-            // Compute the coefficients without using the `blake2*_simd` crate.
-            let time = std::time::Instant::now();
-            let solutions_no_simd = (0..batch_size)
-                .map(|_| prove_no_simd(&puzzle, &epoch_challenge, address, nonce).unwrap())
-                .collect::<Vec<_>>();
-            time_b += time.elapsed();
+                // Compute the coefficients without using the `blake2*_simd` crate.
+                let time = std::time::Instant::now();
+                let solutions_no_simd = (0..batch_size)
+                    .map(|_| prove_no_simd(&puzzle, &epoch_challenge, address, nonce).unwrap())
+                    .collect::<Vec<_>>();
+                time_b += time.elapsed();
 
-            // Ensure the solutions are the same.
-            assert_eq!(solutions, solutions_no_simd);
+                // Ensure the solutions are the same.
+                assert_eq!(solutions, solutions_no_simd);
+            }
+
             // Log the time taken.
             println!("{batch_size} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
         }
