@@ -100,7 +100,7 @@ impl<N: Network> Parser for RecordType<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        // Parse the entries from the string.
+        // Parse the additional entries from the string.
         let (string, entries) = map_res(many0(parse_entry), |entries| {
             // Prepare the reserved entry names.
             let reserved = [
@@ -112,7 +112,8 @@ impl<N: Network> Parser for RecordType<N> {
                 return Err(error(format!("Duplicate entry type found in record '{}'", name)));
             }
             // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
-            if entries.len() > N::MAX_DATA_ENTRIES {
+            // Since a record has two reserved entries, the maximum number of additional entries is `N::MAX_DATA_ENTRIES - 2`.
+            if entries.len() > N::MAX_DATA_ENTRIES - 2 {
                 return Err(error("Failed to parse record: too many entries"));
             }
             Ok(entries)
@@ -245,6 +246,26 @@ record message:
         let candidate = RecordType::<CurrentNetwork>::from_str(
             "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as token.record;",
         );
+        assert!(candidate.is_err());
+    }
+
+    #[test]
+    fn test_parse_max_members() {
+        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        for i in 0..(CurrentNetwork::MAX_DATA_ENTRIES - 2) {
+            string += &format!("    member_{} as field.private;\n", i);
+        }
+        let candidate = RecordType::<CurrentNetwork>::parse(&string);
+        assert!(candidate.is_ok());
+    }
+
+    #[test]
+    fn test_parse_too_many_members() {
+        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        for i in 0..(CurrentNetwork::MAX_DATA_ENTRIES - 1) {
+            string += &format!("    member_{} as field.private;\n", i);
+        }
+        let candidate = RecordType::<CurrentNetwork>::parse(&string);
         assert!(candidate.is_err());
     }
 }
