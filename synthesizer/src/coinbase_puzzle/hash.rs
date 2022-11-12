@@ -21,21 +21,22 @@ use snarkvm_fields::PrimeField;
 use snarkvm_utilities::CanonicalSerialize;
 
 use blake2::Digest;
-use blake2b_simd::Params;
+use blake2b_simd::Params as blake2b;
+use blake2s_simd::Params as blake2s;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Vec<F> {
     // Hash the input.
-    let hash = Params::new().hash_length(32).to_state().update(&input).finalize();
+    let hash = blake2s::new().hash_length(32).to_state().update(&input).finalize();
     // Hash with a counter and return the coefficients.
     cfg_into_iter!(0..num_coefficients)
         .map(|counter| {
             let mut input_with_counter = [0u8; 36];
             input_with_counter[..32].copy_from_slice(&hash.as_bytes());
             input_with_counter[32..].copy_from_slice(&counter.to_le_bytes());
-            let input_hash = Params::new().hash_length(64).hash(&input_with_counter);
+            let input_hash = blake2b::new().hash_length(64).hash(&input_with_counter);
             F::from_bytes_le_mod_order(input_hash.as_bytes())
         })
         .collect()
@@ -55,7 +56,7 @@ pub fn hash_commitment<E: PairingEngine>(commitment: &KZGCommitment<E>) -> Resul
     ensure!(bytes.len() == 96, "Invalid commitment byte length for hashing");
 
     // Return the hash of the commitment.
-    let result = Params::new().hash_length(64).hash(&bytes);
+    let result = blake2b::new().hash_length(64).hash(&bytes);
     let input_hash = result.as_bytes();
     Ok(E::Fr::from_bytes_le_mod_order(input_hash))
 }
