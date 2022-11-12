@@ -310,14 +310,76 @@ impl<N: Network> Block<N> {
         self.transactions.commitments()
     }
 
+    /// Returns an iterator over the records, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+        self.transactions.records()
+    }
+
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.nonces()
     }
 
-    /// Returns an iterator over the fees, for all transitions.
-    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
-        self.transactions.fees()
+    /// Returns an iterator over the transaction fees, for all transactions.
+    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<i64>> {
+        self.transactions.transaction_fees()
+    }
+}
+
+impl<N: Network> Block<N> {
+    /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
+    pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
+        self.transactions.into_transaction_ids()
+    }
+
+    /// Returns a consuming iterator over all transactions in `self` that are deployments.
+    pub fn into_deployments(self) -> impl Iterator<Item = Deployment<N>> {
+        self.transactions.into_deployments()
+    }
+
+    /// Returns a consuming iterator over all transactions in `self` that are executions.
+    pub fn into_executions(self) -> impl Iterator<Item = Execution<N>> {
+        self.transactions.into_executions()
+    }
+
+    /// Returns a consuming iterator over all transitions.
+    pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
+        self.transactions.into_transitions()
+    }
+
+    /// Returns a consuming iterator over the transition IDs, for all transitions.
+    pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
+        self.transactions.into_transition_ids()
+    }
+
+    /// Returns a consuming iterator over the transition public keys, for all transactions.
+    pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
+        self.transactions.into_transition_public_keys()
+    }
+
+    /// Returns a consuming iterator over the tags, for all transition inputs that are records.
+    pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
+        self.transactions.into_tags()
+    }
+
+    /// Returns a consuming iterator over the serial numbers, for all transition inputs that are records.
+    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
+        self.transactions.into_serial_numbers()
+    }
+
+    /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
+    pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
+        self.transactions.into_commitments()
+    }
+
+    /// Returns a consuming iterator over the records, for all transition outputs that are records.
+    pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+        self.transactions.into_records()
+    }
+
+    /// Returns a consuming iterator over the nonces, for all transition outputs that are records.
+    pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
+        self.transactions.into_nonces()
     }
 }
 

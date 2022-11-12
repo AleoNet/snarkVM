@@ -195,27 +195,32 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transitions().flat_map(Transition::tags)
+        self.iter().flat_map(Transaction::tags)
     }
 
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transitions().flat_map(Transition::serial_numbers)
+        self.iter().flat_map(Transaction::serial_numbers)
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transitions().flat_map(Transition::commitments)
+        self.iter().flat_map(Transaction::commitments)
+    }
+
+    /// Returns an iterator over the records, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+        self.iter().flat_map(Transaction::records)
     }
 
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transitions().flat_map(Transition::nonces)
+        self.iter().flat_map(Transaction::nonces)
     }
 
-    /// Returns an iterator over the fees, for all transitions.
-    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
-        self.transitions().map(Transition::fee)
+    /// Returns an iterator over the transaction fees, for all transactions.
+    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<i64>> {
+        self.iter().map(Transaction::fee)
     }
 }
 
@@ -268,22 +273,27 @@ impl<N: Network> Transactions<N> {
 
     /// Returns a consuming iterator over the tags, for all transition inputs that are records.
     pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
-        self.into_transitions().flat_map(Transition::into_tags)
+        self.into_iter().flat_map(Transaction::into_tags)
     }
 
     /// Returns a consuming iterator over the serial numbers, for all transition inputs that are records.
     pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
-        self.into_transitions().flat_map(Transition::into_serial_numbers)
+        self.into_iter().flat_map(Transaction::into_serial_numbers)
     }
 
     /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
     pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
-        self.into_transitions().flat_map(Transition::into_commitments)
+        self.into_iter().flat_map(Transaction::into_commitments)
+    }
+
+    /// Returns a consuming iterator over the records, for all transition outputs that are records.
+    pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+        self.into_iter().flat_map(Transaction::into_records)
     }
 
     /// Returns a consuming iterator over the nonces, for all transition outputs that are records.
     pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
-        self.into_transitions().flat_map(Transition::into_nonces)
+        self.into_iter().flat_map(Transaction::into_nonces)
     }
 }
 
