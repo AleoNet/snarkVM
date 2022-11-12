@@ -112,8 +112,8 @@ impl<N: Network> Parser for RecordType<N> {
                 return Err(error(format!("Duplicate entry type found in record '{}'", name)));
             }
             // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
-            // Since a record has two reserved entries, the maximum number of additional entries is `N::MAX_DATA_ENTRIES - 2`.
-            if entries.len() > N::MAX_DATA_ENTRIES - 2 {
+            // Since a record has two reserved entries, the maximum number of entries is `N::MAX_DATA_ENTRIES`.
+            if entries.len() > N::MAX_DATA_ENTRIES {
                 return Err(error("Failed to parse record: too many entries"));
             }
             Ok(entries)
@@ -252,7 +252,7 @@ record message:
     #[test]
     fn test_parse_max_members() {
         let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
-        for i in 0..(CurrentNetwork::MAX_DATA_ENTRIES - 2) {
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
             string += &format!("    member_{} as field.private;\n", i);
         }
         let candidate = RecordType::<CurrentNetwork>::parse(&string);
@@ -262,7 +262,7 @@ record message:
     #[test]
     fn test_parse_too_many_members() {
         let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
-        for i in 0..(CurrentNetwork::MAX_DATA_ENTRIES - 1) {
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
             string += &format!("    member_{} as field.private;\n", i);
         }
         let candidate = RecordType::<CurrentNetwork>::parse(&string);
