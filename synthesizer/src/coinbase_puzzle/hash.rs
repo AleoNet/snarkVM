@@ -114,24 +114,24 @@ mod tests {
 
     #[test]
     fn test_hash_to_coefficients_blake2b() {
-        for i in (1..1000).step_by(80) {
-            // Sample a random input.
-            let input = (0..i).map(|_| rand::random::<u8>()).collect::<Vec<_>>();
-
-            for j in (1..10000).step_by(101) {
+        for num_coefficients in (1..10000).step_by(101) {
+            for num_bytes in (1..1000).step_by(80) {
                 // Prepare the time loggers.
                 let mut time_a = Duration::new(0, 0);
                 let mut time_b = Duration::new(0, 0);
 
                 for _ in 0..10 {
+                    // Sample a different random input between iterations.
+                    let input = (0..num_bytes).map(|_| rand::random::<u8>()).collect::<Vec<_>>();
+
                     // Compute the coefficients using the `blake2b_simd` crate.
                     let time = std::time::Instant::now();
-                    let coefficients = hash_to_coefficients::<Fr>(&input, j);
+                    let coefficients = hash_to_coefficients::<Fr>(&input, num_coefficients);
                     time_a += time.elapsed();
 
                     // Compute the coefficients without using the `blake2b_simd` crate.
                     let time = std::time::Instant::now();
-                    let coefficients_no_simd = hash_to_coefficients_no_simd::<Fr>(&input, j);
+                    let coefficients_no_simd = hash_to_coefficients_no_simd::<Fr>(&input, num_coefficients);
                     time_b += time.elapsed();
 
                     // Ensure the coefficients are the same.
@@ -139,7 +139,7 @@ mod tests {
                 }
 
                 // Log the time taken.
-                println!("{i} {j} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
+                println!("{num_coefficients} {num_bytes} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
             }
         }
     }
