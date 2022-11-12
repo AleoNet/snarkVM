@@ -22,7 +22,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
         // Compute the address.
         let address = view_key.to_address();
         // Check if the address is the owner.
-        self.is_owner_with_address_x_coordinate(&view_key, &address.to_x_coordinate())
+        self.is_owner_with_address_x_coordinate(view_key, &address.to_x_coordinate())
     }
 
     /// Decrypts `self` into plaintext using the x-coordinate of the address corresponding to the given view key.
@@ -88,16 +88,12 @@ mod tests {
         // Encrypt the record.
         let ciphertext = record.encrypt(randomizer)?;
 
-        // Compute the address.
-        let address = Address::try_from(&view_key)?;
-
         // Ensure the record belongs to the owner.
         assert!(ciphertext.is_owner(&view_key));
 
         // Sample a random view key and address.
         let private_key = PrivateKey::<N>::new(rng)?;
         let view_key = ViewKey::try_from(&private_key)?;
-        let address = Address::try_from(&private_key)?;
 
         // Ensure the random address is not the owner.
         assert!(!ciphertext.is_owner(&view_key));

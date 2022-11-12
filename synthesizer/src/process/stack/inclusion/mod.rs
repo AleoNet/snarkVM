@@ -87,7 +87,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Program<N>> {
         match self {
             Self::VM(block_store) => {
-                block_store.get_program(program_id)?.ok_or(anyhow!("Program {program_id} not found in storage"))
+                block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
