@@ -88,6 +88,7 @@ pub fn hash_commitments<E: PairingEngine>(
 mod tests {
     use super::*;
     use snarkvm_curves::bls12_377::Fr;
+    use std::time::Duration;
 
     /// Computes the hash to coefficients without `blake2b_simd`.
     pub fn hash_to_coefficients_no_simd<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Vec<F> {
@@ -113,21 +114,30 @@ mod tests {
 
     #[test]
     fn test_hash_to_coefficients_blake2b() {
-        for i in (1..100).step_by(8) {
+        for i in (1..1000).step_by(80) {
+            // Sample a random input.
             let input = (0..i).map(|_| rand::random::<u8>()).collect::<Vec<_>>();
-            for j in (1..20000).step_by(101) {
-                // Compute the coefficients using the `blake2b_simd` crate.
-                let time = std::time::Instant::now();
-                let coefficients = hash_to_coefficients::<Fr>(&input, j);
-                let time_a = time.elapsed();
 
-                // Compute the coefficients without using the `blake2b_simd` crate.
-                let time = std::time::Instant::now();
-                let coefficients_no_simd = hash_to_coefficients_no_simd::<Fr>(&input, j);
-                let time_b = time.elapsed();
+            for j in (1..10000).step_by(101) {
+                // Prepare the time loggers.
+                let mut time_a = Duration::new(0, 0);
+                let mut time_b = Duration::new(0, 0);
 
-                // Ensure the coefficients are the same.
-                assert_eq!(coefficients, coefficients_no_simd);
+                for _ in 0..10 {
+                    // Compute the coefficients using the `blake2b_simd` crate.
+                    let time = std::time::Instant::now();
+                    let coefficients = hash_to_coefficients::<Fr>(&input, j);
+                    time_a += time.elapsed();
+
+                    // Compute the coefficients without using the `blake2b_simd` crate.
+                    let time = std::time::Instant::now();
+                    let coefficients_no_simd = hash_to_coefficients_no_simd::<Fr>(&input, j);
+                    time_b += time.elapsed();
+
+                    // Ensure the coefficients are the same.
+                    assert_eq!(coefficients, coefficients_no_simd);
+                }
+
                 // Log the time taken.
                 println!("{i} {j} {}", time_a.as_nanos() as f64 / time_b.as_nanos() as f64);
             }
