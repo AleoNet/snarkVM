@@ -227,27 +227,20 @@ mod tests {
             let mut time_a = Duration::new(0, 0);
             let mut time_b = Duration::new(0, 0);
 
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
+            let address = Address::try_from(private_key).unwrap();
+            let nonce = u64::rand(&mut rng);
+
             // Compute the solutions using the `blake2*_simd` crate.
             let time = std::time::Instant::now();
-            let solutions = (0..batch_size)
-                .map(|_| {
-                    let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
-                    let address = Address::try_from(private_key).unwrap();
-                    let nonce = u64::rand(&mut rng);
-                    puzzle.prove(&epoch_challenge, address, nonce).unwrap()
-                })
-                .collect::<Vec<_>>();
+            let solutions =
+                (0..batch_size).map(|_| puzzle.prove(&epoch_challenge, address, nonce).unwrap()).collect::<Vec<_>>();
             time_a += time.elapsed();
 
             // Compute the coefficients without using the `blake2*_simd` crate.
             let time = std::time::Instant::now();
             let solutions_no_simd = (0..batch_size)
-                .map(|_| {
-                    let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng).unwrap();
-                    let address = Address::try_from(private_key).unwrap();
-                    let nonce = u64::rand(&mut rng);
-                    prove_no_simd(&puzzle, &epoch_challenge, address, nonce).unwrap()
-                })
+                .map(|_| prove_no_simd(&puzzle, &epoch_challenge, address, nonce).unwrap())
                 .collect::<Vec<_>>();
             time_b += time.elapsed();
 
