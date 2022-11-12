@@ -298,8 +298,8 @@ function compute:
                 process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
                 // Get the proving and verifying key.
-                let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();
-                let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();
+                let proving_key = process.get_proving_key(program.id(), function_name).unwrap();
+                let verifying_key = process.get_verifying_key(program.id(), function_name).unwrap();
 
                 (function_name, proving_key, verifying_key)
             })

@@ -241,7 +241,7 @@ function compute:
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the verifying key.
-        let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();
+        let verifying_key = process.get_verifying_key(program.id(), function_name).unwrap();
 
         // Create the verifier file at the path.
         let expected = VerifierFile::create(&directory, &function_name, verifying_key).unwrap();

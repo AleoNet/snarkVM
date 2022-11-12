@@ -166,7 +166,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
-        program::{Identifier, Value},
+        program::Value,
     };
 
     use indexmap::IndexMap;
@@ -313,8 +313,8 @@ function compute:
                 let authorization = vm
                     .authorize(
                         &caller_private_key,
-                        &ProgramID::from_str("credits.aleo").unwrap(),
-                        Identifier::from_str("transfer").unwrap(),
+                        "credits.aleo",
+                        "transfer",
                         &[
                             Value::<CurrentNetwork>::Record(record),
                             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
