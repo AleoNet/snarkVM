@@ -52,12 +52,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Initializes the VM from storage.
     #[inline]
     pub fn from(store: ConsensusStore<N, C>) -> Result<Self> {
-        // Retrieve the transaction store.
-        let transaction_store = store.transaction_store();
-
         // Initialize a new process.
         let mut process = Process::load()?;
 
+        // Retrieve the transaction store.
+        let transaction_store = store.transaction_store();
         // Load the deployments from the store.
         for transaction_id in transaction_store.deployment_ids() {
             // Retrieve the deployment.
@@ -75,26 +74,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if a program with the given program ID exists.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the program ID.
-                    let program_id = cast_ref!(&program_id as ProgramID<$network>);
-                    // Return `true` if the program ID exists.
-                    Ok($process.contains_program(program_id))
-                };
-                task()
-            }};
-        }
-        // Process the logic.
-        match process!(self, logic) {
-            Ok(contains_program) => contains_program,
-            Err(error) => {
-                warn!("Failed to check if program exists: {error}");
-                false
-            }
-        }
+        self.process.read().contains_program(program_id)
     }
 
     /// Adds the given block into the VM.

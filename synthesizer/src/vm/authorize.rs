@@ -24,10 +24,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
-        inputs: impl IntoIterator<
-            Item = impl TryInto<Value<N>>,
-            IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        >,
+        inputs: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Prepare the program ID.
