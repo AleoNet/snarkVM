@@ -27,6 +27,13 @@ impl<N: Network> Record<N, Ciphertext<N>> {
 
     /// Decrypts `self` into plaintext using the x-coordinate of the address corresponding to the given view key.
     pub fn is_owner_with_address_x_coordinate(&self, view_key: &ViewKey<N>, address_x_coordinate: &Field<N>) -> bool {
+        // In debug mode, check that the address corresponds to the given view key.
+        debug_assert_eq!(
+            &view_key.to_address().to_x_coordinate(),
+            address_x_coordinate,
+            "Failed to check record - view key and address do not match"
+        );
+
         match &self.owner {
             // If the owner is public, check if the address is the owner.
             Owner::Public(owner) => &owner.to_x_coordinate() == address_x_coordinate,
