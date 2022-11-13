@@ -38,9 +38,10 @@ use console::{
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+use std::sync::Arc;
+
 #[cfg(test)]
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;

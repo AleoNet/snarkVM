@@ -65,7 +65,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the Merkle tree for the given inputs and outputs.
-    pub(super) fn function_tree(inputs: &[Input<N>], outputs: &[Output<N>]) -> Result<TransitionTree<N>> {
+    pub(crate) fn function_tree(inputs: &[Input<N>], outputs: &[Output<N>]) -> Result<TransitionTree<N>> {
         // Ensure the number of inputs is within the allowed range.
         ensure!(
             inputs.len() <= N::MAX_INPUTS,

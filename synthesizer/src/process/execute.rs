@@ -32,10 +32,8 @@ impl<N: Network> Process<N> {
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone())?;
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
         // Extract the execution.
@@ -43,8 +41,7 @@ impl<N: Network> Process<N> {
         // Ensure the execution is not empty.
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
         // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
-
+        let inclusion = Arc::try_unwrap(authorization.inclusion()).unwrap().into_inner();
         Ok((response, execution, inclusion))
     }
 

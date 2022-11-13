@@ -408,13 +408,18 @@ impl<N: Network> Stack<N> {
             }
         }
 
+        // If the circuit is in `Authorize` mode, then update the inclusion state.
+        if let CallStack::Authorize(_, _, ref authorization) = registers.call_stack() {
+            // Add the transition commitments.
+            authorization.insert_transition(console_request.inputs(), console_request.input_ids(), response.outputs())?;
+        }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Add the assignment to the assignments.
             assignments.write().push(assignment);
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
@@ -428,9 +433,6 @@ impl<N: Network> Stack<N> {
             // Construct the transition.
             let transition =
                 Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
-
-            // Add the transition commitments.
-            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }

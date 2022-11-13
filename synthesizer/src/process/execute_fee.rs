@@ -31,41 +31,37 @@ impl<N: Network> Process<N> {
         // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee")?;
 
+        // Prepare the stack.
+        let stack = self.get_stack(program_id)?;
         // Retrieve the input types.
-        let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
+        let input_types = stack.program().get_function(&function_name)?.input_types();
         // Construct the inputs.
         let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.get_stack(program_id)?.execute_function::<A, R>(call_stack, rng)?;
-
-        // Retrieve the main request (without popping it).
-        let request = authorization.peek_next()?;
-        // Prepare the stack.
-        let stack = self.get_stack(request.program_id())?;
+        let _response = stack.execute_function::<A, R>(call_stack, rng)?;
+        // Extract the inclusion.
+        let inclusion = Arc::try_unwrap(authorization.inclusion()).unwrap().into_inner();
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        println!("{}", format!(" • Calling '{program_id}/{function_name}'...").dimmed());
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(call_stack, rng)?;
         // Extract the execution.
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution contains 1 transition.
-        ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
-        // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+        ensure!(execution.len() == 1, "Execution of '{program_id}/{function_name}' does not contain 1 transition");
 
         Ok((response, execution.peek()?.clone(), inclusion))
     }

@@ -37,6 +37,7 @@ use console::{
 
 use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
+use indexmap::IndexSet;
 
 #[derive(Clone)]
 pub enum Query<N: Network, B: BlockStorage<N>> {
@@ -149,28 +150,31 @@ struct InputTask<N: Network> {
 pub struct Inclusion<N: Network> {
     /// A map of transition IDs to a list of input tasks.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
-    /// A map of commitments to (transition ID, output index) pairs.
-    output_commitments: HashMap<Field<N>, (N::TransitionID, u8)>,
+    /// A list of output commitments.
+    output_commitments: IndexSet<Field<N>>,
 }
 
 impl<N: Network> Inclusion<N> {
     /// Initializes a new `Inclusion` instance.
     pub fn new() -> Self {
-        Self { input_tasks: HashMap::new(), output_commitments: HashMap::new() }
+        Self { input_tasks: HashMap::new(), output_commitments: IndexSet::new() }
     }
 
     /// Inserts the transition to build state for the inclusion proof.
-    pub fn insert_transition(&mut self, input_ids: &[InputID<N>], transition: &Transition<N>) -> Result<()> {
+    pub fn insert_transition(&mut self, inputs: &[Input<N>], input_ids: &[InputID<N>], outputs: &[Output<N>]) -> Result<()> {
         // Ensure the transition inputs and input IDs are the same length.
-        if input_ids.len() != transition.inputs().len() {
+        if inputs.len() != input_ids.len() {
             bail!("Inclusion expected the same number of input IDs as transition inputs")
         }
 
+        // Compute the transition ID.
+        let transition_id = (*Transition::<N>::function_tree(inputs, outputs)?.root()).into();
+
         // Initialize the input tasks.
-        let input_tasks = self.input_tasks.entry(*transition.id()).or_default();
+        let input_tasks = self.input_tasks.entry(transition_id).or_default();
 
         // Process the inputs.
-        for (index, (input, input_id)) in transition.inputs().iter().zip_eq(input_ids).enumerate() {
+        for (index, (input, input_id)) in inputs.iter().zip_eq(input_ids).enumerate() {
             // Filter the inputs for records.
             if let InputID::Record(commitment, gamma, serial_number, ..) = input_id {
                 // Add the record to the input tasks.
@@ -179,17 +183,17 @@ impl<N: Network> Inclusion<N> {
                     gamma: *gamma,
                     serial_number: *serial_number,
                     leaf: input.to_transition_leaf(index as u8),
-                    is_local: self.output_commitments.contains_key(commitment),
+                    is_local: self.output_commitments.contains(commitment),
                 });
             }
         }
 
         // Process the outputs.
-        for (index, output) in transition.outputs().iter().enumerate() {
+        for output in outputs.iter() {
             // Filter the outputs for records.
             if let Output::Record(commitment, ..) = output {
-                // Add the record to the output commitments.
-                self.output_commitments.insert(*commitment, (*transition.id(), (input_ids.len() + index) as u8));
+                // Add the output commitment.
+                self.output_commitments.insert(*commitment);
             }
         }
 

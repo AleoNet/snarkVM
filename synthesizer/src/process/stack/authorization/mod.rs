@@ -14,28 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{Inclusion, Input, Output};
 use console::{network::prelude::*, program::Request};
 
 use parking_lot::RwLock;
 use std::{collections::VecDeque, sync::Arc};
+use console::program::InputID;
 
 #[derive(Clone)]
 pub struct Authorization<N: Network> {
     /// The authorized requests.
     requests: Arc<RwLock<VecDeque<Request<N>>>>,
+    /// The inclusion.
+    inclusion: Arc<RwLock<Inclusion<N>>>
 }
 
 impl<N: Network> Authorization<N> {
     /// Initialize a new `Authorization` instance, with the given requests.
     pub fn new(requests: &[Request<N>]) -> Self {
-        Self { requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))) }
+        Self { requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))), inclusion: Arc::new(RwLock::new(Inclusion::new())) }
     }
 
     /// Returns a new and independent replica of the authorization.
     pub fn replicate(&self) -> Self {
-        Self { requests: Arc::new(RwLock::new(self.requests.read().clone())) }
+        Self { requests: Arc::new(RwLock::new(self.requests.read().clone())), inclusion: Arc::new(RwLock::new(self.inclusion.read().clone())) }
     }
+}
 
+impl<N: Network> Authorization<N> {
     /// Returns the next `Request` in the authorization.
     pub fn peek_next(&self) -> Result<Request<N>> {
         self.requests.read().get(0).cloned().ok_or_else(|| anyhow!("Failed to peek at the next request."))
@@ -69,5 +75,17 @@ impl<N: Network> Authorization<N> {
     /// Returns the requests in the authorization.
     pub fn to_vec_deque(&self) -> VecDeque<Request<N>> {
         self.requests.read().clone()
+    }
+}
+
+impl<N: Network> Authorization<N> {
+    /// Returns the inclusion.
+    pub fn inclusion(&self) -> Arc<RwLock<Inclusion<N>>> {
+        self.inclusion.clone()
+    }
+
+    /// Inserts the transition to build state for the inclusion proof.
+    pub fn insert_transition(&self, inputs: &[Input<N>], input_ids: &[InputID<N>], outputs: &[Output<N>]) -> Result<()> {
+        self.inclusion.write().insert_transition(inputs, input_ids, outputs)
     }
 }
