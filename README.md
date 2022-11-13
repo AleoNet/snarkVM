@@ -76,7 +76,7 @@ $ cargo install --path .
 
 Now to use `snarkvm`, in your terminal, run:
 ```bash
-snarkvm
+vm
 ```
 
 ## 3. Usage Guide
