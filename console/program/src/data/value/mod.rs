@@ -59,6 +59,15 @@ impl<N: Network> TryFrom<String> for Value<N> {
     }
 }
 
+impl<N: Network> TryFrom<&String> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: &String) -> Result<Self> {
+        Self::from_str(value)
+    }
+}
+
 impl<N: Network> TryFrom<&str> for Value<N> {
     type Error = Error;
 

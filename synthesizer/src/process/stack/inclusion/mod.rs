@@ -76,6 +76,12 @@ impl<N: Network, B: BlockStorage<N>> From<String> for Query<N, B> {
     }
 }
 
+impl<N: Network, B: BlockStorage<N>> From<&String> for Query<N, B> {
+    fn from(url: &String) -> Self {
+        Self::REST(url.to_string())
+    }
+}
+
 impl<N: Network, B: BlockStorage<N>> From<&str> for Query<N, B> {
     fn from(url: &str) -> Self {
         Self::REST(url.to_string())

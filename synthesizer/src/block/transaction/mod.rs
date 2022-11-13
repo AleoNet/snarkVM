@@ -25,6 +25,7 @@ use crate::{
     program::Program,
     vm::VM,
     ConsensusStorage,
+    Query,
 };
 use console::{
     account::PrivateKey,
@@ -84,42 +85,45 @@ impl<N: Network> Transaction<N> {
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         (credits, fee_in_gates): (Record<N, Plaintext<N>>, u64),
+        query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
         // Compute the fee.
-        let (_, fee) = vm.execute_fee(private_key, credits, fee_in_gates, rng)?;
+        let (_, fee) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
         // Initialize the transaction.
         Self::from_deployment(deployment, fee)
     }
 
-    /// Initializes a new execution transaction from an authorization.
+    /// Initializes a new execution transaction from an authorization, and an optional fee.
     pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         authorization: Authorization<N>,
+        query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, rng)?;
+        let (_, execution) = vm.execute(authorization, query.clone(), rng)?;
         // Initialize the transaction.
         Self::from_execution(execution, None)
     }
 
-    /// Initializes a new execution transaction from an authorization and additional fee.
+    /// Initializes a new execution transaction from an authorization, and an optional fee.
     pub fn execute_authorization_with_additional_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, rng)?;
+        let (_, execution) = vm.execute(authorization, query.clone(), rng)?;
         // Compute the additional fee, if it is present.
         let additional_fee = match additional_fee {
             Some((credits, additional_fee_in_gates)) => {
-                Some(vm.execute_fee(private_key, credits, additional_fee_in_gates, rng)?.1)
+                Some(vm.execute_fee(private_key, credits, additional_fee_in_gates, query, rng)?.1)
             }
             None => None,
         };
@@ -135,12 +139,13 @@ impl<N: Network> Transaction<N> {
         function_name: impl TryInto<Identifier<N>>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the authorization.
         let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Initialize the transaction.
-        Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, rng)
+        Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, query, rng)
     }
 }
 

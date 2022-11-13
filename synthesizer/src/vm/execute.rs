@@ -22,8 +22,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn execute<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
+        query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
+        // Prepare the query.
+        let query = match query {
+            Some(query) => query,
+            None => Query::VM(self.block_store().clone()),
+        };
+
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -37,7 +44,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let assignments = {
                     let execution = cast_ref!(execution as Execution<N>);
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_execution(execution, self.block_store())?
+                    inclusion.prepare_execution(execution, query)?
                 };
                 let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
 
@@ -62,8 +69,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
         fee_in_gates: u64,
+        query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<(Response<N>, Fee<N>)> {
+        // Prepare the query.
+        let query = match query {
+            Some(query) => query,
+            None => Query::VM(self.block_store().clone()),
+        };
+
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -81,7 +95,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let assignments = {
                     let fee_transition = cast_ref!(fee_transition as Transition<N>);
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_fee(fee_transition, self.block_store())?
+                    inclusion.prepare_fee(fee_transition, query)?
                 };
                 let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
 

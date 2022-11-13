@@ -55,6 +55,15 @@ impl<N: Network> TryFrom<String> for Identifier<N> {
     }
 }
 
+impl<N: Network> TryFrom<&String> for Identifier<N> {
+    type Error = Error;
+
+    /// Initializes an identifier from a string.
+    fn try_from(identifier: &String) -> Result<Self> {
+        Self::from_str(identifier)
+    }
+}
+
 impl<N: Network> TryFrom<&str> for Identifier<N> {
     type Error = Error;
 

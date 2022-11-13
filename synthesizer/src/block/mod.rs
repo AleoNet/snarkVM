@@ -410,7 +410,7 @@ pub(crate) mod test_helpers {
                 let authorization = vm.authorize(&private_key, "credits.aleo", "mint", inputs, rng).unwrap();
 
                 // Construct the transaction.
-                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
                 // Construct the transactions.
                 let transactions = Transactions::from(&[transaction.clone()]);
                 // Construct the block.

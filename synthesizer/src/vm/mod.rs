@@ -27,7 +27,7 @@ use crate::{
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process},
+    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
 };
@@ -261,7 +261,8 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
-                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
+                let transaction =
+                    Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
@@ -313,7 +314,7 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
@@ -349,7 +350,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng).unwrap();
+                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 Inclusion::verify_fee(&fee).unwrap();
                 // Return the fee.

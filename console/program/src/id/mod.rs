@@ -57,6 +57,15 @@ impl<N: Network> TryFrom<String> for ProgramID<N> {
     }
 }
 
+impl<N: Network> TryFrom<&String> for ProgramID<N> {
+    type Error = Error;
+
+    /// Initializes a program ID from a name and network-level domain identifier.
+    fn try_from(program_id: &String) -> Result<Self> {
+        Self::from_str(program_id)
+    }
+}
+
 impl<N: Network> TryFrom<&str> for ProgramID<N> {
     type Error = Error;
 
