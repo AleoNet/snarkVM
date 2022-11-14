@@ -71,7 +71,7 @@ members = [
 path = "vm/lib.rs"
 
 [[bin]]
-name = "vm"
+name = "snarkvm"
 path = "vm/cli/main.rs"
 required-features = [ "cli" ]
 

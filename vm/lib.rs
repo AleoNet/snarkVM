@@ -37,8 +37,6 @@ pub use snarkvm_console as console;
 pub use snarkvm_curves as curves;
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
-#[cfg(feature = "gadgets")]
-pub use snarkvm_gadgets as gadgets;
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
 #[cfg(feature = "r1cs")]
