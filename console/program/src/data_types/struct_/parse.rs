@@ -194,4 +194,22 @@ struct message:
             Struct::<CurrentNetwork>::parse("struct message:\n    first as field.public;\n    first as field.private;");
         assert!(candidate.is_err());
     }
+
+    #[test]
+    fn test_max_members() {
+        let mut string = "struct message:\n".to_string();
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+            string += &format!("    member_{} as field;\n", i);
+        }
+        assert!(Struct::<CurrentNetwork>::parse(&string).is_ok());
+    }
+
+    #[test]
+    fn test_too_many_members() {
+        let mut string = "struct message:\n".to_string();
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+            string += &format!("    member_{} as field;\n", i);
+        }
+        assert!(Struct::<CurrentNetwork>::parse(&string).is_err());
+    }
 }
