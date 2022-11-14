@@ -32,17 +32,17 @@ impl<N: Network> Process<N> {
         let function_name = Identifier::from_str("fee")?;
 
         // Retrieve the input types.
-        let input_types = self.get_program(&program_id)?.get_function(&function_name)?.input_types();
+        let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
-        let inputs = vec![Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
+        let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, &inputs, &input_types, rng)?;
+        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.get_stack(&program_id)?.execute_function::<A, R>(call_stack, rng)?;
+        let _response = self.get_stack(program_id)?.execute_function::<A, R>(call_stack, rng)?;
 
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;

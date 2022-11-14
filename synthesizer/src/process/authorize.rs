@@ -22,9 +22,9 @@ impl<N: Network> Process<N> {
     pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        program_id: &ProgramID<N>,
-        function_name: Identifier<N>,
-        inputs: &[Value<N>],
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Authorize the call.

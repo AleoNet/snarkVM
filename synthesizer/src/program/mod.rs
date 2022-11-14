@@ -828,7 +828,7 @@ function swap:
         // Declare the function name.
         let function_name = Identifier::from_str("foo").unwrap();
         // Declare the function inputs.
-        let inputs = vec![
+        let inputs = [
             Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
             Value::Plaintext(Plaintext::from_str("3field").unwrap()),
         ];
@@ -846,7 +846,7 @@ function swap:
 
             // Authorize the function call.
             let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &inputs, rng)
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, inputs.iter(), rng)
                 .unwrap();
             assert_eq!(authorization.len(), 1);
             authorization
@@ -912,7 +912,7 @@ function compute:
 
             // Authorize the function call.
             let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
                 .unwrap();
             assert_eq!(authorization.len(), 1);
             authorization
@@ -980,7 +980,7 @@ function compute:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
 
@@ -1066,7 +1066,7 @@ function compute:
                     &caller_private_key,
                     program.id(),
                     function_name,
-                    &[r0.clone(), r1.clone()],
+                    [r0.clone(), r1.clone()].iter(),
                     rng,
                 )
                 .unwrap();
@@ -1108,7 +1108,7 @@ function compute:
         let burner_private_key = PrivateKey::new(rng).unwrap();
         // Authorize the function call, with a burner private key.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&burner_private_key, program.id(), function_name, &[r0, r1], rng)
+            .authorize::<CurrentAleo, _>(&burner_private_key, program.id(), function_name, [r0, r1].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
 
@@ -1166,7 +1166,7 @@ function compute:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();

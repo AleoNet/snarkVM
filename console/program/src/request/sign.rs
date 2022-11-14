@@ -24,7 +24,7 @@ impl<N: Network> Request<N> {
         private_key: &PrivateKey<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
-        inputs: &[Value<N>],
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
@@ -78,11 +78,20 @@ impl<N: Network> Request<N> {
         message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
         message.extend([tvk, tcm, function_id]);
 
+        // Initialize a vector to store the prepared inputs.
+        let mut prepared_inputs = Vec::with_capacity(inputs.len());
         // Initialize a vector to store the input IDs.
         let mut input_ids = Vec::with_capacity(inputs.len());
 
         // Prepare the inputs.
-        for (index, (input, input_type)) in inputs.iter().zip_eq(input_types).enumerate() {
+        for (index, (input, input_type)) in inputs.zip_eq(input_types).enumerate() {
+            // Prepare the input.
+            let input = input.try_into().map_err(|_| {
+                anyhow!("Failed to parse input #{index} ('{input_type}') for '{program_id}/{function_name}'")
+            })?;
+            // Store the prepared input.
+            prepared_inputs.push(input.clone());
+
             match input_type {
                 // A constant input is hashed (using `tcm`) to a field element.
                 ValueType::Constant(..) => {
@@ -218,7 +227,7 @@ impl<N: Network> Request<N> {
             program_id,
             function_name,
             input_ids,
-            inputs: inputs.to_vec(),
+            inputs: prepared_inputs,
             signature: Signature::from((challenge, response, compute_key)),
             sk_tag,
             tvk,

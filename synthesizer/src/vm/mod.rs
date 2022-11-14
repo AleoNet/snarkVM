@@ -27,7 +27,7 @@ use crate::{
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process},
+    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
 };
@@ -52,12 +52,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Initializes the VM from storage.
     #[inline]
     pub fn from(store: ConsensusStore<N, C>) -> Result<Self> {
-        // Retrieve the transaction store.
-        let transaction_store = store.transaction_store();
-
         // Initialize a new process.
         let mut process = Process::load()?;
 
+        // Retrieve the transaction store.
+        let transaction_store = store.transaction_store();
         // Load the deployments from the store.
         for transaction_id in transaction_store.deployment_ids() {
             // Retrieve the deployment.
@@ -75,26 +74,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if a program with the given program ID exists.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the program ID.
-                    let program_id = cast_ref!(&program_id as ProgramID<$network>);
-                    // Return `true` if the program ID exists.
-                    Ok($process.contains_program(program_id))
-                };
-                task()
-            }};
-        }
-        // Process the logic.
-        match process!(self, logic) {
-            Ok(contains_program) => contains_program,
-            Err(error) => {
-                warn!("Failed to check if program exists: {error}");
-                false
-            }
-        }
+        self.process.read().contains_program(program_id)
     }
 
     /// Adds the given block into the VM.
@@ -112,6 +92,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Err(error)
             }
         }
+    }
+
+    /// Returns the process.
+    #[inline]
+    pub fn process(&self) -> Arc<RwLock<Process<N>>> {
+        self.process.clone()
     }
 
     /// Returns the program store.
@@ -166,7 +152,7 @@ pub(crate) mod test_helpers {
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
-        program::{Identifier, Value},
+        program::Value,
     };
 
     use indexmap::IndexMap;
@@ -275,7 +261,8 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
-                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
+                let transaction =
+                    Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
@@ -313,20 +300,21 @@ function compute:
                 let authorization = vm
                     .authorize(
                         &caller_private_key,
-                        &ProgramID::from_str("credits.aleo").unwrap(),
-                        Identifier::from_str("transfer").unwrap(),
-                        &[
+                        "credits.aleo",
+                        "transfer",
+                        [
                             Value::<CurrentNetwork>::Record(record),
                             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
                             Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                        ],
+                        ]
+                        .into_iter(),
                         rng,
                     )
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
@@ -362,7 +350,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, rng).unwrap();
+                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 Inclusion::verify_fee(&fee).unwrap();
                 // Return the fee.

@@ -29,11 +29,12 @@ use crate::{
         TransitionStorage,
         TransitionStore,
     },
+    Program,
 };
 use console::{
     account::Signature,
     network::prelude::*,
-    program::{BlockTree, HeaderLeaf, StatePath},
+    program::{BlockTree, HeaderLeaf, ProgramID, StatePath},
     types::Field,
 };
 
@@ -854,6 +855,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block for the given `block hash`.
     pub fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         self.storage.get_block(block_hash)
+    }
+
+    /// Returns the program for the given `program ID`.
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Option<Program<N>>> {
+        self.storage.transaction_store().get_program(program_id)
     }
 }
 

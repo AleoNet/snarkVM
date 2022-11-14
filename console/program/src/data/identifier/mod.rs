@@ -39,6 +39,31 @@ use snarkvm_console_types::{prelude::*, Field};
 #[derive(Copy, Clone)]
 pub struct Identifier<N: Network>(Field<N>, u8); // Number of bytes in the identifier.
 
+impl<N: Network> From<&Identifier<N>> for Identifier<N> {
+    /// Returns a copy of the identifier.
+    fn from(identifier: &Identifier<N>) -> Self {
+        *identifier
+    }
+}
+
+impl<N: Network> TryFrom<String> for Identifier<N> {
+    type Error = Error;
+
+    /// Initializes an identifier from a string.
+    fn try_from(identifier: String) -> Result<Self> {
+        Self::from_str(&identifier)
+    }
+}
+
+impl<N: Network> TryFrom<&String> for Identifier<N> {
+    type Error = Error;
+
+    /// Initializes an identifier from a string.
+    fn try_from(identifier: &String) -> Result<Self> {
+        Self::from_str(identifier)
+    }
+}
+
 impl<N: Network> TryFrom<&str> for Identifier<N> {
     type Error = Error;
 

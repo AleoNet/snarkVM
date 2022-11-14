@@ -26,16 +26,12 @@ impl<N: Network> Block<N> {
     ) -> Result<Self> {
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
-        // Prepare the program ID.
-        let program_id = FromStr::from_str("credits.aleo")?;
-        // Prepare the function name.
-        let function_name = FromStr::from_str("mint")?;
         // Prepare the function inputs.
-        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str(&format!("{}_u64", N::STARTING_SUPPLY))?];
+        let inputs = [caller.to_string(), format!("{}_u64", N::STARTING_SUPPLY)];
         // Authorize the call to start.
-        let authorization = vm.authorize(private_key, &program_id, function_name, &inputs, rng)?;
+        let authorization = vm.authorize(private_key, "credits.aleo", "mint", inputs, rng)?;
         // Execute the genesis function.
-        let transaction = Transaction::execute_authorization(vm, authorization, rng)?;
+        let transaction = Transaction::execute_authorization(vm, authorization, None, rng)?;
 
         // Prepare the transactions.
         let transactions = Transactions::from(&[transaction]);

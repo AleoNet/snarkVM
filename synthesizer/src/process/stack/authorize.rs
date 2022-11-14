@@ -22,13 +22,15 @@ impl<N: Network> Stack<N> {
     pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        function_name: Identifier<N>,
-        inputs: &[Value<N>],
+        function_name: impl TryInto<Identifier<N>>,
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Ensure the program contains functions.
         ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
 
+        // Prepare the function name.
+        let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Retrieve the function.
         let function = self.get_function(&function_name)?;
         // Retrieve the input types.

@@ -241,7 +241,7 @@ function compute:
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the proving key.
-        let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();
+        let proving_key = process.get_proving_key(program.id(), function_name).unwrap();
 
         // Create the prover file at the path.
         let expected = ProverFile::create(&directory, &function_name, proving_key).unwrap();

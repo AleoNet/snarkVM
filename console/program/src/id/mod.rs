@@ -34,10 +34,51 @@ pub struct ProgramID<N: Network> {
     network: Identifier<N>,
 }
 
+impl<N: Network> From<&ProgramID<N>> for ProgramID<N> {
+    /// Returns a copy of the program ID.
+    fn from(program_id: &ProgramID<N>) -> Self {
+        *program_id
+    }
+}
+
 impl<N: Network> From<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
     /// Initializes a program ID from a name and network-level domain identifier.
     fn from((name, network): (Identifier<N>, Identifier<N>)) -> Self {
         Self { name, network }
+    }
+}
+
+impl<N: Network> TryFrom<String> for ProgramID<N> {
+    type Error = Error;
+
+    /// Initializes a program ID from a name and network-level domain identifier.
+    fn try_from(program_id: String) -> Result<Self> {
+        Self::from_str(&program_id)
+    }
+}
+
+impl<N: Network> TryFrom<&String> for ProgramID<N> {
+    type Error = Error;
+
+    /// Initializes a program ID from a name and network-level domain identifier.
+    fn try_from(program_id: &String) -> Result<Self> {
+        Self::from_str(program_id)
+    }
+}
+
+impl<N: Network> TryFrom<&str> for ProgramID<N> {
+    type Error = Error;
+
+    /// Initializes a program ID from a name and network-level domain identifier.
+    fn try_from(program_id: &str) -> Result<Self> {
+        // Split the program ID into a name and network-level domain.
+        let mut split = program_id.split('.');
+        // Parse the name and network.
+        if let (Some(name), Some(network), None) = (split.next(), split.next(), split.next()) {
+            Ok(Self { name: Identifier::from_str(name)?, network: Identifier::from_str(network)? })
+        } else {
+            bail!("Invalid program ID '{program_id}'")
+        }
     }
 }
 

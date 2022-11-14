@@ -169,37 +169,47 @@ impl<N: Network> Process<N> {
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    pub fn get_stack(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Stack<N>> {
+        // Prepare the program ID.
+        let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Retrieve the stack.
-        let stack = self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        let stack = self.stacks.get(&program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
         // Ensure the program ID matches.
-        ensure!(stack.program_id() == program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
+        ensure!(stack.program_id() == &program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
         // Return the stack.
         Ok(stack)
     }
 
     /// Returns the program for the given program ID.
     #[inline]
-    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+    pub fn get_program(&self, program_id: impl TryInto<ProgramID<N>>) -> Result<&Program<N>> {
         self.get_stack(program_id).map(Stack::program)
     }
 
     /// Returns the proving key for the given program ID and function name.
     #[inline]
-    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+    pub fn get_proving_key(
+        &self,
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
+    ) -> Result<ProvingKey<N>> {
+        // Prepare the function name.
+        let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Return the proving key.
-        self.get_stack(program_id)?.get_proving_key(function_name)
+        self.get_stack(program_id)?.get_proving_key(&function_name)
     }
 
     /// Returns the verifying key for the given program ID and function name.
     #[inline]
     pub fn get_verifying_key(
         &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
     ) -> Result<VerifyingKey<N>> {
+        // Prepare the function name.
+        let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Return the verifying key.
-        self.get_stack(program_id)?.get_verifying_key(function_name)
+        self.get_stack(program_id)?.get_verifying_key(&function_name)
     }
 
     /// Inserts the given proving key, for the given program ID and function name.
@@ -241,11 +251,7 @@ impl<N: Network> Process<N> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::{Process, Program, Transition};
-    use console::{
-        account::PrivateKey,
-        network::Testnet3,
-        program::{Identifier, Value},
-    };
+    use console::{account::PrivateKey, network::Testnet3, program::Identifier};
 
     use once_cell::sync::OnceCell;
 
@@ -288,8 +294,8 @@ function compute:
                 process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
                 // Get the proving and verifying key.
-                let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();
-                let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();
+                let proving_key = process.get_proving_key(program.id(), function_name).unwrap();
+                let verifying_key = process.get_verifying_key(program.id(), function_name).unwrap();
 
                 (function_name, proving_key, verifying_key)
             })
@@ -330,10 +336,7 @@ function compute:
                         &caller_private_key,
                         program.id(),
                         function_name,
-                        &[
-                            Value::<CurrentNetwork>::from_str("5u32").unwrap(),
-                            Value::<CurrentNetwork>::from_str("10u32").unwrap(),
-                        ],
+                        ["5u32", "10u32"].into_iter(),
                         rng,
                     )
                     .unwrap();
@@ -406,7 +409,7 @@ mod tests {
                 &caller_private_key,
                 program.id(),
                 Identifier::from_str("mint").unwrap(),
-                &[r0.clone(), r1.clone()],
+                [r0.clone(), r1.clone()].iter(),
                 rng,
             )
             .unwrap();
@@ -476,7 +479,7 @@ mod tests {
                 &caller_private_key,
                 program.id(),
                 Identifier::from_str("mint").unwrap(),
-                &[r0, r1],
+                [r0, r1].iter(),
                 rng,
             )
             .unwrap();
@@ -560,7 +563,13 @@ function hello_world:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input_a, input_b], rng)
+            .authorize::<CurrentAleo, _>(
+                &caller_private_key,
+                program.id(),
+                function_name,
+                [input_a, input_b].iter(),
+                rng,
+            )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
@@ -652,7 +661,7 @@ function hello_world:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
@@ -719,8 +728,10 @@ function hello_world:
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
         // Authorize the function call.
-        let authorization =
-            process.authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[], rng).unwrap();
+        let inputs: &[Value<CurrentNetwork>] = &[];
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, inputs.iter(), rng)
+            .unwrap();
         assert_eq!(authorization.len(), 1);
 
         // Declare the output value.
@@ -821,7 +832,7 @@ function compute:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
@@ -965,7 +976,7 @@ function transfer:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng)
+            .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, [r0, r1, r2].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 5);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
@@ -1099,7 +1110,7 @@ finalize compute:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
 
@@ -1196,7 +1207,7 @@ finalize compute:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
 
@@ -1311,7 +1322,7 @@ finalize mint_public:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
 
@@ -1447,7 +1458,7 @@ function mint:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program1.id(), function_name, &[r0, r1], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program1.id(), function_name, [r0, r1].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 2);
 

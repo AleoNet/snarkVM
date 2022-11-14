@@ -22,11 +22,26 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn authorize<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        program_id: &ProgramID<N>,
-        function_name: Identifier<N>,
-        inputs: &[Value<N>],
+        program_id: impl TryInto<ProgramID<N>>,
+        function_name: impl TryInto<Identifier<N>>,
+        inputs: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
+        // Prepare the program ID.
+        let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
+        // Prepare the function name.
+        let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
+        // Prepare the inputs.
+        let inputs = inputs
+            .into_iter()
+            .enumerate()
+            .map(|(index, input)| {
+                input
+                    .try_into()
+                    .map_err(|_| anyhow!("Failed to parse input #{index} for '{program_id}/{function_name}'"))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -34,13 +49,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Prepare the inputs.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
-                let program_id = cast_ref!(&program_id as ProgramID<$network>);
+                let program_id = cast_ref!(program_id as ProgramID<$network>);
                 let function_name = cast_ref!(function_name as Identifier<$network>);
                 let inputs = cast_ref!(inputs as Vec<Value<$network>>);
 
                 // Compute the authorization.
                 let authorization =
-                    $process.authorize::<$aleo, _>(private_key, program_id, function_name.clone(), inputs, rng)?;
+                    $process.authorize::<$aleo, _>(private_key, program_id, function_name, inputs.iter(), rng)?;
 
                 // Return the authorization.
                 Ok(cast_ref!(authorization as Authorization<N>).clone())

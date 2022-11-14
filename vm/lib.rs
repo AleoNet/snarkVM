@@ -37,8 +37,6 @@ pub use snarkvm_console as console;
 pub use snarkvm_curves as curves;
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
-#[cfg(feature = "gadgets")]
-pub use snarkvm_gadgets as gadgets;
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
 #[cfg(feature = "r1cs")]
@@ -47,6 +45,8 @@ pub use snarkvm_r1cs as r1cs;
 pub use snarkvm_synthesizer as synthesizer;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
+#[cfg(feature = "wasm")]
+pub use snarkvm_wasm as wasm;
 
 pub mod errors {
     #[cfg(feature = "algorithms")]

@@ -340,7 +340,7 @@ mod tests {
             let input_record = console::Value::<<Circuit as Environment>::Network>::from_str(&record_string).unwrap();
             let input_external_record =
                 console::Value::<<Circuit as Environment>::Network>::from_str(&record_string).unwrap();
-            let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
+            let inputs = [input_constant, input_public, input_private, input_record, input_external_record];
 
             // Construct the input types.
             let input_types = vec![
@@ -352,7 +352,8 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = console::Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng)?;
+            let request =
+                console::Request::sign(&private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
             assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.
