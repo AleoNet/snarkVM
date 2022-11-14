@@ -137,7 +137,14 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
             Operand::Caller => {}
-            Operand::Parent => {}
+            Operand::Parent => {
+                // Note: The parent caller of a program is rendered as an address, but this address may
+                // belong to either a private key or a program. Programs are not allowed to own any records.
+                // In the case where the address does belong to a private key, the `Caller` operand should be
+                // used instead, because it will be identical and does not have the risk of being tied to a
+                // program address.
+                bail!("Forbidden operation: Cannot cast self.parent as a record owner")
+            }
         }
 
         // Ensure the second input type is a u64.
