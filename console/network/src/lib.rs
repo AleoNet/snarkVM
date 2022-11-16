@@ -45,6 +45,7 @@ use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
 use snarkvm_curves::PairingEngine;
 
+use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
@@ -142,10 +143,10 @@ pub trait Network:
     fn genesis_bytes() -> &'static [u8];
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<Arc<MarlinProvingKey<Self>>>;
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>>;
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<Arc<MarlinVerifyingKey<Self>>>;
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>>;
 
     /// Returns the `proving key` for the inclusion circuit.
     fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>>;

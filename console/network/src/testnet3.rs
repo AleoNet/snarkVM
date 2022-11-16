@@ -68,6 +68,17 @@ lazy_static! {
     pub static ref POSEIDON_4: Poseidon4<Testnet3> = Poseidon4::<Testnet3>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+
+    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
+        map
+    };
+    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<MarlinVerifyingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_credit_keys!(map, MarlinVerifyingKey<Console>, Verifier);
+        map
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -133,37 +144,17 @@ impl Network for Testnet3 {
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<Arc<MarlinProvingKey<Self>>> {
-        static INSTANCE: OnceCell<Arc<CircuitProvingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
-            OnceCell::new();
-        INSTANCE
-            .get_or_try_init(|| {
-                let bytes = snarkvm_parameters::testnet3::CREDITS_PROVING_KEYS
-                    .get(&function_name)
-                    .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))?;
-                // Skipping the first 2 bytes, which is the encoded version.
-                let key = CircuitProvingKey::from_bytes_le(&bytes[2..])
-                    .map_err(|_| anyhow!("Failed to load credits.aleo/{function_name} proving key."))?;
-                Ok(Arc::new(key))
-            })
-            .map(|key| key.clone())
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>> {
+        CREDITS_PROVING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<Arc<MarlinVerifyingKey<Self>>> {
-        static INSTANCE: OnceCell<Arc<CircuitVerifyingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
-            OnceCell::new();
-        INSTANCE
-            .get_or_try_init(|| {
-                let bytes = snarkvm_parameters::testnet3::CREDITS_VERIFYING_KEYS
-                    .get(&function_name)
-                    .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))?;
-                // Skipping the first 2 bytes, which is the encoded version.
-                let key = CircuitVerifyingKey::from_bytes_le(&bytes[2..])
-                    .map_err(|_| anyhow!("Failed to load credits.aleo/{function_name} verifying key."))?;
-                Ok(Arc::new(key))
-            })
-            .map(|key| key.clone())
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>> {
+        CREDITS_VERIFYING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the `proving key` for the inclusion circuit.

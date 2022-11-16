@@ -58,6 +58,9 @@ version = "0.9.7"
 [dependencies.anyhow]
 version = "1.0.66"
 
+[dependencies.indexmap]
+version = "1"
+
 [dependencies.itertools]
 version = "0.10.1"
 
@@ -66,6 +69,9 @@ version = "1.4"
 
 [dependencies.once_cell]
 version = "1.13"
+
+[dependencies.paste]
+version = "1"
 
 [dependencies.serde]
 version = "1.0"

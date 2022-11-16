@@ -36,16 +36,13 @@ use console::{
     types::{I64, U16, U64},
 };
 
-use aleo_std::{
-    end_timer,
-    prelude::{finish, lap, timer},
-    start_timer,
-};
+use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+use std::sync::Arc;
+
 #[cfg(test)]
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
@@ -62,32 +59,31 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+        let timer = timer!("Process:setup");
+
         // Initialize the process.
-        let process_timer = start_timer!(|| "Initialize process");
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
-        end_timer!(process_timer);
+        lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
-        let program_timer = start_timer!(|| "Load credits program");
         let program = Program::credits()?;
-        end_timer!(program_timer);
+        lap!(timer, "Load credits program");
 
         // Compute the 'credits.aleo' program stack.
-        let stack_timer = start_timer!(|| "Initialize stack");
         let stack = Stack::new(&process, &program)?;
-        end_timer!(stack_timer);
+        lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' circuit keys.
-        let key_synthesis_timer = start_timer!(|| "Synthesize credits program keys");
         for function_name in program.functions().keys() {
-            let key_timer = start_timer!(|| format!("Synthesize circuit keys for {}", function_name));
             stack.synthesize_key::<A, _>(function_name, rng)?;
-            end_timer!(key_timer);
+            lap!(timer, "Synthesize circuit keys for {function_name}");
         }
-        end_timer!(key_synthesis_timer);
+        lap!(timer, "Synthesize credits program keys");
 
         // Add the 'credits.aleo' stack to the process.
         process.stacks.insert(*program.id(), stack);
+
+        finish!(timer);
         // Return the process.
         Ok(process)
     }
@@ -127,12 +123,12 @@ impl<N: Network> Process<N> {
         for function_name in program.functions().keys() {
             // Load the proving key.
             let proving_key = N::get_credits_proving_key(function_name.to_string())?;
-            stack.insert_proving_key(function_name, ProvingKey::new(proving_key))?;
+            stack.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
             lap!(timer, "Load proving key for {function_name}");
 
             // Load the verifying key.
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
-            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key))?;
+            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone()))?;
             lap!(timer, "Load verifying key for {function_name}");
         }
         lap!(timer, "Load circuit keys");
@@ -175,7 +171,7 @@ impl<N: Network> Process<N> {
                 // Load the verifying key.
                 let verifying_key = N::get_credits_verifying_key(function_name.to_string()).unwrap();
 
-                (ProvingKey::new(proving_key), VerifyingKey::new(verifying_key))
+                (ProvingKey::new(proving_key.clone()), VerifyingKey::new(verifying_key.clone()))
             });
             // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, proving_key.clone())?;
