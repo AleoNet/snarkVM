@@ -159,8 +159,7 @@ impl Network for Testnet3 {
 
     /// Returns the `proving key` for the inclusion circuit.
     fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<CircuitProvingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
-            OnceCell::new();
+        static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first 2 bytes, which is the encoded version.
             Arc::new(
@@ -172,8 +171,7 @@ impl Network for Testnet3 {
 
     /// Returns the `verifying key` for the inclusion circuit.
     fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<CircuitVerifyingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
-            OnceCell::new();
+        static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first 2 bytes, which is the encoded version.
             Arc::new(
