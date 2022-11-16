@@ -132,44 +132,61 @@ impl Network for Testnet3 {
         snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
     }
 
-    /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
-    fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)> {
-        snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
-            .get(&function_name)
-            .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))
+    /// Returns the proving key for the given function name in `credits.aleo`.
+    fn get_credits_proving_key(function_name: String) -> Result<Arc<MarlinProvingKey<Self>>> {
+        static INSTANCE: OnceCell<Arc<CircuitProvingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
+            OnceCell::new();
+        INSTANCE
+            .get_or_try_init(|| {
+                let bytes = snarkvm_parameters::testnet3::CREDITS_PROVING_KEYS
+                    .get(&function_name)
+                    .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))?;
+                // Skipping the first 2 bytes, which is the encoded version.
+                let key = CircuitProvingKey::from_bytes_le(&bytes[2..])
+                    .map_err(|_| anyhow!("Failed to load credits.aleo/{function_name} proving key."))?;
+                Ok(Arc::new(key))
+            })
+            .map(|key| key.clone())
     }
 
-    /// Returns the `proving key` bytes for the inclusion circuit.
-    fn inclusion_proving_key_bytes() -> &'static Vec<u8> {
-        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_PROVING_KEY
-    }
-
-    /// Returns the `verifying key` bytes for the inclusion circuit.
-    fn inclusion_verifying_key_bytes() -> &'static Vec<u8> {
-        &snarkvm_parameters::testnet3::TESTNET3_INCLUSION_VERIFYING_KEY
+    /// Returns the verifying key for the given function name in `credits.aleo`.
+    fn get_credits_verifying_key(function_name: String) -> Result<Arc<MarlinVerifyingKey<Self>>> {
+        static INSTANCE: OnceCell<Arc<CircuitVerifyingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
+            OnceCell::new();
+        INSTANCE
+            .get_or_try_init(|| {
+                let bytes = snarkvm_parameters::testnet3::CREDITS_VERIFYING_KEYS
+                    .get(&function_name)
+                    .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))?;
+                // Skipping the first 2 bytes, which is the encoded version.
+                let key = CircuitVerifyingKey::from_bytes_le(&bytes[2..])
+                    .map_err(|_| anyhow!("Failed to load credits.aleo/{function_name} verifying key."))?;
+                Ok(Arc::new(key))
+            })
+            .map(|key| key.clone())
     }
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<CircuitProvingKey<Self::PairingCurve, MarlinHidingMode>> {
+    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
         static INSTANCE: OnceCell<Arc<CircuitProvingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
             OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first 2 bytes, which is the encoded version.
             Arc::new(
-                CircuitProvingKey::from_bytes_le(&Self::inclusion_proving_key_bytes()[2..])
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])
                     .expect("Failed to load inclusion proving key."),
             )
         })
     }
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<CircuitVerifyingKey<Self::PairingCurve, MarlinHidingMode>> {
+    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
         static INSTANCE: OnceCell<Arc<CircuitVerifyingKey<<Console as Environment>::PairingCurve, MarlinHidingMode>>> =
             OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first 2 bytes, which is the encoded version.
             Arc::new(
-                CircuitVerifyingKey::from_bytes_le(&Self::inclusion_verifying_key_bytes()[2..])
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[2..])
                     .expect("Failed to load inclusion verifying key."),
             )
         })

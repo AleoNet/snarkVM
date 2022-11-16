@@ -79,24 +79,32 @@ impl_remote_keys!(SplitProver, SplitVerifier, "split");
 impl_remote_keys!(FeeProver, FeeVerifier, "fee");
 
 lazy_static! {
-    pub static ref TESTNET3_CREDITS_PROGRAM: indexmap::IndexMap<String, (Vec<u8>, Vec<u8>)> = {
+    pub static ref CREDITS_PROVING_KEYS: indexmap::IndexMap<String, Vec<u8>> = {
         macro_rules! insert_remote_keys {
-            ($map: ident, $pname: ident, $vname: ident, $fname: tt) => {
-                $map.insert(
-                    $fname.to_string(),
-                    (
-                        $pname::load_bytes().expect("Failed to load proving key"),
-                        $vname::load_bytes().expect("Failed to load verifying key"),
-                    ),
-                );
+            ($map: ident, $pname: ident, $fname: tt) => {
+                $map.insert($fname.to_string(), $pname::load_bytes().expect("Failed to load proving key"));
             };
         }
         let mut map = indexmap::IndexMap::new();
-        insert_remote_keys!(map, MintProver, MintVerifier, "mint");
-        insert_remote_keys!(map, TransferProver, TransferVerifier, "transfer");
-        insert_remote_keys!(map, JoinProver, JoinVerifier, "join");
-        insert_remote_keys!(map, SplitProver, SplitVerifier, "split");
-        insert_remote_keys!(map, FeeProver, FeeVerifier, "fee");
+        insert_remote_keys!(map, MintProver, "mint");
+        insert_remote_keys!(map, TransferProver, "transfer");
+        insert_remote_keys!(map, JoinProver, "join");
+        insert_remote_keys!(map, SplitProver, "split");
+        insert_remote_keys!(map, FeeProver, "fee");
+        map
+    };
+    pub static ref CREDITS_VERIFYING_KEYS: indexmap::IndexMap<String, Vec<u8>> = {
+        macro_rules! insert_remote_keys {
+            ($map: ident, $vname: ident, $fname: tt) => {
+                $map.insert($fname.to_string(), $vname::load_bytes().expect("Failed to load verifying key"));
+            };
+        }
+        let mut map = indexmap::IndexMap::new();
+        insert_remote_keys!(map, MintVerifier, "mint");
+        insert_remote_keys!(map, TransferVerifier, "transfer");
+        insert_remote_keys!(map, JoinVerifier, "join");
+        insert_remote_keys!(map, SplitVerifier, "split");
+        insert_remote_keys!(map, FeeVerifier, "fee");
         map
     };
 }
@@ -108,8 +116,8 @@ impl_remote_keys!(InclusionProver, InclusionVerifier, "inclusion");
 pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";
 
 lazy_static! {
-    pub static ref TESTNET3_INCLUSION_PROVING_KEY: Vec<u8> =
+    pub static ref INCLUSION_PROVING_KEY: Vec<u8> =
         InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
-    pub static ref TESTNET3_INCLUSION_VERIFYING_KEY: Vec<u8> =
+    pub static ref INCLUSION_VERIFYING_KEY: Vec<u8> =
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }

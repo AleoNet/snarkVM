@@ -58,6 +58,10 @@ type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 pub type FiatShamir<N> = PoseidonSponge<Fq<N>, 2, 1>;
 pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
 
+/// Helper types for the Marlin proving and verifying key.
+pub(crate) type MarlinProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
+pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
+
 pub trait Network:
     'static
     + Environment
@@ -137,20 +141,17 @@ pub trait Network:
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8];
 
-    /// Returns the `(proving key, verifying key)` bytes for the given function name in `credits.aleo`.
-    fn get_credits_key_bytes(function_name: String) -> Result<&'static (Vec<u8>, Vec<u8>)>;
+    /// Returns the proving key for the given function name in `credits.aleo`.
+    fn get_credits_proving_key(function_name: String) -> Result<Arc<MarlinProvingKey<Self>>>;
 
-    /// Returns the `proving key` bytes for the inclusion circuit.
-    fn inclusion_proving_key_bytes() -> &'static Vec<u8>;
-
-    /// Returns the `verifying key` bytes for the inclusion circuit.
-    fn inclusion_verifying_key_bytes() -> &'static Vec<u8>;
+    /// Returns the verifying key for the given function name in `credits.aleo`.
+    fn get_credits_verifying_key(function_name: String) -> Result<Arc<MarlinVerifyingKey<Self>>>;
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<CircuitProvingKey<Self::PairingCurve, MarlinHidingMode>>;
+    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>>;
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<CircuitVerifyingKey<Self::PairingCurve, MarlinHidingMode>>;
+    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;

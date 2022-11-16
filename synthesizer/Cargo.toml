@@ -61,6 +61,10 @@ path = "../utilities"
 version = "0.9.7"
 default-features = false
 
+[dependencies.aleo-std]
+version = "0.1.15"
+default-features = false
+
 [dependencies.anyhow]
 version = "1.0.66"
 

@@ -2432,6 +2432,7 @@ dependencies = [
 name = "snarkvm-synthesizer"
 version = "0.9.7"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "bincode",
  "blake2",
