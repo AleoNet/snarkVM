@@ -38,4 +38,4 @@ version = "0.4.0"
 [features]
 default = [ "parallel" ]
 parallel = [ "rayon" ]
-timer = [ "aleo-std/timer", "aleo-std/timed" ]
+timer = [ "aleo-std/timer" ]

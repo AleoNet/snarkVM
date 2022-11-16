@@ -49,10 +49,11 @@ pub struct MerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHas
 impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8>
     MerkleTree<E, LH, PH, DEPTH>
 {
-    #[timed]
     #[inline]
     /// Initializes a new Merkle tree with the given leaves.
     pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
+        let timer = timer!("MerkleTree::new");
+
         // Ensure the Merkle tree depth is greater than 0.
         ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
         // Ensure the Merkle tree depth is less than or equal to 64.
@@ -81,6 +82,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
         // Compute and store each leaf hash.
         tree[num_nodes..num_nodes + leaves.len()].copy_from_slice(&leaf_hasher.hash_leaves(leaves)?);
+        lap!(timer, "Hashed {} leaves", leaves.len());
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
         let mut start_index = num_nodes;
@@ -95,6 +97,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Update the start index for the next level.
             start_index = start;
         }
+        lap!(timer, "Hashed {} levels", tree_depth);
 
         // Compute the root hash, by iterating from the root level up to `DEPTH`.
         let mut root_hash = tree[0];
@@ -102,6 +105,9 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Update the root hash, by hashing the current root hash with the empty hash.
             root_hash = path_hasher.hash_children(&root_hash, &empty_hash)?;
         }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        finish!(timer);
 
         Ok(Self {
             leaf_hasher: leaf_hasher.clone(),
@@ -113,10 +119,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         })
     }
 
-    #[timed]
     #[inline]
     /// Returns a new Merkle tree with the given new leaves appended to it.
     pub fn prepare_append(&self, new_leaves: &[LH::Leaf]) -> Result<Self> {
+        let timer = timer!("MerkleTree::prepare_append");
+
         // Compute the maximum number of leaves.
         let max_leaves = match (self.number_of_leaves + new_leaves.len()).checked_next_power_of_two() {
             Some(num_leaves) => num_leaves,
@@ -139,6 +146,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         tree.extend(&self.leaf_hasher.hash_leaves(new_leaves)?);
         // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
         tree.resize(tree_size, self.empty_hash);
+        lap!(timer, "Hashed {} new leaves", new_leaves.len());
 
         // Initialize a start index to track the starting index of the current level.
         let start_index = num_nodes;
@@ -172,6 +180,9 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Update the root hash, by hashing the current root hash with the empty hash.
             root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
         }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        finish!(timer);
 
         Ok(Self {
             leaf_hasher: self.leaf_hasher.clone(),
@@ -183,21 +194,25 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         })
     }
 
-    #[timed]
     #[inline]
     /// Updates the Merkle tree with the given new leaves appended to it.
     pub fn append(&mut self, new_leaves: &[LH::Leaf]) -> Result<()> {
+        let timer = timer!("MerkleTree::append");
+
         // Compute the updated Merkle tree with the new leaves.
         let updated_tree = self.prepare_append(new_leaves)?;
         // Update the tree at the very end, so the original tree is not altered in case of failure.
         *self = updated_tree;
+
+        finish!(timer);
         Ok(())
     }
 
-    #[timed]
     #[inline]
     /// Returns a new Merkle tree with the last 'n' leaves removed from it.
     pub fn prepare_remove_last_n(&self, n: usize) -> Result<Self> {
+        let timer = timer!("MerkleTree::prepare_remove_last_n");
+
         ensure!(n > 0, "Cannot remove zero leaves from the Merkle tree");
 
         // Determine the updated number of leaves, after removing the last 'n' leaves.
@@ -225,6 +240,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         tree.extend(&self.leaf_hashes()?[..updated_number_of_leaves]);
         // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
         tree.resize(tree_size, self.empty_hash);
+        lap!(timer, "Resizing to {} leaves", updated_number_of_leaves);
 
         // Initialize a start index to track the starting index of the current level.
         let start_index = num_nodes;
@@ -259,6 +275,9 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Update the root hash, by hashing the current root hash with the empty hash.
             root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
         }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        finish!(timer);
 
         Ok(Self {
             leaf_hasher: self.leaf_hasher.clone(),
@@ -270,14 +289,17 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         })
     }
 
-    #[timed]
     #[inline]
     /// Updates the Merkle tree with the last 'n' leaves removed from it.
     pub fn remove_last_n(&mut self, n: usize) -> Result<()> {
+        let timer = timer!("MerkleTree::remove_last_n");
+
         // Compute the updated Merkle tree with the last 'n' leaves removed.
         let updated_tree = self.prepare_remove_last_n(n)?;
         // Update the tree at the very end, so the original tree is not altered in case of failure.
         *self = updated_tree;
+
+        finish!(timer);
         Ok(())
     }
 
@@ -366,14 +388,13 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         self.number_of_leaves
     }
 
-    #[timed]
-    #[inline]
     /// Compute and store the hashes for each level, iterating from the penultimate level to the root level.
     ///
     /// ```ignore
     ///  start_index      middle_index                              end_index
     ///  start_precompute_index         middle_precompute_index     end_index
     /// ```
+    #[inline]
     fn compute_updated_tree(
         &self,
         tree: &mut [Field<E>],
@@ -383,7 +404,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         mut middle_precompute_index: Option<usize>,
     ) -> Result<()> {
         // Initialize a timer for the while loop.
-        let timer = timer!("while");
+        let timer = timer!("MerkleTree::compute_updated_tree");
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
         while let (Some(start), Some(middle)) = (parent(start_index), parent(middle_index)) {

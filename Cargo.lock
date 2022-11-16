@@ -2213,9 +2213,11 @@ name = "snarkvm-console-network"
 version = "0.9.7"
 dependencies = [
  "anyhow",
+ "indexmap",
  "itertools",
  "lazy_static",
  "once_cell",
+ "paste",
  "serde",
  "snarkvm-algorithms",
  "snarkvm-console-algorithms",
@@ -2432,6 +2434,7 @@ dependencies = [
 name = "snarkvm-synthesizer"
 version = "0.9.7"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "bincode",
  "blake2",
