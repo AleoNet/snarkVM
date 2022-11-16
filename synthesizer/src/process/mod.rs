@@ -174,7 +174,7 @@ impl<N: Network> Process<N> {
 
                 (ProvingKey::new(proving_key), VerifyingKey::new(verifying_key))
             });
-
+            // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, proving_key.clone())?;
             stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
