@@ -36,7 +36,11 @@ use console::{
     types::{I64, U16, U64},
 };
 
-use aleo_std::{end_timer, start_timer};
+use aleo_std::{
+    end_timer,
+    prelude::{finish, lap, timer},
+    start_timer,
+};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 #[cfg(test)]
@@ -105,47 +109,46 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn load() -> Result<Self> {
+        let timer = timer!("Process::load");
+
         // Initialize the process.
-        let process_timer = start_timer!(|| "Initialize process");
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
-        end_timer!(process_timer);
+        lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
-        let program_timer = start_timer!(|| "Load credits program");
         let program = Program::credits()?;
-        end_timer!(program_timer);
+        lap!(timer, "Load credits program");
 
         // Compute the 'credits.aleo' program stack.
-        let stack_timer = start_timer!(|| "Initialize stack");
         let stack = Stack::new(&process, &program)?;
-        end_timer!(stack_timer);
+        lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' circuit keys.
-        let key_synthesis_timer = start_timer!(|| "Load credits program keys");
         for function_name in program.functions().keys() {
             // Load the proving key.
-            let key_timer = start_timer!(|| format!("Load proving key for {function_name}"));
             let proving_key = N::get_credits_proving_key(function_name.to_string())?;
             stack.insert_proving_key(function_name, ProvingKey::new(proving_key))?;
-            end_timer!(key_timer);
+            lap!(timer, "Load proving key for {function_name}");
 
             // Load the verifying key.
-            let key_timer = start_timer!(|| format!("Load verifying key for {function_name}"));
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
             stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key))?;
-            end_timer!(key_timer);
+            lap!(timer, "Load verifying key for {function_name}");
         }
-        end_timer!(key_synthesis_timer);
+        lap!(timer, "Load circuit keys");
 
-        let inclusion_timer = start_timer!(|| "Load inclusion keys");
         // Initialize the inclusion proving key.
         let _ = N::inclusion_proving_key();
+        lap!(timer, "Load inclusion proving key");
+
         // Initialize the inclusion verifying key.
         let _ = N::inclusion_verifying_key();
-        end_timer!(inclusion_timer);
+        lap!(timer, "Load inclusion verifying key");
 
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
+
+        finish!(timer, "Process::load");
         // Return the process.
         Ok(process)
     }

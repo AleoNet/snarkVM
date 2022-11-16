@@ -34,6 +34,17 @@ path = "benches/coinbase_puzzle.rs"
 harness = false
 required-features = [ "setup" ]
 
+[features]
+default = [ "parallel" ]
+parallel = [
+  "rayon",
+  "snarkvm-fields/parallel",
+  "snarkvm-utilities/parallel"
+]
+aleo-cli = [ ]
+setup = [ ]
+timer = [ "aleo-std/timer" ]
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
@@ -118,13 +129,3 @@ version = "1.3"
 
 [dev-dependencies.criterion]
 version = "0.4.0"
-
-[features]
-default = [ "parallel" ]
-parallel = [
-  "rayon",
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
-]
-aleo-cli = [ ]
-setup = [ ]
