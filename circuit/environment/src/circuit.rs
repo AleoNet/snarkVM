@@ -323,6 +323,31 @@ impl fmt::Display for Circuit {
     }
 }
 
+impl Circuit {
+    pub fn json() -> CircuitJSON {
+        CIRCUIT.with(|circuit| {
+            let mut constraints_json: Vec<ConstraintJSON> = Vec::new();
+            for constraint in circuit.borrow().to_constraints() {
+                let (a, b, c) = constraint.to_terms();
+                let a_terms = format!("{:?}", a.to_terms());
+                let b_terms = format!("{:?}", b.to_terms());
+                let c_terms = format!("{:?}", c.to_terms());
+                let constraint_json = ConstraintJSON::new(a_terms, b_terms, c_terms);
+                constraints_json.push(constraint_json);
+            }
+
+            CircuitJSON::new(
+                Circuit::num_constants(),
+                Circuit::num_public(),
+                Circuit::num_private(),
+                Circuit::num_constraints(),
+                Circuit::is_satisfied(),
+                constraints_json,
+            )
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use snarkvm_circuit::prelude::*;

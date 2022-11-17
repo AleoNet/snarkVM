@@ -50,3 +50,9 @@ version = "=0.14.6"
 [dependencies.snarkvm-circuit-types]
 path = "./types"
 version = "=0.14.6"
+
+[dependencies.serde_json]
+version = "1.0"
+
+[dependencies.serde]
+version = "1.0"
