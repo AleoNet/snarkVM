@@ -54,7 +54,7 @@ pub struct Process<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to stacks.
-    stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    pub stacks: IndexMap<ProgramID<N>, Stack<N>>,
 }
 
 impl<N: Network> Process<N> {

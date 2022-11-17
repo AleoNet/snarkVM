@@ -171,19 +171,19 @@ impl<N: Network> CallStack<N> {
 #[derive(Clone)]
 pub struct Stack<N: Network> {
     /// The program (record types, interfaces, functions).
-    program: Program<N>,
+    pub program: Program<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
-    external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    pub external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
-    register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    pub register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The mapping of finalize names to their register types.
-    finalize_types: IndexMap<Identifier<N>, FinalizeTypes<N>>,
+    pub finalize_types: IndexMap<Identifier<N>, FinalizeTypes<N>>,
     /// The universal SRS.
-    universal_srs: Arc<UniversalSRS<N>>,
+    pub universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of function name to proving key.
-    proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
+    pub proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.
-    verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
+    pub verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
 }
 
 impl<N: Network> Stack<N> {
