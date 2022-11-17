@@ -37,6 +37,7 @@ use console::{
     program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
 };
 
+use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
