@@ -220,7 +220,7 @@ impl<N: Network> Process<N> {
                 "Transition is invalid - failed to verify transition proof"
             );
 
-            lap!(timer, "Verify transition {}", transition.id());
+            lap!(timer, "Verify transition proof for {}", function.name());
         }
 
         finish!(timer);
@@ -308,7 +308,7 @@ impl<N: Network> Process<N> {
                     })
                     .collect::<Result<Vec<_>>>()?;
 
-                lap!(timer, "Finalize transition {}", transition.id());
+                lap!(timer, "Finalize transition for {function_name}");
             }
         }
         finish!(timer);
