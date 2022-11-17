@@ -62,15 +62,15 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Evaluate the instructions");
 
         // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
+        let outputs_iter = closure.outputs().iter().map(|output| {
             // Retrieve the stack value from the register.
             registers.load(self, &Operand::Register(output.register().clone()))
         });
+        let outputs = outputs_iter.collect();
         lap!(timer, "Load the outputs");
 
         finish!(timer);
-
-        outputs.collect()
+        outputs
     }
 
     /// Evaluates a program function on the given inputs.

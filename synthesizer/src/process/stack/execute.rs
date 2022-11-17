@@ -83,15 +83,15 @@ impl<N: Network> Stack<N> {
         ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
 
         // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
+        let outputs_iter = closure.outputs().iter().map(|output| {
             // Retrieve the circuit output from the register.
             registers.load_circuit(self, &Operand::Register(output.register().clone()))
         });
+        let outputs = outputs_iter.collect();
         lap!(timer, "Load the outputs");
 
         finish!(timer);
-
-        outputs.collect()
+        outputs
     }
 
     /// Executes a program function on the given inputs.
