@@ -36,6 +36,7 @@ use console::{
     types::{I64, U16, U64},
 };
 
+use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 #[cfg(test)]
