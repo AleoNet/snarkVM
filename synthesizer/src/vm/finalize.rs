@@ -30,13 +30,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Finalize the transaction.
                 match transaction {
                     Transaction::Deploy(_, deployment, _) => {
-                        process.finalize_deployment(self.program_store(), deployment)?
+                        process.finalize_deployment(self.program_store(), deployment)?;
+                        lap!(timer, "Finalize deployment");
                     }
                     Transaction::Execute(_, execution, _) => {
-                        process.finalize_execution(self.program_store(), execution)?
+                        process.finalize_execution(self.program_store(), execution)?;
+                        lap!(timer, "Finalize execution");
                     }
                 }
-                lap!(timer, "Finalize transaction");
             }
             Ok(())
         });
