@@ -24,6 +24,8 @@ impl<N: Network> Process<N> {
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>, Inclusion<N>)> {
+        let timer = timer!("Process::execute");
+
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
 
@@ -36,8 +38,10 @@ impl<N: Network> Process<N> {
         let inclusion = Arc::new(RwLock::new(Inclusion::new()));
         // Initialize the call stack.
         let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        lap!(timer, "Initialize call stack");
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
+        lap!(timer, "Execute the function");
         // Extract the execution.
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution is not empty.
@@ -45,6 +49,7 @@ impl<N: Network> Process<N> {
         // Extract the inclusion.
         let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
 
+        finish!(timer);
         Ok((response, execution, inclusion))
     }
 
@@ -52,6 +57,8 @@ impl<N: Network> Process<N> {
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
     pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
+        let timer = timer!("Process::verify_execution");
+
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -69,10 +76,12 @@ impl<N: Network> Process<N> {
                 execution.len()
             );
         }
+        lap!(timer, "Verify the number of transitions");
 
         // Ensure the inclusion proof is valid.
         if VERIFY_INCLUSION {
             Inclusion::verify_execution(execution)?;
+            lap!(timer, "Verify the inclusion proof");
         }
 
         // Replicate the execution stack for verification.
@@ -110,6 +119,8 @@ impl<N: Network> Process<N> {
             {
                 bail!("Failed to verify a transition input")
             }
+            lap!(timer, "Verify the inputs");
+
             // Ensure each output is valid.
             let num_inputs = transition.inputs().len();
             if transition
@@ -120,6 +131,7 @@ impl<N: Network> Process<N> {
             {
                 bail!("Failed to verify a transition output")
             }
+            lap!(timer, "Verify the outputs");
 
             // Ensure the fee is correct.
             match Program::is_coinbase(transition.program_id(), transition.function_name()) {
@@ -195,6 +207,7 @@ impl<N: Network> Process<N> {
 
             // [Inputs] Extend the verifier inputs with the fee.
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
+            lap!(timer, "Construct the verifier inputs");
 
             #[cfg(debug_assertions)]
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
@@ -206,7 +219,11 @@ impl<N: Network> Process<N> {
                 verifying_key.verify(function.name(), &inputs, transition.proof()),
                 "Transition is invalid - failed to verify transition proof"
             );
+
+            lap!(timer, "Verify transition proof for {}", function.name());
         }
+
+        finish!(timer);
         Ok(())
     }
 
@@ -218,6 +235,8 @@ impl<N: Network> Process<N> {
         store: &ProgramStore<N, P>,
         execution: &Execution<N>,
     ) -> Result<()> {
+        let timer = timer!("Program::finalize_execution");
+
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -235,6 +254,7 @@ impl<N: Network> Process<N> {
                 execution.len()
             );
         }
+        lap!(timer, "Verify the number of transitions");
 
         // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
         //  Currently this loop assumes a linearly execution stack.
@@ -287,8 +307,11 @@ impl<N: Network> Process<N> {
                         registers.load(stack, &Operand::Register(register.clone()))
                     })
                     .collect::<Result<Vec<_>>>()?;
+
+                lap!(timer, "Finalize transition for {function_name}");
             }
         }
+        finish!(timer);
 
         Ok(())
     }

@@ -26,6 +26,8 @@ impl<N: Network> Stack<N> {
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         rng: &mut R,
     ) -> Result<Authorization<N>> {
+        let timer = timer!("Stack::authorize");
+
         // Ensure the program contains functions.
         ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
 
@@ -44,15 +46,21 @@ impl<N: Network> Stack<N> {
                 input_types.len()
             )
         }
+        lap!(timer, "Verify the number of inputs");
 
         // Compute the request.
         let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
+        lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
         let _response = self.execute_function::<A, R>(call_stack, rng)?;
+        lap!(timer, "Construct the authorization from the function");
+
+        finish!(timer);
+
         // Return the authorization.
         Ok(authorization)
     }

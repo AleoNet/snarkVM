@@ -20,6 +20,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Deploys a program with the given program ID.
     #[inline]
     pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
+        let timer = timer!("VM::deploy");
+
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -28,9 +30,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Compute the deployment.
                 let deployment = $process.deploy::<$aleo, _>(program, rng)?;
+                lap!(timer, "Compute the deployment");
 
                 // Prepare the return.
                 let deployment = cast_ref!(deployment as Deployment<N>).clone();
+                lap!(timer, "Prepare the deployment");
+
+                finish!(timer);
                 // Return the deployment.
                 Ok(deployment)
             }};
