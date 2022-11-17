@@ -1966,6 +1966,8 @@ dependencies = [
 name = "snarkvm-circuit"
 version = "0.9.7"
 dependencies = [
+ "serde",
+ "serde_json",
  "snarkvm-circuit-account",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-collections",
@@ -2023,6 +2025,8 @@ dependencies = [
  "nom",
  "num-traits",
  "once_cell",
+ "serde",
+ "serde_json",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-circuit-environment-witness",
