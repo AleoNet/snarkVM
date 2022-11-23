@@ -20,6 +20,8 @@ impl<N: Network> Stack<N> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Deployment<N>> {
+        let timer = timer!("Stack::deploy");
+
         // Ensure the program contains functions.
         ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
 
@@ -29,18 +31,23 @@ impl<N: Network> Stack<N> {
         for function_name in self.program.functions().keys() {
             // Synthesize the proving and verifying key.
             self.synthesize_key::<A, R>(function_name, rng)?;
+            lap!(timer, "Synthesize key for {function_name}");
 
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function_name)?;
             // Retrieve the verifying key.
             let verifying_key = self.get_verifying_key(function_name)?;
+            lap!(timer, "Retrieve the keys for {function_name}");
 
             // Certify the circuit.
             let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
+            lap!(timer, "Certify the circuit");
 
             // Add the verifying key and certificate to the bundle.
             bundle.insert(*function_name, (verifying_key, certificate));
         }
+
+        finish!(timer);
 
         // Return the deployment.
         Deployment::new(N::EDITION, self.program.clone(), bundle)
@@ -53,6 +60,8 @@ impl<N: Network> Stack<N> {
         deployment: &Deployment<N>,
         rng: &mut R,
     ) -> Result<()> {
+        let timer = timer!("Stack::verify_deployment");
+
         // Retrieve the edition.
         let edition = deployment.edition();
         // Retrieve the program.
@@ -81,6 +90,7 @@ impl<N: Network> Stack<N> {
         if verifying_keys.len() != program.functions().len() {
             bail!("The number of verifying keys does not match the number of program functions");
         }
+        lap!(timer, "Perform sanity checks");
 
         // Ensure the program functions are in the same order as the verifying keys.
         for ((function_name, function), candidate_name) in program.functions().iter().zip_eq(verifying_keys.keys()) {
@@ -93,6 +103,7 @@ impl<N: Network> Stack<N> {
                 bail!("The verifier key is '{candidate_name}', but the function name is '{}'", function.name())
             }
         }
+        lap!(timer, "Verify the function and verifying key ordering");
 
         // Iterate through the program functions.
         for (function, (verifying_key, certificate)) in program.functions().values().zip_eq(verifying_keys.values()) {
@@ -115,6 +126,7 @@ impl<N: Network> Stack<N> {
                     _ => self.sample_value(&burner_address, input_type, rng),
                 })
                 .collect::<Result<Vec<_>>>()?;
+            lap!(timer, "Sample the inputs");
 
             // Compute the request, with a burner private key.
             let request = Request::sign(
@@ -125,12 +137,14 @@ impl<N: Network> Stack<N> {
                 &input_types,
                 rng,
             )?;
+            lap!(timer, "Compute the request for {}", function.name());
             // Initialize the assignments.
             let assignments = Assignments::<N>::default();
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
             // Synthesize the circuit.
             let _response = self.execute_function::<A, R>(call_stack, rng)?;
+            lap!(timer, "Synthesize the circuit");
             // Check the certificate.
             match assignments.read().last() {
                 None => bail!("The assignment for function '{}' is missing in '{program_id}'", function.name()),
@@ -139,9 +153,12 @@ impl<N: Network> Stack<N> {
                     if !certificate.verify(function.name(), assignment, verifying_key) {
                         bail!("The certificate for function '{}' is invalid in '{program_id}'", function.name())
                     }
+                    lap!(timer, "Ensure the certificate is valid");
                 }
             };
         }
+
+        finish!(timer);
 
         Ok(())
     }

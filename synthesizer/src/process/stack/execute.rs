@@ -30,6 +30,8 @@ impl<N: Network> Stack<N> {
         caller: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
+        let timer = timer!("Stack::execute_closure");
+
         // Ensure the call stack is not `Evaluate`.
         ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
 
@@ -37,6 +39,7 @@ impl<N: Network> Stack<N> {
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
+        lap!(timer, "Check the number of inputs");
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
@@ -47,6 +50,7 @@ impl<N: Network> Stack<N> {
         registers.set_caller_circuit(caller);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
+        lap!(timer, "Initialize the registers");
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -59,6 +63,7 @@ impl<N: Network> Stack<N> {
             // Assign the circuit input to the register.
             registers.store_circuit(self, register, input.clone())
         })?;
+        lap!(timer, "Store the inputs");
 
         // Execute the instructions.
         for instruction in closure.instructions() {
@@ -72,17 +77,21 @@ impl<N: Network> Stack<N> {
             // Execute the instruction.
             instruction.execute(self, &mut registers)?;
         }
+        lap!(timer, "Execute the instructions");
 
         // Ensure the number of public variables remains the same.
         ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
 
         // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
+        let outputs_iter = closure.outputs().iter().map(|output| {
             // Retrieve the circuit output from the register.
             registers.load_circuit(self, &Operand::Register(output.register().clone()))
         });
+        let outputs = outputs_iter.collect();
+        lap!(timer, "Load the outputs");
 
-        outputs.collect()
+        finish!(timer);
+        outputs
     }
 
     /// Executes a program function on the given inputs.
@@ -97,6 +106,8 @@ impl<N: Network> Stack<N> {
         mut call_stack: CallStack<N>,
         rng: &mut R,
     ) -> Result<Response<N>> {
+        let timer = timer!("Stack::execute_function");
+
         // Ensure the call stack is not `Evaluate`.
         ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
 
@@ -126,15 +137,18 @@ impl<N: Network> Stack<N> {
         let input_types = function.input_types();
         // Retrieve the output types.
         let output_types = function.output_types();
+        lap!(timer, "Retrieve the input and output types");
 
         // Ensure the inputs match their expected types.
         console_request.inputs().iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
             // Ensure the input matches the input type in the function.
             self.matches_value_type(input, input_type)
         })?;
+        lap!(timer, "Verify the input types");
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&input_types), "Request is invalid");
+        lap!(timer, "Verify the request");
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
@@ -158,6 +172,8 @@ impl<N: Network> Stack<N> {
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(request.tvk().clone());
 
+        lap!(timer, "Initialize the registers");
+
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Request");
 
@@ -174,6 +190,7 @@ impl<N: Network> Stack<N> {
             // Assign the circuit input to the register.
             registers.store_circuit(self, register, input.clone())
         })?;
+        lap!(timer, "Store the inputs");
 
         // Initialize a tracker to determine if there are any function calls.
         let mut contains_function_call = false;
@@ -199,6 +216,7 @@ impl<N: Network> Stack<N> {
                 }
             }
         }
+        lap!(timer, "Execute the instructions");
 
         // Load the outputs.
         let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
@@ -206,6 +224,7 @@ impl<N: Network> Stack<N> {
             .iter()
             .map(|register| registers.load_circuit(self, &Operand::Register(register.clone())))
             .collect::<Result<Vec<_>>>()?;
+        lap!(timer, "Load the outputs");
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>(format!("Function '{}()'", function.name()));
@@ -228,6 +247,7 @@ impl<N: Network> Stack<N> {
             &output_types,
             output_registers,
         );
+        lap!(timer, "Construct the response");
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Response");
@@ -293,6 +313,8 @@ impl<N: Network> Stack<N> {
 
                 #[cfg(debug_assertions)]
                 Self::log_circuit::<A, _>("Finalize");
+
+                lap!(timer, "Construct the finalize inputs");
 
                 // Return the (console) finalize inputs.
                 Some(console_finalize_inputs)
@@ -371,6 +393,8 @@ impl<N: Network> Stack<N> {
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
 
+        lap!(timer, "Perform the fee operations");
+
         // Eject the fee.
         let fee = i64_gates.eject_value();
         // Eject the response.
@@ -405,6 +429,7 @@ impl<N: Network> Stack<N> {
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
                 self.synthesize_from_assignment(function.name(), &assignment)?;
+                lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
 
@@ -412,6 +437,7 @@ impl<N: Network> Stack<N> {
         if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Add the assignment to the assignments.
             assignments.write().push(assignment);
+            lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
         else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
@@ -424,6 +450,7 @@ impl<N: Network> Stack<N> {
                 Ok(proof) => proof,
                 Err(error) => bail!("Execution proof failed - {error}"),
             };
+            lap!(timer, "Execute the circuit");
 
             // Construct the transition.
             let transition =
@@ -434,6 +461,8 @@ impl<N: Network> Stack<N> {
             // Add the transition to the execution.
             execution.write().push(transition);
         }
+
+        finish!(timer);
 
         // Return the response.
         Ok(response)
