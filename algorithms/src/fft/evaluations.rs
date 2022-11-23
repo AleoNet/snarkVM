@@ -72,6 +72,11 @@ impl<F: PrimeField> Evaluations<F> {
         DensePolynomial::from_coefficients_vec(evals)
     }
 
+    /// Returns the evaluations of `self`.
+    pub fn evaluations(&self) -> &[F] {
+        &self.evaluations
+    }
+
     pub fn domain(&self) -> EvaluationDomain<F> {
         self.domain
     }
