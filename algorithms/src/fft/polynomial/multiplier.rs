@@ -81,19 +81,18 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
             } else {
                 #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
                 {
-                    // TODO: How do we not clone here?
                     let mut poly_slices = Vec::new();
                     for (_, p) in &self.polynomials {
-                        poly_slices.push(p.coeffs.clone());
+                        poly_slices.push(p.coeffs().iter().map(|c| *c).collect());
                     }
                     let mut eval_slices = Vec::new();
                     for (_, e) in &self.evaluations {
-                        eval_slices.push(e.evaluations.clone());
+                        eval_slices.push(e.evaluations().iter().map(|e| *e).collect());
                     }
 
                     let gpu_result_vec = snarkvm_cuda::polymul(domain.size(), &poly_slices, &eval_slices, &F::zero());
                     if let Ok(result) = gpu_result_vec {
-                        return Some(DensePolynomial::from_coefficients_vec(result))
+                        return Some(DensePolynomial::from_coefficients_vec(result));
                     }
                 }
 
