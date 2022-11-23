@@ -17,9 +17,6 @@
 pub mod batched;
 pub mod standard;
 
-#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-mod cuda;
-
 #[cfg(target_arch = "x86_64")]
 pub mod prefetch;
 
@@ -28,28 +25,22 @@ use snarkvm_fields::PrimeField;
 
 use core::any::TypeId;
 
-#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-use core::sync::atomic::{AtomicBool, Ordering};
-
-#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
-
 pub struct VariableBase;
 
 impl VariableBase {
     pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
         // For BLS12-377, we perform variable base MSM using a batched addition technique.
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
-            #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-            if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
-                match cuda::msm_cuda(bases, scalars) {
-                    Ok(x) => return x,
-                    Err(_e) => {
-                        HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                        eprintln!("CUDA failed, moving to the next MSM method");
-                    }
-                }
-            }
+            // #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+            // if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
+            //     match cuda::msm_cuda(bases, scalars) {
+            //         Ok(x) => return x,
+            //         Err(_e) => {
+            //             HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
+            //             eprintln!("CUDA failed, moving to the next MSM method");
+            //         }
+            //     }
+            // }
             batched::msm(bases, scalars)
         }
         // For all other curves, we perform variable base MSM using Pippenger's algorithm.
@@ -113,16 +104,16 @@ mod tests {
         }
     }
 
-    #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-    #[test]
-    fn test_msm_cuda() {
-        let mut rng = TestRng::default();
-        for _ in 0..100 {
-            let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << 10);
-            let rust = standard::msm(bases.as_slice(), scalars.as_slice());
-
-            let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
-            assert_eq!(rust, cuda);
-        }
-    }
+    // #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+    // #[test]
+    // fn test_msm_cuda() {
+    //     let mut rng = TestRng::default();
+    //     for _ in 0..100 {
+    //         let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << 10);
+    //         let rust = standard::msm(bases.as_slice(), scalars.as_slice());
+    //
+    //         let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
+    //         assert_eq!(rust, cuda);
+    //     }
+    // }
 }
