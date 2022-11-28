@@ -329,10 +329,7 @@ impl Circuit {
             let mut constraints_json: Vec<ConstraintJSON> = Vec::new();
             for constraint in circuit.borrow().to_constraints() {
                 let (a, b, c) = constraint.to_terms();
-                let a_terms = format!("{:?}", a.to_terms());
-                let b_terms = format!("{:?}", b.to_terms());
-                let c_terms = format!("{:?}", c.to_terms());
-                let constraint_json = ConstraintJSON::new(a_terms, b_terms, c_terms);
+                let constraint_json = ConstraintJSON::new(a, b, c);
                 constraints_json.push(constraint_json);
             }
 
