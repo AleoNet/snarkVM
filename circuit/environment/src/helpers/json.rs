@@ -13,7 +13,10 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::LinearCombination;
 use serde::{Deserialize, Serialize};
+use snarkvm_fields::PrimeField;
 
 /// Wrapper for a R1CS circuit in JSON notation.
 #[derive(Serialize, Deserialize)]
@@ -29,10 +32,13 @@ pub struct CircuitJSON {
 /// Wrapper for a R1CS constraint in JSON notation.
 #[derive(Serialize, Deserialize)]
 pub struct ConstraintJSON {
-    a: String,
-    b: String,
-    c: String,
+    a: LinearCombinationJSON,
+    b: LinearCombinationJSON,
+    c: LinearCombinationJSON,
 }
+
+/// Wrapper for R1CS LinearCombination in JSON notation.
+pub type LinearCombinationJSON = Vec<String>;
 
 impl CircuitJSON {
     pub fn new(
@@ -43,12 +49,23 @@ impl CircuitJSON {
         is_satisfied: bool,
         constraints: Vec<ConstraintJSON>,
     ) -> Self {
-        CircuitJSON { num_constants, num_public, num_private, num_constraints, is_satisfied, constraints }
+        Self { num_constants, num_public, num_private, num_constraints, is_satisfied, constraints }
     }
 }
 
 impl ConstraintJSON {
-    pub fn new(a: String, b: String, c: String) -> Self {
-        ConstraintJSON { a, b, c }
+    pub fn new<F: PrimeField>(a: &LinearCombination<F>, b: &LinearCombination<F>, c: &LinearCombination<F>) -> Self {
+        Self {
+            a: ConstraintJSON::linear_combination_string(a),
+            b: ConstraintJSON::linear_combination_string(b),
+            c: ConstraintJSON::linear_combination_string(c),
+        }
+    }
+
+    fn linear_combination_string<F: PrimeField>(lc: &LinearCombination<F>) -> LinearCombinationJSON {
+        let mut lc_string = lc.to_terms().values().map(|variable| format!("{variable}")).collect::<Vec<String>>();
+        lc_string.push(format!("{:?}", lc.value()));
+
+        lc_string
     }
 }
