@@ -2371,7 +2371,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-cuda"
-version = "0.1.0"
+version = "0.9.8"
 dependencies = [
  "blst",
  "cc",
@@ -2542,7 +2542,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "sppark"
 version = "0.1.2"
-source = "git+https://github.com/supranational/sppark#48f6ac606be53a3186dea98a407b067ec758614a"
+source = "git+https://github.com/supranational/sppark?rev=48f6ac6#48f6ac606be53a3186dea98a407b067ec758614a"
 dependencies = [
  "cc",
  "which",

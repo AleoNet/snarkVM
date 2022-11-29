@@ -70,7 +70,8 @@ version = "0.9.8"
 default-features = false
 
 [dependencies.snarkvm-cuda]
-path = "../../snarkvm-sppark"
+path = "./cuda"
+version = "0.9.8"
 optional = true
 default-features = false
 
