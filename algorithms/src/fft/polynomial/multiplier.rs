@@ -83,11 +83,11 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                 {
                     let mut poly_slices = Vec::new();
                     for (_, p) in &self.polynomials {
-                        poly_slices.push(p.coeffs().iter().map(|c| *c).collect());
+                        poly_slices.push(p.coeffs().iter().copied().collect());
                     }
                     let mut eval_slices = Vec::new();
                     for (_, e) in &self.evaluations {
-                        eval_slices.push(e.evaluations().iter().map(|e| *e).collect());
+                        eval_slices.push(e.evaluations().iter().copied().collect());
                     }
 
                     let gpu_result_vec = snarkvm_cuda::polymul(domain.size(), &poly_slices, &eval_slices, &F::zero());
