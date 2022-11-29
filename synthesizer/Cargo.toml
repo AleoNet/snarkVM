@@ -42,6 +42,7 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 aleo-cli = [ ]
+cuda = [ "snarkvm-algorithms/cuda" ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
 
