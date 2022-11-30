@@ -157,6 +157,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ok(true) => true,
                 Ok(false) => {
                     warn!("Execution verification failed: global state root not found");
+                    println!("Execution verification failed: global state root not found");
                     false
                 }
                 Err(error) => {
