@@ -120,7 +120,7 @@ macro_rules! impl_bits_for_integer {
             #[inline]
             fn to_bits_le(&self) -> Vec<bool> {
                 let mut bits_le = Vec::with_capacity(<$int>::BITS as usize);
-                let mut value = self.to_le();
+                let mut value = *self;
                 for _ in 0..<$int>::BITS {
                     bits_le.push(value & 1 == 1);
                     value = value.wrapping_shr(1u32);
