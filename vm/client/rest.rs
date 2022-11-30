@@ -18,7 +18,10 @@ use super::*;
 
 impl<N: Network> Client<N> {
     pub async fn latest_height(&self) -> Result<u32> {
-        let url = format!("{}/testnet3/latest/height", self.base_url);
+        let url = match self.base_url.join("/testnet3/latest/height") {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(height) => Ok(height),
             Err(error) => bail!("Failed to parse the latest block height: {error}"),
@@ -26,7 +29,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn latest_hash(&self) -> Result<N::BlockHash> {
-        let url = format!("{}/testnet3/latest/hash", self.base_url);
+        let url = match self.base_url.join("/testnet3/latest/hash") {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(hash) => Ok(hash),
             Err(error) => bail!("Failed to parse the latest block hash: {error}"),
@@ -34,7 +40,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn latest_block(&self) -> Result<Block<N>> {
-        let url = format!("{}/testnet3/latest/block", self.base_url);
+        let url = match self.base_url.join("/testnet3/latest/block") {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(block) => Ok(block),
             Err(error) => bail!("Failed to parse the latest block: {error}"),
@@ -42,7 +51,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn get_block(&self, height: u32) -> Result<Block<N>> {
-        let url = format!("{}/testnet3/block/{height}", self.base_url);
+        let url = match self.base_url.join(&format!("/testnet3/block/{height}")) {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(block) => Ok(block),
             Err(error) => bail!("Failed to parse block {height}: {error}"),
@@ -56,7 +68,10 @@ impl<N: Network> Client<N> {
             bail!("Cannot request more than 50 blocks at a time");
         }
 
-        let url = format!("{}/testnet3/blocks?start={start_height}&end={end_height}", self.base_url);
+        let url = match self.base_url.join(&format!("/testnet3/blocks?start={start_height}&end={end_height}")) {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(blocks) => Ok(blocks),
             Err(error) => {
@@ -66,7 +81,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
-        let url = format!("{}/testnet3/transaction/{transaction_id}", self.base_url);
+        let url = match self.base_url.join(&format!("/testnet3/transaction/{transaction_id}")) {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(transaction) => Ok(transaction),
             Err(error) => bail!("Failed to parse transaction '{transaction_id}': {error}"),
@@ -74,7 +92,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn get_memory_pool_transactions(&self) -> Result<Vec<Transaction<N>>> {
-        let url = format!("{}/testnet3/memoryPool/transactions", self.base_url);
+        let url = match self.base_url.join("/testnet3/memoryPool/transactions") {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(transactions) => Ok(transactions),
             Err(error) => bail!("Failed to parse memory pool transactions: {error}"),
@@ -85,7 +106,10 @@ impl<N: Network> Client<N> {
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
         // Perform the request.
-        let url = format!("{}/testnet3/program/{program_id}", self.base_url);
+        let url = match self.base_url.join(&format!("/testnet3/program/{program_id}")) {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(program) => Ok(program),
             Err(error) => bail!("Failed to parse program {program_id}: {error}"),
@@ -93,7 +117,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn find_block_hash(&self, transaction_id: N::TransactionID) -> Result<N::BlockHash> {
-        let url = format!("{}/testnet3/find/blockHash/{transaction_id}", self.base_url);
+        let url = match self.base_url.join(&format!("/testnet3/find/blockHash/{transaction_id}")) {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(hash) => Ok(hash),
             Err(error) => bail!("Failed to parse block hash: {error}"),
@@ -102,7 +129,10 @@ impl<N: Network> Client<N> {
 
     /// Returns the transition ID that contains the given `input ID` or `output ID`.
     pub async fn find_transition_id(&self, input_or_output_id: Field<N>) -> Result<N::TransitionID> {
-        let url = format!("{}/testnet3/find/transitionID/{input_or_output_id}", self.base_url);
+        let url = match self.base_url.join(&format!("/testnet3/find/transitionID/{input_or_output_id}")) {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.get(url).send().await?.json().await {
             Ok(transition_id) => Ok(transition_id),
             Err(error) => bail!("Failed to parse transition ID: {error}"),
@@ -110,7 +140,10 @@ impl<N: Network> Client<N> {
     }
 
     pub async fn transaction_broadcast(&self, transaction: Transaction<N>) -> Result<Block<N>> {
-        let url = format!("{}/testnet3/transaction/broadcast", self.base_url);
+        let url = match self.base_url.join("/testnet3/transaction/broadcast") {
+            Ok(url) => url,
+            Err(error) => bail!("Failed to parse url: {error}"),
+        };
         match self.client.post(url).body(serde_json::to_string(&transaction)?).send().await?.json().await {
             Ok(block) => Ok(block),
             Err(error) => bail!("Failed to parse memory pool transactions: {error}"),
