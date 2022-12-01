@@ -470,6 +470,11 @@ impl<N: Network> Inclusion<N> {
 
         // Verify the inclusion proof.
         if let Some(inclusion_proof) = inclusion_proof {
+            // Ensure the global state root is not zero.
+            if *global_state_root == Field::zero() {
+                bail!("Inclusion expected the global state root in the execution to *not* be zero")
+            }
+
             // Fetch the inclusion verifying key.
             let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
             // Verify the inclusion proof.
@@ -477,11 +482,6 @@ impl<N: Network> Inclusion<N> {
                 verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
                 "Inclusion proof is invalid"
             );
-        }
-
-        // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
-            bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
         Ok(())
