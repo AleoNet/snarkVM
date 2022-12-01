@@ -46,12 +46,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
-                let assignments = {
-                    let execution = cast_ref!(execution as Execution<N>);
+                let (assignments, execution) = {
+                    let execution = cast_ref!(execution as Execution<N>).clone();
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
                     inclusion.prepare_execution(execution, query)?
                 };
                 let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
+                let execution = cast_ref!(execution as Execution<$network>).clone();
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the inclusion proof and update the execution.
