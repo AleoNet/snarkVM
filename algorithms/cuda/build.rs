@@ -105,6 +105,7 @@ fn main() {
         println!("cargo:rerun-if-changed=cuda");
         println!("cargo:rerun-if-env-changed=CXXFLAGS");
     } else {
-        panic!("nvcc must be in the path. Consider adding /usr/local/cuda/bin.")
+        println!("nvcc must be in the path. Consider adding /usr/local/cuda/bin.");
+        // panic!();
     }
 }
