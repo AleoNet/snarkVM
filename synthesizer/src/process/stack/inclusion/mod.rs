@@ -199,13 +199,13 @@ impl<N: Network> Inclusion<N> {
     /// Returns the inclusion assignments for the given execution.
     pub fn prepare_execution<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
         &self,
-        execution: Execution<N>,
+        execution: &Execution<N>,
         query: Q,
-    ) -> Result<(Vec<InclusionAssignment<N>>, Execution<N>)> {
+    ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
         let query = query.into();
 
         // Ensure the number of leaves is within the Merkle tree size.
-        Transaction::check_execution_size(&execution)?;
+        Transaction::check_execution_size(execution)?;
 
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
@@ -285,14 +285,9 @@ impl<N: Network> Inclusion<N> {
             if execution.inclusion_proof().is_some() {
                 bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
             }
-            // Construct the execution.
-            let execution = Execution::from(execution.into_transitions(), global_state_root, None)?;
-
-            // Return the assignments and execution.
-            Ok((assignments, execution))
-        } else {
-            Ok((assignments, execution))
         }
+
+        Ok((assignments, global_state_root))
     }
 
     /// Returns a new execution with an inclusion proof, for the given execution.
@@ -300,6 +295,7 @@ impl<N: Network> Inclusion<N> {
         &self,
         execution: Execution<N>,
         assignments: &[InclusionAssignment<N>],
+        global_state_root: N::StateRoot,
         rng: &mut R,
     ) -> Result<Execution<N>> {
         match assignments.is_empty() {
@@ -309,7 +305,7 @@ impl<N: Network> Inclusion<N> {
                     bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
                 }
                 // Return the execution.
-                Ok(execution)
+                Execution::from(execution.into_transitions(), global_state_root, None)
             }
             false => {
                 // Fetch the inclusion proving key.

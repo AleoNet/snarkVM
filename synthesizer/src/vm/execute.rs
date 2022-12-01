@@ -16,6 +16,10 @@
 
 use super::*;
 
+// TODO (raychu86): Figure out how to `cast_ref!` the state root object directly.
+#[derive(Clone, Copy)]
+struct WrappedStateRoot<N: Network>(N::StateRoot);
+
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a call to the program function for the given inputs.
     #[inline]
@@ -46,17 +50,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
-                let (assignments, execution) = {
-                    let execution = cast_ref!(execution as Execution<N>).clone();
+                let (assignments, global_state_root) = {
+                    let execution = cast_ref!(execution as Execution<N>);
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
                     inclusion.prepare_execution(execution, query)?
                 };
                 let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                let execution = cast_ref!(execution as Execution<$network>).clone();
+                let global_state_root = {
+                    let wrapped_state_root = WrappedStateRoot::<N>(global_state_root);
+                    cast_ref!(wrapped_state_root as WrappedStateRoot<$network>).0
+                };
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the inclusion proof and update the execution.
-                let execution = inclusion.prove_execution::<$aleo, _>(execution, assignments, rng)?;
+                let execution =
+                    inclusion.prove_execution::<$aleo, _>(execution, assignments, global_state_root, rng)?;
                 lap!(timer, "Compute the inclusion proof");
 
                 // Prepare the return.
