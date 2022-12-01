@@ -203,8 +203,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{vm::test_helpers::sample_program, Inclusion, Transaction};
-    use snarkvm_utilities::TestRng;
+    use super::*;
+
+    use crate::{Block, Header, Inclusion, Metadata, Transaction, Transactions};
+    use console::{
+        account::{Address, ViewKey},
+        types::Field,
+    };
+
+    type CurrentNetwork = test_helpers::CurrentNetwork;
 
     #[test]
     fn test_verify() {
@@ -228,7 +235,7 @@ mod tests {
         let vm = crate::vm::test_helpers::sample_vm();
 
         // Fetch the program from the deployment.
-        let program = sample_program();
+        let program = crate::vm::test_helpers::sample_program();
 
         // Deploy the program.
         let deployment = vm.deploy(&program, rng).unwrap();
@@ -256,5 +263,88 @@ mod tests {
             }
             _ => panic!("Expected an execution transaction"),
         }
+    }
+
+    #[test]
+    fn test_verify_deploy_and_execute() {
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Fetch the unspent records.
+        let records = genesis.records().collect::<indexmap::IndexMap<_, _>>();
+
+        // Prepare the additional fee.
+        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+        let additional_fee = (credits, 10);
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy.
+        let program = crate::vm::test_helpers::sample_program();
+        let deployment_transaction =
+            Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+
+        // Construct the new block header.
+        let transactions = Transactions::from(&[deployment_transaction]);
+        // Construct the metadata associated with the block.
+        let deployment_metadata = Metadata::new(
+            CurrentNetwork::ID,
+            1,
+            1,
+            CurrentNetwork::GENESIS_COINBASE_TARGET,
+            CurrentNetwork::GENESIS_PROOF_TARGET,
+            genesis.last_coinbase_target(),
+            genesis.last_coinbase_timestamp(),
+            CurrentNetwork::GENESIS_TIMESTAMP + 1,
+        )
+        .unwrap();
+
+        let deployment_header = Header::from(
+            *vm.block_store().current_state_root(),
+            transactions.to_root().unwrap(),
+            Field::zero(),
+            deployment_metadata,
+        )
+        .unwrap();
+
+        // Construct a new block for the deploy transaction.
+        let deployment_block =
+            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, None, rng).unwrap();
+
+        // Add the deployment block.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Authorize.
+        let authorization = vm
+            .authorize(
+                &caller_private_key,
+                "testing.aleo",
+                "mint",
+                [
+                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str("10u64").unwrap(),
+                ]
+                .into_iter(),
+                rng,
+            )
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Execute.
+        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+
+        // Verify.
+        assert!(vm.verify(&transaction));
     }
 }

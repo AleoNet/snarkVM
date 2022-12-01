@@ -218,6 +218,12 @@ record token:
     gates as u64.private;
     amount as u64.private;
 
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
 function compute:
     input r0 as message.private;
     input r1 as message.public;
@@ -358,113 +364,5 @@ function compute:
                 fee
             })
             .clone()
-    }
-
-    #[test]
-    fn test_auction_deploy_and_execute() {
-        use crate::{Header, Metadata};
-        use console::types::Field;
-
-        // Initialize the auction program.
-        let program = Program::<CurrentNetwork>::from_str(
-            r"
-program auction.aleo;
-
-record Bid:
-    owner as address.private;
-    gates as u64.private;
-    bidder as address.private;
-    amount as u64.private;
-    is_winner as boolean.private;
-
-function place_bid:
-    input r0 as address.private;
-    input r1 as u64.private;
-//    assert.eq self.caller r0;
-    cast aleo1sf82t8nwamevgcwj3vd9crer2su8zrgu6dp4cvrl6fv4htpd4sgq3tltj4 0u64 r0 r1 false into r2 as Bid.record;
-    output r2 as Bid.record;",
-        )
-        .unwrap();
-
-        // Initialize the RNG.
-        let rng = &mut TestRng::default();
-
-        // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-        let address = Address::try_from(&caller_private_key).unwrap();
-
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-        // Fetch the unspent records.
-        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-        trace!("Unspent Records:\n{:#?}", records);
-
-        // Prepare the additional fee.
-        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let additional_fee = (credits, 10);
-
-        // Initialize the VM.
-        let vm = sample_vm();
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
-
-        // Deploy.
-        let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
-        // Verify.
-        assert!(vm.verify(&transaction));
-
-        // Construct the metadata associated with the block.
-        let deployment_metadata = Metadata::new(
-            CurrentNetwork::ID,
-            1,
-            1,
-            CurrentNetwork::GENESIS_COINBASE_TARGET,
-            CurrentNetwork::GENESIS_PROOF_TARGET,
-            genesis.last_coinbase_target(),
-            genesis.last_coinbase_timestamp(),
-            CurrentNetwork::GENESIS_TIMESTAMP + 1,
-        )
-        .unwrap();
-
-        // Construct the new block header.
-        let transactions = Transactions::from(&[transaction]);
-        let deployment_header = Header::from(
-            *vm.block_store().current_state_root(),
-            transactions.to_root().unwrap(),
-            Field::zero(),
-            deployment_metadata,
-        )
-        .unwrap();
-
-        // Construct a new block for the deploy transaction.
-        let deployment_block =
-            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, None, rng).unwrap();
-
-        // Update the VM.
-        vm.add_next_block(&deployment_block).unwrap();
-
-        // Authorize.
-        let authorization = vm
-            .authorize(
-                &caller_private_key,
-                "auction.aleo",
-                "place_bid",
-                [
-                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                    Value::<CurrentNetwork>::from_str("10u64").unwrap(),
-                ]
-                .into_iter(),
-                rng,
-            )
-            .unwrap();
-        assert_eq!(authorization.len(), 1);
-
-        // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
-
-        // Verify.
-        assert!(vm.verify(&transaction));
     }
 }
