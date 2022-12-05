@@ -19,7 +19,6 @@ mod rest;
 mod scan;
 
 use crate::{
-    circuit::FromStr,
     console::{
         account::{PrivateKey, ViewKey},
         program::{Ciphertext, Field, Identifier, Network, ProgramID, Record, Response, Value},

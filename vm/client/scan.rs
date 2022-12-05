@@ -69,43 +69,6 @@ impl<N: Network> Client<N> {
 
         Ok(records)
     }
-
-    /// Signature the transaction
-    #[allow(clippy::type_complexity)]
-    pub fn create_transaction(&self, private_key: &PrivateKey<N>, inputs: Vec<Value<N>>) -> Result<Transaction<N>> {
-        if inputs.is_empty() {
-            bail!("inputs empty")
-        }
-
-        // Fetch the unspent records.
-        // let records = self.scan(&ViewKey::try_from(private_key)?, 14200..14250)?;
-
-        // if records.len().is_zero() {
-        //     bail!("The Aleo account has no records to spend.")
-        // }
-
-        // Initialize an RNG.
-        let rng = &mut rand::thread_rng();
-
-        // Prepare the inputs.
-        // let inputs = [
-        //     Value::Record(records.values().next().unwrap().clone()),
-        //     Value::from_str(&format!("{to}"))?,
-        //     Value::from_str(&format!("{amount}u64"))?,
-        // ];
-
-        // Create a new transaction.
-        Transaction::execute(
-            &self.vm,
-            private_key,
-            ProgramID::from_str("credits.aleo")?,
-            Identifier::from_str("transfer")?,
-            inputs.iter(),
-            None,
-            None,
-            rng,
-        )
-    }
 }
 
 #[cfg(test)]
@@ -147,5 +110,48 @@ mod tests {
           _nonce: 3859911413360468505092363429199432421222291175370483298628506550397056121761group.public
         }";
         assert_eq!(record.to_string(), expected);
+    }
+
+    #[test]
+    fn test_tx() {
+        // Initialize the client.
+        let client = Client::<N>::new("http://127.0.0.1:3030").unwrap();
+
+        // Derive the view key.
+        let private_key =
+            PrivateKey::<N>::from_str("APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH").unwrap();
+        let view_key = ViewKey::<N>::try_from(&private_key).unwrap();
+
+        // Scan the ledger at this range.
+        let records = client.scan(private_key, 1..5).unwrap();
+
+        let (_commitment, record) = records[0].clone();
+
+        // Decrypt the record.
+        let record = record.decrypt(&view_key).unwrap();
+
+        /*
+            Private Key  APrivateKey1zkp2cZmrnRdvLwpr3qXsdwTmaqeGpgWvppsRzkB8hBhWxj6
+            View Key  AViewKey1gQ4a4ThT3hqkcmAQX9c1EZtKj76Y1WKno6vMLV7o7n88
+            Address  aleo1hngl6v55lrgktufe0ezwghf43jg0uuysxp45a5kvjrtw2qxvpgyqnzh8s0
+        */
+        let inputs = [
+            record.to_string(),
+            "aleo1hngl6v55lrgktufe0ezwghf43jg0uuysxp45a5kvjrtw2qxvpgyqnzh8s0".to_string(),
+            (**record.gates()).to_string(),
+        ];
+
+        let (_, sign_transaction) = client.execute(&private_key, "credits.aleo", "transfer", inputs).unwrap();
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("content-type", reqwest::header::HeaderValue::from_static("application/json"));
+        let client = reqwest::blocking::Client::builder().default_headers(headers).build().expect("build client");
+        let response_builder = client
+            .post("http://127.0.0.1:3030/testnet3/transaction/broadcast")
+            .header("content-type", "application/json")
+            .body(serde_json::to_string(&sign_transaction).unwrap());
+
+        let response = response_builder.send().unwrap().json::<String>().unwrap();
+        println!("\n{:#?}", response);
     }
 }
