@@ -18,17 +18,17 @@ mod execute;
 mod rest;
 mod scan;
 
-use anyhow::{anyhow, bail, Result};
-use core::{convert::TryInto, ops::Range};
-use reqwest::Url;
-
 use crate::{
+    circuit::FromStr,
     console::{
         account::{PrivateKey, ViewKey},
         program::{Ciphertext, Field, Identifier, Network, ProgramID, Record, Response, Value},
     },
     synthesizer::{Block, BlockMemory, ConsensusMemory, ConsensusStore, Program, Query, Transaction, VM},
 };
+use anyhow::{anyhow, bail, Result};
+use core::{convert::TryInto, ops::Range};
+use reqwest::Url;
 
 #[derive(Clone)]
 pub struct Client<N: Network> {

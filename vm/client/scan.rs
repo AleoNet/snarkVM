@@ -60,7 +60,6 @@ impl<N: Network> Client<N> {
 
             // Filter the records by the view key.
             records.extend(records_iter.filter_map(|(commitment, record)| {
-                //
                 match record.is_owner_with_address_x_coordinate(&view_key, &address_x_coordinate) {
                     true => Some((commitment, record)),
                     false => None,
@@ -71,42 +70,42 @@ impl<N: Network> Client<N> {
         Ok(records)
     }
 
-    // #[allow(clippy::type_complexity)]
-    // pub fn create_transaction(
-    //     &self,
-    //     private_key: &PrivateKey<N>,
-    //     to: Address<N>,
-    //     amount: u64,
-    // ) -> Result<Transaction<N>> {
-    //     // Fetch the unspent records.
-    //     let records = self.scan(&ViewKey::try_from(private_key)?, 14200..14250)?;
+    /// Signature the transaction
+    #[allow(clippy::type_complexity)]
+    pub fn create_transaction(&self, private_key: &PrivateKey<N>, inputs: Vec<Value<N>>) -> Result<Transaction<N>> {
+        if inputs.len() == 0 {
+            bail!("The Aleo account has no records to spend.")
+        }
 
-    //     if records.len().is_zero() {
-    //         bail!("The Aleo account has no records to spend.")
-    //     }
+        // Fetch the unspent records.
+        // let records = self.scan(&ViewKey::try_from(private_key)?, 14200..14250)?;
 
-    //     // Initialize an RNG.
-    //     let rng = &mut rand::thread_rng();
+        // if records.len().is_zero() {
+        //     bail!("The Aleo account has no records to spend.")
+        // }
 
-    //     // Prepare the inputs.
-    //     let inputs = [
-    //         Value::Record(records.values().next().unwrap().clone()),
-    //         Value::from_str(&format!("{to}"))?,
-    //         Value::from_str(&format!("{amount}u64"))?,
-    //     ];
+        // Initialize an RNG.
+        let rng = &mut rand::thread_rng();
 
-    //     // Create a new transaction.
-    //     Transaction::execute(
-    //         &self.vm,
-    //         private_key,
-    //         ProgramID::from_str("credits.aleo")?,
-    //         Identifier::from_str("transfer")?,
-    //         inputs.iter(),
-    //         None,
-    //         None,
-    //         rng,
-    //     )
-    // }
+        // Prepare the inputs.
+        // let inputs = [
+        //     Value::Record(records.values().next().unwrap().clone()),
+        //     Value::from_str(&format!("{to}"))?,
+        //     Value::from_str(&format!("{amount}u64"))?,
+        // ];
+
+        // Create a new transaction.
+        Transaction::execute(
+            &self.vm,
+            private_key,
+            ProgramID::from_str("credits.aleo")?,
+            Identifier::from_str("transfer")?,
+            inputs.iter(),
+            None,
+            None,
+            rng,
+        )
+    }
 }
 
 #[cfg(test)]
