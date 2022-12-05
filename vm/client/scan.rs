@@ -73,8 +73,8 @@ impl<N: Network> Client<N> {
     /// Signature the transaction
     #[allow(clippy::type_complexity)]
     pub fn create_transaction(&self, private_key: &PrivateKey<N>, inputs: Vec<Value<N>>) -> Result<Transaction<N>> {
-        if inputs.len() == 0 {
-            bail!("The Aleo account has no records to spend.")
+        if inputs.is_empty() {
+            bail!("inputs empty")
         }
 
         // Fetch the unspent records.
