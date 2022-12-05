@@ -68,11 +68,23 @@ impl<'de, N: Network> Deserialize<'de> for BuildRequest<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["program"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                request.get_mut("program").ok_or_else(|| de::Error::custom("The \"program\" field is missing"))?.take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the imports.
-            serde_json::from_value(request["imports"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                request.get_mut("imports").ok_or_else(|| de::Error::custom("The \"imports\" field is missing"))?.take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the function name.
-            serde_json::from_value(request["function_name"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                request
+                    .get_mut("function_name")
+                    .ok_or_else(|| de::Error::custom("The \"function_name\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
         ))
     }
 }
@@ -136,13 +148,37 @@ impl<'de, N: Network> Deserialize<'de> for BuildResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                response
+                    .get_mut("program_id")
+                    .ok_or_else(|| de::Error::custom("The \"program_id\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the function name.
-            serde_json::from_value(response["function_name"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                response
+                    .get_mut("function_name")
+                    .ok_or_else(|| de::Error::custom("The \"function_name\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the proving key.
-            serde_json::from_value(response["proving_key"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                response
+                    .get_mut("proving_key")
+                    .ok_or_else(|| de::Error::custom("The \"proving_key\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the verifying key.
-            serde_json::from_value(response["verifying_key"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                response
+                    .get_mut("verifying_key")
+                    .ok_or_else(|| de::Error::custom("The \"verifying_key\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
         ))
     }
 }

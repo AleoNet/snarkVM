@@ -74,11 +74,26 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["deployment"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                request
+                    .get_mut("deployment")
+                    .ok_or_else(|| de::Error::custom("The \"deployment\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the address of the program.
-            serde_json::from_value(request["address"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                request.get_mut("address").ok_or_else(|| de::Error::custom("The \"address\" field is missing"))?.take(),
+            )
+            .map_err(de::Error::custom)?,
             // Retrieve the program ID.
-            serde_json::from_value(request["program_id"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                request
+                    .get_mut("program_id")
+                    .ok_or_else(|| de::Error::custom("The \"program_id\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
         ))
     }
 }
@@ -116,7 +131,13 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["deployment"].take()).map_err(de::Error::custom)?,
+            serde_json::from_value(
+                response
+                    .get_mut("deployment")
+                    .ok_or_else(|| de::Error::custom("The \"deployment\" field is missing"))?
+                    .take(),
+            )
+            .map_err(de::Error::custom)?,
         ))
     }
 }

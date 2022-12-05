@@ -41,11 +41,25 @@ impl<'de, N: Network> Deserialize<'de> for ProverSolution<N> {
             true => {
                 let mut prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(prover_solution["partial_solution"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        prover_solution
+                            .get_mut("partial_solution")
+                            .ok_or_else(|| de::Error::custom("The \"partial_solution\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     KZGProof {
-                        w: serde_json::from_value(prover_solution["proof.w"].take()).map_err(de::Error::custom)?,
-                        random_v: serde_json::from_value(prover_solution["proof.random_v"].take())
-                            .map_err(de::Error::custom)?,
+                        w: serde_json::from_value(
+                            prover_solution
+                                .get_mut("proof.w")
+                                .ok_or_else(|| de::Error::custom("The \"proof.w\" field is missing"))?
+                                .take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                        random_v: serde_json::from_value(
+                            prover_solution.get_mut("proof.random_v").unwrap_or(&mut serde_json::Value::Null).take(),
+                        )
+                        .map_err(de::Error::custom)?,
                     },
                 ))
             }

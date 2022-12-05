@@ -42,11 +42,24 @@ impl<'de, N: Network> Deserialize<'de> for TransactionLeaf<N> {
                 // Recover the leaf.
                 Ok(Self::from(
                     // Retrieve the variant.
-                    serde_json::from_value(leaf["variant"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        leaf.get_mut("variant")
+                            .ok_or_else(|| de::Error::custom("The \"variant\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the index.
-                    serde_json::from_value(leaf["index"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        leaf.get_mut("index")
+                            .ok_or_else(|| de::Error::custom("The \"index\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the id.
-                    serde_json::from_value(leaf["id"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        leaf.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
+                    )
+                    .map_err(de::Error::custom)?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction leaf"),

@@ -68,25 +68,61 @@ impl<'de, N: Network> Deserialize<'de> for InputID<N> {
                 // Parse the input ID from a string into a value.
                 let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Recover the input.
-                let input_id = match input["type"].as_str() {
-                    Some("constant") => {
-                        InputID::Constant(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
-                    Some("public") => {
-                        InputID::Public(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
-                    Some("private") => {
-                        InputID::Private(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
-                    Some("record") => InputID::Record(
-                        serde_json::from_value(input["commitment"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["gamma"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["serial_number"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?,
+                let input_id = match input.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => InputID::Constant(
+                        serde_json::from_value(
+                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
+                        )
+                        .map_err(de::Error::custom)?,
                     ),
-                    Some("external_record") => {
-                        InputID::ExternalRecord(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
+                    Some("public") => InputID::Public(
+                        serde_json::from_value(
+                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                    ),
+                    Some("private") => InputID::Private(
+                        serde_json::from_value(
+                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                    ),
+                    Some("record") => InputID::Record(
+                        serde_json::from_value(
+                            input
+                                .get_mut("commitment")
+                                .ok_or_else(|| de::Error::custom("The \"commitment\" field is missing"))?
+                                .take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                        serde_json::from_value(
+                            input
+                                .get_mut("gamma")
+                                .ok_or_else(|| de::Error::custom("The \"gamma\" field is missing"))?
+                                .take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                        serde_json::from_value(
+                            input
+                                .get_mut("serial_number")
+                                .ok_or_else(|| de::Error::custom("The \"serial_number\" field is missing"))?
+                                .take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                        serde_json::from_value(
+                            input
+                                .get_mut("tag")
+                                .ok_or_else(|| de::Error::custom("The \"tag\" field is missing"))?
+                                .take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                    ),
+                    Some("external_record") => InputID::ExternalRecord(
+                        serde_json::from_value(
+                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
+                        )
+                        .map_err(de::Error::custom)?,
+                    ),
                     _ => return Err(de::Error::custom("Invalid input type")),
                 };
                 Ok(input_id)

@@ -78,28 +78,36 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                 // Parse the output from a string into a value.
                 let mut output = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(output["id"].take()).map_err(de::Error::custom)?;
+                let id: Field<N> = serde_json::from_value(
+                    output.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
+                )
+                .map_err(de::Error::custom)?;
 
                 // Recover the output.
-                let output = match output["type"].as_str() {
-                    Some("constant") => Output::Constant(id, match output["value"].as_str() {
+                let output = match output.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => Output::Constant(id, match output.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("public") => Output::Public(id, match output["value"].as_str() {
+                    Some("public") => Output::Public(id, match output.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("private") => Output::Private(id, match output["value"].as_str() {
+                    Some("private") => Output::Private(id, match output.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
                     Some("record") => {
                         // Retrieve the checksum.
-                        let checksum: Field<N> =
-                            serde_json::from_value(output["checksum"].take()).map_err(de::Error::custom)?;
+                        let checksum: Field<N> = serde_json::from_value(
+                            output
+                                .get_mut("checksum")
+                                .ok_or_else(|| de::Error::custom("The \"checksum\" field is missing"))?
+                                .take(),
+                        )
+                        .map_err(de::Error::custom)?;
                         // Return the record.
-                        Output::Record(id, checksum, match output["value"].as_str() {
+                        Output::Record(id, checksum, match output.get("value").and_then(|v| v.as_str()) {
                             Some(value) => {
                                 Some(Record::<N, Ciphertext<N>>::from_str(value).map_err(de::Error::custom)?)
                             }

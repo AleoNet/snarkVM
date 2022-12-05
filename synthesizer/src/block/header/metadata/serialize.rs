@@ -44,14 +44,62 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
             true => {
                 let mut metadata = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(metadata["network"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["round"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["height"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["coinbase_target"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["proof_target"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["last_coinbase_target"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["last_coinbase_timestamp"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["timestamp"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("network")
+                            .ok_or_else(|| de::Error::custom("The \"network\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("round")
+                            .ok_or_else(|| de::Error::custom("The \"round\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("height")
+                            .ok_or_else(|| de::Error::custom("The \"height\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("coinbase_target")
+                            .ok_or_else(|| de::Error::custom("The \"coinbase_target\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("proof_target")
+                            .ok_or_else(|| de::Error::custom("The \"proof_target\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("last_coinbase_target")
+                            .ok_or_else(|| de::Error::custom("The \"last_coinbase_target\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("last_coinbase_timestamp")
+                            .ok_or_else(|| de::Error::custom("The \"last_coinbase_timestamp\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        metadata
+                            .get_mut("timestamp")
+                            .ok_or_else(|| de::Error::custom("The \"timestamp\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)
             }

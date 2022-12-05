@@ -50,27 +50,84 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                 // Recover the request.
                 Ok(Self::from((
                     // Retrieve the caller.
-                    serde_json::from_value(request["caller"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("caller")
+                            .ok_or_else(|| de::Error::custom("The \"caller\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the network ID.
-                    serde_json::from_value(request["network"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("network")
+                            .ok_or_else(|| de::Error::custom("The \"network\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the program ID.
-                    serde_json::from_value(request["program"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("program")
+                            .ok_or_else(|| de::Error::custom("The \"program\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the function name.
-                    serde_json::from_value(request["function"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("function")
+                            .ok_or_else(|| de::Error::custom("The \"function\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the input IDs.
-                    serde_json::from_value(request["input_ids"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("input_ids")
+                            .ok_or_else(|| de::Error::custom("The \"input_ids\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the inputs.
-                    serde_json::from_value(request["inputs"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("inputs")
+                            .ok_or_else(|| de::Error::custom("The \"inputs\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the signature.
-                    serde_json::from_value(request["signature"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("signature")
+                            .ok_or_else(|| de::Error::custom("The \"signature\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the `sk_tag`.
-                    serde_json::from_value(request["sk_tag"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request
+                            .get_mut("sk_tag")
+                            .ok_or_else(|| de::Error::custom("The \"sk_tag\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the `tvk`.
-                    serde_json::from_value(request["tvk"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request.get_mut("tvk").ok_or_else(|| de::Error::custom("The \"tvk\" field is missing"))?.take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the `tsk`.
-                    serde_json::from_value(request["tsk"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request.get_mut("tsk").ok_or_else(|| de::Error::custom("The \"tsk\" field is missing"))?.take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the `tcm`.
-                    serde_json::from_value(request["tcm"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        request.get_mut("tcm").ok_or_else(|| de::Error::custom("The \"tcm\" field is missing"))?.take(),
+                    )
+                    .map_err(de::Error::custom)?,
                 )))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "request"),

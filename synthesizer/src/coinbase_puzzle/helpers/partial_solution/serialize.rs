@@ -39,10 +39,27 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
             true => {
                 let mut partial_prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(partial_prover_solution["address"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(partial_prover_solution["nonce"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value::<PuzzleCommitment<N>>(partial_prover_solution["commitment"].take())
-                        .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        partial_prover_solution
+                            .get_mut("address")
+                            .ok_or_else(|| de::Error::custom("The \"address\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        partial_prover_solution
+                            .get_mut("nonce")
+                            .ok_or_else(|| de::Error::custom("The \"nonce\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value::<PuzzleCommitment<N>>(
+                        partial_prover_solution
+                            .get_mut("commitment")
+                            .ok_or_else(|| de::Error::custom("The \"commitment\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial solution"),

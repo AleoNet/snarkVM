@@ -43,11 +43,29 @@ impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
                 // Recover the deployment.
                 let deployment = Self::new(
                     // Retrieve the edition.
-                    serde_json::from_value(deployment["edition"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        deployment
+                            .get_mut("edition")
+                            .ok_or_else(|| de::Error::custom("The \"edition\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the program.
-                    serde_json::from_value(deployment["program"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        deployment
+                            .get_mut("program")
+                            .ok_or_else(|| de::Error::custom("The \"program\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                     // Retrieve the verifying keys.
-                    serde_json::from_value(deployment["verifying_keys"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        deployment
+                            .get_mut("verifying_keys")
+                            .ok_or_else(|| de::Error::custom("The \"verifying_keys\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 

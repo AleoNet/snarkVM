@@ -40,10 +40,34 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
             true => {
                 let mut header = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::from(
-                    serde_json::from_value(header["previous_state_root"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["transactions_root"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["coinbase_accumulator_point"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["metadata"].take()).map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        header
+                            .get_mut("previous_state_root")
+                            .ok_or_else(|| de::Error::custom("The \"previous_state_root\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        header
+                            .get_mut("transactions_root")
+                            .ok_or_else(|| de::Error::custom("The \"transactions_root\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        header
+                            .get_mut("coinbase_accumulator_point")
+                            .ok_or_else(|| de::Error::custom("The \"coinbase_accumulator_point\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
+                    serde_json::from_value(
+                        header
+                            .get_mut("metadata")
+                            .ok_or_else(|| de::Error::custom("The \"metadata\" field is missing"))?
+                            .take(),
+                    )
+                    .map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)
             }
