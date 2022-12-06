@@ -41,6 +41,12 @@ impl<N: Network> From<KZGCommitment<<N as Environment>::PairingCurve>> for Puzzl
     }
 }
 
+impl<N: Network> Default for PuzzleCommitment<N> {
+    fn default() -> Self {
+        Self::new(KZGCommitment::empty())
+    }
+}
+
 impl<N: Network> Deref for PuzzleCommitment<N> {
     type Target = KZGCommitment<<N as Environment>::PairingCurve>;
 

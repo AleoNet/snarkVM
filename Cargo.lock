@@ -86,7 +86,7 @@ checksum = "6118baab6285accf088b31d5ea5029c37bbf9d98e62b4d8720a0a5a66bc2e427"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -338,7 +338,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -583,7 +583,7 @@ checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -1219,7 +1219,7 @@ checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -1302,7 +1302,7 @@ checksum = "b501e44f11665960c7e7fcf062c7d96a14ade4aa98116c004b2e37b5be7d736c"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -1426,7 +1426,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
  "version_check",
 ]
 
@@ -1533,11 +1533,10 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.5.3"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd99e5772ead8baa5215278c9b15bf92087709e9c1b2d1f97cdb5a183c933a7d"
+checksum = "1e060280438193c554f654141c9ea9417886713b7acd75974c85b18a69a88e0b"
 dependencies = [
- "autocfg",
  "crossbeam-deque",
  "either",
  "rayon-core",
@@ -1545,9 +1544,9 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.9.3"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "258bcdb5ac6dad48491bb2992db6b7cf74878b0384908af124823d118c99683f"
+checksum = "cac410af5d00ab6884528b4ab69d1e8e146e8d471201800fa1b4524126de6ad3"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",
@@ -1603,9 +1602,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.12"
+version = "0.11.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "431949c384f4e2ae07605ccaa56d1d9d2ecdb5cadd4f9577ccfab29f2e5149fc"
+checksum = "68cc60575865c7831548863cc02356512e3f1dc2f3f82cb837d7fc4cc8f3c97c"
 dependencies = [
  "base64",
  "bytes",
@@ -1685,7 +1684,7 @@ checksum = "43ce8670a1a1d0fc2514a3b846dacdb65646f9bd494b6674cfacbb4ce430bd7e"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -1816,29 +1815,29 @@ checksum = "e25dfac463d778e353db5be2449d1cce89bd6fd23c9f1ea21310ce6e5a1b29c4"
 
 [[package]]
 name = "serde"
-version = "1.0.147"
+version = "1.0.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d193d69bae983fc11a79df82342761dfbf28a99fc8d203dca4c3c1b590948965"
+checksum = "e53f64bb4ba0191d6d0676e1b141ca55047d83b74f5607e6d8eb88126c52c2dc"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.147"
+version = "1.0.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f1d362ca8fc9c3e3a7484440752472d68a6caa98f1ab81d99b5dfe517cec852"
+checksum = "a55492425aa53521babf6137309e7d34c20bbfbbfcfe2c7f3a047fd1f6b92c0c"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.87"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ce777b7b150d76b9cf60d28b55f5847135a003f7d7350c6be7a773508ce7d45"
+checksum = "020ff22c755c2ed3f8cf162dbb41a7268d934702f3ed3631656ea597e08fc3db"
 dependencies = [
  "itoa",
  "ryu",
@@ -1880,7 +1879,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -1911,7 +1910,7 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "snarkvm"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1943,7 +1942,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -1978,7 +1977,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-account",
  "snarkvm-circuit-algorithms",
@@ -1991,7 +1990,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-account"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "snarkvm-circuit-algorithms",
@@ -2003,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-algorithms"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "snarkvm-circuit-types",
@@ -2015,7 +2014,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-collections"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "snarkvm-circuit-algorithms",
@@ -2029,7 +2028,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-environment"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2050,11 +2049,11 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-environment-witness"
-version = "0.9.9"
+version = "0.9.10"
 
 [[package]]
 name = "snarkvm-circuit-network"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-collections",
@@ -2065,7 +2064,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-program"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "rand",
@@ -2080,7 +2079,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-address",
@@ -2094,7 +2093,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-address"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2106,7 +2105,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-boolean"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "criterion",
  "snarkvm-circuit-environment",
@@ -2115,7 +2114,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-field"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2124,7 +2123,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-group"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2136,7 +2135,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-integers"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "paste",
  "snarkvm-circuit-environment",
@@ -2148,7 +2147,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-scalar"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2158,7 +2157,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-string"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "rand",
  "snarkvm-circuit-environment",
@@ -2171,7 +2170,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-algorithms",
@@ -2183,7 +2182,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-account"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "bs58",
@@ -2195,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-algorithms"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "blake2s_simd",
  "criterion",
@@ -2212,7 +2211,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-collections"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "aleo-std",
  "criterion",
@@ -2224,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-network"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -2246,7 +2245,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-network-environment"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "bech32",
@@ -2262,7 +2261,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-program"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "enum_index",
@@ -2280,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "snarkvm-console-network-environment",
  "snarkvm-console-types-address",
@@ -2294,7 +2293,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-address"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2306,7 +2305,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-boolean"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2315,7 +2314,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-field"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2325,7 +2324,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-group"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2337,7 +2336,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-integers"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2348,7 +2347,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-scalar"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2359,7 +2358,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-string"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2381,7 +2380,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "bincode",
  "criterion",
@@ -2395,7 +2394,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-fields"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2411,7 +2410,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2441,7 +2440,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-r1cs"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -2456,7 +2455,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-synthesizer"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2484,7 +2483,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2501,16 +2500,16 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities-derives"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
 name = "snarkvm-wasm"
-version = "0.9.9"
+version = "0.9.10"
 dependencies = [
  "getrandom",
  "rand",
@@ -2584,9 +2583,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.103"
+version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a864042229133ada95abf3b54fdc62ef5ccabe9515b64717bcb9a1919e59445d"
+checksum = "60b9b43d45702de4c839cb9b51d9f529c5dd26a4aff255b42b1ebc03e88ee908"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
@@ -2679,7 +2678,7 @@ checksum = "982d17546b47146b28f7c22e3d08465f6b8903d0ea13c1660d9d84a6e7adcdbb"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -2792,7 +2791,7 @@ checksum = "4017f8f45139870ca7e672686113917c71c7a6e02d4924eda67186083c03081a"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
 ]
 
 [[package]]
@@ -2959,7 +2958,7 @@ dependencies = [
  "once_cell",
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
  "wasm-bindgen-shared",
 ]
 
@@ -2993,7 +2992,7 @@ checksum = "07bc0c051dc5f23e307b13285f9d75df86bfdf816c5721e573dec1f9b8aa193c"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
