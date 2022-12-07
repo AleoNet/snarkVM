@@ -32,7 +32,6 @@ mod serialize;
 mod string;
 
 use crate::{
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     process::{Deployment, Execution},
     vm::VM,
 };
@@ -42,6 +41,7 @@ use console::{
     program::{Ciphertext, Record},
     types::{Field, Group},
 };
+use snarkvm_puzzle::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {

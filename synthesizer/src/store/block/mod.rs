@@ -17,7 +17,6 @@
 use crate::{
     atomic_write_batch,
     block::{Block, Header, Transactions},
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     cow_to_cloned,
     cow_to_copied,
     store::{
@@ -37,6 +36,7 @@ use console::{
     program::{BlockTree, HeaderLeaf, ProgramID, StatePath},
     types::Field,
 };
+use snarkvm_puzzle::{CoinbaseSolution, PuzzleCommitment};
 
 use anyhow::Result;
 use parking_lot::RwLock;

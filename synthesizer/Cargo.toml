@@ -28,12 +28,6 @@ name = "block"
 path = "benches/block.rs"
 harness = false
 
-[[bench]]
-name = "coinbase_puzzle"
-path = "benches/coinbase_puzzle.rs"
-harness = false
-required-features = [ "setup" ]
-
 [features]
 default = [ "parallel" ]
 parallel = [
@@ -43,7 +37,6 @@ parallel = [
 ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
-setup = [ ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.circuit]
@@ -60,12 +53,12 @@ version = "0.9.10"
 path = "../algorithms"
 version = "0.9.10"
 
-[dependencies.snarkvm-curves]
-path = "../curves"
-version = "0.9.10"
-
 [dependencies.snarkvm-fields]
 path = "../fields"
+version = "0.9.10"
+
+[dependencies.snarkvm-puzzle]
+path = "../puzzle"
 version = "0.9.10"
 
 [dependencies.snarkvm-utilities]
@@ -79,10 +72,6 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0.66"
-
-[dependencies.blake2]
-version = "0.10"
-default-features = false
 
 [dependencies.colored]
 version = "2"

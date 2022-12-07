@@ -26,9 +26,6 @@ extern crate tracing;
 pub mod block;
 pub use block::*;
 
-pub mod coinbase_puzzle;
-pub use coinbase_puzzle::*;
-
 pub mod process;
 pub use process::*;
 
