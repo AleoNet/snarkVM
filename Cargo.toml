@@ -26,6 +26,7 @@ edition = "2021"
 [workspace]
 members = [
   "algorithms",
+  "algorithms/cuda",
   "circuit",
   "circuit/account",
   "circuit/algorithms",
@@ -60,6 +61,7 @@ members = [
   "curves",
   "fields",
   "parameters",
+  "puzzle",
   "r1cs",
   "synthesizer",
   "utilities",
@@ -105,7 +107,7 @@ cli = [
   "thiserror"
 ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
-cuda = [ "snarkvm-algorithms/cuda", "snarkvm-synthesizer/cuda" ]
+cuda = [ "snarkvm-algorithms/cuda", "snarkvm-puzzle/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 parallel = [
   "rayon",
@@ -154,6 +156,11 @@ optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
+version = "0.9.10"
+optional = true
+
+[dependencies.snarkvm-puzzle]
+path = "./puzzle"
 version = "0.9.10"
 optional = true
 

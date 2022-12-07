@@ -1930,6 +1930,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-parameters",
+ "snarkvm-puzzle",
  "snarkvm-r1cs",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
@@ -2439,6 +2440,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-puzzle"
+version = "0.9.10"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "blake2",
+ "criterion",
+ "indexmap",
+ "rand",
+ "rayon",
+ "serde",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm-r1cs"
 version = "0.9.10"
 dependencies = [
@@ -2460,7 +2481,6 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "bincode",
- "blake2",
  "colored",
  "criterion",
  "indexmap",
@@ -2475,8 +2495,8 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
- "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-puzzle",
  "snarkvm-utilities",
  "tracing",
 ]
@@ -2609,7 +2629,7 @@ checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
  "unicode-xid 0.2.4",
 ]
 
@@ -3224,6 +3244,6 @@ checksum = "3f8f187641dad4f680d25c4bfc4225b418165984179f26ca76ec4fb6441d3a17"
 dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
- "syn 1.0.103",
+ "syn 1.0.105",
  "synstructure",
 ]
