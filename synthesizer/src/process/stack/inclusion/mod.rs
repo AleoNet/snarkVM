@@ -215,6 +215,11 @@ impl<N: Network> Inclusion<N> {
         // Retrieve the global state root.
         let global_state_root = query.current_state_root()?;
 
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
+
         for (transition_index, transition) in execution.transitions().enumerate() {
             // Construct the transaction leaf.
             let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
@@ -250,7 +255,7 @@ impl<N: Network> Inclusion<N> {
                         };
 
                         // Ensure the global state root is the same across iterations.
-                        if *global_state_root != Field::zero() && global_state_root != state_path.global_state_root() {
+                        if global_state_root != state_path.global_state_root() {
                             bail!("Inclusion expected the global state root to be the same across iterations")
                         }
 
@@ -273,11 +278,6 @@ impl<N: Network> Inclusion<N> {
 
             // Insert the leaf into the transaction tree.
             transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
-        }
-
-        // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
-            bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
         if assignments.is_empty() {
