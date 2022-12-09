@@ -193,7 +193,7 @@ version = "2"
 optional = true
 
 [dependencies.indexmap]
-version = "1.8"
+version = "1.9"
 features = [ "rayon" ]
 
 [dependencies.once_cell]
