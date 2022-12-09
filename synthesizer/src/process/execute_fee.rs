@@ -62,8 +62,10 @@ impl<N: Network> Process<N> {
         let execution = Arc::new(RwLock::new(Execution::new()));
         // Initialize the inclusion.
         let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the metrics.
+        let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(call_stack, rng)?;
         lap!(timer, "Execute the circuit");

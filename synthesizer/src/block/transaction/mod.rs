@@ -104,7 +104,7 @@ impl<N: Network> Transaction<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, query, rng)?;
+        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
         // Initialize the transaction.
         Self::from_execution(execution, None)
     }
@@ -119,7 +119,7 @@ impl<N: Network> Transaction<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, query.clone(), rng)?;
+        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
         // Compute the additional fee, if it is present.
         let additional_fee = match additional_fee {
             Some((credits, additional_fee_in_gates)) => {

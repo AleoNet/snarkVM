@@ -30,6 +30,7 @@ use crate::{
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
+    CallMetrics,
 };
 use console::{
     account::PrivateKey,

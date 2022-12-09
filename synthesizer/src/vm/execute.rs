@@ -24,7 +24,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("VM::execute");
 
         // Prepare the query.
@@ -42,7 +42,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, execution, inclusion) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+                let (response, execution, inclusion, metrics) =
+                    $process.execute::<$aleo, _>(authorization.clone(), rng)?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
@@ -61,12 +62,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let execution = cast_ref!(execution as Execution<N>).clone();
+                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
                 lap!(timer, "Prepare the response and execution");
 
                 finish!(timer);
 
-                // Return the response and execution.
-                Ok((response, execution))
+                // Return the response, execution, and metrics.
+                Ok((response, execution, metrics))
             }};
         }
         // Process the logic.
