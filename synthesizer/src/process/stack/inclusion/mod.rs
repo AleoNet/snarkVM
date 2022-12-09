@@ -426,11 +426,6 @@ impl<N: Network> Inclusion<N> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
 
-        // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
-            bail!("Inclusion expected the global state root in the execution to *not* be zero")
-        }
-
         // Retrieve the inclusion proof.
         let inclusion_proof = execution.inclusion_proof();
 
@@ -475,6 +470,11 @@ impl<N: Network> Inclusion<N> {
 
         // Verify the inclusion proof.
         if let Some(inclusion_proof) = inclusion_proof {
+            // Ensure the global state root is not zero.
+            if *global_state_root == Field::zero() {
+                bail!("Inclusion expected the global state root in the execution to *not* be zero")
+            }
+
             // Fetch the inclusion verifying key.
             let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
             // Verify the inclusion proof.
