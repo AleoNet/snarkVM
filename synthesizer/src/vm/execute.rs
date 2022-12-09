@@ -84,7 +84,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         fee_in_gates: u64,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Fee<N>)> {
+    ) -> Result<(Response<N>, Fee<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("VM::execute_fee");
 
         // Prepare the query.
@@ -105,7 +105,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the private key and credits record");
 
                 // Execute the call to fee.
-                let (response, fee_transition, inclusion) =
+                let (response, fee_transition, inclusion, metrics) =
                     $process.execute_fee::<$aleo, _>(private_key, credits.clone(), fee_in_gates, rng)?;
                 lap!(timer, "Execute the call to fee");
 
@@ -125,12 +125,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let fee = cast_ref!(fee as Fee<N>).clone();
-                lap!(timer, "Prepare the response and fee");
+                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
+                lap!(timer, "Prepare the response, fee, and metrics");
 
                 finish!(timer);
 
-                // Return the response and fee.
-                Ok((response, fee))
+                // Return the response, fee, metrics.
+                Ok((response, fee, metrics))
             }};
         }
         // Process the logic.

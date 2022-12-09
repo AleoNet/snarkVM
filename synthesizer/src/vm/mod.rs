@@ -352,7 +352,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 Inclusion::verify_fee(&fee).unwrap();
                 // Return the fee.

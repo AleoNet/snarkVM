@@ -19,6 +19,7 @@ use snarkvm_synthesizer::CallMetrics;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
+    #[allow(clippy::type_complexity)]
     pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         endpoint: Option<String>,

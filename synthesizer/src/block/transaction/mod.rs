@@ -91,7 +91,7 @@ impl<N: Network> Transaction<N> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
         // Compute the fee.
-        let (_, fee) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
+        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
         // Initialize the transaction.
         Self::from_deployment(deployment, fee)
     }
