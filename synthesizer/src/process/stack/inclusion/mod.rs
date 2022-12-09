@@ -300,9 +300,9 @@ impl<N: Network> Inclusion<N> {
     ) -> Result<Execution<N>> {
         match assignments.is_empty() {
             true => {
-                // Ensure the global state root is zero.
-                if *global_state_root != Field::zero() {
-                    bail!("Inclusion expected the global state root in the execution to match")
+                // Ensure the global state root is not zero.
+                if *global_state_root == Field::zero() {
+                    bail!("Inclusion expected the global state root in the execution to *not* be zero")
                 }
 
                 // Ensure the inclusion proof in the execution is 'None'.
