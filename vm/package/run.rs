@@ -15,9 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_synthesizer::CallMetrics;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
+    #[allow(clippy::type_complexity)]
     pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         endpoint: Option<String>,
@@ -25,7 +27,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -95,9 +97,9 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, execution, inclusion) = process.execute::<A, R>(authorization, rng)?;
+        let (response, execution, inclusion, metrics) = process.execute::<A, R>(authorization, rng)?;
 
-        Ok((response, execution, inclusion))
+        Ok((response, execution, inclusion, metrics))
     }
 }
 
@@ -125,7 +127,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution, _inclusion) =
+        let (_response, _execution, _inclusion, _metrics) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
@@ -150,7 +152,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution, _inclusion) =
+        let (_response, _execution, _inclusion, _metrics) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).

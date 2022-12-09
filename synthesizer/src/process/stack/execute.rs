@@ -177,6 +177,9 @@ impl<N: Network> Stack<N> {
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Request");
 
+        // Retrieve the number of constraints for verifying the request in the circuit.
+        let num_request_constraints = A::num_constraints();
+
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
 
@@ -229,6 +232,9 @@ impl<N: Network> Stack<N> {
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>(format!("Function '{}()'", function.name()));
 
+        // Retrieve the number of constraints for executing the function in the circuit.
+        let num_function_constraints = A::num_constraints().saturating_sub(num_request_constraints);
+
         // If the function does not contain function calls, ensure no new public variables were injected.
         if !contains_function_call {
             // Ensure the number of public variables remains the same.
@@ -251,6 +257,10 @@ impl<N: Network> Stack<N> {
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Response");
+
+        // Retrieve the number of constraints for verifying the response in the circuit.
+        let num_response_constraints =
+            A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
 
         // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
         let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
@@ -440,7 +450,7 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref execution, ref inclusion, ref metrics) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
@@ -460,6 +470,16 @@ impl<N: Network> Stack<N> {
             inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
             // Add the transition to the execution.
             execution.write().push(transition);
+
+            // Add the metrics.
+            metrics.write().push(CallMetrics {
+                program_id: *self.program_id(),
+                function_name: *function.name(),
+                num_instructions: function.instructions().len(),
+                num_request_constraints,
+                num_function_constraints,
+                num_response_constraints,
+            });
         }
 
         finish!(timer);

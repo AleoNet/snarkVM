@@ -93,13 +93,23 @@ use std::sync::Arc;
 
 pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
 
+#[derive(Copy, Clone, Debug)]
+pub struct CallMetrics<N: Network> {
+    pub program_id: ProgramID<N>,
+    pub function_name: Identifier<N>,
+    pub num_instructions: usize,
+    pub num_request_constraints: u64,
+    pub num_function_constraints: u64,
+    pub num_response_constraints: u64,
+}
+
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
-    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Inclusion<N>>>),
+    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Inclusion<N>>>, Arc<RwLock<Vec<CallMetrics<N>>>>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -113,8 +123,9 @@ impl<N: Network> CallStack<N> {
         authorization: Authorization<N>,
         execution: Arc<RwLock<Execution<N>>>,
         inclusion: Arc<RwLock<Inclusion<N>>>,
+        metrics: Arc<RwLock<Vec<CallMetrics<N>>>>,
     ) -> Result<Self> {
-        Ok(CallStack::Execute(authorization, execution, inclusion))
+        Ok(CallStack::Execute(authorization, execution, inclusion, metrics))
     }
 }
 
@@ -134,10 +145,11 @@ impl<N: Network> CallStack<N> {
                 Arc::new(RwLock::new(assignments.read().clone())),
             ),
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
-            CallStack::Execute(authorization, execution, inclusion) => CallStack::Execute(
+            CallStack::Execute(authorization, execution, inclusion, metrics) => CallStack::Execute(
                 authorization.replicate(),
                 Arc::new(RwLock::new(execution.read().clone())),
                 Arc::new(RwLock::new(inclusion.read().clone())),
+                Arc::new(RwLock::new(metrics.read().clone())),
             ),
         }
     }

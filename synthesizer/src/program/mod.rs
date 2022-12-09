@@ -1115,7 +1115,8 @@ function compute:
         // Re-run to ensure state continues to work.
         let execution = Arc::new(RwLock::new(Execution::new()));
         let inclusion = Arc::new(RwLock::new(Inclusion::new()));
-        let call_stack = CallStack::execute(authorization, execution, inclusion).unwrap();
+        let metrics = Arc::new(RwLock::new(Vec::new()));
+        let call_stack = CallStack::execute(authorization, execution, inclusion, metrics).unwrap();
         let response = stack.execute_function::<CurrentAleo, _>(call_stack, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());

@@ -23,7 +23,7 @@ impl<N: Network> Process<N> {
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute");
 
         // Retrieve the main request (without popping it).
@@ -36,8 +36,10 @@ impl<N: Network> Process<N> {
         let execution = Arc::new(RwLock::new(Execution::new()));
         // Initialize the inclusion.
         let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the metrics.
+        let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
         lap!(timer, "Initialize call stack");
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
@@ -48,9 +50,11 @@ impl<N: Network> Process<N> {
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
         // Extract the inclusion.
         let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+        // Extract the metrics.
+        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
-        Ok((response, execution, inclusion))
+        Ok((response, execution, inclusion, metrics))
     }
 
     /// Verifies the given execution is valid.
