@@ -280,11 +280,9 @@ impl<N: Network> Inclusion<N> {
             transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
         }
 
-        if assignments.is_empty() {
-            // Ensure the inclusion proof in the execution is 'None'.
-            if execution.inclusion_proof().is_some() {
-                bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
-            }
+        // Ensure the inclusion proof in the execution is 'None'.
+        if execution.inclusion_proof().is_some() {
+            bail!("Inclusion proof in the execution should not be set in 'Inclusion::prepare_execution'")
         }
 
         Ok((assignments, global_state_root))
