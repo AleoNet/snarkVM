@@ -71,7 +71,7 @@ default-features = false
 
 [dependencies.snarkvm-cuda]
 path = "./cuda"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 default-features = false
 
