@@ -1,0 +1,51 @@
+[package]
+name = "snarkvm-cuda"
+version = "0.9.8"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Cuda optimizations for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+    "aleo",
+    "cryptography",
+    "blockchain",
+    "decentralized",
+    "zero-knowledge"
+]
+categories = [
+    "compilers",
+    "cryptography",
+    "mathematics",
+    "wasm",
+    "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "GPL-3.0"
+edition = "2021"
+
+[features]
+# By default, compile with ADX extension if the host supports it.
+# Binary can be executed on systems similar to the host.
+#default = [ "quiet" ]
+default = []
+# Compile in portable mode, without ISA extensions.
+# Binary can be executed on all systems.
+portable = [ "blst/portable" ]
+# Enable ADX even if the host CPU doesn't support it.
+# Binary can be executed on Broadwell+ and Ryzen+ systems.
+#force-adx = [ "blst/force-adx" ]
+quiet = []
+
+[dependencies.blst]
+version = "0.3.9"
+features = []
+
+[dependencies.sppark]
+git = "https://github.com/supranational/sppark"
+rev = "48f6ac6"
+
+[build-dependencies.cc]
+version = "^1.0.70"
+
+[build-dependencies.which]
+version = "^4.0"

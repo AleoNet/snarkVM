@@ -69,6 +69,12 @@ path = "../utilities"
 version = "0.9.10"
 default-features = false
 
+[dependencies.snarkvm-cuda]
+path = "./cuda"
+version = "0.9.8"
+optional = true
+default-features = false
+
 [dependencies.aleo-std]
 version = "0.1.15"
 default-features = false
@@ -170,7 +176,7 @@ wasm = [
   "snark",
   "wasm-bindgen-futures"
 ]
-cuda = [ "crossbeam-channel", "lazy_static", "rust-gpu-tools" ]
+cuda = [ "snarkvm-cuda" ]
 parallel = [
   "rayon",
   "snarkvm-fields/parallel",

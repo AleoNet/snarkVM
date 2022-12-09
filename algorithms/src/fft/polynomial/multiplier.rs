@@ -20,7 +20,9 @@ use crate::fft::domain::{FFTPrecomputation, IFFTPrecomputation};
 
 /// A struct that helps multiply a batch of polynomials
 use super::*;
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
+#[cfg(not(all(feature = "cuda", target_arch = "x86_64")))]
+use snarkvm_utilities::cfg_iter_mut;
+use snarkvm_utilities::{cfg_iter, ExecutionPool};
 
 #[derive(Default)]
 pub struct PolyMultiplier<'a, F: PrimeField> {
@@ -67,6 +69,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
     /// Returns `None` if any of the stored evaluations are over a domain that's
     /// insufficiently large to interpolate the product, or if `F` does not contain
     /// a sufficiently large subgroup for interpolation.
+    #[allow(unused_mut)]
     pub fn multiply(mut self) -> Option<DensePolynomial<F>> {
         if self.polynomials.is_empty() && self.evaluations.is_empty() {
             Some(DensePolynomial::zero())
@@ -76,6 +79,23 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
             if self.evaluations.iter().any(|(_, e)| e.domain() != domain) {
                 None
             } else {
+                #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+                {
+                    let mut poly_slices = Vec::new();
+                    for (_, p) in &self.polynomials {
+                        poly_slices.push(p.coeffs().to_vec());
+                    }
+                    let mut eval_slices = Vec::new();
+                    for (_, e) in &self.evaluations {
+                        eval_slices.push(e.evaluations().to_vec());
+                    }
+
+                    let gpu_result_vec = snarkvm_cuda::polymul(domain.size(), &poly_slices, &eval_slices, &F::zero());
+                    if let Ok(result) = gpu_result_vec {
+                        return Some(DensePolynomial::from_coefficients_vec(result));
+                    }
+                }
+
                 if self.fft_precomputation.is_none() {
                     self.fft_precomputation = Some(Cow::Owned(domain.precompute_fft()));
                 }
