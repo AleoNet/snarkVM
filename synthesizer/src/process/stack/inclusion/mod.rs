@@ -207,6 +207,11 @@ impl<N: Network> Inclusion<N> {
         // Ensure the number of leaves is within the Merkle tree size.
         Transaction::check_execution_size(execution)?;
 
+        // Ensure the inclusion proof in the execution is 'None'.
+        if execution.inclusion_proof().is_some() {
+            bail!("Inclusion proof in the execution should not be set in 'Inclusion::prepare_execution'")
+        }
+
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
         // Initialize a vector for the assignments.
@@ -278,11 +283,6 @@ impl<N: Network> Inclusion<N> {
 
             // Insert the leaf into the transaction tree.
             transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
-        }
-
-        // Ensure the inclusion proof in the execution is 'None'.
-        if execution.inclusion_proof().is_some() {
-            bail!("Inclusion proof in the execution should not be set in 'Inclusion::prepare_execution'")
         }
 
         Ok((assignments, global_state_root))
