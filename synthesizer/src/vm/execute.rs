@@ -52,10 +52,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     inclusion.prepare_execution(execution, query)?
                 };
                 let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                let global_state_root = {
-                    let field = *global_state_root;
-                    cast_ref!(field as Field<$network>).clone()
-                };
+                let global_state_root = *cast_ref!((*global_state_root) as Field<$network>);
+
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the inclusion proof and update the execution.
