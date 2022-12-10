@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.9.8"
+version = "0.9.10"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -128,54 +128,54 @@ wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "0.9.8"
+version = "0.9.10"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "0.9.8"
+version = "0.9.10"
 optional = true
 
 [dependencies.anyhow]
