@@ -69,7 +69,7 @@ path = "../utilities"
 version = "0.9.11"
 default-features = false
 
-[dependencies.snarkvm-cuda]
+[dependencies.snarkvm-algorithms-cuda]
 path = "./cuda"
 version = "0.9.11"
 optional = true
@@ -176,7 +176,7 @@ wasm = [
   "snark",
   "wasm-bindgen-futures"
 ]
-cuda = [ "snarkvm-cuda" ]
+cuda = [ "snarkvm-algorithms-cuda" ]
 parallel = [
   "rayon",
   "snarkvm-fields/parallel",

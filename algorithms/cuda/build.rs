@@ -99,7 +99,7 @@ fn main() {
         if let Some(include) = env::var_os("DEP_SPPARK_ROOT") {
             nvcc.include(include);
         }
-        nvcc.file("cuda/snarkvm_api.cu").compile("snarkvm_cuda");
+        nvcc.file("cuda/snarkvm_api.cu").compile("snarkvm_algorithms_cuda");
 
         println!("cargo:rustc-cfg=feature=\"cuda\"");
         println!("cargo:rerun-if-changed=cuda");

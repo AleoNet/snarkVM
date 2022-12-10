@@ -1,6 +1,6 @@
-# snarkvm-cuda
+# snarkvm-algorithms-cuda
 
-[![Crates.io](https://img.shields.io/crates/v/snarkvm-cuda.svg?color=neon)](https://crates.io/crates/snarkvm-cuda)
+[![Crates.io](https://img.shields.io/crates/v/snarkvm-algorithms-cuda.svg?color=neon)](https://crates.io/crates/snarkvm-algorithms-cuda)
 [![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](https://aleo.org)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
 
