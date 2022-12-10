@@ -49,7 +49,10 @@ version = "0.9.10"
 
 [dependencies.snarkvm-circuit-types]
 path = "./types"
+version = "0.9.10"
 
+[dependencies.snarkvm-console-types-field]
+path = "../console/types/field"
 version = "0.9.10"
 
 [dependencies.serde_json]
