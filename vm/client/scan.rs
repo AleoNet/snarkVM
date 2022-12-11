@@ -30,15 +30,16 @@ impl<N: Network> Client<N> {
         let address_x_coordinate = view_key.to_address().to_x_coordinate();
 
         // Prepare the starting block height, by rounding down to the nearest step of 50.
-        let start_block_height = block_heights.start - (block_heights.start % 50);
+        // let start_block_height = block_heights.start - (block_heights.start % 50);
         // Prepare the ending block height, by rounding up to the nearest step of 50.
-        let end_block_height = block_heights.end + (50 - (block_heights.end % 50));
+        // let end_block_height = block_heights.end + (50 - (block_heights.end % 50));
 
         // Initialize a vector for the records.
         let mut records = Vec::new();
 
-        for start_height in (start_block_height..end_block_height).step_by(50) {
-            let end_height = start_height + 50;
+        let block_heights_end = block_heights.clone();
+        for start_height in block_heights.step_by(50) {
+            let end_height = std::cmp::min(start_height + 50, block_heights_end.end);
 
             // Prepare the URL.
             let url = match self.base_url.join(&format!("/testnet3/blocks?start={start_height}&end={end_height}")) {
