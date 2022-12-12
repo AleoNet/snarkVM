@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Fee<N> {
     /// Serializes the fee into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -42,26 +44,11 @@ impl<'de, N: Network> Deserialize<'de> for Fee<N> {
                 // Parse the fee from a string into a value.
                 let mut fee = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the transitions.
-                let transition = serde_json::from_value(
-                    fee.get_mut("transition")
-                        .ok_or_else(|| de::Error::custom("The \"transition\" field is missing"))?
-                        .take(),
-                )
-                .map_err(de::Error::custom)?;
+                let transition = DeserializeExt::take_from_value::<D>(&mut fee, "transition")?;
                 // Retrieve the global state root.
-                let global_state_root = serde_json::from_value(
-                    fee.get_mut("global_state_root")
-                        .ok_or_else(|| de::Error::custom("The \"global_state_root\" field is missing"))?
-                        .take(),
-                )
-                .map_err(de::Error::custom)?;
+                let global_state_root = DeserializeExt::take_from_value::<D>(&mut fee, "global_state_root")?;
                 // Retrieve the inclusion proof.
-                let inclusion_proof = serde_json::from_value(
-                    fee.get_mut("inclusion")
-                        .ok_or_else(|| de::Error::custom("The \"inclusion\" field is missing"))?
-                        .take(),
-                )
-                .map_err(de::Error::custom)?;
+                let inclusion_proof = DeserializeExt::take_from_value::<D>(&mut fee, "inclusion")?;
                 // Recover the fee.
                 Ok(Self::from(transition, global_state_root, inclusion_proof))
             }

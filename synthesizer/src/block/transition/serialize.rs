@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Transition<N> {
     /// Serializes the transition into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -49,82 +51,31 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                 // Parse the transition from a string into a value.
                 let mut transition = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: N::TransitionID = serde_json::from_value(
-                    transition.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
-                )
-                .map_err(de::Error::custom)?;
+                let id: N::TransitionID = DeserializeExt::take_from_value::<D>(&mut transition, "id")?;
 
                 // Recover the transition.
                 let transition = Self::new(
                     // Retrieve the program ID.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("program")
-                            .ok_or_else(|| de::Error::custom("The \"program\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "program")?,
                     // Retrieve the function name.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("function")
-                            .ok_or_else(|| de::Error::custom("The \"function\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "function")?,
                     // Retrieve the inputs.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("inputs")
-                            .ok_or_else(|| de::Error::custom("The \"inputs\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "inputs")?,
                     // Retrieve the outputs.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("outputs")
-                            .ok_or_else(|| de::Error::custom("The \"outputs\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "outputs")?,
                     // Retrieve the finalize inputs.
                     match transition.get("finalize") {
                         Some(finalize) => Some(serde_json::from_value(finalize.clone()).map_err(de::Error::custom)?),
                         None => None,
                     },
                     // Retrieve the proof.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("proof")
-                            .ok_or_else(|| de::Error::custom("The \"proof\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "proof")?,
                     // Retrieve the `tpk`.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("tpk")
-                            .ok_or_else(|| de::Error::custom("The \"tpk\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "tpk")?,
                     // Retrieve the `tcm`.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("tcm")
-                            .ok_or_else(|| de::Error::custom("The \"tcm\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "tcm")?,
                     // Retrieve the fee.
-                    serde_json::from_value(
-                        transition
-                            .get_mut("fee")
-                            .ok_or_else(|| de::Error::custom("The \"fee\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "fee")?,
                 )
                 .map_err(de::Error::custom)?;
 

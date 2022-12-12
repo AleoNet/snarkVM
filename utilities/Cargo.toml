@@ -59,6 +59,9 @@ optional = true
 version = "1.0"
 default-features = false
 
+[dependencies.serde_json]
+version = "1.0"
+
 [dependencies.thiserror]
 version = "1.0"
 

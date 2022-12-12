@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Deployment<N> {
     /// Serializes the deployment into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -43,29 +45,11 @@ impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
                 // Recover the deployment.
                 let deployment = Self::new(
                     // Retrieve the edition.
-                    serde_json::from_value(
-                        deployment
-                            .get_mut("edition")
-                            .ok_or_else(|| de::Error::custom("The \"edition\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut deployment, "edition")?,
                     // Retrieve the program.
-                    serde_json::from_value(
-                        deployment
-                            .get_mut("program")
-                            .ok_or_else(|| de::Error::custom("The \"program\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut deployment, "program")?,
                     // Retrieve the verifying keys.
-                    serde_json::from_value(
-                        deployment
-                            .get_mut("verifying_keys")
-                            .ok_or_else(|| de::Error::custom("The \"verifying_keys\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut deployment, "verifying_keys")?,
                 )
                 .map_err(de::Error::custom)?;
 

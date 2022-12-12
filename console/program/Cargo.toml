@@ -26,6 +26,10 @@ version = "0.9.11"
 path = "../types"
 version = "0.9.11"
 
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.9.11"
+
 [dependencies.enum_index]
 version = "0.2"
 

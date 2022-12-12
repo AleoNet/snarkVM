@@ -22,6 +22,8 @@ pub use crate::{
     Vec,
 };
 
+use serde::de::{self, DeserializeOwned, Deserializer};
+
 /// Represents metadata to be appended to an object's serialization. For
 /// example, when serializing elliptic curve points, one can
 /// use a `Flag` to represent whether the serialization is the point
@@ -188,4 +190,27 @@ pub trait CanonicalDeserializeWithFlags: Sized {
     /// Reads `Self` and `Flags` from `reader`.
     /// Returns empty flags by default.
     fn deserialize_with_flags<R: Read, F: Flags>(reader: R) -> Result<(Self, F), SerializationError>;
+}
+
+/// A helper trait used to simplify value extraction.
+pub trait DeserializeExt<'de>
+where
+    Self: DeserializeOwned,
+{
+    fn take_from_value<D: Deserializer<'de>>(value: &mut serde_json::Value, field: &str) -> Result<Self, D::Error>;
+}
+
+impl<'de, T> DeserializeExt<'de> for T
+where
+    T: DeserializeOwned,
+{
+    fn take_from_value<D: Deserializer<'de>>(value: &mut serde_json::Value, field: &str) -> Result<Self, D::Error> {
+        serde_json::from_value(
+            value
+                .get_mut(field)
+                .ok_or_else(|| de::Error::custom(format!("The \"{}\" field is missing", field)))?
+                .take(),
+        )
+        .map_err(de::Error::custom)
+    }
 }

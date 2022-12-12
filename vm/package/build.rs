@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 pub struct BuildRequest<N: Network> {
     program: Program<N>,
     imports: Vec<Program<N>>,
@@ -68,23 +70,11 @@ impl<'de, N: Network> Deserialize<'de> for BuildRequest<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(
-                request.get_mut("program").ok_or_else(|| de::Error::custom("The \"program\" field is missing"))?.take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "program")?,
             // Retrieve the imports.
-            serde_json::from_value(
-                request.get_mut("imports").ok_or_else(|| de::Error::custom("The \"imports\" field is missing"))?.take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "imports")?,
             // Retrieve the function name.
-            serde_json::from_value(
-                request
-                    .get_mut("function_name")
-                    .ok_or_else(|| de::Error::custom("The \"function_name\" field is missing"))?
-                    .take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "function_name")?,
         ))
     }
 }
@@ -148,37 +138,13 @@ impl<'de, N: Network> Deserialize<'de> for BuildResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(
-                response
-                    .get_mut("program_id")
-                    .ok_or_else(|| de::Error::custom("The \"program_id\" field is missing"))?
-                    .take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "program_id")?,
             // Retrieve the function name.
-            serde_json::from_value(
-                response
-                    .get_mut("function_name")
-                    .ok_or_else(|| de::Error::custom("The \"function_name\" field is missing"))?
-                    .take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "function_name")?,
             // Retrieve the proving key.
-            serde_json::from_value(
-                response
-                    .get_mut("proving_key")
-                    .ok_or_else(|| de::Error::custom("The \"proving_key\" field is missing"))?
-                    .take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "proving_key")?,
             // Retrieve the verifying key.
-            serde_json::from_value(
-                response
-                    .get_mut("verifying_key")
-                    .ok_or_else(|| de::Error::custom("The \"verifying_key\" field is missing"))?
-                    .take(),
-            )
-            .map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "verifying_key")?,
         ))
     }
 }

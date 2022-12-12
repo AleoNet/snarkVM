@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for InputID<N> {
     /// Serializes the input ID into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -69,60 +71,18 @@ impl<'de, N: Network> Deserialize<'de> for InputID<N> {
                 let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Recover the input.
                 let input_id = match input.get("type").and_then(|t| t.as_str()) {
-                    Some("constant") => InputID::Constant(
-                        serde_json::from_value(
-                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                    ),
-                    Some("public") => InputID::Public(
-                        serde_json::from_value(
-                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                    ),
-                    Some("private") => InputID::Private(
-                        serde_json::from_value(
-                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                    ),
+                    Some("constant") => InputID::Constant(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
+                    Some("public") => InputID::Public(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
+                    Some("private") => InputID::Private(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
                     Some("record") => InputID::Record(
-                        serde_json::from_value(
-                            input
-                                .get_mut("commitment")
-                                .ok_or_else(|| de::Error::custom("The \"commitment\" field is missing"))?
-                                .take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                        serde_json::from_value(
-                            input
-                                .get_mut("gamma")
-                                .ok_or_else(|| de::Error::custom("The \"gamma\" field is missing"))?
-                                .take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                        serde_json::from_value(
-                            input
-                                .get_mut("serial_number")
-                                .ok_or_else(|| de::Error::custom("The \"serial_number\" field is missing"))?
-                                .take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                        serde_json::from_value(
-                            input
-                                .get_mut("tag")
-                                .ok_or_else(|| de::Error::custom("The \"tag\" field is missing"))?
-                                .take(),
-                        )
-                        .map_err(de::Error::custom)?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "commitment")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "gamma")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "serial_number")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "tag")?,
                     ),
-                    Some("external_record") => InputID::ExternalRecord(
-                        serde_json::from_value(
-                            input.get_mut("id").ok_or_else(|| de::Error::custom("The \"id\" field is missing"))?.take(),
-                        )
-                        .map_err(de::Error::custom)?,
-                    ),
+                    Some("external_record") => {
+                        InputID::ExternalRecord(DeserializeExt::take_from_value::<D>(&mut input, "id")?)
+                    }
                     _ => return Err(de::Error::custom("Invalid input type")),
                 };
                 Ok(input_id)

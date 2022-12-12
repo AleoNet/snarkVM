@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for ProverSolution<N> {
     /// Serializes the prover solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -41,21 +43,9 @@ impl<'de, N: Network> Deserialize<'de> for ProverSolution<N> {
             true => {
                 let mut prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(
-                        prover_solution
-                            .get_mut("partial_solution")
-                            .ok_or_else(|| de::Error::custom("The \"partial_solution\" field is missing"))?
-                            .take(),
-                    )
-                    .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut prover_solution, "partial_solution")?,
                     KZGProof {
-                        w: serde_json::from_value(
-                            prover_solution
-                                .get_mut("proof.w")
-                                .ok_or_else(|| de::Error::custom("The \"proof.w\" field is missing"))?
-                                .take(),
-                        )
-                        .map_err(de::Error::custom)?,
+                        w: DeserializeExt::take_from_value::<D>(&mut prover_solution, "proof.w")?,
                         random_v: serde_json::from_value(
                             prover_solution.get_mut("proof.random_v").unwrap_or(&mut serde_json::Value::Null).take(),
                         )

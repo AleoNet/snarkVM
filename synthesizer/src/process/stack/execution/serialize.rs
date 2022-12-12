@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Execution<N> {
     /// Serializes the execution into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -43,21 +45,9 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                 // Parse the execution from a string into a value.
                 let mut execution = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the transitions.
-                let transitions: Vec<_> = serde_json::from_value(
-                    execution
-                        .get_mut("transitions")
-                        .ok_or_else(|| de::Error::custom("The \"transitions\" field is missing"))?
-                        .take(),
-                )
-                .map_err(de::Error::custom)?;
+                let transitions: Vec<_> = DeserializeExt::take_from_value::<D>(&mut execution, "transitions")?;
                 // Retrieve the global state root.
-                let global_state_root = serde_json::from_value(
-                    execution
-                        .get_mut("global_state_root")
-                        .ok_or_else(|| de::Error::custom("The \"global_state_root\" field is missing"))?
-                        .take(),
-                )
-                .map_err(de::Error::custom)?;
+                let global_state_root = DeserializeExt::take_from_value::<D>(&mut execution, "global_state_root")?;
                 // Retrieve the inclusion proof.
                 let inclusion_proof = serde_json::from_value(
                     execution.get_mut("inclusion").unwrap_or(&mut serde_json::Value::Null).take(),
