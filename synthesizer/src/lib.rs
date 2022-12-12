@@ -19,6 +19,8 @@
 #![allow(clippy::single_element_loop)]
 // TODO (howardwu): Remove me after tracing.
 #![allow(clippy::print_in_format_impl)]
+// TODO (howardwu): Update the return type on `execute` after stabilizing the interface.
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate tracing;

@@ -90,7 +90,8 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                         eval_slices.push(e.evaluations().to_vec());
                     }
 
-                    let gpu_result_vec = snarkvm_cuda::polymul(domain.size(), &poly_slices, &eval_slices, &F::zero());
+                    let gpu_result_vec =
+                        snarkvm_algorithms_cuda::polymul(domain.size(), &poly_slices, &eval_slices, &F::zero());
                     if let Ok(result) = gpu_result_vec {
                         return Some(DensePolynomial::from_coefficients_vec(result));
                     }

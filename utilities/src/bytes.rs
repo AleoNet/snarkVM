@@ -431,13 +431,6 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
             result += bit_value << i as u8;
         }
 
-        // Pad the bits if their number doesn't correspond to full bytes
-        if bits.len() < 8 {
-            for i in bits.len()..8 {
-                let bit_value = false as u8;
-                result += bit_value << i as u8;
-            }
-        }
         bytes.push(result);
     }
 
