@@ -39,6 +39,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// add");
         println!("{}", output);
     }
 
@@ -51,6 +52,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// compare");
         println!("{}", output);
     }
 
@@ -63,6 +65,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// div");
         println!("{}", output);
     }
 
@@ -75,6 +78,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// div_unchecked");
         println!("{}", output);
     }
 
@@ -86,6 +90,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// double");
         println!("{}", output);
     }
 
@@ -98,6 +103,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// equal");
         println!("{}", output);
     }
 
@@ -109,6 +115,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// inverse");
         println!("{}", output);
     }
 
@@ -121,6 +128,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// mul");
         println!("{}", output);
     }
 
@@ -132,6 +140,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// neg");
         println!("{}", output);
     }
 
@@ -144,6 +153,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// pow");
         println!("{}", output);
     }
 
@@ -155,6 +165,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// square");
         println!("{}", output);
     }
 
@@ -166,6 +177,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// square_root");
         println!("{}", output);
     }
 
@@ -178,6 +190,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// sub");
         println!("{}", output);
     }
 
@@ -191,6 +204,7 @@ mod field {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// ternary");
         println!("{}", output);
     }
 }
