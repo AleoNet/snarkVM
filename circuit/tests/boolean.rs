@@ -37,6 +37,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// and");
         println!("{}", output);
     }
 
@@ -50,6 +51,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// equal");
         println!("{}", output);
     }
 
@@ -63,6 +65,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// nand");
         println!("{}", output);
     }
 
@@ -76,6 +79,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// nor");
         println!("{}", output);
     }
 
@@ -88,6 +92,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// not");
         println!("{}", output);
     }
 
@@ -101,6 +106,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// or");
         println!("{}", output);
     }
 
@@ -115,6 +121,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// ternary");
         println!("{}", output);
     }
 
@@ -128,6 +135,7 @@ mod boolean {
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// xor");
         println!("{}", output);
     }
 }
