@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::LinearCombination;
+use crate::{LinearCombination, Variable};
 use serde::{Deserialize, Serialize};
 use snarkvm_fields::PrimeField;
 
@@ -38,7 +38,7 @@ pub struct ConstraintJSON {
 }
 
 /// Wrapper for R1CS LinearCombination in JSON notation.
-pub type LinearCombinationJSON = Vec<String>;
+pub type LinearCombinationJSON = Vec<(String,String)>;
 
 impl CircuitJSON {
     pub fn new(
@@ -56,16 +56,30 @@ impl CircuitJSON {
 impl ConstraintJSON {
     pub fn new<F: PrimeField>(a: &LinearCombination<F>, b: &LinearCombination<F>, c: &LinearCombination<F>) -> Self {
         Self {
-            a: ConstraintJSON::linear_combination_string(a),
-            b: ConstraintJSON::linear_combination_string(b),
-            c: ConstraintJSON::linear_combination_string(c),
+            a: ConstraintJSON::linear_combination_json(a),
+            b: ConstraintJSON::linear_combination_json(b),
+            c: ConstraintJSON::linear_combination_json(c),
         }
     }
 
-    fn linear_combination_string<F: PrimeField>(lc: &LinearCombination<F>) -> LinearCombinationJSON {
-        let mut lc_string = lc.to_terms().values().map(|variable| format!("{variable}")).collect::<Vec<String>>();
-        lc_string.push(format!("{:?}", lc.value()));
+    fn variable_json<F: PrimeField>(v: &Variable<F>) -> String {
+        match v {
+            Variable::Constant(val) => format!("c{}", val),
+            Variable::Public(idx, _) => format!("x{}", idx),
+            Variable::Private(idx, _) => format!("w{}", idx),
 
-        lc_string
+
+        }
+    }
+
+    fn linear_combination_json<F: PrimeField>(lc: &LinearCombination<F>) -> LinearCombinationJSON {
+        let mut lc_json = lc.to_terms().iter().
+            map(|(key, value)|
+                (Self::variable_json(key), format!("{value}"))).collect::<Vec<(String,String)>>();
+        //lc_string.push(format!("{:?}", lc.value()));
+        if  ! lc.to_constant().is_zero() {
+            lc_json.push((String::from("ONE"), format!("{}", lc.to_constant())));
+        }
+        lc_json
     }
 }
