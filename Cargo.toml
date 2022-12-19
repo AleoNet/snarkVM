@@ -180,7 +180,7 @@ version = "0.9.11"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.66"
+version = "1.0.68"
 optional = true
 
 [dependencies.clap]

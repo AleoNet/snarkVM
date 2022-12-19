@@ -78,7 +78,7 @@ version = "0.1.15"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.66"
+version = "1.0.68"
 
 [dependencies.blake2]
 version = "0.10"

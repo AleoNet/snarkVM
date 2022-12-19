@@ -21,7 +21,7 @@ path = "../../../utilities"
 version = "0.9.11"
 
 [dependencies.anyhow]
-version = "1.0.66"
+version = "1.0.68"
 
 [dependencies.bech32]
 version = "0.9"
