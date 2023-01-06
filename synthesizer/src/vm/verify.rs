@@ -20,6 +20,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the transaction in the VM.
     #[inline]
     pub fn verify(&self, transaction: &Transaction<N>) -> bool {
+        let timer = timer!("VM::verify");
+
         // Compute the Merkle root of the transaction.
         match transaction.to_root() {
             // Ensure the transaction ID is correct.
@@ -34,6 +36,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 return false;
             }
         };
+        lap!(timer, "Verify the transaction id");
 
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(transaction.transition_ids()) {
@@ -64,8 +67,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             warn!("Found duplicate nonces in the transactions list");
             return false;
         }
+        lap!(timer, "Check for duplicate elements");
 
-        match transaction {
+        let verification = match transaction {
             Transaction::Deploy(_, deployment, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
@@ -95,12 +99,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Verify the additional fee.
                     && check_additional_fee
             }
-        }
+        };
+
+        lap!(timer, "Verify the transaction");
+
+        finish!(timer);
+
+        verification
     }
 
     /// Verifies the given deployment.
     #[inline]
     fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
+        let timer = timer!("VM::verify_deployment");
+
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -118,9 +130,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Process the logic.
         match process!(self, logic) {
-            Ok(()) => true,
+            Ok(()) => {
+                finish!(timer);
+                true
+            }
             Err(error) => {
                 warn!("Deployment verification failed: {error}");
+                finish!(timer);
                 false
             }
         }
@@ -129,8 +145,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given execution.
     #[inline]
     fn verify_execution(&self, execution: &Execution<N>) -> bool {
+        let timer = timer!("VM::verify_execution");
+
         // Verify the execution.
-        match self.process.read().verify_execution::<true>(execution) {
+        let verification = self.process.read().verify_execution::<true>(execution);
+        finish!(timer);
+
+        match verification {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
                 Ok(true) => true,
@@ -153,8 +174,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given fee.
     #[inline]
     fn verify_fee(&self, fee: &Fee<N>) -> bool {
+        let timer = timer!("VM::verify_fee");
+
         // Verify the fee.
-        match self.process.read().verify_fee(fee) {
+        let verification = self.process.read().verify_fee(fee);
+        finish!(timer);
+
+        match verification {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
                 Ok(true) => true,

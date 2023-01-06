@@ -247,4 +247,24 @@ record message:
         );
         assert!(candidate.is_err());
     }
+
+    #[test]
+    fn test_parse_max_members() {
+        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+            string += &format!("    member_{} as field.private;\n", i);
+        }
+        let candidate = RecordType::<CurrentNetwork>::parse(&string);
+        assert!(candidate.is_ok());
+    }
+
+    #[test]
+    fn test_parse_too_many_members() {
+        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+            string += &format!("    member_{} as field.private;\n", i);
+        }
+        let candidate = RecordType::<CurrentNetwork>::parse(&string);
+        assert!(candidate.is_err());
+    }
 }

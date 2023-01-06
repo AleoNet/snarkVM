@@ -446,13 +446,7 @@ impl<N: Network> Parser for Cast<N> {
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the operands from the string.
-        let (string, operands) = map_res(many1(parse_operand), |operands: Vec<Operand<N>>| {
-            // Ensure the number of operands is within the bounds.
-            match operands.len() <= N::MAX_OPERANDS {
-                true => Ok(operands),
-                false => Err(error("Failed to parse 'cast' opcode: too many operands")),
-            }
-        })(string)?;
+        let (string, operands) = many1(parse_operand)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "into" from the string.
@@ -469,8 +463,20 @@ impl<N: Network> Parser for Cast<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the register type from the string.
         let (string, register_type) = RegisterType::parse(string)?;
-
-        Ok((string, Self { operands, destination, register_type }))
+        // Check that the number of operands does not exceed the maximum number of data entries.
+        let max_operands = match register_type {
+            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+        };
+        match operands.len() <= max_operands {
+            true => Ok((string, Self { operands, destination, register_type })),
+            false => {
+                map_res(fail, |_: ParserResult<Self>| Err(error("Failed to parse 'cast' opcode: too many operands")))(
+                    string,
+                )
+            }
+        }
     }
 }
 
@@ -503,8 +509,13 @@ impl<N: Network> Display for Cast<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
-        if self.operands.len().is_zero() || self.operands.len() > N::MAX_OPERANDS {
-            eprintln!("The number of operands must be nonzero and <= {}", N::MAX_OPERANDS);
+        let max_operands = match self.register_type() {
+            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+        };
+        if self.operands.len().is_zero() || self.operands.len() > max_operands {
+            eprintln!("The number of operands must be nonzero and <= {}", max_operands);
             return Err(fmt::Error);
         }
         // Print the operation.
@@ -520,9 +531,10 @@ impl<N: Network> FromBytes for Cast<N> {
         // Read the number of operands.
         let num_operands = u8::read_le(&mut reader)? as usize;
 
-        // Ensure the number of operands is within the bounds.
-        if num_operands.is_zero() || num_operands > N::MAX_OPERANDS {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_OPERANDS)));
+        // Ensure that the number of operands does not exceed the upper bound.
+        // Note: although a similar check is performed later, this check is performed to ensure that an exceedingly large number of operands is not allocated.
+        if num_operands.is_zero() || num_operands > N::MAX_DATA_ENTRIES + 2 {
+            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_DATA_ENTRIES + 2)));
         }
 
         // Initialize the vector for the operands.
@@ -538,6 +550,16 @@ impl<N: Network> FromBytes for Cast<N> {
         // Read the casted register type.
         let register_type = RegisterType::read_le(&mut reader)?;
 
+        // Ensure the number of operands is within the bounds for the register type.
+        let max_operands = match register_type {
+            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+        };
+        if num_operands.is_zero() || num_operands > max_operands {
+            return Err(error(format!("The number of operands must be nonzero and <= {}", max_operands)));
+        }
+
         // Return the operation.
         Ok(Self { operands, destination, register_type })
     }
@@ -547,8 +569,13 @@ impl<N: Network> ToBytes for Cast<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
-        if self.operands.len().is_zero() || self.operands.len() > N::MAX_OPERANDS {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_OPERANDS)));
+        let max_operands = match self.register_type() {
+            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+        };
+        if self.operands.len().is_zero() || self.operands.len() > max_operands {
+            return Err(error(format!("The number of operands must be nonzero and <= {}", max_operands)));
         }
 
         // Write the number of operands.
@@ -596,5 +623,75 @@ mod tests {
             RegisterType::Record(Identifier::from_str("token").unwrap()),
             "The value type is incorrect"
         );
+    }
+
+    #[test]
+    fn test_parse_cast_into_plaintext_max_operands() {
+        let mut string = "cast ".to_string();
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES);
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+            string.push_str(&format!("r{} ", i));
+            operands.push(Operand::Register(Register::Locator(i as u64)));
+        }
+        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES));
+        let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES, "The number of operands is incorrect");
+        assert_eq!(cast.operands, operands, "The operands are incorrect");
+        assert_eq!(
+            cast.destination,
+            Register::Locator(CurrentNetwork::MAX_DATA_ENTRIES as u64),
+            "The destination register is incorrect"
+        );
+        assert_eq!(
+            cast.register_type,
+            RegisterType::Plaintext(PlaintextType::Struct(Identifier::from_str("foo").unwrap())),
+            "The value type is incorrect"
+        );
+    }
+
+    #[test]
+    fn test_parse_cast_into_record_max_operands() {
+        let mut string = "cast ".to_string();
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES + 2);
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES + 2 {
+            string.push_str(&format!("r{} ", i));
+            operands.push(Operand::Register(Register::Locator(i as u64)));
+        }
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 2));
+        let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES + 2, "The number of operands is incorrect");
+        assert_eq!(cast.operands, operands, "The operands are incorrect");
+        assert_eq!(
+            cast.destination,
+            Register::Locator((CurrentNetwork::MAX_DATA_ENTRIES + 2) as u64),
+            "The destination register is incorrect"
+        );
+        assert_eq!(
+            cast.register_type,
+            RegisterType::Record(Identifier::from_str("token").unwrap()),
+            "The value type is incorrect"
+        );
+    }
+
+    #[test]
+    fn test_parse_cast_into_record_too_many_operands() {
+        let mut string = "cast ".to_string();
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES + 2 {
+            string.push_str(&format!("r{} ", i));
+        }
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 3));
+        assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
+    }
+
+    #[test]
+    fn test_parse_cast_into_plaintext_too_many_operands() {
+        let mut string = "cast ".to_string();
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+            string.push_str(&format!("r{} ", i));
+        }
+        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES + 1));
+        assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
     }
 }
