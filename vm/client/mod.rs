@@ -18,10 +18,6 @@ mod execute;
 mod rest;
 mod scan;
 
-use anyhow::{anyhow, bail, Result};
-use core::{convert::TryInto, ops::Range};
-use reqwest::Url;
-
 use crate::{
     console::{
         account::{PrivateKey, ViewKey},
@@ -29,6 +25,9 @@ use crate::{
     },
     synthesizer::{Block, BlockMemory, ConsensusMemory, ConsensusStore, Program, Query, Transaction, VM},
 };
+use anyhow::{anyhow, bail, Result};
+use core::{convert::TryInto, ops::Range};
+use reqwest::Url;
 
 #[derive(Clone)]
 pub struct Client<N: Network> {

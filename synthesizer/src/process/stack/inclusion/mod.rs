@@ -36,6 +36,7 @@ use console::{
 };
 
 use console::program::{Identifier, ProgramID};
+use reqwest::Url;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -96,7 +97,10 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
+                3 => Ok(Self::get_request(
+                    Url::parse(url)?.join(&format!("/testnet3/program/{program_id}"))?.to_string().as_ref(),
+                )?
+                .json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }
@@ -107,7 +111,8 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
+                3 => Ok(Self::get_request(Url::parse(url)?.join("/testnet3/latest/stateRoot")?.to_string().as_ref())?
+                    .json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }
@@ -118,7 +123,10 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
+                3 => Ok(Self::get_request(
+                    Url::parse(url)?.join(&format!("/testnet3/statePath/{commitment}"))?.to_string().as_ref(),
+                )?
+                .json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }

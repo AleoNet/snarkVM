@@ -21,6 +21,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// This method assumes the given transactions **are valid**.
     #[inline]
     pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
+        let timer = timer!("VM::finalize");
         atomic_write_batch!(self, {
             // Acquire the write lock on the process.
             let mut process = self.process.write();
@@ -29,15 +30,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Finalize the transaction.
                 match transaction {
                     Transaction::Deploy(_, deployment, _) => {
-                        process.finalize_deployment(self.program_store(), deployment)?
+                        process.finalize_deployment(self.program_store(), deployment)?;
+                        lap!(timer, "Finalize deployment");
                     }
                     Transaction::Execute(_, execution, _) => {
-                        process.finalize_execution(self.program_store(), execution)?
+                        process.finalize_execution(self.program_store(), execution)?;
+                        lap!(timer, "Finalize execution");
                     }
                 }
             }
             Ok(())
         });
+
+        finish!(timer);
+
         Ok(())
     }
 }

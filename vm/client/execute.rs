@@ -88,4 +88,34 @@ mod tests {
         //     .body(serde_json::to_string(&transaction).unwrap()).send().unwrap();
         // println!("{:#?}\n\n{:#?}", transaction, response);
     }
+
+    #[test]
+    fn test_local_execute() {
+        // Initialize the client snarkOS beacon rest service default port 3030
+        let client = Client::<N>::new("http://127.0.0.1:3030").unwrap();
+
+        // Derive the view key.
+        let private_key =
+            PrivateKey::<N>::from_str("APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH").unwrap();
+        let view_key = ViewKey::<N>::try_from(&private_key).unwrap();
+        let address = view_key.to_address();
+
+        // Scan for the record.
+        let records = client.scan(private_key, 1..10).unwrap();
+        let (_commitment, record) = records[0].clone();
+
+        // Decrypt the record.
+        let record = record.decrypt(&view_key).unwrap();
+        // Prepare the inputs.
+        let inputs = [record.to_string(), address.to_string(), (**record.gates()).to_string()];
+        // Execute the program.
+        let (_response, transaction) = client.execute(&private_key, "credits.aleo", "transfer", inputs).unwrap();
+        assert_eq!(transaction.transitions().count(), 1);
+
+        // let response = reqwest::blocking::Client::new()
+        //     .post(format!("{}/testnet3/transaction/broadcast", client.base_url))
+        //     .header("Content-Type", "application/json")
+        //     .body(serde_json::to_string(&transaction).unwrap()).send().unwrap();
+        // println!("{:#?}\n\n{:#?}", transaction, response);
+    }
 }

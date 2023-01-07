@@ -36,11 +36,13 @@ use console::{
     types::{I64, U16, U64},
 };
 
+use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+use std::sync::Arc;
+
 #[cfg(test)]
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
@@ -57,21 +59,31 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+        let timer = timer!("Process:setup");
+
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
+        lap!(timer, "Load credits program");
+
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
+        lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
             stack.synthesize_key::<A, _>(function_name, rng)?;
+            lap!(timer, "Synthesize circuit keys for {function_name}");
         }
+        lap!(timer, "Synthesize credits program keys");
 
         // Add the 'credits.aleo' stack to the process.
         process.stacks.insert(*program.id(), stack);
+
+        finish!(timer);
         // Return the process.
         Ok(process)
     }
@@ -93,31 +105,46 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn load() -> Result<Self> {
+        let timer = timer!("Process::load");
+
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
+        lap!(timer, "Load credits program");
+
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
+        lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
-            // Load the proving and verifying key bytes.
-            let (proving_key, verifying_key) = N::get_credits_key_bytes(function_name.to_string())?;
+            // Load the proving key.
+            let proving_key = N::get_credits_proving_key(function_name.to_string())?;
+            stack.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
+            lap!(timer, "Load proving key for {function_name}");
 
-            // Insert the proving and verifying key.
-            stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
-            stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
+            // Load the verifying key.
+            let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
+            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone()))?;
+            lap!(timer, "Load verifying key for {function_name}");
         }
+        lap!(timer, "Load circuit keys");
 
         // Initialize the inclusion proving key.
         let _ = N::inclusion_proving_key();
+        lap!(timer, "Load inclusion proving key");
+
         // Initialize the inclusion verifying key.
         let _ = N::inclusion_verifying_key();
+        lap!(timer, "Load inclusion verifying key");
 
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
+
+        finish!(timer, "Process::load");
         // Return the process.
         Ok(process)
     }
@@ -137,13 +164,15 @@ impl<N: Network> Process<N> {
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
-            // Load the proving and verifying key bytes.
-            let (proving_key, verifying_key) = N::get_credits_key_bytes(function_name.to_string())?;
-
+            // Cache the proving and verifying key.
             let (proving_key, verifying_key) = cache.entry(function_name.to_string()).or_insert_with(|| {
-                (ProvingKey::from_bytes_le(proving_key).unwrap(), VerifyingKey::from_bytes_le(verifying_key).unwrap())
-            });
+                // Load the proving key.
+                let proving_key = N::get_credits_proving_key(function_name.to_string()).unwrap();
+                // Load the verifying key.
+                let verifying_key = N::get_credits_verifying_key(function_name.to_string()).unwrap();
 
+                (ProvingKey::new(proving_key.clone()), VerifyingKey::new(verifying_key.clone()))
+            });
             // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, proving_key.clone())?;
             stack.insert_verifying_key(function_name, verifying_key.clone())?;

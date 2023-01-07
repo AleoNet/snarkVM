@@ -26,6 +26,8 @@ impl<N: Network> Process<N> {
         fee_in_gates: u64,
         rng: &mut R,
     ) -> Result<(Response<N>, Transition<N>, Inclusion<N>)> {
+        let timer = timer!("Process::execute_fee");
+
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
@@ -35,14 +37,18 @@ impl<N: Network> Process<N> {
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
         let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
+        lap!(timer, "Construct the inputs");
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
+        lap!(timer, "Initialize the authorization");
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
         let _response = self.get_stack(program_id)?.execute_function::<A, R>(call_stack, rng)?;
+        lap!(timer, "Construct the authorization from the function");
 
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
@@ -60,12 +66,16 @@ impl<N: Network> Process<N> {
         let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(call_stack, rng)?;
+        lap!(timer, "Execute the circuit");
+
         // Extract the execution.
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution contains 1 transition.
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
         // Extract the inclusion.
         let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+
+        finish!(timer);
 
         Ok((response, execution.peek()?.clone(), inclusion))
     }
@@ -74,6 +84,8 @@ impl<N: Network> Process<N> {
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
     pub fn verify_fee(&self, fee: &Fee<N>) -> Result<()> {
+        let timer = timer!("Process::verify_fee");
+
         #[cfg(debug_assertions)]
         println!("Verifying fee from {}/{}...", fee.program_id(), fee.function_name());
 
@@ -103,6 +115,8 @@ impl<N: Network> Process<N> {
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")
         }
+        lap!(timer, "Verify the inputs");
+
         // Ensure each output is valid.
         let num_inputs = fee.inputs().len();
         if fee
@@ -113,12 +127,14 @@ impl<N: Network> Process<N> {
         {
             bail!("Failed to verify a fee output")
         }
+        lap!(timer, "Verify the outputs");
 
         // Ensure the fee is not negative.
         ensure!(fee.fee() >= &0, "The fee must be zero or positive");
 
         // Ensure the inclusion proof is valid.
         Inclusion::verify_fee(fee)?;
+        lap!(timer, "Verify the inclusion proof");
 
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
@@ -131,6 +147,7 @@ impl<N: Network> Process<N> {
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
         // Extend the inputs with the fee.
         inputs.push(*I64::<N>::new(*fee.fee()).to_field()?);
+        lap!(timer, "Construct the verifier inputs");
 
         // Retrieve the stack.
         let stack = self.get_stack(fee.program_id())?;
@@ -157,6 +174,9 @@ impl<N: Network> Process<N> {
             verifying_key.verify(function.name(), &inputs, fee.proof()),
             "Fee is invalid - failed to verify transition proof"
         );
+        lap!(timer, "Verify the transition proof");
+
+        finish!(timer);
 
         Ok(())
     }
