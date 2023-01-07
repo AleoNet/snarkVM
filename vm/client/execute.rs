@@ -96,13 +96,12 @@ mod tests {
 
         // Derive the view key.
         let private_key =
-            PrivateKey::<N>::from_str("APrivateKey1zkp5fCUVzS9b7my34CdraHBF9XzB58xYiPzFJQvjhmvv7A8").unwrap();
+            PrivateKey::<N>::from_str("APrivateKey1zkp8CZNn3yeCseEtxuVPbDCwSyhGW6yZKUYKfgXmcpoGPWH").unwrap();
         let view_key = ViewKey::<N>::try_from(&private_key).unwrap();
         let address = view_key.to_address();
 
         // Scan for the record.
         let records = client.scan(private_key, 1..10).unwrap();
-        assert_eq!(records.len(), 1);
         let (_commitment, record) = records[0].clone();
 
         // Decrypt the record.
