@@ -606,6 +606,13 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     pub fn find_transaction_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
         self.storage.find_transaction_id(program_id)
     }
+
+    // TODO (raychu86): Remove this inefficient implementation in favor of a new dedicated map.
+    //  i.e. ReverseFeeMap: Map<N::TransitionID, (N::TransactionID, ProgramID<N>)>;
+    /// Returns the transaction ID that deployed the given `transition ID`.
+    pub fn find_transaction_id_from_transition_id(&self, transition_id: &N::TransitionID) -> Option<N::TransactionID> {
+        self.storage.fee_map().iter().find(|(_, fee)| fee.0 == *transition_id).map(|(a, _)| a.into_owned())
+    }
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {

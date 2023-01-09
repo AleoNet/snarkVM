@@ -392,7 +392,14 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 
     /// Returns the transaction ID that contains the given `transition ID`.
     pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.storage.execution_store().find_transaction_id(transition_id)
+        // Check if the transaction id exists in the execution store.
+        let execution_transaction = self.storage.execution_store().find_transaction_id(transition_id);
+
+        // Check if the transaction id exists in the transition store.
+        match execution_transaction {
+            Ok(None) => Ok(self.storage.deployment_store().find_transaction_id_from_transition_id(transition_id)),
+            _ => execution_transaction,
+        }
     }
 }
 
