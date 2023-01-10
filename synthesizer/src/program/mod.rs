@@ -1198,4 +1198,82 @@ function compute:
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
+
+    #[test]
+    fn test_program_evaluate_cast_in_closure() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program token_with_cast.aleo;
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    token_amount as u64.private;
+
+closure mint:
+    input r0 as address;
+    input r1 as u64;
+    input r2 as u64;
+    cast r0 r1 r2 into r3 as token.record;
+    output r3 as token.record;
+
+function compute:
+    input r0 as u64.private;
+    input r1 as u64.private;
+    cast self.caller r0 r1 into r2 as token.record;
+    output r2 as token.record;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize caller private key.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let inputs = [Value::<CurrentNetwork>::from_str("5u64").unwrap(), Value::from_str("100u64").unwrap()];
+
+        // Construct the process.
+        let process = crate::process::test_helpers::sample_process(&program);
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, inputs.iter(), rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.peek_next().unwrap();
+
+        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
+        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
+
+        // Declare the expected output value.
+        let expected = Value::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
+        ))
+        .unwrap();
+
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Compute the output value.
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+
+        // Re-run to ensure state continues to work.
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+    }
 }
