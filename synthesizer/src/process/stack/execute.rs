@@ -46,17 +46,24 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+
+        use circuit::Eject;
+
+        // Set the transition caller.
+        registers.set_caller(caller.clone().eject_value());
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(caller);
+        // Set the transition view key.
+        registers.set_tvk(tvk.clone().eject_value());
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
+
         lap!(timer, "Initialize the registers");
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // If the circuit is in execute mode, then store the console input.
             if let CallStack::Execute(..) = registers.call_stack() {
-                use circuit::Eject;
                 // Assign the console input to the register.
                 registers.store(self, register, input.eject_value())?;
             }
