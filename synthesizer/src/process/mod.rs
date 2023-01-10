@@ -1670,4 +1670,78 @@ function compute:
 
         process.verify_execution::<false>(&execution).unwrap();
     }
+
+    #[test]
+    fn test_consume_and_produce_same_record() {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program record_checker.aleo;
+
+  record data:
+    owner as address.private;
+    gates as u64.private;
+
+  function check:
+    input r0 as data.record;
+    assert.eq r0.gates 0u64;
+    output r0 as data.record;",
+        )
+        .unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("check").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let input =
+            Value::from_str(&format!("{{ owner: {caller}.private, gates: 0u64.private, _nonce: 0group.public }}"))
+                .unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.peek_next().unwrap();
+
+        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        // TODO: If the index is just the locator, then the nonce of the output record is the same (which is an issue).
+        let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(0)]).unwrap();
+        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
+
+        // Declare the output value.
+        let output =
+            Value::from_str(&format!("{{ owner: {caller}.private, gates: 0u64.private, _nonce: {nonce}.public }}"))
+                .unwrap();
+
+        // Check again to make sure we didn't modify the authorization before calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(output, candidate[0]);
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(output, candidate[0]);
+
+        process.verify_execution::<false>(&execution).unwrap();
+    }
 }
