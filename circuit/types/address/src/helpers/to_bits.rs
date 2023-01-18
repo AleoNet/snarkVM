@@ -104,12 +104,12 @@ mod tests {
 
     #[test]
     fn test_to_bits_le_public() {
-        check_to_bits_le(Mode::Public, 0, 0, 253, 254);
+        check_to_bits_le(Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_to_bits_le_private() {
-        check_to_bits_le(Mode::Private, 0, 0, 253, 254);
+        check_to_bits_le(Mode::Private, 0, 0, 505, 507);
     }
 
     #[test]
@@ -119,11 +119,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_be_public() {
-        check_to_bits_be(Mode::Public, 0, 0, 253, 254);
+        check_to_bits_be(Mode::Public, 0, 0, 505, 507);
     }
 
     #[test]
     fn test_to_bits_be_private() {
-        check_to_bits_be(Mode::Private, 0, 0, 253, 254);
+        check_to_bits_be(Mode::Private, 0, 0, 505, 507);
     }
 }
