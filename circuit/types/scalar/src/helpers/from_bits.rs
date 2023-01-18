@@ -45,41 +45,38 @@ impl<E: Environment> FromBits for Scalar<E> {
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = Scalar::constant(-console::Scalar::one());
-
-            // Reconstruct the bits as a linear combination representing the original scalar as a field.
-            let mut accumulator = Field::zero();
-            let mut coefficient = Field::one();
-            for bit in &bits_le[..size_in_bits] {
-                accumulator += Field::from_boolean(bit) * &coefficient;
-                coefficient = coefficient.double();
-            }
+            let modulus_minus_one = -E::ScalarField::one();
 
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
-            let scalar = Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le[..size_in_bits].to_vec()) };
+            let bits_le = &bits_le[..size_in_bits];
 
-            // Ensure the scalar is less than `ScalarField::MODULUS`.
-            E::assert(scalar.is_less_than_or_equal(&modulus_minus_one));
+            // Compute `!((ScalarField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
+            let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le.iter()).fold(
+                Boolean::constant(false),
+                |rest_is_less, (this, that)| {
+                    if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
+                },
+            );
 
-            // Return the scalar.
-            scalar
-        } else {
-            // Construct the sanitized list of bits, resizing up if necessary.
-            let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
-            bits_le.resize(size_in_bits, Boolean::constant(false));
-
-            // Reconstruct the bits as a linear combination representing the original scalar as a field.
-            let mut accumulator = Field::zero();
-            let mut coefficient = Field::one();
-            for bit in &bits_le {
-                accumulator += Field::from_boolean(bit) * &coefficient;
-                coefficient = coefficient.double();
-            }
-
-            // Return the scalar.
-            Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le) }
+            // Ensure that the non-unique bit-representation is less than `ScalarField::MODULUS`.
+            E::assert(is_less_than_modulus);
         }
+
+        // Reconstruct the bits as a linear combination representing the original scalar as a field.
+        let mut accumulator = Field::zero();
+        let mut coefficient = Field::one();
+        for bit in bits_le {
+            accumulator += Field::from_boolean(bit) * &coefficient;
+            coefficient = coefficient.double();
+        }
+
+        // Construct the sanitized list of bits, resizing up if necessary.
+        let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
+        bits_le.resize(size_in_bits, Boolean::constant(false));
+
+        // Return the scalar.
+        Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le) }
     }
 
     /// Initializes a new scalar field element from a list of big-endian bits *without* leading zeros.
@@ -174,31 +171,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 2, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 1, 0, 253, 255);
+        check_from_bits_le(Mode::Public, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 1, 0, 253, 255);
+        check_from_bits_le(Mode::Private, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 2, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 1, 0, 253, 255);
+        check_from_bits_be(Mode::Public, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 1, 0, 253, 255);
+        check_from_bits_be(Mode::Private, 0, 0, 250, 251);
     }
 }
