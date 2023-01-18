@@ -478,6 +478,8 @@ mod tests {
     use snarkvm_fields::{Field, One, Zero};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
+    use rand::RngCore;
+
     #[test]
     fn double_polynomials_random() {
         let rng = &mut TestRng::default();
@@ -593,6 +595,71 @@ mod tests {
                 assert_eq!(&a * &b, a.naive_mul(&b))
             }
         }
+    }
+
+    #[test]
+    fn mul_polynomials_n_random() {
+        let rng = &mut TestRng::default();
+
+        let max_degree = 1 << 8;
+
+        for _ in 0..10 {
+            let mut multiplier = PolyMultiplier::new();
+            let a = DensePolynomial::<Fr>::rand(max_degree / 2, rng);
+            let mut mul_degree = a.degree() + 1;
+            multiplier.add_polynomial(a.clone(), "a");
+            let mut naive = a.clone();
+
+            // Include polynomials and evaluations
+            let num_polys = (rng.next_u32() as usize) % 8;
+            let num_evals = (rng.next_u32() as usize) % 4;
+            println!("\nnum_polys {}, num_evals {}", num_polys, num_evals);
+
+            for _ in 1..num_polys {
+                let degree = (rng.next_u32() as usize) % max_degree;
+                mul_degree += degree + 1;
+                println!("poly degree {}", degree);
+                let a = DensePolynomial::<Fr>::rand(degree, rng);
+                naive = naive.naive_mul(&a);
+                multiplier.add_polynomial(a.clone(), "a");
+            }
+
+            // Add evaluations but don't overflow the domain
+            let mut eval_degree = mul_degree;
+            let domain = EvaluationDomain::new(mul_degree).unwrap();
+            println!("mul_degree {}, domain {}", mul_degree, domain.size());
+            for _ in 0..num_evals {
+                let a = DensePolynomial::<Fr>::rand(mul_degree / 8, rng);
+                eval_degree += a.len() + 1;
+                if eval_degree < domain.size() {
+                    println!("eval degree {}", eval_degree);
+                    let mut a_evals = a.clone().coeffs;
+                    domain.fft_in_place(&mut a_evals);
+                    let a_evals = Evaluations::from_vec_and_domain(a_evals, domain);
+
+                    naive = naive.naive_mul(&a);
+                    multiplier.add_evaluation(a_evals, "a");
+                }
+            }
+
+            assert_eq!(multiplier.multiply().unwrap(), naive);
+        }
+    }
+
+    #[test]
+    fn mul_polynomials_corner_cases() {
+        let rng = &mut TestRng::default();
+
+        let a_degree = 70;
+
+        // Single polynomial
+        println!("Test single polynomial");
+        let a = DensePolynomial::<Fr>::rand(a_degree, rng);
+        let mut multiplier = PolyMultiplier::new();
+        multiplier.add_polynomial(a.clone(), "a");
+        assert_eq!(multiplier.multiply().unwrap(), a);
+
+        // Note PolyMultiplier doesn't support a evluations with no polynomials
     }
 
     #[test]

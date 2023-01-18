@@ -91,7 +91,7 @@ impl<N: Network> Transaction<N> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
         // Compute the fee.
-        let (_, fee) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
+        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
         // Initialize the transaction.
         Self::from_deployment(deployment, fee)
     }
@@ -104,7 +104,7 @@ impl<N: Network> Transaction<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, query, rng)?;
+        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
         // Initialize the transaction.
         Self::from_execution(execution, None)
     }
@@ -119,7 +119,7 @@ impl<N: Network> Transaction<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_, execution) = vm.execute(authorization, query.clone(), rng)?;
+        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
         // Compute the additional fee, if it is present.
         let additional_fee = match additional_fee {
             Some((credits, additional_fee_in_gates)) => {

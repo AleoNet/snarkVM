@@ -25,7 +25,7 @@ impl<N: Network> Process<N> {
         credits: Record<N, Plaintext<N>>,
         fee_in_gates: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>)> {
+    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute_fee");
 
         // Ensure the fee has the correct program ID.
@@ -62,8 +62,10 @@ impl<N: Network> Process<N> {
         let execution = Arc::new(RwLock::new(Execution::new()));
         // Initialize the inclusion.
         let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the metrics.
+        let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(call_stack, rng)?;
         lap!(timer, "Execute the circuit");
@@ -74,10 +76,12 @@ impl<N: Network> Process<N> {
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
         // Extract the inclusion.
         let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+        // Extract the metrics.
+        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
 
-        Ok((response, execution.peek()?.clone(), inclusion))
+        Ok((response, execution.peek()?.clone(), inclusion, metrics))
     }
 
     /// Verifies the given fee is valid.

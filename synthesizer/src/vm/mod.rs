@@ -30,11 +30,13 @@ use crate::{
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
+    CallMetrics,
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
+    types::Field,
 };
 
 use aleo_std::prelude::{finish, lap, timer};
@@ -218,6 +220,12 @@ record token:
     gates as u64.private;
     amount as u64.private;
 
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
 function compute:
     input r0 as message.private;
     input r1 as message.public;
@@ -351,7 +359,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 Inclusion::verify_fee(&fee).unwrap();
                 // Return the fee.

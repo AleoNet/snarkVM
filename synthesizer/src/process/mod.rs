@@ -371,7 +371,8 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, execution, _inclusion, _metrics) =
+                    process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.
                 execution
@@ -468,7 +469,8 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -635,7 +637,8 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
@@ -717,7 +720,8 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -779,7 +783,8 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -895,7 +900,8 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[0]);
@@ -1049,7 +1055,8 @@ function transfer:
         assert_eq!(authorization.len(), 5);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
@@ -1152,7 +1159,8 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1249,7 +1257,8 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1364,7 +1373,8 @@ finalize mint_public:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1500,7 +1510,8 @@ function mint:
         assert_eq!(authorization.len(), 2);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
