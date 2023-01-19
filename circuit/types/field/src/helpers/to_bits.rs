@@ -45,8 +45,7 @@ impl<E: Environment> ToBits for &Field<E> {
                     // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
                     let modulus_minus_one = -E::BaseField::one();
 
-                    // Compute `!((BaseField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < BaseField::MODULUS`.
-                    // Note that we do not use `Field::is_less_than` to avoid creating `size_in_bits` constants in the constraint system.
+                    // Compute `!((BaseField::MODULUS - 1) < bits_le)`, which is equivalent to `((BaseField::MODULUS - 1) >= bits_le)`, which is equivalent to `bits_le < BaseField::MODULUS`.
                     let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le.iter()).fold(
                         Boolean::constant(false),
                         |rest_is_less, (this, that)| {

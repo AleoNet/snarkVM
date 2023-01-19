@@ -46,8 +46,7 @@ impl<E: Environment> FromBits for Field<E> {
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
             let bits_le = &bits_le[..size_in_bits];
 
-            // Compute `!((BaseField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < BaseField::MODULUS`.
-            // Note that we do not use `Field::is_less_than` to avoid creating `size_in_bits` constants in the constraint system.
+            // Compute `!((BaseField::MODULUS - 1) < bits_le)`, which is equivalent to `((BaseField::MODULUS - 1) >= bits_le)`, which is equivalent to `bits_le < BaseField::MODULUS`.
             let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le).fold(
                 Boolean::constant(false),
                 |rest_is_less, (this, that)| {

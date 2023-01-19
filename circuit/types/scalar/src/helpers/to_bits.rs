@@ -52,7 +52,7 @@ impl<E: Environment> ToBits for &Scalar<E> {
                     // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
                     let modulus_minus_one = -E::ScalarField::one();
 
-                    // Compute `!((ScalarField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
+                    // Compute `!((ScalarField::MODULUS - 1) < bits_le)`, which is equivalent to `((ScalarField::MODULUS - 1) >= bits_le)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
                     let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le.iter()).fold(
                         Boolean::constant(false),
                         |rest_is_less, (this, that)| {
