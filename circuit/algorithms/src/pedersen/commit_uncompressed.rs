@@ -64,7 +64,7 @@ impl<E: Environment, const NUM_BITS: u8>
         let randomizer_to_bits_count =
             match Mode::combine(randomizer_modes[0], randomizer_modes.iter().copied()).is_constant() {
                 true => Count::is(251, 0, 0, 0),
-                false => Count::is(0, 0, 251, 252),
+                false => Count::is(0, 0, 501, 503),
             };
 
         // Determine the modes of each of the group elements.
