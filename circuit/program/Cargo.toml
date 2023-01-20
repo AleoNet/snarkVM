@@ -41,7 +41,7 @@ features = [ "test" ]
 path = "../../console/account"
 
 [dev-dependencies.anyhow]
-version = "1.0.66"
+version = "1.0.68"
 
 [dev-dependencies.rand]
 version = "0.8"

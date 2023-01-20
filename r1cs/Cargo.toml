@@ -38,7 +38,7 @@ path = "../utilities"
 version = "0.9.11"
 
 [dependencies.anyhow]
-version = "1.0.66"
+version = "1.0.68"
 
 [dependencies.cfg-if]
 version = "1.0.0"
