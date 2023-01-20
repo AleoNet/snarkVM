@@ -33,7 +33,7 @@ version = "0.2"
 version = "0.2"
 
 [dependencies.indexmap]
-version = "1.8"
+version = "1.9"
 
 [dependencies.num-derive]
 version = "0.3"
