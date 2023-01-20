@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for PartialSolution<N> {
     /// Serializes the partial solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -39,10 +41,9 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
             true => {
                 let mut partial_prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(partial_prover_solution["address"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(partial_prover_solution["nonce"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value::<PuzzleCommitment<N>>(partial_prover_solution["commitment"].take())
-                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut partial_prover_solution, "address")?,
+                    DeserializeExt::take_from_value::<D>(&mut partial_prover_solution, "nonce")?,
+                    <PuzzleCommitment<N>>::take_from_value::<D>(&mut partial_prover_solution, "commitment")?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial solution"),

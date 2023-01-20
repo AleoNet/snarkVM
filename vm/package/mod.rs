@@ -26,7 +26,6 @@ pub use deploy::{DeployRequest, DeployResponse};
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
     prelude::{
-        de,
         Deserialize,
         Deserializer,
         Identifier,

@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Header<N> {
     /// Serializes the header to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -40,10 +42,10 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
             true => {
                 let mut header = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::from(
-                    serde_json::from_value(header["previous_state_root"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["transactions_root"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["coinbase_accumulator_point"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["metadata"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "previous_state_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "transactions_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "coinbase_accumulator_point")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "metadata")?,
                 )
                 .map_err(de::Error::custom)?)
             }

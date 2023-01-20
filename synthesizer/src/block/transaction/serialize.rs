@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Transaction<N> {
     /// Serializes the transaction to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -53,28 +55,30 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                 // Deserialize the transaction into a JSON value.
                 let mut transaction = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the transaction ID.
-                let id: N::TransactionID =
-                    serde_json::from_value(transaction["id"].take()).map_err(de::Error::custom)?;
+                let id: N::TransactionID = DeserializeExt::take_from_value::<D>(&mut transaction, "id")?;
 
                 // Recover the transaction.
-                let transaction = match transaction["type"].as_str() {
+                let transaction = match transaction
+                    .get("type")
+                    .ok_or_else(|| de::Error::custom("The \"type\" field is missing"))?
+                    .as_str()
+                {
                     Some("deploy") => {
                         // Retrieve the deployment.
-                        let deployment =
-                            serde_json::from_value(transaction["deployment"].take()).map_err(de::Error::custom)?;
+                        let deployment = DeserializeExt::take_from_value::<D>(&mut transaction, "deployment")?;
                         // Retrieve the additional fee.
-                        let additional_fee =
-                            serde_json::from_value(transaction["additional_fee"].take()).map_err(de::Error::custom)?;
+                        let additional_fee = DeserializeExt::take_from_value::<D>(&mut transaction, "additional_fee")?;
                         // Construct the transaction.
                         Transaction::from_deployment(deployment, additional_fee).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
                         // Retrieve the execution.
-                        let execution =
-                            serde_json::from_value(transaction["execution"].take()).map_err(de::Error::custom)?;
+                        let execution = DeserializeExt::take_from_value::<D>(&mut transaction, "execution")?;
                         // Retrieve the additional fee, if it exists.
-                        let additional_fee =
-                            serde_json::from_value(transaction["additional_fee"].take()).map_err(de::Error::custom)?;
+                        let additional_fee = serde_json::from_value(
+                            transaction.get_mut("additional_fee").unwrap_or(&mut serde_json::Value::Null).take(),
+                        )
+                        .map_err(de::Error::custom)?;
                         // Construct the transaction.
                         Transaction::from_execution(execution, additional_fee).map_err(de::Error::custom)?
                     }

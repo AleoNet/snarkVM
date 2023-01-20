@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for CoinbaseSolution<N> {
     /// Serializes the coinbase solution to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -41,11 +43,9 @@ impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
             true => {
                 let mut combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(combined_puzzle_solution["partial_solutions"].take())
-                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut combined_puzzle_solution, "partial_solutions")?,
                     KZGProof {
-                        w: serde_json::from_value(combined_puzzle_solution["proof.w"].take())
-                            .map_err(de::Error::custom)?,
+                        w: DeserializeExt::take_from_value::<D>(&mut combined_puzzle_solution, "proof.w")?,
                         random_v: match combined_puzzle_solution.get("proof.random_v") {
                             Some(random_v) => {
                                 Some(serde_json::from_value(random_v.clone()).map_err(de::Error::custom)?)

@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Block<N> {
     /// Serializes the block to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -45,16 +47,16 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut block = serde_json::Value::deserialize(deserializer)?;
-                let block_hash: N::BlockHash =
-                    serde_json::from_value(block["block_hash"].take()).map_err(de::Error::custom)?;
+                let block_hash: N::BlockHash = DeserializeExt::take_from_value::<D>(&mut block, "block_hash")?;
 
                 // Recover the block.
                 let block = Self::from(
-                    serde_json::from_value(block["previous_hash"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["header"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["transactions"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["coinbase"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["signature"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "header")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
+                    serde_json::from_value(block.get_mut("coinbase").unwrap_or(&mut serde_json::Value::Null).take())
+                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "signature")?,
                 )
                 .map_err(de::Error::custom)?;
 

@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Input<N> {
     /// Serializes the transition input into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -75,25 +77,23 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                 // Parse the input from a string into a value.
                 let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?;
+                let id: Field<N> = DeserializeExt::take_from_value::<D>(&mut input, "id")?;
 
                 // Recover the input.
-                let input = match input["type"].as_str() {
-                    Some("constant") => Input::Constant(id, match input["value"].as_str() {
+                let input = match input.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => Input::Constant(id, match input.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("public") => Input::Public(id, match input["value"].as_str() {
+                    Some("public") => Input::Public(id, match input.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("private") => Input::Private(id, match input["value"].as_str() {
+                    Some("private") => Input::Private(id, match input.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("record") => {
-                        Input::Record(id, serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?)
-                    }
+                    Some("record") => Input::Record(id, DeserializeExt::take_from_value::<D>(&mut input, "tag")?),
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
                 };

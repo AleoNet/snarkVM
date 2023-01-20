@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for TransactionLeaf<N> {
     /// Serializes the leaf into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -42,11 +44,11 @@ impl<'de, N: Network> Deserialize<'de> for TransactionLeaf<N> {
                 // Recover the leaf.
                 Ok(Self::from(
                     // Retrieve the variant.
-                    serde_json::from_value(leaf["variant"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut leaf, "variant")?,
                     // Retrieve the index.
-                    serde_json::from_value(leaf["index"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut leaf, "index")?,
                     // Retrieve the id.
-                    serde_json::from_value(leaf["id"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut leaf, "id")?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction leaf"),

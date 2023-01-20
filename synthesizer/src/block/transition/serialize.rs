@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for Transition<N> {
     /// Serializes the transition into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -49,31 +51,31 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                 // Parse the transition from a string into a value.
                 let mut transition = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: N::TransitionID = serde_json::from_value(transition["id"].take()).map_err(de::Error::custom)?;
+                let id: N::TransitionID = DeserializeExt::take_from_value::<D>(&mut transition, "id")?;
 
                 // Recover the transition.
                 let transition = Self::new(
                     // Retrieve the program ID.
-                    serde_json::from_value(transition["program"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "program")?,
                     // Retrieve the function name.
-                    serde_json::from_value(transition["function"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "function")?,
                     // Retrieve the inputs.
-                    serde_json::from_value(transition["inputs"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "inputs")?,
                     // Retrieve the outputs.
-                    serde_json::from_value(transition["outputs"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "outputs")?,
                     // Retrieve the finalize inputs.
                     match transition.get("finalize") {
                         Some(finalize) => Some(serde_json::from_value(finalize.clone()).map_err(de::Error::custom)?),
                         None => None,
                     },
                     // Retrieve the proof.
-                    serde_json::from_value(transition["proof"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "proof")?,
                     // Retrieve the `tpk`.
-                    serde_json::from_value(transition["tpk"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "tpk")?,
                     // Retrieve the `tcm`.
-                    serde_json::from_value(transition["tcm"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "tcm")?,
                     // Retrieve the fee.
-                    serde_json::from_value(transition["fee"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut transition, "fee")?,
                 )
                 .map_err(de::Error::custom)?;
 
