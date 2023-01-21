@@ -315,6 +315,7 @@ pub(super) mod integer_type {
         str::FromStr,
     };
     use num_traits::{
+        ops::overflowing::{OverflowingAdd, OverflowingMul, OverflowingSub},
         CheckedNeg,
         CheckedRem,
         CheckedShr,
@@ -349,6 +350,16 @@ pub(super) mod integer_type {
         + Modulo
         + NumZero
         + NumOne
+        + OverflowingAbs
+        + OverflowingAdd
+        + OverflowingMul
+        + OverflowingNeg
+        + OverflowingPow
+        + OverflowingRem
+        + OverflowingShl
+        + OverflowingShr
+        + OverflowingSub
+        + OverflowingDiv
         + PartialOrd
         + Send
         + Sync
@@ -453,6 +464,126 @@ pub(super) mod integer_type {
     #[rustfmt::skip]
     binary_impl!(Modulo, i128, modulo, self, _v, Self, i128, panic!("modulo is not implemented for i128"));
 
+    pub trait OverflowingDiv: Sized + Div<Self, Output = Self> {
+        fn overflowing_div(&self, v: &Self) -> (Self, bool);
+    }
+
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u8, overflowing_div, self, v, Self, (u8, bool), if *v == 0 { (0, true) } else { u8::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u16, overflowing_div, self, v, Self, (u16, bool), if *v == 0 { (0, true) } else { u16::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u32, overflowing_div, self, v, Self, (u32, bool), if *v == 0 { (0, true) } else { u32::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u64, overflowing_div, self, v, Self, (u64, bool), if *v == 0 { (0, true) } else { u64::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u128, overflowing_div, self, v, Self, (u128, bool), if *v == 0 { (0, true) } else { u128::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i8, overflowing_div, self, v, Self, (i8, bool), if *v == 0 { (0, true) } else { i8::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i16, overflowing_div, self, v, Self, (i16, bool), if *v == 0 { (0, true) } else { i16::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i32, overflowing_div, self, v, Self, (i32, bool), if *v == 0 { (0, true) } else { i32::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i64, overflowing_div, self, v, Self, (i64, bool), if *v == 0 { (0, true) } else { i64::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i128, overflowing_div, self, v, Self, (i128, bool), if *v == 0 { (0, true) } else { i128::overflowing_div(*self, *v) });
+
+    pub trait OverflowingModulo: Sized {
+        fn overflowing_modulo(&self, v: &Self) -> (Self, bool);
+    }
+
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, u8, overflowing_modulo, self, v, Self, (u8, bool), if *v == 0 { (0, true) } else { u8::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, u16, overflowing_modulo, self, v, Self, (u16, bool), if *v == 0 { (0, true) } else { u16::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, u32, overflowing_modulo, self, v, Self, (u32, bool), if *v == 0 { (0, true) } else { u32::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, u64, overflowing_modulo, self, v, Self, (u64, bool), if *v == 0 { (0, true) } else { u64::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, u128, overflowing_modulo, self, v, Self, (u128, bool), if *v == 0 { (0, true) } else { u128::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, i8, overflowing_modulo, self, _v, Self, (i8, bool), panic!("overflowing_modulo is not implemented for i8"));
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, i16, overflowing_modulo, self, _v, Self, (i16, bool), panic!("overflowing_modulo is not implemented for i16"));
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, i32, overflowing_modulo, self, _v, Self, (i32, bool), panic!("overflowing_modulo is not implemented for i32"));
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, i64, overflowing_modulo, self, _v, Self, (i64, bool), panic!("overflowing_modulo is not implemented for i64"));
+    #[rustfmt::skip]
+    binary_impl!(OverflowingModulo, i128, overflowing_modulo, self, _v, Self, (i128, bool), panic!("overflowing_modulo is not implemented for i128"));
+
+    pub trait OverflowingPow: Sized {
+        fn overflowing_pow(&self, v: &u32) -> (Self, bool);
+    }
+
+    binary_impl!(OverflowingPow, u8, overflowing_pow, self, v, u32, (u8, bool), u8::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, u16, overflowing_pow, self, v, u32, (u16, bool), u16::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, u32, overflowing_pow, self, v, u32, (u32, bool), u32::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, u64, overflowing_pow, self, v, u32, (u64, bool), u64::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, u128, overflowing_pow, self, v, u32, (u128, bool), u128::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, i8, overflowing_pow, self, v, u32, (i8, bool), i8::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, i16, overflowing_pow, self, v, u32, (i16, bool), i16::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, i32, overflowing_pow, self, v, u32, (i32, bool), i32::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, i64, overflowing_pow, self, v, u32, (i64, bool), i64::overflowing_pow(*self, *v));
+    binary_impl!(OverflowingPow, i128, overflowing_pow, self, v, u32, (i128, bool), i128::overflowing_pow(*self, *v));
+
+    pub trait OverflowingRem: Sized + Rem<Self, Output = Self> {
+        fn overflowing_rem(&self, v: &Self) -> (Self, bool);
+    }
+
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, u8, overflowing_rem, self, v, Self, (u8, bool), if *v == 0 { (0, true) } else { u8::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, u16, overflowing_rem, self, v, Self, (u16, bool), if *v == 0 { (0, true) } else { u16::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, u32, overflowing_rem, self, v, Self, (u32, bool), if *v == 0 { (0, true) } else { u32::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, u64, overflowing_rem, self, v, Self, (u64, bool), if *v == 0 { (0, true) } else { u64::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, u128, overflowing_rem, self, v, Self, (u128, bool), if *v == 0 { (0, true) } else { u128::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, i8, overflowing_rem, self, v, Self, (i8, bool), if *v == 0 { (0, true) } else { i8::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, i16, overflowing_rem, self, v, Self, (i16, bool), if *v == 0 { (0, true) } else { i16::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, i32, overflowing_rem, self, v, Self, (i32, bool), if *v == 0 { (0, true) } else { i32::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, i64, overflowing_rem, self, v, Self, (i64, bool), if *v == 0 { (0, true) } else { i64::overflowing_rem(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingRem, i128, overflowing_rem, self, v, Self, (i128, bool), if *v == 0 { (0, true) } else { i128::overflowing_rem(*self, *v) });
+
+    pub trait OverflowingShl: Sized {
+        fn overflowing_shl(&self, v: &u32) -> (Self, bool);
+    }
+
+    binary_impl!(OverflowingShl, u8, overflowing_shl, self, v, u32, (u8, bool), u8::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, u16, overflowing_shl, self, v, u32, (u16, bool), u16::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, u32, overflowing_shl, self, v, u32, (u32, bool), u32::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, u64, overflowing_shl, self, v, u32, (u64, bool), u64::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, u128, overflowing_shl, self, v, u32, (u128, bool), u128::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, i8, overflowing_shl, self, v, u32, (i8, bool), i8::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, i16, overflowing_shl, self, v, u32, (i16, bool), i16::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, i32, overflowing_shl, self, v, u32, (i32, bool), i32::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, i64, overflowing_shl, self, v, u32, (i64, bool), i64::overflowing_shl(*self, *v));
+    binary_impl!(OverflowingShl, i128, overflowing_shl, self, v, u32, (i128, bool), i128::overflowing_shl(*self, *v));
+
+    pub trait OverflowingShr: Sized {
+        fn overflowing_shr(&self, v: &u32) -> (Self, bool);
+    }
+
+    binary_impl!(OverflowingShr, u8, overflowing_shr, self, v, u32, (u8, bool), u8::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, u16, overflowing_shr, self, v, u32, (u16, bool), u16::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, u32, overflowing_shr, self, v, u32, (u32, bool), u32::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, u64, overflowing_shr, self, v, u32, (u64, bool), u64::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, u128, overflowing_shr, self, v, u32, (u128, bool), u128::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, i8, overflowing_shr, self, v, u32, (i8, bool), i8::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, i16, overflowing_shr, self, v, u32, (i16, bool), i16::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, i32, overflowing_shr, self, v, u32, (i32, bool), i32::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, i64, overflowing_shr, self, v, u32, (i64, bool), i64::overflowing_shr(*self, *v));
+    binary_impl!(OverflowingShr, i128, overflowing_shr, self, v, u32, (i128, bool), i128::overflowing_shr(*self, *v));
+
     pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
         fn wrapping_div(&self, v: &Self) -> Self;
     }
@@ -468,21 +599,6 @@ pub(super) mod integer_type {
     binary_impl!(WrappingDiv, i64, wrapping_div, self, v, Self, i64, i64::wrapping_div(*self, *v));
     binary_impl!(WrappingDiv, i128, wrapping_div, self, v, Self, i128, i128::wrapping_div(*self, *v));
 
-    pub trait WrappingRem: Sized + Rem<Self, Output = Self> {
-        fn wrapping_rem(&self, v: &Self) -> Self;
-    }
-
-    binary_impl!(WrappingRem, u8, wrapping_rem, self, v, Self, u8, u8::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, u16, wrapping_rem, self, v, Self, u16, u16::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, u32, wrapping_rem, self, v, Self, u32, u32::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, u64, wrapping_rem, self, v, Self, u64, u64::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, u128, wrapping_rem, self, v, Self, u128, u128::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, i8, wrapping_rem, self, v, Self, i8, i8::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, i16, wrapping_rem, self, v, Self, i16, i16::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, i32, wrapping_rem, self, v, Self, i32, i32::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, i64, wrapping_rem, self, v, Self, i64, i64::wrapping_rem(*self, *v));
-    binary_impl!(WrappingRem, i128, wrapping_rem, self, v, Self, i128, i128::wrapping_rem(*self, *v));
-
     pub trait WrappingPow: Sized {
         fn wrapping_pow(&self, v: &u32) -> Self;
     }
@@ -497,6 +613,21 @@ pub(super) mod integer_type {
     binary_impl!(WrappingPow, i32, wrapping_pow, self, v, u32, i32, i32::wrapping_pow(*self, *v));
     binary_impl!(WrappingPow, i64, wrapping_pow, self, v, u32, i64, i64::wrapping_pow(*self, *v));
     binary_impl!(WrappingPow, i128, wrapping_pow, self, v, u32, i128, i128::wrapping_pow(*self, *v));
+
+    pub trait WrappingRem: Sized + Rem<Self, Output = Self> {
+        fn wrapping_rem(&self, v: &Self) -> Self;
+    }
+
+    binary_impl!(WrappingRem, u8, wrapping_rem, self, v, Self, u8, u8::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u16, wrapping_rem, self, v, Self, u16, u16::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u32, wrapping_rem, self, v, Self, u32, u32::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u64, wrapping_rem, self, v, Self, u64, u64::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u128, wrapping_rem, self, v, Self, u128, u128::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i8, wrapping_rem, self, v, Self, i8, i8::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i16, wrapping_rem, self, v, Self, i16, i16::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i32, wrapping_rem, self, v, Self, i32, i32::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i64, wrapping_rem, self, v, Self, i64, i64::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i128, wrapping_rem, self, v, Self, i128, i128::wrapping_rem(*self, *v));
 
     macro_rules! unary_impl {
         ($trait_name:ident, $t:ty, $method:ident, $arg: ident, $rt:ty, $body:expr) => {
@@ -523,6 +654,36 @@ pub(super) mod integer_type {
     unary_impl!(CheckedAbs, i32, checked_abs, self, Option<i32>, i32::checked_abs(*self));
     unary_impl!(CheckedAbs, i64, checked_abs, self, Option<i64>, i64::checked_abs(*self));
     unary_impl!(CheckedAbs, i128, checked_abs, self, Option<i128>, i128::checked_abs(*self));
+
+    pub trait OverflowingAbs: Sized {
+        fn overflowing_abs(&self) -> (Self, bool);
+    }
+
+    unary_impl!(OverflowingAbs, u8, overflowing_abs, self, (u8, bool), (*self, false));
+    unary_impl!(OverflowingAbs, u16, overflowing_abs, self, (u16, bool), (*self, false));
+    unary_impl!(OverflowingAbs, u32, overflowing_abs, self, (u32, bool), (*self, false));
+    unary_impl!(OverflowingAbs, u64, overflowing_abs, self, (u64, bool), (*self, false));
+    unary_impl!(OverflowingAbs, u128, overflowing_abs, self, (u128, bool), (*self, false));
+    unary_impl!(OverflowingAbs, i8, overflowing_abs, self, (i8, bool), i8::overflowing_abs(*self));
+    unary_impl!(OverflowingAbs, i16, overflowing_abs, self, (i16, bool), i16::overflowing_abs(*self));
+    unary_impl!(OverflowingAbs, i32, overflowing_abs, self, (i32, bool), i32::overflowing_abs(*self));
+    unary_impl!(OverflowingAbs, i64, overflowing_abs, self, (i64, bool), i64::overflowing_abs(*self));
+    unary_impl!(OverflowingAbs, i128, overflowing_abs, self, (i128, bool), i128::overflowing_abs(*self));
+
+    pub trait OverflowingNeg: Sized {
+        fn overflowing_neg(&self) -> (Self, bool);
+    }
+
+    unary_impl!(OverflowingNeg, u8, overflowing_neg, self, (u8, bool), u8::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, u16, overflowing_neg, self, (u16, bool), u16::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, u32, overflowing_neg, self, (u32, bool), u32::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, u64, overflowing_neg, self, (u64, bool), u64::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, u128, overflowing_neg, self, (u128, bool), u128::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, i8, overflowing_neg, self, (i8, bool), i8::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, i16, overflowing_neg, self, (i16, bool), i16::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, i32, overflowing_neg, self, (i32, bool), i32::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, i64, overflowing_neg, self, (i64, bool), i64::overflowing_neg(*self));
+    unary_impl!(OverflowingNeg, i128, overflowing_neg, self, (i128, bool), i128::overflowing_neg(*self));
 
     pub trait WrappingAbs: Sized {
         fn wrapping_abs(&self) -> Self;
