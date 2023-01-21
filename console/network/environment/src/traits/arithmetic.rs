@@ -23,13 +23,11 @@ pub trait AddChecked<Rhs: ?Sized = Self> {
     fn add_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for adding two values, indicating whether or not an overflow
-/// occurs via a flag.
+/// Binary operator for adding two values, indicating whether or not an overflow occurs via a flag.
 pub trait AddFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn add_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn add_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for adding two values, bounding the sum to `MAX` if an overflow occurs.
@@ -60,13 +58,11 @@ pub trait DivChecked<Rhs: ?Sized = Self> {
     fn div_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for dividing two values, indicating whether or not an overflow
-/// or division by zero error occurs via a flag.
+/// Binary operator for dividing two values, indicating whether or not an overflow or division by zero error occurs via a flag.
 pub trait DivFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn div_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn div_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for dividing two values, bounding the quotient to `MAX` or `MIN` if an overflow occurs.
@@ -90,7 +86,12 @@ pub trait Modulo<Rhs: ?Sized = Self> {
     fn modulo(&self, rhs: &Rhs) -> Self::Output;
 }
 
-// TODO: Do we need a flagged modulo operation.
+/// Binary operator for modding two values, indicating whether or not a division by zero error occurs via a flag.
+pub trait ModuloFlagged<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn modulo_flagged(&self, rhs: &Rhs) -> Self::Output;
+}
 
 /// Binary operator for multiplying two values, enforcing an overflow never occurs.
 pub trait MulChecked<Rhs: ?Sized = Self> {
@@ -99,13 +100,11 @@ pub trait MulChecked<Rhs: ?Sized = Self> {
     fn mul_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for multiplying two values, indicating whether or not an overflow
-/// occurs via a flag.
-pub trait MulFlagged<Ths: ?Sized = Self> {
-    type Boolean;
+/// Binary operator for multiplying two values, indicating whether or not an overflow occurs via a flag.
+pub trait MulFlagged<Rhs: ?Sized = Self> {
     type Output;
 
-    fn mul_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn mul_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for multiplying two values, bounding the product to `MAX` if an overflow occurs.
@@ -129,13 +128,11 @@ pub trait PowChecked<Rhs: ?Sized = Self> {
     fn pow_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for exponentiating two values, indicating whether or not an overflow
-/// occurs via a flag.
+/// Binary operator for exponentiating two values, indicating whether or not an overflow occurs via a flag.
 pub trait PowFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn pow_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn pow_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for exponentiating two values, wrapping the result if an overflow occurs.
@@ -152,13 +149,11 @@ pub trait RemChecked<Rhs: ?Sized = Self> {
     fn rem_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for dividing two values and return the remainder, indicating whether or not an
-/// overflow occurs via flag.
+/// Binary operator for dividing two values and return the remainder, indicating whether or not an overflow occurs via flag.
 pub trait RemFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn rem_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn rem_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for dividing two values, bounding the remainder to `MAX` or `MIN` if an overflow occurs.
@@ -175,21 +170,18 @@ pub trait RemWrapped<Rhs: ?Sized = Self> {
     fn rem_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for left shifting a value, checking that the rhs is less than the number
-/// of bits in self.
+/// Binary operator for left shifting a value, checking that the rhs is less than the number of bits in self.
 pub trait ShlChecked<Rhs: ?Sized = Self> {
     type Output;
 
     fn shl_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for left shifting a values, indicating that the rhs is less than the number
-/// of bits in self via flag.
+/// Binary operator for left shifting a values, indicating that the rhs is less than the number of bits in self via flag.
 pub trait ShlFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn shl_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn shl_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for left shifting a value, safely continuing past the number of bits in self.
@@ -199,21 +191,18 @@ pub trait ShlWrapped<Rhs: ?Sized = Self> {
     fn shl_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for right shifting a value, checking that the rhs is less than the number
-/// of bits in self.
+/// Binary operator for right shifting a value, checking that the rhs is less than the number of bits in self.
 pub trait ShrChecked<Rhs: ?Sized = Self> {
     type Output;
 
     fn shr_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for right shifting a value, indicating that the rhs is less than the number
-/// of bits in self via a flag.
+/// Binary operator for right shifting a value, indicating that the rhs is less than the number of bits in self via a flag.
 pub trait ShrFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn shr_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn shr_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for right shifting a value, safely continuing past the number of bits in self.
@@ -232,10 +221,9 @@ pub trait SubChecked<Rhs: ?Sized = Self> {
 
 /// Binary operator for subtracting two values, indicating whether or not an overflow occurs via a flag.
 pub trait SubFlagged<Rhs: ?Sized = Self> {
-    type Boolean;
     type Output;
 
-    fn sub_flagged(&self, rhs: &Rhs) -> (Self::Boolean, Self::Output);
+    fn sub_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for subtracting two values, bounding the difference to `MIN` if an underflow occurs.
@@ -259,13 +247,11 @@ pub trait AbsChecked {
     fn abs_checked(self) -> Self::Output;
 }
 
-/// Unary operator for retreiving the absolute value, indicating whether or not an overflow occurs
-/// via a flag.
+/// Unary operator for retreiving the absolute value, indicating whether or not an overflow occurs via a flag.
 pub trait AbsFlagged {
-    type Boolean;
     type Output;
 
-    fn abs_flagged(self) -> (Self::Boolean, Self::Output);
+    fn abs_flagged(self) -> Self::Output;
 }
 
 /// Unary operator for retrieving the absolute value, bounding the difference to `MAX` if an overflow occurs.
@@ -296,6 +282,20 @@ pub trait Inverse {
     fn inverse(&self) -> Result<Self::Output>;
 }
 
+/// Unary operator for retrieving the inverse value, indicating whether or not an overflow occurs via a flag.
+pub trait InverseFlagged {
+    type Output;
+
+    fn inverse_flagged(&self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the negated value, indicating whether or not an overflow occurs via a flag.
+pub trait NegFlagged {
+    type Output;
+
+    fn neg_flagged(self) -> Self::Output;
+}
+
 /// Unary operator for retrieving the squared value.
 pub trait Square {
     type Output;
@@ -303,9 +303,23 @@ pub trait Square {
     fn square(&self) -> Self::Output;
 }
 
+/// Unary operator for retrieving the squared value, indicating whether or not an overflow occurs via a flag.
+pub trait SquareFlagged {
+    type Output;
+
+    fn square_flagged(&self) -> Self::Output;
+}
+
 /// Unary operator for retrieving the square root of the value.
 pub trait SquareRoot {
     type Output;
 
     fn square_root(&self) -> Result<Self::Output>;
+}
+
+/// Unary operator for retrieving the square root of the value, indicating whether or not an overflow occurs via a flag.
+pub trait SquareRootFlagged {
+    type Output;
+
+    fn square_root_flagged(&self) -> Self::Output;
 }
