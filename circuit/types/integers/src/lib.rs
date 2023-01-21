@@ -23,6 +23,7 @@ mod helpers;
 pub mod abs_checked;
 pub mod abs_wrapped;
 pub mod add_checked;
+pub mod add_flagged;
 pub mod add_wrapped;
 pub mod and;
 pub mod compare;

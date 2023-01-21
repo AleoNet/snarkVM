@@ -25,6 +25,7 @@ pub trait Metrics<Op: ?Sized> {
 }
 
 /// Trait for determining the mode of the output of an operation.
+// TODO: Refactor output mode to produce any number of outputs.
 pub trait OutputMode<Op: ?Sized> {
     type Case: ?Sized;
 
