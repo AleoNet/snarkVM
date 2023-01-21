@@ -190,6 +190,17 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
     }
 }
 
+impl<E: Environment, I: IntegerType, M: Magnitude> ShlFlagged<Integer<E, M>> for Integer<E, I> {
+    type Output = (Self, Boolean<E>);
+
+    /// Shifts `self` to the left by `n` bits and returns a `flag` indicating whether the operation overflowed.
+    #[inline]
+    fn shl_flagged(&self, n: &Integer<E, M>) -> Self::Output {
+        let (integer, flag) = self.integer.overflowing_shl(&n.integer.to_u32().unwrap());
+        (Integer::new(integer), Boolean::new(flag))
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
@@ -252,6 +263,17 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
             Some(shifted) => Integer::new(shifted),
             None => E::halt(format!("Failed to shift {self} right by {n} bits")),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> ShrFlagged<Integer<E, M>> for Integer<E, I> {
+    type Output = (Self, Boolean<E>);
+
+    /// Shifts `self` to the right by `n` bits and returns a `flag` indicating whether the operation overflowed.
+    #[inline]
+    fn shr_flagged(&self, n: &Integer<E, M>) -> Self::Output {
+        let (integer, flag) = self.integer.overflowing_shr(&n.integer.to_u32().unwrap());
+        (Integer::new(integer), Boolean::new(flag))
     }
 }
 

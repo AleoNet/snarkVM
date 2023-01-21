@@ -32,6 +32,22 @@ impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> NegFlagged for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the `negation` of `self` and a `flag` indicating whether the negation overflowed.
+    #[inline]
+    fn neg_flagged(self) -> Self::Output {
+        match I::is_signed() {
+            true => {
+                let (integer, flag) = self.integer.overflowing_neg();
+                (Integer::new(integer), Boolean::new(flag))
+            }
+            false => E::halt("Negation of unsigned integers is not supported."),
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType> AbsChecked for Integer<E, I> {
     type Output = Integer<E, I>;
 
@@ -44,6 +60,21 @@ impl<E: Environment, I: IntegerType> AbsChecked for Integer<E, I> {
                 None => E::halt(format!("Integer absolute value failed on: {}", self.integer)),
             },
             false => self,
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> AbsFlagged for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the `absolute value` of `self` and a `flag` indicating whether the addition overflowed.
+    #[inline]
+    fn abs_flagged(self) -> Self::Output {
+        match I::is_signed() {
+            true => match self.integer.overflowing_abs() {
+                (integer, flag) => (Integer::new(integer), Boolean::new(flag)),
+            },
+            false => (self, Boolean::new(false)),
         }
     }
 }
@@ -84,6 +115,17 @@ impl<E: Environment, I: IntegerType> Add<&Integer<E, I>> for Integer<E, I> {
             Some(integer) => Integer::new(integer),
             None => E::halt(format!("Integer addition failed on: {self} and {other}")),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType> AddFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the wrapping `sum` of `self` and `other` and a `flag` indicating whether the addition overflowed.
+    #[inline]
+    fn add_flagged(&self, other: &Integer<E, I>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_add(&other.integer);
+        (Integer::new(integer), Boolean::new(overflow))
     }
 }
 
@@ -145,6 +187,17 @@ impl<E: Environment, I: IntegerType> Sub<&Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> SubFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the wrapping `difference` of `self` and `other` and a `flag` indicating whether the subtraction overflowed.
+    #[inline]
+    fn sub_flagged(&self, rhs: &Integer<E, I>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_sub(&rhs.integer);
+        (Integer::new(integer), Boolean::new(overflow))
+    }
+}
+
 impl<E: Environment, I: IntegerType> SubWrapped<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
@@ -200,6 +253,17 @@ impl<E: Environment, I: IntegerType> Mul<&Integer<E, I>> for Integer<E, I> {
             Some(integer) => Integer::new(integer),
             None => E::halt(format!("Integer multiplication failed on: {self} and {other}")),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType> MulFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the wrapping `product` of `self` and `other` and a `flag` indicating whether the multiplication overflowed.
+    #[inline]
+    fn mul_flagged(&self, rhs: &Integer<E, I>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_mul(&rhs.integer);
+        (Integer::new(integer), Boolean::new(overflow))
     }
 }
 
@@ -261,6 +325,17 @@ impl<E: Environment, I: IntegerType> Div<&Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> DivFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the `quotient` of `self` and `other` and a `flag` indicating whether the division overflowed.
+    #[inline]
+    fn div_flagged(&self, rhs: &Integer<E, I>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_div(&rhs.integer);
+        (Integer::new(integer), Boolean::new(overflow))
+    }
+}
+
 impl<E: Environment, I: IntegerType> DivWrapped<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
@@ -312,6 +387,22 @@ impl<E: Environment, I: IntegerType> Modulo<Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> ModuloFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the result of taking the modulus of `self` with respect to `other` and a `flag` indicating whether the division overflowed.
+    #[inline]
+    fn modulo_flagged(&self, rhs: &Integer<E, I>) -> Self::Output {
+        match I::is_signed() {
+            true => E::halt("Taking the modulus of signed integers is not supported"),
+            false => {
+                let (integer, overflow) = self.integer.overflowing_rem(&rhs.integer);
+                (Integer::new(integer), Boolean::new(overflow))
+            }
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType> Rem<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
@@ -335,6 +426,17 @@ impl<E: Environment, I: IntegerType> Rem<&Integer<E, I>> for Integer<E, I> {
             Some(integer) => Integer::new(integer),
             None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType> RemFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the `remainder` of `self` divided by `other` and a `flag` indicating whether the division overflowed.
+    #[inline]
+    fn rem_flagged(&self, rhs: &Integer<E, I>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_rem(&rhs.integer);
+        (Integer::new(integer), Boolean::new(overflow))
     }
 }
 
@@ -401,6 +503,18 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Pow<&Integer<E, M>> for Integ
     }
 }
 
+impl<E: Environment, I: IntegerType, M: Magnitude> PowFlagged<Integer<E, M>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the `power` of `self` to the power of `other` and a `flag` indicating whether the division overflowed.
+    #[inline]
+    fn pow_flagged(&self, other: &Integer<E, M>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_pow(&other.integer.to_u32().unwrap());
+        // Unwrap is safe as we only cast up.
+        (Integer::new(integer), Boolean::new(overflow))
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> PowWrapped<Integer<E, M>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
@@ -421,5 +535,16 @@ impl<E: Environment, I: IntegerType> Square for Integer<E, I> {
             Some(integer) => Integer::new(integer),
             None => E::halt(format!("Integer square failed on: {}", self.integer)),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType> SquareFlagged for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Returns the `square` of `self` and a `flag` indicating whether the division overflowed.
+    #[inline]
+    fn square_flagged(&self) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_mul(&self.integer);
+        (Integer::new(integer), Boolean::new(overflow))
     }
 }
