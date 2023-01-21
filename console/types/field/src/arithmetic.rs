@@ -182,6 +182,19 @@ impl<E: Environment> DivAssign<&Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> DivFlagged<Field<E>> for Field<E> {
+    type Output = (Field<E>, Boolean<E>);
+
+    /// Divides `self` by `other` and returns a `flag` indicating whether the `other` is zero.
+    #[inline]
+    fn div_flagged(&self, other: &Field<E>) -> Self::Output {
+        match other.is_zero() {
+            true => (Field::zero(), Boolean::new(true)),
+            false => (Field::new(self.field / other.field), Boolean::new(false)),
+        }
+    }
+}
+
 impl<E: Environment> Pow<Field<E>> for Field<E> {
     type Output = Field<E>;
 
@@ -225,6 +238,19 @@ impl<E: Environment> Inverse for Field<E> {
     }
 }
 
+impl<E: Environment> InverseFlagged for Field<E> {
+    type Output = (Field<E>, Boolean<E>);
+
+    /// Returns the `inverse` of `self` and a `flag` indicating whether the inversion failed.
+    #[inline]
+    fn inverse_flagged(&self) -> Self::Output {
+        match self.field.inverse() {
+            Some(inverse) => (Field::new(inverse), Boolean::new(false)),
+            None => (Field::zero(), Boolean::new(true)),
+        }
+    }
+}
+
 impl<E: Environment> Square for Field<E> {
     type Output = Field<E>;
 
@@ -244,6 +270,19 @@ impl<E: Environment> SquareRoot for Field<E> {
         match self.field.sqrt() {
             Some(sqrt) => Ok(Field::new(sqrt)),
             None => bail!("Failed to square root a field element: {self}"),
+        }
+    }
+}
+
+impl<E: Environment> SquareRootFlagged for Field<E> {
+    type Output = (Field<E>, Boolean<E>);
+
+    /// Returns the `square_root` of `self` and a `flag` indicating whether the square root operation failed.
+    #[inline]
+    fn square_root_flagged(&self) -> Self::Output {
+        match self.field.sqrt() {
+            Some(sqrt) => (Field::new(sqrt), Boolean::new(false)),
+            None => (Field::zero(), Boolean::new(true)),
         }
     }
 }

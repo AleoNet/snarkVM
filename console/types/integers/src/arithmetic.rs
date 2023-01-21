@@ -71,9 +71,10 @@ impl<E: Environment, I: IntegerType> AbsFlagged for Integer<E, I> {
     #[inline]
     fn abs_flagged(self) -> Self::Output {
         match I::is_signed() {
-            true => match self.integer.overflowing_abs() {
-                (integer, flag) => (Integer::new(integer), Boolean::new(flag)),
-            },
+            true => {
+                let (integer, flag) = self.integer.overflowing_abs();
+                (Integer::new(integer), Boolean::new(flag))
+            }
             false => (self, Boolean::new(false)),
         }
     }
