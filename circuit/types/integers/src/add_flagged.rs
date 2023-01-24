@@ -113,10 +113,8 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
         let (expected_sum, expected_flag) = first.overflowing_add(&second);
-        println!("{}: {:?} + {:?} = {:?}", name, first, second, (expected_sum, expected_flag));
         Circuit::scope(name, || {
             let (candidate_sum, candidate_flag) = a.add_flagged(&b);
-            println!("{}: {:?} + {:?} = {:?}", name, a, b, (&candidate_sum, &candidate_flag));
             assert_eq!(expected_sum, *candidate_sum.eject_value());
             assert_eq!(expected_flag, candidate_flag.eject_value());
             assert_eq!(console::Integer::new(expected_sum), candidate_sum.eject_value());
