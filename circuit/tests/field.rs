@@ -145,6 +145,26 @@ mod field {
     }
 
     #[test]
+    fn pow10() {
+        let one = ConsoleField::one();
+        let two = one + one;
+        let four = two + two;
+        let eight = four + four;
+        let ten = eight + two;
+
+        let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
+        let b = Field::<Circuit>::new(Mode::Constant, ten);
+
+        let _candidate = a.pow(&b);
+
+        // print Circuit to JSON in console
+        let circuit_json = Circuit::json();
+        let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// pow10");
+        println!("{}", output);
+    }
+
+    #[test]
     fn pow() {
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let b = Field::<Circuit>::new(Mode::Private, ConsoleField::one());
