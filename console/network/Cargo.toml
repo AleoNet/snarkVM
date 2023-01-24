@@ -68,7 +68,7 @@ version = "0.10.1"
 version = "1.4"
 
 [dependencies.once_cell]
-version = "1.13"
+version = "1.17"
 
 [dependencies.paste]
 version = "1"
