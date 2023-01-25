@@ -26,7 +26,7 @@ extern crate snarkvm_circuit;
 #[cfg(test)]
 mod field {
     use snarkvm_circuit::Boolean;
-    use snarkvm_circuit_environment::{Circuit, Inject, Inverse, Mode, SquareRoot};
+    use snarkvm_circuit_environment::{Circuit, FromBits, Inject, Inverse, Mode, SquareRoot};
     use snarkvm_circuit_types::{Compare, DivUnchecked, Double, Equal, Field, Pow, Square, Ternary};
     use snarkvm_console_types_field::{Field as ConsoleField, One, Zero};
 
@@ -104,6 +104,21 @@ mod field {
         let circuit_json = Circuit::json();
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
         println!("// equal");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn from_bits_le() {
+        let mut bits = vec![];
+        for _i in 0..256 {
+            bits.push(Boolean::<Circuit>::new(Mode::Private, false));
+        }
+        let _candidate = Field::<Circuit>::from_bits_le(&bits);
+
+        // print Circuit to JSON in console
+        let circuit_json = Circuit::json();
+        let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// from_bits_le");
         println!("{}", output);
     }
 
