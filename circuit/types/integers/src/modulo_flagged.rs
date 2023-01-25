@@ -51,8 +51,10 @@ mod tests {
         let b = Integer::<Circuit, I>::new(mode_b, second);
 
         match I::is_signed() {
+            // Note that `modulo_flagged` is not defined on signed integers.
             true => check_operation_halts(&a, &b, Integer::modulo_flagged),
             false => {
+                // Check that the flagged implementation produces the correct result.
                 let (expected_result, expected_flag) = (*first).overflowing_modulo(&second);
                 println!("{}: {} % {} = {}, flag: {}", name, first, second, expected_result, expected_flag);
                 Circuit::scope(name, || {
@@ -62,10 +64,31 @@ mod tests {
                     assert_eq!(expected_flag, candidate_flag.eject_value());
                     assert_eq!(console::Integer::new(expected_result), candidate_result.eject_value());
                     assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-                })
+                });
+                Circuit::reset();
+
+                let (flagged_result, flag) = (&a).modulo_flagged(&b);
+
+                // Check that the flagged implementation matches standard implementation.
+                match second.is_zero() {
+                    true => match mode_b {
+                        Mode::Constant => check_operation_halts(&a, &b, Integer::modulo),
+                        _ => {
+                            let _ = a.modulo(&b);
+                            assert!(flag.eject_value());
+                            // On a modulo by zero, the result should be equal to `a`.
+                            assert_eq!(flagged_result.eject_value(), console::Integer::zero());
+                            assert!(!Circuit::is_satisfied_in_scope());
+                        }
+                    },
+                    false => {
+                        let standard_result = a.modulo(&b);
+                        assert_eq!(flagged_result.eject_value(), standard_result.eject_value());
+                        assert!(Circuit::is_satisfied_in_scope());
+                    }
+                }
             }
         }
-        Circuit::reset();
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {

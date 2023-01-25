@@ -105,7 +105,7 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
-    fn check_sub<I: IntegerType>(
+    fn check_sub<I: IntegerType + RefUnwindSafe>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,
         second: console::Integer<<Circuit as Environment>::Network, I>,
@@ -114,6 +114,8 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
+
+        // Check that flagged implementation produces the correct result.
         let (expected_difference, expected_flag) = first.overflowing_sub(&second);
         Circuit::scope(name, || {
             let (candidate_difference, candidate_flag) = a.sub_flagged(&b);
@@ -124,6 +126,31 @@ mod tests {
             assert_output_mode!(SubFlagged(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate_difference);
         });
         Circuit::reset();
+
+        let (flagged_result, flag) = (&a).sub_flagged(&b);
+
+        // Check that the flagged implementation matches wrapped implementation.
+        let wrapped_result = (&a).sub_wrapped(&b);
+        assert_eq!(flagged_result.eject_value(), wrapped_result.eject_value());
+
+        // Check that the flagged implementation matches the checked implementation.
+        match (flag.eject_value(), mode_a, mode_b) {
+            // If the flag is set and the mode is constant, the checked implementation should halt.
+            (true, Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::sub_checked),
+            _ => {
+                Circuit::scope(name, || {
+                    let checked_result = a.sub_checked(&b);
+                    assert_eq!(flagged_result.eject_value(), checked_result.eject_value());
+                    match flag.eject_value() {
+                        // If the flag is set, the circuit should not be satisfied.
+                        true => assert!(!Circuit::is_satisfied_in_scope()),
+                        // If the flag is not set, the circuit should be satisfied.
+                        false => assert!(Circuit::is_satisfied_in_scope()),
+                    }
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {

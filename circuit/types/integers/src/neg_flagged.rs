@@ -80,9 +80,11 @@ mod tests {
         mode: Mode,
     ) {
         let a = Integer::<Circuit, I>::new(mode, value);
+
+        // Check that the flagged implementation produces the correct result.
         let (expected_result, expected_flag) = value.overflowing_neg();
         Circuit::scope(name, || {
-            let (candidate_result, candidate_flag) = a.neg_flagged();
+            let (candidate_result, candidate_flag) = (&a).neg_flagged();
             assert_eq!(expected_result, *candidate_result.eject_value());
             assert_eq!(expected_flag, candidate_flag.eject_value());
             assert_eq!(console::Integer::new(expected_result), candidate_result.eject_value());
@@ -90,6 +92,26 @@ mod tests {
             assert_output_mode!(NegFlagged(Integer<I>) => Integer<I>, &mode, candidate_result);
         });
         Circuit::reset();
+
+        let (flagged_result, flag) = (&a).neg_flagged();
+
+        // Check that the flagged implementation matches the standard implementation.
+        match (flag.eject_value(), mode) {
+            (true, Mode::Constant) => check_unary_operation_halts(a, Integer::neg),
+            _ => {
+                Circuit::scope(name, || {
+                    let standard_result = &a.neg();
+                    assert_eq!(flagged_result.eject_value(), standard_result.eject_value());
+                    match flag.eject_value() {
+                        // If the flag is set, the circuit should not be satisfied.
+                        true => assert!(!Circuit::is_satisfied_in_scope()),
+                        // If the flag is not set, the circuit should be satisfied.
+                        false => assert!(Circuit::is_satisfied_in_scope()),
+                    }
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     fn run_test<I: IntegerType + UnwindSafe + Neg<Output = I>>(mode: Mode) {

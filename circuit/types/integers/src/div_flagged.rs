@@ -203,8 +203,9 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
+
+        // Check that the flagged implementation produces the correct result.
         let (expected_result, expected_flag) = first.overflowing_div(&second);
-        println!("{}: {} / {} = {}, {}", name, first, second, expected_result, expected_flag);
         Circuit::scope(name, || {
             let (candidate_result, candidate_flag) = a.div_flagged(&b);
             assert_eq!(expected_result, *candidate_result.eject_value());
@@ -215,6 +216,60 @@ mod tests {
             assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
         });
         Circuit::reset();
+
+        let (flagged_result, flag) = (&a).div_flagged(&b);
+
+        // Check that the flagged implementation matches wrapped implementation.
+        match second.is_zero() {
+            true => match mode_b {
+                Mode::Constant => check_operation_halts(&a, &b, Integer::div_wrapped),
+                _ => {
+                    let _ = a.div_wrapped(&b);
+                    assert!(flag.eject_value());
+                    // On a division by zero, the result should be equal to `a`.
+                    assert_eq!(flagged_result.eject_value(), a.eject_value());
+                    assert!(!Circuit::is_satisfied_in_scope());
+                }
+            },
+            false => {
+                let wrapped_result = a.div_wrapped(&b);
+                assert_eq!(flagged_result.eject_value(), wrapped_result.eject_value());
+                assert!(Circuit::is_satisfied_in_scope());
+            }
+        }
+
+        // Check that the flagged implementation matches the checked implementation.
+        match (flag.eject_value(), second.is_zero()) {
+            (_, true) => match mode_b {
+                // If the divisor is zero, and the mode is constant, then checked implementation should halt.
+                Mode::Constant => check_operation_halts(&a, &b, Integer::div_checked),
+                // Otherwise, the circuit should be unsatisfied.
+                _ => {
+                    let _ = a.div_checked(&b);
+                    assert!(flag.eject_value());
+                    // On a division by zero, the result should be equal to `a`.
+                    assert_eq!(flagged_result.eject_value(), a.eject_value());
+                    assert!(!Circuit::is_satisfied_in_scope());
+                }
+            },
+            // If the flag is set and the mode is constant, the checked implementation should halt.
+            (true, _) if mode_a == Mode::Constant && mode_b == Mode::Constant => {
+                check_operation_halts(&a, &b, Integer::div_checked)
+            }
+            _ => {
+                Circuit::scope(name, || {
+                    let checked_result = a.div_checked(&b);
+                    assert_eq!(flagged_result.eject_value(), checked_result.eject_value());
+                    match flag.eject_value() {
+                        // If the flag is set, the circuit should not be satisfied.
+                        true => assert!(!Circuit::is_satisfied_in_scope()),
+                        // If the flag is not set, the circuit should be satisfied.
+                        false => assert!(Circuit::is_satisfied_in_scope()),
+                    }
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {

@@ -352,6 +352,7 @@ pub(super) mod integer_type {
         + NumOne
         + OverflowingAbs
         + OverflowingAdd
+        + OverflowingModulo
         + OverflowingMul
         + OverflowingNeg
         + OverflowingPow
@@ -469,25 +470,25 @@ pub(super) mod integer_type {
     }
 
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, u8, overflowing_div, self, v, Self, (u8, bool), if *v == 0 { (0, true) } else { u8::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, u8, overflowing_div, self, v, Self, (u8, bool), if *v == 0 { (*self, true) } else { u8::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, u16, overflowing_div, self, v, Self, (u16, bool), if *v == 0 { (0, true) } else { u16::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, u16, overflowing_div, self, v, Self, (u16, bool), if *v == 0 { (*self, true) } else { u16::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, u32, overflowing_div, self, v, Self, (u32, bool), if *v == 0 { (0, true) } else { u32::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, u32, overflowing_div, self, v, Self, (u32, bool), if *v == 0 { (*self, true) } else { u32::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, u64, overflowing_div, self, v, Self, (u64, bool), if *v == 0 { (0, true) } else { u64::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, u64, overflowing_div, self, v, Self, (u64, bool), if *v == 0 { (*self, true) } else { u64::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, u128, overflowing_div, self, v, Self, (u128, bool), if *v == 0 { (0, true) } else { u128::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, u128, overflowing_div, self, v, Self, (u128, bool), if *v == 0 { (*self, true) } else { u128::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, i8, overflowing_div, self, v, Self, (i8, bool), if *v == 0 { (0, true) } else { i8::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, i8, overflowing_div, self, v, Self, (i8, bool), if *v == 0 { (*self, true) } else { i8::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, i16, overflowing_div, self, v, Self, (i16, bool), if *v == 0 { (0, true) } else { i16::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, i16, overflowing_div, self, v, Self, (i16, bool), if *v == 0 { (*self, true) } else { i16::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, i32, overflowing_div, self, v, Self, (i32, bool), if *v == 0 { (0, true) } else { i32::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, i32, overflowing_div, self, v, Self, (i32, bool), if *v == 0 { (*self, true) } else { i32::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, i64, overflowing_div, self, v, Self, (i64, bool), if *v == 0 { (0, true) } else { i64::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, i64, overflowing_div, self, v, Self, (i64, bool), if *v == 0 { (*self, true) } else { i64::overflowing_div(*self, *v) });
     #[rustfmt::skip]
-    binary_impl!(OverflowingDiv, i128, overflowing_div, self, v, Self, (i128, bool), if *v == 0 { (0, true) } else { i128::overflowing_div(*self, *v) });
+    binary_impl!(OverflowingDiv, i128, overflowing_div, self, v, Self, (i128, bool), if *v == 0 { (*self, true) } else { i128::overflowing_div(*self, *v) });
 
     pub trait OverflowingModulo: Sized {
         fn overflowing_modulo(&self, v: &Self) -> (Self, bool);

@@ -83,9 +83,11 @@ mod tests {
         mode: Mode,
     ) {
         let a = Integer::<Circuit, I>::new(mode, value);
+
+        // Check that the flagged implementation produces the correct result.
         let (expected_result, expected_flag) = value.overflowing_abs();
         Circuit::scope(name, || {
-            let (candidate_result, candidate_flag) = a.abs_flagged();
+            let (candidate_result, candidate_flag) = (&a).abs_flagged();
             assert_eq!(expected_result, *candidate_result.eject_value());
             assert_eq!(expected_flag, candidate_flag.eject_value());
             assert_eq!(console::Integer::new(expected_result), candidate_result.eject_value());
@@ -93,6 +95,31 @@ mod tests {
             assert_output_mode!(AbsFlagged(Integer<I>) => Integer<I>, &mode, candidate_result);
         });
         Circuit::reset();
+
+        let (flagged_result, flag) = (&a).abs_flagged();
+
+        // Check that the flagged implementation matches wrapped implementation.
+        let wrapped_result = (&a).abs_wrapped();
+        assert_eq!(flagged_result.eject_value(), wrapped_result.eject_value());
+
+        // Check that the flagged implementation matches the checked implementation.
+        match (flag.eject_value(), mode) {
+            // If the flag is set and the mode is constant, the checked implementation should halt.
+            (true, Mode::Constant) => check_unary_operation_halts(a, |a: Integer<Circuit, I>| a.abs_checked()),
+            _ => {
+                Circuit::scope(name, || {
+                    let checked_result = a.abs_checked();
+                    assert_eq!(flagged_result.eject_value(), checked_result.eject_value());
+                    match flag.eject_value() {
+                        // If the flag is set, the circuit should not be satisfied.
+                        true => assert!(!Circuit::is_satisfied_in_scope()),
+                        // If the flag is not set, the circuit should be satisfied.
+                        false => assert!(Circuit::is_satisfied_in_scope()),
+                    }
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     fn run_test<I: IntegerType + UnwindSafe>(mode: Mode) {

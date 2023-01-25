@@ -99,11 +99,13 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-    use core::ops::RangeInclusive;
+    use test_utilities::*;
+
+    use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     const ITERATIONS: u64 = 128;
 
-    fn check_add<I: IntegerType>(
+    fn check_add<I: IntegerType + RefUnwindSafe>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,
         second: console::Integer<<Circuit as Environment>::Network, I>,
@@ -112,6 +114,8 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
+
+        // Check that the flagged implementation produces the correct result.
         let (expected_sum, expected_flag) = first.overflowing_add(&second);
         Circuit::scope(name, || {
             let (candidate_sum, candidate_flag) = a.add_flagged(&b);
@@ -122,9 +126,34 @@ mod tests {
             assert_output_mode!(AddFlagged(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate_sum);
         });
         Circuit::reset();
+
+        let (flagged_result, flag) = (&a).add_flagged(&b);
+
+        // Check that the flagged implementation matches wrapped implementation.
+        let wrapped_result = (&a).add_wrapped(&b);
+        assert_eq!(flagged_result.eject_value(), wrapped_result.eject_value());
+
+        // Check that the flagged implementation matches the checked implementation.
+        match (flag.eject_value(), mode_a, mode_b) {
+            // If the flag is set and the mode is constant, the checked implementation should halt.
+            (true, Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::add_checked),
+            _ => {
+                Circuit::scope(name, || {
+                    let checked_result = a.add_checked(&b);
+                    assert_eq!(flagged_result.eject_value(), checked_result.eject_value());
+                    match flag.eject_value() {
+                        // If the flag is set, the circuit should not be satisfied.
+                        true => assert!(!Circuit::is_satisfied_in_scope()),
+                        // If the flag is not set, the circuit should be satisfied.
+                        false => assert!(Circuit::is_satisfied_in_scope()),
+                    }
+                });
+                Circuit::reset();
+            }
+        }
     }
 
-    fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
+    fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         let mut rng = TestRng::default();
 
         for i in 0..ITERATIONS {
@@ -147,7 +176,7 @@ mod tests {
         }
     }
 
-    fn run_exhaustive_test<I: IntegerType>(mode_a: Mode, mode_b: Mode)
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode)
     where
         RangeInclusive<I>: Iterator<Item = I>,
     {

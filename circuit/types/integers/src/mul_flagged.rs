@@ -76,16 +76,16 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulFlagged<Integer<E, I>, Outpu
             match I::is_signed() {
                 // Signed case
                 true => match (case.0, case.1) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS + 1, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (8 * I::BITS) + 5, (8 * I::BITS) + 9)
+                        Count::is(4 * I::BITS, 0, (8 * I::BITS) + 5, (8 * I::BITS) + 8)
                     }
-                    (_, _) => Count::is(3 * I::BITS, 0, (10 * I::BITS) + 8, (10 * I::BITS) + 13),
+                    (_, _) => Count::is(3 * I::BITS, 0, (10 * I::BITS) + 8, (10 * I::BITS) + 12),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (3 * I::BITS) - 1, (3 * I::BITS) + 1),
+                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS + 1, 0, 0, 0),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (3 * I::BITS) - 1, 3 * I::BITS),
                     (_, _) => Count::is(0, 0, 3 * I::BITS, (3 * I::BITS) + 1),
                 },
             }
@@ -95,17 +95,17 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulFlagged<Integer<E, I>, Outpu
             match I::is_signed() {
                 // Signed case
                 true => match (case.0, case.1) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS + 1, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 12)
+                        Count::is(4 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 11)
                     }
-                    (_, _) => Count::is(3 * I::BITS, 0, (11 * I::BITS) + 13, (11 * I::BITS) + 19),
+                    (_, _) => Count::is(3 * I::BITS, 0, (11 * I::BITS) + 13, (11 * I::BITS) + 18),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 4),
-                    (_, _) => Count::is(0, 0, (4 * I::BITS) + 5, (4 * I::BITS) + 8),
+                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS + 1, 0, 0, 0),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 3),
+                    (_, _) => Count::is(0, 0, (4 * I::BITS) + 5, (4 * I::BITS) + 7),
                 },
             }
         } else {
@@ -138,7 +138,7 @@ mod tests {
 
     const ITERATIONS: u64 = 32;
 
-    fn check_mul<I: IntegerType>(
+    fn check_mul<I: IntegerType + RefUnwindSafe>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,
         second: console::Integer<<Circuit as Environment>::Network, I>,
@@ -147,6 +147,8 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
+
+        // Check that the flagged implementation produces the correct result.
         let (expected_result, expected_flag) = first.overflowing_mul(&second);
         Circuit::scope(name, || {
             let (candidate_result, candidate_flag) = a.mul_flagged(&b);
@@ -157,6 +159,31 @@ mod tests {
             assert_output_mode!(MulFlagged(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate_result);
         });
         Circuit::reset();
+
+        let (flagged_result, flag) = (&a).mul_flagged(&b);
+
+        // Check that the flagged implementation matches wrapped implementation.
+        let wrapped_result = (&a).mul_wrapped(&b);
+        assert_eq!(flagged_result.eject_value(), wrapped_result.eject_value());
+
+        // Check that the flagged implementation matches the checked implementation.
+        match (flag.eject_value(), mode_a, mode_b) {
+            // If the flag is set and the mode is constant, the checked implementation should halt.
+            (true, Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::mul_checked),
+            _ => {
+                Circuit::scope(name, || {
+                    let checked_result = a.mul_checked(&b);
+                    assert_eq!(flagged_result.eject_value(), checked_result.eject_value());
+                    match flag.eject_value() {
+                        // If the flag is set, the circuit should not be satisfied.
+                        true => assert!(!Circuit::is_satisfied_in_scope()),
+                        // If the flag is not set, the circuit should be satisfied.
+                        false => assert!(Circuit::is_satisfied_in_scope()),
+                    }
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
