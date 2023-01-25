@@ -559,16 +559,66 @@ pub(super) mod integer_type {
         fn overflowing_shl(&self, v: &u32) -> (Self, bool);
     }
 
-    binary_impl!(OverflowingShl, u8, overflowing_shl, self, v, u32, (u8, bool), u8::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, u16, overflowing_shl, self, v, u32, (u16, bool), u16::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, u32, overflowing_shl, self, v, u32, (u32, bool), u32::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, u64, overflowing_shl, self, v, u32, (u64, bool), u64::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, u128, overflowing_shl, self, v, u32, (u128, bool), u128::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, i8, overflowing_shl, self, v, u32, (i8, bool), i8::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, i16, overflowing_shl, self, v, u32, (i16, bool), i16::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, i32, overflowing_shl, self, v, u32, (i32, bool), i32::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, i64, overflowing_shl, self, v, u32, (i64, bool), i64::overflowing_shl(*self, *v));
-    binary_impl!(OverflowingShl, i128, overflowing_shl, self, v, u32, (i128, bool), i128::overflowing_shl(*self, *v));
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, u8, overflowing_shl, self, v, u32, (u8, bool), {
+        let (factor, pow_flag) = u8::overflowing_pow(2, *v);
+        let (result, mul_flag) = u8::overflowing_mul(*self, factor);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, u16, overflowing_shl, self, v, u32, (u16, bool), {
+        let (factor, pow_flag) = u16::overflowing_pow(2, *v);
+        let (result, mul_flag) = u16::overflowing_mul(*self, factor);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, u32, overflowing_shl, self, v, u32, (u32, bool), {
+        let (factor, pow_flag) = u32::overflowing_pow(2, *v);
+        let (result, mul_flag) = u32::overflowing_mul(*self, factor);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, u64, overflowing_shl, self, v, u32, (u64, bool), {
+        let (factor, pow_flag) = u64::overflowing_pow(2, *v);
+        let (result, mul_flag) = u64::overflowing_mul(*self, factor);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, u128, overflowing_shl, self, v, u32, (u128, bool), {
+        let (factor, pow_flag) = u128::overflowing_pow(2, *v);
+        let (result, mul_flag) = u128::overflowing_mul(*self, factor);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, i8, overflowing_shl, self, v, u32, (i8, bool), {
+        let (factor, pow_flag) = u8::overflowing_pow(2u8, *v);
+        let (result, mul_flag) = i8::overflowing_mul(if (factor as i8) == i8::MIN { self.wrapping_neg() } else { *self }, factor as i8);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, i16, overflowing_shl, self, v, u32, (i16, bool), {
+        let (factor, pow_flag) = u16::overflowing_pow(2u16, *v);
+        let (result, mul_flag) = i16::overflowing_mul(if (factor as i16) == i16::MIN { self.wrapping_neg() } else { *self }, factor as i16);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, i32, overflowing_shl, self, v, u32, (i32, bool), {
+        let (factor, pow_flag) = u32::overflowing_pow(2u32, *v);
+        let (result, mul_flag) = i32::overflowing_mul(if (factor as i32) == i32::MIN { self.wrapping_neg() } else { *self }, factor as i32);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, i64, overflowing_shl, self, v, u32, (i64, bool), {
+        let (factor, pow_flag) = u64::overflowing_pow(2u64, *v);
+        let (result, mul_flag) = i64::overflowing_mul(if (factor as i64) == i64::MIN { self.wrapping_neg() } else { *self }, factor as i64);
+        (result, pow_flag || mul_flag)
+    });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingShl, i128, overflowing_shl, self, v, u32, (i128, bool), {
+        let (factor, pow_flag) = u128::overflowing_pow(2u128, *v);
+        let (result, mul_flag) = i128::overflowing_mul(if (factor as i128) == i128::MIN { self.wrapping_neg() } else { *self }, factor as i128);
+        (result, pow_flag || mul_flag)
+    });
 
     pub trait OverflowingShr: Sized {
         fn overflowing_shr(&self, v: &u32) -> (Self, bool);
