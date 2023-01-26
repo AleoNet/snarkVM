@@ -182,6 +182,19 @@ impl<E: Environment> DivAssign<&Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> DivFlagged<Field<E>> for Field<E> {
+    type Output = (Field<E>, Boolean<E>);
+
+    /// Divides `self` by `other`, indicating than `other` is zero via a flag.
+    #[inline]
+    fn div_flagged(&self, other: &Field<E>) -> Self::Output {
+        match other.is_zero() {
+            true => (Field::zero(), Boolean::new(true)),
+            false => (Field::new(self.field / other.field), Boolean::new(false)),
+        }
+    }
+}
+
 impl<E: Environment> Pow<Field<E>> for Field<E> {
     type Output = Field<E>;
 

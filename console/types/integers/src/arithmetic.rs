@@ -296,6 +296,17 @@ impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I>
     }
 }
 
+impl<E: Environment, I: IntegerType> DivFlagged<Integer<E, I>> for Integer<E, I> {
+    type Output = (Integer<E, I>, Boolean<E>);
+
+    /// Divides `self` by `other` and returns a `flag` indicating that a division by zero or overflow occurred.
+    #[inline]
+    fn div_flagged(&self, rhs: &Integer<E, I>) -> Self::Output {
+        let (integer, overflow) = self.integer.overflowing_div(&rhs.integer);
+        (Integer::new(integer), Boolean::new(overflow))
+    }
+}
+
 impl<E: Environment, I: IntegerType> Modulo<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
