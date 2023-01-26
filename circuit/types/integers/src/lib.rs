@@ -27,6 +27,7 @@ pub mod add_wrapped;
 pub mod and;
 pub mod compare;
 pub mod div_checked;
+pub mod div_flagged;
 pub mod div_wrapped;
 pub mod equal;
 pub mod modulo;
