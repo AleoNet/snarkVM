@@ -51,6 +51,13 @@ pub trait DivChecked<Rhs: ?Sized = Self> {
     fn div_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
+/// Binary operator for dividing two values, indicating than an overflow or division by zero error occurred via a flag.
+pub trait DivFlagged<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_flagged(&self, rhs: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for dividing two values, bounding the quotient to `MAX` or `MIN` if an overflow occurs.
 pub trait DivSaturating<Rhs: ?Sized = Self> {
     type Output;
