@@ -86,25 +86,11 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                     let neg_one = Integer::constant(-console::Integer::one());
                     let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
                     E::assert(!overflows);
-
-                    // Divide the absolute value of `self` and `other` in the base field.
-                    // Note that it is safe to use `abs_wrapped`, since the case for console::Integer::MIN is handled above.
-                    let unsigned_dividend = self.abs_wrapped().cast_as_dual();
-                    // Note that `unsigned_divisor` is zero iff `other` is zero.
-                    let unsigned_divisor = other.abs_wrapped().cast_as_dual();
-                    // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
-                    let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
-
-                    // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
-                    let signed_quotient = Integer { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-                    let operands_same_sign = &self.msb().is_equal(other.msb());
-
-                    Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
-                } else {
-                    // Return the quotient of `self` and `other`.
-                    // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
-                    self.div_wrapped(other)
                 }
+
+                // Return the quotient of `self` and `other`.
+                // Note that this call to `div_wrapped` checks that `other` is not zero.
+                self.div_wrapped(other)
             }
         }
     }

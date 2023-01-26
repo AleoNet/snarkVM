@@ -60,7 +60,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    /// This function enforces that `quotient` and `remainder` are well-formed witnesses to the division of `self` by `other`.
+    /// This function enforces that `quotient` and `remainder` are well-formed witnesses to the wrapped division of `self` by `other`.
     pub(super) fn enforce_wrapped_division(first: &Self, second: &Self, quotient: &Self, remainder: &Self) {
         // Ensure that Euclidean division holds for these values in the base field.
         E::assert_eq(first.to_field(), quotient.to_field() * second.to_field() + remainder.to_field());
@@ -76,17 +76,17 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     where
         F: FnOnce(&Self, &Self, &Self, &Self) -> (),
     {
-        // Eject the dividend and divisor, to compute the quotient as a witness.
-        let dividend_value = self.eject_value();
-        // Note: This band-aid was added to prevent a panic when the divisor is 0.
-        let divisor_value = match other.eject_value().is_zero() {
-            true => console::Integer::one(),
-            false => other.eject_value(),
-        };
-
         // Overflow is not possible for unsigned integers so we use wrapping operations.
-        let quotient = Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_div(&divisor_value)));
-        let remainder = Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_rem(&divisor_value)));
+        let quotient = witness!(|self, other| if other == console::Integer::zero() {
+            other
+        } else {
+            console::Integer::new(self.wrapping_div(&other))
+        });
+        let remainder = witness!(|self, other| if other == console::Integer::zero() {
+            other
+        } else {
+            console::Integer::new(self.wrapping_rem(&other))
+        });
 
         // Enforce that the quotient and remainder satisfy the division equation.
         enforce_constraints(&self, &other, &quotient, &remainder);
