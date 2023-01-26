@@ -45,6 +45,7 @@ aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
+wasm = [ ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"

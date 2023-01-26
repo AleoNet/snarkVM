@@ -31,11 +31,10 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 
-use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -44,6 +43,16 @@ pub enum Query<N: Network, B: BlockStorage<N>> {
     VM(BlockStore<N, B>),
     /// The base URL of the node.
     REST(String),
+    /// Externally specified values
+    #[cfg(feature = "wasm")]
+    EXTERNAL {
+        /// State root of the blockchain
+        state_root: Option<String>,
+        /// State path of the program
+        state_path: Option<String>,
+        /// Program
+        program: Option<String>,
+    },
 }
 
 impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for Query<N, B> {
@@ -95,10 +104,19 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            Self::EXTERNAL { program, .. } => match program {
+                Some(program) => Ok(Program::from_str(program)?),
+                _ => bail!("Program not found in external query"),
+            },
+            _ => {
+                bail!("Program not found")
+            }
         }
     }
 
@@ -106,10 +124,19 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn current_state_root(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            Self::EXTERNAL { state_root, .. } => match state_root {
+                Some(state_root) => Ok(N::StateRoot::from_str(state_root).map_err(|_| anyhow!("Invalid state root"))?),
+                _ => bail!("State root not found in external query"),
+            },
+            _ => {
+                bail!("State path not found")
+            }
         }
     }
 
@@ -117,14 +144,23 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            Self::EXTERNAL { state_path, .. } => match state_path {
+                Some(state_path) => Ok(StatePath::from_str(state_path)?),
+                _ => bail!("State path not found in external query"),
+            },
+            _ => {
+                bail!("State path not found")
+            }
         }
     }
 
-    /// Performs a GET request to the given URL.
+    #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
         let response = reqwest::blocking::get(url)?;
         if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }
