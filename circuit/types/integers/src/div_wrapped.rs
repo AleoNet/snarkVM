@@ -63,6 +63,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Divides `self` by `other`, via witnesses, returning the quotient and remainder.
     /// This method does not check that `other` is non-zero.
     /// This method should only be used when 2 * I::BITS < E::BaseField::size_in_data_bits().
+    /// This method assumes the `self` and `other` are unsigned integers.
     pub(super) fn unsigned_division_via_witness(&self, other: &Self) -> (Self, Self) {
         // Eject the dividend and divisor, to compute the quotient as a witness.
         let dividend_value = self.eject_value();

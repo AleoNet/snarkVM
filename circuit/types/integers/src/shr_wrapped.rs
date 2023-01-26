@@ -77,28 +77,16 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                     let dividend_unsigned = self.abs_wrapped().cast_as_dual();
                     let divisor_unsigned = shift_as_divisor.cast_as_dual();
 
-                    let dividend = dividend_unsigned.eject_value();
-                    let divisor = divisor_unsigned.eject_value();
-
-                    // Wrapping operations are safe since unsigned division never overflows.
-                    let quotient_unsigned = Integer::<E, I::Dual>::new(
-                        Mode::Private,
-                        console::Integer::new(dividend.wrapping_div(&divisor)),
-                    );
-                    let remainder_unsigned = Integer::<E, I::Dual>::new(
-                        Mode::Private,
-                        console::Integer::new(dividend.wrapping_rem(&divisor)),
-                    );
-
-                    // Ensure that Euclidean division holds for these values in the base field.
-                    let remainder_field = remainder_unsigned.to_field();
-                    E::assert_eq(
-                        dividend_unsigned.to_field(),
-                        quotient_unsigned.to_field() * divisor_unsigned.to_field() + &remainder_field,
-                    );
-
-                    // Ensure that the remainder is less than the divisor.
-                    E::assert(remainder_unsigned.is_less_than(&divisor_unsigned));
+                    // Compute the quotient and remainder using wrapped, unsigned division.
+                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
+                    let (quotient_unsigned, remainder_field) = if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64
+                    {
+                        let (quotient_integer, remainder_integer) =
+                            dividend_unsigned.unsigned_division_via_witness(&divisor_unsigned);
+                        (quotient_integer, remainder_integer.to_field())
+                    } else {
+                        dividend_unsigned.unsigned_binary_long_division(&divisor_unsigned)
+                    };
 
                     // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
                     let quotient = Self { bits_le: quotient_unsigned.bits_le, phantom: Default::default() };
