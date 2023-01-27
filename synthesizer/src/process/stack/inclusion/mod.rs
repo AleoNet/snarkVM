@@ -43,16 +43,6 @@ pub enum Query<N: Network, B: BlockStorage<N>> {
     VM(BlockStore<N, B>),
     /// The base URL of the node.
     REST(String),
-    /// Externally specified values
-    #[cfg(feature = "wasm")]
-    EXTERNAL {
-        /// State root of the blockchain
-        state_root: Option<String>,
-        /// State path of the program
-        state_path: Option<String>,
-        /// Program
-        program: Option<String>,
-    },
 }
 
 impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for Query<N, B> {
@@ -110,13 +100,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
-            Self::EXTERNAL { program, .. } => match program {
-                Some(program) => Ok(Program::from_str(program)?),
-                _ => bail!("Program not found in external query"),
-            },
-            _ => {
-                bail!("Program not found")
-            }
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -130,13 +114,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
-            Self::EXTERNAL { state_root, .. } => match state_root {
-                Some(state_root) => Ok(N::StateRoot::from_str(state_root).map_err(|_| anyhow!("Invalid state root"))?),
-                _ => bail!("State root not found in external query"),
-            },
-            _ => {
-                bail!("State path not found")
-            }
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -150,16 +128,11 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
-            Self::EXTERNAL { state_path, .. } => match state_path {
-                Some(state_path) => Ok(StatePath::from_str(state_path)?),
-                _ => bail!("State path not found in external query"),
-            },
-            _ => {
-                bail!("State path not found")
-            }
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
+    /// Performs a GET request to the given URL.
     #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
         let response = reqwest::blocking::get(url)?;

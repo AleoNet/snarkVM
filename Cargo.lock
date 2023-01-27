@@ -2521,7 +2521,6 @@ name = "snarkvm-wasm"
 version = "0.9.11"
 dependencies = [
  "getrandom",
- "paste",
  "rand",
  "serde",
  "snarkvm-console",
