@@ -226,11 +226,11 @@ impl<E: Environment> Double for Scalar<E> {
 }
 
 impl<E: Environment> Inverse for Scalar<E> {
-    type Output = Scalar<E>;
+    type Output = Result<Scalar<E>>;
 
     /// Returns the `inverse` of `self`.
     #[inline]
-    fn inverse(&self) -> Result<Self::Output> {
+    fn inverse(&self) -> Self::Output {
         match self.scalar.inverse() {
             Some(inverse) => Ok(Scalar::new(inverse)),
             None => bail!("Failed to invert a scalar element: {self}"),

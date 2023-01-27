@@ -87,7 +87,7 @@ pub trait FieldTrait:
     + Equal
     + FromBytes
     + core::hash::Hash
-    + Inverse<Output = Self>
+    + Inverse<Output = Result<Self>>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>
@@ -106,7 +106,7 @@ pub trait FieldTrait:
     + SizeInBytes
     + Sync
     + Square<Output = Self>
-    + SquareRoot<Output = Self>
+    + SquareRoot<Output = Result<Self>>
     + Sub<Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
     + SubAssign<Self>
@@ -175,7 +175,7 @@ pub trait ScalarTrait:
     + Double<Output = Self>
     + Eq
     + Equal
-    + Inverse<Output = Self>
+    + Inverse<Output = Result<Self>>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>

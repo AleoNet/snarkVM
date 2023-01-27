@@ -185,7 +185,7 @@ impl<E: Environment> DivAssign<&Field<E>> for Field<E> {
 impl<E: Environment> DivFlagged<Field<E>> for Field<E> {
     type Output = (Field<E>, Boolean<E>);
 
-    /// Divides `self` by `other`, indicating than `other` is zero via a flag.
+    /// Divides `self` by `other`, indicating that `other` is zero via a flag.
     #[inline]
     fn div_flagged(&self, other: &Field<E>) -> Self::Output {
         match other.is_zero() {
@@ -226,14 +226,27 @@ impl<E: Environment> Double for Field<E> {
 }
 
 impl<E: Environment> Inverse for Field<E> {
-    type Output = Field<E>;
+    type Output = Result<Field<E>>;
 
     /// Returns the `inverse` of `self`.
     #[inline]
-    fn inverse(&self) -> Result<Self::Output> {
+    fn inverse(&self) -> Self::Output {
         match self.field.inverse() {
             Some(inverse) => Ok(Field::new(inverse)),
             None => bail!("Failed to invert a field element: {self}"),
+        }
+    }
+}
+
+impl<E: Environment> InverseFlagged for Field<E> {
+    type Output = (Field<E>, Boolean<E>);
+
+    /// Returns the `inverse` of `self`, indicating that `self` is zero via a flag.
+    #[inline]
+    fn inverse_flagged(&self) -> Self::Output {
+        match self.field.inverse() {
+            Some(inverse) => (Field::new(inverse), Boolean::new(false)),
+            None => (Field::zero(), Boolean::new(true)),
         }
     }
 }
@@ -249,11 +262,11 @@ impl<E: Environment> Square for Field<E> {
 }
 
 impl<E: Environment> SquareRoot for Field<E> {
-    type Output = Field<E>;
+    type Output = Result<Field<E>>;
 
     /// Returns the `square_root` of `self`.
     #[inline]
-    fn square_root(&self) -> Result<Self::Output> {
+    fn square_root(&self) -> Self::Output {
         match self.field.sqrt() {
             Some(sqrt) => Ok(Field::new(sqrt)),
             None => bail!("Failed to square root a field element: {self}"),
