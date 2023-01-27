@@ -1,7 +1,7 @@
 [package]
 name = "snarkvm-wasm"
 version = "0.9.11"
-authors = ["The Aleo Team <hello@aleo.org>"]
+authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
@@ -19,30 +19,17 @@ categories = [
   "wasm",
   "web-programming"
 ]
-include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies.getrandom]
-version = "0.2"
-features = ["js"]
-
-[dependencies.rand]
-version = "0.8"
-default-features = false
-
-[dependencies.serde]
-version = "1.0.152"
-default-features = false
-features = ["derive"]
+crate-type = [ "cdylib", "rlib" ]
 
 [dependencies.snarkvm-console]
 path = "../console"
 version = "0.9.11"
-features = ["wasm"]
+features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]
@@ -70,19 +57,37 @@ version = "0.9.11"
 optional = true
 default-features = false
 
-[dependencies.wasm-bindgen]
-version = "0.2.83"
-features = ["serde-serialize"]
+[dependencies.rand]
+version = "0.8"
+default-features = false
 
-[features]
-default = ["full", "parallel"]
-full = ["console", "curves", "fields", "synthesizer", "utilities"]
-parallel = ["snarkvm-console/parallel", "snarkvm-fields/parallel", "snarkvm-synthesizer/parallel", "snarkvm-utilities/parallel"]
-console = ["snarkvm-console"]
-curves = ["snarkvm-curves"]
-fields = ["snarkvm-fields"]
-synthesizer = ["snarkvm-synthesizer"]
-utilities = ["snarkvm-utilities"]
+[dependencies.serde]
+version = "1.0.152"
+default-features = false
+features = [ "derive" ]
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+features = [ "serde-serialize" ]
+
+[dependencies.getrandom]
+version = "0.2"
+features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3.33"
+
+[features]
+default = [ "full", "parallel" ]
+full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
+parallel = [
+  "snarkvm-console/parallel",
+  "snarkvm-fields/parallel",
+  "snarkvm-synthesizer/parallel",
+  "snarkvm-utilities/parallel"
+]
+console = [ "snarkvm-console" ]
+curves = [ "snarkvm-curves" ]
+fields = [ "snarkvm-fields" ]
+synthesizer = [ "snarkvm-synthesizer" ]
+utilities = [ "snarkvm-utilities" ]
