@@ -40,24 +40,31 @@ mod macros;
 use crate::Opcode;
 use console::network::prelude::*;
 
-pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
+pub trait Operation<
+    N: Network,
+    Value: Parser + ToBits,
+    ValueType: Parser,
+    const NUM_OPERANDS: usize,
+    const NUM_OUTPUTS: usize,
+>
+{
     /// The opcode of the operation.
     const OPCODE: Opcode;
 
     /// Returns the result of evaluating the operation on the given inputs.
-    fn evaluate(inputs: &[Value; NUM_OPERANDS]) -> Result<Value>;
+    fn evaluate(inputs: &[Value; NUM_OPERANDS]) -> Result<Vec<Value>>;
 
     /// Returns the result of executing the operation on the given circuit inputs.
     fn execute<A: circuit::Aleo<Network = N>>(
         inputs: &[circuit::Literal<A>; NUM_OPERANDS],
-    ) -> Result<circuit::Literal<A>>;
+    ) -> Result<Vec<circuit::Literal<A>>>;
 
     /// Returns the output type from the given input types.
-    fn output_type(inputs: &[ValueType; NUM_OPERANDS]) -> Result<ValueType>;
+    fn output_types(inputs: &[ValueType; NUM_OPERANDS]) -> Result<Vec<ValueType>>;
 }
 
 /// Compute the absolute value of `first`, checking for overflow/underflow, and storing the outcome in `destination`.
-pub type Abs<N> = UnaryLiteral<N, AbsOperation<N>>;
+pub type Abs<N> = UnaryLiteral<N, AbsOperation<N>, 1>;
 
 crate::operation!(
     pub struct AbsOperation<console::prelude::AbsChecked, circuit::prelude::AbsChecked, abs_checked, "abs"> {
@@ -70,7 +77,7 @@ crate::operation!(
 );
 
 /// Compute the absolute value of `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-pub type AbsWrapped<N> = UnaryLiteral<N, AbsWrappedOperation<N>>;
+pub type AbsWrapped<N> = UnaryLiteral<N, AbsWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct AbsWrappedOperation<console::prelude::AbsWrapped, circuit::prelude::AbsWrapped, abs_wrapped, "abs.w"> {
@@ -83,7 +90,7 @@ crate::operation!(
 );
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
-pub type Add<N> = BinaryLiteral<N, AddOperation<N>>;
+pub type Add<N> = BinaryLiteral<N, AddOperation<N>, 1>;
 
 crate::operation!(
     pub struct AddOperation<core::ops::Add, core::ops::Add, add, "add"> {
@@ -104,7 +111,7 @@ crate::operation!(
 );
 
 /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOperation<N>>;
+pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct AddWrappedOperation<console::prelude::AddWrapped, circuit::prelude::AddWrapped, add_wrapped, "add.w"> {
@@ -122,7 +129,7 @@ crate::operation!(
 );
 
 /// Performs a bitwise `and` on `first` and `second`, storing the outcome in `destination`.
-pub type And<N> = BinaryLiteral<N, AndOperation<N>>;
+pub type And<N> = BinaryLiteral<N, AndOperation<N>, 1>;
 
 crate::operation!(
     pub struct AndOperation<core::ops::BitAnd, core::ops::BitAnd, bitand, "and"> {
@@ -141,7 +148,7 @@ crate::operation!(
 );
 
 /// Divides `first` by `second`, storing the outcome in `destination`.
-pub type Div<N> = BinaryLiteral<N, DivOperation<N>>;
+pub type Div<N> = BinaryLiteral<N, DivOperation<N>, 1>;
 
 crate::operation!(
     pub struct DivOperation<core::ops::Div, core::ops::Div, div, "div"> {
@@ -160,8 +167,10 @@ crate::operation!(
     }
 );
 
+/// Divides `first` by `second`, storing the outcome in `de
+
 /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
+pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div.w"> {
@@ -179,7 +188,7 @@ crate::operation!(
 );
 
 /// Doubles `first`, storing the outcome in `destination`.
-pub type Double<N> = UnaryLiteral<N, DoubleOperation<N>>;
+pub type Double<N> = UnaryLiteral<N, DoubleOperation<N>, 1>;
 
 crate::operation!(
     pub struct DoubleOperation<console::prelude::Double, circuit::prelude::Double, double, "double"> {
@@ -189,7 +198,7 @@ crate::operation!(
 );
 
 /// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
-pub type GreaterThan<N> = BinaryLiteral<N, GreaterThanOperation<N>>;
+pub type GreaterThan<N> = BinaryLiteral<N, GreaterThanOperation<N>, 1>;
 
 crate::operation!(
     pub struct GreaterThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than, "gt"> {
@@ -210,7 +219,7 @@ crate::operation!(
 );
 
 /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
-pub type GreaterThanOrEqual<N> = BinaryLiteral<N, GreaterThanOrEqualOperation<N>>;
+pub type GreaterThanOrEqual<N> = BinaryLiteral<N, GreaterThanOrEqualOperation<N>, 1>;
 
 crate::operation!(
     pub struct GreaterThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than_or_equal, "gte"> {
@@ -231,7 +240,7 @@ crate::operation!(
 );
 
 /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
-pub type Inv<N> = UnaryLiteral<N, InvOperation<N>>;
+pub type Inv<N> = UnaryLiteral<N, InvOperation<N>, 1>;
 
 crate::operation!(
     pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
@@ -240,7 +249,7 @@ crate::operation!(
 );
 
 /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
-pub type LessThan<N> = BinaryLiteral<N, LessThanOperation<N>>;
+pub type LessThan<N> = BinaryLiteral<N, LessThanOperation<N>, 1>;
 
 crate::operation!(
     pub struct LessThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than, "lt"> {
@@ -261,7 +270,7 @@ crate::operation!(
 );
 
 /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
-pub type LessThanOrEqual<N> = BinaryLiteral<N, LessThanOrEqualOperation<N>>;
+pub type LessThanOrEqual<N> = BinaryLiteral<N, LessThanOrEqualOperation<N>, 1>;
 
 crate::operation!(
     pub struct LessThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than_or_equal, "lte"> {
@@ -282,7 +291,7 @@ crate::operation!(
 );
 
 /// Computes the result of `first` mod `second`, storing the outcome in the destination.
-pub type Modulo<N> = BinaryLiteral<N, ModuloOperation<N>>;
+pub type Modulo<N> = BinaryLiteral<N, ModuloOperation<N>, 1>;
 
 crate::operation!(
     pub struct ModuloOperation<console::prelude::Modulo, circuit::prelude::Modulo, modulo, "mod"> {
@@ -295,7 +304,7 @@ crate::operation!(
 );
 
 /// Multiplies `first` and `second`, storing the outcome in `destination`.
-pub type Mul<N> = BinaryLiteral<N, MulOperation<N>>;
+pub type Mul<N> = BinaryLiteral<N, MulOperation<N>, 1>;
 
 crate::operation!(
     pub struct MulOperation<core::ops::Mul, core::ops::Mul, mul, "mul"> {
@@ -317,7 +326,7 @@ crate::operation!(
 );
 
 /// Multiplies `first` and `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-pub type MulWrapped<N> = BinaryLiteral<N, MulWrappedOperation<N>>;
+pub type MulWrapped<N> = BinaryLiteral<N, MulWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct MulWrappedOperation<console::prelude::MulWrapped, circuit::prelude::MulWrapped, mul_wrapped, "mul.w"> {
@@ -335,7 +344,7 @@ crate::operation!(
 );
 
 /// Returns `false` if `first` and `second` are `true`, storing the outcome in `destination`.
-pub type Nand<N> = BinaryLiteral<N, NandOperation<N>>;
+pub type Nand<N> = BinaryLiteral<N, NandOperation<N>, 1>;
 
 crate::operation!(
     pub struct NandOperation<console::prelude::Nand, circuit::prelude::Nand, nand, "nand"> {
@@ -344,7 +353,7 @@ crate::operation!(
 );
 
 /// Negates `first`, storing the outcome in `destination`.
-pub type Neg<N> = UnaryLiteral<N, NegOperation<N>>;
+pub type Neg<N> = UnaryLiteral<N, NegOperation<N>, 1>;
 
 crate::operation!(
     pub struct NegOperation<core::ops::Neg, core::ops::Neg, neg, "neg"> {
@@ -359,7 +368,7 @@ crate::operation!(
 );
 
 /// Returns `true` if neither `first` nor `second` is `true`, storing the outcome in `destination`.
-pub type Nor<N> = BinaryLiteral<N, NorOperation<N>>;
+pub type Nor<N> = BinaryLiteral<N, NorOperation<N>, 1>;
 
 crate::operation!(
     pub struct NorOperation<console::prelude::Nor, circuit::prelude::Nor, nor, "nor"> {
@@ -368,7 +377,7 @@ crate::operation!(
 );
 
 /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
-pub type Not<N> = UnaryLiteral<N, NotOperation<N>>;
+pub type Not<N> = UnaryLiteral<N, NotOperation<N>, 1>;
 
 crate::operation!(
     pub struct NotOperation<core::ops::Not, core::ops::Not, not, "not"> {
@@ -387,7 +396,7 @@ crate::operation!(
 );
 
 /// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
-pub type Or<N> = BinaryLiteral<N, OrOperation<N>>;
+pub type Or<N> = BinaryLiteral<N, OrOperation<N>, 1>;
 
 crate::operation!(
     pub struct OrOperation<core::ops::BitOr, core::ops::BitOr, bitor, "or"> {
@@ -406,7 +415,7 @@ crate::operation!(
 );
 
 /// Raises `first` to the power of `second`, storing the outcome in `destination`.
-pub type Pow<N> = BinaryLiteral<N, PowOperation<N>>;
+pub type Pow<N> = BinaryLiteral<N, PowOperation<N>, 1>;
 
 crate::operation!(
     pub struct PowOperation<console::prelude::Pow, circuit::prelude::Pow, pow, "pow"> {
@@ -445,7 +454,7 @@ crate::operation!(
 );
 
 /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-pub type PowWrapped<N> = BinaryLiteral<N, PowWrappedOperation<N>>;
+pub type PowWrapped<N> = BinaryLiteral<N, PowWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct PowWrappedOperation<console::prelude::PowWrapped, circuit::prelude::PowWrapped, pow_wrapped, "pow.w"> {
@@ -483,7 +492,7 @@ crate::operation!(
 );
 
 /// Divides `first` by `second`, storing the remainder in `destination`.
-pub type Rem<N> = BinaryLiteral<N, RemOperation<N>>;
+pub type Rem<N> = BinaryLiteral<N, RemOperation<N>, 1>;
 
 crate::operation!(
     pub struct RemOperation<core::ops::Rem, core::ops::Rem, rem, "rem"> {
@@ -501,7 +510,7 @@ crate::operation!(
 );
 
 /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the remainder in `destination`.
-pub type RemWrapped<N> = BinaryLiteral<N, RemWrappedOperation<N>>;
+pub type RemWrapped<N> = BinaryLiteral<N, RemWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct RemWrappedOperation<console::prelude::RemWrapped, circuit::prelude::RemWrapped, rem_wrapped, "rem.w"> {
@@ -519,7 +528,7 @@ crate::operation!(
 );
 
 /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
-pub type Shl<N> = BinaryLiteral<N, ShlOperation<N>>;
+pub type Shl<N> = BinaryLiteral<N, ShlOperation<N>, 1>;
 
 crate::operation!(
     pub struct ShlOperation<console::prelude::ShlChecked, circuit::prelude::ShlChecked, shl_checked, "shl"> {
@@ -557,7 +566,7 @@ crate::operation!(
 );
 
 /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
-pub type ShlWrapped<N> = BinaryLiteral<N, ShlWrappedOperation<N>>;
+pub type ShlWrapped<N> = BinaryLiteral<N, ShlWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct ShlWrappedOperation<console::prelude::ShlWrapped, circuit::prelude::ShlWrapped, shl_wrapped, "shl.w"> {
@@ -595,7 +604,7 @@ crate::operation!(
 );
 
 /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
-pub type Shr<N> = BinaryLiteral<N, ShrOperation<N>>;
+pub type Shr<N> = BinaryLiteral<N, ShrOperation<N>, 1>;
 
 crate::operation!(
     pub struct ShrOperation<console::prelude::ShrChecked, circuit::prelude::ShrChecked, shr_checked, "shr"> {
@@ -633,7 +642,7 @@ crate::operation!(
 );
 
 /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
-pub type ShrWrapped<N> = BinaryLiteral<N, ShrWrappedOperation<N>>;
+pub type ShrWrapped<N> = BinaryLiteral<N, ShrWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct ShrWrappedOperation<console::prelude::ShrWrapped, circuit::prelude::ShrWrapped, shr_wrapped, "shr.w"> {
@@ -671,7 +680,7 @@ crate::operation!(
 );
 
 /// Squares `first`, storing the outcome in `destination`.
-pub type Square<N> = UnaryLiteral<N, SquareOperation<N>>;
+pub type Square<N> = UnaryLiteral<N, SquareOperation<N>, 1>;
 
 crate::operation!(
     pub struct SquareOperation<console::prelude::Square, circuit::prelude::Square, square, "square"> {
@@ -680,7 +689,7 @@ crate::operation!(
 );
 
 /// Computes the square root of `first`, storing the outcome in `destination`.
-pub type SquareRoot<N> = UnaryLiteral<N, SquareRootOperation<N>>;
+pub type SquareRoot<N> = UnaryLiteral<N, SquareRootOperation<N>, 1>;
 
 crate::operation!(
     pub struct SquareRootOperation<console::prelude::SquareRoot, circuit::prelude::SquareRoot, square_root?, "sqrt"> {
@@ -689,7 +698,7 @@ crate::operation!(
 );
 
 /// Computes `first - second`, storing the outcome in `destination`.
-pub type Sub<N> = BinaryLiteral<N, SubOperation<N>>;
+pub type Sub<N> = BinaryLiteral<N, SubOperation<N>, 1>;
 
 crate::operation!(
     pub struct SubOperation<core::ops::Sub, core::ops::Sub, sub, "sub"> {
@@ -710,7 +719,7 @@ crate::operation!(
 );
 
 /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-pub type SubWrapped<N> = BinaryLiteral<N, SubWrappedOperation<N>>;
+pub type SubWrapped<N> = BinaryLiteral<N, SubWrappedOperation<N>, 1>;
 
 crate::operation!(
     pub struct SubWrappedOperation<console::prelude::SubWrapped, circuit::prelude::SubWrapped, sub_wrapped, "sub.w"> {
@@ -728,7 +737,7 @@ crate::operation!(
 );
 
 /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
-pub type Ternary<N> = TernaryLiteral<N, TernaryOperation<N>>;
+pub type Ternary<N> = TernaryLiteral<N, TernaryOperation<N>, 1>;
 
 crate::operation!(
     pub struct TernaryOperation<console::prelude::Ternary, circuit::prelude::Ternary, ternary, "ternary"> {
@@ -752,7 +761,7 @@ crate::operation!(
 );
 
 /// Performs a bitwise `xor` on `first` and `second`, storing the outcome in `destination`.
-pub type Xor<N> = BinaryLiteral<N, XorOperation<N>>;
+pub type Xor<N> = BinaryLiteral<N, XorOperation<N>, 1>;
 
 crate::operation!(
     pub struct XorOperation<core::ops::BitXor, core::ops::BitXor, bitxor, "xor"> {
