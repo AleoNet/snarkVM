@@ -25,8 +25,9 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod field {
-    use snarkvm_circuit::Boolean;
-    use snarkvm_circuit_environment::{Circuit, FromBits, Inject, Inverse, Mode, SquareRoot};
+    use std::ops::{BitAnd, BitOr};
+    use snarkvm_circuit::{Boolean, Itertools};
+    use snarkvm_circuit_environment::{Circuit, Environment, FromBits, Inject, Inverse, Mode, SquareRoot};
     use snarkvm_circuit_types::{Compare, DivUnchecked, Double, Equal, Field, Pow, Square, Ternary};
     use snarkvm_console_types_field::{Field as ConsoleField, One, Zero};
 
@@ -114,6 +115,28 @@ mod field {
             bits.push(Boolean::<Circuit>::new(Mode::Private, false));
         }
         let _candidate = Field::<Circuit>::from_bits_le(&bits);
+
+        // print Circuit to JSON in console
+        let circuit_json = Circuit::json();
+        let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// from_bits_le");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn from_bits_le_diff_const() {
+        let mut bits = vec![];
+        for _i in 0..10 {
+            bits.push(Boolean::<Circuit>::new(Mode::Private, false));
+        }
+        let mut constant = vec![true, true, true, false, false, false, true, true, false, true];
+        let is_lte = !constant.iter().zip_eq(bits).fold(
+            Boolean::constant(false),
+            |rest_is_less, (this, that)| {
+                if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
+            }
+        );
+        Circuit::assert(is_lte);
 
         // print Circuit to JSON in console
         let circuit_json = Circuit::json();
