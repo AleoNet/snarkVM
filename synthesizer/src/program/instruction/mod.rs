@@ -91,6 +91,8 @@ pub enum Instruction<N: Network> {
     CommitPED128(CommitPED128<N>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<N>),
+    /// Divides `first` by `second`, returning a flag indicating overflow or division by zero, storing the outcome in `destination`.
+    DivFlagged(DivFlagged<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     DivWrapped(DivWrapped<N>),
     /// Doubles `first`, storing the outcome in `destination`.
@@ -202,6 +204,7 @@ macro_rules! instruction {
     // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
     ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
         $macro_!{$object, |$input| $operation, {
+            // IMPORTANT NOTE: New variants must be added to the end of the list in order to preserve (de)serialization compatibility.
             Abs,
             AbsWrapped,
             Add,
@@ -258,6 +261,7 @@ macro_rules! instruction {
             SubWrapped,
             Ternary,
             Xor,
+            DivFlagged,
         }}
     };
     // A variant **without** curly braces:

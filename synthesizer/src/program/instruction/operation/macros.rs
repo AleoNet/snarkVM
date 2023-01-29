@@ -40,27 +40,27 @@
 macro_rules! operation {
     // Unary operation with one output.
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt> { $( $input:ident => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
-        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate, $opcode, 1, 1> { $( ($input) => $output $( ( $($condition),+ ) )?, )+ });
+        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate, $opcode, 1> { $( ($input) => $output $( ( $($condition),+ ) )?, )+ });
     };
     // Unary operation with question mark (?) and one output.
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident?, $opcode:tt> { $( $input:ident => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
-        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate?, $opcode, 1, 1> { $( ($input) => $output $( ( $($condition),+ ) )?, )+ });
+        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate?, $opcode, 1> { $( ($input) => $output $( ( $($condition),+ ) )?, )+ });
     };
     // Binary operation with one output.
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
-        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate, $opcode, 2, 1> { $( ($input_a, $input_b) => $output $( ( $($condition),+ ) )?, )+ });
+        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate, $opcode, 2> { $( ($input_a, $input_b) => $output $( ( $($condition),+ ) )?, )+ });
     };
     // Ternary operation with one output.
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
-        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate, $opcode, 3, 1> { $( ($input_a, $input_b, $input_c) => $output $( ( $($condition),+ ) )?, )+ });
+        $crate::operation!($vis struct $name<$operator, $circuit_operator, $operate, $opcode, 3> { $( ($input_a, $input_b, $input_c) => $output $( ( $($condition),+ ) )?, )+ });
     };
-    // K-ary operation.
-    ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt, $num_inputs:tt, $num_outputs:tt> { $( ( $($input:ident),+ ) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
-        /// The implementation of the binary operation.
+    // K-ary operation with one output.
+    ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt, $num_inputs:tt> { $( ( $($input:ident),+ ) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+        /// The implementation of the operation.
         #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
-        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs, $num_outputs> for $name<N> {
+        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs, 1> for $name<N> {
             /// The opcode of the operation.
             const OPCODE: $crate::Opcode = Opcode::Literal($opcode);
 
@@ -109,13 +109,13 @@ macro_rules! operation {
             }
         }
     };
-    // K-ary operation with question mark (?).
-    ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident?, $opcode:tt, $num_inputs:tt, $num_outputs:tt> { $( ( $($input:ident),+ ) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+    // K-ary operation with question mark (?) with one output.
+    ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident?, $opcode:tt, $num_inputs:tt> { $( ( $($input:ident),+ ) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
         #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
-        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs, $num_outputs> for $name<N> {
+        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs, 1> for $name<N> {
             /// The opcode of the operation.
             const OPCODE: $crate::Opcode = Opcode::Literal($opcode);
 
@@ -161,6 +161,118 @@ macro_rules! operation {
                 type Operation = $name::<CurrentNetwork>;
                 // Execute the test cases for the operation.
                 $crate::test_execute!(Operator::$operate == Operation::execute? { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
+            }
+        }
+    };
+    // K-ary operation with at least 1 output.
+    ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt, $num_inputs:tt, $num_outputs:tt> { $( ( $($input:ident),+ ) => ( $($output:ident),+ ) $( ($($condition:tt),+) )?, )+ }) => {
+        /// The implementation of the operation.
+        #[derive(Clone, PartialEq, Eq, Hash)]
+        $vis struct $name<N: Network>(core::marker::PhantomData<N>);
+
+        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs, $num_outputs> for $name<N> {
+            /// The opcode of the operation.
+            const OPCODE: $crate::Opcode = Opcode::Literal($opcode);
+
+            /// Returns the result of evaluating the operation on the given inputs.
+            #[inline]
+            fn evaluate(inputs: &[console::program::Literal<N>; $num_inputs]) -> Result<Vec<console::program::Literal<N>>> {
+                // Prepare the operator.
+                use $operator as Operator;
+                // Compute the output.
+                Ok($crate::evaluate!(match Operator::$operate(inputs) { $( ( $($input),+ ) => ( $($output),+ ), )+ }))
+            }
+
+            /// Returns the result of executing the operation on the given circuit inputs.
+            #[inline]
+            fn execute<A: circuit::Aleo<Network = N>>(inputs: &[circuit::Literal<A>; $num_inputs]) -> Result<Vec<circuit::Literal<A>>> {
+                // Prepare the circuit operator.
+                use $circuit_operator as Operator;
+                // Compute the output.
+                Ok($crate::execute!(match Operator::$operate(inputs) { $( ( $($input),+ ) => ( $($output),+ ), )+ }))
+            }
+
+            /// Returns the output type from the given input types.
+            #[inline]
+            fn output_types(inputs: &[console::program::LiteralType; $num_inputs]) -> Result<Vec<console::program::LiteralType>> {
+                // Compute the output type.
+                Ok($crate::output_type!(match inputs { $( ( $($input),+ ) => ( $($output),+ ), )+ }))
+            }
+        }
+
+        paste::paste! {
+            #[cfg(test)]
+            mod [<test _ $operate>] {
+                use super::$name;
+                use console::{network::prelude::*, types::*};
+
+                // Prepare the environment.
+                type CurrentNetwork = console::network::Testnet3;
+                type CurrentAleo = circuit::network::AleoV0;
+
+                // Prepare the operator.
+                use $operator as Operator;
+                // Prepare the operation.
+                type Operation = $name::<CurrentNetwork>;
+                // Execute the test cases for the operation.
+                // TODO: Enable these tests.
+                // $crate::test_execute!(Operator::$operate == Operation::execute { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
+            }
+        }
+    };
+    // K-ary operation with question mark (?) with one output.
+    ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident?, $opcode:tt, $num_inputs:tt, $num_outputs:tt> { $( ( $($input:ident),+ ) => ( $($output:ident),+ ) $( ($($condition:tt),+) )?, )+ }) => {
+        /// The implementation of the binary operation.
+        #[derive(Clone, PartialEq, Eq, Hash)]
+        $vis struct $name<N: Network>(core::marker::PhantomData<N>);
+
+        impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs, $num_outputs> for $name<N> {
+            /// The opcode of the operation.
+            const OPCODE: $crate::Opcode = Opcode::Literal($opcode);
+
+            /// Returns the result of evaluating the operation on the given inputs.
+            #[inline]
+            fn evaluate(inputs: &[console::program::Literal<N>; $num_inputs]) -> Result<Vec<console::program::Literal<N>>> {
+                // Prepare the operator.
+                use $operator as Operator;
+                // Compute the output.
+                Ok($crate::evaluate!(match Operator::$operate(inputs)? { $( ( $($input),+ ) => ( $($output),+ ), )+ }))
+            }
+
+            /// Returns the result of executing the operation on the given circuit inputs.
+            #[inline]
+            fn execute<A: circuit::Aleo<Network = N>>(inputs: &[circuit::Literal<A>; $num_inputs]) -> Result<Vec<circuit::Literal<A>>> {
+                // Prepare the circuit operator.
+                use $circuit_operator as Operator;
+                // Compute the output.
+                Ok($crate::execute!(match Operator::$operate(inputs) { $( ( $($input),+ ) => ( $($output),+ ), )+ }))
+            }
+
+            /// Returns the output type from the given input types.
+            #[inline]
+            fn output_types(inputs: &[console::program::LiteralType; $num_inputs]) -> Result<Vec<console::program::LiteralType>> {
+                // Compute the output type.
+                Ok($crate::output_type!(match inputs { $( ( $($input),+ ) => ( $($output),+ ), )+ }))
+            }
+        }
+
+        paste::paste! {
+            #[cfg(test)]
+            mod [<test _ $operate>] {
+                use super::$name;
+                use console::{network::prelude::*, types::*};
+
+                // Prepare the environment.
+                type CurrentNetwork = console::network::Testnet3;
+                type CurrentAleo = circuit::network::AleoV0;
+
+                // Prepare the operator.
+                use $operator as Operator;
+                // Prepare the operation.
+                type Operation = $name::<CurrentNetwork>;
+                // Execute the test cases for the operation.
+                // TODO: Enable these tests
+                // $crate::test_execute!(Operator::$operate == Operation::execute? { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
             }
         }
     };
@@ -217,6 +329,20 @@ macro_rules! evaluate {
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
+    // Binary operation with two outputs.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => ( $output_a:ident, $output_b:ident), )+ }) => {{
+
+        // Retrieve the operands.
+        let [first, second] = $inputs;
+        // Compute the output.
+        match (first, second) {
+            $((console::program::Literal::$input_a(first), console::program::Literal::$input_b(second)) => {
+                let (first, second) = first.$operate(second);
+                vec![console::program::Literal::$output_a(first), console::program::Literal::$output_b(second)]
+            },)+
+            _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
+        }
+    }};
     // Ternary operation with one output.
     (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident, )+ }) => {{
         // Retrieve the operands.
@@ -270,6 +396,19 @@ macro_rules! execute {
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
+    // Binary operation with two outputs.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => ($output_a:ident, $output_b:ident), )+ }) => {{
+        // Retrieve the operands.
+        let [first, second] = $inputs.to_owned();
+        // Compute the output.
+        match (first, second) {
+            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second)) => {
+                let (first, second) = first.$operate(&second);
+                vec![circuit::Literal::$output_a(first), circuit::Literal::$output_b(second)]
+            },)+
+            _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
+        }
+    }};
     // Ternary operation with one output.
     (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident, )+ }) => {{
         // Retrieve the operands.
@@ -320,6 +459,16 @@ macro_rules! output_type {
         // Compute the output type.
         match (first, second) {
             $((console::program::LiteralType::$input_a, console::program::LiteralType::$input_b) => vec![console::program::LiteralType::$output],)+
+            _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
+        }
+    }};
+    // Binary operation with two outputs.
+    (match $inputs:ident { $( ($input_a:ident, $input_b:ident) => ($output_a:ident, $output_b:ident), )+ }) => {{
+        // Retrieve the operands.
+        let [first, second] = $inputs;
+        // Compute the output type.
+        match (first, second) {
+            $((console::program::LiteralType::$input_a, console::program::LiteralType::$input_b) => vec![console::program::LiteralType::$output_a, console::program::LiteralType::$output_b],)+
             _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -520,7 +669,54 @@ mod tests {
             }
         };
 
-        // Case 2: Ternary operation with one output.
+        // Case 2: Binary operation with two outputs.
+        ($operator:tt::$operate:tt == $operation:tt::$execute:tt { $( ($input_a:ident, $input_b:ident) => ($output_a:ident, $output_b:ident) $( ($($condition:tt),+) )?, )+ }) => {
+            // For each given case of inputs and outputs, invoke `Case 1-A` or `Case 1-B` (see below).
+            $( $crate::test_execute!{$operator::$operate == $operation::$execute for ($input_a, $input_b) => ($output_a, $output_b) $( ($($condition),+) )?} )+
+
+            // For each non-existent case of inputs and outputs, invoke the following test to ensure the operation **fails**.
+            paste::paste! {
+                #[test]
+                fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
+                    for i in 0..8 {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
+                            for literal_b in $crate::sample_literals!(CurrentNetwork, &mut rng).iter() {
+                                for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                    for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                        // Skip this iteration, if this is **not** an invalid operand case.
+                                        $(if literal_a.to_type() == console::program::LiteralType::$input_a
+                                          && literal_b.to_type() == console::program::LiteralType::$input_b {
+                                            continue;
+                                        })+
+
+                                        // Attempt to compute the invalid operand case.
+                                        let result_a = <$operation as $crate::Operation<_, _, _, 2, 2>>::evaluate(&[literal_a.clone(), literal_b.clone()]);
+                                        // Ensure the computation failed.
+                                        assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a} {literal_b}");
+
+                                        // Attempt to compute the invalid operand case.
+                                        let result_b = <$operation as $crate::Operation<_, _, _, 2, 2>>::$execute::<CurrentAleo>(&[
+                                            circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
+                                            circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?,
+                                        ]);
+                                        // Ensure the computation failed.
+                                        assert!(result_b.is_err(), "An invalid operands case (on iteration {i}) did not fail (circuit): {literal_a} {literal_b}");
+                                        // Reset the circuit.
+                                        <CurrentAleo as circuit::Environment>::reset();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+            }
+        };
+
+        // Case 3: Ternary operation with one output.
         ($operator:tt::$operate:tt == $operation:tt::$execute:tt { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
             // For each given case of inputs and outputs, invoke `Case 2-A` or `Case 2-B` (see below).
             $( $crate::test_execute!{$operator::$operate == $operation::$execute for ($input_a, $input_b, $input_c) => $output $( ($($condition),+) )?} )+
@@ -855,8 +1051,8 @@ mod tests {
             }
         };
 
-        // Case 2-A: Ternary operation with one output.
-        // Case 2-B: Ternary operation with one output, where:
+        // Case 3-A: Ternary operation with one output.
+        // Case 3-B: Ternary operation with one output, where:
         //   1. "ensure overflow halts" | "ensure exponentiation overflow halts" | "ensure shifting past boundary halts"
         //     - If the sampled values overflow or underflow on evaluation, ensure it halts.
         //     - If the sampled values **do not** overflow or underflow on evaluation, ensure it succeeds.

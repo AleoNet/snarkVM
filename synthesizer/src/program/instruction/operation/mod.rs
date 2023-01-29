@@ -167,7 +167,24 @@ crate::operation!(
     }
 );
 
-/// Divides `first` by `second`, storing the outcome in `de
+/// Divides `first` by `second`, returning a flag indicating overflow or division by zero, storing the outcome in `destination`.
+pub type DivFlagged<N> = Literals<N, DivFlaggedOperation<N>, 2, 2>;
+
+crate::operation!(
+    pub struct DivFlaggedOperation<console::prelude::DivFlagged, circuit::prelude::DivFlagged, div_flagged, "div.f", 2, 2> {
+        (Field, Field) => (Field, Boolean),
+        (I8, I8) => (I8, Boolean),
+        (I16, I16) => (I16, Boolean),
+        (I32, I32) => (I32, Boolean),
+        (I64, I64) => (I64, Boolean),
+        (I128, I128) => (I128, Boolean),
+        (U8, U8) => (U8, Boolean),
+        (U16, U16) => (U16, Boolean),
+        (U32, U32) => (U32, Boolean),
+        (U64, U64) => (U64, Boolean),
+        (U128, U128) => (U128, Boolean),
+    }
+);
 
 /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
 pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>, 1>;
