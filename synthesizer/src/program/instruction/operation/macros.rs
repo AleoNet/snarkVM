@@ -215,12 +215,11 @@ macro_rules! operation {
                 // Prepare the operation.
                 type Operation = $name::<CurrentNetwork>;
                 // Execute the test cases for the operation.
-                // TODO: Enable these tests.
-                // $crate::test_execute!(Operator::$operate == Operation::execute { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
+                $crate::test_execute!(Operator::$operate == Operation::execute { $( ( $($input),+ ) => ( $($output),+ ) $( ($($condition),+) )?, )+ });
             }
         }
     };
-    // K-ary operation with question mark (?) with one output.
+    // K-ary operation with question mark (?) with at least one output.
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident?, $opcode:tt, $num_inputs:tt, $num_outputs:tt> { $( ( $($input:ident),+ ) => ( $($output:ident),+ ) $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
         #[derive(Clone, PartialEq, Eq, Hash)]
@@ -271,8 +270,7 @@ macro_rules! operation {
                 // Prepare the operation.
                 type Operation = $name::<CurrentNetwork>;
                 // Execute the test cases for the operation.
-                // TODO: Enable these tests
-                // $crate::test_execute!(Operator::$operate == Operation::execute? { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
+                $crate::test_execute!(Operator::$operate == Operation::execute? { $( ( $($input),+ ) => ( $($output),+ ) $( ($($condition),+) )?, )+ });
             }
         }
     };
@@ -1051,14 +1049,126 @@ mod tests {
             }
         };
 
-        // Case 3-A: Ternary operation with one output.
-        // Case 3-B: Ternary operation with one output, where:
-        //   1. "ensure overflow halts" | "ensure exponentiation overflow halts" | "ensure shifting past boundary halts"
-        //     - If the sampled values overflow or underflow on evaluation, ensure it halts.
-        //     - If the sampled values **do not** overflow or underflow on evaluation, ensure it succeeds.
-        //   2. "ensure divide by zero halts"
-        //     - If the sampled divisor is zero, ensure it halts.
-        //     - If the sampled divisor is **not** zero, ensure it succeeds.
+        // Case 2: Binary operation with two outputs.
+        ($operator:tt::$operate:tt == $operation:tt::$execute:tt for ($input_a:ident, $input_b:ident) => ($output_a:ident, $output_b:ident) $( ($($condition:tt),+) )?) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ into _ $output_a:lower _ $output_b:lower>]() -> Result<()> {
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
+                    // Ensure the expected output type is correct.
+                    assert_eq!(
+                        vec![console::program::LiteralType::$output_a, console::program::LiteralType::$output_b],
+                        <$operation as $crate::Operation<_, _, _, 2, 2>>::output_types(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
+                    );
+
+                    // Determine the number of iterations to run, based on the opcode.
+                    let num_iterations: u64 = match *<$operation as $crate::Operation<_, _, _, 2, 2>>::OPCODE {
+                        // "pow.f" => 10,
+                        _ => 100
+                    };
+
+                    // Check the operation on randomly-sampled values.
+                    for i in 0..num_iterations {
+                        macro_rules! sample_value {
+                            (I8, I8) => { sample_value!(I128, I128) };
+                            (I16, I16) => { sample_value!(I128, I128) };
+                            (I32, I32) => { sample_value!(I128, I128) };
+                            (I64, I64) => { sample_value!(I128, I128) };
+                            (I128, I128) => {
+                                match i {
+                                    0 => ($input_a::zero(), $input_b::zero()),
+                                    1 => ($input_a::<CurrentNetwork>::rand(&mut rng), $input_b::zero()),
+                                    2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut rng)),
+                                    3 => ($input_a::MIN, $input_b::zero() - $input_b::one()),
+                                    4.. => ($input_b::<CurrentNetwork>::rand(&mut rng), $input_b::<CurrentNetwork>::rand(&mut rng))
+                                }
+                            };
+                            ($lhs:ident, $rhs:ident) => {
+                                match i {
+                                    0 => ($lhs::zero(), $rhs::zero()),
+                                    1 => ($lhs::<CurrentNetwork>::rand(&mut rng), $rhs::zero()),
+                                    2 => ($lhs::zero(), $rhs::<CurrentNetwork>::rand(&mut rng)),
+                                    3.. => ($lhs::<CurrentNetwork>::rand(&mut rng), $rhs::<CurrentNetwork>::rand(&mut rng))
+                                }
+                            }
+                        }
+                        // Sample the first and second value.
+                        #[allow(deprecated)]
+                        let (a, b) = sample_value!($input_a, $input_b);
+
+                        // Initialize an indicator whether the operation should succeed or not.
+                        #[allow(unused_mut)]
+                        let mut should_succeed = true;
+
+                        // If `should_succeed` is `true`, compute the expected output.
+                        let expected = match should_succeed {
+                            true => {
+                                let (expected_a, expected_b) = a.$operate(&b);
+                                Some(vec![console::program::Literal::$output_a(expected_a), console::program::Literal::$output_b(expected_b)])
+                            }
+                            false => None
+                        };
+
+                        for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                            for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                // Initialize the operands.
+                                let a = console::program::Literal::from_str(&format!("{a}"))?;
+                                let b = console::program::Literal::from_str(&format!("{b}"))?;
+
+                                // Initialize the operands.
+                                let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;
+                                let second = circuit::program::Literal::from_str(&format!("{b}.{mode_b}"))?;
+
+                                // This indicator bit is used to check that a case panics on halt,
+                                // instead of checking that the circuit is not satisfied (i.e. for `Public|Private && Constant`).
+                                let should_panic_on_halt = false;
+
+                                // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
+                                if should_succeed {
+                                    // Compute the evaluated output.
+                                    let candidate_a = <$operation as $crate::Operation<_, _, _, 2, 2>>::evaluate(&[a, b])?;
+                                    // Compute the executed output.
+                                    let candidate_b = <$operation as $crate::Operation<_, _, _, 2, 2>>::$execute::<CurrentAleo>(&[first, second])?;
+
+                                    // Ensure the outputs match.
+                                    assert_eq!(expected, Some(candidate_a));
+                                    // Ensure the outputs match.
+                                    assert_eq!(expected, Some(candidate_b.iter().map(|candidate| circuit::Eject::eject_value(candidate)).collect()));
+                                }
+                                // If the sampled values overflow on evaluation, ensure it halts.
+                                else {
+                                    // Halt the evaluation.
+                                    let result_a = std::panic::catch_unwind(|| <$operation as $crate::Operation<_, _, _, 2, 2>>::evaluate(&[a.clone(), b.clone()]).unwrap());
+                                    // Ensure the evaluation halted.
+                                    assert!(result_a.is_err(), "Failure case (on iteration {i}) did not halt (console): {a} {b}");
+
+                                    // Halt the execution.
+                                    if (mode_a.is_constant() && mode_b.is_constant()) || should_panic_on_halt {
+                                        // Attempt to execute a failure case.
+                                        let result_b = std::panic::catch_unwind(|| <$operation as $crate::Operation<_, _, _, 2, 2>>::$execute::<CurrentAleo>(&[first, second]).unwrap());
+                                        // Ensure the execution halted.
+                                        assert!(result_b.is_err(), "Failure case (on iteration {i}) did not halt (circuit): {a} {b}");
+                                    } else {
+                                        // Attempt to execute a failure case.
+                                        let _result_b = <$operation as $crate::Operation<_, _, _, 2, 2>>::$execute::<CurrentAleo>(&[first, second])?;
+                                        // Ensure the execution halted.
+                                        assert!(!<CurrentAleo as circuit::Environment>::is_satisfied(), "Failure case (on iteration {i}) should not be satisfied (circuit): {a} {b}");
+                                    }
+                                }
+                                // Reset the circuit.
+                                <CurrentAleo as circuit::Environment>::reset();
+                            }
+                        }
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
+        // Case 3: Ternary operation with one output.
         ($operator:tt::$operate:tt == $operation:tt::$execute:tt for ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident $( ($($condition:tt),+) )?) => {
             paste::paste! {
                 #[test]

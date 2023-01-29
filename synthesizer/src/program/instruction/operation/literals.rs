@@ -376,9 +376,7 @@ impl<
         write!(f, "{} ", O::OPCODE)?;
         self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
         write!(f, "into")?;
-        self.destinations.iter().try_for_each(|destination| write!(f, " {}", destination))?;
-
-        Ok(())
+        self.destinations.iter().try_for_each(|destination| write!(f, " {}", destination))
     }
 }
 
