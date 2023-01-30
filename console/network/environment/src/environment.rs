@@ -33,11 +33,11 @@ pub trait Environment:
     'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync
 {
     type Affine: AffineCurve<
-        Projective = Self::Projective,
-        BaseField = Self::Field,
-        ScalarField = Self::Scalar,
-        Coordinates = (Self::Field, Self::Field),
-    >;
+            Projective = Self::Projective,
+            BaseField = Self::Field,
+            ScalarField = Self::Scalar,
+            Coordinates = (Self::Field, Self::Field),
+        >;
     type BigInteger: BigInteger;
     type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
     type PairingCurve: PairingEngine<Fr = Self::Field>;
