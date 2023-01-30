@@ -122,7 +122,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         let product_evaluations = {
             let polynomial_evaluations = pk.product_domain.in_order_fft_with_pc(&polynomial, &pk.fft_precomputation);
             let product_evaluations = pk.product_domain.mul_polynomials_in_evaluation_domain(
-                &polynomial_evaluations,
+                polynomial_evaluations,
                 &epoch_challenge.epoch_polynomial_evaluations().evaluations,
             );
             product_evaluations
@@ -225,7 +225,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             let accumulated_polynomial_evaluations =
                 pk.product_domain.in_order_fft_with_pc(&accumulated_prover_polynomial.coeffs, &pk.fft_precomputation);
             pk.product_domain.mul_polynomials_in_evaluation_domain(
-                &accumulated_polynomial_evaluations,
+                accumulated_polynomial_evaluations,
                 &epoch_challenge.epoch_polynomial_evaluations().evaluations,
             )
         };
