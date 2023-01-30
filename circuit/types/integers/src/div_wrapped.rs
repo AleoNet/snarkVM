@@ -74,7 +74,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// This method should only be used when 2 * I::BITS < E::BaseField::size_in_data_bits().
     pub(super) fn unsigned_division_via_witness<F>(&self, other: &Self, enforce_constraints: F) -> (Self, Self)
     where
-        F: FnOnce(&Self, &Self, &Self, &Self) -> (),
+        F: FnOnce(&Self, &Self, &Self, &Self),
     {
         // Overflow is not possible for unsigned integers so we use wrapping operations.
         let quotient = witness!(|self, other| if other == console::Integer::zero() {
@@ -89,7 +89,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         });
 
         // Enforce that the quotient and remainder satisfy the division equation.
-        enforce_constraints(&self, &other, &quotient, &remainder);
+        enforce_constraints(self, other, &quotient, &remainder);
 
         // Return the quotient of `self` and `other`.
         (quotient, remainder)

@@ -81,12 +81,12 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
                     // If the divisor is not zero, ensure that Euclidean division holds for these values in the base field.
                     // This is equivalent to `!divisor_is_zero ==> (self == quotient * other + remainder)`.
                     // Which is equivalent to `divisor_is_zero || (self == quotient * other + remainder)`.
-                    E::assert((&divisor_is_zero).bitor(&first_equals_quotient_times_other_plus_remainder));
+                    E::assert((divisor_is_zero).bitor(&first_equals_quotient_times_other_plus_remainder));
 
                     // If the divisor is not zero, ensure that the remainder is less than the divisor.
                     // This is equivalent to `!divisor_is_zero ==> (remainder < other)`.
                     // Which is equivalent to `divisor_is_zero || (remainder < other)`.
-                    E::assert((&divisor_is_zero).bitor(&remainder.is_less_than(other)));
+                    E::assert((divisor_is_zero).bitor(&remainder.is_less_than(other)));
                 };
                 self.unsigned_division_via_witness(other, enforce_flagged_division).0
             } else {
@@ -130,7 +130,7 @@ mod tests {
         });
         Circuit::reset();
 
-        let (flagged_result, flag) = (&a).div_flagged(&b);
+        let (flagged_result, flag) = a.div_flagged(&b);
 
         // Check that the flagged implementation matches the checked implementation.
         match (flag.eject_value(), second.is_zero()) {

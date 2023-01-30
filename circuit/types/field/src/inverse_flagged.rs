@@ -53,7 +53,7 @@ mod tests {
                     // Check that `inverse_flagged` produces the correct result.
                     let a = Field::<Circuit>::new(mode, element);
                     Circuit::scope(name, || {
-                        let (result, flag) = (&a).inverse_flagged();
+                        let (result, flag) = a.inverse_flagged();
                         assert_eq!(result.eject_value(), expected);
                         assert!(!flag.eject_value());
                         assert!(Circuit::is_satisfied(), "(is_satisfied_in_scope)");
@@ -72,7 +72,7 @@ mod tests {
                     // Check that `inverse_flagged` produces the correct result.
                     let a = Field::<Circuit>::new(mode, element);
                     Circuit::scope(name, || {
-                        let (result, flag) = (&a).inverse_flagged();
+                        let (result, flag) = a.inverse_flagged();
                         assert_eq!(result.eject_value(), console::Field::zero());
                         assert!(flag.eject_value());
                         assert!(Circuit::is_satisfied(), "(is_satisfied_in_scope)");
