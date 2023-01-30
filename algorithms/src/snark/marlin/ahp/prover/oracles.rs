@@ -18,17 +18,20 @@ use std::collections::BTreeMap;
 
 use snarkvm_fields::PrimeField;
 
-use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel};
+use crate::{
+    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
+    snark::marlin::{Circuit, MarlinMode},
+};
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
-pub struct FirstOracles<F: PrimeField> {
-    pub(in crate::snark::marlin) batches: Vec<SingleEntry<F>>,
+pub struct FirstOracles<'a, F: PrimeField, MM: MarlinMode> {
+    pub(in crate::snark::marlin) batches: BTreeMap<&'a Circuit<F, MM>, Vec<SingleEntry<F>>>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
 
-impl<F: PrimeField> FirstOracles<F> {
+impl<'a, F: PrimeField, MM: MarlinMode> FirstOracles<'a, F, MM> {
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
     #[allow(clippy::needless_collect)]

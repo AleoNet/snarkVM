@@ -85,7 +85,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
-        Ok(Circuit {
+        Ok(Circuit::new ( 
             index_info,
             a,
             b,
@@ -95,8 +95,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
-            mode: PhantomData,
-        })
+         ))
     }
 
     pub fn index_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
