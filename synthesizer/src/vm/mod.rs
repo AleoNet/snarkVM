@@ -332,6 +332,65 @@ function compute:
             .clone()
     }
 
+    pub(crate) fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+                // Fetch the unspent records.
+                let records =
+                    genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
+                // Select a record to spend.
+                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+                // Initialize the VM.
+                let vm = sample_vm();
+                // Update the VM.
+                vm.add_next_block(&genesis).unwrap();
+
+                // Authorize.
+                let authorization = vm
+                    .authorize(
+                        &caller_private_key,
+                        "credits.aleo",
+                        "mint",
+                        [
+                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                        ]
+                        .into_iter(),
+                        rng,
+                    )
+                    .unwrap();
+                assert_eq!(authorization.len(), 1);
+
+                // Execute.
+                let transaction = Transaction::execute_authorization_with_additional_fee(
+                    &vm,
+                    &caller_private_key,
+                    authorization,
+                    Some((record, 100)),
+                    None,
+                    rng,
+                )
+                .unwrap();
+                // Verify.
+                assert!(vm.verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
     pub(crate) fn sample_fee() -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
