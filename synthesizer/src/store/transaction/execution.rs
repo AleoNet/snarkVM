@@ -270,10 +270,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 // Retrieve the additional fee transition.
                 let additional_fee_transition = match self.transition_store().get_transition(&additional_fee_id)? {
                     Some(additional_fee_transition) => additional_fee_transition,
-                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
+                    None => bail!("Failed to get the additional fee transition for transaction '{transaction_id}'"),
                 };
                 // Retrieve the additional fee.
-                let (global_state_root, inclusion_proof) = match self.fee_map().get(&additional_fee_id)? {
+                let (global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
                     Some(fee) => cow_to_cloned!(fee),
                     None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
                 };
@@ -449,44 +449,38 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_insert_get_remove() {
-        let rng = &mut TestRng::default();
+    use crate::vm::test_helpers::CurrentNetwork;
 
-        // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+    fn insert_get_remove(transaction: Transaction<CurrentNetwork>) -> Result<()> {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
+        let transition_store = TransitionStore::open(None)?;
         // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(transition_store).unwrap();
+        let execution_store = ExecutionMemory::open(transition_store)?;
 
         // Ensure the execution transaction does not exist.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
+        let candidate = execution_store.get_transaction(&transaction_id)?;
         assert_eq!(None, candidate);
 
         // Insert the execution transaction.
-        execution_store.insert(&transaction).unwrap();
+        execution_store.insert(&transaction)?;
 
         // Retrieve the execution transaction.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
+        let candidate = execution_store.get_transaction(&transaction_id)?;
         assert_eq!(Some(transaction), candidate);
 
         // Remove the execution.
-        execution_store.remove(&transaction_id).unwrap();
+        execution_store.remove(&transaction_id)?;
 
         // Ensure the execution transaction does not exist.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
+        let candidate = execution_store.get_transaction(&transaction_id)?;
         assert_eq!(None, candidate);
+
+        Ok(())
     }
 
-    #[test]
-    fn test_find_transaction_id() {
-        let rng = &mut TestRng::default();
-
-        // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+    fn find_transaction_id(transaction: Transaction<CurrentNetwork>) -> Result<()> {
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {
@@ -496,32 +490,74 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
+        let transition_store = TransitionStore::open(None)?;
         // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(transition_store).unwrap();
+        let execution_store = ExecutionMemory::open(transition_store)?;
 
         // Ensure the execution transaction does not exist.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
+        let candidate = execution_store.get_transaction(&transaction_id)?;
         assert_eq!(None, candidate);
 
         for transition_id in transition_ids {
             // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = execution_store.find_transaction_id(&transition_id)?;
             assert_eq!(None, candidate);
 
             // Insert the execution.
-            execution_store.insert(&transaction).unwrap();
+            execution_store.insert(&transaction)?;
 
             // Find the transaction ID.
-            let candidate = execution_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = execution_store.find_transaction_id(&transition_id)?;
             assert_eq!(Some(transaction_id), candidate);
 
             // Remove the execution.
-            execution_store.remove(&transaction_id).unwrap();
+            execution_store.remove(&transaction_id)?;
 
             // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = execution_store.find_transaction_id(&transition_id)?;
             assert_eq!(None, candidate);
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_get_remove() {
+        let rng = &mut TestRng::default();
+
+        // Sample the execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+
+        insert_get_remove(transaction).unwrap();
+    }
+
+    #[test]
+    fn test_insert_get_remove_with_fee() {
+        let rng = &mut TestRng::default();
+
+        // Sample the execution transaction with a fee.
+        let transaction_with_fee = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+
+        insert_get_remove(transaction_with_fee).unwrap();
+    }
+
+    #[test]
+    fn test_find_transaction_id() {
+        let rng = &mut TestRng::default();
+
+        // Sample the execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+
+        find_transaction_id(transaction).unwrap();
+    }
+
+    #[test]
+    fn test_find_transaction_id_with_fee() {
+        let rng = &mut TestRng::default();
+
+        // Sample the execution transaction with a fee.
+        let transaction_with_fee = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+
+        find_transaction_id(transaction_with_fee).unwrap();
     }
 }
