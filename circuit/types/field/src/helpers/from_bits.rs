@@ -47,7 +47,7 @@ impl<E: Environment> FromBits for Field<E> {
             let bits_le = &bits_le[..size_in_bits];
 
             // Check that`bits_le <= (BaseField::MODULUS - 1)`, which is equivalent to checking that `bits_le < BaseField::MODULUS`.
-            Boolean::check_bits_le_less_than_or_equal(&bits_le, &modulus_minus_one.to_bits_le());
+            Boolean::check_bits_le_less_than_or_equal(bits_le, &modulus_minus_one.to_bits_le());
         }
 
         // Reconstruct the bits as a linear combination representing the original field value.
