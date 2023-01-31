@@ -270,10 +270,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 // Retrieve the additional fee transition.
                 let additional_fee_transition = match self.transition_store().get_transition(&additional_fee_id)? {
                     Some(additional_fee_transition) => additional_fee_transition,
-                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
+                    None => bail!("Failed to get the additional fee transition for transaction '{transaction_id}'"),
                 };
                 // Retrieve the additional fee.
-                let (global_state_root, inclusion_proof) = match self.fee_map().get(&additional_fee_id)? {
+                let (global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
                     Some(fee) => cow_to_cloned!(fee),
                     None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
                 };
