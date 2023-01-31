@@ -206,7 +206,7 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Div: {} / {}", first, second);
+            let name = format!("Div: {first} / {second}");
             check_div::<I>(&name, first, second, mode_a, mode_b);
 
             let name = format!("Div by One: {} / 1", first);

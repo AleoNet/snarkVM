@@ -81,7 +81,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let mut degree_bounds = Vec::new();
 
         for i in 0..10 {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let poly = DensePolynomial::rand(supported_degree, rng);
 
@@ -144,7 +144,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         // Generate polynomials
         let num_points_in_query_set = distributions::Uniform::from(1..=max_num_queries).sample(rng);
         for i in 0..num_polynomials {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let eval_size: usize = distributions::Uniform::from(1..eval_size).sample(rng).next_power_of_two();
             let mut evals = vec![E::Fr::zero(); eval_size];
@@ -257,7 +257,7 @@ where
         // Generate polynomials
         let num_points_in_query_set = distributions::Uniform::from(1..=max_num_queries).sample(rng);
         for i in 0..num_polynomials {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let degree = distributions::Uniform::from(1..=supported_degree).sample(rng);
             let poly = DensePolynomial::rand(degree, rng);
@@ -375,7 +375,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         // Generate polynomials
         let num_points_in_query_set = distributions::Uniform::from(1..=max_num_queries).sample(rng);
         for i in 0..num_polynomials {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let degree = distributions::Uniform::from(1..=supported_degree).sample(rng);
             let poly = DensePolynomial::rand(degree, rng);
@@ -453,7 +453,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
                 if !lc.is_empty() {
                     linear_combinations.push(lc);
                     // Insert query
-                    query_set.insert((label.clone(), (format!("rand_{}", i), point)));
+                    query_set.insert((label.clone(), (format!("rand_{i}"), point)));
                 }
             }
         }

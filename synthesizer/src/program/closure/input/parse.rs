@@ -132,7 +132,7 @@ mod tests {
 
         // Record
         let input = Input::<CurrentNetwork>::parse("input r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{}", input), "input r2 as token.record;");
+        assert_eq!(format!("{input}"), "input r2 as token.record;");
 
         Ok(())
     }

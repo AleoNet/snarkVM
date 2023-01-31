@@ -88,7 +88,7 @@ mod tests {
             // Initialize the input.
             let affine = Group::<Circuit>::new(Mode::Private, input);
 
-            Circuit::scope(&format!("Constant {}", i), || {
+            Circuit::scope(&format!("Constant {i}"), || {
                 let candidate =
                     affine * Scalar::constant(console::Scalar::new(<Circuit as Environment>::ScalarField::from(4u128)));
                 assert_eq!(expected, candidate.eject_value());

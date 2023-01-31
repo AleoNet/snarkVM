@@ -193,11 +193,11 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Shr: {} >> {} {}", mode_a, mode_b, i);
+            let name = format!("Shr: {mode_a} >> {mode_b} {i}");
             check_shr::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift right by one is computed correctly.
-            let name = format!("Half: {} >> {} {}", mode_a, mode_b, i);
+            let name = format!("Half: {mode_a} >> {mode_b} {i}");
             check_shr::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
         }
     }

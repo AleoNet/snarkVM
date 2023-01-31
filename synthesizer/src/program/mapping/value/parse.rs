@@ -104,6 +104,6 @@ mod tests {
     fn test_value_display() {
         // Literal
         let value = MapValue::<CurrentNetwork>::parse("value abc as field.public;").unwrap().1;
-        assert_eq!(format!("{}", value), "value abc as field.public;");
+        assert_eq!(format!("{value}"), "value abc as field.public;");
     }
 }

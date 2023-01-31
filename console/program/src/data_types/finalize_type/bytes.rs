@@ -36,7 +36,7 @@ impl<N: Network> FromBytes for FinalizeType<N> {
             0 => Ok(Self::Public(PlaintextType::read_le(&mut reader)?)),
             1 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
             2 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
-            3.. => Err(error(format!("Failed to deserialize finalize type variant {}", variant))),
+            3.. => Err(error(format!("Failed to deserialize finalize type variant {variant}"))),
         }
     }
 }

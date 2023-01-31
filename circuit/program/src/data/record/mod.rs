@@ -197,7 +197,7 @@ impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
             self.nonce.eject_value(),
         ) {
             Ok(record) => record,
-            Err(error) => A::halt(format!("Record::<Plaintext>::eject_value: {}", error)),
+            Err(error) => A::halt(format!("Record::<Plaintext>::eject_value: {error}")),
         }
     }
 }
@@ -255,7 +255,7 @@ impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
             self.nonce.eject_value(),
         ) {
             Ok(record) => record,
-            Err(error) => A::halt(format!("Record::<Ciphertext>::eject_value: {}", error)),
+            Err(error) => A::halt(format!("Record::<Ciphertext>::eject_value: {error}")),
         }
     }
 }

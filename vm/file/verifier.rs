@@ -47,7 +47,7 @@ impl<N: Network> VerifierFile<N> {
         let verifier_file = Self { function_name: *function_name, verifying_key };
 
         // Create the file name.
-        let file_name = format!("{}.{VERIFIER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{VERIFIER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(&file_name);
         // Write the file (overwriting if it already exists).
@@ -63,7 +63,7 @@ impl<N: Network> VerifierFile<N> {
         ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
         // Create the file name.
-        let file_name = format!("{}.{VERIFIER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{VERIFIER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
@@ -87,7 +87,7 @@ impl<N: Network> VerifierFile<N> {
     /// Returns `true` if the verifier file for the given function name exists at the given directory.
     pub fn exists_at(directory: &Path, function_name: &Identifier<N>) -> bool {
         // Create the file name.
-        let file_name = format!("{}.{VERIFIER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{VERIFIER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the path is well-formed.

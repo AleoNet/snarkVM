@@ -84,7 +84,7 @@ mod tests {
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
-            check_neg(&format!("NEG Constant {}", i), expected, candidate_input);
+            check_neg(&format!("NEG Constant {i}"), expected, candidate_input);
         }
     }
 
@@ -98,7 +98,7 @@ mod tests {
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Public, point);
-            check_neg(&format!("NEG Public {}", i), expected, candidate_input);
+            check_neg(&format!("NEG Public {i}"), expected, candidate_input);
         }
     }
 
@@ -112,7 +112,7 @@ mod tests {
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Private, point);
-            check_neg(&format!("NEG Private {}", i), expected, candidate_input);
+            check_neg(&format!("NEG Private {i}"), expected, candidate_input);
         }
     }
 

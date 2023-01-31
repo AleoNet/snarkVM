@@ -123,7 +123,7 @@ mod tests {
         assert_eq!(expected_string, candidate.to_string());
 
         // Deserialize
-        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {}", expected_string)));
+        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
     }
 

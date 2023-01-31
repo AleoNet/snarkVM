@@ -75,11 +75,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 if cfg!(debug_assertions) {
                     println!("Number of padded public variables in Prover::Init: {}", num_public_variables);
-                    println!("Number of private variables: {}", num_private_variables);
-                    println!("Number of constraints: {}", num_constraints);
-                    println!("Number of non-zero entries in A: {}", num_non_zero_a);
-                    println!("Number of non-zero entries in B: {}", num_non_zero_b);
-                    println!("Number of non-zero entries in C: {}", num_non_zero_c);
+                    println!("Number of private variables: {num_private_variables}");
+                    println!("Number of constraints: {num_constraints}");
+                    println!("Number of non-zero entries in A: {num_non_zero_a}");
+                    println!("Number of non-zero entries in B: {num_non_zero_b}");
+                    println!("Number of non-zero entries in C: {num_non_zero_c}");
                 }
 
                 if index.index_info.num_constraints != num_constraints

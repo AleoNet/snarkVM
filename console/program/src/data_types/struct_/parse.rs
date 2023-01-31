@@ -109,7 +109,7 @@ impl<N: Network> Display for Struct<N> {
             output += &format!("    {identifier} as {plaintext_type};\n");
         }
         output.pop(); // trailing newline
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }
 

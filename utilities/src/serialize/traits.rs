@@ -206,10 +206,7 @@ where
 {
     fn take_from_value<D: Deserializer<'de>>(value: &mut serde_json::Value, field: &str) -> Result<Self, D::Error> {
         serde_json::from_value(
-            value
-                .get_mut(field)
-                .ok_or_else(|| de::Error::custom(format!("The \"{}\" field is missing", field)))?
-                .take(),
+            value.get_mut(field).ok_or_else(|| de::Error::custom(format!("The \"{field}\" field is missing")))?.take(),
         )
         .map_err(de::Error::custom)
     }

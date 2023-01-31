@@ -352,7 +352,7 @@ mod tests {
     fn test_print_circuit() {
         let _candidate = create_example_circuit::<Circuit>();
         let output = format!("{}", Circuit);
-        println!("{}", output);
+        println!("{output}");
     }
 
     #[test]

@@ -312,7 +312,7 @@ fn test_isomorphism() {
 
     let group = EdwardsAffine::new(x, y, x * y);
 
-    println!("{:?}", group);
+    println!("{group:?}");
 
     // Convert the twisted Edwards element (x, y) to the alternate Montgomery element (u, v)
     let (u_reconstructed, v_reconstructed) = {

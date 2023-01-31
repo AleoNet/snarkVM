@@ -94,7 +94,7 @@ mod tests {
             let a = Address::<Circuit>::new(mode_a, console::Address::new(first));
             let b = Address::<Circuit>::new(mode_b, console::Address::new(second));
             let expected = first.to_x_coordinate() < second.to_x_coordinate();
-            let name = format!("{} {} {}", mode_a, mode_b, i);
+            let name = format!("{mode_a} {mode_b} {i}");
             check_is_less_than(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
 
             // Check `first` is not less than `first`.

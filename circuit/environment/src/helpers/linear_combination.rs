@@ -453,7 +453,7 @@ impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
                 _ => format!(" + {} * {:?}", coefficient, variable),
             };
         }
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }
 

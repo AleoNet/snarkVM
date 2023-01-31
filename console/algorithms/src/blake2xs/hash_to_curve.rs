@@ -24,7 +24,7 @@ impl Blake2Xs {
         // Attempt to increment counter `k` at most `8 * G::SERIALIZED_SIZE` times.
         for k in 0..128 {
             // Construct a new message.
-            let message = format!("{} in {}", input, k);
+            let message = format!("{input} in {k}");
 
             // Output the generator if a valid generator was found.
             if let Some(g) = Self::try_hash_to_curve::<G>(&message) {
@@ -33,7 +33,7 @@ impl Blake2Xs {
         }
 
         // Panic with probability 2^-128.
-        panic!("Unable to hash to curve on {}", input)
+        panic!("Unable to hash to curve on {input}")
     }
 
     /// Evaluates **one** round of hash-to-curve and returns a generator on success.

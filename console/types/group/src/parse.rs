@@ -123,6 +123,6 @@ mod tests {
         let zero = <CurrentEnvironment as Environment>::Affine::zero();
 
         let candidate = Group::<CurrentEnvironment>::new(zero);
-        assert_eq!("0group", &format!("{}", candidate));
+        assert_eq!("0group", &format!("{candidate}"));
     }
 }

@@ -71,7 +71,7 @@ mod tests {
         assert!(Boolean::<CurrentEnvironment>::parse("").is_err());
 
         for boolean in &[true, false] {
-            let expected = format!("{}", boolean);
+            let expected = format!("{boolean}");
             let (remainder, candidate) = Boolean::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
@@ -99,13 +99,13 @@ mod tests {
     fn test_display_false() {
         // Constant
         let candidate = Boolean::<CurrentEnvironment>::new(false);
-        assert_eq!("false", &format!("{}", candidate));
+        assert_eq!("false", &format!("{candidate}"));
     }
 
     #[test]
     fn test_display_true() {
         // Constant
         let candidate = Boolean::<CurrentEnvironment>::new(true);
-        assert_eq!("true", &format!("{}", candidate));
+        assert_eq!("true", &format!("{candidate}"));
     }
 }

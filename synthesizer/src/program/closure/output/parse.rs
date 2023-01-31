@@ -115,14 +115,14 @@ mod tests {
     fn test_output_display() {
         // Literal
         let output = Output::<CurrentNetwork>::parse("output r0 as field;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r0 as field;");
+        assert_eq!(format!("{output}"), "output r0 as field;");
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r1 as signature;");
+        assert_eq!(format!("{output}"), "output r1 as signature;");
 
         // Record
         let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r2 as token.record;");
+        assert_eq!(format!("{output}"), "output r2 as token.record;");
     }
 }

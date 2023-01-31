@@ -442,7 +442,7 @@ mod tests {
         let circuit = CurrentAleo {};
         let _candidate = create_example_circuit::<CurrentAleo>();
         let output = format!("{circuit}");
-        println!("{}", output);
+        println!("{output}");
     }
 
     #[test]

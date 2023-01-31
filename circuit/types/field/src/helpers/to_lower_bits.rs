@@ -108,7 +108,7 @@ mod tests {
                 let candidate = candidate.to_lower_bits_le(I::BITS as usize);
                 assert_eq!(I::BITS, candidate.len() as u64);
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {
-                    assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
+                    assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{i}");
                 }
                 assert_count!(ToLowerBits<Boolean>() => Field, &(mode, I::BITS));
                 assert_output_mode!(ToLowerBits<Boolean>() => Field, &mode, candidate);

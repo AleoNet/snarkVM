@@ -80,9 +80,9 @@ impl<N: Network> Display for Closure<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the closure to a string.
         write!(f, "{} {}:", Self::type_name(), self.name)?;
-        self.inputs.iter().try_for_each(|input| write!(f, "\n    {}", input))?;
-        self.instructions.iter().try_for_each(|instruction| write!(f, "\n    {}", instruction))?;
-        self.outputs.iter().try_for_each(|output| write!(f, "\n    {}", output))
+        self.inputs.iter().try_for_each(|input| write!(f, "\n    {input}"))?;
+        self.instructions.iter().try_for_each(|instruction| write!(f, "\n    {instruction}"))?;
+        self.outputs.iter().try_for_each(|output| write!(f, "\n    {output}"))
     }
 }
 

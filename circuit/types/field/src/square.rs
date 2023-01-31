@@ -68,7 +68,7 @@ mod tests {
             let first = Uniform::rand(rng);
             let a = Field::<Circuit>::new(mode, first);
 
-            let name = format!("Square: {}", i);
+            let name = format!("Square: {i}");
             check_square(&name, &first.square(), &a);
         }
 

@@ -65,7 +65,7 @@ fn biginteger_bits_test<B: BigInteger>() {
     assert!(!thirty_two.get_bit(2));
     assert!(!thirty_two.get_bit(3));
     assert!(!thirty_two.get_bit(4));
-    assert!(thirty_two.get_bit(5), "{:?}", thirty_two);
+    assert!(thirty_two.get_bit(5), "{thirty_two:?}");
 }
 
 fn biginteger_bytes_test<B: BigInteger>(rng: &mut TestRng) {
@@ -81,7 +81,7 @@ fn biginteger_to_string_test<B: BigInteger>(rng: &mut TestRng) {
 
     // Sanity check the integers starting from 0 to ITERATIONS.
     for integer in 0..ITERATIONS {
-        assert_eq!(format!("{}", integer), B::from(integer).to_string());
+        assert_eq!(format!("{integer}"), B::from(integer).to_string());
     }
 
     // If the BigInteger has more than one limb, sanity check
@@ -93,14 +93,14 @@ fn biginteger_to_string_test<B: BigInteger>(rng: &mut TestRng) {
             buffer.iter_mut().zip(&(integer as u128).to_le_bytes()).for_each(|(buf, val)| {
                 *buf = *val;
             });
-            assert_eq!(format!("{}", integer), B::read_le(&*buffer).unwrap().to_string());
+            assert_eq!(format!("{integer}"), B::read_le(&*buffer).unwrap().to_string());
         }
     }
 
     // Sample random integers and check they match against num-bigint.
     for _ in 0..ITERATIONS {
         let candidate: B = Uniform::rand(rng);
-        let candidate_hex = format!("{:?}", candidate);
+        let candidate_hex = format!("{candidate:?}");
         let reference = num_bigint::BigUint::parse_bytes(candidate_hex.as_bytes(), 16).unwrap();
         assert_eq!(reference.to_str_radix(10), candidate.to_string());
     }

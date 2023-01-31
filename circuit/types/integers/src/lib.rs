@@ -266,15 +266,15 @@ mod tests {
     fn check_display<I: IntegerType>() {
         // Constant
         let candidate = Integer::<Circuit, I>::new(Mode::Constant, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.constant", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.constant", I::type_name()), format!("{candidate}"));
 
         // Public
         let candidate = Integer::<Circuit, I>::new(Mode::Public, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.public", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.public", I::type_name()), format!("{candidate}"));
 
         // Private
         let candidate = Integer::<Circuit, I>::new(Mode::Private, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.private", I::type_name()), format!("{candidate}"));
     }
 
     // u8

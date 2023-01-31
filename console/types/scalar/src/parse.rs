@@ -122,7 +122,7 @@ mod tests {
         let zero = <CurrentEnvironment as Environment>::Scalar::zero();
 
         let candidate = Scalar::<CurrentEnvironment>::new(zero);
-        assert_eq!("0scalar", &format!("{}", candidate));
+        assert_eq!("0scalar", &format!("{candidate}"));
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod tests {
         let one = <CurrentEnvironment as Environment>::Scalar::one();
 
         let candidate = Scalar::<CurrentEnvironment>::new(one);
-        assert_eq!("1scalar", &format!("{}", candidate));
+        assert_eq!("1scalar", &format!("{candidate}"));
     }
 
     #[test]
@@ -139,6 +139,6 @@ mod tests {
         let two = one + one;
 
         let candidate = Scalar::<CurrentEnvironment>::new(two);
-        assert_eq!("2scalar", &format!("{}", candidate));
+        assert_eq!("2scalar", &format!("{candidate}"));
     }
 }

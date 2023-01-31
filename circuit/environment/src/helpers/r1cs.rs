@@ -177,6 +177,6 @@ impl<F: PrimeField> Display for R1CS<F> {
         }
         output += "\n";
 
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }

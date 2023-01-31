@@ -59,7 +59,7 @@ mod tests {
         assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
         // Deserialize
-        assert_eq!(expected, T::from_str(expected_string).unwrap_or_else(|_| panic!("FromStr: {}", expected_string)));
+        assert_eq!(expected, T::from_str(expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
     }
 

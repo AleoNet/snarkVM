@@ -182,9 +182,9 @@ mod tests {
 
             let expected = first + second;
 
-            let name = format!("Add: a + b {}", i);
+            let name = format!("Add: a + b {i}");
             check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
+            let name = format!("AddAssign: a + b {i}");
             check_add_assign(&name, &expected, &a, &b);
         }
     }

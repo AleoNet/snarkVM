@@ -244,7 +244,7 @@ impl<N: Network> Transition<N> {
                         // Return the record output.
                         Ok(Output::ExternalRecord(*hash))
                     }
-                    _ => bail!("Malformed response output: {:?}, {output}", output_id),
+                    _ => bail!("Malformed response output: {output_id:?}, {output}"),
                 }
             })
             .collect::<Result<Vec<_>>>()?;
