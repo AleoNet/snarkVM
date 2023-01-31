@@ -240,8 +240,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         (summed_z_m, t)
     }
 
-    fn calculate_t<'a>(
-        matrices: &[&'a Matrix<F>],
+    fn calculate_t(
+        matrices: &[&Matrix<F>],
         matrix_randomizers: [F; 3],
         input_domain: &EvaluationDomain<F>,
         constraint_domain: &EvaluationDomain<F>,
