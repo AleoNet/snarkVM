@@ -411,15 +411,12 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_neg_powers_of_h: Option<Vec<_>> =
+        let degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>> =
             CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_prepared_neg_powers_of_h = degree_bounds_and_neg_powers_of_h.as_ref().map(|v| {
-            v.iter()
-                .map(|(degree_bound, neg_power_of_h)| (*degree_bound, E::G2Affine::prepare(neg_power_of_h)))
-                .collect()
-        });
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            degree_bounds_and_neg_powers_of_h.as_ref().map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
         Ok(VerifierKey {
             vk,
             degree_bounds_and_neg_powers_of_h,
