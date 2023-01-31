@@ -487,7 +487,7 @@ mod tests {
                     other.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
                 let fast =
                     domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(x, &other);
-                assert_eq!(fast, manual, "failed for self {:?} and other {:?}", domain, other);
+                assert_eq!(fast, manual, "failed for self {domain:?} and other {other:?}");
             }
         }
     }
@@ -506,9 +506,9 @@ mod tests {
         }
         let first = poly.coeffs[0] * size_as_fe;
         let last = *poly.coeffs.last().unwrap() * size_as_fe;
-        println!("sum: {:?}", sum);
-        println!("a_0: {:?}", first);
-        println!("a_n: {:?}", last);
+        println!("sum: {sum:?}");
+        println!("a_0: {first:?}");
+        println!("a_n: {last:?}");
         println!("first + last: {:?}\n", first + last);
         assert_eq!(sum, first + last);
     }
@@ -534,7 +534,7 @@ mod tests {
 
                 for element in domain_i.elements() {
                     if j_elements.contains(&element) {
-                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {} vs {}", i, j);
+                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {i} vs {j}");
                     } else {
                         assert_eq!(slow_selector.evaluate(element), Fr::zero());
                     }

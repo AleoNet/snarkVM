@@ -48,7 +48,7 @@ mod tests {
             // Initialize the input.
             let affine = Group::<Circuit>::new(mode, input);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = affine.mul_by_cofactor();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

@@ -52,7 +52,7 @@ pub fn read_variable_length_integer<R: Read>(mut reader: R) -> IoResult<u64> {
         },
         _ => match u64::read_le(&mut reader)? {
             s if s < 4_294_967_296 => Err(error("Invalid variable size integer")),
-            s => Ok(s as u64),
+            s => Ok(s),
         },
     }
 }

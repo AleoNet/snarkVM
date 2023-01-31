@@ -98,7 +98,7 @@ mod tests {
 
         // Create the build directory.
         let build_directory = directory.join("build");
-        std::fs::create_dir_all(&build_directory).unwrap();
+        std::fs::create_dir_all(build_directory).unwrap();
 
         // Open the package at the temporary directory.
         Package::<Testnet3>::open(&directory)

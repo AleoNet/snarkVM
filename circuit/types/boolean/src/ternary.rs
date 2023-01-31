@@ -118,7 +118,7 @@ mod tests {
                     let a = Boolean::<Circuit>::new(mode_a, first);
                     let b = Boolean::<Circuit>::new(mode_b, second);
 
-                    let name = format!("{} ? {} : {}", mode_condition, mode_a, mode_b);
+                    let name = format!("{mode_condition} ? {mode_a} : {mode_b}");
                     check_ternary(
                         &name,
                         if flag { first } else { second },

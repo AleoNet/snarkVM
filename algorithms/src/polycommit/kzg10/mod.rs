@@ -416,7 +416,7 @@ impl<E: PairingEngine> KZG10<E> {
         )
         .is_one();
         end_timer!(pairing_time);
-        end_timer!(check_time, || format!("Result: {}", result));
+        end_timer!(check_time, || format!("Result: {result}"));
         Ok(result)
     }
 

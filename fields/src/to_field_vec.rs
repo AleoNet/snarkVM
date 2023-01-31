@@ -83,7 +83,7 @@ impl<F: PrimeField> ToConstraintField<F> for [u8] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // Derive the field size in bytes, floored to be conservative.
-        let floored_field_size_in_bytes = (F::size_in_data_bits() / 8) as usize;
+        let floored_field_size_in_bytes = F::size_in_data_bits() / 8;
         let next_power_of_two = floored_field_size_in_bytes
             .checked_next_power_of_two()
             .ok_or(ConstraintFieldError::Message("Field size is too large"))?;

@@ -1085,13 +1085,11 @@ mod tests {
 
             assert_eq!(
                 random_polynomial, randon_polynomial_from_subgroup,
-                "degree = {}, domain size = {}",
-                degree, domain_size
+                "degree = {degree}, domain size = {domain_size}"
             );
             assert_eq!(
                 random_polynomial, random_polynomial_from_coset,
-                "degree = {}, domain size = {}",
-                degree, domain_size
+                "degree = {degree}, domain size = {domain_size}"
             );
         }
     }
@@ -1142,7 +1140,7 @@ mod tests {
     fn test_fft_correctness_cuda() {
         let mut rng = TestRng::default();
         for log_domain in 2..20 {
-            println!("Testing domain size {}", log_domain);
+            println!("Testing domain size {log_domain}");
             let domain_size = 1 << log_domain;
             let random_polynomial = DensePolynomial::<Fr>::rand(domain_size - 1, &mut rng);
             let mut polynomial_evaluations = random_polynomial.coeffs.clone();
@@ -1164,7 +1162,7 @@ mod tests {
                 println!("cuda error!");
             }
 
-            assert_eq!(polynomial_evaluations, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+            assert_eq!(polynomial_evaluations, polynomial_evaluations_cuda, "domain size = {domain_size}");
 
             // iNTT
             if snarkvm_algorithms_cuda::NTT::<Fr>(
@@ -1178,7 +1176,7 @@ mod tests {
             {
                 println!("cuda error!");
             }
-            assert_eq!(random_polynomial.coeffs, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+            assert_eq!(random_polynomial.coeffs, polynomial_evaluations_cuda, "domain size = {domain_size}");
 
             // Coset NTT
             polynomial_evaluations = random_polynomial.coeffs.clone();
@@ -1199,7 +1197,7 @@ mod tests {
                 println!("cuda error!");
             }
 
-            assert_eq!(polynomial_evaluations, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+            assert_eq!(polynomial_evaluations, polynomial_evaluations_cuda, "domain size = {domain_size}");
 
             // Coset iNTT
             if snarkvm_algorithms_cuda::NTT::<Fr>(
@@ -1213,7 +1211,7 @@ mod tests {
             {
                 println!("cuda error!");
             }
-            assert_eq!(random_polynomial.coeffs, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+            assert_eq!(random_polynomial.coeffs, polynomial_evaluations_cuda, "domain size = {domain_size}");
         }
     }
 }

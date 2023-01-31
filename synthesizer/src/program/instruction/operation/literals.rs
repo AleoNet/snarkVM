@@ -254,7 +254,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         }
         // Ensure the number of operands is correct.
         if self.operands.len() > NUM_OPERANDS {
-            eprintln!("The number of operands must be {}", NUM_OPERANDS);
+            eprintln!("The number of operands must be {NUM_OPERANDS}");
             return Err(fmt::Error);
         }
         // Print the operation.

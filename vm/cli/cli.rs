@@ -65,7 +65,7 @@ impl Command {
                                     Ok("".to_string())
                                 }
                             }
-                            Err(e) => Ok(format!("\nFailed to update snarkVM to the latest version\n{}\n", e)),
+                            Err(e) => Ok(format!("\nFailed to update snarkVM to the latest version\n{e}\n")),
                         }
                     } else {
                         Ok("".to_string())

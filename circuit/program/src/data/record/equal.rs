@@ -116,13 +116,13 @@ mod tests {
         let record = sample_record(mode);
         let mismatched_record = sample_mismatched_record(mode);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_equal(&record);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_equal(&mismatched_record);
             assert!(!candidate.eject_value());
         });
@@ -142,13 +142,13 @@ mod tests {
         let record = sample_record(mode);
         let mismatched_record = sample_mismatched_record(mode);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_not_equal(&mismatched_record);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_not_equal(&record);
             assert!(!candidate.eject_value());
         });

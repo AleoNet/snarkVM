@@ -199,13 +199,13 @@ mod tests {
             // Check first is equal to first.
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, first);
-            let name = format!("{} == {}", first, first);
+            let name = format!("{first} == {first}");
             check_is_equal(&name, true, &a, &b);
 
             // Check second is equal to second.
             let a = Field::<Circuit>::new(mode_a, second);
             let b = Field::<Circuit>::new(mode_b, second);
-            let name = format!("{} == {}", second, second);
+            let name = format!("{second} == {second}");
             check_is_equal(&name, true, &a, &b);
         }
     }

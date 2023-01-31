@@ -57,7 +57,7 @@ impl From<MarlinError> for SNARKError {
     fn from(error: MarlinError) -> Self {
         match error {
             MarlinError::Terminated => SNARKError::Terminated,
-            err => SNARKError::Crate("marlin", format!("{:?}", err)),
+            err => SNARKError::Crate("marlin", format!("{err:?}")),
         }
     }
 }

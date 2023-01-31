@@ -212,7 +212,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, M>::new(second);
 
-                let name = format!("Shr: ({} >> {})", first, second);
+                let name = format!("Shr: ({first} >> {second})");
                 check_shr::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }

@@ -185,7 +185,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Rem: ({} % {})", first, second);
+                let name = format!("Rem: ({first} % {second})");
                 check_rem::<I>(&name, first, second, mode_a, mode_b);
             }
         }

@@ -49,7 +49,7 @@ impl<N: Network> VerifierFile<N> {
         // Create the file name.
         let file_name = format!("{function_name}.{VERIFIER_FILE_EXTENSION}");
         // Construct the file path.
-        let path = directory.join(&file_name);
+        let path = directory.join(file_name);
         // Write the file (overwriting if it already exists).
         File::create(&path)?.write_all(&verifier_file.to_bytes_le()?)?;
 

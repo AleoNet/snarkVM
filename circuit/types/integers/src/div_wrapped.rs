@@ -209,13 +209,13 @@ mod tests {
             let name = format!("Div: {first} / {second}");
             check_div::<I>(&name, first, second, mode_a, mode_b);
 
-            let name = format!("Div by One: {} / 1", first);
+            let name = format!("Div by One: {first} / 1");
             check_div::<I>(&name, first, console::Integer::one(), mode_a, mode_b);
 
-            let name = format!("Div by Self: {} / {}", first, first);
+            let name = format!("Div by Self: {first} / {first}");
             check_div::<I>(&name, first, first, mode_a, mode_b);
 
-            let name = format!("Div by Zero: {} / 0", first);
+            let name = format!("Div by Zero: {first} / 0");
             check_div::<I>(&name, first, console::Integer::zero(), mode_a, mode_b);
         }
 
@@ -246,7 +246,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Div: ({} / {})", first, second);
+                let name = format!("Div: ({first} / {second})");
                 check_div::<I>(&name, first, second, mode_a, mode_b);
             }
         }

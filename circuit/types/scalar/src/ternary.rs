@@ -94,7 +94,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             for flag in [true, false] {
-                let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
+                let name = format!("{flag} ? {mode_a} : {mode_b}, {i}");
 
                 let first = Uniform::rand(&mut rng);
                 let second = Uniform::rand(&mut rng);

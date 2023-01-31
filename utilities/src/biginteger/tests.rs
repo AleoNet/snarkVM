@@ -90,7 +90,7 @@ fn biginteger_to_string_test<B: BigInteger>(rng: &mut TestRng) {
         let start = u64::MAX as u128;
         for integer in start..(start + ITERATIONS as u128) {
             let mut buffer = vec![0u8; 8 * B::NUM_LIMBS];
-            buffer.iter_mut().zip(&(integer as u128).to_le_bytes()).for_each(|(buf, val)| {
+            buffer.iter_mut().zip(&integer.to_le_bytes()).for_each(|(buf, val)| {
                 *buf = *val;
             });
             assert_eq!(format!("{integer}"), B::read_le(&*buffer).unwrap().to_string());

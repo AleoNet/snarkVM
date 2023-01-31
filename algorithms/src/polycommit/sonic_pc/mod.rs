@@ -585,7 +585,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             for (coeff, label) in lc.iter() {
                 if label.is_one() {
-                    for (&(ref label, _), ref mut eval) in evaluations.iter_mut() {
+                    for ((label, _), ref mut eval) in evaluations.iter_mut() {
                         if label == &lc_label {
                             **eval -= coeff;
                         }

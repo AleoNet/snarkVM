@@ -103,21 +103,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         for i in 0..ITERATIONS {
-            let name = format!("Abs: {} {}", mode, i);
+            let name = format!("Abs: {mode} {i}");
             let value = Uniform::rand(&mut rng);
             check_abs::<I>(&name, value, mode);
         }
 
         // Check the 0 case.
-        let name = format!("Abs: {} zero", mode);
+        let name = format!("Abs: {mode} zero");
         check_abs::<I>(&name, console::Integer::zero(), mode);
 
         // Check the 1 case.
-        let name = format!("Abs: {} one", mode);
+        let name = format!("Abs: {mode} one");
         check_abs::<I>(&name, console::Integer::one(), mode);
 
         // Check the console::Integer::MIN (checked) case.
-        let name = format!("Abs: {} one", mode);
+        let name = format!("Abs: {mode} one");
         check_abs::<I>(&name, console::Integer::MIN, mode);
     }
 
@@ -128,7 +128,7 @@ mod tests {
         for value in I::MIN..=I::MAX {
             let value = console::Integer::<_, I>::new(value);
 
-            let name = format!("Abs: {}", mode);
+            let name = format!("Abs: {mode}");
             check_abs::<I>(&name, value, mode);
         }
     }

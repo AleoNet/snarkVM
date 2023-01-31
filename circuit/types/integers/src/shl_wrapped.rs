@@ -148,15 +148,15 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
+            let name = format!("Shl: {mode_a} << {mode_b} {i}");
             check_shl::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift left by one is computed correctly.
-            let name = format!("Double: {} << {} {}", mode_a, mode_b, i);
+            let name = format!("Double: {mode_a} << {mode_b} {i}");
             check_shl::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
 
             // Check that shift left by two is computed correctly.
-            let name = format!("Quadruple: {} << {} {}", mode_a, mode_b, i);
+            let name = format!("Quadruple: {mode_a} << {mode_b} {i}");
             check_shl::<I, M>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
         }
     }
@@ -171,7 +171,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, M>::new(second);
 
-                let name = format!("Shl: ({} << {})", first, second);
+                let name = format!("Shl: ({first} << {second})");
                 check_shl::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }

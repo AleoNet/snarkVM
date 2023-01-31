@@ -143,7 +143,7 @@ mod tests {
 
         Circuit::scope(name, || {
             let candidate = a + b;
-            assert_eq!(expected, candidate.eject_value(), "{}", case);
+            assert_eq!(expected, candidate.eject_value(), "{case}");
             assert_count!(Add(Scalar, Scalar) => Scalar, &(mode_a, mode_b));
             assert_output_mode!(Add(Scalar, Scalar) => Scalar, &(mode_a, mode_b), candidate);
         });
@@ -160,10 +160,10 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
+            let name = format!("Add: {mode_a} + {mode_b} {i}");
             check_add(&name, first, second, mode_a, mode_b);
 
-            let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
+            let name = format!("Add: {mode_a} + {mode_b} {i} (commutative)");
             check_add(&name, second, first, mode_a, mode_b);
         }
     }

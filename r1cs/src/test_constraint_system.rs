@@ -275,7 +275,7 @@ impl<F: Field> TestConstraintSystem<F> {
         let interned_field = self.interned_fields.insert_full(to).0;
 
         match self.named_objects.get(&interned_path) {
-            Some(&NamedObject::Var(ref v)) => match v.get_unchecked() {
+            Some(NamedObject::Var(v)) => match v.get_unchecked() {
                 Index::Public(index) => self.public_variables[index] = interned_field,
                 Index::Private(index) => self.private_variables[index] = interned_field,
             },
@@ -288,11 +288,11 @@ impl<F: Field> TestConstraintSystem<F> {
         let interned_path = self.intern_path(path);
 
         let interned_field = match self.named_objects.get(&interned_path) {
-            Some(&NamedObject::Var(ref v)) => match v.get_unchecked() {
+            Some(NamedObject::Var(v)) => match v.get_unchecked() {
                 Index::Public(index) => self.public_variables[index],
                 Index::Private(index) => self.private_variables[index],
             },
-            Some(e) => panic!("tried to get value of path `{}`, but `{:?}` exists there (not a variable)", path, e),
+            Some(e) => panic!("tried to get value of path `{path}`, but `{e:?}` exists there (not a variable)"),
             _ => panic!("no variable exists at path: {path}"),
         };
 

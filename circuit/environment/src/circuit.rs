@@ -156,10 +156,7 @@ impl Environment for Circuit {
                             assert_eq!(
                                 a.value() * b.value(),
                                 c.value(),
-                                "Constant constraint failed: ({} * {}) =?= {}",
-                                a,
-                                b,
-                                c
+                                "Constant constraint failed: ({a} * {b}) =?= {c}"
                             );
 
                             // match self.counter.scope().is_empty() {
@@ -351,7 +348,7 @@ mod tests {
     #[test]
     fn test_print_circuit() {
         let _candidate = create_example_circuit::<Circuit>();
-        let output = format!("{}", Circuit);
+        let output = format!("{Circuit}");
         println!("{output}");
     }
 
