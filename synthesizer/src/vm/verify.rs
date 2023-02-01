@@ -239,7 +239,6 @@ mod tests {
 
         // Deploy the program.
         let deployment = vm.deploy(&program, rng).unwrap();
-        dbg!(deployment.to_bytes_le().unwrap().len());
 
         // Ensure the deployment is valid.
         assert!(vm.verify_deployment(&deployment));
