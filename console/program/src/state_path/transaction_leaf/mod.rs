@@ -34,10 +34,13 @@ pub struct TransactionLeaf<N: Network> {
 }
 
 impl<N: Network> TransactionLeaf<N> {
-    // TODO (raychu86): This variant is set to 1 to allow deployments to fulfill the inclusion circuit.
-    //  This should be updated to 0 once the inclusion circuit is updated.
     /// Initializes a new instance of `TransactionLeaf`.
     pub const fn new_deployment(index: u16, id: Field<N>) -> Self {
+        Self { variant: 0, index, id }
+    }
+
+    /// Initializes a new instance of `TransactionLeaf`.
+    pub const fn new_deployment_fee(index: u16, id: Field<N>) -> Self {
         Self { variant: 1, index, id }
     }
 
