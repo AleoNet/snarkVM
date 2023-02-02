@@ -192,6 +192,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
             )?;
             self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
+
             // Store the fee transition.
             self.transition_store().insert(fee)?;
 
@@ -246,6 +247,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             // Remove the fee.
             self.fee_map().remove(transaction_id)?;
             self.reverse_fee_map().remove(&transition_id)?;
+
             // Remove the fee transition.
             self.transition_store().remove(&transition_id)?;
 
