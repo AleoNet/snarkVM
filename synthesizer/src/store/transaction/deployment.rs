@@ -55,6 +55,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type CertificateMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
     /// The mapping of `transaction ID` to `(fee transition ID, global state root, inclusion proof)`.
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
+    /// The mapping of `fee transition ID` to `transaction ID`.
+    type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
 
@@ -75,6 +77,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn certificate_map(&self) -> &Self::CertificateMap;
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap;
+    /// Returns the reverse fee map.
+    fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
@@ -92,6 +96,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.verifying_key_map().start_atomic();
         self.certificate_map().start_atomic();
         self.fee_map().start_atomic();
+        self.reverse_fee_map().start_atomic();
         self.transition_store().start_atomic();
     }
 
@@ -104,6 +109,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             || self.verifying_key_map().is_atomic_in_progress()
             || self.certificate_map().is_atomic_in_progress()
             || self.fee_map().is_atomic_in_progress()
+            || self.reverse_fee_map().is_atomic_in_progress()
             || self.transition_store().is_atomic_in_progress()
     }
 
@@ -116,6 +122,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.verifying_key_map().abort_atomic();
         self.certificate_map().abort_atomic();
         self.fee_map().abort_atomic();
+        self.reverse_fee_map().abort_atomic();
         self.transition_store().abort_atomic();
     }
 
@@ -128,6 +135,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.verifying_key_map().finish_atomic()?;
         self.certificate_map().finish_atomic()?;
         self.fee_map().finish_atomic()?;
+        self.reverse_fee_map().finish_atomic()?;
         self.transition_store().finish_atomic()
     }
 
@@ -183,6 +191,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 *transaction_id,
                 (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
             )?;
+            self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
             // Store the fee transition.
             self.transition_store().insert(fee)?;
 
@@ -236,6 +245,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
             // Remove the fee.
             self.fee_map().remove(transaction_id)?;
+            self.reverse_fee_map().remove(&transition_id)?;
             // Remove the fee transition.
             self.transition_store().remove(&transition_id)?;
 
@@ -256,6 +266,17 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         match self.reverse_id_map().get(&(*program_id, edition))? {
             Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
             None => bail!("Failed to find the transaction ID for program '{program_id}' (edition {edition})"),
+        }
+    }
+
+    /// Returns the transaction ID that contains the given `transition ID`.
+    fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
+        match self.reverse_fee_map().get(transition_id)? {
+            Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
+            None => Ok(None),
         }
     }
 
@@ -422,6 +443,8 @@ pub struct DeploymentMemory<N: Network> {
     certificate_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>,
     /// The fee map.
     fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
+    /// The reverse fee map.
+    reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
     /// The transition store.
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
@@ -435,6 +458,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
     type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
+    type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the deployment storage.
@@ -447,6 +471,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             verifying_key_map: MemoryMap::default(),
             certificate_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
+            reverse_fee_map: MemoryMap::default(),
             transition_store,
         })
     }
@@ -484,6 +509,11 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap {
         &self.fee_map
+    }
+
+    /// Returns the reverse fee map.
+    fn reverse_fee_map(&self) -> &Self::ReverseFeeMap {
+        &self.reverse_fee_map
     }
 
     /// Returns the transition store.
@@ -607,11 +637,12 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         self.storage.find_transaction_id_from_program_id(program_id)
     }
 
-    // TODO (raychu86): Remove this inefficient implementation in favor of a new dedicated map.
-    //  i.e. ReverseFeeMap: Map<N::TransitionID, (N::TransactionID, ProgramID<N>)>;
     /// Returns the transaction ID that deployed the given `transition ID`.
-    pub fn find_transaction_id_from_transition_id(&self, transition_id: &N::TransitionID) -> Option<N::TransactionID> {
-        self.storage.fee_map().iter().find(|(_, fee)| fee.0 == *transition_id).map(|(a, _)| a.into_owned())
+    pub fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
+        self.storage.find_transaction_id_from_transition_id(transition_id)
     }
 }
 
