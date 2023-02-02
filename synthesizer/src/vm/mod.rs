@@ -61,7 +61,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_ids() {
+        for transaction_id in transaction_store.deployment_transaction_ids() {
             // Retrieve the deployment.
             match transaction_store.get_deployment(&transaction_id)? {
                 // Load the deployment.

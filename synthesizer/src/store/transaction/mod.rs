@@ -422,13 +422,13 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     }
 
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
-    pub fn deployment_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.deployment_store().deployment_ids()
+    pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.deployment_store().deployment_transaction_ids()
     }
 
     /// Returns an iterator over the execution transaction IDs, for all executions.
-    pub fn execution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.execution_store().execution_ids()
+    pub fn execution_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.execution_store().execution_transaction_ids()
     }
 
     /// Returns an iterator over the program IDs, for all deployments.

@@ -624,7 +624,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
-    pub fn deployment_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+    pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.storage.id_map().keys()
     }
 
