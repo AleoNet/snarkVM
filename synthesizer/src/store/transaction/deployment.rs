@@ -246,7 +246,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Returns the transaction ID that contains the given `program ID`.
-    fn find_transaction_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+    fn find_transaction_id_from_program_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
             Some(edition) => edition,
@@ -603,8 +603,8 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns the transaction ID that deployed the given `program ID`.
-    pub fn find_transaction_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-        self.storage.find_transaction_id(program_id)
+    pub fn find_transaction_id_from_program_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.storage.find_transaction_id_from_program_id(program_id)
     }
 
     // TODO (raychu86): Remove this inefficient implementation in favor of a new dedicated map.
@@ -717,21 +717,21 @@ mod tests {
         assert_eq!(None, candidate);
 
         // Ensure the transaction ID is not found.
-        let candidate = deployment_store.find_transaction_id(&program_id).unwrap();
+        let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
         assert_eq!(None, candidate);
 
         // Insert the deployment.
         deployment_store.insert(&transaction).unwrap();
 
         // Find the transaction ID.
-        let candidate = deployment_store.find_transaction_id(&program_id).unwrap();
+        let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
         assert_eq!(Some(transaction_id), candidate);
 
         // Remove the deployment.
         deployment_store.remove(&transaction_id).unwrap();
 
         // Ensure the transaction ID is not found.
-        let candidate = deployment_store.find_transaction_id(&program_id).unwrap();
+        let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
         assert_eq!(None, candidate);
     }
 }

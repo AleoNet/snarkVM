@@ -166,7 +166,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the transaction ID that contains the given `program ID`.
     fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-        self.deployment_store().find_transaction_id(program_id)
+        self.deployment_store().find_transaction_id_from_program_id(program_id)
     }
 
     /// Returns the transaction for the given `transaction ID`.
@@ -387,7 +387,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the transaction ID that contains the given `program ID`.
     pub fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-        self.storage.deployment_store().find_transaction_id(program_id)
+        self.storage.deployment_store().find_transaction_id_from_program_id(program_id)
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
