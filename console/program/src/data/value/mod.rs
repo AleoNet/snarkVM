@@ -33,3 +33,46 @@ pub enum Value<N: Network> {
     /// A record value.
     Record(Record<N, Plaintext<N>>),
 }
+
+impl<N: Network> From<&Value<N>> for Value<N> {
+    /// Returns a clone of the value.
+    fn from(value: &Value<N>) -> Self {
+        value.clone()
+    }
+}
+
+impl<N: Network> TryFrom<Result<Value<N>>> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a result.
+    fn try_from(value: Result<Value<N>>) -> Result<Self> {
+        value
+    }
+}
+
+impl<N: Network> TryFrom<String> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: String) -> Result<Self> {
+        Self::from_str(&value)
+    }
+}
+
+impl<N: Network> TryFrom<&String> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: &String) -> Result<Self> {
+        Self::from_str(value)
+    }
+}
+
+impl<N: Network> TryFrom<&str> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: &str) -> Result<Self> {
+        Self::from_str(value)
+    }
+}

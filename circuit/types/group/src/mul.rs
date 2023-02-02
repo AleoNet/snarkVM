@@ -235,7 +235,7 @@ mod tests {
             let base = Uniform::rand(&mut rng);
             let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
-            let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
+            let num_nonzero_bits = (*scalar).to_bigint().to_biguint().bits();
             let num_constant =
                 (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1) + 251; // Typically around 760.
 
@@ -299,7 +299,7 @@ mod tests {
             let base = Uniform::rand(&mut rng);
             let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
-            let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
+            let num_nonzero_bits = (*scalar).to_bigint().to_biguint().bits();
             let num_constant =
                 (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1) + 251; // Typically around 760.
             let num_private =
@@ -329,7 +329,7 @@ mod tests {
             let base = Uniform::rand(&mut rng);
             let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
-            let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
+            let num_nonzero_bits = (*scalar).to_bigint().to_biguint().bits();
             let num_constant =
                 (1 /* DOUBLE private */ + 2/* private ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1) + 251; // Typically around 760.
             let num_private =

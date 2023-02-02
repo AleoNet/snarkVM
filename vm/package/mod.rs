@@ -26,7 +26,6 @@ pub use deploy::{DeployRequest, DeployResponse};
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
     prelude::{
-        de,
         Deserialize,
         Deserializer,
         Identifier,
@@ -40,8 +39,8 @@ use crate::{
         Serializer,
         Value,
     },
+    synthesizer::{CallOperator, Execution, Inclusion, Instruction, Process, Program, ProvingKey, VerifyingKey},
 };
-use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
 
 use anyhow::{bail, ensure, Error, Result};
 use core::str::FromStr;

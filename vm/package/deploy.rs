@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::Deployment;
+use crate::synthesizer::Deployment;
 use snarkvm_console::types::Address;
+use snarkvm_utilities::DeserializeExt;
 
 use super::*;
 
@@ -70,15 +71,15 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
     /// Deserializes the deploy request from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
-        let request = serde_json::Value::deserialize(deserializer)?;
+        let mut request = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["deployment"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "deployment")?,
             // Retrieve the address of the program.
-            serde_json::from_value(request["address"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "address")?,
             // Retrieve the program ID.
-            serde_json::from_value(request["program_id"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "program_id")?,
         ))
     }
 }
@@ -112,11 +113,11 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
     /// Deserializes the deploy response from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the response from a string into a value.
-        let response = serde_json::Value::deserialize(deserializer)?;
+        let mut response = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["deployment"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "deployment")?,
         ))
     }
 }

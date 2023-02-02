@@ -94,10 +94,10 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         // Set the number of windows, and modulate the window size.
-        check_setup::<NUM_BITS_MULTIPLIER>(1036, 0, 0, 0);
-        check_setup::<{ 2 * NUM_BITS_MULTIPLIER }>(1068, 0, 0, 0);
-        check_setup::<{ 3 * NUM_BITS_MULTIPLIER }>(1100, 0, 0, 0);
-        check_setup::<{ 4 * NUM_BITS_MULTIPLIER }>(1132, 0, 0, 0);
-        check_setup::<{ 5 * NUM_BITS_MULTIPLIER }>(1164, 0, 0, 0);
+        check_setup::<NUM_BITS_MULTIPLIER>(2590, 0, 0, 0);
+        check_setup::<{ 2 * NUM_BITS_MULTIPLIER }>(2670, 0, 0, 0);
+        check_setup::<{ 3 * NUM_BITS_MULTIPLIER }>(2750, 0, 0, 0);
+        check_setup::<{ 4 * NUM_BITS_MULTIPLIER }>(2830, 0, 0, 0);
+        check_setup::<{ 5 * NUM_BITS_MULTIPLIER }>(2910, 0, 0, 0);
     }
 }

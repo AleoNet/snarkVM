@@ -116,7 +116,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// having `num_coeffs` coefficients.
     pub fn new(num_coeffs: usize) -> Option<Self> {
         // Compute the size of our evaluation domain
-        let size = num_coeffs.next_power_of_two() as u64;
+        let size = num_coeffs.checked_next_power_of_two()? as u64;
         let log_size_of_group = size.trailing_zeros();
 
         // libfqfft uses > https://github.com/scipr-lab/libfqfft/blob/e0183b2cef7d4c5deb21a6eaf3fe3b586d738fe0/libfqfft/evaluation_domain/domains/basic_radix2_domain.tcc#L33
@@ -148,7 +148,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Return the size of a domain that is large enough for evaluations of a polynomial
     /// having `num_coeffs` coefficients.
     pub fn compute_size_of_domain(num_coeffs: usize) -> Option<usize> {
-        let size = num_coeffs.next_power_of_two();
+        let size = num_coeffs.checked_next_power_of_two()?;
         if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY { Some(size) } else { None }
     }
 
@@ -371,17 +371,71 @@ impl<F: FftField> EvaluationDomain<F> {
     }
 
     pub(crate) fn in_order_fft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+        // SNP TODO: how to set threshold and check that the type is Fr
+        if self.size >= 32 && std::mem::size_of::<T>() == 32 {
+            let result = snarkvm_algorithms_cuda::NTT(
+                self.size as usize,
+                x_s,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Forward,
+                snarkvm_algorithms_cuda::NTTType::Standard,
+            );
+            if result.is_ok() {
+                return;
+            }
+        }
+
         let pc = self.precompute_fft();
         self.fft_helper_in_place_with_pc(x_s, FFTOrder::II, &pc)
     }
 
+    pub fn in_order_fft_with_pc<T: DomainCoeff<F>>(&self, x_s: &[T], pc: &FFTPrecomputation<F>) -> Vec<T> {
+        let mut x_s = x_s.to_vec();
+        if self.size() != x_s.len() {
+            x_s.extend(core::iter::repeat(T::zero()).take(self.size() - x_s.len()));
+        }
+        self.fft_helper_in_place_with_pc(&mut x_s, FFTOrder::II, pc);
+        x_s
+    }
+
     pub(crate) fn in_order_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+        // SNP TODO: how to set threshold
+        if self.size >= 32 && std::mem::size_of::<T>() == 32 {
+            let result = snarkvm_algorithms_cuda::NTT(
+                self.size as usize,
+                x_s,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Inverse,
+                snarkvm_algorithms_cuda::NTTType::Standard,
+            );
+            if result.is_ok() {
+                return;
+            }
+        }
+
         let pc = self.precompute_ifft();
         self.ifft_helper_in_place_with_pc(x_s, FFTOrder::II, &pc);
         cfg_iter_mut!(x_s).for_each(|val| *val *= self.size_inv);
     }
 
     pub(crate) fn in_order_coset_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+        // SNP TODO: how to set threshold
+        if self.size >= 32 && std::mem::size_of::<T>() == 32 {
+            let result = snarkvm_algorithms_cuda::NTT(
+                self.size as usize,
+                x_s,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Inverse,
+                snarkvm_algorithms_cuda::NTTType::Coset,
+            );
+            if result.is_ok() {
+                return;
+            }
+        }
+
         let pc = self.precompute_ifft();
         self.ifft_helper_in_place_with_pc(x_s, FFTOrder::II, &pc);
         let coset_shift = self.generator_inv;
@@ -394,6 +448,21 @@ impl<F: FftField> EvaluationDomain<F> {
         x_s: &mut [T],
         pre_comp: &FFTPrecomputation<F>,
     ) {
+        #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+        // SNP TODO: how to set threshold
+        if self.size >= 32 && std::mem::size_of::<T>() == 32 {
+            let result = snarkvm_algorithms_cuda::NTT(
+                self.size as usize,
+                x_s,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Forward,
+                snarkvm_algorithms_cuda::NTTType::Standard,
+            );
+            if result.is_ok() {
+                return;
+            }
+        }
+
         self.fft_helper_in_place_with_pc(x_s, FFTOrder::II, pre_comp)
     }
 
@@ -410,6 +479,21 @@ impl<F: FftField> EvaluationDomain<F> {
         x_s: &mut [T],
         pre_comp: &IFFTPrecomputation<F>,
     ) {
+        #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+        // SNP TODO: how to set threshold
+        if self.size >= 32 && std::mem::size_of::<T>() == 32 {
+            let result = snarkvm_algorithms_cuda::NTT(
+                self.size as usize,
+                x_s,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Inverse,
+                snarkvm_algorithms_cuda::NTTType::Standard,
+            );
+            if result.is_ok() {
+                return;
+            }
+        }
+
         self.ifft_helper_in_place_with_pc(x_s, FFTOrder::II, pre_comp);
         cfg_iter_mut!(x_s).for_each(|val| *val *= self.size_inv);
     }
@@ -429,6 +513,21 @@ impl<F: FftField> EvaluationDomain<F> {
         x_s: &mut [T],
         pre_comp: &IFFTPrecomputation<F>,
     ) {
+        #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+        // SNP TODO: how to set threshold
+        if self.size >= 32 && std::mem::size_of::<T>() == 32 {
+            let result = snarkvm_algorithms_cuda::NTT(
+                self.size as usize,
+                x_s,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Inverse,
+                snarkvm_algorithms_cuda::NTTType::Coset,
+            );
+            if result.is_ok() {
+                return;
+            }
+        }
+
         self.ifft_helper_in_place_with_pc(x_s, FFTOrder::II, pre_comp);
         let coset_shift = self.generator_inv;
         Self::distribute_powers_and_mul_by_const(x_s, coset_shift, self.size_inv);
@@ -778,7 +877,7 @@ impl<F: FftField> Iterator for Elements<F> {
 }
 
 /// An iterator over the elements of the domain.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, CanonicalDeserialize, CanonicalSerialize)]
 pub struct FFTPrecomputation<F: FftField> {
     roots: Vec<F>,
     domain: EvaluationDomain<F>,
@@ -808,7 +907,7 @@ impl<F: FftField> FFTPrecomputation<F> {
 }
 
 /// An iterator over the elements of the domain.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IFFTPrecomputation<F: FftField> {
     inverse_roots: Vec<F>,
     domain: EvaluationDomain<F>,
@@ -833,6 +932,8 @@ impl<F: FftField> IFFTPrecomputation<F> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+    use crate::fft::domain::FFTOrder;
     use crate::fft::{DensePolynomial, EvaluationDomain};
     use rand::Rng;
     use snarkvm_curves::bls12_377::Fr;
@@ -1032,6 +1133,87 @@ mod tests {
             let pc = domain.precompute_ifft();
             let fft_pc = domain.precompute_fft();
             assert_eq!(pc, fft_pc.to_ifft_precomputation())
+        }
+    }
+
+    /// Tests that the FFTs output the correct result.
+    #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+    #[test]
+    fn test_fft_correctness_cuda() {
+        let mut rng = TestRng::default();
+        for log_domain in 2..20 {
+            println!("Testing domain size {}", log_domain);
+            let domain_size = 1 << log_domain;
+            let random_polynomial = DensePolynomial::<Fr>::rand(domain_size - 1, &mut rng);
+            let mut polynomial_evaluations = random_polynomial.coeffs.clone();
+            let mut polynomial_evaluations_cuda = random_polynomial.coeffs.clone();
+
+            let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+            let pc = domain.precompute_fft();
+            domain.fft_helper_in_place_with_pc(&mut polynomial_evaluations, FFTOrder::II, &pc);
+
+            if snarkvm_algorithms_cuda::NTT::<Fr>(
+                domain_size,
+                &mut polynomial_evaluations_cuda,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Forward,
+                snarkvm_algorithms_cuda::NTTType::Standard,
+            )
+            .is_err()
+            {
+                println!("cuda error!");
+            }
+
+            assert_eq!(polynomial_evaluations, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+
+            // iNTT
+            if snarkvm_algorithms_cuda::NTT::<Fr>(
+                domain_size,
+                &mut polynomial_evaluations_cuda,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Inverse,
+                snarkvm_algorithms_cuda::NTTType::Standard,
+            )
+            .is_err()
+            {
+                println!("cuda error!");
+            }
+            assert_eq!(random_polynomial.coeffs, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+
+            // Coset NTT
+            polynomial_evaluations = random_polynomial.coeffs.clone();
+            let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+            let pc = domain.precompute_fft();
+            EvaluationDomain::<Fr>::distribute_powers(&mut polynomial_evaluations, Fr::multiplicative_generator());
+            domain.fft_helper_in_place_with_pc(&mut polynomial_evaluations, FFTOrder::II, &pc);
+
+            if snarkvm_algorithms_cuda::NTT::<Fr>(
+                domain_size,
+                &mut polynomial_evaluations_cuda,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Forward,
+                snarkvm_algorithms_cuda::NTTType::Coset,
+            )
+            .is_err()
+            {
+                println!("cuda error!");
+            }
+
+            assert_eq!(polynomial_evaluations, polynomial_evaluations_cuda, "domain size = {}", domain_size);
+
+            // Coset iNTT
+            if snarkvm_algorithms_cuda::NTT::<Fr>(
+                domain_size,
+                &mut polynomial_evaluations_cuda,
+                snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
+                snarkvm_algorithms_cuda::NTTDirection::Inverse,
+                snarkvm_algorithms_cuda::NTTType::Coset,
+            )
+            .is_err()
+            {
+                println!("cuda error!");
+            }
+            assert_eq!(random_polynomial.coeffs, polynomial_evaluations_cuda, "domain size = {}", domain_size);
         }
     }
 }

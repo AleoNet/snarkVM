@@ -70,8 +70,6 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the owner visibility from the string.
         let (string, owner) = alt((
             map(tag("address.public"), |_| PublicOrPrivate::Public),
@@ -92,8 +90,6 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the gates visibility from the string.
         let (string, gates) = alt((
             map(tag("u64.public"), |_| PublicOrPrivate::Public),
@@ -249,6 +245,26 @@ record message:
         let candidate = RecordType::<CurrentNetwork>::from_str(
             "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as token.record;",
         );
+        assert!(candidate.is_err());
+    }
+
+    #[test]
+    fn test_parse_max_members() {
+        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+            string += &format!("    member_{} as field.private;\n", i);
+        }
+        let candidate = RecordType::<CurrentNetwork>::parse(&string);
+        assert!(candidate.is_ok());
+    }
+
+    #[test]
+    fn test_parse_too_many_members() {
+        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+            string += &format!("    member_{} as field.private;\n", i);
+        }
+        let candidate = RecordType::<CurrentNetwork>::parse(&string);
         assert!(candidate.is_err());
     }
 }

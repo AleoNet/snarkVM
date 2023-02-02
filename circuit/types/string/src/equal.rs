@@ -25,28 +25,15 @@ impl<E: Environment> Equal<Self> for StringType<E> {
         let this = self.to_fields();
         let that = other.to_fields();
 
-        // Return `false` if the length of the strings are equal.
-        if this.len() != that.len() {
-            return Boolean::constant(false);
-        }
-
-        // Check if the string contents are equal.
-        this.iter().zip_eq(&that).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
+        // Check that the size in bytes of the two strings are equal.
+        self.size_in_bytes.is_equal(&other.size_in_bytes)
+            // Check that the string contents are equal.
+            & this.iter().zip(&that).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        // Convert each string type into fields.
-        let this = self.to_fields();
-        let that = other.to_fields();
-
-        // Return `true` if the length of the strings are *not* equal.
-        if this.len() != that.len() {
-            return Boolean::constant(true);
-        }
-
-        // Check if the string contents are *not* equal.
-        this.iter().zip_eq(&that).fold(Boolean::constant(false), |acc, (a, b)| acc | a.is_not_equal(b))
+        !self.is_equal(other)
     }
 }
 
@@ -55,11 +42,9 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-    use rand::Rng;
-
     fn sample_string(mode: Mode, rng: &mut TestRng) -> StringType<Circuit> {
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::MAX_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
+        let given = rng.next_string(Circuit::MAX_STRING_BYTES / 4, true);
         StringType::<Circuit>::new(mode, console::StringType::new(&given))
     }
 
@@ -123,31 +108,31 @@ mod tests {
 
     #[test]
     fn test_is_equal_constant() -> Result<()> {
-        check_is_equal(Mode::Constant, 8, 0, 0, 0)
+        check_is_equal(Mode::Constant, 9, 0, 0, 0)
     }
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 0, 0, 23, 31)
+        check_is_equal(Mode::Public, 0, 0, 26, 35)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 0, 0, 23, 31)
+        check_is_equal(Mode::Private, 0, 0, 26, 35)
     }
 
     #[test]
     fn test_is_not_equal_constant() -> Result<()> {
-        check_is_not_equal(Mode::Constant, 8, 0, 0, 0)
+        check_is_not_equal(Mode::Constant, 9, 0, 0, 0)
     }
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 0, 0, 23, 31)
+        check_is_not_equal(Mode::Public, 0, 0, 26, 35)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 0, 0, 23, 31)
+        check_is_not_equal(Mode::Private, 0, 0, 26, 35)
     }
 }

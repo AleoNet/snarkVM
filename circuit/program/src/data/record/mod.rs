@@ -28,12 +28,14 @@ mod encrypt;
 mod equal;
 mod find;
 mod num_randomizers;
+mod serial_number;
+mod tag;
 mod to_bits;
 mod to_commitment;
 mod to_fields;
 
 use crate::{Ciphertext, Identifier, Plaintext, ProgramID, Visibility};
-use snarkvm_circuit_account::ViewKey;
+use snarkvm_circuit_account::{PrivateKey, ViewKey};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, Group, Scalar, U32};
 
@@ -90,7 +92,7 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
     ) -> Result<Record<A, Plaintext<A>>> {
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
-        // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
+        // Ensure the number of structs is within `A::Network::MAX_DATA_ENTRIES`.
         ensure!(
             data.len() <= <A::Network as console::Network>::MAX_DATA_ENTRIES,
             "Found a record that exceeds size ({})",
@@ -109,7 +111,7 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
     ) -> Result<Record<A, Ciphertext<A>>> {
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
-        // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
+        // Ensure the number of structs is within `A::Network::MAX_DATA_ENTRIES`.
         ensure!(
             data.len() <= <A::Network as console::Network>::MAX_DATA_ENTRIES,
             "Found a record that exceeds size ({})",

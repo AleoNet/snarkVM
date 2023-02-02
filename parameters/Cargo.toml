@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.9.0"
+version = "0.9.11"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,16 +25,17 @@ edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.0"
+version = "0.9.11"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.0"
+version = "0.9.11"
 
 [dependencies.aleo-std]
 version = "0.1.15"
 default-features = false
+features = [ "storage" ]
 
 [dependencies.anyhow]
 version = "1"
@@ -44,6 +45,10 @@ version = "1"
 
 [dependencies.cfg-if]
 version = "1.0"
+
+[dependencies.colored]
+version = "2"
+optional = true
 
 [dependencies.hex]
 version = "0.4.3"
@@ -57,8 +62,18 @@ version = "0.10.3"
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.parking_lot]
+version = "0.12"
+
 [dependencies.paste]
 version = "1"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.reqwest]
+version = "0.11"
+optional = true
 
 [dependencies.serde_json]
 version = "1"
@@ -70,20 +85,8 @@ default-features = false
 [dependencies.thiserror]
 version = "1.0"
 
-[dependencies.rand]
-version = "0.8"
-
-[dependencies.reqwest]
-version = "0.11"
-optional = true
-
 [dependencies.wasm-bindgen-futures]
 version = "0.4"
-optional = true
-
-[dependencies.parking_lot]
-version = "0.11"
-features = [ "wasm-bindgen" ]
 optional = true
 
 [target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
@@ -97,15 +100,14 @@ default-features = false
 [dev-dependencies.snarkvm-circuit]
 path = "../circuit"
 
-[dev-dependencies.snarkvm-compiler]
-path = "../compiler"
-
 [dev-dependencies.snarkvm-console]
 path = "../console"
 
-[dependencies.curl]
+[dev-dependencies.snarkvm-synthesizer]
+path = "../synthesizer"
+
+[dev-dependencies.curl]
 version = "0.4.34"
-optional = true
 
 [dev-dependencies.hex]
 version = "0.4.3"
@@ -114,11 +116,7 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "remote" ]
+default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [
-  "reqwest",
-  "wasm-bindgen-futures",
-  "parking_lot"
-]
+wasm = [ "reqwest", "wasm-bindgen-futures" ]

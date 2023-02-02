@@ -24,7 +24,7 @@ impl<E: Environment> Elligator2<E> {
         debug_assert!(console::Group::<E::Network>::EDWARDS_D.legendre().is_qnr());
 
         // Ensure the input is nonzero.
-        E::assert(!input.is_zero());
+        E::assert_neq(input, &Field::<E>::zero());
 
         // Define `1` as a constant.
         let one = Field::one();
@@ -45,7 +45,7 @@ impl<E: Environment> Elligator2<E> {
         let b = montgomery_b_inverse.square();
 
         // Define the MODULUS_MINUS_ONE_DIV_TWO as a constant.
-        let modulus_minus_one_div_two = match E::BaseField::from_repr(E::BaseField::modulus_minus_one_div_two()) {
+        let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
             Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
             None => E::halt("Failed to initialize MODULUS_MINUS_ONE_DIV_TWO as a constant"),
         };
@@ -56,7 +56,7 @@ impl<E: Environment> Elligator2<E> {
             let ur2 = edwards_d * input.square();
             let one_plus_ur2 = &one + &ur2;
             // Verify A^2 * ur^2 != B(1 + ur^2)^2.
-            E::assert((a.square() * &ur2).is_not_equal(&(&b * one_plus_ur2.square())));
+            E::assert_neq(a.square() * &ur2, &b * one_plus_ur2.square());
 
             // Let v = -A / (1 + ur^2).
             let v = -&a / one_plus_ur2;
@@ -75,7 +75,7 @@ impl<E: Environment> Elligator2<E> {
             let y = -&e * rhs.square_root();
 
             // Ensure v * e * x * y != 0.
-            E::assert((&v * &e * &x * &y).is_not_equal(&Field::zero()));
+            E::assert_neq(&v * &e * &x * &y, Field::<E>::zero());
 
             // Ensure (x, y) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
             let y2 = y.square();
@@ -97,8 +97,11 @@ impl<E: Environment> Elligator2<E> {
         // Convert the Montgomery element (u, v) to the twisted Edwards element (x, y).
         let x = &u / v;
         let y = (&u - &one) / (u + &one);
-        let encoding = Group::from_xy_coordinates(x, y);
 
+        // Recover the point and check that it is 1) on the curve, and 2) in the correct subgroup.
+        let encoding = Group::from_xy_coordinates_unchecked(x, y);
+        // Ensure the encoding is on the curve.
+        encoding.enforce_on_curve();
         // Cofactor clear the twisted Edwards element (x, y).
         encoding.mul_by_cofactor()
     }
@@ -142,11 +145,11 @@ mod tests {
 
     #[test]
     fn test_encode_public() {
-        check_encode(Mode::Public, 263, 0, 377, 392);
+        check_encode(Mode::Public, 263, 0, 370, 373);
     }
 
     #[test]
     fn test_encode_private() {
-        check_encode(Mode::Private, 263, 0, 377, 392);
+        check_encode(Mode::Private, 263, 0, 370, 373);
     }
 }

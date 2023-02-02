@@ -63,15 +63,8 @@ impl<N: Network> Request<N> {
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
-            &[
-                U16::<N>::new(N::ID).to_bits_le(),
-                self.program_id.name().to_bits_le(),
-                self.program_id.network().to_bits_le(),
-                self.function_name.to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
+            &(U16::<N>::new(N::ID), self.program_id.name(), self.program_id.network(), &self.function_name)
+                .to_bits_le(),
         ) {
             Ok(function_id) => function_id,
             Err(error) => {
@@ -96,8 +89,9 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = input.to_fields()?;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
                         // Hash the input to a field element.
@@ -115,8 +109,9 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Construct the preimage as `(input || tcm || index)`.
-                        let mut preimage = input.to_fields()?;
+                        // Construct the preimage as `(function ID || input || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
                         // Hash the input to a field element.
@@ -134,8 +129,8 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Compute the input view key as `Hash(tvk || index)`.
-                        let input_view_key = N::hash_psd2(&[self.tvk, index])?;
+                        // Compute the input view key as `Hash(function ID || tvk || index)`.
+                        let input_view_key = N::hash_psd4(&[function_id, self.tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &input {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
@@ -175,14 +170,8 @@ impl<N: Network> Request<N> {
                             bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                         }
 
-                        // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                        let sn_nonce = N::hash_to_scalar_psd2(&[
-                            N::serial_number_domain(),
-                            gamma.mul_by_cofactor().to_x_coordinate(),
-                        ])?;
-                        // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                        let candidate_sn =
-                            N::commit_bhp512(&(N::serial_number_domain(), *commitment).to_bits_le(), &sn_nonce)?;
+                        // Compute the `candidate_sn` from `gamma`.
+                        let candidate_sn = Record::<N, Plaintext<N>>::serial_number_from_gamma(gamma, *commitment)?;
                         // Ensure the serial number matches.
                         ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
 
@@ -207,8 +196,9 @@ impl<N: Network> Request<N> {
 
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                        // Construct the preimage as `(input || tvk || index)`.
-                        let mut preimage = input.to_fields()?;
+                        // Construct the preimage as `(function ID || input || tvk || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(input.to_fields()?);
                         preimage.push(self.tvk);
                         preimage.push(index);
                         // Hash the input to a field element.
@@ -266,7 +256,7 @@ mod tests {
             let input_private = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
             let input_record = Value::from_str(&record_string).unwrap();
             let input_external_record = Value::from_str(&record_string).unwrap();
-            let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
+            let inputs = [input_constant, input_public, input_private, input_record, input_external_record];
 
             // Construct the input types.
             let input_types = vec![
@@ -278,7 +268,8 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
+            let request =
+                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
             assert!(request.verify(&input_types));
         }
     }

@@ -29,29 +29,17 @@ impl<A: Aleo> FromBits for Identifier<A> {
         // Recover the field element from the bits.
         let field = Field::from_bits_le(bits_le);
 
-        // Eject the bits in **little-endian** form, and convert the bits to bytes.
-        let bytes = bits_le
-            .to_bits_le()
-            .eject_value()
-            .chunks(8)
-            .map(|byte| match u8::from_bits_le(byte) {
-                Ok(byte) => byte,
-                Err(error) => A::halt(format!("Failed to recover an identifier from bits: {error}")),
-            })
-            .collect::<Vec<_>>();
-
-        // Recover the identifier length from the bits, by finding the first instance of a `0` byte,
-        // which is the null character '\0' in UTF-8, and an invalid character in an identifier.
-        let num_bytes = match bytes.iter().position(|&byte| byte == 0) {
-            Some(index) => index, // `index` is 0-indexed, and we exclude the null character.
-            None => bytes.len(),  // No null character found, so the identifier is the full length.
+        // Eject the bits in **little-endian** form, and determine the number of bytes.
+        let num_bytes = match console::Identifier::<A::Network>::from_bits_le(&bits_le.eject_value()) {
+            Ok(console_identifier) => console_identifier.size_in_bits() / 8,
+            Err(error) => A::halt(format!("Failed to recover an identifier from bits: {error}")),
         };
 
         // Ensure identifier fits within the data capacity of the base field.
         let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        match num_bytes <= max_bytes {
+        match num_bytes as usize <= max_bytes {
             // Return the identifier.
-            true => Self(field, num_bytes as u8),
+            true => Self(field, num_bytes),
             false => A::halt("Identifier exceeds the maximum capacity allowed"),
         }
     }

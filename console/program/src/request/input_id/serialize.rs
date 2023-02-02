@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::DeserializeExt;
+
 impl<N: Network> Serialize for InputID<N> {
     /// Serializes the input ID into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -66,26 +68,20 @@ impl<'de, N: Network> Deserialize<'de> for InputID<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the input ID from a string into a value.
-                let input = serde_json::Value::deserialize(deserializer)?;
+                let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Recover the input.
-                let input_id = match input["type"].as_str() {
-                    Some("constant") => {
-                        InputID::Constant(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
-                    }
-                    Some("public") => {
-                        InputID::Public(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
-                    }
-                    Some("private") => {
-                        InputID::Private(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
-                    }
+                let input_id = match input.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => InputID::Constant(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
+                    Some("public") => InputID::Public(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
+                    Some("private") => InputID::Private(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
                     Some("record") => InputID::Record(
-                        serde_json::from_value(input["commitment"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["gamma"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["serial_number"].clone()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "commitment")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "gamma")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "serial_number")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "tag")?,
                     ),
                     Some("external_record") => {
-                        InputID::ExternalRecord(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
+                        InputID::ExternalRecord(DeserializeExt::take_from_value::<D>(&mut input, "id")?)
                     }
                     _ => return Err(de::Error::custom("Invalid input type")),
                 };

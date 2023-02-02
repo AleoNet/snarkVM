@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes};
-use snarkvm_compiler::{Program, VerifyingKey};
+use crate::{
+    prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes},
+    synthesizer::{Program, VerifyingKey},
+};
 
 use anyhow::{anyhow, bail, ensure, Result};
 use std::{
@@ -193,8 +195,10 @@ impl<N: Network> ToBytes for VerifierFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{FromStr, Parser, TestRng};
-    use snarkvm_compiler::Process;
+    use crate::{
+        prelude::{FromStr, Parser, TestRng},
+        synthesizer::Process,
+    };
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::AleoV0;
@@ -237,7 +241,7 @@ function compute:
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the verifying key.
-        let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();
+        let verifying_key = process.get_verifying_key(program.id(), function_name).unwrap();
 
         // Create the verifier file at the path.
         let expected = VerifierFile::create(&directory, &function_name, verifying_key).unwrap();

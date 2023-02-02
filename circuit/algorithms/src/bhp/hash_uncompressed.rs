@@ -67,6 +67,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
@@ -93,6 +94,8 @@ mod tests {
                     let candidate = circuit.hash_uncompressed(&circuit_input);
                     assert_scope!($num_constants, $num_public, $num_private, $num_constraints);
                     assert_eq!(expected, candidate.eject_value());
+                    assert!(candidate.eject_value().to_affine().is_on_curve());
+                    assert!(candidate.eject_value().to_affine().is_in_correct_subgroup_assuming_on_curve());
                 });
                 Circuit::reset();
             }
@@ -138,104 +141,104 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_constant() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Constant, 7311, 0, 0, 0)
+        check_hash_uncompressed::<32, 48>(Mode::Constant, 7239, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_uncompressed_public() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 542, 0, 8662, 8733)
+        check_hash_uncompressed::<32, 48>(Mode::Public, 470, 0, 8522, 8523)
     }
 
     #[test]
     fn test_hash_uncompressed_private() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 542, 0, 8662, 8733)
+        check_hash_uncompressed::<32, 48>(Mode::Private, 470, 0, 8522, 8523)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp256_constant() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP256, Constant, 261, (762, 0, 0, 0), &mut rng)
+        check_hash_uncompressed!(BHP256, Constant, 261, (756, 0, 0, 0), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp256_public() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP256, Public, 261, (409, 0, 453, 457), &mut rng)
+        check_hash_uncompressed!(BHP256, Public, 261, (403, 0, 445, 445), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp256_private() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP256, Private, 261, (409, 0, 453, 457), &mut rng)
+        check_hash_uncompressed!(BHP256, Private, 261, (403, 0, 445, 445), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp512_constant() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP512, Constant, 522, (1125, 0, 0, 0), &mut rng)
+        check_hash_uncompressed!(BHP512, Constant, 522, (1113, 0, 0, 0), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp512_public() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP512, Public, 522, (421, 0, 915, 925), &mut rng)
+        check_hash_uncompressed!(BHP512, Public, 522, (409, 0, 895, 895), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp512_private() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP512, Private, 522, (421, 0, 915, 925), &mut rng)
+        check_hash_uncompressed!(BHP512, Private, 522, (409, 0, 895, 895), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp768_constant() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP768, Constant, 783, (1518, 0, 0, 0), &mut rng)
+        check_hash_uncompressed!(BHP768, Constant, 783, (1488, 0, 0, 0), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp768_public() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP768, Public, 783, (459, 0, 1413, 1437), &mut rng)
+        check_hash_uncompressed!(BHP768, Public, 783, (429, 0, 1365, 1365), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp768_private() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP768, Private, 783, (459, 0, 1413, 1437), &mut rng)
+        check_hash_uncompressed!(BHP768, Private, 783, (429, 0, 1365, 1365), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp1024_constant() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP1024, Constant, 1043, (1831, 0, 0, 0), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Constant, 1044, (1831, 0, 0, 0), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Constant, 1046, (2433, 0, 0, 0), &mut rng)
+        check_hash_uncompressed!(BHP1024, Constant, 1043, (1815, 0, 0, 0), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Constant, 1044, (1815, 0, 0, 0), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Constant, 1046, (2413, 0, 0, 0), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp1024_public() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP1024, Public, 1043, (429, 0, 1803, 1817), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Public, 1044, (429, 0, 1803, 1817), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Public, 1046, (438, 0, 2493, 2512), &mut rng)
+        check_hash_uncompressed!(BHP1024, Public, 1043, (413, 0, 1775, 1775), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Public, 1044, (413, 0, 1775, 1775), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Public, 1046, (418, 0, 2457, 2458), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_bhp1024_private() -> Result<()> {
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP1024, Private, 1043, (429, 0, 1803, 1817), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Private, 1044, (429, 0, 1803, 1817), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Private, 1046, (438, 0, 2493, 2512), &mut rng)
+        check_hash_uncompressed!(BHP1024, Private, 1043, (413, 0, 1775, 1775), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Private, 1044, (413, 0, 1775, 1775), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Private, 1046, (418, 0, 2457, 2458), &mut rng)
     }
 
     #[test]
     fn test_hash_uncompressed_cost_comparison() -> Result<()> {
         // The cost to hash 512 bits for each BHP variant is:
         let mut rng = TestRng::default();
-        check_hash_uncompressed!(BHP256, Private, 512, (422, 0, 1567, 1578), &mut rng)?;
-        check_hash_uncompressed!(BHP512, Private, 512, (421, 0, 900, 910), &mut rng)?;
-        check_hash_uncompressed!(BHP768, Private, 512, (447, 0, 936, 954), &mut rng)?;
-        check_hash_uncompressed!(BHP1024, Private, 512, (417, 0, 891, 899), &mut rng)
+        check_hash_uncompressed!(BHP256, Private, 512, (410, 0, 1547, 1548), &mut rng)?;
+        check_hash_uncompressed!(BHP512, Private, 512, (409, 0, 880, 880), &mut rng)?;
+        check_hash_uncompressed!(BHP768, Private, 512, (423, 0, 900, 900), &mut rng)?;
+        check_hash_uncompressed!(BHP1024, Private, 512, (407, 0, 875, 875), &mut rng)
     }
 }

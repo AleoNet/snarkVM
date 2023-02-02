@@ -1,57 +1,77 @@
 [package]
 name = "snarkvm-console-network"
-version = "0.9.0"
+version = "0.9.11"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Network console library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[features]
+default = [ "snarkvm-algorithms/polycommit_full" ]
+wasm = [
+  "snarkvm-algorithms/polycommit_wasm",
+  "snarkvm-parameters/wasm"
+]
+
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-version = "0.9.0"
+version = "0.9.11"
 default-features = false
-features = [ "crypto_hash" ]
+features = [ "snark" ]
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
-version = "0.9.0"
+version = "0.9.11"
 
 [dependencies.snarkvm-console-collections]
 path = "../collections"
-version = "0.9.0"
+version = "0.9.11"
 
 [dependencies.snarkvm-console-network-environment]
 path = "./environment"
-version = "0.9.0"
+version = "0.9.11"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "0.9.0"
+version = "0.9.11"
 default-features = false
 features = [ "field", "group", "scalar" ]
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
-version = "0.9.0"
+version = "0.9.11"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.9.0"
+version = "0.9.11"
 default-features = false
+
+[dependencies.snarkvm-parameters]
+path = "../../parameters"
+version = "0.9.11"
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "0.9.0"
+version = "0.9.11"
 
 [dependencies.anyhow]
-version = "1.0.64"
+version = "1.0.68"
+
+[dependencies.indexmap]
+version = "1"
 
 [dependencies.itertools]
 version = "0.10.1"
 
 [dependencies.lazy_static]
 version = "1.4"
+
+[dependencies.once_cell]
+version = "1.17"
+
+[dependencies.paste]
+version = "1"
 
 [dependencies.serde]
 version = "1.0"

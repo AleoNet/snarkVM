@@ -39,7 +39,7 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use core::{fmt::Debug, marker::PhantomData};
+use core::{fmt::Debug, hash::Hash, marker::PhantomData};
 use serde::{Deserialize, Serialize};
 
 pub enum TwistType {
@@ -47,7 +47,7 @@ pub enum TwistType {
     D,
 }
 
-pub trait Bls12Parameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Send + Sync + Sized {
+pub trait Bls12Parameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
     const X: &'static [u64];
     const X_IS_NEGATIVE: bool;
     const TWIST_TYPE: TwistType;

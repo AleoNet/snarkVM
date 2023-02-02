@@ -19,7 +19,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Projective,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{Field, One, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
@@ -93,11 +93,21 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     type ScalarField = P::ScalarField;
 
     /// Initializes a new affine group element from the given coordinates.
-    fn from_coordinates(coordinates: Self::Coordinates) -> Self {
+    fn from_coordinates(coordinates: Self::Coordinates) -> Option<Self> {
         let (x, y, infinity) = coordinates;
         let point = Self { x, y, infinity };
-        assert!(point.is_on_curve());
-        point
+        // Check that the point is on the curve, and in the correct subgroup.
+        match point.is_on_curve() && point.is_in_correct_subgroup_assuming_on_curve() {
+            true => Some(point),
+            false => None,
+        }
+    }
+
+    /// Initializes a new affine group element from the given coordinates.
+    /// Note: The resulting point is **not** enforced to be on the curve or in the correct subgroup.
+    fn from_coordinates_unchecked(coordinates: Self::Coordinates) -> Self {
+        let (x, y, infinity) = coordinates;
+        Self { x, y, infinity }
     }
 
     #[inline]
@@ -276,7 +286,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new_without_leading_zeros(other.to_repr()))
+        self.to_projective().mul(other)
     }
 }
 

@@ -22,24 +22,24 @@ use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis,
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
-pub struct FirstOracles<'a, F: PrimeField> {
-    pub(in crate::snark::marlin) batches: Vec<SingleEntry<'a, F>>,
+pub struct FirstOracles<F: PrimeField> {
+    pub(in crate::snark::marlin) batches: Vec<SingleEntry<F>>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
 
-impl<'a, F: PrimeField> FirstOracles<'a, F> {
+impl<F: PrimeField> FirstOracles<F> {
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
     #[allow(clippy::needless_collect)]
-    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
+    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'static, F>> {
         let t = self.batches.iter_mut().flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
         t.into_iter().chain(self.mask_poly.clone().map(Into::into))
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
-    pub fn iter_for_open(&'a self) -> impl Iterator<Item = &'a LabeledPolynomial<F>> {
+    pub fn iter_for_open(&self) -> impl Iterator<Item = &'_ LabeledPolynomial<F>> {
         self.batches.iter().flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
     }
 
@@ -50,11 +50,11 @@ impl<'a, F: PrimeField> FirstOracles<'a, F> {
 }
 
 #[derive(Debug, Clone)]
-pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
+pub(in crate::snark::marlin) struct SingleEntry<F: PrimeField> {
     /// The evaluations of `Az`.
-    pub(super) z_a: LabeledPolynomialWithBasis<'a, F>,
+    pub(super) z_a: LabeledPolynomialWithBasis<'static, F>,
     /// The evaluations of `Bz`.
-    pub(super) z_b: LabeledPolynomialWithBasis<'a, F>,
+    pub(super) z_b: LabeledPolynomialWithBasis<'static, F>,
     /// The LDE of `w`.
     pub(super) w_poly: LabeledPolynomial<F>,
     /// The LDE of `Az`.
@@ -63,18 +63,18 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) z_b_poly: LabeledPolynomial<F>,
 }
 
-impl<'a, F: PrimeField> SingleEntry<'a, F> {
+impl<F: PrimeField> SingleEntry<F> {
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
-    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
+    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'static, F>> {
         let w_poly = self.w_poly.clone();
 
-        let z_a = self.z_a.clone();
-        self.z_a = LabeledPolynomialWithBasis { polynomial: vec![], info: z_a.info().clone() };
+        let mut z_a_copy = LabeledPolynomialWithBasis { polynomial: vec![], info: self.z_a.info().clone() };
+        std::mem::swap(&mut self.z_a, &mut z_a_copy);
 
-        let z_b = self.z_b.clone();
-        self.z_b = LabeledPolynomialWithBasis { polynomial: vec![], info: z_b.info().clone() };
-        [w_poly.into(), z_a, z_b].into_iter()
+        let mut z_b_copy = LabeledPolynomialWithBasis { polynomial: vec![], info: self.z_b.info().clone() };
+        std::mem::swap(&mut self.z_b, &mut z_b_copy);
+        [w_poly.into(), z_a_copy, z_b_copy].into_iter()
     }
 
     /// Iterate over the polynomials output by the prover in the first round.

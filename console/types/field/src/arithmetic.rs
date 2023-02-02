@@ -188,7 +188,7 @@ impl<E: Environment> Pow<Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Field<E>) -> Self::Output {
-        Field::new(self.field.pow(other.field.to_repr()))
+        Field::new(self.field.pow(other.field.to_bigint()))
     }
 }
 
@@ -198,7 +198,7 @@ impl<E: Environment> Pow<&Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: &Field<E>) -> Self::Output {
-        Field::new(self.field.pow(other.field.to_repr()))
+        Field::new(self.field.pow(other.field.to_bigint()))
     }
 }
 

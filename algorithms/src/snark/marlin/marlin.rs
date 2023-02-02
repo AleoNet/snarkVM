@@ -37,7 +37,6 @@ use crate::{
 };
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use rand_core::RngCore;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
@@ -57,16 +56,11 @@ use super::Certificate;
 
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
-pub struct MarlinSNARK<
-    E: PairingEngine,
-    FS: AlgebraicSponge<E::Fq, 2>,
-    MM: MarlinMode,
-    Input: ToConstraintField<E::Fr> + ?Sized,
->(#[doc(hidden)] PhantomData<(E, FS, MM, Input)>);
+pub struct MarlinSNARK<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode>(
+    #[doc(hidden)] PhantomData<(E, FS, MM)>,
+);
 
-impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToConstraintField<E::Fr> + ?Sized>
-    MarlinSNARK<E, FS, MM, Input>
-{
+impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNARK<E, FS, MM> {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
@@ -80,12 +74,11 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
     /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>>(
         c: &C,
-        rng: &mut R,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let circuit = AHPForR1CS::<_, MM>::index(c)?;
-        let srs = Self::universal_setup(&circuit.max_degree(), rng)?;
+        let srs = Self::universal_setup(&circuit.max_degree())?;
         Self::circuit_setup(&srs, c)
     }
 
@@ -103,7 +96,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
         let index = AHPForR1CS::<_, MM>::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
             universal_srs
-                .increase_degree(index.max_degree())
+                .download_powers_for(0..index.max_degree())
                 .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), index.max_degree()))?;
         }
 
@@ -203,13 +196,12 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode, Input: ToC
     }
 }
 
-impl<E: PairingEngine, FS, MM, Input> SNARK for MarlinSNARK<E, FS, MM, Input>
+impl<E: PairingEngine, FS, MM> SNARK for MarlinSNARK<E, FS, MM>
 where
     E::Fr: PrimeField,
     E::Fq: PrimeField,
     FS: AlgebraicSponge<E::Fq, 2>,
     MM: MarlinMode,
-    Input: ToConstraintField<E::Fr> + ?Sized,
 {
     type BaseField = E::Fq;
     type Certificate = Certificate<E>;
@@ -220,26 +212,23 @@ where
     type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<E>;
-    type VerifierInput = Input;
+    type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
 
-    fn universal_setup<R: Rng + CryptoRng>(
-        max_degree: &Self::UniversalSetupConfig,
-        rng: &mut R,
-    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
+    fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
 
-        let srs = SonicKZG10::<E, FS>::setup(*max_degree, rng).map_err(Into::into);
+        let srs = SonicKZG10::<E, FS>::load_srs(*max_degree).map_err(Into::into);
         end_timer!(setup_time);
         srs
     }
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>>(
         circuit: &C,
-        srs: &mut SRS<R, Self::UniversalSetupParameters>,
+        srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
-            SRS::CircuitSpecific(rng) => Self::circuit_specific_setup(circuit, rng),
+            SRS::CircuitSpecific => Self::circuit_specific_setup(circuit),
             SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
         }
         .map_err(SNARKError::from)
@@ -570,8 +559,13 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof);
+        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
+
+        #[cfg(debug_assertions)]
+        if !Self::verify_batch(fs_parameters, &circuit_proving_key.circuit_verifying_key, &public_input, &proof)? {
+            println!("Invalid proof")
+        }
         end_timer!(prover_time);
 
         Ok(proof)
@@ -586,6 +580,10 @@ where
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;
         if public_inputs.is_empty() {
             return Err(SNARKError::EmptyBatch);
+        }
+
+        if public_inputs.len() != proof.batch_size()? {
+            return Err(SNARKError::BatchSizeMismatch);
         }
 
         let comms = &proof.commitments;
@@ -825,7 +823,7 @@ pub mod test {
     }
 
     type FS = PoseidonSponge<Fq, 2, 1>;
-    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
+    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 
     #[test]
     fn marlin_snark_test() {
@@ -843,7 +841,7 @@ pub mod test {
 
             // Generate the circuit parameters.
 
-            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific(&mut rng)).unwrap();
+            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific).unwrap();
 
             // Test native proof and verification.
             let fs_parameters = FS::sample_parameters();
@@ -851,7 +849,7 @@ pub mod test {
             let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&fs_parameters, &vk.clone(), &vec![c], &proof).unwrap(),
+                TestSNARK::verify(&fs_parameters, &vk.clone(), [c].as_ref(), &proof).unwrap(),
                 "The native verification check fails."
             );
         }

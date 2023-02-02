@@ -155,7 +155,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
         state: &prover::State<'a, F, MM>,
-    ) -> PoolResult<'a, F> {
+    ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let input_domain = state.input_domain;
 
@@ -187,13 +187,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         PoolResult::Witness(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
     }
 
-    fn calculate_z_m<'a>(
+    fn calculate_z_m(
         label: impl ToString,
         evaluations: Vec<F>,
         will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
+        state: &prover::State<'_, F, MM>,
         r: Option<F>,
-    ) -> PoolResult<'a, F> {
+    ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let v_H = constraint_domain.vanishing_polynomial();
         let should_randomize = MM::ZK && will_be_evaluated;
@@ -241,12 +241,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 }
 
 #[derive(Debug)]
-pub enum PoolResult<'a, F: PrimeField> {
+pub enum PoolResult<F: PrimeField> {
     Witness(LabeledPolynomial<F>),
-    MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
+    MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'static, F>),
 }
 
-impl<'a, F: PrimeField> PoolResult<'a, F> {
+impl<F: PrimeField> PoolResult<F> {
     fn witness(self) -> Option<LabeledPolynomial<F>> {
         match self {
             Self::Witness(poly) => Some(poly),
@@ -254,7 +254,7 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
         }
     }
 
-    fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)> {
+    fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'static, F>)> {
         match self {
             Self::MatrixPoly(p1, p2) => Some((p1, p2)),
             _ => None,

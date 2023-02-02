@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Network, ProgramID, ToBytes};
-use snarkvm_compiler::Program;
+use crate::{
+    prelude::{FromBytes, Network, ProgramID, ToBytes},
+    synthesizer::Program,
+};
 
 use anyhow::{anyhow, ensure, Result};
 use std::{

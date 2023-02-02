@@ -53,16 +53,16 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             let (string, (plaintext, mode)) = alt((
                 // Parse a literal.
                 parse_literal,
-                // Parse an interface.
-                parse_interface,
+                // Parse a struct.
+                parse_struct,
             ))(string)?;
             // Return the identifier, plaintext, and visibility.
             Ok((string, (identifier, plaintext, mode)))
         }
 
-        /// Parses an entry as an interface: `{ identifier_0: plaintext_0.visibility, ..., identifier_n: plaintext_n.visibility }`.
+        /// Parses an entry as a struct: `{ identifier_0: plaintext_0.visibility, ..., identifier_n: plaintext_n.visibility }`.
         /// Observe the `visibility` is the same for all members of the plaintext value.
-        fn parse_interface<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
+        fn parse_struct<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the "{" from the string.
@@ -73,15 +73,15 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             let (string, (members, mode)) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
-                    return Err(error("Duplicate member in interface"));
+                    return Err(error("Duplicate member in struct"));
                 }
                 // Ensure the members all have the same visibility.
                 let mode = members.iter().map(|(_, _, mode)| mode).dedup().collect::<Vec<_>>();
                 let mode = match mode.len() == 1 {
                     true => *mode[0],
-                    false => return Err(error("Members of interface in entry have different visibilities")),
+                    false => return Err(error("Members of struct in entry have different visibilities")),
                 };
-                // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
+                // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
                 match members.len() <= N::MAX_DATA_ENTRIES {
                     // Return the members and the visibility.
                     true => Ok((members.into_iter().map(|(i, p, _)| (i, p)).collect::<Vec<_>>(), mode)),
@@ -93,7 +93,7 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             // Parse the '}' from the string.
             let (string, _) = tag("}")(string)?;
             // Output the plaintext and visibility.
-            Ok((string, (Plaintext::Interface(IndexMap::from_iter(members.into_iter()), Default::default()), mode)))
+            Ok((string, (Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default()), mode)))
         }
 
         // Parse the whitespace from the string.
@@ -102,8 +102,8 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
         let (string, (plaintext, mode)) = alt((
             // Parse a literal.
             parse_literal,
-            // Parse an interface.
-            parse_interface,
+            // Parse a struct.
+            parse_struct,
         ))(string)?;
 
         // Return the entry.
@@ -163,15 +163,15 @@ impl<N: Network> Entry<N, Plaintext<N>> {
             Plaintext::Literal(literal, ..) => {
                 write!(f, "{:indent$}{literal}.{visibility}", "", indent = depth * INDENT)
             }
-            // Prints the interface, i.e. { first: 10i64.private, second: 198u64.private }
-            Plaintext::Interface(interface, ..) => {
+            // Prints the struct, i.e. { first: 10i64.private, second: 198u64.private }
+            Plaintext::Struct(struct_, ..) => {
                 // Print the opening brace.
                 write!(f, "{{")?;
                 // Print the members.
-                interface.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
+                struct_.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
                     match plaintext {
                         #[rustfmt::skip]
-                        Plaintext::Literal(literal, ..) => match i == interface.len() - 1 {
+                        Plaintext::Literal(literal, ..) => match i == struct_.len() - 1 {
                             true => {
                                 // Print the last member without a comma.
                                 write!(f, "\n{:indent$}{name}: {literal}.{visibility}", "", indent = (depth + 1) * INDENT)?;
@@ -181,7 +181,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
-                        Plaintext::Interface(..) => {
+                        Plaintext::Struct(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -191,7 +191,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                                 Self::Private(..) => Self::Private(plaintext.clone()).fmt_internal(f, depth + 1)?,
                             }
                             // Print the closing brace.
-                            match i == interface.len() - 1 {
+                            match i == struct_.len() - 1 {
                                 // Print the last member without a comma.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
                                 // Print the member with a comma.

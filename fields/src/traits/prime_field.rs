@@ -29,14 +29,22 @@ pub trait PrimeField:
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
-    /// Returns a prime field element from its underlying representation.
-    fn from_repr(repr: Self::BigInteger) -> Option<Self>;
+    /// Constructs a `PrimeField` element given a human-readable `Self::BigInteger`.
+    fn from_bigint(repr: Self::BigInteger) -> Option<Self>;
 
-    /// Returns the underlying representation of the prime field element.
-    fn to_repr(&self) -> Self::BigInteger;
+    /// Returns a human-readable `Self::BigInteger` in the range `0..(Self::MODULUS - 1)`.
+    fn to_bigint(&self) -> Self::BigInteger;
 
-    /// Returns the underlying raw representation of the prime field element.
-    fn to_repr_unchecked(&self) -> Self::BigInteger;
+    /// Returns the decomposition of the scalar.
+    fn decompose(
+        &self,
+        q1: &[u64; 4],
+        q2: &[u64; 4],
+        b1: Self,
+        b2: Self,
+        r128: Self,
+        half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool);
 
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {

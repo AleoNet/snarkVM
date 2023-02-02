@@ -35,11 +35,19 @@ pub mod prelude {
 }
 
 use crate::environment::prelude::*;
-use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonSponge,
+    snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
+    AlgebraicSponge,
+};
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
 use snarkvm_curves::PairingEngine;
+
+use indexmap::IndexMap;
+use once_cell::sync::OnceCell;
+use std::sync::Arc;
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
@@ -50,6 +58,10 @@ pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Po
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 pub type FiatShamir<N> = PoseidonSponge<Fq<N>, 2, 1>;
 pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
+
+/// Helper types for the Marlin proving and verifying key.
+pub(crate) type MarlinProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
+pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
 
 pub trait Network:
     'static
@@ -73,6 +85,28 @@ pub trait Network:
     /// The network edition.
     const EDITION: u16;
 
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str;
+
+    /// The fixed timestamp of the genesis block.
+    const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+    /// The genesis block coinbase target.
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
+    /// The genesis block proof target.
+    const GENESIS_PROOF_TARGET: u64 = 8; // 00 0000 1000
+
+    /// The starting supply of Aleo credits.
+    const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
+
+    /// The anchor time per block in seconds, which must be greater than the round time per block.
+    const ANCHOR_TIME: u16 = 25;
+    /// The coinbase puzzle degree.
+    const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
+    /// The maximum number of prover solutions that can be included per block.
+    const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
+    /// The number of blocks per epoch (1 hour).
+    const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
+
     /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.
     const MAX_DATA_DEPTH: usize = 32;
@@ -82,6 +116,8 @@ pub trait Network:
     #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
+    /// The maximum number of functions in a program.
+    const MAX_FUNCTIONS: usize = 15;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.
@@ -102,6 +138,21 @@ pub trait Network:
     type TransactionID: Bech32ID<Field<Self>>;
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
+
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8];
+
+    /// Returns the proving key for the given function name in `credits.aleo`.
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>>;
+
+    /// Returns the verifying key for the given function name in `credits.aleo`.
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>>;
+
+    /// Returns the `proving key` for the inclusion circuit.
+    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>>;
+
+    /// Returns the `verifying key` for the inclusion circuit.
+    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>>;
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;

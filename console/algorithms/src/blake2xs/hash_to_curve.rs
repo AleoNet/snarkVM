@@ -36,7 +36,7 @@ impl Blake2Xs {
         panic!("Unable to hash to curve on {}", input)
     }
 
-    /// Executes **one** round of hash-to-curve and returns a generator on success.
+    /// Evaluates **one** round of hash-to-curve and returns a generator on success.
     #[inline]
     fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
         let serialized_size = G::prime_subgroup_generator().compressed_size();
@@ -57,12 +57,9 @@ impl Blake2Xs {
 }
 
 #[cfg(test)]
-mod bls12_377 {
+mod bls12_377_g1 {
     use super::*;
-    use snarkvm_curves::{
-        bls12_377::{G1Affine, G2Affine},
-        AffineCurve,
-    };
+    use snarkvm_curves::bls12_377::G1Affine;
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{BigInteger384, CanonicalSerialize};
 
@@ -87,9 +84,9 @@ mod bls12_377 {
             "3702177272937190650578065972808860481433820514072818216637796320125658674906330993856598323293086021583822603349",
         );
 
-        // Montgomery BigInteger representation
+        // BigInteger representation
         assert_eq!(
-            g1.x.to_repr(),
+            g1.x.to_bigint(),
             BigInteger384::new([
                 1089863619676461926,
                 2031922408020517912,
@@ -100,7 +97,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g1.y.to_repr(),
+            g1.y.to_bigint(),
             BigInteger384::new([
                 8946822147630122069,
                 11486725844942458959,
@@ -111,9 +108,9 @@ mod bls12_377 {
             ])
         );
 
-        // Raw BigInteger representation
+        // Montgomery BigInteger representation
         assert_eq!(
-            g1.x.to_repr_unchecked(),
+            g1.x.0,
             BigInteger384::new([
                 1171681672315280277,
                 6528257384425852712,
@@ -124,7 +121,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g1.y.to_repr_unchecked(),
+            g1.y.0,
             BigInteger384::new([
                 13572190014569192121,
                 15344828677741220784,
@@ -134,7 +131,18 @@ mod bls12_377 {
                 21335464879237822
             ])
         );
+
+        // Check that G1Affine matches.
+        assert_eq!(G1Affine::prime_subgroup_generator(), g1);
     }
+}
+
+#[cfg(test)]
+mod bls12_377_g2 {
+    use super::*;
+    use snarkvm_curves::bls12_377::G2Affine;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger384, CanonicalSerialize};
 
     #[test]
     fn hash_bls12_377_g2() {
@@ -157,9 +165,9 @@ mod bls12_377 {
             "Fp2(1843833842842620867708835993770650838640642469700861403869757682057607397502738488921663703124647238454792872005 + 33145532013610981697337930729788870077912093258611421158732879580766461459275194744385880708057348608045241477209 * u)",
         );
 
-        // Montgomery BigInteger representation
+        // BigInteger representation
         assert_eq!(
-            g2.x.c0.to_repr(),
+            g2.x.c0.to_bigint(),
             BigInteger384::new([
                 6285382596397680767,
                 15748827462709656851,
@@ -170,7 +178,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.x.c1.to_repr(),
+            g2.x.c1.to_bigint(),
             BigInteger384::new([
                 16087313950742852142,
                 593255854261604337,
@@ -181,7 +189,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.y.c0.to_repr(),
+            g2.y.c0.to_bigint(),
             BigInteger384::new([
                 7702421029866889285,
                 16004466681641276576,
@@ -192,7 +200,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.y.c1.to_repr(),
+            g2.y.c1.to_bigint(),
             BigInteger384::new([
                 14642269910726223961,
                 418400088670236579,
@@ -203,9 +211,9 @@ mod bls12_377 {
             ])
         );
 
-        // Raw BigInteger representation
+        // Montgomery BigInteger representation
         assert_eq!(
-            g2.x.c0.to_repr_unchecked(),
+            g2.x.c0.0,
             BigInteger384::new([
                 1394603105513884269,
                 11069732150289508451,
@@ -216,7 +224,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.x.c1.to_repr_unchecked(),
+            g2.x.c1.0,
             BigInteger384::new([
                 12672065269715576738,
                 3451530808602826578,
@@ -227,7 +235,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.y.c0.to_repr_unchecked(),
+            g2.y.c0.0,
             BigInteger384::new([
                 1855632670224768760,
                 2989378521406112342,
@@ -238,7 +246,7 @@ mod bls12_377 {
             ])
         );
         assert_eq!(
-            g2.y.c1.to_repr_unchecked(),
+            g2.y.c1.0,
             BigInteger384::new([
                 1532128906028652860,
                 14539073382194201855,
@@ -248,5 +256,63 @@ mod bls12_377 {
                 73741830940675480
             ])
         );
+
+        // Check that G2Affine matches.
+        assert_eq!(G2Affine::prime_subgroup_generator(), g2);
+    }
+}
+
+#[cfg(test)]
+mod edwards_bls12 {
+    use super::*;
+    use snarkvm_curves::edwards_bls12::EdwardsAffine;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger256, CanonicalSerialize};
+
+    #[test]
+    fn hash_edwards_bls12() {
+        let group = Blake2Xs::try_hash_to_curve::<EdwardsAffine>("Aleo Edwards BLS12 in 4").unwrap();
+        assert!(group.is_on_curve());
+        assert!(group.is_in_correct_subgroup_assuming_on_curve());
+        assert_eq!(group.compressed_size(), 256 / 8);
+        assert_eq!(
+            Blake2Xs::hash_to_curve::<EdwardsAffine>("Aleo Edwards BLS12"),
+            (group, "Aleo Edwards BLS12 in 4".to_string(), 4)
+        );
+
+        // String representation
+        assert_eq!(group.x.to_string(), "1540945439182663264862696551825005342995406165131907382295858612069623286213",);
+        assert_eq!(group.y.to_string(), "8003546896475222703853313610036801932325312921786952001586936882361378122196",);
+
+        // BigInteger representation
+        assert_eq!(
+            group.x.to_bigint(),
+            BigInteger256::new([1404703638504229317, 16672475576000152563, 1635533132911366150, 245486771465834503]),
+            "\n\nExpected: {:?}\n\n",
+            group.x.to_bigint().0,
+        );
+        assert_eq!(
+            group.y.to_bigint(),
+            BigInteger256::new([15352153743387634132, 9180404173643694677, 4017395716581932261, 1275038582114391971]),
+            "\n\nExpected: {:?}\n\n",
+            group.y.to_bigint().0,
+        );
+
+        // Montgomery BigInteger representation
+        assert_eq!(
+            group.x.0,
+            BigInteger256::new([15976313411695170452, 17230178952810798400, 11626259175167078036, 678729006091608048]),
+            "\n\nExpected: {:?}\n\n",
+            group.x.0,
+        );
+        assert_eq!(
+            group.y.0,
+            BigInteger256::new([926786653590077393, 18147000980977651608, 13077459464847727671, 1231472949076376191]),
+            "\n\nExpected: {:?}\n\n",
+            group.y.0,
+        );
+
+        // Check that EdwardsAffine matches.
+        assert_eq!(EdwardsAffine::prime_subgroup_generator(), group);
     }
 }

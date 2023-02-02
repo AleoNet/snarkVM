@@ -25,8 +25,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
         let plaintext = match index {
             0 => Self::Literal(Literal::read_le(&mut reader)?, Default::default()),
             1 => {
-                // Read the number of members in the interface.
-                let num_members = u16::read_le(&mut reader)?;
+                // Read the number of members in the struct.
+                let num_members = u8::read_le(&mut reader)?;
                 // Read the members.
                 let mut members = IndexMap::with_capacity(num_members as usize);
                 for _ in 0..num_members {
@@ -41,8 +41,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
                     // Add the member.
                     members.insert(identifier, plaintext);
                 }
-                // Return the interface.
-                Self::Interface(members, Default::default())
+                // Return the struct.
+                Self::Struct(members, Default::default())
             }
             2.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
         };
@@ -58,16 +58,16 @@ impl<N: Network> ToBytes for Plaintext<N> {
                 0u8.write_le(&mut writer)?;
                 literal.write_le(&mut writer)
             }
-            Self::Interface(interface, ..) => {
+            Self::Struct(struct_, ..) => {
                 1u8.write_le(&mut writer)?;
 
-                // Write the number of members in the interface.
-                u16::try_from(interface.len())
-                    .or_halt_with::<N>("Plaintext interface length exceeds u16::MAX.")
+                // Write the number of members in the struct.
+                u8::try_from(struct_.len())
+                    .or_halt_with::<N>("Plaintext struct length exceeds u8::MAX.")
                     .write_le(&mut writer)?;
 
                 // Write each member.
-                for (member_name, member_value) in interface {
+                for (member_name, member_value) in struct_ {
                     // Write the member name.
                     member_name.write_le(&mut writer)?;
 
@@ -185,7 +185,7 @@ mod tests {
             ))?;
         }
 
-        // Lastly check the interface manually.
+        // Lastly check the struct manually.
         let expected = Plaintext::<CurrentNetwork>::from_str(
             "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, gates: 5u64, token_amount: 100u64 }",
         )?;
