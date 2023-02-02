@@ -160,8 +160,11 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
-    fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.execution_store().find_transaction_id(transition_id)
+    fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
+        self.execution_store().find_transaction_id_from_transition_id(transition_id)
     }
 
     /// Returns the transaction ID that contains the given `program ID`.
@@ -391,9 +394,13 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
-    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+    pub fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
         // Check if the transaction id exists in the execution store.
-        let execution_transaction = self.storage.execution_store().find_transaction_id(transition_id);
+        let execution_transaction =
+            self.storage.execution_store().find_transaction_id_from_transition_id(transition_id);
 
         // Check if the transaction id exists in the transition store.
         match execution_transaction {
@@ -521,21 +528,21 @@ mod tests {
 
         for transition_id in transition_ids {
             // Ensure the transaction ID is not found.
-            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
             assert_eq!(None, candidate);
 
             // Insert the transaction.
             transaction_store.insert(&transaction).unwrap();
 
             // Find the transaction ID.
-            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
             assert_eq!(Some(transaction_id), candidate);
 
             // Remove the transaction.
             transaction_store.remove(&transaction_id).unwrap();
 
             // Ensure the transaction ID is not found.
-            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
             assert_eq!(None, candidate);
         }
     }
