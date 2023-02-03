@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -117,8 +117,8 @@ closure foo:
             r"
 closure foo:
     input r0 as token.record;
-    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
-    output r1 as token.record;",
+    cast r0.owner r0.gates r0.token_amount into r1 as data;
+    output r1 as data;",
         )
         .unwrap()
         .1;
@@ -137,5 +137,18 @@ closure foo:
     output r2 as field;";
         let closure = Closure::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{closure}"),);
+    }
+
+    #[test]
+    fn test_closure_parse_output_function() {
+        let result = Closure::<CurrentNetwork>::parse(
+            r"
+closure foo:
+    input r0 as token.record;
+    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
+    output r1 as token.record;",
+        );
+
+        assert!(result.is_err());
     }
 }
