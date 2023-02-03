@@ -225,7 +225,7 @@ mod tests {
             let name = format!("Div by One: {first} / 1");
             check_div::<I>(&name, first, console::Integer::one(), mode_a, mode_b);
 
-            let name = format!("Div by Self: {first} / {second}");
+            let name = format!("Div by Self: {first} / {first}");
             check_div::<I>(&name, first, first, mode_a, mode_b);
 
             let name = format!("Div by Zero: {first} / 0");

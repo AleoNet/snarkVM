@@ -64,7 +64,7 @@ mod tests {
 
             Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_le();
-                assert_eq!({ expected_num_bytes * 8 }, candidate.len());
+                assert_eq!(expected_num_bytes * 8, candidate.len());
 
                 // Ensure every bit matches.
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
@@ -89,7 +89,7 @@ mod tests {
 
             Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_be();
-                assert_eq!({ expected_num_bytes * 8 }, candidate.len());
+                assert_eq!(expected_num_bytes * 8, candidate.len());
 
                 // Ensure every bit matches.
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
