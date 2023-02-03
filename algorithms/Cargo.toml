@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.9.11"
+version = "0.9.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -45,33 +45,33 @@ harness = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.11"
+version = "0.9.12"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.11"
+version = "0.9.12"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.9.11"
+version = "0.9.12"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.9.11"
+version = "0.9.12"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.11"
+version = "0.9.12"
 default-features = false
 
 [dependencies.snarkvm-algorithms-cuda]
 path = "./cuda"
-version = "0.9.11"
+version = "0.9.12"
 optional = true
 default-features = false
 
