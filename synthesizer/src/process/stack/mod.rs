@@ -412,6 +412,7 @@ impl<N: Network> PartialEq for Stack<N> {
         self.program == other.program
             && self.external_stacks == other.external_stacks
             && self.register_types == other.register_types
+            && self.finalize_types == other.finalize_types
     }
 }
 

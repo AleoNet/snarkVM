@@ -242,6 +242,11 @@ mod tests {
 
         // Ensure the deployment is valid.
         assert!(vm.verify_deployment(&deployment));
+
+        // Ensure that deserialization doesn't break the transaction verification.
+        let serialized_deployment = deployment.to_string();
+        let deployment_transaction: Deployment<CurrentNetwork> = serde_json::from_str(&serialized_deployment).unwrap();
+        assert!(vm.verify_deployment(&deployment_transaction));
     }
 
     #[test]
@@ -260,6 +265,12 @@ mod tests {
                 assert!(Inclusion::verify_execution(&execution).is_ok());
                 // Verify the execution.
                 assert!(vm.verify_execution(&execution));
+
+                // Ensure that deserialization doesn't break the transaction verification.
+                let serialized_execution = execution.to_string();
+                let execution_transaction: Execution<CurrentNetwork> =
+                    serde_json::from_str(&serialized_execution).unwrap();
+                assert!(vm.verify_execution(&execution_transaction));
             }
             _ => panic!("Expected an execution transaction"),
         }

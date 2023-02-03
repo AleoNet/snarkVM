@@ -36,7 +36,6 @@ use console::{
 
 use anyhow::Result;
 use core::marker::PhantomData;
-use indexmap::IndexMap;
 use std::borrow::Cow;
 
 /// A trait for deployment storage.
@@ -149,23 +148,17 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             }
         };
 
+        // Ensure the deployment is ordered.
+        if let Err(error) = deployment.check_is_ordered() {
+            bail!("Failed to insert malformed deployment transaction: {error}")
+        }
+
+        // Retrieve the edition.
+        let edition = deployment.edition();
         // Retrieve the program.
         let program = deployment.program();
         // Retrieve the program ID.
         let program_id = *program.id();
-        // Retrieve the edition.
-        let edition = deployment.edition();
-
-        // Ensure the number of functions matches the number of verifying keys.
-        if program.functions().len() != deployment.verifying_keys().len() {
-            bail!("Deployment has an incorrect number of verifying keys, according to the program.");
-        }
-        // Ensure the deployment contains the correct functions.
-        for function_name in program.functions().keys() {
-            if !deployment.verifying_keys().keys().contains(function_name) {
-                bail!("Deployment is missing a verifying key for function '{function_name}'.");
-            }
-        }
 
         atomic_write_batch!(self, {
             // Store the program ID.
@@ -368,7 +361,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Initialize a vector for the verifying keys and certificates.
-        let mut verifying_keys = IndexMap::new();
+        let mut verifying_keys = Vec::with_capacity(program.functions().len());
 
         // Retrieve the verifying keys and certificates.
         for function_name in program.functions().keys() {
@@ -383,7 +376,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 None => bail!("Failed to get the certificate for '{program_id}/{function_name}' (edition {edition})"),
             };
             // Add the verifying key and certificate to the deployment.
-            verifying_keys.insert(*function_name, (verifying_key, certificate));
+            verifying_keys.push((*function_name, (verifying_key, certificate)));
         }
 
         // Return the deployment.
