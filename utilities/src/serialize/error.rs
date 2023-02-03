@@ -38,6 +38,6 @@ pub enum SerializationError {
 
 impl From<SerializationError> for crate::io::Error {
     fn from(error: SerializationError) -> Self {
-        crate::io::Error::new(crate::io::ErrorKind::Other, format!("{}", error))
+        crate::io::Error::new(crate::io::ErrorKind::Other, format!("{error}"))
     }
 }

@@ -46,7 +46,7 @@ mod tests {
             // Initialize the private key.
             let candidate = PrivateKey::<Circuit>::new(mode, private_key);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_view_key();
                 assert_eq!(view_key, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

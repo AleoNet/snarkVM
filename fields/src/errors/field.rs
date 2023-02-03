@@ -37,12 +37,12 @@ pub enum FieldError {
 
 impl From<std::io::Error> for FieldError {
     fn from(error: std::io::Error) -> Self {
-        FieldError::Crate("std::io", format!("{:?}", error))
+        FieldError::Crate("std::io", format!("{error:?}"))
     }
 }
 
 impl From<FieldError> for std::io::Error {
     fn from(error: FieldError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{error}"))
     }
 }

@@ -65,7 +65,7 @@ pub(super) fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
     let len = if let Data::Struct(ref data_struct) = ast.data {
         data_struct.fields.len()
     } else {
-        panic!("`CanonicalSerialize` can only be derived for structs, {} is not a struct", name);
+        panic!("`CanonicalSerialize` can only be derived for structs, {name} is not a struct");
     };
 
     let mut serialize_body = Vec::<TokenStream>::with_capacity(len);
@@ -91,7 +91,7 @@ pub(super) fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
                 idents.clear();
             }
         }
-        _ => panic!("`CanonicalSerialize` can only be derived for structs, {} is not a struct", name),
+        _ => panic!("`CanonicalSerialize` can only be derived for structs, {name} is not a struct"),
     };
 
     let gen = quote! {

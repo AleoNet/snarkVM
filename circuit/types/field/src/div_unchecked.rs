@@ -129,17 +129,17 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Div: a / b {}", i);
+            let name = format!("Div: a / b {i}");
             check_div_unchecked(&name, &first, &second, mode_a, mode_b);
 
             // Check division by one.
             let one = console::Field::<<Circuit as Environment>::Network>::one();
-            let name = format!("Div By One {}", i);
+            let name = format!("Div By One {i}");
             check_div_unchecked(&name, &first, &one, mode_a, mode_b);
 
             // Check division by zero.
             let zero = console::Field::<<Circuit as Environment>::Network>::zero();
-            let name = format!("Div By Zero {}", i);
+            let name = format!("Div By Zero {i}");
             check_div_unchecked(&name, &first, &zero, mode_a, mode_b);
         }
     }

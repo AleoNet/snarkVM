@@ -45,7 +45,7 @@ impl<N: Network> VerifyingKey<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
                 }
 
                 is_valid
@@ -69,7 +69,7 @@ impl<N: Network> VerifyingKey<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
                 }
 
                 is_valid

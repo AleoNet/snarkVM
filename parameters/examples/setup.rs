@@ -35,7 +35,7 @@ fn checksum(bytes: &[u8]) -> String {
 
 fn versioned_filename(filename: &str, checksum: &str) -> String {
     match checksum.get(0..7) {
-        Some(sum) => format!("{}.{}", filename, sum),
+        Some(sum) => format!("{filename}.{sum}"),
         _ => filename.to_string(),
     }
 }

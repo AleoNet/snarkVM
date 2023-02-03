@@ -78,7 +78,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
             };
             // Insert the decrypted entry.
             if decrypted_data.insert(id.clone(), entry).is_some() {
-                A::halt(format!("Duplicate identifier in record: {}", id))
+                A::halt(format!("Duplicate identifier in record: {id}"))
             }
             // Increment the index.
             index += num_randomizers as usize;

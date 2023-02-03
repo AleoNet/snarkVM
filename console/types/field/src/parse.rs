@@ -122,7 +122,7 @@ mod tests {
         let zero = <CurrentEnvironment as Environment>::Field::zero();
 
         let candidate = Field::<CurrentEnvironment>::new(zero);
-        assert_eq!("0field", &format!("{}", candidate));
+        assert_eq!("0field", &format!("{candidate}"));
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod tests {
         let one = <CurrentEnvironment as Environment>::Field::one();
 
         let candidate = Field::<CurrentEnvironment>::new(one);
-        assert_eq!("1field", &format!("{}", candidate));
+        assert_eq!("1field", &format!("{candidate}"));
     }
 
     #[test]
@@ -139,6 +139,6 @@ mod tests {
         let two = one + one;
 
         let candidate = Field::<CurrentEnvironment>::new(two);
-        assert_eq!("2field", &format!("{}", candidate));
+        assert_eq!("2field", &format!("{candidate}"));
     }
 }

@@ -243,7 +243,7 @@ impl<N: Network, const VARIANT: u8> Display for HashInstruction<N, VARIANT> {
         }
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
+        self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
         write!(f, "into {}", self.destination)
     }
 }

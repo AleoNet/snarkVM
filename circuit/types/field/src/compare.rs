@@ -145,7 +145,7 @@ mod tests {
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
             let expected = first < second;
-            let name = format!("{} {} {}", mode_a, mode_b, i);
+            let name = format!("{mode_a} {mode_b} {i}");
             check_is_less_than(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
 
             // Check `first` is not less than `first`.

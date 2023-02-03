@@ -211,7 +211,7 @@ impl<E: PairingEngine, MM: MarlinMode> fmt::Display for CircuitVerifyingKey<E, M
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let vk_hex = hex::encode(self.to_bytes_le().expect("Failed to convert verifying key to bytes"));
-        write!(f, "{}", vk_hex)
+        write!(f, "{vk_hex}")
     }
 }
 

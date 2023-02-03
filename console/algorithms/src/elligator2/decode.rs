@@ -131,7 +131,7 @@ mod tests {
             }
         }
 
-        println!("Sign high: {}, sign low: {}", high_ctr, low_ctr);
+        println!("Sign high: {high_ctr}, sign low: {low_ctr}");
         Ok(())
     }
 

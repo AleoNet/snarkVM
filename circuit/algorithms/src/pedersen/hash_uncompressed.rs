@@ -155,7 +155,7 @@ mod tests {
         first: C,
         second: C,
     ) {
-        println!("Checking homomorphic addition on {} + {}", first, second);
+        println!("Checking homomorphic addition on {first} + {second}");
 
         // Compute the expected hash, by hashing them individually and summing their results.
         let a = pedersen.hash_uncompressed(&first.to_bits_le());

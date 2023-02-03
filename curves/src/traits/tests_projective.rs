@@ -80,7 +80,7 @@ fn random_addition_test<G: ProjectiveCurve>(rng: &mut TestRng) {
                 if tmp[i] != tmp[j] {
                     println!("{} \n{}", tmp[i], tmp[j]);
                 }
-                assert_eq!(tmp[i], tmp[j], "Associativity failed {} {}", i, j);
+                assert_eq!(tmp[i], tmp[j], "Associativity failed {i} {j}");
                 assert_eq!(tmp[i].to_affine(), tmp[j].to_affine(), "Associativity failed");
             }
 
@@ -166,7 +166,7 @@ fn random_negation_test<G: ProjectiveCurve>(rng: &mut TestRng) {
 
         let mut t3 = t1;
         t3.add_assign(t2);
-        println!("t3 = {}", t3);
+        println!("t3 = {t3}");
         assert!(t3.is_zero());
 
         let mut t4 = t1;

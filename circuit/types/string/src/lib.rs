@@ -88,7 +88,7 @@ impl<E: Environment> Eject for StringType<E> {
         match num_bytes <= E::MAX_STRING_BYTES as usize {
             true => console::StringType::new(
                 &String::from_utf8(self.bytes.eject_value().into_iter().map(|byte| *byte).collect())
-                    .unwrap_or_else(|error| E::halt(&format!("Failed to eject a string value: {error}"))),
+                    .unwrap_or_else(|error| E::halt(format!("Failed to eject a string value: {error}"))),
             ),
             false => E::halt(format!("Attempted to eject a string of size {num_bytes}")),
         }

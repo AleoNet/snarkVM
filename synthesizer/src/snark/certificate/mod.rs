@@ -66,7 +66,7 @@ impl<N: Network> Certificate<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified certificate for '{function_name}': {} ms", elapsed).dimmed());
+                    println!("{}", format!(" • Verified certificate for '{function_name}': {elapsed} ms").dimmed());
                 }
 
                 is_valid

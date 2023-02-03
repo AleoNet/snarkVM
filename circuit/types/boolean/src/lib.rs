@@ -303,21 +303,21 @@ mod tests {
     #[test]
     fn test_display() {
         let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert_eq!("false.constant", format!("{}", candidate));
+        assert_eq!("false.constant", format!("{candidate}"));
 
         let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert_eq!("true.constant", format!("{}", candidate));
+        assert_eq!("true.constant", format!("{candidate}"));
 
         let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert_eq!("false.public", format!("{}", candidate));
+        assert_eq!("false.public", format!("{candidate}"));
 
         let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert_eq!("true.public", format!("{}", candidate));
+        assert_eq!("true.public", format!("{candidate}"));
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert_eq!("false.private", format!("{}", candidate));
+        assert_eq!("false.private", format!("{candidate}"));
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert_eq!("true.private", format!("{}", candidate));
+        assert_eq!("true.private", format!("{candidate}"));
     }
 }

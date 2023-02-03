@@ -216,7 +216,7 @@ where
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
 
     fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
-        let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
+        let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {max_degree}",) });
 
         let srs = SonicKZG10::<E, FS>::load_srs(*max_degree).map_err(Into::into);
         end_timer!(setup_time);
@@ -811,11 +811,11 @@ pub mod test {
             )?;
 
             for i in 0..(self.num_variables - 3) {
-                let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+                let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             }
 
             for i in 0..(self.num_constraints - 1) {
-                cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+                cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + c);
             }
 
             Ok(())

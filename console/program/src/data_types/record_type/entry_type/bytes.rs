@@ -36,7 +36,7 @@ impl<N: Network> FromBytes for EntryType<N> {
             0 => Ok(Self::Constant(PlaintextType::read_le(&mut reader)?)),
             1 => Ok(Self::Public(PlaintextType::read_le(&mut reader)?)),
             2 => Ok(Self::Private(PlaintextType::read_le(&mut reader)?)),
-            3.. => Err(error(format!("Failed to deserialize entry type variant {}", variant))),
+            3.. => Err(error(format!("Failed to deserialize entry type variant {variant}"))),
         }
     }
 }

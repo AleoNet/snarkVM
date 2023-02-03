@@ -102,7 +102,7 @@ mod tests {
     const ITERATIONS: u32 = 1000;
 
     fn check_serialization(expected: Literal<CurrentNetwork>) -> Result<()> {
-        println!("{}", expected);
+        println!("{expected}");
         assert_eq!(expected, Literal::from_bits_le(expected.variant(), &expected.to_bits_le())?);
         assert_eq!(expected, Literal::from_bits_be(expected.variant(), &expected.to_bits_be())?);
         Ok(())

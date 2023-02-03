@@ -28,6 +28,6 @@ pub enum ConstraintFieldError {
 
 impl From<std::io::Error> for ConstraintFieldError {
     fn from(error: std::io::Error) -> Self {
-        ConstraintFieldError::Crate("std::io", format!("{:?}", error))
+        ConstraintFieldError::Crate("std::io", format!("{error:?}"))
     }
 }

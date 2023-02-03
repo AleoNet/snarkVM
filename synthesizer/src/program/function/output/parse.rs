@@ -115,14 +115,14 @@ mod tests {
     fn test_output_display() {
         // Literal
         let output = Output::<CurrentNetwork>::parse("output r0 as field.private;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r0 as field.private;");
+        assert_eq!(format!("{output}"), "output r0 as field.private;");
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.private;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r1 as signature.private;");
+        assert_eq!(format!("{output}"), "output r1 as signature.private;");
 
         // Record
         let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r2 as token.record;");
+        assert_eq!(format!("{output}"), "output r2 as token.record;");
     }
 }

@@ -46,7 +46,7 @@ mod tests {
             // Initialize the view key.
             let candidate = ViewKey::<Circuit>::new(mode, view_key);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_address();
                 assert_eq!(*address, candidate.to_group().eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

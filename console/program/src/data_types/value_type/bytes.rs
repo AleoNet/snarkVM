@@ -40,7 +40,7 @@ impl<N: Network> FromBytes for ValueType<N> {
             2 => Ok(Self::Private(PlaintextType::read_le(&mut reader)?)),
             3 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
             4 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
-            5.. => Err(error(format!("Failed to deserialize value type variant {}", variant))),
+            5.. => Err(error(format!("Failed to deserialize value type variant {variant}"))),
         }
     }
 }

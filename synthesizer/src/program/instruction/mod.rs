@@ -389,7 +389,7 @@ impl<N: Network> Debug for Instruction<N> {
 impl<N: Network> Display for Instruction<N> {
     /// Prints the instruction as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        instruction!(self, |instruction| write!(f, "{};", instruction))
+        instruction!(self, |instruction| write!(f, "{instruction};"))
     }
 }
 

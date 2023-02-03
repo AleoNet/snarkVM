@@ -68,7 +68,7 @@ impl<N: Network> FromBytes for Command<N> {
             // Read the increment.
             2 => Ok(Self::Increment(Increment::read_le(&mut reader)?)),
             // Invalid variant.
-            3.. => Err(error(format!("Invalid command variant: {}", variant))),
+            3.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
