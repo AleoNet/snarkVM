@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -138,15 +138,15 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("BitXor: ({} ^ {}) {}", mode_a, mode_b, i);
+            let name = format!("BitXor: ({mode_a} ^ {mode_b}) {i}");
             check_bitxor::<I>(&name, first, second, mode_a, mode_b);
             check_bitxor::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
 
-            let name = format!("BitXor Identity: ({} ^ {}) {}", mode_a, mode_b, i);
+            let name = format!("BitXor Identity: ({mode_a} ^ {mode_b}) {i}");
             check_bitxor::<I>(&name, console::Integer::zero(), first, mode_a, mode_b);
             check_bitxor::<I>(&name, first, console::Integer::zero(), mode_a, mode_b); // Commute the operation.
 
-            let name = format!("BitXor Inverse Identity: ({} ^ {}) {}", mode_a, mode_b, i);
+            let name = format!("BitXor Inverse Identity: ({mode_a} ^ {mode_b}) {i}");
             let inverse = if I::is_signed() { -console::Integer::one() } else { console::Integer::MAX };
             check_bitxor::<I>(&name, inverse, first, mode_a, mode_b);
             check_bitxor::<I>(&name, first, inverse, mode_a, mode_b); // Commute the operation.
@@ -168,7 +168,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("BitXor: ({} ^ {})", first, second);
+                let name = format!("BitXor: ({first} ^ {second})");
                 check_bitxor::<I>(&name, first, second, mode_a, mode_b);
             }
         }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -131,7 +131,7 @@ mod tests {
             }
         }
 
-        println!("Sign high: {}, sign low: {}", high_ctr, low_ctr);
+        println!("Sign high: {high_ctr}, sign low: {low_ctr}");
         Ok(())
     }
 

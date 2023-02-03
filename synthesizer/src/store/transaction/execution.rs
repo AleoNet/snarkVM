@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -200,7 +200,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
-    fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+    fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
         match self.reverse_id_map().get(transition_id)? {
             Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
             None => Ok(None),
@@ -433,14 +436,17 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the transaction ID that executed the given `transition ID`.
-    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.storage.find_transaction_id(transition_id)
+    pub fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
+        self.storage.find_transaction_id_from_transition_id(transition_id)
     }
 }
 
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns an iterator over the execution transaction IDs, for all executions.
-    pub fn execution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+    pub fn execution_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.storage.id_map().keys()
     }
 }
@@ -482,12 +488,11 @@ mod tests {
 
     fn find_transaction_id(transaction: Transaction<CurrentNetwork>) -> Result<()> {
         let transaction_id = transaction.id();
-        let transition_ids = match transaction {
-            Transaction::Execute(_, ref execution, _) => {
-                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
-            }
-            _ => panic!("Incorrect transaction type"),
-        };
+
+        // Ensure the transaction is an Execution.
+        if matches!(transaction, Transaction::Deploy(..)) {
+            bail!("Invalid transaction type");
+        }
 
         // Initialize a new transition store.
         let transition_store = TransitionStore::open(None)?;
@@ -498,23 +503,23 @@ mod tests {
         let candidate = execution_store.get_transaction(&transaction_id)?;
         assert_eq!(None, candidate);
 
-        for transition_id in transition_ids {
+        for transition_id in transaction.transition_ids() {
             // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id(&transition_id)?;
+            let candidate = execution_store.find_transaction_id_from_transition_id(transition_id).unwrap();
             assert_eq!(None, candidate);
 
             // Insert the execution.
             execution_store.insert(&transaction)?;
 
             // Find the transaction ID.
-            let candidate = execution_store.find_transaction_id(&transition_id)?;
+            let candidate = execution_store.find_transaction_id_from_transition_id(transition_id).unwrap();
             assert_eq!(Some(transaction_id), candidate);
 
             // Remove the execution.
             execution_store.remove(&transaction_id)?;
 
             // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id(&transition_id)?;
+            let candidate = execution_store.find_transaction_id_from_transition_id(transition_id).unwrap();
             assert_eq!(None, candidate);
         }
 

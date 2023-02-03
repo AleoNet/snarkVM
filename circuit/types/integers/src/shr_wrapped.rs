@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -213,11 +213,11 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Shr: {} >> {} {}", mode_a, mode_b, i);
+            let name = format!("Shr: {mode_a} >> {mode_b} {i}");
             check_shr::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift right by one is computed correctly.
-            let name = format!("Half: {} >> {} {}", mode_a, mode_b, i);
+            let name = format!("Half: {mode_a} >> {mode_b} {i}");
             check_shr::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
         }
     }
@@ -232,7 +232,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, M>::new(second);
 
-                let name = format!("Shr: ({} >> {})", first, second);
+                let name = format!("Shr: ({first} >> {second})");
                 check_shr::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }

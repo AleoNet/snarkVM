@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -109,7 +109,7 @@ impl<N: Network> Parser for RecordType<N> {
             ];
             // Ensure the entries has no duplicate names.
             if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
-                return Err(error(format!("Duplicate entry type found in record '{}'", name)));
+                return Err(error(format!("Duplicate entry type found in record '{name}'")));
             }
             // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
             if entries.len() > N::MAX_DATA_ENTRIES {
@@ -224,7 +224,7 @@ record message:
     fn test_display() {
         let expected = "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as field.private;\n    second as field.constant;";
         let message = RecordType::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(expected, format!("{}", message));
+        assert_eq!(expected, format!("{message}"));
     }
 
     #[test]
@@ -252,7 +252,7 @@ record message:
     fn test_parse_max_members() {
         let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
         for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
-            string += &format!("    member_{} as field.private;\n", i);
+            string += &format!("    member_{i} as field.private;\n");
         }
         let candidate = RecordType::<CurrentNetwork>::parse(&string);
         assert!(candidate.is_ok());
@@ -262,7 +262,7 @@ record message:
     fn test_parse_too_many_members() {
         let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
         for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
-            string += &format!("    member_{} as field.private;\n", i);
+            string += &format!("    member_{i} as field.private;\n");
         }
         let candidate = RecordType::<CurrentNetwork>::parse(&string);
         assert!(candidate.is_err());

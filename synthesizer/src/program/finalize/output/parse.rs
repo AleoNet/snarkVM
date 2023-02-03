@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -115,14 +115,14 @@ mod tests {
     fn test_output_display() {
         // Literal
         let output = Output::<CurrentNetwork>::parse("output r0 as field.public;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r0 as field.public;");
+        assert_eq!(format!("{output}"), "output r0 as field.public;");
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r1 as signature.public;");
+        assert_eq!(format!("{output}"), "output r1 as signature.public;");
 
         // Record
         let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r2 as token.record;");
+        assert_eq!(format!("{output}"), "output r2 as token.record;");
     }
 }

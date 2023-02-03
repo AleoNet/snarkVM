@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -61,7 +61,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_ids() {
+        for transaction_id in transaction_store.deployment_transaction_ids() {
             // Retrieve the deployment.
             match transaction_store.get_deployment(&transaction_id)? {
                 // Load the deployment.
