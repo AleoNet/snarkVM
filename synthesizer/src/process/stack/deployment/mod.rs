@@ -43,14 +43,14 @@ impl<N: Network> Deployment<N> {
     ) -> Result<Self> {
         // Construct the deployment.
         let deployment = Self { edition, program, verifying_keys };
-        // Ensure the deployment is well-formed.
-        deployment.check_is_valid()?;
+        // Ensure the deployment is ordered.
+        deployment.check_is_ordered()?;
         // Return the deployment.
         Ok(deployment)
     }
 
-    /// Checks that the deployment is well-formed.
-    pub fn check_is_valid(&self) -> Result<()> {
+    /// Checks that the deployment is ordered.
+    pub fn check_is_ordered(&self) -> Result<()> {
         let program_id = self.program.id();
 
         // Ensure the edition matches.

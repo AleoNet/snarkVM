@@ -39,7 +39,7 @@ impl<N: Network> Process<N> {
         deployment
     }
 
-    /// Verifies the given deployment is well-formed.
+    /// Verifies the given deployment is ordered.
     #[inline]
     pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,

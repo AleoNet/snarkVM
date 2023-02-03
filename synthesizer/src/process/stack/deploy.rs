@@ -64,8 +64,8 @@ impl<N: Network> Stack<N> {
 
         // Sanity Checks //
 
-        // Ensure the deployment is well-formed.
-        deployment.check_is_valid()?;
+        // Ensure the deployment is ordered.
+        deployment.check_is_ordered()?;
         // Ensure the program in the stack and deployment matches.
         ensure!(&self.program == deployment.program(), "The stack program does not match the deployment program");
 

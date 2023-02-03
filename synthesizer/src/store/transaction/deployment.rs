@@ -140,8 +140,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             }
         };
 
-        // Ensure the deployment is well-formed.
-        if let Err(error) = deployment.check_is_valid() {
+        // Ensure the deployment is ordered.
+        if let Err(error) = deployment.check_is_ordered() {
             bail!("Failed to insert malformed deployment transaction: {error}")
         }
 
