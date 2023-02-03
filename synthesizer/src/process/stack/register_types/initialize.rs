@@ -40,6 +40,7 @@ impl<N: Network> RegisterTypes<N> {
 
         // Step 3. Check the outputs are well-formed.
         for output in closure.outputs() {
+            // Ensure the output register is not a record.
             ensure!(
                 !matches!(output.register_type(), RegisterType::Record(..)),
                 "Closure outputs do not support records"
