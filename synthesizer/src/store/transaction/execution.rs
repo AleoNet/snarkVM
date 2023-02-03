@@ -482,12 +482,11 @@ mod tests {
 
     fn find_transaction_id(transaction: Transaction<CurrentNetwork>) -> Result<()> {
         let transaction_id = transaction.id();
-        let transition_ids = match transaction {
-            Transaction::Execute(_, ref execution, _) => {
-                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
-            }
-            _ => panic!("Incorrect transaction type"),
-        };
+
+        // Ensure the transaction is an Execution.
+        if matches!(transaction, Transaction::Deploy(..)) {
+            bail!("Invalid transaction type");
+        }
 
         // Initialize a new transition store.
         let transition_store = TransitionStore::open(None)?;
@@ -498,23 +497,23 @@ mod tests {
         let candidate = execution_store.get_transaction(&transaction_id)?;
         assert_eq!(None, candidate);
 
-        for transition_id in transition_ids {
+        for transition_id in transaction.transition_ids() {
             // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id(&transition_id)?;
+            let candidate = execution_store.find_transaction_id(transition_id)?;
             assert_eq!(None, candidate);
 
             // Insert the execution.
             execution_store.insert(&transaction)?;
 
             // Find the transaction ID.
-            let candidate = execution_store.find_transaction_id(&transition_id)?;
+            let candidate = execution_store.find_transaction_id(transition_id)?;
             assert_eq!(Some(transaction_id), candidate);
 
             // Remove the execution.
             execution_store.remove(&transaction_id)?;
 
             // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id(&transition_id)?;
+            let candidate = execution_store.find_transaction_id(transition_id)?;
             assert_eq!(None, candidate);
         }
 
