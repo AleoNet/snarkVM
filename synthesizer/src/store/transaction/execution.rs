@@ -273,10 +273,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 // Retrieve the additional fee transition.
                 let additional_fee_transition = match self.transition_store().get_transition(&additional_fee_id)? {
                     Some(additional_fee_transition) => additional_fee_transition,
-                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
+                    None => bail!("Failed to get the additional fee transition for transaction '{transaction_id}'"),
                 };
                 // Retrieve the additional fee.
-                let (global_state_root, inclusion_proof) = match self.fee_map().get(&additional_fee_id)? {
+                let (global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
                     Some(fee) => cow_to_cloned!(fee),
                     None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
                 };
@@ -455,36 +455,95 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 mod tests {
     use super::*;
 
+    use crate::vm::test_helpers::CurrentNetwork;
+
+    fn insert_get_remove(transaction: Transaction<CurrentNetwork>) -> Result<()> {
+        let transaction_id = transaction.id();
+
+        // Initialize a new transition store.
+        let transition_store = TransitionStore::open(None)?;
+        // Initialize a new execution store.
+        let execution_store = ExecutionMemory::open(transition_store)?;
+
+        // Ensure the execution transaction does not exist.
+        let candidate = execution_store.get_transaction(&transaction_id)?;
+        assert_eq!(None, candidate);
+
+        // Insert the execution transaction.
+        execution_store.insert(&transaction)?;
+
+        // Retrieve the execution transaction.
+        let candidate = execution_store.get_transaction(&transaction_id)?;
+        assert_eq!(Some(transaction), candidate);
+
+        // Remove the execution.
+        execution_store.remove(&transaction_id)?;
+
+        // Ensure the execution transaction does not exist.
+        let candidate = execution_store.get_transaction(&transaction_id)?;
+        assert_eq!(None, candidate);
+
+        Ok(())
+    }
+
+    fn find_transaction_id(transaction: Transaction<CurrentNetwork>) -> Result<()> {
+        let transaction_id = transaction.id();
+
+        // Ensure the transaction is an Execution.
+        if matches!(transaction, Transaction::Deploy(..)) {
+            bail!("Invalid transaction type");
+        }
+
+        // Initialize a new transition store.
+        let transition_store = TransitionStore::open(None)?;
+        // Initialize a new execution store.
+        let execution_store = ExecutionMemory::open(transition_store)?;
+
+        // Ensure the execution transaction does not exist.
+        let candidate = execution_store.get_transaction(&transaction_id)?;
+        assert_eq!(None, candidate);
+
+        for transition_id in transaction.transition_ids() {
+            // Ensure the transaction ID is not found.
+            let candidate = execution_store.find_transaction_id_from_transition_id(transition_id).unwrap();
+            assert_eq!(None, candidate);
+
+            // Insert the execution.
+            execution_store.insert(&transaction)?;
+
+            // Find the transaction ID.
+            let candidate = execution_store.find_transaction_id_from_transition_id(transition_id).unwrap();
+            assert_eq!(Some(transaction_id), candidate);
+
+            // Remove the execution.
+            execution_store.remove(&transaction_id)?;
+
+            // Ensure the transaction ID is not found.
+            let candidate = execution_store.find_transaction_id_from_transition_id(transition_id).unwrap();
+            assert_eq!(None, candidate);
+        }
+
+        Ok(())
+    }
+
     #[test]
     fn test_insert_get_remove() {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
         let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
-        let transaction_id = transaction.id();
 
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
-        // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(transition_store).unwrap();
+        insert_get_remove(transaction).unwrap();
+    }
 
-        // Ensure the execution transaction does not exist.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+    #[test]
+    fn test_insert_get_remove_with_fee() {
+        let rng = &mut TestRng::default();
 
-        // Insert the execution transaction.
-        execution_store.insert(&transaction).unwrap();
+        // Sample the execution transaction with a fee.
+        let transaction_with_fee = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
-        // Retrieve the execution transaction.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(Some(transaction), candidate);
-
-        // Remove the execution.
-        execution_store.remove(&transaction_id).unwrap();
-
-        // Ensure the execution transaction does not exist.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+        insert_get_remove(transaction_with_fee).unwrap();
     }
 
     #[test]
@@ -493,41 +552,17 @@ mod tests {
 
         // Sample the execution transaction.
         let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
-        let transaction_id = transaction.id();
-        let transition_ids = match transaction {
-            Transaction::Execute(_, ref execution, _) => {
-                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
-            }
-            _ => panic!("Incorrect transaction type"),
-        };
 
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
-        // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(transition_store).unwrap();
+        find_transaction_id(transaction).unwrap();
+    }
 
-        // Ensure the execution transaction does not exist.
-        let candidate = execution_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+    #[test]
+    fn test_find_transaction_id_with_fee() {
+        let rng = &mut TestRng::default();
 
-        for transition_id in transition_ids {
-            // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
-            assert_eq!(None, candidate);
+        // Sample the execution transaction with a fee.
+        let transaction_with_fee = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
-            // Insert the execution.
-            execution_store.insert(&transaction).unwrap();
-
-            // Find the transaction ID.
-            let candidate = execution_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
-            assert_eq!(Some(transaction_id), candidate);
-
-            // Remove the execution.
-            execution_store.remove(&transaction_id).unwrap();
-
-            // Ensure the transaction ID is not found.
-            let candidate = execution_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
-            assert_eq!(None, candidate);
-        }
+        find_transaction_id(transaction_with_fee).unwrap();
     }
 }
