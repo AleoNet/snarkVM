@@ -29,7 +29,7 @@ impl<N: Network> Transaction<N> {
                 // Check if the ID is the transition ID for the fee.
                 if *id == **fee.id() {
                     // Return the transaction leaf.
-                    return Ok(TransactionLeaf::new_deployment(
+                    return Ok(TransactionLeaf::new_deployment_fee(
                         deployment.program().functions().len() as u16, // The last index.
                         *id,
                     ));
@@ -110,7 +110,7 @@ impl<N: Network> Transaction<N> {
                 .to_bits_le())
             })
             .chain(
-                [Ok(TransactionLeaf::new_deployment(
+                [Ok(TransactionLeaf::new_deployment_fee(
                     program.functions().len() as u16, // The last index.
                     **fee.transition_id(),
                 )
