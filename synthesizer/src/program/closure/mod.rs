@@ -133,7 +133,7 @@ impl<N: Network> Closure<N> {
         // Ensure the maximum number of outputs has not been exceeded.
         ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
 
-        // Ensure the output register is not a record.
+        // Ensure the closure output register is not a record.
         ensure!(!matches!(output.register_type(), RegisterType::Record(..)), "Output register cannot be a record");
 
         // Insert the output statement.
