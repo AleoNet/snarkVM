@@ -126,7 +126,7 @@ mod tests {
 
         // Literal
         let output = Output::<CurrentNetwork>::parse("output 0u8 as u8;").unwrap().1;
-        assert_eq!(format!("{}", output), "output 0u8 as u8;");
+        assert_eq!(format!("{output}"), "output 0u8 as u8;");
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature;").unwrap().1;

@@ -300,8 +300,7 @@ impl<N: Network> Process<N> {
                 }
 
                 // Retrieve the output operands.
-                let output_operands =
-                    &finalize.outputs().iter().map(|output| output.operand().clone()).collect::<Vec<_>>();
+                let output_operands = finalize.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
 
                 // TODO (howardwu): Save the outputs in ProgramStore.
                 // Load the outputs.
@@ -309,11 +308,11 @@ impl<N: Network> Process<N> {
                     .iter()
                     .map(|operand| {
                         // Load the outputs.
-                        match operand.clone() {
+                        match operand {
                             // If the operand is a literal, use the literal directly.
                             Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
                             // If the operand is a register, retrieve the stack value from the register.
-                            Operand::Register(register) => registers.load(stack, &Operand::Register(register)),
+                            Operand::Register(register) => registers.load(stack, &Operand::Register(register.clone())),
                             // If the operand is the program ID, convert the program ID into an address.
                             Operand::ProgramID(program_id) => {
                                 Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))

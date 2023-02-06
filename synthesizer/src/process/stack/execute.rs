@@ -85,24 +85,30 @@ impl<N: Network> Stack<N> {
         use circuit::Inject;
 
         // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            match output.operand().clone() {
-                // If the operand is a literal, use the literal directly.
-                Operand::Literal(literal) => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
-                    circuit::Literal::new(circuit::Mode::Constant, literal),
-                ))),
-                // If the operand is a register, retrieve the stack value from the register.
-                Operand::Register(register) => registers.load_circuit(self, &Operand::Register(register)),
-                // If the operand is the program ID, convert the program ID into an address.
-                Operand::ProgramID(program_id) => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
-                    circuit::Literal::Address(circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?)),
-                ))),
-                // If the operand is the caller, retrieve the caller from the registers.
-                Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
-                    registers.caller_circuit()?,
-                )))),
-            }
-        }).collect();
+        let outputs = closure
+            .outputs()
+            .iter()
+            .map(|output| {
+                match output.operand() {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::new(circuit::Mode::Constant, literal.clone()),
+                    ))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load_circuit(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                            circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
+                        ))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.caller_circuit()?),
+                    ))),
+                }
+            })
+            .collect();
         lap!(timer, "Load the outputs");
 
         finish!(timer);
@@ -237,17 +243,17 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Execute the instructions");
 
         // Load the outputs.
-        let output_operands = &function.outputs().iter().map(|output| output.operand().clone()).collect::<Vec<_>>();
+        let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
         let outputs = output_operands
             .iter()
             .map(|operand| {
-                match operand.clone() {
+                match operand {
                     // If the operand is a literal, use the literal directly.
                     Operand::Literal(literal) => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
-                        circuit::Literal::new(circuit::Mode::Constant, literal),
+                        circuit::Literal::new(circuit::Mode::Constant, literal.clone()),
                     ))),
                     // If the operand is a register, retrieve the stack value from the register.
-                    Operand::Register(register) => registers.load_circuit(self, &Operand::Register(register)),
+                    Operand::Register(register) => registers.load_circuit(self, &Operand::Register(register.clone())),
                     // If the operand is the program ID, convert the program ID into an address.
                     Operand::ProgramID(program_id) => {
                         Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
@@ -506,7 +512,8 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Execute the circuit");
 
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof, *fee)?;
+            let transition =
+                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof, *fee)?;
 
             // Add the transition commitments.
             inclusion.write().insert_transition(console_request.input_ids(), &transition)?;

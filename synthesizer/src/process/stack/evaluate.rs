@@ -62,20 +62,24 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Evaluate the instructions");
 
         // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            match output.operand().clone() {
-                // If the operand is a literal, use the literal directly.
-                Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
-                // If the operand is a register, retrieve the stack value from the register.
-                Operand::Register(register) => registers.load(self, &Operand::Register(register)),
-                // If the operand is the program ID, convert the program ID into an address.
-                Operand::ProgramID(program_id) => {
-                    Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
+        let outputs = closure
+            .outputs()
+            .iter()
+            .map(|output| {
+                match output.operand() {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
                 }
-                // If the operand is the caller, retrieve the caller from the registers.
-                Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
-            }
-        }).collect();
+            })
+            .collect();
         lap!(timer, "Load the outputs");
 
         finish!(timer);
@@ -153,18 +157,18 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Evaluate the instructions");
 
         // Retrieve the output operands.
-        let output_operands = &function.outputs().iter().map(|output| output.operand().clone()).collect::<Vec<_>>();
+        let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
         lap!(timer, "Retrieve the output operands");
 
         // Load the outputs.
         let outputs = output_operands
             .iter()
             .map(|operand| {
-                match operand.clone() {
+                match operand {
                     // If the operand is a literal, use the literal directly.
                     Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
                     // If the operand is a register, retrieve the stack value from the register.
-                    Operand::Register(register) => registers.load(self, &Operand::Register(register)),
+                    Operand::Register(register) => registers.load(self, &Operand::Register(register.clone())),
                     // If the operand is the program ID, convert the program ID into an address.
                     Operand::ProgramID(program_id) => {
                         Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
