@@ -28,9 +28,9 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         }
         // Case 2: Constant < Variable | Variable < Constant | Variable < Variable
         else {
-            // If all scalar field elements are less than (MODULUS - 1)/2 on the base field,
+            // If all scalar field elements are less than or equal to (MODULUS - 1)/2 on the base field,
             // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
-            debug_assert!(E::ScalarField::modulus() <= E::BaseField::modulus_minus_one_div_two());
+            debug_assert!((-E::ScalarField::one()).to_bigint() <= E::BaseField::modulus_minus_one_div_two());
 
             // Intuition: Check the parity of 2 * (`self` - `other`) mod MODULUS.
             //   - If `self` < `other`, then 2 * (`self` - `other`) mod MODULUS is odd.
