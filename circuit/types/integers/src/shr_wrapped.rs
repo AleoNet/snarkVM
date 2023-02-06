@@ -62,6 +62,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                 // Calculate the value of the shift directly in the field.
                 // Since 2^{rhs} < Integer::MAX, we know that the operation will not overflow Integer::MAX or the field modulus.
                 let two = Field::one() + Field::one();
+                // Note that `shift_in_field` is always greater than zero and does not wrap around the field modulus.
                 let mut shift_in_field = Field::one();
                 for bit in rhs.bits_le[..first_upper_bit_index].iter().rev() {
                     shift_in_field = shift_in_field.square();
@@ -75,9 +76,11 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
                     let dividend_unsigned = self.abs_wrapped().cast_as_dual();
+                    // Note that `divisor_unsigned` is greater than zero since `shift_in_field` is greater than zero.
                     let divisor_unsigned = shift_as_divisor.cast_as_dual();
 
                     // Compute the quotient and remainder using wrapped, unsigned division.
+                    // Note that do not invoke `div_wrapped` since we need the quotient AND the remainder.
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     let (quotient_unsigned, remainder_field) = if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64
                     {
