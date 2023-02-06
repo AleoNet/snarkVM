@@ -793,6 +793,98 @@ function hello_world:
     }
 
     #[test]
+    fn test_process_output_operand() {
+        // Helper function to test authorization, execution, and verification for the program below.
+        fn authorize_execute_and_verify(
+            program: &Program<CurrentNetwork>,
+            function_name: Identifier<CurrentNetwork>,
+            output: Value<CurrentNetwork>,
+            caller_private_key: &PrivateKey<CurrentNetwork>,
+            rng: &mut TestRng,
+        ) {
+            // Construct the process.
+            let process = super::test_helpers::sample_process(program);
+
+            // Authorize the function call.
+            let inputs: &[Value<CurrentNetwork>] = &[];
+            let authorization = process
+                .authorize::<CurrentAleo, _>(caller_private_key, program.id(), function_name, inputs.iter(), rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+
+            // Check again to make sure we didn't modify the authorization before calling `evaluate`.
+            assert_eq!(authorization.len(), 1);
+
+            // Compute the output value.
+            let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+            let candidate = response.outputs();
+            assert_eq!(1, candidate.len());
+            assert_eq!(output, candidate[0]);
+
+            // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+            assert_eq!(authorization.len(), 1);
+
+            // Execute the request.
+            let (response, execution, _inclusion, _metrics) =
+                process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+            let candidate = response.outputs();
+            assert_eq!(1, candidate.len());
+            assert_eq!(output, candidate[0]);
+
+            process.verify_execution::<true>(&execution).unwrap();
+        }
+
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program operand.aleo;
+
+  function program_id:
+    output operand.aleo as address.private;
+
+  function literal:
+    output 1234u64 as u64.private;
+
+  function caller:
+    output self.caller as address.private;",
+        )
+        .unwrap();
+
+        // Initalize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Test the `program_id` function.
+        authorize_execute_and_verify(
+            &program,
+            Identifier::from_str("program_id").unwrap(),
+            Value::from_str(&format!("{}", program.id().to_address().unwrap())).unwrap(),
+            &caller_private_key,
+            rng,
+        );
+
+        // Test the `literal` function.
+        authorize_execute_and_verify(
+            &program,
+            Identifier::from_str("literal").unwrap(),
+            Value::from_str("1234u64").unwrap(),
+            &caller_private_key,
+            rng,
+        );
+
+        // Test the `caller` function.
+        authorize_execute_and_verify(
+            &program,
+            Identifier::from_str("caller").unwrap(),
+            Value::from_str(&format!("{caller}")).unwrap(),
+            &caller_private_key,
+            rng,
+        );
+    }
+
+    #[test]
     fn test_process_execute_call_closure() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(

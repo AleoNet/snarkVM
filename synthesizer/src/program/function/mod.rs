@@ -134,10 +134,14 @@ impl<N: Network> Function<N> {
     /// Adds the given instruction to the function.
     ///
     /// # Errors
+    /// This method will halt if there are output statements already.
     /// This method will halt if the maximum number of instructions has been reached.
     /// This method will halt if a finalize command has been added.
     #[inline]
     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
+        // Ensure that there are no output statements in memory.
+        ensure!(self.outputs.is_empty(), "Cannot add instructions after outputs have been added");
+
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
             self.instructions.len() <= N::MAX_INSTRUCTIONS,
@@ -161,14 +165,10 @@ impl<N: Network> Function<N> {
     /// Adds the output statement to the function.
     ///
     /// # Errors
-    /// This method will halt if there are no instructions in memory.
     /// This method will halt if the maximum number of outputs has been reached.
     /// This method will halt if a finalize command has been added.
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
-        // Ensure there are instructions in memory.
-        ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
-
         // Ensure the maximum number of outputs has not been exceeded.
         ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
         // Ensure the output statement was not previously added.
