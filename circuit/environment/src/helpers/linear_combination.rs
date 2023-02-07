@@ -88,6 +88,7 @@ impl<F: PrimeField> LinearCombination<F> {
     /// 2. Every individual variable in the linear combination must always be either `0` or `1`.
     /// 3. The value of the linear combination must always be either `0` or `1`.
     ///
+    /// TODO: Reference explaining `Boolean` types represented in this way
     pub fn is_boolean_type(&self) -> bool {
         // Constant case (enforce Property 1)
         if self.terms.is_empty() {
@@ -96,7 +97,8 @@ impl<F: PrimeField> LinearCombination<F> {
         // Public and private cases (enforce Property 1)
         else if self.constant.is_zero() {
             // Enforce property 2.
-            if self.terms.iter().all(|(v, _)| !(v.value().is_zero() || v.value().is_one())) {
+            // Note: This branch is triggered if ANY term is not zero or one.
+            if self.terms.iter().any(|(v, _)| !(v.value().is_zero() || v.value().is_one())) {
                 eprintln!("Property 2 of the `Boolean` type was violated in {self}");
                 return false;
             }
