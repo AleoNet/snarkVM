@@ -175,7 +175,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0 | 1 | 2 | 3 | 4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            0 | 1 | 2 | 3 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
             _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         }
     }
