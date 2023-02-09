@@ -182,8 +182,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             eta_a * state.non_zero_a_domain.size_as_field_element * sum_a +
             eta_b * state.non_zero_b_domain.size_as_field_element * sum_b +
             eta_c * state.non_zero_c_domain.size_as_field_element * sum_c;
-        let r_b = state.third_round_message.as_ref().unwrap().r_b;
-        let r_c = state.third_round_message.as_ref().unwrap().r_c;
+        let delta_b = state.third_round_message.as_ref().unwrap().delta_b;
+        let delta_c = state.third_round_message.as_ref().unwrap().delta_c;
 
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
@@ -270,14 +270,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_b_domain, gamma);
         let lhs_b =
             Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, *sum_b, selector_b);
-        matrix_sumcheck += (r_b, &lhs_b);
+        matrix_sumcheck += (delta_b, &lhs_b);
 
         let g_c = LinearCombination::new("g_c", [(F::one(), "g_c")]);
         let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
         let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_c_domain, gamma);
         let lhs_c =
             Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, *sum_c, selector_c);
-        matrix_sumcheck += (r_c, &lhs_c);
+        matrix_sumcheck += (delta_c, &lhs_c);
 
         matrix_sumcheck -=
             &LinearCombination::new("h_2", [(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);

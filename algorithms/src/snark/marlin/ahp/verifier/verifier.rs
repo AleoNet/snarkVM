@@ -120,9 +120,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(2);
-        let r_b = elems[0];
-        let r_c = elems[1];
-        let message = ThirdMessage { r_b, r_c };
+        let delta_b = elems[0];
+        let delta_c = elems[1];
+        let message = ThirdMessage { delta_b, delta_c };
 
         state.third_round_message = Some(message);
         Ok((message, state))

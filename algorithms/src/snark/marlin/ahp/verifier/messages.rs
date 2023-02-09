@@ -44,9 +44,9 @@ pub struct SecondMessage<F> {
 pub struct ThirdMessage<F> {
     /// We only need randomizers for B and C to get a linear combination for {A,B,C}
     /// Randomizer for the h-polynomial for `B`.
-    pub r_b: F,
+    pub delta_b: F,
     /// Randomizer for the h-polynomial for `C`.
-    pub r_c: F,
+    pub delta_c: F,
 }
 
 /// Query set of the verifier.

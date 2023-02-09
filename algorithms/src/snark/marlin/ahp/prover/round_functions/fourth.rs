@@ -35,10 +35,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: prover::State<F, MM>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
-        let verifier::ThirdMessage { r_b, r_c, .. } = verifier_message;
+        let verifier::ThirdMessage { delta_b, delta_c, .. } = verifier_message;
         let [mut lhs_a, mut lhs_b, mut lhs_c] = state.lhs_polynomials.unwrap();
-        lhs_b *= *r_b;
-        lhs_c *= *r_c;
+        lhs_b *= *delta_b;
+        lhs_c *= *delta_c;
 
         lhs_a += &lhs_b;
         lhs_a += &lhs_c;
