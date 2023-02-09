@@ -330,6 +330,8 @@ where
 
     #[allow(clippy::only_used_in_recursion)]
     /// This is the main entrypoint for creating proofs.
+    /// You can find a specification of the prover algorithm in:
+    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         circuit_proving_key: &CircuitProvingKey<E, MM>,
@@ -576,7 +578,9 @@ where
         Ok(proof)
     }
 
-    /// This is the main and only entrypoint for verifying proofs.
+    /// This is the main entrypoint for verifying proofs.
+    /// You can find a specification of the verifier algorithm in:
+    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
