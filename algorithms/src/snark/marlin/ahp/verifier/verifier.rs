@@ -128,7 +128,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         Ok((message, state))
     }
 
-    /// Output the third message and next round state.
+    /// Output the next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,

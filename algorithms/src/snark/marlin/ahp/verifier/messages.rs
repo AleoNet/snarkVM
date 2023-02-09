@@ -23,6 +23,7 @@ use crate::snark::marlin::{witness_label, MarlinMode};
 pub struct FirstMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
+    /// We only need randomizers for B and C to get a linear combination for {A,B,C}
     /// Randomizer for the lincheck for `B`.
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.
@@ -41,6 +42,7 @@ pub struct SecondMessage<F> {
 /// Third message of the verifier.
 #[derive(Copy, Clone, Debug)]
 pub struct ThirdMessage<F> {
+    /// We only need randomizers for B and C to get a linear combination for {A,B,C}
     /// Randomizer for the h-polynomial for `B`.
     pub r_b: F,
     /// Randomizer for the h-polynomial for `C`.
