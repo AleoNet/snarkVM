@@ -25,14 +25,15 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod field {
-    use std::ops::{BitAnd, BitOr};
     use snarkvm_circuit::{Boolean, Itertools};
     use snarkvm_circuit_environment::{Circuit, Environment, FromBits, Inject, Inverse, Mode, SquareRoot};
     use snarkvm_circuit_types::{Compare, DivUnchecked, Double, Equal, Field, Pow, Square, Ternary};
     use snarkvm_console_types_field::{Field as ConsoleField, One, Zero};
+    use std::ops::{BitAnd, BitOr};
 
     #[test]
-    fn add() { // no constraints
+    fn add() {
+        // no constraints
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let b = Field::<Circuit>::new(Mode::Private, ConsoleField::one());
         let _candidate = &a + &b;
@@ -84,7 +85,8 @@ mod field {
     }
 
     #[test]
-    fn double() { // no constraints
+    fn double() {
+        // no constraints
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let _candidate = a.double();
 
@@ -130,12 +132,9 @@ mod field {
             bits.push(Boolean::<Circuit>::new(Mode::Private, false));
         }
         let mut constant = vec![true, true, true, false, false, false, true, true, false, true];
-        let is_lte = !constant.iter().zip_eq(bits).fold(
-            Boolean::constant(false),
-            |rest_is_less, (this, that)| {
-                if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
-            }
-        );
+        let is_lte = !constant.iter().zip_eq(bits).fold(Boolean::constant(false), |rest_is_less, (this, that)| {
+            if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
+        });
         Circuit::assert(is_lte);
 
         // print Circuit to JSON in console
@@ -171,7 +170,8 @@ mod field {
     }
 
     #[test]
-    fn neg() { // no constraints
+    fn neg() {
+        // no constraints
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let _candidate = -&a;
 
@@ -216,7 +216,8 @@ mod field {
     }
 
     #[test]
-    fn square() { // no constraints
+    fn square() {
+        // no constraints
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let _candidate = a.square();
 
@@ -228,7 +229,8 @@ mod field {
     }
 
     #[test]
-    fn square_root() { // no constraints
+    fn square_root() {
+        // no constraints
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let _candidate = a.square_root();
 
@@ -240,7 +242,8 @@ mod field {
     }
 
     #[test]
-    fn sub() { // no constraints
+    fn sub() {
+        // no constraints
         let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
         let b = Field::<Circuit>::new(Mode::Private, ConsoleField::one());
         let _candidate = &a - &b;
