@@ -42,6 +42,7 @@ use snarkvm_circuit_types::{
 };
 
 use core::fmt;
+use snarkvm_circuit_types::environment::CircuitJSON;
 
 type E = Circuit;
 
@@ -403,6 +404,13 @@ impl Display for AleoV0 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
         fmt::Display::fmt(&Circuit, f)
+    }
+}
+
+impl AleoV0 {
+    /// Returns the JSON representation of the constraint system.
+    pub fn json() -> CircuitJSON {
+        E::json()
     }
 }
 
