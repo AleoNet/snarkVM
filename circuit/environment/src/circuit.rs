@@ -324,6 +324,7 @@ impl fmt::Display for Circuit {
 }
 
 impl Circuit {
+    /// Returns the JSON representation of the constraint system.
     pub fn json() -> CircuitJSON {
         CIRCUIT.with(|circuit| {
             let mut constraints_json: Vec<ConstraintJSON> = Vec::new();
