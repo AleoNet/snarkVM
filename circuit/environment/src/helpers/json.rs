@@ -38,7 +38,7 @@ pub struct ConstraintJSON {
 }
 
 /// Wrapper for R1CS LinearCombination in JSON notation.
-pub type LinearCombinationJSON = Vec<(String,String)>;
+pub type LinearCombinationJSON = Vec<(String, String)>;
 
 impl CircuitJSON {
     pub fn new(
@@ -67,17 +67,17 @@ impl ConstraintJSON {
             Variable::Constant(val) => format!("c{}", val),
             Variable::Public(idx, _) => format!("x{}", idx),
             Variable::Private(idx, _) => format!("w{}", idx),
-
-
         }
     }
 
     fn linear_combination_json<F: PrimeField>(lc: &LinearCombination<F>) -> LinearCombinationJSON {
-        let mut lc_json = lc.to_terms().iter().
-            map(|(key, value)|
-                (Self::variable_json(key), format!("{value}"))).collect::<Vec<(String,String)>>();
+        let mut lc_json = lc
+            .to_terms()
+            .iter()
+            .map(|(key, value)| (Self::variable_json(key), format!("{value}")))
+            .collect::<Vec<(String, String)>>();
         //lc_string.push(format!("{:?}", lc.value()));
-        if  ! lc.to_constant().is_zero() {
+        if !lc.to_constant().is_zero() {
             lc_json.push((String::from("ONE"), format!("{}", lc.to_constant())));
         }
         lc_json
