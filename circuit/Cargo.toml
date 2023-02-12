@@ -53,7 +53,7 @@ version = "=0.14.6"
 
 [dependencies.snarkvm-console-types-field]
 path = "../console/types/field"
-version = "0.9.10"
+version = "0.14.6"
 
 [dependencies.serde_json]
 version = "1.0"
