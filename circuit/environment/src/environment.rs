@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{witness_mode, Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
+use crate::{witness_mode, Assignment, CircuitJSON, Inject, LinearCombination, Mode, Variable, R1CS};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
 
@@ -173,4 +173,7 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
 
     /// Clears and initializes an empty environment.
     fn reset();
+
+    /// Returns the JSON representation of the constraint system.
+    fn json() -> CircuitJSON;
 }
