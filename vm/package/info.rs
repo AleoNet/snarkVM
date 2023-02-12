@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
 use snarkvm_circuit::CircuitJSON;
-use snarkvm_synthesizer::CallMetrics;
 
 pub struct InfoRequest<N: Network> {
     program: Program<N>,
@@ -82,19 +82,13 @@ impl<'de, N: Network> Deserialize<'de> for InfoRequest<N> {
 pub struct InfoResponse<N: Network> {
     program_id: ProgramID<N>,
     function_name: Identifier<N>,
-    metrics: CallMetrics<N>,
     json: CircuitJSON,
 }
 
 impl<N: Network> InfoResponse<N> {
     /// Initializes a new print response.
-    pub const fn new(
-        program_id: ProgramID<N>,
-        function_name: Identifier<N>,
-        metrics: CallMetrics<N>,
-        json: CircuitJSON,
-    ) -> Self {
-        Self { program_id, function_name, metrics, json }
+    pub const fn new(program_id: ProgramID<N>, function_name: Identifier<N>, json: CircuitJSON) -> Self {
+        Self { program_id, function_name, json }
     }
 
     /// Returns the program ID.
@@ -105,11 +99,6 @@ impl<N: Network> InfoResponse<N> {
     /// Returns the function name.
     pub const fn function_name(&self) -> &Identifier<N> {
         &self.function_name
-    }
-
-    /// Returns the metrics associated with the function.
-    pub const fn metrics(&self) -> &CallMetrics<N> {
-        &self.metrics
     }
 
     /// Returns the JSON representation of the constraint system for function.
@@ -124,7 +113,6 @@ impl<N: Network> Serialize for InfoResponse<N> {
         let mut response = serializer.serialize_struct("InfoResponse", 4)?;
         response.serialize_field("program_id", &self.program_id)?;
         response.serialize_field("function_name", &self.function_name)?;
-        response.serialize_field("metrics", &self.metrics)?;
         response.serialize_field("json", &self.json)?;
         response.end()
     }
@@ -141,8 +129,6 @@ impl<'de, N: Network> Deserialize<'de> for InfoResponse<N> {
             serde_json::from_value(response["program_id"].take()).map_err(de::Error::custom)?,
             // Retrieve the function name.
             serde_json::from_value(response["function_name"].take()).map_err(de::Error::custom)?,
-            // Retrieve the metrics.
-            serde_json::from_value(response["metrics"].take()).map_err(de::Error::custom)?,
             // Retrieve the json.
             serde_json::from_value(response["json"].take()).map_err(de::Error::custom)?,
         ))
@@ -154,7 +140,7 @@ impl<N: Network> Package<N> {
     pub fn info<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
-    ) -> Result<Vec<(Identifier<N>, CallMetrics<N>, CircuitJSON)>> {
+    ) -> Result<Vec<(Identifier<N>, CircuitJSON)>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -196,11 +182,11 @@ impl<N: Network> Package<N> {
                         response.function_name()
                     );
                     // Insert the information into `results`.
-                    results.push((*function_name, response.metrics, response.json));
+                    results.push((*function_name, response.json));
                 }
                 None => {
-                    let (metrics, json) = process.info::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
-                    results.push((*function_name, metrics, json));
+                    let json = process.info::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
+                    results.push((*function_name, json));
                 }
             }
         }

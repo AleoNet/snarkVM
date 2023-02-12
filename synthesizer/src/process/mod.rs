@@ -44,6 +44,7 @@ use std::sync::Arc;
 #[cfg(test)]
 use std::collections::HashMap;
 
+use circuit::CircuitJSON;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
@@ -273,6 +274,18 @@ impl<N: Network> Process<N> {
     ) -> Result<()> {
         // Synthesize the proving and verifying key.
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
+    }
+
+    /// Returns information about the given program.
+    #[inline]
+    pub fn info<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        rng: &mut R,
+    ) -> Result<CircuitJSON> {
+        // Return the information.
+        self.get_stack(program_id)?.info::<A, R>(function_name, rng)
     }
 }
 

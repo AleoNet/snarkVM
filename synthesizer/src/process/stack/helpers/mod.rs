@@ -16,6 +16,7 @@
 
 use super::*;
 
+mod info;
 mod initialize;
 mod matches;
 mod sample;
