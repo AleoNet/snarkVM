@@ -315,17 +315,9 @@ impl Environment for Circuit {
             assert_eq!(0, (**circuit).borrow().num_constraints());
         });
     }
-}
 
-impl fmt::Display for Circuit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        CIRCUIT.with(|circuit| write!(f, "{}", (**circuit).borrow()))
-    }
-}
-
-impl Circuit {
     /// Returns the JSON representation of the constraint system.
-    pub fn json() -> CircuitJSON {
+    fn json() -> CircuitJSON {
         CIRCUIT.with(|circuit| {
             let mut constraints_json: Vec<ConstraintJSON> = Vec::new();
             for constraint in circuit.borrow().to_constraints() {
@@ -343,6 +335,12 @@ impl Circuit {
                 constraints_json,
             )
         })
+    }
+}
+
+impl fmt::Display for Circuit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        CIRCUIT.with(|circuit| write!(f, "{}", (**circuit).borrow()))
     }
 }
 

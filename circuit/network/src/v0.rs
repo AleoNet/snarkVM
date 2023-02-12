@@ -436,6 +436,11 @@ impl Environment for AleoV0 {
     fn reset() {
         E::reset()
     }
+
+    /// Returns the JSON representation of the constraint system.
+    fn json() -> CircuitJSON {
+        E::json()
+    }
 }
 
 impl Display for AleoV0 {
