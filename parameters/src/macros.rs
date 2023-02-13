@@ -33,60 +33,70 @@ macro_rules! impl_store_and_remote_fetch {
     () => {
         #[cfg(not(feature = "wasm"))]
         fn store_bytes(buffer: &[u8], file_path: &std::path::Path) -> Result<(), $crate::errors::ParameterError> {
-            use snarkvm_utilities::Write;
-
-            #[cfg(not(feature = "no_std_out"))]
+            #[cfg(not(target_vendor = "fortanix"))]
             {
-                use colored::*;
-                let output = format!("{:>15} - Storing file in {:?}", "Installation", file_path);
-                println!("{}", output.dimmed());
-            }
+                use snarkvm_utilities::Write;
 
-            // Ensure the folders up to the file path all exist.
-            let mut directory_path = file_path.to_path_buf();
-            directory_path.pop();
-            let _ = std::fs::create_dir_all(directory_path)?;
+                #[cfg(not(feature = "no_std_out"))]
+                {
+                    use colored::*;
+                    let output = format!("{:>15} - Storing file in {:?}", "Installation", file_path);
+                    println!("{}", output.dimmed());
+                }
 
-            // Attempt to write the parameter buffer to a file.
-            match std::fs::File::create(file_path) {
-                Ok(mut file) => file.write_all(&buffer)?,
-                Err(error) => eprintln!("{}", error),
+                // Ensure the folders up to the file path all exist.
+                let mut directory_path = file_path.to_path_buf();
+                directory_path.pop();
+                let _ = std::fs::create_dir_all(directory_path)?;
+
+                // Attempt to write the parameter buffer to a file.
+                match std::fs::File::create(file_path) {
+                    Ok(mut file) => file.write_all(&buffer)?,
+                    Err(error) => eprintln!("{}", error),
+                }
+                Ok(())
             }
+            #[cfg(target_vendor = "fortanix")]
             Ok(())
         }
 
         #[cfg(not(feature = "wasm"))]
         fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
-            let mut easy = curl::easy::Easy::new();
-            easy.follow_location(true)?;
-            easy.url(url)?;
-
-            #[cfg(not(feature = "no_std_out"))]
+            #[cfg(not(target_vendor = "fortanix"))]
             {
-                use colored::*;
+                let mut easy = curl::easy::Easy::new();
+                easy.follow_location(true)?;
+                easy.url(url)?;
 
-                let output = format!("{:>15} - Downloading \"{}\"", "Installation", url);
-                println!("{}", output.dimmed());
+                #[cfg(not(feature = "no_std_out"))]
+                {
+                    use colored::*;
 
-                easy.progress(true)?;
-                easy.progress_function(|total_download, current_download, _, _| {
-                    let percent = (current_download / total_download) * 100.0;
-                    let size_in_megabytes = total_download as u64 / 1_048_576;
-                    let output = format!(
-                        "\r{:>15} - {:.2}% complete ({:#} MB total)",
-                        "Installation", percent, size_in_megabytes
-                    );
-                    print!("{}", output.dimmed());
-                    true
+                    let output = format!("{:>15} - Downloading \"{}\"", "Installation", url);
+                    println!("{}", output.dimmed());
+
+                    easy.progress(true)?;
+                    easy.progress_function(|total_download, current_download, _, _| {
+                        let percent = (current_download / total_download) * 100.0;
+                        let size_in_megabytes = total_download as u64 / 1_048_576;
+                        let output = format!(
+                            "\r{:>15} - {:.2}% complete ({:#} MB total)",
+                            "Installation", percent, size_in_megabytes
+                        );
+                        print!("{}", output.dimmed());
+                        true
+                    })?;
+                }
+
+                let mut transfer = easy.transfer();
+                transfer.write_function(|data| {
+                    buffer.extend_from_slice(data);
+                    Ok(data.len())
                 })?;
+                Ok(transfer.perform()?)
             }
-
-            let mut transfer = easy.transfer();
-            transfer.write_function(|data| {
-                buffer.extend_from_slice(data);
-                Ok(data.len())
-            })?;
-            Ok(transfer.perform()?)
+            #[cfg(target_vendor = "fortanix")]
+            Ok(())
         }
 
         #[cfg(feature = "wasm")]
@@ -155,6 +165,7 @@ macro_rules! impl_load_bytes_logic_remote {
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
                     let mut buffer = vec![];
+
                     Self::remote_fetch(&mut buffer, &url)?;
 
                     // Ensure the checksum matches.
@@ -162,7 +173,7 @@ macro_rules! impl_load_bytes_logic_remote {
                     if $expected_checksum != candidate_checksum {
                         return checksum_error!($expected_checksum, candidate_checksum)
                     }
-
+                    
                     match Self::store_bytes(&buffer, &file_path) {
                         Ok(()) => buffer,
                         Err(_) => {
@@ -284,7 +295,7 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
-            //impl_store_and_remote_fetch!();
+            impl_store_and_remote_fetch!();
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
@@ -324,7 +335,7 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
-            // impl_store_and_remote_fetch!();
+            impl_store_and_remote_fetch!();
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));

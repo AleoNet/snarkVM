@@ -15,19 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    BlockStorage,
-    BlockStore,
-    Execution,
-    Fee,
-    Input,
-    Output,
-    Program,
-    Proof,
-    ProvingKey,
-    Stack,
-    Transaction,
-    Transition,
-    VerifyingKey,
+    BlockStorage, BlockStore, Execution, Fee, Input, Output, Program, Proof, ProvingKey, Stack, Transaction,
+    Transition, VerifyingKey,
 };
 use console::{
     network::prelude::*,
@@ -58,12 +47,14 @@ impl<N: Network, B: BlockStorage<N>> From<&BlockStore<N, B>> for Query<N, B> {
     }
 }
 
+#[cfg(not(target_vendor = "fortanix"))]
 impl<N: Network, B: BlockStorage<N>> From<reqwest::Url> for Query<N, B> {
     fn from(url: reqwest::Url) -> Self {
         Self::REST(url.to_string())
     }
 }
 
+#[cfg(not(target_vendor = "fortanix"))]
 impl<N: Network, B: BlockStorage<N>> From<&reqwest::Url> for Query<N, B> {
     fn from(url: &reqwest::Url) -> Self {
         Self::REST(url.to_string())
@@ -95,10 +86,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
+            _ => {
+                bail!("Unsupported request")
+            }
+            // Self::REST(url) => match N::ID {
+            //     3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
+            //     _ => bail!("Unsupported network ID in inclusion query"),
+            // },
         }
     }
 
@@ -106,10 +100,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn current_state_root(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
+            _ => {
+                bail!("Unsupported request")
+            }
+            // Self::REST(url) => match N::ID {
+            //     3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
+            //     _ => bail!("Unsupported network ID in inclusion query"),
+            // },
         }
     }
 
@@ -117,18 +114,21 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
+            _ => {
+                bail!("Unsupported request")
+            }
+            // Self::REST(url) => match N::ID {
+            //     3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
+            //     _ => bail!("Unsupported network ID in inclusion query"),
+            // },
         }
     }
-
-    /// Performs a GET request to the given URL.
-    fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
-        let response = reqwest::blocking::get(url)?;
-        if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }
-    }
+    // #[cfg(not(target_vendor = "fortanix"))]
+    // /// Performs a GET request to the given URL.
+    // fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
+    //     let response = reqwest::blocking::get(url)?;
+    //     if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }
+    // }
 }
 
 #[derive(Clone, Debug)]
