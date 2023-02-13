@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -99,7 +99,7 @@ mod tests {
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::new(mode_b, second);
 
-            let name = format!("Ternary({}): if ({}) then ({}) else ({})", flag, mode_condition, mode_a, mode_b);
+            let name = format!("Ternary({flag}): if ({mode_condition}) then ({mode_a}) else ({mode_b})");
             Circuit::scope(name, || {
                 let candidate = Integer::ternary(&condition, &a, &b);
                 assert_eq!(expected, candidate.eject_value());

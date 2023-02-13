@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ impl<N: Network> VerifyingKey<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
                 }
 
                 is_valid
@@ -69,7 +69,7 @@ impl<N: Network> VerifyingKey<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
                 }
 
                 is_valid

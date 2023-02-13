@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -118,7 +118,7 @@ mod tests {
                     let a = Boolean::<Circuit>::new(mode_a, first);
                     let b = Boolean::<Circuit>::new(mode_b, second);
 
-                    let name = format!("{} ? {} : {}", mode_condition, mode_a, mode_b);
+                    let name = format!("{mode_condition} ? {mode_a} : {mode_b}");
                     check_ternary(
                         &name,
                         if flag { first } else { second },

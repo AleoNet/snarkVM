@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -190,22 +190,22 @@ mod tests {
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
 
-            let name = format!("Equal: a == b {}", i);
+            let name = format!("Equal: a == b {i}");
             check_is_equal(&name, first == second, &a, &b);
 
-            let name = format!("Not Equal: a != b {}", i);
+            let name = format!("Not Equal: a != b {i}");
             check_is_not_equal(&name, first != second, &a, &b);
 
             // Check first is equal to first.
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, first);
-            let name = format!("{} == {}", first, first);
+            let name = format!("{first} == {first}");
             check_is_equal(&name, true, &a, &b);
 
             // Check second is equal to second.
             let a = Field::<Circuit>::new(mode_a, second);
             let b = Field::<Circuit>::new(mode_b, second);
-            let name = format!("{} == {}", second, second);
+            let name = format!("{second} == {second}");
             check_is_equal(&name, true, &a, &b);
         }
     }

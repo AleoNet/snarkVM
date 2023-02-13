@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -242,6 +242,11 @@ mod tests {
 
         // Ensure the deployment is valid.
         assert!(vm.verify_deployment(&deployment));
+
+        // Ensure that deserialization doesn't break the transaction verification.
+        let serialized_deployment = deployment.to_string();
+        let deployment_transaction: Deployment<CurrentNetwork> = serde_json::from_str(&serialized_deployment).unwrap();
+        assert!(vm.verify_deployment(&deployment_transaction));
     }
 
     #[test]
@@ -260,6 +265,12 @@ mod tests {
                 assert!(Inclusion::verify_execution(&execution).is_ok());
                 // Verify the execution.
                 assert!(vm.verify_execution(&execution));
+
+                // Ensure that deserialization doesn't break the transaction verification.
+                let serialized_execution = execution.to_string();
+                let execution_transaction: Execution<CurrentNetwork> =
+                    serde_json::from_str(&serialized_execution).unwrap();
+                assert!(vm.verify_execution(&execution_transaction));
             }
             _ => panic!("Expected an execution transaction"),
         }
@@ -325,6 +336,13 @@ mod tests {
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();
 
+        // Fetch the unspent records.
+        let records = deployment_block.records().collect::<indexmap::IndexMap<_, _>>();
+
+        // Prepare the additional fee.
+        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+        let additional_fee = (credits, 10);
+
         // Authorize.
         let authorization = vm
             .authorize(
@@ -342,7 +360,15 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+        let transaction = Transaction::execute_authorization_with_additional_fee(
+            &vm,
+            &caller_private_key,
+            authorization,
+            Some(additional_fee),
+            None,
+            rng,
+        )
+        .unwrap();
 
         // Verify.
         assert!(vm.verify(&transaction));

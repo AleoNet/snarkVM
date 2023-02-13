@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.9.11"
+version = "0.9.12"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -49,28 +49,28 @@ timer = [ "aleo-std/timer" ]
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "0.9.11"
+version = "0.9.12"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.9.11"
+version = "0.9.12"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.9.11"
+version = "0.9.12"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.11"
+version = "0.9.12"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.11"
+version = "0.9.12"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.11"
+version = "0.9.12"
 default-features = false
 
 [dependencies.aleo-std]
@@ -78,7 +78,7 @@ version = "0.1.15"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.68"
+version = "1.0.69"
 
 [dependencies.blake2]
 version = "0.10"
@@ -116,6 +116,7 @@ version = "1.0"
 
 [dependencies.serde_json]
 version = "1.0"
+features = [ "preserve_order" ]
 
 [dependencies.tracing]
 version = "0.1"

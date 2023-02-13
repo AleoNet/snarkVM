@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -40,6 +40,12 @@ impl<N: Network> RegisterTypes<N> {
 
         // Step 3. Check the outputs are well-formed.
         for output in closure.outputs() {
+            // Ensure the closure output register is not a record.
+            ensure!(
+                !matches!(output.register_type(), RegisterType::Record(..)),
+                "Closure outputs do not support records"
+            );
+
             // Check the output register type.
             register_types.check_output(stack, output.register(), output.register_type())?;
         }

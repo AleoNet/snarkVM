@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -94,7 +94,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             for flag in [true, false] {
-                let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
+                let name = format!("{flag} ? {mode_a} : {mode_b}, {i}");
 
                 let first = Uniform::rand(&mut rng);
                 let second = Uniform::rand(&mut rng);

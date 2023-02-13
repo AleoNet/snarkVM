@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -333,7 +333,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Find the transition that contains the commitment.
         let transition_id = self.transition_store().find_transition_id(commitment)?;
         // Find the transaction that contains the transition.
-        let transaction_id = match self.transaction_store().find_transaction_id(&transition_id)? {
+        let transaction_id = match self.transaction_store().find_transaction_id_from_transition_id(&transition_id)? {
             Some(transaction_id) => transaction_id,
             None => bail!("The transaction ID for commitment '{commitment}' is missing in storage"),
         };

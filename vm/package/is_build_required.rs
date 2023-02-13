@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -90,7 +90,7 @@ mod tests {
 
         // Write the program string to a file in the temporary directory.
         let path = directory.join("main.aleo");
-        let mut file = File::create(&path).unwrap();
+        let mut file = File::create(path).unwrap();
         file.write_all(program_string.as_bytes()).unwrap();
 
         // Create the manifest file.
@@ -98,7 +98,7 @@ mod tests {
 
         // Create the build directory.
         let build_directory = directory.join("build");
-        std::fs::create_dir_all(&build_directory).unwrap();
+        std::fs::create_dir_all(build_directory).unwrap();
 
         // Open the package at the temporary directory.
         Package::<Testnet3>::open(&directory)
@@ -106,7 +106,7 @@ mod tests {
 
     fn program_with_id(id: &str) -> String {
         format!(
-            r"program {};
+            r"program {id};
 
 record token:
     owner as address.private;
@@ -116,8 +116,7 @@ record token:
 function compute:
     input r0 as token.record;
     add.w r0.token_amount r0.token_amount into r1;
-    output r1 as u64.private;",
-            id
+    output r1 as u64.private;"
         )
     }
 

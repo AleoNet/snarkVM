@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -133,7 +133,7 @@ impl<N: Network> Display for Program<N> {
         if !self.imports.is_empty() {
             // Print the imports.
             for import in self.imports.values() {
-                program.push_str(&format!("{}\n", import));
+                program.push_str(&format!("{import}\n"));
             }
 
             // Print a newline.
@@ -148,35 +148,35 @@ impl<N: Network> Display for Program<N> {
                 ProgramDefinition::Mapping => match self.mappings.get(identifier) {
                     Some(mapping) => program.push_str(&format!("{mapping}\n\n")),
                     None => {
-                        eprintln!("Mapping '{}' is not defined.", identifier);
+                        eprintln!("Mapping '{identifier}' is not defined.");
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Struct => match self.structs.get(identifier) {
                     Some(struct_) => program.push_str(&format!("{struct_}\n\n")),
                     None => {
-                        eprintln!("Struct '{}' is not defined.", identifier);
+                        eprintln!("Struct '{identifier}' is not defined.");
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Record => match self.records.get(identifier) {
                     Some(record) => program.push_str(&format!("{record}\n\n")),
                     None => {
-                        eprintln!("Record '{}' is not defined.", identifier);
+                        eprintln!("Record '{identifier}' is not defined.");
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Closure => match self.closures.get(identifier) {
                     Some(closure) => program.push_str(&format!("{closure}\n\n")),
                     None => {
-                        eprintln!("Closure '{}' is not defined.", identifier);
+                        eprintln!("Closure '{identifier}' is not defined.");
                         return Err(fmt::Error);
                     }
                 },
                 ProgramDefinition::Function => match self.functions.get(identifier) {
                     Some(function) => program.push_str(&format!("{function}\n\n")),
                     None => {
-                        eprintln!("Function '{}' is not defined.", identifier);
+                        eprintln!("Function '{identifier}' is not defined.");
                         return Err(fmt::Error);
                     }
                 },

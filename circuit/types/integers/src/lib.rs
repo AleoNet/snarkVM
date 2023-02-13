@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -266,15 +266,15 @@ mod tests {
     fn check_display<I: IntegerType>() {
         // Constant
         let candidate = Integer::<Circuit, I>::new(Mode::Constant, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.constant", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.constant", I::type_name()), format!("{candidate}"));
 
         // Public
         let candidate = Integer::<Circuit, I>::new(Mode::Public, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.public", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.public", I::type_name()), format!("{candidate}"));
 
         // Private
         let candidate = Integer::<Circuit, I>::new(Mode::Private, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.private", I::type_name()), format!("{candidate}"));
     }
 
     // u8

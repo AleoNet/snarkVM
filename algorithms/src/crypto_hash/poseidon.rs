@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -302,10 +302,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
                 debug_assert_eq!(
                     chunk.len(),
                     self.state.rate_state[range.clone()].len(),
-                    "failed with squeeze {} at rate {} and rate_start {}",
-                    output_size,
-                    RATE,
-                    rate_start
+                    "failed with squeeze {output_size} at rate {RATE} and rate_start {rate_start}"
                 );
                 chunk.copy_from_slice(&self.state.rate_state[range]);
                 // Are we in the last chunk?
