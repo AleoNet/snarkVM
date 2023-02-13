@@ -103,7 +103,9 @@ macro_rules! insert_key {
 }
 
 // Inclusion
+#[cfg(not(target_vendor = "fortanix"))]
 impl_remote!(InclusionProver, REMOTE_URL, "resources/", "inclusion", "prover");
+#[cfg(not(target_vendor = "fortanix"))]
 impl_remote!(InclusionVerifier, REMOTE_URL, "resources/", "inclusion", "verifier");
 
 /// The function name for the inclusion circuit.

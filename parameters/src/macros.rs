@@ -128,7 +128,8 @@ macro_rules! impl_load_bytes_logic_local {
 macro_rules! impl_load_bytes_logic_remote {
     ($remote_url: expr, $local_dir: expr, $filename: expr, $metadata: expr, $expected_checksum: expr, $expected_size: expr) => {
         // Compose the correct file path for the parameter file.
-        let mut file_path = aleo_std::aleo_dir();
+        // TODO: handle this. In sgx you cannot access the file system
+        let mut file_path = std::path::PathBuf::from(r".");
         file_path.push($local_dir);
         file_path.push($filename);
 
@@ -283,7 +284,7 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
-            impl_store_and_remote_fetch!();
+            //impl_store_and_remote_fetch!();
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
@@ -323,7 +324,7 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
-            impl_store_and_remote_fetch!();
+            // impl_store_and_remote_fetch!();
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));

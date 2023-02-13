@@ -37,7 +37,6 @@ checksum = "a3a0b63a4bc771020ff7522ca7458b60ac30e8e71a6e1382765b94b1a278b78d"
 dependencies = [
  "aleo-std-cpu",
  "aleo-std-profiler",
- "aleo-std-storage",
  "aleo-std-time",
  "aleo-std-timed",
  "aleo-std-timer",
@@ -54,15 +53,6 @@ name = "aleo-std-profiler"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b007e46c4d064a62d41fe58ab6a15af809beb0e739ff4086acabc83014aa3a5"
-
-[[package]]
-name = "aleo-std-storage"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "503e2538d5158b869bc9c30c9754f9a23f4210987008014a9f118db99f22c217"
-dependencies = [
- "dirs",
-]
 
 [[package]]
 name = "aleo-std-time"

@@ -21,17 +21,20 @@
 #[macro_use]
 extern crate alloc;
 
+#[cfg(not(target_vendor = "fortanix"))]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate thiserror;
 
+#[cfg(not(target_vendor = "fortanix"))]
 #[macro_use]
 pub mod macros;
 
 pub mod errors;
 pub use errors::*;
 
+#[cfg(not(target_vendor = "fortanix"))]
 pub mod testnet3;
 
 pub mod prelude {
