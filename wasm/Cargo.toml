@@ -44,6 +44,13 @@ version = "0.9.12"
 optional = true
 default-features = false
 
+[dependencies.snarkvm-synthesizer]
+path = "../synthesizer"
+version = "0.9.11"
+features = ["wasm"]
+optional = true
+default-features = false
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.9.12"
@@ -72,13 +79,15 @@ version = "0.3.34"
 
 [features]
 default = [ "full", "parallel" ]
-full = [ "console", "curves", "fields", "utilities" ]
+full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
 parallel = [
   "snarkvm-console/parallel",
   "snarkvm-fields/parallel",
+  "snarkvm-synthesizer/parallel",
   "snarkvm-utilities/parallel"
 ]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
+synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
