@@ -32,6 +32,7 @@ macro_rules! checksum_error {
 macro_rules! impl_store_and_remote_fetch {
     () => {
         #[cfg(not(feature = "wasm"))]
+        #[allow(unused_variables)]
         fn store_bytes(buffer: &[u8], file_path: &std::path::Path) -> Result<(), $crate::errors::ParameterError> {
             #[cfg(not(target_vendor = "fortanix"))]
             {
@@ -61,6 +62,7 @@ macro_rules! impl_store_and_remote_fetch {
         }
 
         #[cfg(not(feature = "wasm"))]
+        #[allow(unused_mut, unused_variables)]
         fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
             #[cfg(not(target_vendor = "fortanix"))]
             {
@@ -173,7 +175,7 @@ macro_rules! impl_load_bytes_logic_remote {
                     if $expected_checksum != candidate_checksum {
                         return checksum_error!($expected_checksum, candidate_checksum)
                     }
-                    
+
                     match Self::store_bytes(&buffer, &file_path) {
                         Ok(()) => buffer,
                         Err(_) => {

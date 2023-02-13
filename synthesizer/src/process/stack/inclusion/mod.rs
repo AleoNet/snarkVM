@@ -15,8 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    BlockStorage, BlockStore, Execution, Fee, Input, Output, Program, Proof, ProvingKey, Stack, Transaction,
-    Transition, VerifyingKey,
+    BlockStorage,
+    BlockStore,
+    Execution,
+    Fee,
+    Input,
+    Output,
+    Program,
+    Proof,
+    ProvingKey,
+    Stack,
+    Transaction,
+    Transition,
+    VerifyingKey,
 };
 use console::{
     network::prelude::*,

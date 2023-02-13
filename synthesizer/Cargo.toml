@@ -84,9 +84,8 @@ version = "1.0.68"
 version = "0.10"
 default-features = false
 
-[dependencies.colored]
+[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.colored]
 version = "2"
-optional = true
 
 [dependencies.indexmap]
 version = "1.9"
@@ -108,10 +107,9 @@ version = "0.8"
 version = "1"
 optional = true
 
-[dependencies.reqwest]
+[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.reqwest]
 version = "0.11"
 features = [ "blocking", "json" ]
-optional = true
 
 [dependencies.serde]
 version = "1.0"
