@@ -35,7 +35,7 @@ harness = false
 required-features = [ "setup" ]
 
 [features]
-default = [ "reqwest" ]
+default = [ "request" ]
 parallel = [
   "rayon",
   "snarkvm-fields/parallel",
@@ -45,6 +45,7 @@ aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
+request = ["reqwest"] # reqwest cannot compile in fortanix, so when using fortanix target use default-features = false
 
 [dependencies.circuit]
 package = "snarkvm-circuit"

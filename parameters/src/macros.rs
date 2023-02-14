@@ -140,7 +140,10 @@ macro_rules! impl_load_bytes_logic_local {
 macro_rules! impl_load_bytes_logic_remote {
     ($remote_url: expr, $local_dir: expr, $filename: expr, $metadata: expr, $expected_checksum: expr, $expected_size: expr) => {
         // Compose the correct file path for the parameter file.
-        // TODO: handle this. In sgx you cannot access the file system
+        #[cfg(not(target_vendor = "fortanix"))]
+        let mut file_path = aleo_std_storage::aleo_dir();
+        // In sgx you cannot access the file system
+        #[cfg(target_vendor = "fortanix")]
         let mut file_path = std::path::PathBuf::from(r".");
         file_path.push($local_dir);
         file_path.push($filename);
