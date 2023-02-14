@@ -149,7 +149,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(alpha, &mul_domain);
             fft::Evaluations::from_vec_and_domain(r_alpha_x_evals, mul_domain)
         };
-        multiplier.add_evaluation(r_alpha_x_evals, "r_alpha_x");
+        multiplier.add_evaluation(r_alpha_x_evals, "r_alpha_x"); // we call this u_H(\alpha,X) in the documentation
         let mut lhs = multiplier
             .element_wise_arithmetic_4_over_domain(mul_domain, ["r_alpha_x", "summed_z_m", "z", "t"], |a, b, c, d| {
                 a * b - c * d
