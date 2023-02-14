@@ -211,7 +211,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
                     // Multiply by linear combination coefficient.
-                    cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
+                    if *combiner != F::one() {
+                        cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
+                    }
 
                     assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
                     end_timer!(summed_z_m_poly_time);
