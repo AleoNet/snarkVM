@@ -18,8 +18,8 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
-    pub fn is_valid(&self, transaction: &Transaction<N>) -> bool {
-        match self.verify(transaction) {
+    pub fn verify_transaction(&self, transaction: &Transaction<N>) -> bool {
+        match self.check_transaction(transaction) {
             Ok(_) => true,
             Err(error) => {
                 warn!("{error}");
@@ -29,8 +29,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Returns `true` if the deployment is valid.
-    pub fn is_valid_deployment(&self, deployment: &Deployment<N>) -> bool {
-        match self.verify_deployment(deployment) {
+    pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
+        match self.check_deployment(deployment) {
             Ok(_) => true,
             Err(error) => {
                 warn!("{error}");
@@ -40,8 +40,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Returns `true` if the execution is valid.
-    pub fn is_valid_execution(&self, execution: &Execution<N>) -> bool {
-        match self.verify_execution(execution) {
+    pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
+        match self.check_execution(execution) {
             Ok(_) => true,
             Err(error) => {
                 warn!("{error}");
@@ -51,8 +51,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Returns `true` if the fee is valid.
-    pub fn is_valid_fee(&self, fee: &Fee<N>) -> bool {
-        match self.verify_fee(fee) {
+    pub fn verify_fee(&self, fee: &Fee<N>) -> bool {
+        match self.check_fee(fee) {
             Ok(_) => true,
             Err(error) => {
                 warn!("{error}");
@@ -61,9 +61,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    /// Verifies the transaction in the VM.
+    /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
-    pub fn verify(&self, transaction: &Transaction<N>) -> Result<()> {
+    pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
         let timer = timer!("VM::verify");
 
         // Compute the Merkle root of the transaction.
@@ -113,10 +113,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Invalid transaction size (deployment): {error}");
                 }
                 // Verify the deployment.
-                self.verify_deployment(deployment)?;
+                self.check_deployment(deployment)?;
 
                 // Verify the fee.
-                self.verify_fee(fee)?;
+                self.check_fee(fee)?;
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
@@ -126,11 +126,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Verify the additional fee, if it exists.
                 if let Some(additional_fee) = additional_fee {
-                    self.verify_fee(additional_fee)?
+                    self.check_fee(additional_fee)?
                 }
 
                 // Verify the execution.
-                self.verify_execution(execution)?;
+                self.check_execution(execution)?;
             }
         };
 
@@ -141,9 +141,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         Ok(())
     }
 
-    /// Verifies the given deployment.
+    /// Verifies the given deployment. On failure, returns an error.
     #[inline]
-    fn verify_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
+    fn check_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
         let timer = timer!("VM::verify_deployment");
 
         // Compute the core logic.
@@ -174,9 +174,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    /// Verifies the given execution.
+    /// Verifies the given execution. On failure, returns an error.
     #[inline]
-    fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
+    fn check_execution(&self, execution: &Execution<N>) -> Result<()> {
         let timer = timer!("VM::verify_execution");
 
         // Verify the execution.
@@ -200,9 +200,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    /// Verifies the given fee.
+    /// Verifies the given fee. On failure, returns an error.
     #[inline]
-    fn verify_fee(&self, fee: &Fee<N>) -> Result<()> {
+    fn check_fee(&self, fee: &Fee<N>) -> Result<()> {
         let timer = timer!("VM::verify_fee");
 
         // Verify the fee.
@@ -247,14 +247,14 @@ mod tests {
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.verify(&deployment_transaction).is_ok());
-        assert!(vm.is_valid(&deployment_transaction));
+        assert!(vm.check_transaction(&deployment_transaction).is_ok());
+        assert!(vm.verify_transaction(&deployment_transaction));
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.verify(&execution_transaction).is_ok());
-        assert!(vm.is_valid(&execution_transaction));
+        assert!(vm.check_transaction(&execution_transaction).is_ok());
+        assert!(vm.verify_transaction(&execution_transaction));
     }
 
     #[test]
@@ -269,14 +269,14 @@ mod tests {
         let deployment = vm.deploy(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
-        assert!(vm.verify_deployment(&deployment).is_ok());
-        assert!(vm.is_valid_deployment(&deployment));
+        assert!(vm.check_deployment(&deployment).is_ok());
+        assert!(vm.verify_deployment(&deployment));
 
         // Ensure that deserialization doesn't break the transaction verification.
         let serialized_deployment = deployment.to_string();
         let deployment_transaction: Deployment<CurrentNetwork> = serde_json::from_str(&serialized_deployment).unwrap();
-        assert!(vm.verify_deployment(&deployment_transaction).is_ok());
-        assert!(vm.is_valid_deployment(&deployment_transaction));
+        assert!(vm.check_deployment(&deployment_transaction).is_ok());
+        assert!(vm.verify_deployment(&deployment_transaction));
     }
 
     #[test]
@@ -294,15 +294,15 @@ mod tests {
                 // Verify the inclusion.
                 assert!(Inclusion::verify_execution(&execution).is_ok());
                 // Verify the execution.
-                assert!(vm.verify_execution(&execution).is_ok());
-                assert!(vm.is_valid_execution(&execution));
+                assert!(vm.check_execution(&execution).is_ok());
+                assert!(vm.verify_execution(&execution));
 
                 // Ensure that deserialization doesn't break the transaction verification.
                 let serialized_execution = execution.to_string();
                 let execution_transaction: Execution<CurrentNetwork> =
                     serde_json::from_str(&serialized_execution).unwrap();
-                assert!(vm.verify_execution(&execution_transaction).is_ok());
-                assert!(vm.is_valid_execution(&execution_transaction));
+                assert!(vm.check_execution(&execution_transaction).is_ok());
+                assert!(vm.verify_execution(&execution_transaction));
             }
             _ => panic!("Expected an execution transaction"),
         }
@@ -403,7 +403,7 @@ mod tests {
         .unwrap();
 
         // Verify.
-        assert!(vm.verify(&transaction).is_ok());
-        assert!(vm.is_valid(&transaction));
+        assert!(vm.check_transaction(&transaction).is_ok());
+        assert!(vm.verify_transaction(&transaction));
     }
 }
