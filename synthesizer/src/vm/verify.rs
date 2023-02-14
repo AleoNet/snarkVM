@@ -187,16 +187,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
                 Ok(true) => Ok(()),
-                Ok(false) => {
-                    bail!("Execution verification failed: global state root not found");
-                }
-                Err(error) => {
-                    bail!("Execution verification failed: {error}");
-                }
+                Ok(false) => bail!("Execution verification failed: global state root not found"),
+                Err(error) => bail!("Execution verification failed: {error}"),
             },
-            Err(error) => {
-                bail!("Execution verification failed: {error}");
-            }
+            Err(error) => bail!("Execution verification failed: {error}"),
         }
     }
 
@@ -213,16 +207,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
                 Ok(true) => Ok(()),
-                Ok(false) => {
-                    bail!("Fee verification failed: global state root not found");
-                }
-                Err(error) => {
-                    bail!("Fee verification failed: {error}");
-                }
+                Ok(false) => bail!("Fee verification failed: global state root not found"),
+                Err(error) => bail!("Fee verification failed: {error}"),
             },
-            Err(error) => {
-                bail!("Fee verification failed: {error}");
-            }
+            Err(error) => bail!("Fee verification failed: {error}"),
         }
     }
 }
