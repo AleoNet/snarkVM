@@ -216,11 +216,11 @@ mod tests {
 
             // Construct the output registers.
             let output_registers = vec![
-                console::Register::Locator(5),
-                console::Register::Locator(6),
-                console::Register::Locator(7),
-                console::Register::Locator(8),
-                console::Register::Locator(9),
+                Some(console::Register::Locator(5)),
+                Some(console::Register::Locator(6)),
+                Some(console::Register::Locator(7)),
+                Some(console::Register::Locator(8)),
+                Some(console::Register::Locator(9)),
             ];
 
             // Construct a network ID.
