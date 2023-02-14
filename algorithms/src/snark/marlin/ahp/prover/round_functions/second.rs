@@ -189,8 +189,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         assert!(z_b.degree() < constraint_domain.size());
                     }
 
-                    // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
-                    // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
+                    // we want to calculate batch_combiner_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
+                    // we rewrite this as  batch_combiner_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
                     // This is better since it reduces the number of required
                     // multiplications by `constraint_domain.size()`.
                     let mut summed_z_m = {

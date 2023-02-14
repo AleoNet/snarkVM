@@ -69,7 +69,7 @@ impl<F: PrimeField> QuerySet<F> {
         let gamma = state.gamma.unwrap();
         // For the first linear combination
         // Lincheck sumcheck test:
-        //   s(beta) + r(alpha, beta) * (sum_M eta_M z_M(beta)) - t(beta) * z(beta)
+        //   s(beta) + r(alpha, beta) * (sum_i batch_combiner_i (sum_M eta_M z_M(beta))) - t(beta) * z(beta)
         // = h_1(beta) * v_H(beta) + beta * g_1(beta)
         //
         // Note that z is the interpolation of x || w, so it equals x + v_X * w
