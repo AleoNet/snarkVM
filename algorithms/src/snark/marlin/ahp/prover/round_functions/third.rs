@@ -217,19 +217,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // Let s := K_max.selector_polynomial(K) = (v_K_max / v_K) * (K.size() / K_max.size());
         // Let v_K_max := K_max.vanishing_polynomial();
         // Let v_K := K.vanishing_polynomial();
+        // Let lhs := h / v_K * (K.size() / K_max.size());
 
         // Later on, we multiply `h` by s, and divide by v_K_max.
         // Substituting in s, we get that h * s / v_K_max = h / v_K * (K.size() / K_max.size());
         // That's what we're computing here.
-        let (mut h, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
+        let (mut lhs, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
         assert!(remainder.is_zero());
         let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
-        cfg_iter_mut!(h.coeffs).for_each(|c| *c *= multiplier);
+        cfg_iter_mut!(lhs.coeffs).for_each(|c| *c *= multiplier);
 
         let g = LabeledPolynomial::new("g_".to_string() + label, g, Some(non_zero_domain.size() - 2), None);
 
-        assert!(h.degree() <= non_zero_domain.size() - 2);
+        assert!(lhs.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
-        (f.coeffs[0], h, g)
+        (f.coeffs[0], lhs, g)
     }
 }
