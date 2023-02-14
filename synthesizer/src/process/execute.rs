@@ -300,12 +300,11 @@ impl<N: Network> Process<N> {
                 }
 
                 // Retrieve the output operands.
-                let output_operands = finalize.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
+                let output_operands = finalize.outputs().iter().map(|output| output.operand());
 
                 // TODO (howardwu): Save the outputs in ProgramStore.
                 // Load the outputs.
                 let _outputs = output_operands
-                    .iter()
                     .map(|operand| {
                         // Load the outputs.
                         match operand {
