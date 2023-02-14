@@ -27,7 +27,7 @@ extern crate snarkvm_circuit;
 mod field {
     use std::ops::{BitAnd, BitOr};
     use snarkvm_circuit::{Boolean, Itertools};
-    use snarkvm_circuit_environment::{Circuit, Environment, FromBits, Inject, Inverse, Mode, SquareRoot};
+    use snarkvm_circuit_environment::{Circuit, Environment, FromBits, Inject, Inverse, Mode, SquareRoot, ToBits};
     use snarkvm_circuit_types::{Compare, DivUnchecked, Double, Equal, Field, Pow, Square, Ternary};
     use snarkvm_console_types_field::{Field as ConsoleField, One, Zero};
 
@@ -129,7 +129,7 @@ mod field {
         for _i in 0..10 {
             bits.push(Boolean::<Circuit>::new(Mode::Private, false));
         }
-        let mut constant = vec![true, true, true, false, false, false, true, true, false, true];
+        let constant = vec![true, true, true, false, false, false, true, true, false, true];
         let is_lte = !constant.iter().zip_eq(bits).fold(
             Boolean::constant(false),
             |rest_is_less, (this, that)| {
@@ -264,5 +264,18 @@ mod field {
         let output = serde_json::to_string_pretty(&circuit_json).unwrap();
         println!("// ternary");
         println!("{}", output);
+    }
+
+    #[test]
+    fn to_bits_le() {
+        let a = Field::<Circuit>::new(Mode::Private, ConsoleField::zero());
+        let _bits = a.to_bits_le();
+
+        // print Circuit to JSON in console
+        let circuit_json = Circuit::json();
+        let output = serde_json::to_string_pretty(&circuit_json).unwrap();
+        println!("// to bits le");
+        println!("{}", output);
+
     }
 }
