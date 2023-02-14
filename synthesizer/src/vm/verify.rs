@@ -17,9 +17,53 @@
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Verifies the transaction in the VM.
+    /// Returns `true` if the transaction is valid.
+    pub fn verify_transaction(&self, transaction: &Transaction<N>) -> bool {
+        match self.check_transaction(transaction) {
+            Ok(_) => true,
+            Err(error) => {
+                warn!("{error}");
+                false
+            }
+        }
+    }
+
+    /// Returns `true` if the deployment is valid.
+    pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
+        match self.check_deployment(deployment) {
+            Ok(_) => true,
+            Err(error) => {
+                warn!("{error}");
+                false
+            }
+        }
+    }
+
+    /// Returns `true` if the execution is valid.
+    pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
+        match self.check_execution(execution) {
+            Ok(_) => true,
+            Err(error) => {
+                warn!("{error}");
+                false
+            }
+        }
+    }
+
+    /// Returns `true` if the fee is valid.
+    pub fn verify_fee(&self, fee: &Fee<N>) -> bool {
+        match self.check_fee(fee) {
+            Ok(_) => true,
+            Err(error) => {
+                warn!("{error}");
+                false
+            }
+        }
+    }
+
+    /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
-    pub fn verify(&self, transaction: &Transaction<N>) -> bool {
+    pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
         let timer = timer!("VM::verify");
 
         // Compute the Merkle root of the transaction.
@@ -27,77 +71,66 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure the transaction ID is correct.
             Ok(root) => {
                 if *transaction.id() != root {
-                    warn!("Incorrect transaction ID ({})", transaction.id());
-                    return false;
+                    bail!("Incorrect transaction ID ({})", transaction.id());
                 }
             }
             Err(error) => {
-                warn!("Failed to compute the Merkle root of the transaction: {error}\n{transaction}");
-                return false;
+                bail!("Failed to compute the Merkle root of the transaction: {error}\n{transaction}");
             }
         };
         lap!(timer, "Verify the transaction id");
 
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(transaction.transition_ids()) {
-            warn!("Found duplicate transition in the transactions list");
-            return false;
+            bail!("Found duplicate transition in the transactions list");
         }
 
         // Ensure there are no duplicate transition public keys.
         if has_duplicates(transaction.transition_public_keys()) {
-            warn!("Found duplicate transition public keys in the transactions list");
-            return false;
+            bail!("Found duplicate transition public keys in the transactions list");
         }
 
         // Ensure there are no duplicate serial numbers.
         if has_duplicates(transaction.serial_numbers()) {
-            warn!("Found duplicate serial numbers in the transactions list");
-            return false;
+            bail!("Found duplicate serial numbers in the transactions list");
         }
 
         // Ensure there are no duplicate commitments.
         if has_duplicates(transaction.commitments()) {
-            warn!("Found duplicate commitments in the transactions list");
-            return false;
+            bail!("Found duplicate commitments in the transactions list");
         }
 
         // Ensure there are no duplicate nonces.
         if has_duplicates(transaction.nonces()) {
-            warn!("Found duplicate nonces in the transactions list");
-            return false;
+            bail!("Found duplicate nonces in the transactions list");
         }
         lap!(timer, "Check for duplicate elements");
 
-        let verification = match transaction {
+        match transaction {
             Transaction::Deploy(_, deployment, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
-                    warn!("Invalid transaction size (deployment): {error}");
-                    return false;
+                    bail!("Invalid transaction size (deployment): {error}");
                 }
                 // Verify the deployment.
-                self.verify_deployment(deployment)
-                    // Verify the fee.
-                    && self.verify_fee(fee)
+                self.check_deployment(deployment)?;
+
+                // Verify the fee.
+                self.check_fee(fee)?;
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_execution_size(execution) {
-                    warn!("Invalid transaction size (execution): {error}");
-                    return false;
+                    bail!("Invalid transaction size (execution): {error}");
                 }
 
                 // Verify the additional fee, if it exists.
-                let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => self.verify_fee(additional_fee),
-                    None => true,
-                };
+                if let Some(additional_fee) = additional_fee {
+                    self.check_fee(additional_fee)?
+                }
 
                 // Verify the execution.
-                self.verify_execution(execution)
-                    // Verify the additional fee.
-                    && check_additional_fee
+                self.check_execution(execution)?;
             }
         };
 
@@ -105,12 +138,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         finish!(timer);
 
-        verification
+        Ok(())
     }
 
-    /// Verifies the given deployment.
+    /// Verifies the given deployment. On failure, returns an error.
     #[inline]
-    fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
+    fn check_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
         let timer = timer!("VM::verify_deployment");
 
         // Compute the core logic.
@@ -132,19 +165,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         match process!(self, logic) {
             Ok(()) => {
                 finish!(timer);
-                true
+                Ok(())
             }
             Err(error) => {
-                warn!("Deployment verification failed: {error}");
                 finish!(timer);
-                false
+                bail!("Deployment verification failed: {error}");
             }
         }
     }
 
-    /// Verifies the given execution.
+    /// Verifies the given execution. On failure, returns an error.
     #[inline]
-    fn verify_execution(&self, execution: &Execution<N>) -> bool {
+    fn check_execution(&self, execution: &Execution<N>) -> Result<()> {
         let timer = timer!("VM::verify_execution");
 
         // Verify the execution.
@@ -154,26 +186,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         match verification {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
-                Ok(true) => true,
-                Ok(false) => {
-                    warn!("Execution verification failed: global state root not found");
-                    false
-                }
-                Err(error) => {
-                    warn!("Execution verification failed: {error}");
-                    false
-                }
+                Ok(true) => Ok(()),
+                Ok(false) => bail!("Execution verification failed: global state root not found"),
+                Err(error) => bail!("Execution verification failed: {error}"),
             },
-            Err(error) => {
-                warn!("Execution verification failed: {error}");
-                false
-            }
+            Err(error) => bail!("Execution verification failed: {error}"),
         }
     }
 
-    /// Verifies the given fee.
+    /// Verifies the given fee. On failure, returns an error.
     #[inline]
-    fn verify_fee(&self, fee: &Fee<N>) -> bool {
+    fn check_fee(&self, fee: &Fee<N>) -> Result<()> {
         let timer = timer!("VM::verify_fee");
 
         // Verify the fee.
@@ -183,20 +206,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         match verification {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
-                Ok(true) => true,
-                Ok(false) => {
-                    warn!("Fee verification failed: global state root not found");
-                    false
-                }
-                Err(error) => {
-                    warn!("Fee verification failed: {error}");
-                    false
-                }
+                Ok(true) => Ok(()),
+                Ok(false) => bail!("Fee verification failed: global state root not found"),
+                Err(error) => bail!("Fee verification failed: {error}"),
             },
-            Err(error) => {
-                warn!("Fee verification failed: {error}");
-                false
-            }
+            Err(error) => bail!("Fee verification failed: {error}"),
         }
     }
 }
@@ -221,12 +235,14 @@ mod tests {
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.verify(&deployment_transaction));
+        assert!(vm.check_transaction(&deployment_transaction).is_ok());
+        assert!(vm.verify_transaction(&deployment_transaction));
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.verify(&execution_transaction));
+        assert!(vm.check_transaction(&execution_transaction).is_ok());
+        assert!(vm.verify_transaction(&execution_transaction));
     }
 
     #[test]
@@ -241,11 +257,13 @@ mod tests {
         let deployment = vm.deploy(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
+        assert!(vm.check_deployment(&deployment).is_ok());
         assert!(vm.verify_deployment(&deployment));
 
         // Ensure that deserialization doesn't break the transaction verification.
         let serialized_deployment = deployment.to_string();
         let deployment_transaction: Deployment<CurrentNetwork> = serde_json::from_str(&serialized_deployment).unwrap();
+        assert!(vm.check_deployment(&deployment_transaction).is_ok());
         assert!(vm.verify_deployment(&deployment_transaction));
     }
 
@@ -264,12 +282,14 @@ mod tests {
                 // Verify the inclusion.
                 assert!(Inclusion::verify_execution(&execution).is_ok());
                 // Verify the execution.
+                assert!(vm.check_execution(&execution).is_ok());
                 assert!(vm.verify_execution(&execution));
 
                 // Ensure that deserialization doesn't break the transaction verification.
                 let serialized_execution = execution.to_string();
                 let execution_transaction: Execution<CurrentNetwork> =
                     serde_json::from_str(&serialized_execution).unwrap();
+                assert!(vm.check_execution(&execution_transaction).is_ok());
                 assert!(vm.verify_execution(&execution_transaction));
             }
             _ => panic!("Expected an execution transaction"),
@@ -371,6 +391,7 @@ mod tests {
         .unwrap();
 
         // Verify.
-        assert!(vm.verify(&transaction));
+        assert!(vm.check_transaction(&transaction).is_ok());
+        assert!(vm.verify_transaction(&transaction));
     }
 }
