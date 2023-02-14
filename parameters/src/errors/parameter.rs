@@ -34,7 +34,7 @@ pub enum ParameterError {
     SizeMismatch(usize, usize),
 }
 
-#[cfg(all(not(feature = "wasm"), feature = "remote"))]
+#[cfg(all(not(feature = "wasm"), feature = "remote", not(target_vendor = "fortanix")))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {
         ParameterError::Crate("curl::error", format!("{error:?}"))

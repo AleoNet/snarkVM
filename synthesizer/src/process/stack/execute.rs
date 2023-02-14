@@ -490,8 +490,7 @@ impl<N: Network> Stack<N> {
 
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
-
-    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
+    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(_scope: S) {
         #[cfg(not(target_vendor = "fortanix"))]
         {
             use colored::Colorize;
@@ -504,7 +503,7 @@ impl<N: Network> Stack<N> {
             // Print the log.
             println!(
                 "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
-                scope.into().bold(),
+                _scope.into().bold(),
                 width = 20
             );
         }

@@ -35,7 +35,7 @@ harness = false
 required-features = [ "setup" ]
 
 [features]
-default = [ ]
+default = [ "reqwest" ]
 parallel = [
   "rayon",
   "snarkvm-fields/parallel",
@@ -109,7 +109,9 @@ optional = true
 
 [target."cfg(not(target_vendor = \"fortanix\"))".dependencies.reqwest]
 version = "0.11"
+default-features = false
 features = [ "blocking", "json" ]
+optional = true
 
 [dependencies.serde]
 version = "1.0"

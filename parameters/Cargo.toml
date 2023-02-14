@@ -89,9 +89,8 @@ version = "1.0"
 version = "0.4"
 optional = true
 
-[target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
+[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.curl]
 version = "0.4.43"
-optional = true
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
@@ -116,7 +115,7 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "colored", "remote"]
+default = [ "no_std_out", "remote" ]
 no_std_out = [ ]
-remote = [ "curl" ]
+remote = [ ]
 wasm = [ "reqwest", "wasm-bindgen-futures" ]

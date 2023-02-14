@@ -166,7 +166,6 @@ optional = true
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
 version = "0.9.12"
-default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
