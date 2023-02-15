@@ -72,21 +72,10 @@ impl<N: Network> Deployment<N> {
             !self.verifying_keys.is_empty(),
             "No verifying keys present in the deployment for program '{program_id}'"
         );
-
         // Ensure the number of functions matches the number of verifying keys.
         if self.program.functions().len() != self.verifying_keys.len() {
             bail!("Deployment has an incorrect number of verifying keys, according to the program.");
         }
-
-        // Ensure the program does not use any mappings.
-        ensure!(
-            self.program.mappings().is_empty(),
-            "Deployment is temporarily restricted to programs without mappings."
-        );
-
-        // Ensure the program does not import any other programs.
-        ensure!(self.program.imports().is_empty(), "Deployment is temporarily restricted to programs without imports.");
-
         // Ensure the function and verifying keys correspond.
         for ((function_name, function), (name, _)) in self.program.functions().iter().zip_eq(&self.verifying_keys) {
             // Ensure the function name is correct.
@@ -97,11 +86,6 @@ impl<N: Network> Deployment<N> {
             if name != function.name() {
                 bail!("The verifier key is '{name}', but the function name is '{}'", function.name())
             }
-            // Ensure that the function does not contain a finalize block.
-            ensure!(
-                function.finalize().is_none(),
-                "Deployment is temporarily restricted to functions without a finalize block."
-            );
         }
 
         ensure!(

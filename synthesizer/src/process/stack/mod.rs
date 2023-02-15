@@ -221,8 +221,20 @@ impl<N: Network> Stack<N> {
         ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");
         // Ensure the program network-level domain (NLD) is correct.
         ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
+        // Ensure the program does not use any mappings.
+        // TODO: Lift this restriction.
+        ensure!(program.mappings().is_empty(), "Deployment is temporarily restricted to programs without mappings.");
+        // Ensure the program does not import any other programs.
+        // TODO: Lift this restriction.
+        ensure!(program.imports().is_empty(), "Deployment is temporarily restricted to programs without imports.");
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
+        // Ensure that the program's functions do not contain `finalize` blocks.
+        // TODO: Lift this restruction.
+        ensure!(
+            !program.functions().iter().any(|(_, function)| function.finalize().is_some()),
+            "Deployment is temporarily restricted to programs without `finalize` blocks."
+        );
 
         // Serialize the program into bytes.
         let program_bytes = program.to_bytes_le()?;
