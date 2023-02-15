@@ -178,3 +178,17 @@ macro_rules! cfg_reduce {
         result
     }};
 }
+
+/// Turns a collection into an iterator.
+#[macro_export]
+macro_rules! cfg_values {
+    ($e: expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.par_values();
+
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.values();
+
+        result
+    }};
+}
