@@ -94,7 +94,6 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
         } else if I::is_signed() {
             // Multiply the absolute value of `self` and `other` in the base field.
             // Note that it is safe to use abs_wrapped since we want Integer::MIN to be interpreted as an unsigned number.
-            // TODO: Use cast_as_dual?
             let (product, carry) = Self::mul_with_carry(&self.abs_wrapped(), &other.abs_wrapped());
 
             // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
