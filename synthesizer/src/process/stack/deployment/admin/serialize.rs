@@ -23,10 +23,10 @@ impl<N: Network> Serialize for Admin<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut deployment = serializer.serialize_struct("Admin", 2)?;
-                deployment.serialize_field("address", &self.address)?;
-                deployment.serialize_field("signature", &self.signature)?;
-                deployment.end()
+                let mut admin = serializer.serialize_struct("Admin", 2)?;
+                admin.serialize_field("address", &self.address)?;
+                admin.serialize_field("signature", &self.signature)?;
+                admin.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
