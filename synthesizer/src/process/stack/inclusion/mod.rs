@@ -30,11 +30,10 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 
-use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -101,10 +100,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 bail!("Unsupported request")
             }
             #[cfg(feature = "request")]
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -117,10 +119,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 bail!("Unsupported request")
             }
             #[cfg(feature = "request")]
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -133,15 +138,19 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 bail!("Unsupported request")
             }
             #[cfg(feature = "request")]
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
     #[cfg(feature = "request")]
     /// Performs a GET request to the given URL.
+    #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
         let response = reqwest::blocking::get(url)?;
         if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }

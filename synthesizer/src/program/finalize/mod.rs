@@ -113,9 +113,13 @@ impl<N: Network> Finalize<N> {
     /// Adds the given command to finalize.
     ///
     /// # Errors
+    /// This method will halt if there are output statements already.
     /// This method will halt if the maximum number of commands has been reached.
     #[inline]
     pub fn add_command(&mut self, command: Command<N>) -> Result<()> {
+        // Ensure there are no output statements in memory.
+        ensure!(self.outputs.is_empty(), "Cannot add commands after outputs have been added");
+
         // Ensure the maximum number of commands has not been exceeded.
         ensure!(self.commands.len() <= N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
 
@@ -141,13 +145,9 @@ impl<N: Network> Finalize<N> {
     /// Adds the output statement to finalize.
     ///
     /// # Errors
-    /// This method will halt if there are no commands in memory.
     /// This method will halt if the maximum number of outputs has been reached.
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
-        // Ensure there are commands in memory.
-        ensure!(!self.commands.is_empty(), "Cannot add outputs before commands have been added");
-
         // Ensure the maximum number of outputs has not been exceeded.
         ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
         // Ensure the output statement was not previously added.

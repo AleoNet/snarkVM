@@ -58,7 +58,7 @@ impl<N: Network> Response<N> {
         tcm: &Field<N>,
         outputs: Vec<Value<N>>,
         output_types: &[ValueType<N>],
-        output_registers: &[Register<N>],
+        output_operands: &[Option<Register<N>>],
     ) -> Result<Self> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id =
@@ -68,7 +68,7 @@ impl<N: Network> Response<N> {
         let output_ids = outputs
             .iter()
             .zip_eq(output_types)
-            .zip_eq(output_registers)
+            .zip_eq(output_operands)
             .enumerate()
             .map(|(index, ((output, output_type), output_register))| {
                 match output_type {
@@ -140,6 +140,12 @@ impl<N: Network> Response<N> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
+                        };
+
+                        // Retrieve the output register.
+                        let output_register = match output_register {
+                            Some(output_register) => output_register,
+                            None => bail!("Expected a register to be paired with a record output"),
                         };
 
                         // Compute the record commitment.

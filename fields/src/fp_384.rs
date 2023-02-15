@@ -670,9 +670,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }
-                None => {
-                    return Err(FieldError::ParsingNonDigitCharacter);
-                }
+                None => return Err(FieldError::ParsingNonDigitCharacter),
             }
         }
 

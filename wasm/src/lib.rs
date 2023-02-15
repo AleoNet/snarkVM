@@ -26,5 +26,8 @@ pub use snarkvm_fields::*;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities::*;
 
+#[cfg(feature = "synthesizer")]
+pub use snarkvm_synthesizer::*;
+
 #[cfg(test)]
 mod tests;
