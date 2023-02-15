@@ -200,6 +200,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(f_evals_time);
 
         let f_poly_time = start_timer!(|| "Computing f poly");
+        // we define f as the rational equation for which we're running the sumcheck protocol
         let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain)
             .interpolate_with_pc(ifft_precomputation);
         end_timer!(f_poly_time);
