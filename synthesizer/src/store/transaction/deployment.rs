@@ -19,7 +19,7 @@ use crate::{
     block::Transaction,
     cow_to_cloned,
     cow_to_copied,
-    process::{Deployment, Fee},
+    process::{Admin, Deployment, Fee},
     program::Program,
     snark::{Certificate, Proof, VerifyingKey},
     store::{
@@ -56,6 +56,9 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
+    /// The mapping of `transaction ID` to `Admin`.
+    type AdminMap: for<'a> Map<'a, N::TransactionID, Admin<N>>;
+
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
 
@@ -78,6 +81,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the reverse fee map.
     fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
+    /// Returns the admin map.
+    fn admin_map(&self) -> &Self::AdminMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
@@ -96,6 +101,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.certificate_map().start_atomic();
         self.fee_map().start_atomic();
         self.reverse_fee_map().start_atomic();
+        self.admin_map().start_atomic();
         self.transition_store().start_atomic();
     }
 
@@ -109,6 +115,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             || self.certificate_map().is_atomic_in_progress()
             || self.fee_map().is_atomic_in_progress()
             || self.reverse_fee_map().is_atomic_in_progress()
+            || self.admin_map().is_atomic_in_progress()
             || self.transition_store().is_atomic_in_progress()
     }
 
@@ -122,6 +129,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.certificate_map().abort_atomic();
         self.fee_map().abort_atomic();
         self.reverse_fee_map().abort_atomic();
+        self.admin_map().abort_atomic();
         self.transition_store().abort_atomic();
     }
 
@@ -135,14 +143,15 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.certificate_map().finish_atomic()?;
         self.fee_map().finish_atomic()?;
         self.reverse_fee_map().finish_atomic()?;
+        self.admin_map().finish_atomic()?;
         self.transition_store().finish_atomic()
     }
 
     /// Stores the given `deployment transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a deployment.
-        let (transaction_id, deployment, fee) = match transaction {
-            Transaction::Deploy(transaction_id, deployment, fee) => (transaction_id, deployment, fee),
+        let (transaction_id, deployment, fee, admin) = match transaction {
+            Transaction::Deploy(transaction_id, deployment, fee, admin) => (transaction_id, deployment, fee, admin),
             Transaction::Execute(..) => {
                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
             }
@@ -185,6 +194,9 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
             )?;
             self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
+
+            // Store the admin.
+            self.admin_map().insert(*transaction_id, *admin)?;
 
             // Store the fee transition.
             self.transition_store().insert(fee)?;
@@ -240,6 +252,9 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             // Remove the fee.
             self.fee_map().remove(transaction_id)?;
             self.reverse_fee_map().remove(&transition_id)?;
+
+            // Remove the admin.
+            self.admin_map().remove(transaction_id)?;
 
             // Remove the fee transition.
             self.transition_store().remove(&transition_id)?;
@@ -397,6 +412,14 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         }
     }
 
+    /// Returns the admin for the given `transaction ID`.
+    fn get_admin(&self, transaction_id: &N::TransactionID) -> Result<Option<Admin<N>>> {
+        match self.admin_map().get(transaction_id)? {
+            Some(admin) => Ok(Some(cow_to_copied!(admin))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the transaction for the given `transaction ID`.
     fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
         // Retrieve the deployment.
@@ -410,8 +433,14 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the fee for transaction '{transaction_id}'"),
         };
 
+        // Retrieve the admin.
+        let admin = match self.get_admin(transaction_id)? {
+            Some(admin) => admin,
+            None => bail!("Failed to get the admin for transaction '{transaction_id}'"),
+        };
+
         // Construct the deployment transaction.
-        let deployment_transaction = Transaction::from_deployment(deployment, fee)?;
+        let deployment_transaction = Transaction::from_deployment(deployment, fee, admin)?;
         // Ensure the transaction ID matches.
         match *transaction_id == deployment_transaction.id() {
             true => Ok(Some(deployment_transaction)),
@@ -440,6 +469,8 @@ pub struct DeploymentMemory<N: Network> {
     fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
     /// The reverse fee map.
     reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
+    /// The admin map.
+    admin_map: MemoryMap<N::TransactionID, Admin<N>>,
     /// The transition store.
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
@@ -454,6 +485,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
     type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
+    type AdminMap = MemoryMap<N::TransactionID, Admin<N>>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the deployment storage.
@@ -467,6 +499,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             certificate_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
             reverse_fee_map: MemoryMap::default(),
+            admin_map: MemoryMap::default(),
             transition_store,
         })
     }
@@ -509,6 +542,11 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     /// Returns the reverse fee map.
     fn reverse_fee_map(&self) -> &Self::ReverseFeeMap {
         &self.reverse_fee_map
+    }
+
+    /// Returns the admin map.
+    fn admin_map(&self) -> &Self::AdminMap {
+        &self.admin_map
     }
 
     /// Returns the transition store.
@@ -729,7 +767,7 @@ mod tests {
         let transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         let transaction_id = transaction.id();
         let program_id = match transaction {
-            Transaction::Deploy(_, ref deployment, _) => *deployment.program_id(),
+            Transaction::Deploy(_, ref deployment, _, _) => *deployment.program_id(),
             _ => panic!("Incorrect transaction type"),
         };
 
