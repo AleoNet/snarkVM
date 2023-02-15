@@ -92,17 +92,20 @@ mod tests {
         // Ensure the build directory still does *not* exist.
         assert!(!package.build_directory().exists());
 
-        // Build the package.
-        package.build::<CurrentAleo>(None).unwrap();
+        // TODO: Remove once deployment restrictions are lifted.
+        // Ensure the build fails.
+        assert!(package.build::<CurrentAleo>(None).is_err());
+        // // Build the package.
+        // package.build::<CurrentAleo>(None).unwrap();
 
-        // Ensure the build directory exists.
-        assert!(package.build_directory().exists());
-        // Clean the package.
-        Package::<CurrentNetwork>::clean(&directory).unwrap();
-        // Ensure the build directory does *not* exist.
-        assert!(!package.build_directory().exists());
+        // // Ensure the build directory exists.
+        // assert!(package.build_directory().exists());
+        // // Clean the package.
+        // Package::<CurrentNetwork>::clean(&directory).unwrap();
+        // // Ensure the build directory does *not* exist.
+        // assert!(!package.build_directory().exists());
 
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
+        // // Proactively remove the temporary directory (to conserve space).
+        // std::fs::remove_dir_all(directory).unwrap();
     }
 }

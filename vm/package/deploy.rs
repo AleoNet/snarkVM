@@ -159,7 +159,7 @@ impl<N: Network> Package<N> {
         // Initialize the RNG.
         let rng = &mut rand::thread_rng();
         // Compute the deployment.
-        let deployment = process.deploy::<A, _>(program, rng).unwrap();
+        let deployment = process.deploy::<A, _>(program, rng)?;
 
         match endpoint {
             Some(ref endpoint) => {
@@ -209,19 +209,22 @@ mod tests {
     #[test]
     fn test_deploy_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (_directory, package) = crate::package::test_helpers::sample_package_with_import();
 
-        // Deploy the package.
-        let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+        // TODO: Remove once deployment restrictions are lifted.
+        // Ensure the deployment fails.
+        assert!(package.deploy::<CurrentAleo>(None).is_err());
 
-        // Ensure the deployment edition matches.
-        assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
-        // Ensure the deployment program ID matches.
-        assert_eq!(package.program().id(), deployment.program_id());
-        // Ensure the deployment program matches.
-        assert_eq!(package.program(), deployment.program());
+        // // Deploy the package.
+        // let deployment = package.deploy::<CurrentAleo>(None).unwrap();
+        // // Ensure the deployment edition matches.
+        // assert_eq!(<CurrentNetwork as Network>::EDITION, deployment.edition());
+        // // Ensure the deployment program ID matches.
+        // assert_eq!(package.program().id(), deployment.program_id());
+        // // Ensure the deployment program matches.
+        // assert_eq!(package.program(), deployment.program());
 
-        // Proactively remove the temporary directory (to conserve space).
-        std::fs::remove_dir_all(directory).unwrap();
+        // // Proactively remove the temporary directory (to conserve space).
+        // std::fs::remove_dir_all(directory).unwrap();
     }
 }
