@@ -119,7 +119,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 self.check_fee(fee)?;
 
                 // Verify the admin signature.
-                ensure!(admin.verify(*id), "Invalid admin for the deployment");
+                ensure!(admin.verify(*id), "Invalid admin for the deployment transaction");
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
