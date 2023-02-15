@@ -25,7 +25,7 @@ impl<N: Network> Transaction<N> {
     /// Returns the Merkle leaf for the given ID of a function or transition in the transaction.
     pub fn to_leaf(&self, id: &Field<N>) -> Result<TransactionLeaf<N>> {
         match self {
-            Self::Deploy(_, deployment, fee) => {
+            Self::Deploy(_, deployment, fee, _) => {
                 // Check if the ID is the transition ID for the fee.
                 if *id == **fee.id() {
                     // Return the transaction leaf.
@@ -82,7 +82,7 @@ impl<N: Network> Transaction<N> {
     pub fn to_tree(&self) -> Result<TransactionTree<N>> {
         match self {
             // Compute the deployment tree.
-            Transaction::Deploy(_, deployment, additional_fee) => Self::deployment_tree(deployment, additional_fee),
+            Transaction::Deploy(_, deployment, additional_fee, _) => Self::deployment_tree(deployment, additional_fee),
             // Compute the execution tree.
             Transaction::Execute(_, execution, additional_fee) => Self::execution_tree(execution, additional_fee),
         }
