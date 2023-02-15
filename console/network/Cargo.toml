@@ -12,6 +12,10 @@ wasm = [
   "snarkvm-algorithms/polycommit_wasm",
   "snarkvm-parameters/wasm"
 ]
+parallel = [
+  "snarkvm-console-collections/parallel",
+  "snarkvm-fields/parallel"
+]
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"

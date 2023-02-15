@@ -34,6 +34,9 @@ pub enum SerializationError {
     /// expected.
     #[error("the call expects empty flags")]
     UnexpectedFlags,
+    // Trying to work on 32bit target
+    #[error("the file was serialized with a 64bit target and cannot be deserialized on a 32bit target")]
+    IncompatibleTarget,
 }
 
 impl From<SerializationError> for crate::io::Error {

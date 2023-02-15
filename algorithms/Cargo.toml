@@ -162,7 +162,6 @@ version = "1.0"
 [features]
 default = [
   "full",
-  "parallel",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",

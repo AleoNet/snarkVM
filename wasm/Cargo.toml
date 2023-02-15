@@ -26,6 +26,11 @@ edition = "2021"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
+[dependencies.snarkvm-circuit]
+path = "../circuit"
+version = "0.9.11"
+optional = true
+
 [dependencies.snarkvm-console]
 path = "../console"
 version = "0.9.12"
@@ -41,6 +46,13 @@ default-features = false
 [dependencies.snarkvm-fields]
 path = "../fields"
 version = "0.9.12"
+optional = true
+default-features = false
+
+[dependencies.snarkvm-synthesizer]
+path = "../synthesizer"
+version = "0.9.11"
+features = [ "wasm" ]
 optional = true
 default-features = false
 
@@ -71,14 +83,11 @@ features = [ "js" ]
 version = "0.3.34"
 
 [features]
-default = [ "full", "parallel" ]
-full = [ "console", "curves", "fields", "utilities" ]
-parallel = [
-  "snarkvm-console/parallel",
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
-]
+default = [ "full" ]
+full = [ "circuit", "console", "curves", "fields", "synthesizer", "utilities" ]
+circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
+synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]

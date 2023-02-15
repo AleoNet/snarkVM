@@ -149,6 +149,30 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
+    #[inline]
+    pub fn load_wasm() -> Result<Self> {
+        let timer = timer!("Process::load");
+
+        // Initialize the process.
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        lap!(timer, "Initialize process");
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+        lap!(timer, "Load credits program");
+
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+        lap!(timer, "Initialize stack");
+
+        // Add the stack to the process.
+        process.stacks.insert(*program.id(), stack);
+
+        finish!(timer, "Process::load");
+        // Return the process.
+        Ok(process)
+    }
+
     /// Initializes a new process with a cache of previously used keys. This version is suitable for tests
     /// (which often use nested loops that keep reusing those), as their deserialization is slow.
     #[cfg(test)]

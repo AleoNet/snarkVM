@@ -19,9 +19,9 @@ use crate::snark::marlin::{
     prover,
     MarlinMode,
 };
-use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSynthesizer;
+use itertools::Itertools;
 
 use snarkvm_utilities::cfg_iter;
 #[cfg(not(feature = "std"))]

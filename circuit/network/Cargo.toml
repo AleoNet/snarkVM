@@ -30,3 +30,7 @@ path = "../../console/types"
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]
+parallel = [
+  "snarkvm-circuit-algorithms/parallel",
+  "snarkvm-circuit-collections/parallel"
+]

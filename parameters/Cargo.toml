@@ -100,12 +100,15 @@ default-features = false
 
 [dev-dependencies.snarkvm-circuit]
 path = "../circuit"
+features = [ "parallel" ]
 
 [dev-dependencies.snarkvm-console]
 path = "../console"
+features = [ "parallel" ]
 
 [dev-dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
+features = [ "parallel" ]
 
 [dev-dependencies.curl]
 version = "0.4.34"

@@ -95,10 +95,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -106,10 +109,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn current_state_root(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -117,14 +123,18 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
     /// Performs a GET request to the given URL.
+    #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
         let response = reqwest::blocking::get(url)?;
         if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }

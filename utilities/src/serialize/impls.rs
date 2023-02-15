@@ -148,7 +148,57 @@ impl_canonical_serialization_uint!(u8);
 impl_canonical_serialization_uint!(u16);
 impl_canonical_serialization_uint!(u32);
 impl_canonical_serialization_uint!(u64);
-impl_canonical_serialization_uint!(usize);
+
+impl CanonicalSerialize for usize {
+    #[inline]
+    fn serialize_with_mode<W: Write>(
+        &self,
+        mut writer: W,
+        _compress: Compress,
+    ) -> Result<(), SerializationError> {
+        let u64_value = *self as u64;
+        Ok(writer.write_all(&u64_value.to_le_bytes())?)
+    }
+
+    #[inline]
+    fn serialized_size(&self, _compress: Compress) -> usize {
+        8
+    }
+}
+
+impl Valid for usize {
+    #[inline]
+    fn check(&self) -> Result<(), SerializationError> {
+        Ok(())
+    }
+
+    #[inline]
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self>) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        Ok(())
+    }
+}
+
+impl CanonicalDeserialize for usize {
+    #[inline]
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        _compress: Compress,
+        _validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let mut bytes = [0u8; 8];
+        reader.read_exact(&mut bytes)?;
+        let u64_value = u64::from_le_bytes(bytes);
+        if u64_value <= usize::MAX as u64 {
+            let usize_value = u64_value as usize;
+            return Ok(usize_value)
+        } else {
+            return Err(SerializationError::IncompatibleTarget);
+        }
+    }
+}
 
 impl<T: CanonicalSerialize> CanonicalSerialize for Option<T> {
     #[inline]

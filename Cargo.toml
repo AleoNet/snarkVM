@@ -111,6 +111,8 @@ parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 parallel = [
   "rayon",
   "snarkvm-algorithms/parallel",
+  "snarkvm-circuit/parallel",
+  "snarkvm-console/parallel",
   "snarkvm-fields/parallel",
   "snarkvm-synthesizer/parallel",
   "snarkvm-utilities/parallel"

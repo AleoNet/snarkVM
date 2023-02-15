@@ -42,6 +42,7 @@ default = [
   "signature",
   "view_key"
 ]
+parallel = [ "snarkvm-console-network/parallel" ]
 compute_key = [ "private_key" ]
 graph_key = [ "private_key" ]
 private_key = [ "compute_key" ]

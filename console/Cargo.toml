@@ -38,7 +38,6 @@ optional = true
 
 [features]
 default = [
-  "parallel",
   "account",
   "algorithms",
   "collections",
@@ -46,7 +45,10 @@ default = [
   "program",
   "types"
 ]
-parallel = [ "snarkvm-console-collections/parallel" ]
+parallel = [
+  "snarkvm-console-collections/parallel",
+  "snarkvm-console-program"
+]
 wasm = [ "snarkvm-console-network/wasm" ]
 test = [ "snarkvm-console-program/test" ]
 account = [ "network", "snarkvm-console-account" ]

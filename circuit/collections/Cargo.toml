@@ -22,12 +22,15 @@ version = "0.9.12"
 
 [dev-dependencies.snarkvm-circuit-network]
 path = "../network"
+features = [ "parallel" ]
 
 [dev-dependencies.snarkvm-console-algorithms]
 path = "../../console/algorithms"
+features = [ "parallel" ]
 
 [dev-dependencies.snarkvm-console-network]
 path = "../../console/network"
+features = [ "parallel" ]
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../utilities"
@@ -38,3 +41,4 @@ version = "1.0.69"
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]
+parallel = [ "snarkvm-circuit-algorithms/parallel" ]

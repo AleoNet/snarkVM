@@ -61,6 +61,6 @@ features = [ "derive" ]
 version = "1.0"
 
 [features]
-default = [ "parallel", "snarkvm-utilities/default" ]
+default = [ "snarkvm-utilities/default" ]
 parallel = [ "rayon", "snarkvm-utilities/parallel" ]
 profiler = [ "aleo-std/profiler" ]

@@ -50,3 +50,14 @@ version = "0.9.12"
 [dependencies.snarkvm-circuit-types]
 path = "./types"
 version = "0.9.12"
+
+[features]
+default = [ ]
+parallel = [
+  "snarkvm-circuit-account/parallel",
+  "snarkvm-circuit-algorithms/parallel",
+  "snarkvm-circuit-collections/parallel",
+  "snarkvm-circuit-environment/parallel",
+  "snarkvm-circuit-program/parallel",
+  "snarkvm-circuit-network/parallel"
+]

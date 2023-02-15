@@ -35,9 +35,12 @@ harness = false
 required-features = [ "setup" ]
 
 [features]
-default = [ "parallel" ]
+default = [ ]
 parallel = [
   "rayon",
+  "circuit/parallel",
+  "console/parallel",
+  "snarkvm-algorithms/parallel",
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
 ]
@@ -45,6 +48,7 @@ aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
+wasm = [ ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
@@ -96,6 +100,9 @@ version = "1.17"
 
 [dependencies.parking_lot]
 version = "0.12"
+
+[dependencies.itertools]
+version = "0.10.3"
 
 [dependencies.paste]
 version = "1.0.11"
