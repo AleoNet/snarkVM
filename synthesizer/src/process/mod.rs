@@ -403,12 +403,11 @@ function compute:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ProgramMemory;
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, Literal, Value},
+        program::{Identifier, Value},
         types::Field,
     };
 
