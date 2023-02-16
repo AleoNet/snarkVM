@@ -208,7 +208,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             g.z = tmp * s;
             tmp = newtmp;
         }
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         {
             // Perform affine transformations
             for g in v.iter_mut().filter(|g| !g.is_normalized()) {
@@ -219,7 +219,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             }
         }
 
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         {
             use rayon::prelude::*;
             // Perform affine transformations

@@ -17,9 +17,9 @@
 use crate::{boxed::Box, vec::Vec};
 
 pub struct ExecutionPool<'a, T> {
-    #[cfg(feature = "parallel")]
+    #[cfg(not(feature = "serial"))]
     jobs: Vec<Box<dyn 'a + FnOnce() -> T + Send>>,
-    #[cfg(not(feature = "parallel"))]
+    #[cfg(feature = "serial")]
     jobs: Vec<Box<dyn 'a + FnOnce() -> T>>,
 }
 
@@ -32,13 +32,13 @@ impl<'a, T> ExecutionPool<'a, T> {
         Self { jobs: Vec::with_capacity(cap) }
     }
 
-    #[cfg(feature = "parallel")]
+    #[cfg(not(feature = "serial"))]
     pub fn add_job<F: 'a + FnOnce() -> T + Send>(&mut self, f: F) {
         self.jobs.push(Box::new(f));
     }
 
-    #[cfg(not(feature = "parallel"))]
-    pub fn add_job<F: 'a + FnOnce() -> T>(&mut self, f: F) {
+    #[cfg(feature = "serial")]
+    pub fn add_job<F: 'a + FnOnce() -> T + Send>(&mut self, f: F) {
         self.jobs.push(Box::new(f));
     }
 
@@ -46,12 +46,12 @@ impl<'a, T> ExecutionPool<'a, T> {
     where
         T: Send + Sync,
     {
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         {
             use rayon::prelude::*;
             execute_with_max_available_threads(|| self.jobs.into_par_iter().map(|f| f()).collect())
         }
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         {
             self.jobs.into_iter().map(|f| f()).collect()
         }
@@ -64,7 +64,7 @@ impl<'a, T> Default for ExecutionPool<'a, T> {
     }
 }
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 pub fn max_available_threads() -> usize {
     use aleo_std::Cpu;
     let rayon_threads = rayon::current_num_threads();
@@ -76,18 +76,18 @@ pub fn max_available_threads() -> usize {
 }
 
 #[inline(always)]
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 pub fn execute_with_max_available_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send) -> T {
     execute_with_threads(f, max_available_threads())
 }
 
 #[inline(always)]
-#[cfg(not(feature = "parallel"))]
+#[cfg(feature = "serial")]
 pub fn execute_with_max_available_threads<T>(f: impl FnOnce() -> T + Send) -> T {
     f()
 }
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 #[inline(always)]
 fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_threads: usize) -> T {
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
@@ -98,10 +98,10 @@ fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_thread
 #[macro_export]
 macro_rules! cfg_iter {
     ($e: expr) => {{
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let result = $e.par_iter();
 
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let result = $e.iter();
 
         result
@@ -112,10 +112,10 @@ macro_rules! cfg_iter {
 #[macro_export]
 macro_rules! cfg_iter_mut {
     ($e: expr) => {{
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let result = $e.par_iter_mut();
 
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let result = $e.iter_mut();
 
         result
@@ -126,10 +126,10 @@ macro_rules! cfg_iter_mut {
 #[macro_export]
 macro_rules! cfg_into_iter {
     ($e: expr) => {{
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let result = $e.into_par_iter();
 
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let result = $e.into_iter();
 
         result
@@ -141,10 +141,10 @@ macro_rules! cfg_into_iter {
 #[macro_export]
 macro_rules! cfg_chunks {
     ($e: expr, $size: expr) => {{
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let result = $e.par_chunks($size);
 
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let result = $e.chunks($size);
 
         result
@@ -155,10 +155,10 @@ macro_rules! cfg_chunks {
 #[macro_export]
 macro_rules! cfg_chunks_mut {
     ($e: expr, $size: expr) => {{
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let result = $e.par_chunks_mut($size);
 
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let result = $e.chunks_mut($size);
 
         result
@@ -169,11 +169,25 @@ macro_rules! cfg_chunks_mut {
 #[macro_export]
 macro_rules! cfg_reduce {
     ($e: expr, $default: expr, $op: expr) => {{
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let result = $e.reduce($default, $op);
 
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let result = $e.fold($default(), $op);
+
+        result
+    }};
+}
+
+/// Turns a collection into an iterator.
+#[macro_export]
+macro_rules! cfg_values {
+    ($e: expr) => {{
+        #[cfg(not(feature = "serial"))]
+        let result = $e.par_values();
+
+        #[cfg(feature = "serial")]
+        let result = $e.values();
 
         result
     }};

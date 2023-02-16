@@ -35,12 +35,7 @@ harness = false
 required-features = [ "setup" ]
 
 [features]
-default = [ "parallel" ]
-parallel = [
-  "rayon",
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
-]
+default = [ ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 setup = [ ]
@@ -72,7 +67,6 @@ version = "0.9.13"
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.9.13"
-default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.15"
@@ -106,7 +100,6 @@ version = "0.8"
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dependencies.reqwest]
 version = "0.11"

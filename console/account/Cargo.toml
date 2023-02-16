@@ -18,7 +18,6 @@ version = "0.9.13"
 [dependencies.snarkvm-console-types]
 path = "../types"
 version = "0.9.13"
-default-features = false
 features = [ "address", "field", "group", "scalar" ]
 
 [dependencies.bs58]

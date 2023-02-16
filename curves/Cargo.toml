@@ -37,16 +37,17 @@ harness = false
 [dependencies.snarkvm-fields]
 path = "../fields"
 version = "0.9.13"
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.9.13"
-default-features = false
 
 [dependencies.rand]
 version = "0.8"
 default-features = false
+
+[dependencies.rayon]
+version = "1"
 
 [dependencies.serde]
 version = "1.0.152"
@@ -69,4 +70,4 @@ version = "0.8"
 rustc_version = "0.4"
 
 [features]
-default = [ "snarkvm-fields/default", "snarkvm-utilities/default" ]
+default = [ ]

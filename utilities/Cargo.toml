@@ -53,7 +53,6 @@ features = [ "getrandom", "std_rng" ]
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dependencies.serde]
 version = "1.0"
@@ -70,7 +69,6 @@ version = "0.3"
 default-features = false
 
 [features]
-default = [ "std", "derive" ]
+default = [ "std", "derive", "num_cpus", "aleo-std/cpu" ]
 std = [ ]
 derive = [ "snarkvm-utilities-derives" ]
-parallel = [ "rayon", "num_cpus", "aleo-std/cpu" ]

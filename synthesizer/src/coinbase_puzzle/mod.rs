@@ -39,7 +39,9 @@ use snarkvm_fields::{PrimeField, Zero};
 
 use std::sync::Arc;
 
-#[cfg(feature = "parallel")]
+#[cfg(feature = "serial")]
+use itertools::Itertools;
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 #[derive(Clone)]
@@ -209,6 +211,17 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
 
         // Construct the provers polynomial.
+        #[cfg(feature = "serial")]
+        let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials).zip_eq(challenges).fold(
+            DensePolynomial::zero(),
+            |mut accumulator, (mut prover_polynomial, challenge)| {
+                prover_polynomial *= challenge;
+                accumulator += &prover_polynomial;
+                accumulator
+            },
+        );
+
+        #[cfg(not(feature = "serial"))]
         let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials)
             .zip_eq(challenges)
             .fold(DensePolynomial::zero, |mut accumulator, (mut prover_polynomial, challenge)| {
@@ -310,6 +323,15 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
 
         // Compute the accumulator evaluation.
+        #[cfg(feature = "serial")]
+        let mut accumulator_evaluation = cfg_iter!(prover_polynomials).zip_eq(&challenge_points).fold(
+            <N::PairingCurve as PairingEngine>::Fr::zero(),
+            |accumulator, (prover_polynomial, challenge_point)| {
+                accumulator + (prover_polynomial.evaluate(accumulator_point) * challenge_point)
+            },
+        );
+
+        #[cfg(not(feature = "serial"))]
         let mut accumulator_evaluation = cfg_iter!(prover_polynomials)
             .zip_eq(&challenge_points)
             .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |accumulator, (prover_polynomial, challenge_point)| {

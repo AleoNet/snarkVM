@@ -124,7 +124,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                     })
                 }
                 let results = pool.execute_all();
-                #[cfg(feature = "parallel")]
+                #[cfg(not(feature = "serial"))]
                 let mut result = results
                     .into_par_iter()
                     .reduce_with(|mut a, b| {
@@ -132,7 +132,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                         a
                     })
                     .unwrap();
-                #[cfg(not(feature = "parallel"))]
+                #[cfg(feature = "serial")]
                 let mut result = results
                     .into_iter()
                     .reduce(|mut a, b| {

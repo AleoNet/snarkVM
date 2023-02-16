@@ -26,7 +26,6 @@ edition = "2021"
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.9.13"
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
@@ -96,7 +95,6 @@ optional = true
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
-default-features = false
 
 [dev-dependencies.snarkvm-circuit]
 path = "../circuit"

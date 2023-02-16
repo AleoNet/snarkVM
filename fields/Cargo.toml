@@ -26,7 +26,6 @@ edition = "2021"
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.9.13"
-default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.15"
@@ -50,7 +49,6 @@ default-features = false
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dependencies.serde]
 version = "1.0"
@@ -61,6 +59,5 @@ features = [ "derive" ]
 version = "1.0"
 
 [features]
-default = [ "parallel", "snarkvm-utilities/default" ]
-parallel = [ "rayon", "snarkvm-utilities/parallel" ]
+default = [ ]
 profiler = [ "aleo-std/profiler" ]

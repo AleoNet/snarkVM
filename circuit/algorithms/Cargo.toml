@@ -19,11 +19,9 @@ version = "0.9.13"
 [dependencies.snarkvm-fields]
 path = "../../fields"
 version = "0.9.13"
-default-features = false
 
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
-default-features = false
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../utilities"

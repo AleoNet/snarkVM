@@ -16,7 +16,6 @@ wasm = [
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 version = "0.9.13"
-default-features = false
 features = [ "snark" ]
 
 [dependencies.snarkvm-console-algorithms]
@@ -34,18 +33,15 @@ version = "0.9.13"
 [dependencies.snarkvm-console-types]
 path = "../types"
 version = "0.9.13"
-default-features = false
 features = [ "field", "group", "scalar" ]
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.9.13"
-default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
 version = "0.9.13"
-default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../../parameters"

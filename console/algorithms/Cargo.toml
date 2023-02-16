@@ -14,13 +14,11 @@ harness = false
 [dependencies.snarkvm-console-types]
 path = "../types"
 version = "0.9.13"
-default-features = false
 features = [ "field", "group", "integers", "scalar" ]
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
 version = "0.9.13"
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
@@ -29,6 +27,9 @@ version = "0.9.13"
 [dependencies.blake2s_simd]
 version = "1.0"
 
+[dependencies.rayon]
+version = "1"
+
 [dependencies.smallvec]
 version = "1.10"
 default-features = false
@@ -36,7 +37,6 @@ features = [ "const_generics", "const_new" ]
 
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
-default-features = false
 
 [dev-dependencies.criterion]
 version = "0.4.0"
