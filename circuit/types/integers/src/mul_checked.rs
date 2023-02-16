@@ -198,15 +198,15 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (8 * I::BITS) + 5, (8 * I::BITS) + 9)
+                        Count::is(4 * I::BITS, 0, (7 * I::BITS) + 4, (8 * I::BITS) + 9)
                     }
-                    (_, _) => Count::is(3 * I::BITS, 0, (10 * I::BITS) + 8, (10 * I::BITS) + 13),
+                    (_, _) => Count::is(3 * I::BITS, 0, (9 * I::BITS) + 7, (10 * I::BITS) + 13),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (3 * I::BITS) - 1, (3 * I::BITS) + 1),
-                    (_, _) => Count::is(0, 0, 3 * I::BITS, (3 * I::BITS) + 2),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (3 * I::BITS) + 1),
+                    (_, _) => Count::is(0, 0, 2 * I::BITS + 1, (3 * I::BITS) + 2),
                 },
             }
         }
@@ -216,16 +216,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 // Signed case
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 12)
-                    }
-                    (_, _) => Count::is(3 * I::BITS, 0, (11 * I::BITS) + 13, (11 * I::BITS) + 19),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(4 * I::BITS, 0, 965, 1164),
+                    (_, _) => Count::is(3 * I::BITS, 0, 1227, 1427),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 4),
-                    (_, _) => Count::is(0, 0, (4 * I::BITS) + 5, (4 * I::BITS) + 8),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 321, 516),
+                    (_, _) => Count::is(0, 0, 325, 520),
                 },
             }
         } else {
