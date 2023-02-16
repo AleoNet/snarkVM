@@ -25,7 +25,7 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
         let num_bits = bits_le.len() as u64;
         if num_bits > I::BITS {
             // Check that all excess bits are zero.
-            for bit in bits_le[I::BITS as usize..].iter() {
+            for bit in &bits_le[I::BITS as usize..] {
                 E::assert_eq(E::zero(), bit);
             }
         }

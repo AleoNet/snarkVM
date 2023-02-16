@@ -36,7 +36,7 @@ impl<E: Environment> FromBits for Scalar<E> {
         let num_bits = bits_le.len();
         if num_bits > size_in_bits {
             // Check that all excess bits are zero.
-            for bit in bits_le[size_in_bits..].iter() {
+            for bit in &bits_le[size_in_bits..] {
                 E::assert_eq(E::zero(), bit);
             }
         }
