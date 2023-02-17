@@ -56,8 +56,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-    /// The mapping of `transaction ID` to `Admin`.
-    type AdminMap: for<'a> Map<'a, N::TransactionID, Admin<N>>;
+    /// The mapping of `(program ID, edition)` to `Admin`.
+    type AdminMap: for<'a> Map<'a, (ProgramID<N>, u16), Admin<N>>;
 
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
@@ -196,7 +196,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
 
             // Store the admin.
-            self.admin_map().insert(*transaction_id, *admin)?;
+            self.admin_map().insert((program_id, edition), *admin)?;
 
             // Store the fee transition.
             self.transition_store().insert(fee)?;
@@ -254,7 +254,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.reverse_fee_map().remove(&transition_id)?;
 
             // Remove the admin.
-            self.admin_map().remove(transaction_id)?;
+            self.admin_map().remove(&(program_id, edition))?;
 
             // Remove the fee transition.
             self.transition_store().remove(&transition_id)?;
@@ -412,11 +412,19 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         }
     }
 
-    /// Returns the admin for the given `transaction ID`.
-    fn get_admin(&self, transaction_id: &N::TransactionID) -> Result<Option<Admin<N>>> {
-        match self.admin_map().get(transaction_id)? {
+    /// Returns the admin for the given `program ID`.
+    fn get_admin(&self, program_id: &ProgramID<N>) -> Result<Option<Admin<N>>> {
+        // TODO (raychu86): Consider program upgrades and edition changes.
+        // Retrieve the edition.
+        let edition = match self.get_edition(program_id)? {
+            Some(edition) => edition,
+            None => return Ok(None),
+        };
+
+        // Retrieve the Admin.
+        match self.admin_map().get(&(*program_id, edition))? {
             Some(admin) => Ok(Some(cow_to_copied!(admin))),
-            None => Ok(None),
+            None => bail!("Failed to find the Admin for program '{program_id}' (edition {edition})"),
         }
     }
 
@@ -434,7 +442,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Retrieve the admin.
-        let admin = match self.get_admin(transaction_id)? {
+        let admin = match self.get_admin(deployment.program_id())? {
             Some(admin) => admin,
             None => bail!("Failed to get the admin for transaction '{transaction_id}'"),
         };
@@ -470,7 +478,7 @@ pub struct DeploymentMemory<N: Network> {
     /// The reverse fee map.
     reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
     /// The admin map.
-    admin_map: MemoryMap<N::TransactionID, Admin<N>>,
+    admin_map: MemoryMap<(ProgramID<N>, u16), Admin<N>>,
     /// The transition store.
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
@@ -485,7 +493,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
     type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type AdminMap = MemoryMap<N::TransactionID, Admin<N>>;
+    type AdminMap = MemoryMap<(ProgramID<N>, u16), Admin<N>>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the deployment storage.
