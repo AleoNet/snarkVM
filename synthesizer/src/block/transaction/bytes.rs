@@ -41,11 +41,6 @@ impl<N: Network> FromBytes for Transaction<N> {
                 // Read the admin.
                 let admin = Admin::read_le(&mut reader)?;
 
-                // Ensure the admin is valid for the deployment transaction.
-                if !admin.verify(id) {
-                    return Err(error("Invalid admin for deployment transaction"));
-                }
-
                 // Initialize the transaction.
                 let transaction = Self::from_deployment(deployment, fee, admin).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
