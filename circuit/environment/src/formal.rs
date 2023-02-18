@@ -176,11 +176,6 @@ impl Environment for FormalCircuit {
     fn reset() {
         Circuit::reset()
     }
-
-    /// Returns the JSON representation of the constraint system.
-    fn json() -> CircuitJSON {
-        Circuit::json()
-    }
 }
 
 impl Transcribe for FormalCircuit {

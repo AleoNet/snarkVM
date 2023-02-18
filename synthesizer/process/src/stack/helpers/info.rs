@@ -57,8 +57,8 @@ impl<N: Network> Stack<N> {
         // Synthesize the circuit.
         let _ = self.execute_function::<A, R>(call_stack, rng)?;
 
-        // TODO:
-        let json = A::json();
+        // TODO: Get transcript
+        let json = CircuitJSON::default();
 
         Ok(json)
     }

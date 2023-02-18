@@ -436,11 +436,6 @@ impl Environment for AleoV0 {
     fn reset() {
         E::reset()
     }
-
-    /// Returns the JSON representation of the constraint system.
-    fn json() -> CircuitJSON {
-        E::json()
-    }
 }
 
 impl Transcribe for AleoV0 {
@@ -457,13 +452,6 @@ impl Display for AleoV0 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
         fmt::Display::fmt(&Circuit, f)
-    }
-}
-
-impl AleoV0 {
-    /// Returns the JSON representation of the constraint system.
-    pub fn json() -> CircuitJSON {
-        E::json()
     }
 }
 

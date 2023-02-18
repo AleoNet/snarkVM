@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use snarkvm_fields::PrimeField;
 
 /// Wrapper for a R1CS circuit in JSON notation.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct CircuitJSON {
     num_constants: u64,
     num_public: u64,
@@ -28,7 +28,7 @@ pub struct CircuitJSON {
 }
 
 /// Wrapper for a R1CS constraint in JSON notation.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct ConstraintJSON {
     a: LinearCombinationJSON,
     b: LinearCombinationJSON,
