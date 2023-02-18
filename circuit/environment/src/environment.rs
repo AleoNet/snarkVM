@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{witness_mode, Assignment, CircuitJSON, Inject, LinearCombination, Mode, Variable, R1CS};
+use crate::{witness_mode, Assignment, CircuitJSON, Inject, LinearCombination, Mode, Variable, R1CS, Transcribe};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
 
 use core::{fmt, hash};
 
-pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq + hash::Hash {
+pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq + hash::Hash + Transcribe {
     type Network: console::Network<Affine = Self::Affine, Field = Self::BaseField, Scalar = Self::ScalarField>;
 
     type Affine: AffineCurve<
