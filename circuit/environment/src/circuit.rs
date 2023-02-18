@@ -340,7 +340,7 @@ impl Transcribe for Circuit {
     type Transcript = ();
 
     /// Clears and returns the accumulated transcript.
-    fn clear() -> Self::Transcript { () }
+    fn clear() -> Self::Transcript {}
 }
 
 impl fmt::Display for Circuit {
