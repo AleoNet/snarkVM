@@ -41,7 +41,7 @@ use snarkvm_circuit_types::{
 };
 
 use core::fmt;
-use snarkvm_circuit_types::environment::CircuitJSON;
+use snarkvm_circuit_types::environment::{CircuitJSON, Transcribe};
 
 type E = Circuit;
 
@@ -440,6 +440,16 @@ impl Environment for AleoV0 {
     /// Returns the JSON representation of the constraint system.
     fn json() -> CircuitJSON {
         E::json()
+    }
+}
+
+impl Transcribe for AleoV0 {
+    type Event = <E as Transcribe>::Event;
+    type Transcript = <E as Transcribe>::Transcript;
+
+    /// Clears and returns the accumulated transcript.
+    fn clear() -> Self::Transcript {
+        E::clear()
     }
 }
 
