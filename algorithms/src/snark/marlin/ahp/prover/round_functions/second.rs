@@ -73,6 +73,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> (prover::SecondOracles<F>, prover::State<'a, F, MM>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
+        // TODO: max_constraint_domain.
         let constraint_domain = state.constraint_domain;
         let zk_bound = Self::zk_bound();
 

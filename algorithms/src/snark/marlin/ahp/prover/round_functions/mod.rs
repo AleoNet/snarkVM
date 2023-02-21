@@ -37,6 +37,8 @@ mod third;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Initialize the AHP prover.
+    // TODO: update this signature to take in a `BTreeMap<Circuit, &[C]>`.
+    // TODO: update the code to initialize the state appropriately.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>>(
         index: &'a Circuit<F, MM>,
         circuits: &[C],

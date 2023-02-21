@@ -109,6 +109,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
 
+        // TODO: set constraint domain to be largest of all constraint domains.
         let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
 
         for (circuit, state) in &state.index_specific_states {
