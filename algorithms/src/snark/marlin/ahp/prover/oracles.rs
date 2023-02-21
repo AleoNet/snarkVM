@@ -128,6 +128,8 @@ impl<F: PrimeField> SecondOracles<F> {
 /// The third set of prover oracles.
 #[derive(Debug)]
 pub struct ThirdOracles<F: PrimeField> {
+    // TODO: wrap g_a, g_b, g_c, in an inner struct (say matrix_gs)
+    // Add a BTreeMap<Circuit, MatrixGs> to the struct
     /// The polynomial `g_a` resulting from the second sumcheck.
     pub g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
