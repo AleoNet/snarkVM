@@ -66,6 +66,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the second round message and the next state.
+    // TODO: strategy will be very similar to matrix_sumcheck:
+    // multiply per-circuit sumcheck equation by the selector polynomial * randomizer,
+    // and then sum over all of these circuit-specific equations.
     pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<F>,
         mut state: prover::State<'a, F, MM>,
@@ -97,13 +100,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         end_timer!(z_time);
 
+        // Update `calculate_lhs` into `calculate_index_specific_lhs`; make it not use
+        // `mask_poly`, and multiply by 
         let sumcheck_lhs = Self::calculate_lhs(&state, t, summed_z_m, z, *alpha);
+
+        // TODO: sum over index_specific_lhs, multiplying by the selector polynomial * randomizer.
+        // Selector polynomial = v_H_max / v_H.
+        // Use the same trick from the matrix sumcheck to avoid unnecessary multiplications.
 
         debug_assert!(
             sumcheck_lhs.evaluate_over_domain_by_ref(constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
         );
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
+        // TODO: divide by vanishing_poly for max_constraint_domain.
         let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         drop(x_g_1);
@@ -112,6 +122,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(g_1.degree() <= constraint_domain.size() - 2);
         assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
 
+        // TODO: use max_constraint_domain for the degree bounds.
         let oracles = prover::SecondOracles {
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), zk_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
