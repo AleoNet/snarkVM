@@ -44,7 +44,7 @@ use std::sync::Arc;
 #[cfg(test)]
 use std::collections::HashMap;
 
-use circuit::CircuitJSON;
+use circuit::{CircuitJSON, ConstraintTranscript};
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
@@ -283,7 +283,7 @@ impl<N: Network> Process<N> {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
         rng: &mut R,
-    ) -> Result<CircuitJSON> {
+    ) -> Result<A::Transcript> {
         // Return the information.
         self.get_stack(program_id)?.info::<A, R>(function_name, rng)
     }

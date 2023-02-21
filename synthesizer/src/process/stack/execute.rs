@@ -202,7 +202,7 @@ impl<N: Network> Stack<N> {
         let mut contains_function_call = false;
 
         // Log instruction execution.
-        A::log("Executing instructions...".into_string());
+        A::log("Executing instructions...".to_string());
 
         // Execute the instructions.
         for instruction in function.instructions() {
@@ -228,7 +228,7 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Execute the instructions");
 
         // Log the completion of instruction execution.
-        A::log("Finished executing instructions...".into_string());
+        A::log("Finished executing instructions...".to_string());
 
         // Load the outputs.
         let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();

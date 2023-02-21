@@ -16,7 +16,7 @@
 
 use super::*;
 
-use circuit::CircuitJSON;
+use circuit::{CircuitJSON, ConstraintTranscript};
 
 impl<N: Network> Stack<N> {
     /// Returns information about the given function.
@@ -25,7 +25,7 @@ impl<N: Network> Stack<N> {
         &self,
         function_name: &Identifier<N>,
         rng: &mut R,
-    ) -> Result<CircuitJSON> {
+    ) -> Result<A::Transcript> {
         // Retrieve the program ID.
         let program_id = self.program_id();
         // Retrieve the function input types.
@@ -59,9 +59,8 @@ impl<N: Network> Stack<N> {
         // Synthesize the circuit.
         let _ = self.execute_function::<A, R>(call_stack, rng)?;
 
-        // TODO: Get transcript
-        let json = CircuitJSON::default();
+        let transcript = A::clear();
 
-        Ok(json)
+        Ok(transcript)
     }
 }
