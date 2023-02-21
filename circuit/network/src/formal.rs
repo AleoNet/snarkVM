@@ -402,6 +402,21 @@ impl Environment for FormalV0 {
 impl Transcribe for FormalV0 {
     type Transcript = <E as Transcribe>::Transcript;
 
+    /// Pushes a scope onto the transcript.
+    fn push() {
+        E::push()
+    }
+
+    /// Pops the current scope off the transcript.
+    fn pop() {
+        E::pop()
+    }
+
+    /// Log a message into the transcript.
+    fn log(message: String) {
+        E::log(message)
+    }
+
     /// Clears and returns the accumulated transcript.
     fn clear() -> Self::Transcript {
         E::clear()
@@ -410,7 +425,6 @@ impl Transcribe for FormalV0 {
 
 impl Display for FormalV0 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // TODO (howardwu): Find a better way to print the circuit.
         fmt::Display::fmt(&FormalCircuit, f)
     }
 }
