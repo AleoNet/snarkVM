@@ -216,8 +216,8 @@ impl ConstraintTranscript {
         self.scope_index = self.scope_index.saturating_sub(1usize)
     }
 
-    fn log(&mut self, event: String) {
-        self.entries.push(ScopedEntry { depth: self.scope_index, message: event })
+    fn log(&mut self, message: String) {
+        self.entries.push(ScopedEntry { depth: self.scope_index, message })
     }
 
     fn clear(&mut self) -> Self {
@@ -237,7 +237,6 @@ impl fmt::Display for ConstraintTranscript {
 }
 
 impl Transcribe for FormalCircuit {
-    type Event = String;
     type Transcript = ConstraintTranscript;
 
     /// Pushes a scope onto the transcript.
@@ -250,9 +249,9 @@ impl Transcribe for FormalCircuit {
         TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().pop())
     }
 
-    /// Log an event into the transcript.
-    fn log(event: Self::Event) {
-        TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().log(event))
+    /// Log a message into the transcript.
+    fn log(message: String) {
+        TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().log(message))
     }
 
     /// Clears and returns the accumulated transcript.

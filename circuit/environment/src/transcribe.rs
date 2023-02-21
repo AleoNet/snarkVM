@@ -16,7 +16,6 @@
 
 /// A trait for objects that produce a transcript of their behavior.
 pub trait Transcribe {
-    type Event;
     type Transcript;
 
     /// Creates and enters a scope of the transcript.
@@ -25,8 +24,8 @@ pub trait Transcribe {
     /// Exits the current scope of the transcript.
     fn pop() {}
 
-    /// Logs an `Event` into the current scope of the transcript.
-    fn log(_event: Self::Event) {}
+    /// Logs a message into the current scope of the transcript.
+    fn log(_message: String) {}
 
     /// Clears and returns the accumulated transcript.
     fn clear() -> Self::Transcript;
