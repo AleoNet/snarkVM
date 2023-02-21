@@ -14,7 +14,7 @@
 
 use super::*;
 
-use snarkvm_circuit::CircuitJSON;
+use snarkvm_circuit::{CircuitJSON, ConstraintTranscript, Transcribe};
 
 pub struct InfoRequest<N: Network> {
     program: Program<N>,
@@ -80,13 +80,12 @@ impl<'de, N: Network> Deserialize<'de> for InfoRequest<N> {
 pub struct InfoResponse<N: Network> {
     program_id: ProgramID<N>,
     function_name: Identifier<N>,
-    json: CircuitJSON,
 }
 
 impl<N: Network> InfoResponse<N> {
     /// Initializes a new print response.
-    pub const fn new(program_id: ProgramID<N>, function_name: Identifier<N>, json: CircuitJSON) -> Self {
-        Self { program_id, function_name, json }
+    pub const fn new(program_id: ProgramID<N>, function_name: Identifier<N>) -> Self {
+        Self { program_id, function_name }
     }
 
     /// Returns the program ID.
@@ -98,11 +97,6 @@ impl<N: Network> InfoResponse<N> {
     pub const fn function_name(&self) -> &Identifier<N> {
         &self.function_name
     }
-
-    /// Returns the JSON representation of the constraint system for function.
-    pub const fn json(&self) -> &CircuitJSON {
-        &self.json
-    }
 }
 
 impl<N: Network> Serialize for InfoResponse<N> {
@@ -111,7 +105,6 @@ impl<N: Network> Serialize for InfoResponse<N> {
         let mut response = serializer.serialize_struct("InfoResponse", 4)?;
         response.serialize_field("program_id", &self.program_id)?;
         response.serialize_field("function_name", &self.function_name)?;
-        response.serialize_field("json", &self.json)?;
         response.end()
     }
 }
@@ -127,8 +120,6 @@ impl<'de, N: Network> Deserialize<'de> for InfoResponse<N> {
             serde_json::from_value(response["program_id"].take()).map_err(de::Error::custom)?,
             // Retrieve the function name.
             serde_json::from_value(response["function_name"].take()).map_err(de::Error::custom)?,
-            // Retrieve the json.
-            serde_json::from_value(response["json"].take()).map_err(de::Error::custom)?,
         ))
     }
 }
@@ -138,7 +129,7 @@ impl<N: Network> Package<N> {
     pub fn info<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         endpoint: Option<String>,
-    ) -> Result<Vec<(Identifier<N>, CircuitJSON)>> {
+    ) -> Result<Vec<(Identifier<N>, A::Transcript)>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -151,7 +142,7 @@ impl<N: Network> Package<N> {
         let process = self.get_process()?;
 
         // Retrieve the imported programs.
-        let imported_programs = program
+        let _imported_programs = program
             .imports()
             .keys()
             .map(|program_id| process.get_program(program_id).cloned())
@@ -162,29 +153,9 @@ impl<N: Network> Package<N> {
         // Synthesize each proving and verifying key.
         for function_name in program.functions().keys() {
             match endpoint {
-                Some(ref endpoint) => {
-                    // Prepare the request.
-                    let request = InfoRequest::new(program.clone(), imported_programs.clone(), *function_name);
-                    // Load the proving and verifying key.
-                    let response = request.send(endpoint)?;
-                    // Ensure the program ID matches.
-                    ensure!(
-                        response.program_id() == program_id,
-                        "Program ID mismatch: {} != {program_id}",
-                        response.program_id()
-                    );
-                    // Ensure the function name matches.
-                    ensure!(
-                        response.function_name() == function_name,
-                        "Function name mismatch: {} != {function_name}",
-                        response.function_name()
-                    );
-                    // Insert the information into `results`.
-                    results.push((*function_name, response.json));
-                }
-                None => {
-                    let json = process.info::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
-                    results.push((*function_name, json));
+                _ => {
+                    let transcript = process.info::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
+                    results.push((*function_name, transcript));
                 }
             }
         }
@@ -198,7 +169,7 @@ impl<N: Network> Package<N> {
 
 #[cfg(test)]
 mod tests {
-    type CurrentAleo = snarkvm_circuit::network::AleoV0;
+    type CurrentAleo = snarkvm_circuit::network::FormalV0;
 
     #[test]
     fn test_build() {
