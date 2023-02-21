@@ -69,6 +69,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
+        let mut r_b_s = Vec::with_capacity(batch_size);
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_batch_size());
         for (circuit, state) in &mut state.index_specific_states {
             let constraint_domain = state.constraint_domain;
@@ -80,7 +81,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             assert_eq!(z_a.len(), batch_size);
             assert_eq!(z_b.len(), batch_size);
             assert_eq!(private_variables.len(), batch_size);
-            let mut r_b_s = Vec::with_capacity(batch_size);
 
             let state_ref = &state;
             for (i, (z_a, z_b, private_variables, x_poly)) in
@@ -94,29 +94,29 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     r_b_s.push(r_b);
                 }
             }
+        }
+        let batches = job_pool
+            .execute_all()
+            .into_iter()
+            .tuples()
+            .map(|(w, z_a, z_b)| {
+                let w_poly = w.witness().unwrap();
+                let (z_a_poly, z_a) = z_a.z_m().unwrap();
+                let (z_b_poly, z_b) = z_b.z_m().unwrap();
 
-            let batches = job_pool
-                .execute_all()
-                .into_iter()
-                .tuples()
-                .map(|(w, z_a, z_b)| {
-                    let w_poly = w.witness().unwrap();
-                    let (z_a_poly, z_a) = z_a.z_m().unwrap();
-                    let (z_b_poly, z_b) = z_b.z_m().unwrap();
+                prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(batches.len(), batch_size);
 
-                    prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
-                })
-                .collect::<Vec<_>>();
-            assert_eq!(batches.len(), batch_size);
+        let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
 
-            let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
-
+        for (circuit, state) in &state.index_specific_states {
             let oracles = prover::FirstOracles { batches, mask_poly };
             assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_size)));
             state.first_round_oracles = Some(Arc::new(oracles));
             state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
             end_timer!(round_time);
-
         }
         Ok(state)
     }
