@@ -16,9 +16,16 @@
 
 use crate::{Mode, *};
 
-use core::fmt;
+use core::{cell::RefCell, fmt};
+use std::{fmt::Formatter, iter, rc::Rc};
+
+use serde::{Deserialize, Serialize};
 
 type Field = <console::Testnet3 as console::Environment>::Field;
+
+thread_local! {
+    pub(super) static TRANSCRIPT: Rc<RefCell<ConstraintTranscript>> = Rc::new(RefCell::new(ConstraintTranscript::new()));
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct FormalCircuit;
@@ -89,7 +96,13 @@ impl Environment for FormalCircuit {
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>,
     {
-        Circuit::enforce(constraint)
+        let (a, b, c) = constraint();
+        let a = a.into();
+        let b = b.into();
+        let c = c.into();
+        let constraint_json = ConstraintJSON::new(&a, &b, &c);
+        Self::log(format!("{}", serde_json::to_string_pretty(&constraint_json).unwrap()));
+        Circuit::enforce(|| (a, b, c))
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
@@ -178,12 +191,74 @@ impl Environment for FormalCircuit {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ScopedEntry {
+    pub depth: usize,
+    pub message: String,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ConstraintTranscript {
+    pub scope_index: usize,
+    pub entries: Vec<ScopedEntry>,
+}
+
+impl ConstraintTranscript {
+    fn new() -> Self {
+        Self { scope_index: 0, entries: Vec::new() }
+    }
+
+    fn push(&mut self) {
+        self.scope_index = self.scope_index.saturating_add(1usize)
+    }
+
+    fn pop(&mut self) {
+        self.scope_index = self.scope_index.saturating_sub(1usize)
+    }
+
+    fn log(&mut self, event: String) {
+        self.entries.push(ScopedEntry { depth: self.scope_index, message: event })
+    }
+
+    fn clear(&mut self) -> Self {
+        core::mem::take(self)
+    }
+}
+
+impl fmt::Display for ConstraintTranscript {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut space = iter::repeat(" ");
+        for entry in &self.entries {
+            let indent: String = (&mut space).take(entry.depth).collect();
+            write!(f, "{indent}{}", entry.message)?;
+        }
+        Ok(())
+    }
+}
+
 impl Transcribe for FormalCircuit {
-    type Event = ();
-    type Transcript = ();
+    type Event = String;
+    type Transcript = ConstraintTranscript;
+
+    /// Pushes a scope onto the transcript.
+    fn push() {
+        TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().push())
+    }
+
+    /// Pops the current scope off the transcript.
+    fn pop() {
+        TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().pop())
+    }
+
+    /// Log an event into the transcript.
+    fn log(event: Self::Event) {
+        TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().log(event))
+    }
 
     /// Clears and returns the accumulated transcript.
-    fn clear() -> Self::Transcript {}
+    fn clear() -> Self::Transcript {
+        TRANSCRIPT.with(|transcript| (**transcript).borrow_mut().clear())
+    }
 }
 
 impl fmt::Display for FormalCircuit {
