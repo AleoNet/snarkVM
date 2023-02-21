@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -30,6 +30,8 @@ impl<N: Network> Stack<N> {
         caller: Address<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
+        let timer = timer!("Stack::evaluate_closure");
+
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -41,12 +43,14 @@ impl<N: Network> Stack<N> {
         registers.set_caller(caller);
         // Set the transition view key.
         registers.set_tvk(tvk);
+        lap!(timer, "Initialize the registers");
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
             registers.store(self, register, input.clone())
         })?;
+        lap!(timer, "Store the inputs");
 
         // Evaluate the instructions.
         for instruction in closure.instructions() {
@@ -55,14 +59,31 @@ impl<N: Network> Stack<N> {
                 bail!("Failed to evaluate instruction ({instruction}): {error}");
             }
         }
+        lap!(timer, "Evaluate the instructions");
 
         // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            // Retrieve the stack value from the register.
-            registers.load(self, &Operand::Register(output.register().clone()))
-        });
+        let outputs = closure
+            .outputs()
+            .iter()
+            .map(|output| {
+                match output.operand() {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
+                }
+            })
+            .collect();
+        lap!(timer, "Load the outputs");
 
-        outputs.collect()
+        finish!(timer);
+        outputs
     }
 
     /// Evaluates a program function on the given inputs.
@@ -71,12 +92,15 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     pub fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
+        let timer = timer!("Stack::evaluate_function");
+
         // Retrieve the next request, based on the call stack mode.
         let (request, call_stack) = match &call_stack {
             CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
             CallStack::Execute(authorization, ..) => (authorization.peek_next()?, call_stack.replicate()),
             _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
         };
+        lap!(timer, "Retrieve the next request");
 
         // Ensure the network ID matches.
         ensure!(
@@ -102,6 +126,7 @@ impl<N: Network> Stack<N> {
                 inputs.len()
             )
         }
+        lap!(timer, "Perform input checks");
 
         // Initialize the registers.
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(function.name())?.clone());
@@ -109,15 +134,18 @@ impl<N: Network> Stack<N> {
         registers.set_caller(caller);
         // Set the transition view key.
         registers.set_tvk(tvk);
+        lap!(timer, "Initialize the registers");
 
         // Ensure the request is well-formed.
         ensure!(request.verify(&function.input_types()), "Request is invalid");
+        lap!(timer, "Verify the request");
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
             registers.store(self, register, input.clone())
         })?;
+        lap!(timer, "Store the inputs");
 
         // Evaluate the instructions.
         for instruction in function.instructions() {
@@ -126,18 +154,42 @@ impl<N: Network> Stack<N> {
                 bail!("Failed to evaluate instruction ({instruction}): {error}");
             }
         }
+        lap!(timer, "Evaluate the instructions");
 
-        // Retrieve the output registers.
-        let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
+        // Retrieve the output operands.
+        let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
+        lap!(timer, "Retrieve the output operands");
 
         // Load the outputs.
-        let outputs = output_registers
+        let outputs = output_operands
             .iter()
-            .map(|register| {
-                // Retrieve the stack value from the register.
-                registers.load(self, &Operand::Register(register.clone()))
+            .map(|operand| {
+                match operand {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
+                }
             })
             .collect::<Result<Vec<_>>>()?;
+        lap!(timer, "Load the outputs");
+
+        finish!(timer);
+
+        // Map the output operands to registers.
+        let output_registers = output_operands
+            .iter()
+            .map(|operand| match operand {
+                Operand::Register(register) => Some(register.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
 
         // Compute the response.
         Response::new(
@@ -149,7 +201,7 @@ impl<N: Network> Stack<N> {
             request.tcm(),
             outputs,
             &function.output_types(),
-            output_registers,
+            &output_registers,
         )
     }
 }

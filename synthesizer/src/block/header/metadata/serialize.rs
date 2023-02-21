@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Metadata<N> {
     /// Serializes the metadata to a JSON-string or buffer.
@@ -44,14 +46,14 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
             true => {
                 let mut metadata = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(metadata["network"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["round"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["height"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["coinbase_target"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["proof_target"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["last_coinbase_target"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["last_coinbase_timestamp"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(metadata["timestamp"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "network")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "round")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "height")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "coinbase_target")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "proof_target")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_target")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_timestamp")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "timestamp")?,
                 )
                 .map_err(de::Error::custom)?)
             }

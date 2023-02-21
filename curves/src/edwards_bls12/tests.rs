@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -180,7 +180,7 @@ fn print_montgomery_to_weierstrass_parameters() {
     let denominator = twenty_seven * b3;
     let b = numerator * denominator.inverse().unwrap();
 
-    println!("A - {}\nB - {}", a, b);
+    println!("A - {a}\nB - {b}");
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn test_isomorphism() {
     // Sample a random Fr element.
     let fr_element: Fr = Fr::rand(&mut rng);
 
-    println!("Starting Fr element is - {:?}", fr_element);
+    println!("Starting Fr element is - {fr_element:?}");
 
     // Map it to its corresponding Fq element.
     let fq_element = {
@@ -200,7 +200,7 @@ fn test_isomorphism() {
         output.unwrap()
     };
 
-    println!("Starting Fq element is {:?}", fq_element);
+    println!("Starting Fq element is {fq_element:?}");
 
     // Declare the parameters for the Montgomery equation: B * v^2 == u^3 + A * u^2 + u.
     const A: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_A;
@@ -312,7 +312,7 @@ fn test_isomorphism() {
 
     let group = EdwardsAffine::new(x, y, x * y);
 
-    println!("{:?}", group);
+    println!("{group:?}");
 
     // Convert the twisted Edwards element (x, y) to the alternate Montgomery element (u, v)
     let (u_reconstructed, v_reconstructed) = {

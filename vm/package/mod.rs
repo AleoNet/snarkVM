@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -26,7 +26,6 @@ pub use deploy::{DeployRequest, DeployResponse};
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
     prelude::{
-        de,
         Deserialize,
         Deserializer,
         Identifier,
@@ -226,7 +225,7 @@ function transfer:
 
         // Write the program string to a file in the temporary directory.
         let main_filepath = directory.join("main.aleo");
-        let mut file = File::create(&main_filepath).unwrap();
+        let mut file = File::create(main_filepath).unwrap();
         file.write_all(program_string.as_bytes()).unwrap();
 
         // Create the manifest file.
@@ -281,7 +280,7 @@ function transfer:
 
         // Write the imported program string to an imports file in the temporary directory.
         let import_filepath = imports_directory.join(imported_program_id.to_string());
-        let mut file = File::create(&import_filepath).unwrap();
+        let mut file = File::create(import_filepath).unwrap();
         file.write_all(imported_program.to_string().as_bytes()).unwrap();
 
         // Initialize the main program ID.
@@ -305,7 +304,7 @@ function transfer:
 
         // Write the main program string to a file in the temporary directory.
         let main_filepath = directory.join("main.aleo");
-        let mut file = File::create(&main_filepath).unwrap();
+        let mut file = File::create(main_filepath).unwrap();
         file.write_all(main_program.to_string().as_bytes()).unwrap();
 
         // Create the manifest file.

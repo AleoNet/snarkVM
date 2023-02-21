@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_le();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = Address::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -62,7 +62,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_bits_be();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = Address::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

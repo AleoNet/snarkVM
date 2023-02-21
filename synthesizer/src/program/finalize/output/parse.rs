@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Parser for Output<N> {
     /// Parses a string into an output statement.
-    /// The output statement is of the form `output {register} as {finalize_type};`.
+    /// The output statement is of the form `output {operand} as {finalize_type};`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -27,8 +27,8 @@ impl<N: Network> Parser for Output<N> {
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the register from the string.
-        let (string, register) = Register::parse(string)?;
+        // Parse the operand from the string.
+        let (string, operand) = Operand::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "as" from the string.
@@ -42,7 +42,7 @@ impl<N: Network> Parser for Output<N> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the output statement.
-        Ok((string, Self { register, finalize_type }))
+        Ok((string, Self { operand, finalize_type }))
     }
 }
 
@@ -76,9 +76,9 @@ impl<N: Network> Display for Output<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {register} as {finalize_type};",
+            "{type_} {operand} as {finalize_type};",
             type_ = Self::type_name(),
-            register = self.register,
+            operand = self.operand,
             finalize_type = self.finalize_type
         )
     }
@@ -87,25 +87,33 @@ impl<N: Network> Display for Output<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::{
+        network::Testnet3,
+        program::{Literal, Register, U8},
+    };
 
     type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_output_parse() -> Result<()> {
-        // Literal
+        // Register
         let output = Output::<CurrentNetwork>::parse("output r0 as field.public;").unwrap().1;
-        assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(0));
+        assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(0)));
         assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field.public")?);
+
+        // Literal
+        let output = Output::<CurrentNetwork>::parse("output 0u8 as u8.public;").unwrap().1;
+        assert_eq!(output.operand(), &Operand::Literal(Literal::<CurrentNetwork>::U8(U8::new(0))));
+        assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("u8.public")?);
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
-        assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(1));
+        assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(1)));
         assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("signature.public")?);
 
         // Record
         let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(output.register(), &Register::<CurrentNetwork>::Locator(2));
+        assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(2)));
         assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("token.record")?);
 
         Ok(())
@@ -113,16 +121,20 @@ mod tests {
 
     #[test]
     fn test_output_display() {
-        // Literal
+        // Register
         let output = Output::<CurrentNetwork>::parse("output r0 as field.public;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r0 as field.public;");
+        assert_eq!(format!("{output}"), "output r0 as field.public;");
+
+        // Literal
+        let output = Output::<CurrentNetwork>::parse("output 0u8 as u8.public;").unwrap().1;
+        assert_eq!(format!("{output}"), "output 0u8 as u8.public;");
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r1 as signature.public;");
+        assert_eq!(format!("{output}"), "output r1 as signature.public;");
 
         // Record
         let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r2 as token.record;");
+        assert_eq!(format!("{output}"), "output r2 as token.record;");
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for CoinbaseSolution<N> {
     /// Serializes the coinbase solution to a JSON-string or buffer.
@@ -41,11 +43,9 @@ impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
             true => {
                 let mut combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(combined_puzzle_solution["partial_solutions"].take())
-                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut combined_puzzle_solution, "partial_solutions")?,
                     KZGProof {
-                        w: serde_json::from_value(combined_puzzle_solution["proof.w"].take())
-                            .map_err(de::Error::custom)?,
+                        w: DeserializeExt::take_from_value::<D>(&mut combined_puzzle_solution, "proof.w")?,
                         random_v: match combined_puzzle_solution.get("proof.random_v") {
                             Some(random_v) => {
                                 Some(serde_json::from_value(random_v.clone()).map_err(de::Error::custom)?)

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Output<N> {
     /// Serializes the transition output into string or bytes.
@@ -78,28 +80,27 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                 // Parse the output from a string into a value.
                 let mut output = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(output["id"].take()).map_err(de::Error::custom)?;
+                let id: Field<N> = DeserializeExt::take_from_value::<D>(&mut output, "id")?;
 
                 // Recover the output.
-                let output = match output["type"].as_str() {
-                    Some("constant") => Output::Constant(id, match output["value"].as_str() {
+                let output = match output.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => Output::Constant(id, match output.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("public") => Output::Public(id, match output["value"].as_str() {
+                    Some("public") => Output::Public(id, match output.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("private") => Output::Private(id, match output["value"].as_str() {
+                    Some("private") => Output::Private(id, match output.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
                     Some("record") => {
                         // Retrieve the checksum.
-                        let checksum: Field<N> =
-                            serde_json::from_value(output["checksum"].take()).map_err(de::Error::custom)?;
+                        let checksum: Field<N> = DeserializeExt::take_from_value::<D>(&mut output, "checksum")?;
                         // Return the record.
-                        Output::Record(id, checksum, match output["value"].as_str() {
+                        Output::Record(id, checksum, match output.get("value").and_then(|v| v.as_str()) {
                             Some(value) => {
                                 Some(Record::<N, Ciphertext<N>>::from_str(value).map_err(de::Error::custom)?)
                             }
@@ -136,7 +137,7 @@ mod tests {
         assert_eq!(expected_string, candidate.to_string());
 
         // Deserialize
-        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {}", expected_string)));
+        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
     }
 

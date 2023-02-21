@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -54,7 +54,7 @@ mod tests {
             let expected = Uniform::rand(&mut rng);
             let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_field();
                 assert_eq!(expected.to_x_coordinate(), candidate.eject_value());
                 assert_scope!(0, 0, 0, 0);

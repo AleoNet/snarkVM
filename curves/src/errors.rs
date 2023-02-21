@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,12 +46,12 @@ impl From<snarkvm_fields::FieldError> for GroupError {
 
 impl From<std::io::Error> for GroupError {
     fn from(error: std::io::Error) -> Self {
-        GroupError::Crate("std::io", format!("{:?}", error))
+        GroupError::Crate("std::io", format!("{error:?}"))
     }
 }
 
 impl From<GroupError> for std::io::Error {
     fn from(error: GroupError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{error}"))
     }
 }

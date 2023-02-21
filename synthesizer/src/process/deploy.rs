@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -24,27 +24,44 @@ impl<N: Network> Process<N> {
         program: &Program<N>,
         rng: &mut R,
     ) -> Result<Deployment<N>> {
+        let timer = timer!("Process::deploy");
+
         // Compute the stack.
         let stack = Stack::new(self, program)?;
+        lap!(timer, "Compute the stack");
+
         // Return the deployment.
-        stack.deploy::<A, R>(rng)
+        let deployment = stack.deploy::<A, R>(rng);
+        lap!(timer, "Construct the deployment");
+
+        finish!(timer);
+
+        deployment
     }
 
-    /// Verifies the given deployment is well-formed.
+    /// Verifies the given deployment is ordered.
     #[inline]
     pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         deployment: &Deployment<N>,
         rng: &mut R,
     ) -> Result<()> {
+        let timer = timer!("Process::verify_deployment");
         // Retrieve the program ID.
         let program_id = deployment.program().id();
         // Ensure the program does not already exist in the process.
         ensure!(!self.contains_program(program_id), "Program '{program_id}' already exists");
         // Ensure the program is well-formed, by computing the stack.
         let stack = Stack::new(self, deployment.program())?;
+        lap!(timer, "Compute the stack");
+
         // Ensure the verifying keys are well-formed and the certificates are valid.
-        stack.verify_deployment::<A, R>(deployment, rng)
+        let verification = stack.verify_deployment::<A, R>(deployment, rng);
+        lap!(timer, "Verify the deployment");
+
+        finish!(timer);
+
+        verification
     }
 
     /// Finalizes the deployment.
@@ -55,15 +72,20 @@ impl<N: Network> Process<N> {
         store: &ProgramStore<N, P>,
         deployment: &Deployment<N>,
     ) -> Result<()> {
+        let timer = timer!("Process::finalize_deployment");
+
         // TODO (howardwu): Make this function atomic.
         // TODO (howardwu): Check the program ID and all mappings don't exist in the 'store'. (add this to verify_deployment too)
 
         // Compute the program stack.
         let stack = Stack::new(self, deployment.program())?;
+        lap!(timer, "Compute the stack");
+
         // Insert the verifying keys.
         for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
             stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
+        lap!(timer, "Insert the verifying keys");
 
         // Retrieve the program ID.
         let program_id = deployment.program_id();
@@ -71,9 +93,13 @@ impl<N: Network> Process<N> {
         for mapping in deployment.program().mappings().values() {
             store.initialize_mapping(program_id, mapping.name())?;
         }
+        lap!(timer, "Initialize the program mappings");
 
         // Add the stack to the process.
         self.stacks.insert(*deployment.program_id(), stack);
+
+        finish!(timer);
+
         Ok(())
     }
 
@@ -81,14 +107,23 @@ impl<N: Network> Process<N> {
     /// This method assumes the given deployment **is valid**.
     #[inline]
     pub(crate) fn load_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
+        let timer = timer!("Process::load_deployment");
+
         // Compute the program stack.
         let stack = Stack::new(self, deployment.program())?;
+        lap!(timer, "Compute the stack");
+
         // Insert the verifying keys.
         for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
             stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
+        lap!(timer, "Insert the verifying keys");
+
         // Add the stack to the process.
         self.stacks.insert(*deployment.program_id(), stack);
+
+        finish!(timer);
+
         Ok(())
     }
 }

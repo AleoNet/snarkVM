@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -737,13 +737,13 @@ mod tests {
         // Check that the operands are correct.
         assert_eq!(call.operands.len(), expected_operands.len(), "The number of operands is incorrect");
         for (i, (given, expected)) in call.operands.iter().zip(expected_operands.iter()).enumerate() {
-            assert_eq!(given, expected, "The {}-th operand is incorrect", i);
+            assert_eq!(given, expected, "The {i}-th operand is incorrect");
         }
 
         // Check that the destinations are correct.
         assert_eq!(call.destinations.len(), expected_destinations.len(), "The number of destinations is incorrect");
         for (i, (given, expected)) in call.destinations.iter().zip(expected_destinations.iter()).enumerate() {
-            assert_eq!(given, expected, "The {}-th destination is incorrect", i);
+            assert_eq!(given, expected, "The {i}-th destination is incorrect");
         }
     }
 

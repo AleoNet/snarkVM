@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -52,7 +52,7 @@ pub fn read_variable_length_integer<R: Read>(mut reader: R) -> IoResult<u64> {
         },
         _ => match u64::read_le(&mut reader)? {
             s if s < 4_294_967_296 => Err(error("Invalid variable size integer")),
-            s => Ok(s as u64),
+            s => Ok(s),
         },
     }
 }

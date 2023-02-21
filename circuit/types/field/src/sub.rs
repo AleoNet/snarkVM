@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -137,23 +137,23 @@ mod tests {
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
 
             // Test identity.
-            let name = format!("Sub: a - 0 {}", i);
+            let name = format!("Sub: a - 0 {i}");
             let zero = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::zero());
             check_sub(&name, &first, &a, &zero);
-            let name = format!("SubAssign: a - 0 {}", i);
+            let name = format!("SubAssign: a - 0 {i}");
             check_sub_assign(&name, &first, &a, &zero);
 
             // Test negation.
-            let name = format!("Sub: 0 - b {}", i);
+            let name = format!("Sub: 0 - b {i}");
             let zero = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::zero());
             check_sub(&name, &(-second), &zero, &b);
-            let name = format!("SubAssign: 0 - b {}", i);
+            let name = format!("SubAssign: 0 - b {i}");
             check_sub_assign(&name, &(-second), &zero, &b);
         }
     }

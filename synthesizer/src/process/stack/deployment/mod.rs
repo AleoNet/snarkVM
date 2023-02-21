@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -24,8 +24,6 @@ use console::{
     program::{Identifier, ProgramID},
 };
 
-use indexmap::IndexMap;
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct Deployment<N: Network> {
     /// The edition.
@@ -33,7 +31,7 @@ pub struct Deployment<N: Network> {
     /// The program.
     program: Program<N>,
     /// The mapping of function names to their verifying key and certificate.
-    verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
+    verifying_keys: Vec<(Identifier<N>, (VerifyingKey<N>, Certificate<N>))>,
 }
 
 impl<N: Network> Deployment<N> {
@@ -41,9 +39,63 @@ impl<N: Network> Deployment<N> {
     pub fn new(
         edition: u16,
         program: Program<N>,
-        verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
+        verifying_keys: Vec<(Identifier<N>, (VerifyingKey<N>, Certificate<N>))>,
     ) -> Result<Self> {
-        Ok(Self { edition, program, verifying_keys })
+        // Construct the deployment.
+        let deployment = Self { edition, program, verifying_keys };
+        // Ensure the deployment is ordered.
+        deployment.check_is_ordered()?;
+        // Return the deployment.
+        Ok(deployment)
+    }
+
+    /// Checks that the deployment is ordered.
+    pub fn check_is_ordered(&self) -> Result<()> {
+        let program_id = self.program.id();
+
+        // Ensure the edition matches.
+        ensure!(
+            self.edition == N::EDITION,
+            "Deployed the wrong edition (expected '{}', found '{}').",
+            N::EDITION,
+            self.edition
+        );
+        // Ensure the program network-level domain (NLD) is correct.
+        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
+        // Ensure the program contains functions.
+        ensure!(
+            !self.program.functions().is_empty(),
+            "No functions present in the deployment for program '{program_id}'"
+        );
+        // Ensure the deployment contains verifying keys.
+        ensure!(
+            !self.verifying_keys.is_empty(),
+            "No verifying keys present in the deployment for program '{program_id}'"
+        );
+
+        // Ensure the number of functions matches the number of verifying keys.
+        if self.program.functions().len() != self.verifying_keys.len() {
+            bail!("Deployment has an incorrect number of verifying keys, according to the program.");
+        }
+
+        // Ensure the function and verifying keys correspond.
+        for ((function_name, function), (name, _)) in self.program.functions().iter().zip_eq(&self.verifying_keys) {
+            // Ensure the function name is correct.
+            if function_name != function.name() {
+                bail!("The function key is '{function_name}', but the function name is '{}'", function.name())
+            }
+            // Ensure the function name with the verifying key is correct.
+            if name != function.name() {
+                bail!("The verifier key is '{name}', but the function name is '{}'", function.name())
+            }
+        }
+
+        ensure!(
+            !has_duplicates(self.verifying_keys.iter().map(|(name, ..)| name)),
+            "A duplicate function name was found"
+        );
+
+        Ok(())
     }
 
     /// Returns the edition.
@@ -62,7 +114,7 @@ impl<N: Network> Deployment<N> {
     }
 
     /// Returns the verifying keys.
-    pub const fn verifying_keys(&self) -> &IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)> {
+    pub const fn verifying_keys(&self) -> &Vec<(Identifier<N>, (VerifyingKey<N>, Certificate<N>))> {
         &self.verifying_keys
     }
 }

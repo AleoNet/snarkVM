@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -166,29 +166,29 @@ mod tests {
 
             let expected = first.pow(second);
 
-            let name = format!("Pow: a ^ b {}", i);
+            let name = format!("Pow: a ^ b {i}");
             check_pow(&name, &expected, &a, &b);
 
             // Test one exponent.
-            let name = format!("Pow: a ^ 1 {}", i);
+            let name = format!("Pow: a ^ 1 {i}");
             let a = Field::<Circuit>::new(mode_a, first);
             let one = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::one());
             check_pow(&name, &first, &a, &one);
 
             // Test one base.
-            let name = format!("Pow: 1 ^ b {}", i);
+            let name = format!("Pow: 1 ^ b {i}");
             let one = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::one());
             let b = Field::<Circuit>::new(mode_b, second);
             check_pow(&name, &console::Field::<<Circuit as Environment>::Network>::one(), &one, &b);
 
             // Test zero exponent.
-            let name = format!("Pow: a ^ 0 {}", i);
+            let name = format!("Pow: a ^ 0 {i}");
             let a = Field::<Circuit>::new(mode_a, first);
             let zero = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::zero());
             check_pow(&name, &console::Field::<<Circuit as Environment>::Network>::one(), &a, &zero);
 
             // Test zero base.
-            let name = format!("Mul: 0 ^ b {}", i);
+            let name = format!("Mul: 0 ^ b {i}");
             let zero = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::zero());
             let b = Field::<Circuit>::new(mode_b, second);
             check_pow(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &zero, &b);

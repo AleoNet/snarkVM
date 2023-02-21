@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -30,9 +30,9 @@ use snarkvm_fields::PrimeField;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the fourth round message and the next state.
-    pub fn prover_fourth_round<'a, R: RngCore>(
+    pub fn prover_fourth_round<R: RngCore>(
         verifier_message: &verifier::ThirdMessage<F>,
-        state: prover::State<'a, F, MM>,
+        state: prover::State<F, MM>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
         let verifier::ThirdMessage { r_b, r_c, .. } = verifier_message;

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,6 +19,8 @@
 #![allow(clippy::single_element_loop)]
 // TODO (howardwu): Remove me after tracing.
 #![allow(clippy::print_in_format_impl)]
+// TODO (howardwu): Update the return type on `execute` after stabilizing the interface.
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate tracing;

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -201,7 +201,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         for i in 0..ITERATIONS {
-            let name = format!("Sub: {} - {} {}", mode_a, mode_b, i);
+            let name = format!("Sub: {mode_a} - {mode_b} {i}");
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
             check_sub::<I>(&name, first, second, mode_a, mode_b);
@@ -224,7 +224,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Sub: ({} - {})", first, second);
+                let name = format!("Sub: ({first} - {second})");
                 check_sub::<I>(&name, first, second, mode_a, mode_b);
             }
         }

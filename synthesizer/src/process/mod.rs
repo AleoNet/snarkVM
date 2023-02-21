@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -36,11 +36,13 @@ use console::{
     types::{I64, U16, U64},
 };
 
+use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
+use std::sync::Arc;
+
 #[cfg(test)]
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
@@ -57,21 +59,31 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+        let timer = timer!("Process:setup");
+
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
+        lap!(timer, "Load credits program");
+
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
+        lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
             stack.synthesize_key::<A, _>(function_name, rng)?;
+            lap!(timer, "Synthesize circuit keys for {function_name}");
         }
+        lap!(timer, "Synthesize credits program keys");
 
         // Add the 'credits.aleo' stack to the process.
         process.stacks.insert(*program.id(), stack);
+
+        finish!(timer);
         // Return the process.
         Ok(process)
     }
@@ -93,31 +105,46 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn load() -> Result<Self> {
+        let timer = timer!("Process::load");
+
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
+        lap!(timer, "Load credits program");
+
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
+        lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
-            // Load the proving and verifying key bytes.
-            let (proving_key, verifying_key) = N::get_credits_key_bytes(function_name.to_string())?;
+            // Load the proving key.
+            let proving_key = N::get_credits_proving_key(function_name.to_string())?;
+            stack.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
+            lap!(timer, "Load proving key for {function_name}");
 
-            // Insert the proving and verifying key.
-            stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
-            stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
+            // Load the verifying key.
+            let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
+            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone()))?;
+            lap!(timer, "Load verifying key for {function_name}");
         }
+        lap!(timer, "Load circuit keys");
 
         // Initialize the inclusion proving key.
         let _ = N::inclusion_proving_key();
+        lap!(timer, "Load inclusion proving key");
+
         // Initialize the inclusion verifying key.
         let _ = N::inclusion_verifying_key();
+        lap!(timer, "Load inclusion verifying key");
 
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
+
+        finish!(timer, "Process::load");
         // Return the process.
         Ok(process)
     }
@@ -137,13 +164,15 @@ impl<N: Network> Process<N> {
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
-            // Load the proving and verifying key bytes.
-            let (proving_key, verifying_key) = N::get_credits_key_bytes(function_name.to_string())?;
-
+            // Cache the proving and verifying key.
             let (proving_key, verifying_key) = cache.entry(function_name.to_string()).or_insert_with(|| {
-                (ProvingKey::from_bytes_le(proving_key).unwrap(), VerifyingKey::from_bytes_le(verifying_key).unwrap())
-            });
+                // Load the proving key.
+                let proving_key = N::get_credits_proving_key(function_name.to_string()).unwrap();
+                // Load the verifying key.
+                let verifying_key = N::get_credits_verifying_key(function_name.to_string()).unwrap();
 
+                (ProvingKey::new(proving_key.clone()), VerifyingKey::new(verifying_key.clone()))
+            });
             // Insert the proving and verifying key.
             stack.insert_proving_key(function_name, proving_key.clone())?;
             stack.insert_verifying_key(function_name, verifying_key.clone())?;
@@ -342,7 +371,8 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, execution, _inclusion, _metrics) =
+                    process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.
                 execution
@@ -439,7 +469,8 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -606,7 +637,8 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
@@ -688,7 +720,8 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -750,12 +783,105 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
 
         process.verify_execution::<true>(&execution).unwrap();
+    }
+
+    #[test]
+    fn test_process_output_operand() {
+        // Helper function to test authorization, execution, and verification for the program below.
+        fn authorize_execute_and_verify(
+            program: &Program<CurrentNetwork>,
+            function_name: Identifier<CurrentNetwork>,
+            output: Value<CurrentNetwork>,
+            caller_private_key: &PrivateKey<CurrentNetwork>,
+            rng: &mut TestRng,
+        ) {
+            // Construct the process.
+            let process = super::test_helpers::sample_process(program);
+
+            // Authorize the function call.
+            let inputs: &[Value<CurrentNetwork>] = &[];
+            let authorization = process
+                .authorize::<CurrentAleo, _>(caller_private_key, program.id(), function_name, inputs.iter(), rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+
+            // Check again to make sure we didn't modify the authorization before calling `evaluate`.
+            assert_eq!(authorization.len(), 1);
+
+            // Compute the output value.
+            let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+            let candidate = response.outputs();
+            assert_eq!(1, candidate.len());
+            assert_eq!(output, candidate[0]);
+
+            // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+            assert_eq!(authorization.len(), 1);
+
+            // Execute the request.
+            let (response, execution, _inclusion, _metrics) =
+                process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+            let candidate = response.outputs();
+            assert_eq!(1, candidate.len());
+            assert_eq!(output, candidate[0]);
+
+            process.verify_execution::<true>(&execution).unwrap();
+        }
+
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program operand.aleo;
+
+  function program_id:
+    output operand.aleo as address.private;
+
+  function literal:
+    output 1234u64 as u64.private;
+
+  function caller:
+    output self.caller as address.private;",
+        )
+        .unwrap();
+
+        // Initalize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Test the `program_id` function.
+        authorize_execute_and_verify(
+            &program,
+            Identifier::from_str("program_id").unwrap(),
+            Value::from_str(&format!("{}", program.id().to_address().unwrap())).unwrap(),
+            &caller_private_key,
+            rng,
+        );
+
+        // Test the `literal` function.
+        authorize_execute_and_verify(
+            &program,
+            Identifier::from_str("literal").unwrap(),
+            Value::from_str("1234u64").unwrap(),
+            &caller_private_key,
+            rng,
+        );
+
+        // Test the `caller` function.
+        authorize_execute_and_verify(
+            &program,
+            Identifier::from_str("caller").unwrap(),
+            Value::from_str(&format!("{caller}")).unwrap(),
+            &caller_private_key,
+            rng,
+        );
     }
 
     #[test]
@@ -866,7 +992,8 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[0]);
@@ -1020,7 +1147,8 @@ function transfer:
         assert_eq!(authorization.len(), 5);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(output_a, candidate[0]);
@@ -1123,7 +1251,8 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1220,7 +1349,8 @@ finalize compute:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1335,7 +1465,8 @@ finalize mint_public:
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
@@ -1471,7 +1602,8 @@ function mint:
         assert_eq!(authorization.len(), 2);
 
         // Execute the request.
-        let (response, execution, _inclusion) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 

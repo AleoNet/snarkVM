@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -145,16 +145,16 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Rem: {} % {}", first, second);
+            let name = format!("Rem: {first} % {second}");
             check_rem::<I>(&name, first, second, mode_a, mode_b);
 
-            let name = format!("Rem by One: {} % 1", first);
+            let name = format!("Rem by One: {first} % 1");
             check_rem::<I>(&name, first, console::Integer::one(), mode_a, mode_b);
 
-            let name = format!("Rem by Self: {} % {}", first, first);
+            let name = format!("Rem by Self: {first} % {first}");
             check_rem::<I>(&name, first, first, mode_a, mode_b);
 
-            let name = format!("Rem by Zero: {} % 0", first);
+            let name = format!("Rem by Zero: {first} % 0");
             check_rem::<I>(&name, first, console::Integer::zero(), mode_a, mode_b);
         }
 
@@ -185,7 +185,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Rem: ({} % {})", first, second);
+                let name = format!("Rem: ({first} % {second})");
                 check_rem::<I>(&name, first, second, mode_a, mode_b);
             }
         }

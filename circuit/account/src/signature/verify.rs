@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -75,7 +75,7 @@ pub(crate) mod tests {
             let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, address);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = signature.verify(&address, &message);
                 assert!(candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
@@ -115,7 +115,7 @@ pub(crate) mod tests {
             let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, address);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = signature.verify(&address, &message);
                 assert!(candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

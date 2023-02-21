@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -98,8 +98,7 @@ pub trait BigInteger:
 }
 
 pub mod arithmetic {
-    /// Calculate a + b + carry, returning the sum and modifying the
-    /// carry value.
+    /// set a = a + b + carry, and return the new carry value.
     #[inline(always)]
     pub fn adc(a: &mut u64, b: u64, carry: u64) -> u64 {
         let tmp = u128::from(*a) + u128::from(b) + u128::from(carry);
@@ -107,7 +106,7 @@ pub mod arithmetic {
         (tmp >> 64) as u64
     }
 
-    /// set a = a - b - borrow, and returning the borrow value.
+    /// set a = a - b - borrow, and return the new borrow value.
     #[inline(always)]
     pub fn sbb(a: &mut u64, b: u64, borrow: u64) -> u64 {
         let tmp = (1u128 << 64) + u128::from(*a) - u128::from(b) - u128::from(borrow);

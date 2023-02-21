@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -61,13 +61,13 @@ mod tests {
         let string_a = sample_string(mode, &mut rng);
         let string_b = sample_string(mode, &mut rng);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = string_a.is_equal(&string_a);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = string_a.is_equal(&string_b);
             assert!(!candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -90,13 +90,13 @@ mod tests {
         let string_a = sample_string(mode, &mut rng);
         let string_b = sample_string(mode, &mut rng);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = string_a.is_not_equal(&string_b);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = string_a.is_not_equal(&string_a);
             assert!(!candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
