@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -43,7 +43,7 @@ impl<N: Network> Client<N> {
         // Compute the authorization.
         let authorization = self.vm.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Compute the execution.
-        let (response, execution) = self.vm.execute(authorization, Some(query), rng)?;
+        let (response, execution, _) = self.vm.execute(authorization, Some(query), rng)?;
         // Return the response and transaction.
         Ok((response, Transaction::from_execution(execution, None)?))
     }
