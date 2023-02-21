@@ -36,18 +36,28 @@ impl<'a, F: PrimeField, MM: MarlinMode> FirstOracles<'a, F, MM> {
     /// Intended for use when committing.
     #[allow(clippy::needless_collect)]
     pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'static, F>> {
-        let t = self.batches.iter_mut().flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
+        let t = self.batches
+            .values_mut()
+            .flat_map(|b| b.iter_mut())
+            .flat_map(|b| b.iter_for_commit())
+            .collect::<Vec<_>>();
         t.into_iter().chain(self.mask_poly.clone().map(Into::into))
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
     pub fn iter_for_open(&self) -> impl Iterator<Item = &'_ LabeledPolynomial<F>> {
-        self.batches.iter().flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
+        self.batches
+            .values()
+            .flat_map(|b| b.iter())
+            .flat_map(|b| b.iter_for_open())
+            .chain(self.mask_poly.as_ref())
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.batches.iter().all(|b| b.matches_info(info))
+        self.batches
+            .values()
+            .all(|b| b.iter().all(|b| b.matches_info(info)))
             && self.mask_poly.as_ref().map_or(true, |p| Some(p.info()) == info.get(p.label()))
     }
 }

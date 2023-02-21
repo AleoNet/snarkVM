@@ -69,6 +69,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_batch_size());
         for (circuit, state) in &mut state.index_specific_states {
             let constraint_domain = state.constraint_domain;
             let batch_size = state.batch_size;
@@ -81,7 +82,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             assert_eq!(private_variables.len(), batch_size);
             let mut r_b_s = Vec::with_capacity(batch_size);
 
-            let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
             let state_ref = &state;
             for (i, (z_a, z_b, private_variables, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, &state.x_polys).enumerate()
@@ -155,14 +155,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_w<'a>(
         circuit: &Circuit<F, MM>,
         label: String,
-        private_variables: Vec<F>,
+        private_variables: &[F],
         x_poly: &DensePolynomial<F>,
         state: &prover::IndexSpecificState<'a, F>,
     ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let input_domain = state.input_domain;
 
-        let mut w_extended = private_variables;
+        let mut w_extended = private_variables.to_vec();
         let ratio = constraint_domain.size() / input_domain.size();
         w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
 

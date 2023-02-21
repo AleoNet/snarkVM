@@ -143,9 +143,14 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         })
     }
 
-    /// Get the batch size.
+    /// Get the batch size for a given circuit.
     pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
         self.index_specific_states.get(circuit).map(|s| s.batch_size)
+    }
+
+    /// Get the total batch size.
+    pub fn total_batch_size(&self) -> usize {
+        self.index_specific_states.values().map(|s| s.batch_size).sum()
     }
 
     /// Get the public inputs for the entire batch.
