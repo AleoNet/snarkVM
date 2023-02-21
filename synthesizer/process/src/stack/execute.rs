@@ -136,6 +136,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
 
+        // Log the beginning of function execution.
+        A::log(format!("Executing function: {}", console_request.function_name()));
+
         // Ensure the network ID matches.
         ensure!(
             **console_request.network_id() == N::ID,
@@ -218,6 +221,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Initialize a tracker to determine if there are any function calls.
         let mut contains_function_call = false;
 
+        // Log instruction execution.
+        A::log("Executing instructions...".into_string());
+
         // Execute the instructions.
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
@@ -256,6 +262,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             }
         }
         lap!(timer, "Execute the instructions");
+
+        // Log the completion of instruction execution.
+        A::log("Finished executing instructions...".into_string());
 
         // Load the outputs.
         let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();

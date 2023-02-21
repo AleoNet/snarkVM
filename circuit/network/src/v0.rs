@@ -33,7 +33,7 @@ use snarkvm_circuit_algorithms::{
 };
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
-    environment::{prelude::*, Assignment, Circuit, R1CS},
+    environment::{prelude::*, Assignment, Circuit, Transcribe, R1CS},
     Boolean,
     Field,
     Group,
@@ -41,7 +41,6 @@ use snarkvm_circuit_types::{
 };
 
 use core::fmt;
-use snarkvm_circuit_types::environment::{CircuitJSON, Transcribe};
 
 type E = Circuit;
 
@@ -439,7 +438,6 @@ impl Environment for AleoV0 {
 }
 
 impl Transcribe for AleoV0 {
-    type Event = <E as Transcribe>::Event;
     type Transcript = <E as Transcribe>::Transcript;
 
     /// Clears and returns the accumulated transcript.
