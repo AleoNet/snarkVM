@@ -43,7 +43,7 @@ impl Environment for FormalCircuit {
 
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField> {
-        Circuit::zero()
+        Circuit::one()
     }
 
     /// Returns a new variable of the given mode and value.
@@ -96,48 +96,13 @@ impl Environment for FormalCircuit {
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>,
     {
-        IN_WITNESS.with(|in_witness| {
-            // Ensure we are not in witness mode.
-            if !(*(**in_witness).borrow()) {
-                CIRCUIT.with(|circuit| {
-                    let (a, b, c) = constraint();
-                    let (a, b, c) = (a.into(), b.into(), c.into());
-
-                    let constraint_json = ConstraintJSON::new(&a, &b, &c);
-                    Self::log(format!("{}", serde_json::to_string_pretty(&constraint_json).unwrap()));
-
-
-                    // Ensure the constraint is not comprised of constants.
-                    match a.is_constant() && b.is_constant() && c.is_constant() {
-                        true => {
-                            // Evaluate the constant constraint.
-                            assert_eq!(
-                                a.value() * b.value(),
-                                c.value(),
-                                "Constant constraint failed: ({} * {}) =?= {}",
-                                a,
-                                b,
-                                c
-                            );
-
-                            // match self.counter.scope().is_empty() {
-                            //     true => println!("Enforced constraint with constant terms: ({} * {}) =?= {}", a, b, c),
-                            //     false => println!(
-                            //         "Enforced constraint with constant terms ({}): ({} * {}) =?= {}",
-                            //         self.counter.scope(), a, b, c
-                            //     ),
-                            // }
-                        }
-                        false => {
-                            // Construct the constraint object.
-                            let constraint = Constraint((**circuit).borrow().scope(), a, b, c);
-                            // Append the constraint.
-                            (**circuit).borrow_mut().enforce(constraint)
-                        }
-                    }
-                });
-            }
-        })
+        let (a, b, c) = constraint();
+        let a = a.into();
+        let b = b.into();
+        let c = c.into();
+        let constraint_json = ConstraintJSON::new(&a, &b, &c);
+        Self::log(format!("{}", serde_json::to_string_pretty(&constraint_json).unwrap()));
+        Circuit::enforce(|| (a, b, c))
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
