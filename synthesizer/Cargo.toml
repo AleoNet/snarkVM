@@ -34,6 +34,11 @@ path = "benches/coinbase_puzzle.rs"
 harness = false
 required-features = [ "setup" ]
 
+[[bench]]
+name = "storage_root"
+path = "benches/storage_root.rs"
+harness = false
+
 [features]
 default = [ "parallel" ]
 parallel = [
