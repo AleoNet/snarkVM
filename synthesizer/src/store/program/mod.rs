@@ -182,7 +182,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_write_batch!(self, {
             // Update the key-value ID map with the new key-value ID.
-            self.key_value_id_map().insert(mapping_id, key_value_ids)?;
+            self.key_varue_id_map().insert(mapping_id, key_value_ids)?;
             // Insert the key.
             self.key_map().insert(key_id, key)?;
             // Insert the value.
@@ -708,7 +708,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use console::{network::Testnet3, types::Group};
 
     type CurrentNetwork = Testnet3;
 
@@ -900,6 +900,60 @@ mod tests {
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
     }
 
+    /// Checks `initialize_mapping`, `insert_key_value`, and `get_checksum`.
+    fn check_large_key_value_set<N: Network>(
+        program_store: &ProgramMemory<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
+        num_key_value_pairs: u32,
+    ) {
+        // Ensure the program ID does not exist.
+        assert!(!program_store.contains_program(&program_id).unwrap());
+        // Ensure the mapping name does not exist.
+        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        // Ensure removing an un-initialized mapping fails.
+        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+
+        // Now, initialize the mapping.
+        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        // Ensure the program ID got initialized.
+        assert!(program_store.contains_program(&program_id).unwrap());
+        // Ensure the mapping name got initialized.
+        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+
+        // Sample a random group element value.
+        let value = Value::from_str(&format!("{}", Group::<N>::rand(&mut TestRng::default()))).unwrap();
+
+        println!("Adding keys to the mapping.");
+        let add_keys_start = std::time::Instant::now();
+        // TODO (raychu86, d0cd): Introduce parallelism to speed up the test.
+        // Insert the (key, value) pairs.
+        for i in 0..num_key_value_pairs {
+            let key = Plaintext::<N>::from_str(&format!("{i}u32")).unwrap();
+
+            program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            // Ensure the program ID is still initialized.
+            assert!(program_store.contains_program(&program_id).unwrap());
+            // Ensure the mapping name is still initialized.
+            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            // Ensure the key got initialized.
+            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            // Ensure the value returns Some(value).
+            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        }
+        println!("Added {num_key_value_pairs} keys in {} seconds.", add_keys_start.elapsed().as_secs_f64());
+
+        // Ensure the checksum calculation succeeds.
+        let get_checksum_start = std::time::Instant::now();
+        println!("Computing checksum.");
+        assert!(program_store.get_checksum().is_ok());
+        println!(
+            "Computed checksum for {} KV pairs in {} seconds.\n",
+            num_key_value_pairs,
+            get_checksum_start.elapsed().as_secs_f64()
+        );
+    }
+
     #[test]
     fn test_initialize_insert_remove() {
         // Initialize a program ID and mapping name.
@@ -988,6 +1042,25 @@ mod tests {
             assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
             assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn test_large_key_value_set() {
+        // Initialize a program ID.
+
+        // Initialize a new program store.
+        let program_store = ProgramMemory::open(None).unwrap();
+
+        // Test checksums over mappings of increasing size.
+        for i in 0..10 {
+            println!("\nIteration: {i}");
+            // Initialize a program ID and mapping name for the current iteration.
+            let program_id = ProgramID::<CurrentNetwork>::from_str(&format!("hello_{i}.aleo")).unwrap();
+            let mapping_name = Identifier::from_str(&format!("account")).unwrap();
+
+            // Check the current iteration.
+            check_large_key_value_set(&program_store, program_id, mapping_name, 1 << (10 + i));
         }
     }
 
