@@ -56,6 +56,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     pcs.make_matrices_square();
                     end_timer!(padding_time);
 
+                    // TODO: pull out circuit-specific operations
                     let num_non_zero_a = circuit.0.index_info.num_non_zero_a;
                     let num_non_zero_b = circuit.0.index_info.num_non_zero_b;
                     let num_non_zero_c = circuit.0.index_info.num_non_zero_c;
@@ -94,7 +95,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let z_a = cfg_iter!(circuit.0.a)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();
-                    end_timer!(eval_z_a_time); // TODO: not sure if these timers will print in a confused way when running in parallel
+                    end_timer!(eval_z_a_time); // TODO: not sure if these timers will print in a confused way when running in parallel. Add label to timers
 
                     let eval_z_b_time = start_timer!(|| "Evaluating z_B");
                     let z_b = cfg_iter!(circuit.0.b)
@@ -115,6 +116,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect::<Result<
                 BTreeMap<
                     &Circuit<F, MM>,
+                    // Define type/struct instead of using a nameless tuple below
                     Vec<(
                         prover::PaddedPubInputs<F>,
                         prover::PrivateInputs<F>,

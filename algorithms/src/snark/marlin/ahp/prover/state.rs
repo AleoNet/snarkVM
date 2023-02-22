@@ -32,7 +32,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{SynthesisError, SynthesisResult};
 
-pub struct IndexSpecificState<'a, F: PrimeField> {
+pub struct IndexSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
     pub(super) constraint_domain: EvaluationDomain<F>,
     pub(super) non_zero_a_domain: EvaluationDomain<F>,
@@ -44,11 +44,11 @@ pub struct IndexSpecificState<'a, F: PrimeField> {
 
     /// The list of public inputs for each instance in the batch.
     /// The length of this list must be equal to the batch size.
-    pub(super) padded_public_variables: Vec<&'a [F]>, // TODO: why change the Vec to a list?
+    pub(super) padded_public_variables: Vec<Vec<F>>,
 
     /// The list of private variables for each instance in the batch.
     /// The length of this list must be equal to the batch size.
-    pub(super) private_variables: Vec<&'a [F]>,
+    pub(super) private_variables: Vec<Vec<F>>,
 
     /// The list of Az vectors for each instance in the batch.
     /// The length of this list must be equal to the batch size.
@@ -77,7 +77,8 @@ pub struct IndexSpecificState<'a, F: PrimeField> {
 
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
-    pub(super) index_specific_states: BTreeMap<&'a Circuit<F, MM>, IndexSpecificState<'a, F>>,
+    pub(super) max_constraint_domain: EvaluationDomain<F>,
+    pub(super) index_specific_states: BTreeMap<&'a Circuit<F, MM>, IndexSpecificState<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
@@ -96,12 +97,23 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             Vec<(PaddedPubInputs<F>, PrivateInputs<F>, Za<F>, Zb<F>)>
         >
     ) -> Result<Self, AHPError> {
+        let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
         let index_specific_states = indices_and_assignments
-            .iter()
+            .into_iter()
             .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
                 let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
                     .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+                max_constraint_domain = match max_constraint_domain {
+                    Some(max_d) => {
+                        if max_d.size() < constraint_domain.size() {
+                            Some(constraint_domain)
+                        } else {
+                            Some(max_d)
+                        }
+                    },
+                    None => Some(constraint_domain),
+                };
 
                 let non_zero_a_domain =
                     EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -111,15 +123,17 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
                 let mut input_domain = None;
-                let mut z_as = vec![];
-                let mut z_bs = vec![];
-                let (x_polys, variables): (Vec<_>, Vec<_>) = variable_assignments.iter().map(|(padded_public_input, private_variable, z_a, z_b)| {
+                let mut z_as = vec![]; // Pre-allocate based on batch_length
+                let mut z_bs = vec![]; // Pre-allocate based on batch_length
+                // TODO: Add x_polys, padded_public_variables, private_variables Vec like above.
+                // Change to for-loop given that we have side-effects
+                let (x_polys, variables): (Vec<_>, Vec<_>) = variable_assignments.into_iter().map(|(padded_public_input, private_variable, z_a, z_b)| {
                     input_domain = input_domain.or_else(|| EvaluationDomain::new(padded_public_input.len()));
-                    z_as.push(*z_a);
-                    z_bs.push(*z_b);
+                    z_as.push(z_a);
+                    z_bs.push(z_b);
                     let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain.unwrap())
                             .interpolate();
-                    (x_poly, (padded_public_input.as_slice(), private_variable.as_slice()))
+                    (x_poly, (padded_public_input, private_variable))
                 }).unzip();
                 let input_domain = input_domain.unwrap();
                 let (padded_public_variables, private_variables): (Vec<_>, Vec<_>) = variables.into_iter().unzip();
@@ -142,11 +156,13 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     lhs_polynomials: None,
                     sums: None,
                 };
-                Ok((*circuit, state))
+                Ok((circuit, state))
             })
             .collect::<SynthesisResult<BTreeMap<_, _>>>()?;
 
+        let max_constraint_domain = max_constraint_domain.ok_or(AHPError::BatchSizeIsZero)?;
         Ok(Self {
+            max_constraint_domain,
             index_specific_states,
             first_round_oracles: None,
         })
@@ -168,7 +184,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[&[F]]> {
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
         self.index_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
     }
 

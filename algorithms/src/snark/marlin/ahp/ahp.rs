@@ -40,8 +40,8 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
     mode: PhantomData<MM>,
 }
 
-pub(crate) fn witness_label(poly: &str, i: usize) -> String {
-    format!("{poly}_{:0>8}", i)
+pub(crate) fn witness_label(circuit_id: &str, poly: &str, i: usize) -> String {
+    format!("{circuit_id}_{poly}_{:0>8}", i)
 }
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {

@@ -29,6 +29,8 @@ pub enum AHPError {
     NonSquareMatrix,
     /// During synthesis, our polynomials ended up being too high of degree
     PolynomialDegreeTooLarge,
+    /// The batch size is zero.
+    BatchSizeIsZero,
 }
 
 impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {
