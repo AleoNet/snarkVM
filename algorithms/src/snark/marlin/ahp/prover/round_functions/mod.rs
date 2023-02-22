@@ -46,21 +46,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let indices_and_assignments = cfg_iter!(circuits)
             .map(|circuit| {
-                let assignments = cfg_iter!(circuit.1).map(|instance| {
-                    let constraint_time = start_timer!(|| "Generating constraints and witnesses");
+                let num_non_zero_a = circuit.0.index_info.num_non_zero_a;
+                let num_non_zero_b = circuit.0.index_info.num_non_zero_b;
+                let num_non_zero_c = circuit.0.index_info.num_non_zero_c;
+
+                // TODO: add circuit hash to timer message
+                let assignments = cfg_iter!(circuit.1).enumerate().map(|(i, instance)| {
+                    let constraint_time = start_timer!(|| format!("Generating constraints and witnesses {i}"));
                     let mut pcs = prover::ConstraintSystem::new();
                     instance.generate_constraints(&mut pcs)?;
                     end_timer!(constraint_time);
 
-                    let padding_time = start_timer!(|| "Padding matrices to make them square");
+                    let padding_time = start_timer!(|| format!("Padding matrices to make them square {i}"));
                     crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
                     pcs.make_matrices_square();
                     end_timer!(padding_time);
-
-                    // TODO: pull out circuit-specific operations
-                    let num_non_zero_a = circuit.0.index_info.num_non_zero_a;
-                    let num_non_zero_b = circuit.0.index_info.num_non_zero_b;
-                    let num_non_zero_c = circuit.0.index_info.num_non_zero_c;
 
                     let prover::ConstraintSystem {
                         public_variables: padded_public_variables,
@@ -92,13 +92,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                     Self::formatted_public_input_is_admissible(&padded_public_variables)?;
 
-                    let eval_z_a_time = start_timer!(|| "Evaluating z_A");
+                    let eval_z_a_time = start_timer!(|| format!("Evaluating z_A_{i}"));
                     let z_a = cfg_iter!(circuit.0.a)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();
-                    end_timer!(eval_z_a_time); // TODO: not sure if these timers will print in a confused way when running in parallel. Add label to timers
+                    end_timer!(eval_z_a_time);
 
-                    let eval_z_b_time = start_timer!(|| "Evaluating z_B");
+                    let eval_z_b_time = start_timer!(|| format!("Evaluating z_B_{i}"));
                     let z_b = cfg_iter!(circuit.0.b)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();
