@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for InputID<N> {
     /// Serializes the input ID into string or bytes.
@@ -68,24 +70,18 @@ impl<'de, N: Network> Deserialize<'de> for InputID<N> {
                 // Parse the input ID from a string into a value.
                 let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Recover the input.
-                let input_id = match input["type"].as_str() {
-                    Some("constant") => {
-                        InputID::Constant(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
-                    Some("public") => {
-                        InputID::Public(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
-                    Some("private") => {
-                        InputID::Private(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
-                    }
+                let input_id = match input.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => InputID::Constant(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
+                    Some("public") => InputID::Public(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
+                    Some("private") => InputID::Private(DeserializeExt::take_from_value::<D>(&mut input, "id")?),
                     Some("record") => InputID::Record(
-                        serde_json::from_value(input["commitment"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["gamma"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["serial_number"].take()).map_err(de::Error::custom)?,
-                        serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "commitment")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "gamma")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "serial_number")?,
+                        DeserializeExt::take_from_value::<D>(&mut input, "tag")?,
                     ),
                     Some("external_record") => {
-                        InputID::ExternalRecord(serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?)
+                        InputID::ExternalRecord(DeserializeExt::take_from_value::<D>(&mut input, "id")?)
                     }
                     _ => return Err(de::Error::custom("Invalid input type")),
                 };
@@ -126,7 +122,7 @@ mod tests {
         assert_eq!(expected_string, candidate.to_string());
 
         // Deserialize
-        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {}", expected_string)));
+        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
     }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -141,7 +141,7 @@ impl<N: Network> Plaintext<N> {
                                 // Print the last member without a comma.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
                                 // Print the member with a comma.
-                                false => write!(f, "\n{:indent$}}},", "", indent = depth * INDENT),
+                                false => write!(f, ","),
                             }
                         }
                     }
@@ -242,5 +242,50 @@ mod tests {
         let plaintext =
             Plaintext::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(plaintext.is_err());
+    }
+
+    #[test]
+    fn test_nested_structs1() {
+        let expected = r"{
+  r1: {
+    c1: 1u8,
+    c2: 2u8,
+    c3: 1u8
+  },
+  r2: {
+    c1: 2u8,
+    c2: 2u8,
+    c3: 1u8
+  },
+  r3: {
+    c1: 1u8,
+    c2: 2u8,
+    c3: 1u8
+  }
+}";
+
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_nested_structs2() {
+        let expected = r"{
+  foo: {
+    bar: {
+      baz: 1u8
+    },
+    qux: {
+      quux: 2u8
+    }
+  }
+}";
+
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
     }
 }

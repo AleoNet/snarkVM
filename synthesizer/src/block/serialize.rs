@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Block<N> {
     /// Serializes the block to a JSON-string or buffer.
@@ -45,16 +47,16 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut block = serde_json::Value::deserialize(deserializer)?;
-                let block_hash: N::BlockHash =
-                    serde_json::from_value(block["block_hash"].take()).map_err(de::Error::custom)?;
+                let block_hash: N::BlockHash = DeserializeExt::take_from_value::<D>(&mut block, "block_hash")?;
 
                 // Recover the block.
                 let block = Self::from(
-                    serde_json::from_value(block["previous_hash"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["header"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["transactions"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["coinbase"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["signature"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "header")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
+                    serde_json::from_value(block.get_mut("coinbase").unwrap_or(&mut serde_json::Value::Null).take())
+                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "signature")?,
                 )
                 .map_err(de::Error::custom)?;
 

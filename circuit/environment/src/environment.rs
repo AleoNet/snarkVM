@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -24,10 +24,10 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     type Network: console::Network<Affine = Self::Affine, Field = Self::BaseField, Scalar = Self::ScalarField>;
 
     type Affine: AffineCurve<
-        BaseField = Self::BaseField,
-        ScalarField = Self::ScalarField,
-        Coordinates = (Self::BaseField, Self::BaseField),
-    >;
+            BaseField = Self::BaseField,
+            ScalarField = Self::ScalarField,
+            Coordinates = (Self::BaseField, Self::BaseField),
+        >;
     type BaseField: PrimeField + SquareRootField + Copy;
     type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger> + Copy;
 

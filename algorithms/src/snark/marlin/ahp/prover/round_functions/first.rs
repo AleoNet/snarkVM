@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -150,11 +150,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None))
     }
 
-    fn calculate_w<'a>(
+    fn calculate_w(
         label: String,
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
-        state: &prover::State<'a, F, MM>,
+        state: &prover::State<F, MM>,
     ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let input_domain = state.input_domain;

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -160,13 +160,16 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
-    fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.execution_store().find_transaction_id(transition_id)
+    fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
+        self.execution_store().find_transaction_id_from_transition_id(transition_id)
     }
 
     /// Returns the transaction ID that contains the given `program ID`.
-    fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-        self.deployment_store().find_transaction_id(program_id)
+    fn find_transaction_id_from_program_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.deployment_store().find_transaction_id_from_program_id(program_id)
     }
 
     /// Returns the transaction for the given `transaction ID`.
@@ -386,13 +389,24 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the transaction ID that contains the given `program ID`.
-    pub fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-        self.storage.deployment_store().find_transaction_id(program_id)
+    pub fn find_transaction_id_from_program_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.storage.deployment_store().find_transaction_id_from_program_id(program_id)
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
-    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.storage.execution_store().find_transaction_id(transition_id)
+    pub fn find_transaction_id_from_transition_id(
+        &self,
+        transition_id: &N::TransitionID,
+    ) -> Result<Option<N::TransactionID>> {
+        // Check if the transaction id exists in the execution store.
+        let execution_transaction =
+            self.storage.execution_store().find_transaction_id_from_transition_id(transition_id);
+
+        // Check if the transaction id exists in the transition store.
+        match execution_transaction {
+            Ok(None) => self.storage.deployment_store().find_transaction_id_from_transition_id(transition_id),
+            _ => execution_transaction,
+        }
     }
 }
 
@@ -415,13 +429,13 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     }
 
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
-    pub fn deployment_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.deployment_store().deployment_ids()
+    pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.deployment_store().deployment_transaction_ids()
     }
 
     /// Returns an iterator over the execution transaction IDs, for all executions.
-    pub fn execution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.execution_store().execution_ids()
+    pub fn execution_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.execution_store().execution_transaction_ids()
     }
 
     /// Returns an iterator over the program IDs, for all deployments.
@@ -514,21 +528,21 @@ mod tests {
 
         for transition_id in transition_ids {
             // Ensure the transaction ID is not found.
-            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
             assert_eq!(None, candidate);
 
             // Insert the transaction.
             transaction_store.insert(&transaction).unwrap();
 
             // Find the transaction ID.
-            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
             assert_eq!(Some(transaction_id), candidate);
 
             // Remove the transaction.
             transaction_store.remove(&transaction_id).unwrap();
 
             // Ensure the transaction ID is not found.
-            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
             assert_eq!(None, candidate);
         }
     }

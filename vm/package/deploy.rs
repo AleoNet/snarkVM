@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 
 use crate::synthesizer::Deployment;
 use snarkvm_console::types::Address;
+use snarkvm_utilities::DeserializeExt;
 
 use super::*;
 
@@ -74,11 +75,11 @@ impl<'de, N: Network> Deserialize<'de> for DeployRequest<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["deployment"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "deployment")?,
             // Retrieve the address of the program.
-            serde_json::from_value(request["address"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "address")?,
             // Retrieve the program ID.
-            serde_json::from_value(request["program_id"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "program_id")?,
         ))
     }
 }
@@ -116,7 +117,7 @@ impl<'de, N: Network> Deserialize<'de> for DeployResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["deployment"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "deployment")?,
         ))
     }
 }

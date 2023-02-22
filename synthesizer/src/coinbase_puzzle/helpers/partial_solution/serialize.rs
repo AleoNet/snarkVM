@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for PartialSolution<N> {
     /// Serializes the partial solution to a JSON-string or buffer.
@@ -39,10 +41,9 @@ impl<'de, N: Network> Deserialize<'de> for PartialSolution<N> {
             true => {
                 let mut partial_prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(partial_prover_solution["address"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(partial_prover_solution["nonce"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value::<PuzzleCommitment<N>>(partial_prover_solution["commitment"].take())
-                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut partial_prover_solution, "address")?,
+                    DeserializeExt::take_from_value::<D>(&mut partial_prover_solution, "nonce")?,
+                    <PuzzleCommitment<N>>::take_from_value::<D>(&mut partial_prover_solution, "commitment")?,
                 ))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "partial solution"),

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -140,7 +140,7 @@ impl<E: PairingEngine> KZG10<E> {
         if let Some(hiding_degree) = hiding_bound {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
-                start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
+                start_timer!(|| format!("Sampling a random polynomial of degree {hiding_degree}"));
 
             randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
             Self::check_hiding_bound(
@@ -199,7 +199,7 @@ impl<E: PairingEngine> KZG10<E> {
         if let Some(hiding_degree) = hiding_bound {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
-                start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
+                start_timer!(|| format!("Sampling a random polynomial of degree {hiding_degree}"));
 
             randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
             Self::check_hiding_bound(
@@ -416,7 +416,7 @@ impl<E: PairingEngine> KZG10<E> {
         )
         .is_one();
         end_timer!(pairing_time);
-        end_timer!(check_time, || format!("Result: {}", result));
+        end_timer!(check_time, || format!("Result: {result}"));
         Ok(result)
     }
 

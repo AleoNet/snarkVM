@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -30,6 +30,8 @@ impl<N: Network> Stack<N> {
         caller: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
+        let timer = timer!("Stack::execute_closure");
+
         // Ensure the call stack is not `Evaluate`.
         ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
 
@@ -37,6 +39,7 @@ impl<N: Network> Stack<N> {
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
+        lap!(timer, "Check the number of inputs");
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
@@ -47,6 +50,7 @@ impl<N: Network> Stack<N> {
         registers.set_caller_circuit(caller);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
+        lap!(timer, "Initialize the registers");
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -59,6 +63,7 @@ impl<N: Network> Stack<N> {
             // Assign the circuit input to the register.
             registers.store_circuit(self, register, input.clone())
         })?;
+        lap!(timer, "Store the inputs");
 
         // Execute the instructions.
         for instruction in closure.instructions() {
@@ -72,17 +77,42 @@ impl<N: Network> Stack<N> {
             // Execute the instruction.
             instruction.execute(self, &mut registers)?;
         }
+        lap!(timer, "Execute the instructions");
 
         // Ensure the number of public variables remains the same.
         ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
 
-        // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            // Retrieve the circuit output from the register.
-            registers.load_circuit(self, &Operand::Register(output.register().clone()))
-        });
+        use circuit::Inject;
 
-        outputs.collect()
+        // Load the outputs.
+        let outputs = closure
+            .outputs()
+            .iter()
+            .map(|output| {
+                match output.operand() {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::new(circuit::Mode::Constant, literal.clone()),
+                    ))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load_circuit(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                            circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
+                        ))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.caller_circuit()?),
+                    ))),
+                }
+            })
+            .collect();
+        lap!(timer, "Load the outputs");
+
+        finish!(timer);
+        outputs
     }
 
     /// Executes a program function on the given inputs.
@@ -97,6 +127,8 @@ impl<N: Network> Stack<N> {
         mut call_stack: CallStack<N>,
         rng: &mut R,
     ) -> Result<Response<N>> {
+        let timer = timer!("Stack::execute_function");
+
         // Ensure the call stack is not `Evaluate`.
         ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
 
@@ -126,15 +158,18 @@ impl<N: Network> Stack<N> {
         let input_types = function.input_types();
         // Retrieve the output types.
         let output_types = function.output_types();
+        lap!(timer, "Retrieve the input and output types");
 
         // Ensure the inputs match their expected types.
         console_request.inputs().iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
             // Ensure the input matches the input type in the function.
             self.matches_value_type(input, input_type)
         })?;
+        lap!(timer, "Verify the input types");
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&input_types), "Request is invalid");
+        lap!(timer, "Verify the request");
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
@@ -158,8 +193,13 @@ impl<N: Network> Stack<N> {
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(request.tvk().clone());
 
+        lap!(timer, "Initialize the registers");
+
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Request");
+
+        // Retrieve the number of constraints for verifying the request in the circuit.
+        let num_request_constraints = A::num_constraints();
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
@@ -174,6 +214,7 @@ impl<N: Network> Stack<N> {
             // Assign the circuit input to the register.
             registers.store_circuit(self, register, input.clone())
         })?;
+        lap!(timer, "Store the inputs");
 
         // Initialize a tracker to determine if there are any function calls.
         let mut contains_function_call = false;
@@ -199,16 +240,49 @@ impl<N: Network> Stack<N> {
                 }
             }
         }
+        lap!(timer, "Execute the instructions");
 
         // Load the outputs.
-        let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
-        let outputs = output_registers
+        let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
+        let outputs = output_operands
             .iter()
-            .map(|register| registers.load_circuit(self, &Operand::Register(register.clone())))
+            .map(|operand| {
+                match operand {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::new(circuit::Mode::Constant, literal.clone()),
+                    ))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load_circuit(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                            circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
+                        ))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.caller_circuit()?),
+                    ))),
+                }
+            })
             .collect::<Result<Vec<_>>>()?;
+        lap!(timer, "Load the outputs");
+
+        // Map the output operands into registers.
+        let output_registers = output_operands
+            .iter()
+            .map(|operand| match operand {
+                Operand::Register(register) => Some(register.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>(format!("Function '{}()'", function.name()));
+
+        // Retrieve the number of constraints for executing the function in the circuit.
+        let num_function_constraints = A::num_constraints().saturating_sub(num_request_constraints);
 
         // If the function does not contain function calls, ensure no new public variables were injected.
         if !contains_function_call {
@@ -226,11 +300,16 @@ impl<N: Network> Stack<N> {
             request.tcm(),
             outputs,
             &output_types,
-            output_registers,
+            &output_registers,
         );
+        lap!(timer, "Construct the response");
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Response");
+
+        // Retrieve the number of constraints for verifying the response in the circuit.
+        let num_response_constraints =
+            A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
 
         // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
         let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
@@ -293,6 +372,8 @@ impl<N: Network> Stack<N> {
 
                 #[cfg(debug_assertions)]
                 Self::log_circuit::<A, _>("Finalize");
+
+                lap!(timer, "Construct the finalize inputs");
 
                 // Return the (console) finalize inputs.
                 Some(console_finalize_inputs)
@@ -371,6 +452,8 @@ impl<N: Network> Stack<N> {
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
 
+        lap!(timer, "Perform the fee operations");
+
         // Eject the fee.
         let fee = i64_gates.eject_value();
         // Eject the response.
@@ -405,6 +488,7 @@ impl<N: Network> Stack<N> {
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
                 self.synthesize_from_assignment(function.name(), &assignment)?;
+                lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
 
@@ -412,9 +496,10 @@ impl<N: Network> Stack<N> {
         if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Add the assignment to the assignments.
             assignments.write().push(assignment);
+            lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution, ref inclusion) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref execution, ref inclusion, ref metrics) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
@@ -424,16 +509,29 @@ impl<N: Network> Stack<N> {
                 Ok(proof) => proof,
                 Err(error) => bail!("Execution proof failed - {error}"),
             };
+            lap!(timer, "Execute the circuit");
 
             // Construct the transition.
             let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, output_registers, proof, *fee)?;
+                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof, *fee)?;
 
             // Add the transition commitments.
             inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
             // Add the transition to the execution.
             execution.write().push(transition);
+
+            // Add the metrics.
+            metrics.write().push(CallMetrics {
+                program_id: *self.program_id(),
+                function_name: *function.name(),
+                num_instructions: function.instructions().len(),
+                num_request_constraints,
+                num_function_constraints,
+                num_response_constraints,
+            });
         }
+
+        finish!(timer);
 
         // Return the response.
         Ok(response)

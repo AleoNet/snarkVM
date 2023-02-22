@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -110,49 +110,45 @@ impl core::fmt::Display for PCError {
         match self {
             Self::AnyhowError(error) => write!(f, "{error}"),
             Self::MissingPolynomial { label } => {
-                write!(f, "`QuerySet` refers to polynomial \"{}\", but it was not provided.", label)
+                write!(f, "`QuerySet` refers to polynomial \"{label}\", but it was not provided.")
             }
             Self::MissingEvaluation { label } => write!(
                 f,
-                "`QuerySet` refers to polynomial \"{}\", but `Evaluations` does not contain an evaluation for it.",
-                label
+                "`QuerySet` refers to polynomial \"{label}\", but `Evaluations` does not contain an evaluation for it."
             ),
             Self::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
             Self::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
             Self::TooManyCoefficients { num_coefficients, num_powers } => write!(
                 f,
-                "the number of coefficients in the polynomial ({:?}) is greater than\
-                 the maximum number of powers in `Powers` ({:?})",
-                num_coefficients, num_powers
+                "the number of coefficients in the polynomial ({num_coefficients:?}) is greater than\
+                 the maximum number of powers in `Powers` ({num_powers:?})"
             ),
             Self::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
             Self::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
                 f,
-                "the degree of the hiding poly ({:?}) is not less than the maximum number of powers in `Powers` ({:?})",
-                hiding_poly_degree, num_powers
+                "the degree of the hiding poly ({hiding_poly_degree:?}) is not less than the maximum number of powers in `Powers` ({num_powers:?})"
             ),
             Self::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
             Self::EquationHasDegreeBounds(e) => {
-                write!(f, "the eqaution \"{}\" contained degree-bounded polynomials", e)
+                write!(f, "the eqaution \"{e}\" contained degree-bounded polynomials")
             }
             Self::UnsupportedDegreeBound(bound) => {
-                write!(f, "the degree bound ({:?}) is not supported by the parameters", bound)
+                write!(f, "the degree bound ({bound:?}) is not supported by the parameters")
             }
             Self::LagrangeBasisSizeIsNotPowerOfTwo => {
                 write!(f, "the Lagrange Basis size is not a power of two")
             }
             Self::UnsupportedLagrangeBasisSize(size) => {
-                write!(f, "the Lagrange basis size ({:?}) is not supported by the parameters", size)
+                write!(f, "the Lagrange basis size ({size:?}) is not supported by the parameters")
             }
             Self::LagrangeBasisSizeIsTooLarge => {
                 write!(f, "the Lagrange Basis size larger than max supported degree")
             }
             Self::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
                 f,
-                "the degree bound ({:?}) for the polynomial {} \
-                 (having degree {:?}) is greater than the maximum \
-                 supported degree ({:?})",
-                degree_bound, label, poly_degree, supported_degree
+                "the degree bound ({degree_bound:?}) for the polynomial {label} \
+                 (having degree {poly_degree:?}) is greater than the maximum \
+                 supported degree ({supported_degree:?})"
             ),
             Self::Terminated => write!(f, "terminated"),
         }

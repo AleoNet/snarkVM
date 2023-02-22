@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Input<N> {
     /// Serializes the transition input into string or bytes.
@@ -75,25 +77,23 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                 // Parse the input from a string into a value.
                 let mut input = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(input["id"].take()).map_err(de::Error::custom)?;
+                let id: Field<N> = DeserializeExt::take_from_value::<D>(&mut input, "id")?;
 
                 // Recover the input.
-                let input = match input["type"].as_str() {
-                    Some("constant") => Input::Constant(id, match input["value"].as_str() {
+                let input = match input.get("type").and_then(|t| t.as_str()) {
+                    Some("constant") => Input::Constant(id, match input.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("public") => Input::Public(id, match input["value"].as_str() {
+                    Some("public") => Input::Public(id, match input.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("private") => Input::Private(id, match input["value"].as_str() {
+                    Some("private") => Input::Private(id, match input.get("value").and_then(|v| v.as_str()) {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("record") => {
-                        Input::Record(id, serde_json::from_value(input["tag"].take()).map_err(de::Error::custom)?)
-                    }
+                    Some("record") => Input::Record(id, DeserializeExt::take_from_value::<D>(&mut input, "tag")?),
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
                 };
@@ -123,7 +123,7 @@ mod tests {
         assert_eq!(expected_string, candidate.to_string());
 
         // Deserialize
-        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {}", expected_string)));
+        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
     }
 

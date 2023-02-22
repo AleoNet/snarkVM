@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ fn checksum(bytes: &[u8]) -> String {
 
 fn versioned_filename(filename: &str, checksum: &str) -> String {
     match checksum.get(0..7) {
-        Some(sum) => format!("{}.{}", filename, sum),
+        Some(sum) => format!("{filename}.{sum}"),
         _ => filename.to_string(),
     }
 }

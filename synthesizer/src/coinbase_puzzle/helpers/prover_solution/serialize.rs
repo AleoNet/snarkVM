@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for ProverSolution<N> {
     /// Serializes the prover solution to a JSON-string or buffer.
@@ -41,11 +43,13 @@ impl<'de, N: Network> Deserialize<'de> for ProverSolution<N> {
             true => {
                 let mut prover_solution = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(prover_solution["partial_solution"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut prover_solution, "partial_solution")?,
                     KZGProof {
-                        w: serde_json::from_value(prover_solution["proof.w"].take()).map_err(de::Error::custom)?,
-                        random_v: serde_json::from_value(prover_solution["proof.random_v"].take())
-                            .map_err(de::Error::custom)?,
+                        w: DeserializeExt::take_from_value::<D>(&mut prover_solution, "proof.w")?,
+                        random_v: serde_json::from_value(
+                            prover_solution.get_mut("proof.random_v").unwrap_or(&mut serde_json::Value::Null).take(),
+                        )
+                        .map_err(de::Error::custom)?,
                     },
                 ))
             }

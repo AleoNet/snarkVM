@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 pub struct BuildRequest<N: Network> {
     program: Program<N>,
@@ -68,11 +70,11 @@ impl<'de, N: Network> Deserialize<'de> for BuildRequest<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["program"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "program")?,
             // Retrieve the imports.
-            serde_json::from_value(request["imports"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "imports")?,
             // Retrieve the function name.
-            serde_json::from_value(request["function_name"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "function_name")?,
         ))
     }
 }
@@ -136,13 +138,13 @@ impl<'de, N: Network> Deserialize<'de> for BuildResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "program_id")?,
             // Retrieve the function name.
-            serde_json::from_value(response["function_name"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "function_name")?,
             // Retrieve the proving key.
-            serde_json::from_value(response["proving_key"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "proving_key")?,
             // Retrieve the verifying key.
-            serde_json::from_value(response["verifying_key"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "verifying_key")?,
         ))
     }
 }

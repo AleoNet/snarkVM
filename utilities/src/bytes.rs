@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -431,13 +431,6 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
             result += bit_value << i as u8;
         }
 
-        // Pad the bits if their number doesn't correspond to full bytes
-        if bits.len() < 8 {
-            for i in bits.len()..8 {
-                let bit_value = false as u8;
-                result += bit_value << i as u8;
-            }
-        }
         bytes.push(result);
     }
 

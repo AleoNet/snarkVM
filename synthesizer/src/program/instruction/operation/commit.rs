@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -175,7 +175,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0 | 1 | 2 | 3 | 4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            0 | 1 | 2 | 3 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
             _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         }
     }
@@ -243,7 +244,7 @@ impl<N: Network, const VARIANT: u8> Display for CommitInstruction<N, VARIANT> {
         }
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
+        self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
         write!(f, "into {}", self.destination)
     }
 }

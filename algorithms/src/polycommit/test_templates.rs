@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -81,7 +81,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let mut degree_bounds = Vec::new();
 
         for i in 0..10 {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let poly = DensePolynomial::rand(supported_degree, rng);
 
@@ -92,7 +92,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
             polynomials.push(LabeledPolynomial::new(label, poly, Some(degree_bound), hiding_bound))
         }
 
-        println!("supported degree: {:?}", supported_degree);
+        println!("supported degree: {supported_degree:?}");
         let (ck, vk) =
             SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_degree, Some(degree_bounds.as_slice()))?;
         println!("Trimmed");
@@ -113,7 +113,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
-        assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
+        assert!(result, "proof was incorrect, Query set: {query_set:#?}");
     }
     Ok(())
 }
@@ -144,7 +144,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         // Generate polynomials
         let num_points_in_query_set = distributions::Uniform::from(1..=max_num_queries).sample(rng);
         for i in 0..num_polynomials {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let eval_size: usize = distributions::Uniform::from(1..eval_size).sample(rng).next_power_of_two();
             let mut evals = vec![E::Fr::zero(); eval_size];
@@ -164,9 +164,9 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
             lagrange_polynomials.push(LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, hiding_bound))
         }
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
-        println!("supported degree: {:?}", supported_degree);
-        println!("supported hiding bound: {:?}", supported_hiding_bound);
-        println!("num_points_in_query_set: {:?}", num_points_in_query_set);
+        println!("supported degree: {supported_degree:?}");
+        println!("supported hiding bound: {supported_hiding_bound:?}");
+        println!("num_points_in_query_set: {num_points_in_query_set:?}");
         let (ck, vk) = SonicKZG10::<E, S>::trim(
             &pp,
             supported_degree,
@@ -185,7 +185,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         for point_id in 0..num_points_in_query_set {
             let point = E::Fr::rand(rng);
             for (polynomial, label) in polynomials.iter().zip_eq(labels.iter()) {
-                query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
+                query_set.insert((label.clone(), (format!("rand_{point_id}"), point)));
                 let value = polynomial.evaluate(point);
                 values.insert((label.clone(), point), value);
             }
@@ -197,16 +197,13 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
-            println!(
-                "Failed with {} polynomials, num_points_in_query_set: {:?}",
-                num_polynomials, num_points_in_query_set
-            );
+            println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
             for poly in polynomials {
                 println!("Degree: {:?}", poly.degree());
             }
         }
-        assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
+        assert!(result, "proof was incorrect, Query set: {query_set:#?}");
 
         test_components.push(TestComponents {
             verification_key: vk,
@@ -257,7 +254,7 @@ where
         // Generate polynomials
         let num_points_in_query_set = distributions::Uniform::from(1..=max_num_queries).sample(rng);
         for i in 0..num_polynomials {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let degree = distributions::Uniform::from(1..=supported_degree).sample(rng);
             let poly = DensePolynomial::rand(degree, rng);
@@ -284,14 +281,14 @@ where
             };
 
             let hiding_bound = Some(1);
-            println!("Hiding bound: {:?}", hiding_bound);
+            println!("Hiding bound: {hiding_bound:?}");
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
         }
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
-        println!("supported degree: {:?}", supported_degree);
-        println!("supported hiding bound: {:?}", supported_hiding_bound);
-        println!("num_points_in_query_set: {:?}", num_points_in_query_set);
+        println!("supported degree: {supported_degree:?}");
+        println!("supported hiding bound: {supported_hiding_bound:?}");
+        println!("num_points_in_query_set: {num_points_in_query_set:?}");
         let (ck, vk) =
             SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
@@ -305,7 +302,7 @@ where
         for point_id in 0..num_points_in_query_set {
             let point = E::Fr::rand(rng);
             for (polynomial, label) in polynomials.iter().zip_eq(labels.iter()) {
-                query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
+                query_set.insert((label.clone(), (format!("rand_{point_id}"), point)));
                 let value = polynomial.evaluate(point);
                 values.insert((label.clone(), point), value);
             }
@@ -317,16 +314,13 @@ where
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
-            println!(
-                "Failed with {} polynomials, num_points_in_query_set: {:?}",
-                num_polynomials, num_points_in_query_set
-            );
+            println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
             for poly in polynomials {
                 println!("Degree: {:?}", poly.degree());
             }
         }
-        assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
+        assert!(result, "proof was incorrect, Query set: {query_set:#?}");
 
         test_components.push(TestComponents {
             verification_key: vk,
@@ -375,7 +369,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         // Generate polynomials
         let num_points_in_query_set = distributions::Uniform::from(1..=max_num_queries).sample(rng);
         for i in 0..num_polynomials {
-            let label = format!("Test{}", i);
+            let label = format!("Test{i}");
             labels.push(label.clone());
             let degree = distributions::Uniform::from(1..=supported_degree).sample(rng);
             let poly = DensePolynomial::rand(degree, rng);
@@ -402,17 +396,17 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             };
 
             let hiding_bound = Some(1);
-            println!("Hiding bound: {:?}", hiding_bound);
+            println!("Hiding bound: {hiding_bound:?}");
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
         }
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
-        println!("supported degree: {:?}", supported_degree);
-        println!("supported hiding bound: {:?}", supported_hiding_bound);
-        println!("num_points_in_query_set: {:?}", num_points_in_query_set);
-        println!("{:?}", degree_bounds);
-        println!("{}", num_polynomials);
-        println!("{}", enforce_degree_bounds);
+        println!("supported degree: {supported_degree:?}");
+        println!("supported hiding bound: {supported_hiding_bound:?}");
+        println!("num_points_in_query_set: {num_points_in_query_set:?}");
+        println!("{degree_bounds:?}");
+        println!("{num_polynomials}");
+        println!("{enforce_degree_bounds}");
 
         let (ck, vk) =
             SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
@@ -427,7 +421,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         for i in 0..num_points_in_query_set {
             let point = E::Fr::rand(rng);
             for j in 0..num_equations.unwrap() {
-                let label = format!("query {} eqn {}", i, j);
+                let label = format!("query {i} eqn {j}");
                 let mut lc = LinearCombination::empty(label.clone());
 
                 let mut value = E::Fr::zero();
@@ -453,7 +447,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
                 if !lc.is_empty() {
                     linear_combinations.push(lc);
                     // Insert query
-                    query_set.insert((label.clone(), (format!("rand_{}", i), point)));
+                    query_set.insert((label.clone(), (format!("rand_{i}"), point)));
                 }
             }
         }
@@ -461,7 +455,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             continue;
         }
         println!("Generated query set");
-        println!("Linear combinations: {:?}", linear_combinations);
+        println!("Linear combinations: {linear_combinations:?}");
 
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::open_combinations(
@@ -485,16 +479,13 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             &mut sponge_for_check,
         )?;
         if !result {
-            println!(
-                "Failed with {} polynomials, num_points_in_query_set: {:?}",
-                num_polynomials, num_points_in_query_set
-            );
+            println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
             for poly in polynomials {
                 println!("Degree: {:?}", poly.degree());
             }
         }
-        assert!(result, "proof was incorrect, equations: {:#?}", linear_combinations);
+        assert!(result, "proof was incorrect, equations: {linear_combinations:#?}");
 
         test_components.push(TestComponents {
             verification_key: vk,

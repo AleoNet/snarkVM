@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit-algorithms"
-version = "0.9.6"
+version = "0.9.13"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithm circuit library for a decentralized virtual machine"
 license = "GPL-3.0"
@@ -9,16 +9,16 @@ edition = "2021"
 [dependencies.console]
 package = "snarkvm-console-algorithms"
 path = "../../console/algorithms"
-version = "0.9.6"
+version = "0.9.13"
 optional = true
 
 [dependencies.snarkvm-circuit-types]
 path = "../types"
-version = "0.9.6"
+version = "0.9.13"
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.9.6"
+version = "0.9.13"
 default-features = false
 
 [dev-dependencies.snarkvm-curves]
@@ -29,7 +29,7 @@ default-features = false
 path = "../../utilities"
 
 [dev-dependencies.anyhow]
-version = "1.0.66"
+version = "1.0.69"
 
 [features]
 default = [ "enable_console" ]

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -74,12 +74,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 assert_eq!(private_variables.len(), num_private_variables);
 
                 if cfg!(debug_assertions) {
-                    println!("Number of padded public variables in Prover::Init: {}", num_public_variables);
-                    println!("Number of private variables: {}", num_private_variables);
-                    println!("Number of constraints: {}", num_constraints);
-                    println!("Number of non-zero entries in A: {}", num_non_zero_a);
-                    println!("Number of non-zero entries in B: {}", num_non_zero_b);
-                    println!("Number of non-zero entries in C: {}", num_non_zero_c);
+                    println!("Number of padded public variables in Prover::Init: {num_public_variables}");
+                    println!("Number of private variables: {num_private_variables}");
+                    println!("Number of constraints: {num_constraints}");
+                    println!("Number of non-zero entries in A: {num_non_zero_a}");
+                    println!("Number of non-zero entries in B: {num_non_zero_b}");
+                    println!("Number of non-zero entries in C: {num_non_zero_c}");
                 }
 
                 if index.index_info.num_constraints != num_constraints

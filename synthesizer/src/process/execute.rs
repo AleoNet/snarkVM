@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use console::program::Literal;
 
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
@@ -23,7 +24,9 @@ impl<N: Network> Process<N> {
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+        let timer = timer!("Process::execute");
+
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
 
@@ -34,24 +37,33 @@ impl<N: Network> Process<N> {
         let execution = Arc::new(RwLock::new(Execution::new()));
         // Initialize the inclusion.
         let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the metrics.
+        let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
+        lap!(timer, "Initialize call stack");
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
+        lap!(timer, "Execute the function");
         // Extract the execution.
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution is not empty.
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
         // Extract the inclusion.
         let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+        // Extract the metrics.
+        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
-        Ok((response, execution, inclusion))
+        finish!(timer);
+        Ok((response, execution, inclusion, metrics))
     }
 
     /// Verifies the given execution is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
     pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
+        let timer = timer!("Process::verify_execution");
+
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -69,10 +81,12 @@ impl<N: Network> Process<N> {
                 execution.len()
             );
         }
+        lap!(timer, "Verify the number of transitions");
 
         // Ensure the inclusion proof is valid.
         if VERIFY_INCLUSION {
             Inclusion::verify_execution(execution)?;
+            lap!(timer, "Verify the inclusion proof");
         }
 
         // Replicate the execution stack for verification.
@@ -110,6 +124,8 @@ impl<N: Network> Process<N> {
             {
                 bail!("Failed to verify a transition input")
             }
+            lap!(timer, "Verify the inputs");
+
             // Ensure each output is valid.
             let num_inputs = transition.inputs().len();
             if transition
@@ -120,6 +136,7 @@ impl<N: Network> Process<N> {
             {
                 bail!("Failed to verify a transition output")
             }
+            lap!(timer, "Verify the outputs");
 
             // Ensure the fee is correct.
             match Program::is_coinbase(transition.program_id(), transition.function_name()) {
@@ -195,6 +212,7 @@ impl<N: Network> Process<N> {
 
             // [Inputs] Extend the verifier inputs with the fee.
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
+            lap!(timer, "Construct the verifier inputs");
 
             #[cfg(debug_assertions)]
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
@@ -206,7 +224,11 @@ impl<N: Network> Process<N> {
                 verifying_key.verify(function.name(), &inputs, transition.proof()),
                 "Transition is invalid - failed to verify transition proof"
             );
+
+            lap!(timer, "Verify transition proof for {}", function.name());
         }
+
+        finish!(timer);
         Ok(())
     }
 
@@ -218,6 +240,8 @@ impl<N: Network> Process<N> {
         store: &ProgramStore<N, P>,
         execution: &Execution<N>,
     ) -> Result<()> {
+        let timer = timer!("Program::finalize_execution");
+
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -235,6 +259,7 @@ impl<N: Network> Process<N> {
                 execution.len()
             );
         }
+        lap!(timer, "Verify the number of transitions");
 
         // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
         //  Currently this loop assumes a linearly execution stack.
@@ -274,21 +299,33 @@ impl<N: Network> Process<N> {
                     }
                 }
 
-                // Retrieve the output registers.
-                let output_registers =
-                    &finalize.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
+                // Retrieve the output operands.
+                let output_operands = finalize.outputs().iter().map(|output| output.operand());
 
                 // TODO (howardwu): Save the outputs in ProgramStore.
                 // Load the outputs.
-                let _outputs = output_registers
-                    .iter()
-                    .map(|register| {
-                        // Retrieve the stack value from the register.
-                        registers.load(stack, &Operand::Register(register.clone()))
+                let _outputs = output_operands
+                    .map(|operand| {
+                        // Load the outputs.
+                        match operand {
+                            // If the operand is a literal, use the literal directly.
+                            Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
+                            // If the operand is a register, retrieve the stack value from the register.
+                            Operand::Register(register) => registers.load(stack, &Operand::Register(register.clone())),
+                            // If the operand is the program ID, convert the program ID into an address.
+                            Operand::ProgramID(program_id) => {
+                                Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
+                            }
+                            // If the operand is the caller, retrieve the caller from the registers.
+                            Operand::Caller => bail!("Forbidden operation: Cannot use 'self.caller' in 'finalize'"),
+                        }
                     })
                     .collect::<Result<Vec<_>>>()?;
+
+                lap!(timer, "Finalize transition for {function_name}");
             }
         }
+        finish!(timer);
 
         Ok(())
     }

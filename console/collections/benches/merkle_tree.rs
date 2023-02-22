@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -43,7 +43,7 @@ fn new(c: &mut Criterion) {
     for num_leaves in NUM_LEAVES {
         let leaves = generate_leaves!(*num_leaves, &mut rng);
 
-        c.bench_function(&format!("MerkleTree::new ({} leaves)", num_leaves), move |b| {
+        c.bench_function(&format!("MerkleTree::new ({num_leaves} leaves)"), move |b| {
             b.iter(|| {
                 let _tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
             })
@@ -61,7 +61,7 @@ fn append(c: &mut Criterion) {
         let new_leaf = generate_leaves!(1, &mut rng);
 
         c.bench_function(
-            &format!("MerkleTree::append (adding single leaf to a tree with {} leaves)", num_leaves),
+            &format!("MerkleTree::append (adding single leaf to a tree with {num_leaves} leaves)"),
             move |b| {
                 b.iter_with_setup(
                     || merkle_tree.clone(),
@@ -77,10 +77,7 @@ fn append(c: &mut Criterion) {
             let new_leaves = generate_leaves!(*num_new_leaves, &mut rng);
 
             c.bench_function(
-                &format!(
-                    "MerkleTree::append (adding {} new leaves to a tree with {} leaves)",
-                    num_new_leaves, num_leaves
-                ),
+                &format!("MerkleTree::append (adding {num_new_leaves} new leaves to a tree with {num_leaves} leaves)"),
                 move |b| {
                     b.iter_with_setup(
                         || merkle_tree.clone(),

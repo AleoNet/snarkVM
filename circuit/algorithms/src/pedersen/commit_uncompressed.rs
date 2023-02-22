@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -165,7 +165,7 @@ mod tests {
         second: C,
         rng: &mut TestRng,
     ) {
-        println!("Checking homomorphic addition on {} + {}", first, second);
+        println!("Checking homomorphic addition on {first} + {second}");
 
         // Sample the circuit randomizers.
         let first_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(rng));

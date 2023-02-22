@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ mod tests {
             // Initialize the private key.
             let private_key = PrivateKey::<Circuit>::new(mode, private_key);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = ViewKey::from_private_key(&private_key);
                 assert_eq!(view_key, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

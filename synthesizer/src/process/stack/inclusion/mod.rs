@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,11 +31,10 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 
-use console::program::{Identifier, ProgramID};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -95,10 +94,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -106,10 +108,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn current_state_root(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
@@ -117,14 +122,18 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(feature = "wasm")]
+            _ => bail!("External API calls not supported from WASM"),
         }
     }
 
     /// Performs a GET request to the given URL.
+    #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
         let response = reqwest::blocking::get(url)?;
         if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }
@@ -201,18 +210,29 @@ impl<N: Network> Inclusion<N> {
         &self,
         execution: &Execution<N>,
         query: Q,
-    ) -> Result<Vec<InclusionAssignment<N>>> {
+    ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
         let query = query.into();
 
         // Ensure the number of leaves is within the Merkle tree size.
         Transaction::check_execution_size(execution)?;
 
+        // Ensure the inclusion proof in the execution is 'None'.
+        if execution.inclusion_proof().is_some() {
+            bail!("Inclusion proof in the execution should not be set in 'Inclusion::prepare_execution'")
+        }
+
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
-        // Initialize the global state root.
-        let mut global_state_root = N::StateRoot::default();
         // Initialize a vector for the assignments.
         let mut assignments = vec![];
+
+        // Retrieve the global state root.
+        let global_state_root = query.current_state_root()?;
+
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
 
         for (transition_index, transition) in execution.transitions().enumerate() {
             // Construct the transaction leaf.
@@ -228,8 +248,6 @@ impl<N: Network> Inclusion<N> {
                         // Construct the state path.
                         let state_path = match task.is_local {
                             true => {
-                                // Retrieve the global state root.
-                                let global_state_root = query.current_state_root()?;
                                 // Compute the transaction path.
                                 let transaction_path =
                                     transaction_tree.prove(transition_index, &transaction_leaf.to_bits_le())?;
@@ -251,12 +269,9 @@ impl<N: Network> Inclusion<N> {
                         };
 
                         // Ensure the global state root is the same across iterations.
-                        if *global_state_root != Field::zero() && global_state_root != state_path.global_state_root() {
+                        if global_state_root != state_path.global_state_root() {
                             bail!("Inclusion expected the global state root to be the same across iterations")
                         }
-
-                        // Update the global state root.
-                        global_state_root = state_path.global_state_root();
 
                         // Construct the assignment for the state path.
                         let assignment = InclusionAssignment::new(
@@ -279,30 +294,7 @@ impl<N: Network> Inclusion<N> {
             transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
         }
 
-        match assignments.is_empty() {
-            true => {
-                // Ensure the global state root is zero.
-                if *global_state_root != Field::zero() {
-                    bail!("Inclusion expected the global state root in the execution to be zero")
-                }
-                // Ensure the global state root in the execution matches.
-                if execution.global_state_root() != global_state_root {
-                    bail!("Inclusion expected the global state root in the execution to match")
-                }
-                // Ensure the inclusion proof in the execution is 'None'.
-                if execution.inclusion_proof().is_some() {
-                    bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
-                }
-            }
-            false => {
-                // Ensure the global state root is not zero.
-                if *global_state_root == Field::zero() {
-                    bail!("Inclusion expected the global state root in the execution to *not* be zero")
-                }
-            }
-        }
-        // Return the assignments.
-        Ok(assignments)
+        Ok((assignments, global_state_root))
     }
 
     /// Returns a new execution with an inclusion proof, for the given execution.
@@ -310,20 +302,22 @@ impl<N: Network> Inclusion<N> {
         &self,
         execution: Execution<N>,
         assignments: &[InclusionAssignment<N>],
+        global_state_root: N::StateRoot,
         rng: &mut R,
     ) -> Result<Execution<N>> {
         match assignments.is_empty() {
             true => {
-                // Ensure the global state root is zero.
-                if *execution.global_state_root() != Field::zero() {
-                    bail!("Inclusion expected the global state root in the execution to match")
+                // Ensure the global state root is not zero.
+                if *global_state_root == Field::zero() {
+                    bail!("Inclusion expected the global state root in the execution to *not* be zero")
                 }
+
                 // Ensure the inclusion proof in the execution is 'None'.
                 if execution.inclusion_proof().is_some() {
                     bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
                 }
                 // Return the execution.
-                Ok(execution)
+                Execution::from(execution.into_transitions(), global_state_root, None)
             }
             false => {
                 // Fetch the inclusion proving key.
@@ -440,6 +434,7 @@ impl<N: Network> Inclusion<N> {
     pub fn verify_execution(execution: &Execution<N>) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
+
         // Retrieve the inclusion proof.
         let inclusion_proof = execution.inclusion_proof();
 
@@ -483,28 +478,21 @@ impl<N: Network> Inclusion<N> {
         }
 
         // Verify the inclusion proof.
-        match inclusion_proof {
-            Some(inclusion_proof) => {
-                // Ensure the global state root is not zero.
-                if *global_state_root == Field::zero() {
-                    bail!("Inclusion expected the global state root in the fee to *not* be zero")
-                }
+        if let Some(inclusion_proof) = inclusion_proof {
+            // Ensure the global state root is not zero.
+            if *global_state_root == Field::zero() {
+                bail!("Inclusion expected the global state root in the execution to *not* be zero")
+            }
 
-                // Fetch the inclusion verifying key.
-                let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-                // Verify the inclusion proof.
-                ensure!(
-                    verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
-                    "Inclusion proof is invalid"
-                );
-            }
-            None => {
-                // Ensure the global state root is zero.
-                if *global_state_root != Field::<N>::zero() {
-                    bail!("Inclusion expected the global state root in the execution to be zero")
-                }
-            }
+            // Fetch the inclusion verifying key.
+            let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
+            // Verify the inclusion proof.
+            ensure!(
+                verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
+                "Inclusion proof is invalid"
+            );
         }
+
         Ok(())
     }
 

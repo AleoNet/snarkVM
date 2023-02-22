@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Execution<N> {
     /// Serializes the execution into string or bytes.
@@ -43,14 +45,14 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                 // Parse the execution from a string into a value.
                 let mut execution = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the transitions.
-                let transitions: Vec<_> =
-                    serde_json::from_value(execution["transitions"].take()).map_err(de::Error::custom)?;
+                let transitions: Vec<_> = DeserializeExt::take_from_value::<D>(&mut execution, "transitions")?;
                 // Retrieve the global state root.
-                let global_state_root =
-                    serde_json::from_value(execution["global_state_root"].take()).map_err(de::Error::custom)?;
+                let global_state_root = DeserializeExt::take_from_value::<D>(&mut execution, "global_state_root")?;
                 // Retrieve the inclusion proof.
-                let inclusion_proof =
-                    serde_json::from_value(execution["inclusion"].take()).map_err(de::Error::custom)?;
+                let inclusion_proof = serde_json::from_value(
+                    execution.get_mut("inclusion").unwrap_or(&mut serde_json::Value::Null).take(),
+                )
+                .map_err(de::Error::custom)?;
                 // Recover the execution.
                 Self::from(transitions.into_iter(), global_state_root, inclusion_proof).map_err(de::Error::custom)
             }
