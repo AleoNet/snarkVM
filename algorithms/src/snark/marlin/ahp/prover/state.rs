@@ -122,23 +122,26 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 let non_zero_c_domain =
                     EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-                let mut input_domain = None;
-                let mut z_as = vec![]; // Pre-allocate based on batch_length
-                let mut z_bs = vec![]; // Pre-allocate based on batch_length
-                // TODO: Add x_polys, padded_public_variables, private_variables Vec like above.
-                // Change to for-loop given that we have side-effects
-                let (x_polys, variables): (Vec<_>, Vec<_>) = variable_assignments.into_iter().map(|(padded_public_input, private_variable, z_a, z_b)| {
-                    input_domain = input_domain.or_else(|| EvaluationDomain::new(padded_public_input.len()));
+                let mut input_domain = None; // TODO: we're in a single circuit, can we just efficiently/cleanly assign the first valid domain?
+                let batch_size = variable_assignments.len();
+                let mut z_as = Vec::with_capacity(batch_size);
+                let mut z_bs = Vec::with_capacity(batch_size);
+                let mut x_polys = Vec::with_capacity(batch_size);
+                let mut padded_public_variables = Vec::with_capacity(batch_size);
+                let mut private_variables = Vec::with_capacity(batch_size);
+
+                for (padded_public_input, private_input, z_a, z_b) in variable_assignments {
                     z_as.push(z_a);
                     z_bs.push(z_b);
+                    input_domain = input_domain.or_else(|| EvaluationDomain::new(padded_public_input.len()));
                     let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain.unwrap())
                             .interpolate();
-                    (x_poly, (padded_public_input, private_variable))
-                }).unzip();
+                    x_polys.push(x_poly);
+                    padded_public_variables.push(padded_public_input);
+                    private_variables.push(private_input);
+                }
                 let input_domain = input_domain.unwrap();
-                let (padded_public_variables, private_variables): (Vec<_>, Vec<_>) = variables.into_iter().unzip();
-
-                let batch_size = x_polys.len();
+                
                 let state = IndexSpecificState {
                     input_domain,
                     constraint_domain,
