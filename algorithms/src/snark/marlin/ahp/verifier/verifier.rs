@@ -80,6 +80,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
+        // TODO: generate and send also circuit_combiners.
         let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners };
 
         let new_state = State {
@@ -122,6 +123,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let elems = fs_rng.squeeze_nonnative_field_elements(2);
         let r_b = elems[0];
         let r_c = elems[1];
+        // TODO: (maybe) generate more circuit_combiners here.
         let message = ThirdMessage { r_b, r_c };
 
         state.third_round_message = Some(message);

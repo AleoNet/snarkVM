@@ -45,11 +45,13 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the third round.
+    // TODO: update this according to the number of circuits (3 * num_circuits).
     pub fn num_third_round_oracles() -> usize {
         3
     }
 
     /// Output the degree bounds of oracles in the first round.
+    // TODO: update this
     pub fn third_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_a).unwrap();
         let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_b).unwrap();
@@ -85,6 +87,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
+        // TODO: update this to be largest across all circuits.
         let largest_non_zero_domain_size = Self::max_non_zero_domain(&state.index.index_info).size_as_field_element;
         let mut pool = ExecutionPool::with_capacity(3);
         pool.add_job(|| {
