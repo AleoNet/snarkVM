@@ -125,6 +125,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let state = prover::State::initialize(indices_and_assignments)?; // NOTE: passing and setting z_as and z_bs here as they arealso circuit-specific
 
+        // TODO: it might be more efficient to collect z_a and z_b directly to aggregate vectors, i.e. to a second BTreeMap
+
         Ok(state)
     }
 }
