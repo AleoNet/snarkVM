@@ -194,8 +194,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
-        self.index_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+        self.index_specific_states.get(circuit).map(|s| s.padded_public_variables)
     }
 
     pub fn fft_precomputation(&self, circuit: &Circuit<F, MM>) -> Option<&FFTPrecomputation<F>> {

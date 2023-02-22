@@ -49,13 +49,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the degree bounds of oracles in the first round.
-    // TODO: fix this
     pub fn first_round_polynomial_info<'a>(
         circuits: impl Iterator<Item = (&'a Circuit<F, MM>, usize)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut polynomials = circuits.flat_map(|(circuit, batch_size)| {
-            // TODO: use circuit.hash instead.
-            let circuit_id = format!("circuit");
+            let circuit_id = format!("circuit_{:x?}", circuit.hash);
+
             (0..batch_size).flat_map(|i| {
                 [
                     PolynomialInfo::new(witness_label(&circuit_id, "w", i), None, Self::zk_bound()),
@@ -91,8 +90,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             assert_eq!(z_b.len(), batch_size);
             assert_eq!(private_variables.len(), batch_size);
 
-            // TODO: use circuit.hash instead.
-            let circuit_id = format!("circuit_{i}");
+            let circuit_id = format!("circuit_{:x?}", circuit.hash);
 
             let state_ref = &state;
             for (i, (z_a, z_b, private_variables, x_poly)) in
@@ -122,8 +120,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), state.total_batch_size());
 
-        // TODO: set constraint domain to be largest of all constraint domains.
-
         let mut batch_consumed_so_far = 0;
         let mut circuit_specific_batches = BTreeMap::new();
         for ((circuit, state), r_b_s) in state.index_specific_states.iter().zip(r_b_s) {
@@ -135,7 +131,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
-        // TODO: update first_round_polynomial_info
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.index_specific_states.iter().map(|(c, s)| (*c, s.batch_size)))));
         state.first_round_oracles = Some(Arc::new(oracles));
         Ok(state)

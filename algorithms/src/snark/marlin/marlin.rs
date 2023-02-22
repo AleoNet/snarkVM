@@ -40,7 +40,7 @@ use rand::{CryptoRng, Rng};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::{cfg_iter, to_bytes_le, ToBytes};
 
 use std::{borrow::Borrow, collections::BTreeMap, sync::Arc};
 
@@ -144,13 +144,15 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
     fn init_sponge(
         fs_parameters: &FS::Parameters,
-        batch_size: usize,
+        batch_sizes: Vec<usize>,
         circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>],
-        inputs: &[Vec<E::Fr>],
+        inputs: &Vec<Vec<E::Fr>>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-        sponge.absorb_bytes(&batch_size.to_le_bytes());
+        for batch_size in batch_sizes {
+            sponge.absorb_bytes(&batch_size.to_le_bytes());
+        }
         sponge.absorb_native_field_elements(circuit_commitments);
         for input in inputs {
             sponge.absorb_nonnative_field_elements(input.iter().copied());
@@ -333,23 +335,26 @@ where
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
-        let batch_size = circuits.len();
-        if batch_size == 0 {
+        if circuits.len() == 0 {
             return Err(SNARKError::EmptyBatch);
         }
 
         Self::terminate(terminator)?;
 
-        let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuits, circuits)?;
-        let public_input = prover_state.public_inputs();
-        let padded_public_input = prover_state.padded_public_inputs();
-        assert_eq!(prover_state.batch_size, batch_size);
+        let prover_state = AHPForR1CS::<_, MM>::init_prover(circuits)?;
+        let (batch_sizes, public_inputs, padded_public_inputs): (Vec<_>, Vec<_>, Vec<_>) = cfg_iter!(circuits).map(|(c, _)| {
+            let batch_size = prover_state.batch_size(c).ok_or(SNARKError::Message("No batch_size found".into()))?;
+            let public_input = prover_state.public_inputs(c).ok_or(SNARKError::Message("No public_inputs found".into()))?;
+            let padded_public_input = prover_state.padded_public_inputs(c).ok_or(SNARKError::Message("No padded_public_inputs found".into()))?;
+            Ok((batch_size, padded_public_input))
+        }).collect::<Vec<_>>().into_iter().multiunzip();
+        assert_eq!(prover_state.total_batch_size(), batch_sizes.iter().sum::<usize>());
 
         let mut sponge = Self::init_sponge(
             fs_parameters,
-            batch_size,
+            batch_sizes,
             &circuit_proving_key.circuit_verifying_key.circuit_commitments,
-            &padded_public_input,
+            &padded_public_inputs,
         );
 
         // --------------------------------------------------------------------
