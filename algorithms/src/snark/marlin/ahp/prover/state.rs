@@ -44,7 +44,7 @@ pub struct IndexSpecificState<'a, F: PrimeField> {
 
     /// The list of public inputs for each instance in the batch.
     /// The length of this list must be equal to the batch size.
-    pub(super) padded_public_variables: Vec<&'a [F]>,
+    pub(super) padded_public_variables: Vec<&'a [F]>, // TODO: why change the Vec to a list?
 
     /// The list of private variables for each instance in the batch.
     /// The length of this list must be equal to the batch size.
@@ -83,13 +83,18 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
 }
 
-type PaddedPubInputs<F> = Vec<F>;
-type PrivateInputs<F> = Vec<F>;
+pub type PaddedPubInputs<F> = Vec<F>;
+pub type PrivateInputs<F> = Vec<F>;
+pub type Za<F> = Vec<F>;
+pub type Zb<F> = Vec<F>;
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
         // TODO: which map should we use?
         // IndexMap or BTreeMap?
-        indices_and_assignments: BTreeMap<&'a Circuit<F, MM>, Vec<(PaddedPubInputs<F>, PrivateInputs<F>)>>,
+        indices_and_assignments: BTreeMap<
+            &'a Circuit<F, MM>,
+            Vec<(PaddedPubInputs<F>, PrivateInputs<F>, Za<F>, Zb<F>)>
+        >
     ) -> Result<Self, AHPError> {
         let index_specific_states = indices_and_assignments
             .iter()
@@ -106,8 +111,12 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
                 let mut input_domain = None;
-                let (x_polys, variables): (Vec<_>, Vec<_>) = variable_assignments.iter().map(|(padded_public_input, private_variable)| {
+                let mut z_as = vec![];
+                let mut z_bs = vec![];
+                let (x_polys, variables): (Vec<_>, Vec<_>) = variable_assignments.iter().map(|(padded_public_input, private_variable, z_a, z_b)| {
                     input_domain = input_domain.or_else(|| EvaluationDomain::new(padded_public_input.len()));
+                    z_as.push(*z_a);
+                    z_bs.push(*z_b);
                     let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain.unwrap())
                             .interpolate();
                     (x_poly, (padded_public_input.as_slice(), private_variable.as_slice()))
@@ -126,8 +135,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     padded_public_variables,
                     x_polys,
                     private_variables,
-                    z_a: None,
-                    z_b: None,
+                    z_a: Some(z_as),
+                    z_b: Some(z_bs),
                     mz_poly_randomizer: None,
                     verifier_first_message: None,
                     lhs_polynomials: None,

@@ -18,7 +18,7 @@ use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
     snark::marlin::{
-        ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
+        ahp::{AHPError, AHPForR1CS, indexer::Circuit, EvaluationsProvider},
         proof,
         prover,
         witness_label,
@@ -42,7 +42,7 @@ use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use std::{borrow::Borrow, sync::Arc};
+use std::{borrow::Borrow, collections::BTreeMap, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
@@ -325,10 +325,10 @@ where
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    fn prove_batch_with_terminator<'a, C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         circuit_proving_key: &CircuitProvingKey<E, MM>,
-        circuits: &[C],
+        circuits: &BTreeMap<&'a Circuit<E::Fr, MM>, &[C]>, // TODO: do we want to bubble up these changes up the call chain?
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
@@ -340,7 +340,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuit, circuits)?;
+        let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuits, circuits)?;
         let public_input = prover_state.public_inputs();
         let padded_public_input = prover_state.padded_public_inputs();
         assert_eq!(prover_state.batch_size, batch_size);
