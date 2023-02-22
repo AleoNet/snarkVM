@@ -37,6 +37,7 @@ mod second;
 mod third;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
+    
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>>(
         circuits: &BTreeMap<&'a Circuit<F, MM>, &[C]>,
@@ -103,31 +104,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         .collect();
                     end_timer!(eval_z_b_time);
                     end_timer!(init_time);
-                    Ok((padded_public_variables, private_variables, z_a, z_b))
+                    Ok(prover::Assignments::<F>(
+                            padded_public_variables,
+                            private_variables,
+                            z_a,
+                            z_b
+                    ))
                 })
-                .collect::<Result<Vec<(
-                        prover::PaddedPubInputs<F>,
-                        prover::PrivateInputs<F>,
-                        prover::Za<F>,
-                        prover::Zb<F>
-                )>, AHPError>>()?;
+                .collect::<Result<Vec<prover::Assignments<F>>, AHPError>>()?;
                 Ok((*circuit.0, assignments))
             })
             .collect::<Result<
-                BTreeMap<
-                    &Circuit<F, MM>,
-                    // Define type/struct instead of using a nameless tuple below
-                    Vec<(
-                        prover::PaddedPubInputs<F>,
-                        prover::PrivateInputs<F>,
-                        prover::Za<F>,
-                        prover::Zb<F>
-                    )>
-                >, AHPError>>()?;
+                BTreeMap<&Circuit<F, MM>, Vec<prover::Assignments<F>>>, 
+                AHPError>
+            >()?;
 
-        let state = prover::State::initialize(indices_and_assignments)?; // NOTE: passing and setting z_as and z_bs here as they arealso circuit-specific
-
-        // TODO: it might be more efficient to collect z_a and z_b directly to aggregate vectors, i.e. to a second BTreeMap
+        let state = prover::State::initialize(indices_and_assignments)?;
 
         Ok(state)
     }

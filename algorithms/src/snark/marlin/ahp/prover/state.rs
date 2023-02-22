@@ -88,13 +88,20 @@ pub type PaddedPubInputs<F> = Vec<F>;
 pub type PrivateInputs<F> = Vec<F>;
 pub type Za<F> = Vec<F>;
 pub type Zb<F> = Vec<F>;
+pub struct Assignments<F>(
+    pub PaddedPubInputs<F>,
+    pub PrivateInputs<F>,
+    pub Za<F>,
+    pub Zb<F>
+);
+
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
         // TODO: which map should we use?
         // IndexMap or BTreeMap?
         indices_and_assignments: BTreeMap<
             &'a Circuit<F, MM>,
-            Vec<(PaddedPubInputs<F>, PrivateInputs<F>, Za<F>, Zb<F>)>
+            Vec<Assignments<F>>
         >
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
@@ -130,7 +137,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 let mut padded_public_variables = Vec::with_capacity(batch_size);
                 let mut private_variables = Vec::with_capacity(batch_size);
 
-                for (padded_public_input, private_input, z_a, z_b) in variable_assignments {
+                for Assignments(padded_public_input, private_input, z_a, z_b) in variable_assignments {
                     z_as.push(z_a);
                     z_bs.push(z_b);
                     input_domain = input_domain.or_else(|| EvaluationDomain::new(padded_public_input.len()));
