@@ -37,7 +37,7 @@ impl<N: Network> Header<N> {
             // Ensure the transactions root is nonzero.
             && self.transactions_root != Field::zero()
             // Ensure the storage root is nonzero.
-            && self.storage_root != Field::zero()
+            && self.storage_root == Field::zero()
             // Ensure the coinbase accumulator point is zero.
             && self.coinbase_accumulator_point == Field::zero()
             // Ensure the metadata is a genesis metadata.
