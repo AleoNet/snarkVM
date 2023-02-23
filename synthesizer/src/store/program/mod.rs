@@ -182,7 +182,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_write_batch!(self, {
             // Update the key-value ID map with the new key-value ID.
-            self.key_varue_id_map().insert(mapping_id, key_value_ids)?;
+            self.key_value_id_map().insert(mapping_id, key_value_ids)?;
             // Insert the key.
             self.key_map().insert(key_id, key)?;
             // Insert the value.
@@ -1047,20 +1047,64 @@ mod tests {
 
     #[test]
     fn test_large_key_value_set() {
-        // Initialize a program ID.
+        // Initialize a program ID and mapping name.
+        let program_id = ProgramID::<CurrentNetwork>::from_str(&format!("hello.aleo")).unwrap();
+        let mapping_name = Identifier::from_str(&format!("account")).unwrap();
 
         // Initialize a new program store.
         let program_store = ProgramMemory::open(None).unwrap();
 
-        // Test checksums over mappings of increasing size.
-        for i in 0..10 {
-            println!("\nIteration: {i}");
-            // Initialize a program ID and mapping name for the current iteration.
-            let program_id = ProgramID::<CurrentNetwork>::from_str(&format!("hello_{i}.aleo")).unwrap();
-            let mapping_name = Identifier::from_str(&format!("account")).unwrap();
+        // Ensure the program ID does not exist.
+        assert!(!program_store.contains_program(&program_id).unwrap());
+        // Ensure the mapping name does not exist.
+        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        // Ensure removing an un-initialized mapping fails.
+        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
 
-            // Check the current iteration.
-            check_large_key_value_set(&program_store, program_id, mapping_name, 1 << (10 + i));
+        // Now, initialize the mapping.
+        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        // Ensure the program ID got initialized.
+        assert!(program_store.contains_program(&program_id).unwrap());
+        // Ensure the mapping name got initialized.
+        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+
+        // Sample a random group element value.
+        let value = Value::from_str(&format!("{}", Group::<CurrentNetwork>::rand(&mut TestRng::default()))).unwrap();
+
+        let mut total_entries = 0;
+        // Benchmark checksums as the size of the mapping increases.
+        for i in 0..=30 {
+            // Benchmark the amount of time it takes to add the keys into the mapping.
+            println!("Adding keys to the mapping.");
+            let previous_total_entries = total_entries;
+            let add_keys_start = std::time::Instant::now();
+
+            // Double the size of the mapping in each iteration.
+            for j in total_entries..=(total_entries * 2) {
+                // Insert the KV pair into the mapping.
+                let key = Plaintext::<CurrentNetwork>::from_str(&format!("{j}u32")).unwrap();
+                program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+                total_entries += 1;
+                // Ensure the program ID is still initialized.
+                assert!(program_store.contains_program(&program_id).unwrap());
+                // Ensure the mapping name is still initialized.
+                assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+                // Ensure the key got initialized.
+                assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+                // Ensure the value returns Some(value).
+                assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            }
+            println!("Added {} keys in {} seconds.", total_entries - previous_total_entries, add_keys_start.elapsed().as_secs_f64());
+
+            // Benchmark the time it takes to compute the checksum.
+            println!("Computing checksum.");
+            let get_checksum_start = std::time::Instant::now();
+            assert!(program_store.get_checksum().is_ok());
+            println!(
+                "Computed checksum for {} KV pairs in {} seconds.\n",
+                total_entries,
+                get_checksum_start.elapsed().as_secs_f64()
+            );
         }
     }
 
