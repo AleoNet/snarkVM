@@ -95,8 +95,8 @@ impl<N: Network> Header<N> {
     }
 
     /// Returns the storage root in the block header.
-    pub const fn storage_root(&self) -> &Field<N> {
-        &self.storage_root
+    pub const fn storage_root(&self) -> Field<N> {
+        self.storage_root
     }
 
     /// Returns the metadata in the block header.

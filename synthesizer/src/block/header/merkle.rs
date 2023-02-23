@@ -140,7 +140,7 @@ mod tests {
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 2nd leaf.
-            let leaf = header.to_leaf(header.storage_root())?;
+            let leaf = header.to_leaf(&header.storage_root())?;
             assert_eq!(leaf.index(), 2);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
