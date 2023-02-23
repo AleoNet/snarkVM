@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -41,6 +41,6 @@ pub trait FftParameters: 'static + Send + Sync + Sized {
     /// SMALL_SUBGROUP_BASE^SMALL_SUBGROUP_BASE_ADICITY)) Used for mixed-radix FFT.
     const LARGE_SUBGROUP_ROOT_OF_UNITY: Option<Self::BigInteger> = None;
 
-    /// `G^2^i` for `i := 0..TWO_ADICITY-1`
-    const POWERS_OF_G: &'static [Self::BigInteger];
+    /// `TWO_ADIC_ROOT_OF_UNITY^2^i` for `i := 0..TWO_ADICITY-1`
+    const POWERS_OF_ROOTS_OF_UNITY: &'static [Self::BigInteger];
 }

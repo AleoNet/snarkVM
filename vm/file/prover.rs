@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes};
-use snarkvm_compiler::{Program, ProvingKey};
+use crate::{
+    prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes},
+    synthesizer::{Program, ProvingKey},
+};
 
 use anyhow::{anyhow, bail, ensure, Result};
 use std::{
@@ -45,9 +47,9 @@ impl<N: Network> ProverFile<N> {
         let prover_file = Self { function_name: *function_name, proving_key };
 
         // Create the file name.
-        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{PROVER_FILE_EXTENSION}");
         // Construct the file path.
-        let path = directory.join(&file_name);
+        let path = directory.join(file_name);
         // Write the file (overwriting if it already exists).
         File::create(&path)?.write_all(&prover_file.to_bytes_le()?)?;
 
@@ -61,7 +63,7 @@ impl<N: Network> ProverFile<N> {
         ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
         // Create the file name.
-        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{PROVER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
@@ -85,7 +87,7 @@ impl<N: Network> ProverFile<N> {
     /// Returns `true` if the prover file for the given function name exists at the given directory.
     pub fn exists_at(directory: &Path, function_name: &Identifier<N>) -> bool {
         // Create the file name.
-        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{PROVER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the path is well-formed.
@@ -193,8 +195,10 @@ impl<N: Network> ToBytes for ProverFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{FromStr, Parser, TestRng};
-    use snarkvm_compiler::Process;
+    use crate::{
+        prelude::{FromStr, Parser, TestRng},
+        synthesizer::Process,
+    };
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::AleoV0;
@@ -237,7 +241,7 @@ function compute:
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 
         // Retrieve the proving key.
-        let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();
+        let proving_key = process.get_proving_key(program.id(), function_name).unwrap();
 
         // Create the prover file at the path.
         let expected = ProverFile::create(&directory, &function_name, proving_key).unwrap();

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,11 +17,26 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce.
-    pub fn is_owner(&self, address: &Address<N>, view_key: &ViewKey<N>) -> bool {
+    /// Decrypts `self` into plaintext using the given view key.
+    pub fn is_owner(&self, view_key: &ViewKey<N>) -> bool {
+        // Compute the address.
+        let address = view_key.to_address();
+        // Check if the address is the owner.
+        self.is_owner_with_address_x_coordinate(view_key, &address.to_x_coordinate())
+    }
+
+    /// Decrypts `self` into plaintext using the x-coordinate of the address corresponding to the given view key.
+    pub fn is_owner_with_address_x_coordinate(&self, view_key: &ViewKey<N>, address_x_coordinate: &Field<N>) -> bool {
+        // In debug mode, check that the address corresponds to the given view key.
+        debug_assert_eq!(
+            &view_key.to_address().to_x_coordinate(),
+            address_x_coordinate,
+            "Failed to check record - view key and address do not match"
+        );
+
         match &self.owner {
             // If the owner is public, check if the address is the owner.
-            Owner::Public(owner) => owner == address,
+            Owner::Public(owner) => &owner.to_x_coordinate() == address_x_coordinate,
             // If the owner is private, decrypt the owner to check if it matches the address.
             Owner::Private(ciphertext) => {
                 // Compute the record view key.
@@ -29,13 +44,16 @@ impl<N: Network> Record<N, Ciphertext<N>> {
                 // Compute the 0th randomizer.
                 let randomizer = N::hash_many_psd8(&[N::encryption_domain(), record_view_key], 1);
                 // Decrypt the owner.
-                match Address::from_field(&(ciphertext[0] - randomizer[0])) {
-                    Ok(owner) => &owner == address,
-                    Err(error) => {
-                        eprintln!("Failed to decrypt the record owner: {error}");
-                        false
-                    }
-                }
+                let owner_x = ciphertext[0] - randomizer[0];
+                // Compare the x coordinates of computed and supplied addresses.
+                // We can skip recomputing the address from `owner_x` due to the following reasoning.
+                // First, the transaction SNARK that generated the ciphertext would have checked that the ciphertext encrypts a valid address.
+                // Now, since a valid address is an element of the prime-order subgroup of the curve, we know that the encrypted x-coordinate corresponds to a prime-order element.
+                // Finally, since the SNARK + hybrid encryption
+                // together are an authenticated encryption scheme, we know that the ciphertext has not been malleated.
+                // Thus overall we know that if the x-coordinate matches that of `address`, then the underlying `address`es must also match.
+                // Therefore we can skip recomputing the address from `owner_x` and instead compare the x-coordinates directly.
+                &owner_x == address_x_coordinate
             }
         }
     }
@@ -77,19 +95,15 @@ mod tests {
         // Encrypt the record.
         let ciphertext = record.encrypt(randomizer)?;
 
-        // Compute the address.
-        let address = Address::try_from(&view_key)?;
-
         // Ensure the record belongs to the owner.
-        assert!(ciphertext.is_owner(&address, &view_key));
+        assert!(ciphertext.is_owner(&view_key));
 
         // Sample a random view key and address.
         let private_key = PrivateKey::<N>::new(rng)?;
         let view_key = ViewKey::try_from(&private_key)?;
-        let address = Address::try_from(&private_key)?;
 
         // Ensure the random address is not the owner.
-        assert!(!ciphertext.is_owner(&address, &view_key));
+        assert!(!ciphertext.is_owner(&view_key));
 
         Ok(())
     }

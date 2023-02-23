@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
+use crate::{witness_mode, Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
 
@@ -24,10 +24,10 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     type Network: console::Network<Affine = Self::Affine, Field = Self::BaseField, Scalar = Self::ScalarField>;
 
     type Affine: AffineCurve<
-        BaseField = Self::BaseField,
-        ScalarField = Self::ScalarField,
-        Coordinates = (Self::BaseField, Self::BaseField),
-    >;
+            BaseField = Self::BaseField,
+            ScalarField = Self::ScalarField,
+            Coordinates = (Self::BaseField, Self::BaseField),
+        >;
     type BaseField: PrimeField + SquareRootField + Copy;
     type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger> + Copy;
 
@@ -81,6 +81,28 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
         B: Into<LinearCombination<Self::BaseField>>,
     {
         Self::enforce(|| (a, Self::one(), b))
+    }
+
+    /// Adds one constraint enforcing that the `A != B`.
+    fn assert_neq<A, B>(a: A, b: B)
+    where
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+    {
+        let (a, b) = (a.into(), b.into());
+        let mode = witness_mode!(a, b);
+
+        // Compute `(a - b)`.
+        let a_minus_b = a - b;
+
+        // Compute `multiplier` as `1 / (a - b)`.
+        let multiplier = match a_minus_b.value().inverse() {
+            Some(inverse) => Self::new_variable(mode, inverse).into(),
+            None => Self::zero(),
+        };
+
+        // Enforce `(a - b) * multiplier == 1`.
+        Self::enforce(|| (a_minus_b, multiplier, Self::one()));
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -54,7 +54,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected).to_x_coordinate();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = Address::from_field(candidate);
                 assert_eq!(expected.to_x_coordinate(), candidate.eject_value().to_x_coordinate());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -65,16 +65,16 @@ mod tests {
 
     #[test]
     fn test_from_field_constant() {
-        check_from_field(Mode::Constant, 3, 0, 0, 0);
+        check_from_field(Mode::Constant, 11, 0, 0, 0);
     }
 
     #[test]
     fn test_from_field_public() {
-        check_from_field(Mode::Public, 2, 0, 3, 3);
+        check_from_field(Mode::Public, 4, 0, 15, 13);
     }
 
     #[test]
     fn test_from_field_private() {
-        check_from_field(Mode::Private, 2, 0, 3, 3);
+        check_from_field(Mode::Private, 4, 0, 15, 13);
     }
 }

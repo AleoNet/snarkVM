@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -188,7 +188,7 @@ impl<E: Environment> Pow<Scalar<E>> for Scalar<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Scalar<E>) -> Self::Output {
-        Scalar::new(self.scalar.pow(other.scalar.to_repr()))
+        Scalar::new(self.scalar.pow(other.scalar.to_bigint()))
     }
 }
 
@@ -198,7 +198,7 @@ impl<E: Environment> Pow<&Scalar<E>> for Scalar<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: &Scalar<E>) -> Self::Output {
-        Scalar::new(self.scalar.pow(other.scalar.to_repr()))
+        Scalar::new(self.scalar.pow(other.scalar.to_bigint()))
     }
 }
 

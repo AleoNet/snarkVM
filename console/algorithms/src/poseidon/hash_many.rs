@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
         let mut preimage = Vec::with_capacity(RATE + input.len());
         preimage.push(self.domain);
         preimage.push(Field::<E>::from_u128(input.len() as u128));
-        preimage.extend(&vec![Field::<E>::zero(); RATE - 2]); // Pad up to RATE.
+        preimage.resize(RATE, Field::<E>::zero()); // Pad up to RATE.
         preimage.extend_from_slice(input);
 
         let mut sponge = PoseidonSponge::<E, RATE, CAPACITY>::new(&self.parameters);

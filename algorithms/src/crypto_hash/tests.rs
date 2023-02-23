@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -38,7 +38,7 @@ fn expect_file_with_name(name: impl ToString, val: impl std::fmt::Debug) {
     if !path.exists() {
         std::fs::File::create(&path).expect("failed to create file");
     }
-    expect_test::expect_file![path].assert_eq(&format!("{:?}", val));
+    expect_test::expect_file![path].assert_eq(&format!("{val:?}"));
 }
 
 #[test]
@@ -55,17 +55,17 @@ fn test_poseidon_sponge_consistency() {
     let sponge_param = Arc::new(Fr::default_poseidon_parameters::<RATE>().unwrap());
     for absorb in 0..10 {
         for squeeze in 0..10 {
-            let iteration_name = format!("Absorb {} and Squeeze {}", absorb, squeeze);
+            let iteration_name = format!("Absorb {absorb} and Squeeze {squeeze}");
             let mut sponge = PoseidonSponge::<Fr, RATE, 1>::new_with_parameters(&sponge_param);
             sponge.absorb_native_field_elements(&vec![Fr::from(1237812u64); absorb]);
             let next_absorb_index = if absorb % RATE != 0 || absorb == 0 { absorb % RATE } else { RATE };
-            assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{}", iteration_name);
+            assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{iteration_name}");
             expect_file_with_name(&iteration_name, sponge.squeeze_native_field_elements(squeeze));
             let next_squeeze_index = if squeeze % RATE != 0 || squeeze == 0 { squeeze % RATE } else { RATE };
             if squeeze == 0 {
-                assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{}", iteration_name);
+                assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{iteration_name}");
             } else {
-                assert_eq!(sponge.mode, DuplexSpongeMode::Squeezing { next_squeeze_index }, "{}", iteration_name);
+                assert_eq!(sponge.mode, DuplexSpongeMode::Squeezing { next_squeeze_index }, "{iteration_name}");
             }
         }
     }
@@ -75,7 +75,7 @@ fn test_poseidon_sponge_consistency() {
 fn bls12_377_fr_poseidon_default_parameters_test() {
     fn single_rate_test<const RATE: usize>() {
         let params = Fr::default_poseidon_parameters::<RATE>().unwrap();
-        let name = format!("rate {} and optimize_for_weights false", RATE);
+        let name = format!("rate {RATE} and optimize_for_weights false");
         expect_file_with_name("Ark for ".to_string() + &name, params.ark);
         expect_file_with_name("MDS for ".to_string() + &name, params.mds);
     }

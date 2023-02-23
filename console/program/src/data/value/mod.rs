@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -32,4 +32,47 @@ pub enum Value<N: Network> {
     Plaintext(Plaintext<N>),
     /// A record value.
     Record(Record<N, Plaintext<N>>),
+}
+
+impl<N: Network> From<&Value<N>> for Value<N> {
+    /// Returns a clone of the value.
+    fn from(value: &Value<N>) -> Self {
+        value.clone()
+    }
+}
+
+impl<N: Network> TryFrom<Result<Value<N>>> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a result.
+    fn try_from(value: Result<Value<N>>) -> Result<Self> {
+        value
+    }
+}
+
+impl<N: Network> TryFrom<String> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: String) -> Result<Self> {
+        Self::from_str(&value)
+    }
+}
+
+impl<N: Network> TryFrom<&String> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: &String) -> Result<Self> {
+        Self::from_str(value)
+    }
+}
+
+impl<N: Network> TryFrom<&str> for Value<N> {
+    type Error = Error;
+
+    /// Initializes a value from a string.
+    fn try_from(value: &str) -> Result<Self> {
+        Self::from_str(value)
+    }
 }

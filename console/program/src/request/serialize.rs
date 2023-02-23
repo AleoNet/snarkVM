@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Request<N> {
     /// Serializes the request into string or bytes.
@@ -46,31 +48,31 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
         match deserializer.is_human_readable() {
             true => {
                 // Parse the request from a string into a value.
-                let request = serde_json::Value::deserialize(deserializer)?;
+                let mut request = serde_json::Value::deserialize(deserializer)?;
                 // Recover the request.
                 Ok(Self::from((
                     // Retrieve the caller.
-                    serde_json::from_value(request["caller"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "caller")?,
                     // Retrieve the network ID.
-                    serde_json::from_value(request["network"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "network")?,
                     // Retrieve the program ID.
-                    serde_json::from_value(request["program"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "program")?,
                     // Retrieve the function name.
-                    serde_json::from_value(request["function"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "function")?,
                     // Retrieve the input IDs.
-                    serde_json::from_value(request["input_ids"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "input_ids")?,
                     // Retrieve the inputs.
-                    serde_json::from_value(request["inputs"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "inputs")?,
                     // Retrieve the signature.
-                    serde_json::from_value(request["signature"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "signature")?,
                     // Retrieve the `sk_tag`.
-                    serde_json::from_value(request["sk_tag"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "sk_tag")?,
                     // Retrieve the `tvk`.
-                    serde_json::from_value(request["tvk"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "tvk")?,
                     // Retrieve the `tsk`.
-                    serde_json::from_value(request["tsk"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "tsk")?,
                     // Retrieve the `tcm`.
-                    serde_json::from_value(request["tcm"].clone()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut request, "tcm")?,
                 )))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "request"),

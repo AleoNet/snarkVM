@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -91,7 +91,7 @@ mod tests {
 
         // Create the `resources` folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir_all(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {:?}", path));
+            std::fs::create_dir_all(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
         }
         // Output the path.
         path
@@ -106,7 +106,7 @@ mod tests {
 
         // Create the test folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {:?}", path));
+            std::fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
         }
 
         // Construct the path for the test file.
@@ -115,11 +115,11 @@ mod tests {
 
         // Create the test file, if it does not exist.
         if !path.exists() {
-            std::fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {:?}", path));
+            std::fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {path:?}"));
         }
 
         // Assert the test file is equal to the expected value.
-        expect_test::expect_file![path].assert_eq(&format!("{:?}", candidate));
+        expect_test::expect_file![path].assert_eq(&format!("{candidate:?}"));
     }
 
     #[test]

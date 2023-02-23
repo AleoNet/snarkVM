@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,9 +17,9 @@
 use crate::traits::{AffineCurve, PairingCurve, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
 
-use core::{fmt::Debug, iter};
+use core::{fmt::Debug, hash::Hash, iter};
 
-pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync + Send {
+pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Hash + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
     type Fr: PrimeField + SquareRootField + Into<<Self::Fr as PrimeField>::BigInteger>;
 

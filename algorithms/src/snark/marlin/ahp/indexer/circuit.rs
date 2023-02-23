@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// The indexed version of the constraint system.
 /// This struct contains three kinds of objects:
 /// 1) `index_info` is information about the index, such as the size of the

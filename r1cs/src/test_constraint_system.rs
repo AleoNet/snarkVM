@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -153,21 +153,21 @@ impl<F: Field> TestConstraintSystem<F> {
             let self_interned_path = self_c.interned_path;
             let other_interned_path = other_c.interned_path;
             if self_c.a != other_c.a {
-                println!("A row {} is different:", i);
+                println!("A row {i} is different:");
                 println!("self: {}", self.unintern_path(self_interned_path));
                 println!("other: {}", other.unintern_path(other_interned_path));
                 break;
             }
 
             if self_c.b != other_c.b {
-                println!("B row {} is different:", i);
+                println!("B row {i} is different:");
                 println!("self: {}", self.unintern_path(self_interned_path));
                 println!("other: {}", other.unintern_path(other_interned_path));
                 break;
             }
 
             if self_c.c != other_c.c {
-                println!("C row {} is different:", i);
+                println!("C row {i} is different:");
                 println!("self: {}", self.unintern_path(self_interned_path));
                 println!("other: {}", other.unintern_path(other_interned_path));
                 break;
@@ -275,12 +275,12 @@ impl<F: Field> TestConstraintSystem<F> {
         let interned_field = self.interned_fields.insert_full(to).0;
 
         match self.named_objects.get(&interned_path) {
-            Some(&NamedObject::Var(ref v)) => match v.get_unchecked() {
+            Some(NamedObject::Var(v)) => match v.get_unchecked() {
                 Index::Public(index) => self.public_variables[index] = interned_field,
                 Index::Private(index) => self.private_variables[index] = interned_field,
             },
-            Some(e) => panic!("tried to set path `{}` to value, but `{:?}` already exists there.", path, e),
-            _ => panic!("no variable exists at path: {}", path),
+            Some(e) => panic!("tried to set path `{path}` to value, but `{e:?}` already exists there."),
+            _ => panic!("no variable exists at path: {path}"),
         }
     }
 
@@ -288,12 +288,12 @@ impl<F: Field> TestConstraintSystem<F> {
         let interned_path = self.intern_path(path);
 
         let interned_field = match self.named_objects.get(&interned_path) {
-            Some(&NamedObject::Var(ref v)) => match v.get_unchecked() {
+            Some(NamedObject::Var(v)) => match v.get_unchecked() {
                 Index::Public(index) => self.public_variables[index],
                 Index::Private(index) => self.private_variables[index],
             },
-            Some(e) => panic!("tried to get value of path `{}`, but `{:?}` exists there (not a variable)", path, e),
-            _ => panic!("no variable exists at path: {}", path),
+            Some(e) => panic!("tried to get value of path `{path}`, but `{e:?}` exists there (not a variable)"),
+            _ => panic!("no variable exists at path: {path}"),
         };
 
         *self.interned_fields.get_index(interned_field).unwrap()

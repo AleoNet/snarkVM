@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -32,21 +32,17 @@ pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter,
 
 #[cfg(feature = "crypto_hash")]
 pub mod crypto_hash;
+#[cfg(feature = "fft")]
+pub mod fft;
+#[cfg(feature = "msm")]
+pub mod msm;
+#[cfg(feature = "polycommit")]
+pub mod polycommit;
+#[cfg(feature = "snark")]
+pub mod snark;
 
 pub mod errors;
 pub use errors::*;
-
-#[cfg(feature = "fft")]
-pub mod fft;
-
-#[cfg(feature = "msm")]
-pub mod msm;
-
-#[cfg(feature = "polycommit")]
-pub mod polycommit;
-
-#[cfg(feature = "snark")]
-pub mod snark;
 
 pub mod traits;
 pub use traits::*;

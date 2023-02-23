@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -63,14 +63,14 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, a);
             let b = Group::<Circuit>::new(Mode::Constant, b);
 
-            Circuit::scope(&format!("Constant Equals {}", i), || {
+            Circuit::scope(&format!("Constant Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(2, 0, 0, 0);
             });
             Circuit::reset();
 
-            Circuit::scope(&format!("Constant Not Equals {}", i), || {
+            Circuit::scope(&format!("Constant Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(2, 0, 0, 0);
@@ -87,14 +87,14 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, a);
             let b = Group::<Circuit>::new(Mode::Public, b);
 
-            Circuit::scope(&format!("Constant and Public Equals {}", i), || {
+            Circuit::scope(&format!("Constant and Public Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
             });
             Circuit::reset();
 
-            Circuit::scope(&format!("Constant and Public Not Equals {}", i), || {
+            Circuit::scope(&format!("Constant and Public Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
@@ -111,14 +111,14 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, a);
             let b = Group::<Circuit>::new(Mode::Constant, b);
 
-            Circuit::scope(&format!("Public and Constant Equals {}", i), || {
+            Circuit::scope(&format!("Public and Constant Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
             });
             Circuit::reset();
 
-            Circuit::scope(&format!("Public and Constant Not Equals {}", i), || {
+            Circuit::scope(&format!("Public and Constant Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
@@ -135,14 +135,14 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, a);
             let b = Group::<Circuit>::new(Mode::Public, b);
 
-            Circuit::scope(&format!("Public Equals {}", i), || {
+            Circuit::scope(&format!("Public Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
             });
             Circuit::reset();
 
-            Circuit::scope(&format!("Public Not Equals {}", i), || {
+            Circuit::scope(&format!("Public Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
@@ -159,14 +159,14 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, a);
             let b = Group::<Circuit>::new(Mode::Private, b);
 
-            Circuit::scope(&format!("Private Equals {}", i), || {
+            Circuit::scope(&format!("Private Equals {i}"), || {
                 let equals = a.is_equal(&b);
                 assert!(!equals.eject_value());
                 assert_scope!(0, 0, 5, 7);
             });
             Circuit::reset();
 
-            Circuit::scope(&format!("Private Not Equals {}", i), || {
+            Circuit::scope(&format!("Private Not Equals {i}"), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_scope!(0, 0, 5, 7);

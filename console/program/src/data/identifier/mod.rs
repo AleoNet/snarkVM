@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -38,6 +38,31 @@ use snarkvm_console_types::{prelude::*, Field};
 /// The identifier must fit within the data capacity of a base field element.
 #[derive(Copy, Clone)]
 pub struct Identifier<N: Network>(Field<N>, u8); // Number of bytes in the identifier.
+
+impl<N: Network> From<&Identifier<N>> for Identifier<N> {
+    /// Returns a copy of the identifier.
+    fn from(identifier: &Identifier<N>) -> Self {
+        *identifier
+    }
+}
+
+impl<N: Network> TryFrom<String> for Identifier<N> {
+    type Error = Error;
+
+    /// Initializes an identifier from a string.
+    fn try_from(identifier: String) -> Result<Self> {
+        Self::from_str(&identifier)
+    }
+}
+
+impl<N: Network> TryFrom<&String> for Identifier<N> {
+    type Error = Error;
+
+    /// Initializes an identifier from a string.
+    fn try_from(identifier: &String) -> Result<Self> {
+        Self::from_str(identifier)
+    }
+}
 
 impl<N: Network> TryFrom<&str> for Identifier<N> {
     type Error = Error;

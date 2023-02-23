@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -211,7 +211,7 @@ impl<E: PairingEngine, MM: MarlinMode> fmt::Display for CircuitVerifyingKey<E, M
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let vk_hex = hex::encode(self.to_bytes_le().expect("Failed to convert verifying key to bytes"));
-        write!(f, "{}", vk_hex)
+        write!(f, "{vk_hex}")
     }
 }
 

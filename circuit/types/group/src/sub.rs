@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -123,9 +123,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -142,9 +142,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -161,9 +161,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -180,9 +180,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -199,9 +199,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -218,9 +218,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -237,9 +237,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -256,9 +256,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
@@ -275,9 +275,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }

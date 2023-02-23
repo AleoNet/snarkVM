@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -146,11 +146,11 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("BitAnd: ({} & {}) {}", mode_a, mode_b, i);
+            let name = format!("BitAnd: ({mode_a} & {mode_b}) {i}");
             check_and::<I>(&name, first, second, mode_a, mode_b);
             check_and::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
 
-            let name = format!("BitAnd Identity: ({} & {}) {}", mode_a, mode_b, i);
+            let name = format!("BitAnd Identity: ({mode_a} & {mode_b}) {i}");
             let identity = if I::is_signed() { -console::Integer::one() } else { console::Integer::MAX };
             check_and::<I>(&name, identity, first, mode_a, mode_b);
             check_and::<I>(&name, first, identity, mode_a, mode_b); // Commute the operation.
@@ -172,7 +172,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("BitAnd: ({} & {})", first, second);
+                let name = format!("BitAnd: ({first} & {second})");
                 check_and::<I>(&name, first, second, mode_a, mode_b);
             }
         }

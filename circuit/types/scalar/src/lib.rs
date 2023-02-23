@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -230,15 +230,15 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, zero);
-        assert_eq!("0scalar.constant", &format!("{}", candidate));
+        assert_eq!("0scalar.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, zero);
-        assert_eq!("0scalar.public", &format!("{}", candidate));
+        assert_eq!("0scalar.public", &format!("{candidate}"));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, zero);
-        assert_eq!("0scalar.private", &format!("{}", candidate));
+        assert_eq!("0scalar.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -247,15 +247,15 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, one);
-        assert_eq!("1scalar.constant", &format!("{}", candidate));
+        assert_eq!("1scalar.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, one);
-        assert_eq!("1scalar.public", &format!("{}", candidate));
+        assert_eq!("1scalar.public", &format!("{candidate}"));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, one);
-        assert_eq!("1scalar.private", &format!("{}", candidate));
+        assert_eq!("1scalar.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -265,15 +265,15 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2scalar.constant", &format!("{}", candidate));
+        assert_eq!("2scalar.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2scalar.public", &format!("{}", candidate));
+        assert_eq!("2scalar.public", &format!("{candidate}"));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2scalar.private", &format!("{}", candidate));
+        assert_eq!("2scalar.private", &format!("{candidate}"));
     }
 
     #[test]

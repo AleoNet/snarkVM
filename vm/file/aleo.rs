@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,8 +17,8 @@
 use crate::{
     file::Manifest,
     prelude::{Network, ProgramID},
+    synthesizer::Program,
 };
-use snarkvm_compiler::Program;
 
 use anyhow::{anyhow, bail, ensure, Result};
 use core::str::FromStr;

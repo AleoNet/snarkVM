@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 pub struct BuildRequest<N: Network> {
     program: Program<N>,
@@ -64,15 +66,15 @@ impl<'de, N: Network> Deserialize<'de> for BuildRequest<N> {
     /// Deserializes the build request from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the request from a string into a value.
-        let request = serde_json::Value::deserialize(deserializer)?;
+        let mut request = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["program"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "program")?,
             // Retrieve the imports.
-            serde_json::from_value(request["imports"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "imports")?,
             // Retrieve the function name.
-            serde_json::from_value(request["function_name"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "function_name")?,
         ))
     }
 }
@@ -132,17 +134,17 @@ impl<'de, N: Network> Deserialize<'de> for BuildResponse<N> {
     /// Deserializes the build response from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Parse the response from a string into a value.
-        let response = serde_json::Value::deserialize(deserializer)?;
+        let mut response = serde_json::Value::deserialize(deserializer)?;
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "program_id")?,
             // Retrieve the function name.
-            serde_json::from_value(response["function_name"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "function_name")?,
             // Retrieve the proving key.
-            serde_json::from_value(response["proving_key"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "proving_key")?,
             // Retrieve the verifying key.
-            serde_json::from_value(response["verifying_key"].clone()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "verifying_key")?,
         ))
     }
 }

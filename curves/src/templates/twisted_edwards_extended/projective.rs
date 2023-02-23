@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -375,7 +375,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
 
         let mut found_one = false;
 
-        for i in BitIteratorBE::new(other.to_repr()) {
+        for i in BitIteratorBE::new(other.to_bigint()) {
             if found_one {
                 res.double_in_place();
             } else {

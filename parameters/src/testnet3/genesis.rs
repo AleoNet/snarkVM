@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
 pub struct GenesisBytes;
 
 impl GenesisBytes {
-    pub fn load_bytes() -> &'static [u8] {
+    pub const fn load_bytes() -> &'static [u8] {
         include_bytes!("./resources/block.genesis")
     }
 }
@@ -29,6 +29,6 @@ mod tests {
     #[test]
     fn test_genesis_block() {
         let bytes = GenesisBytes::load_bytes();
-        assert_eq!(1739, bytes.len() as u64, "Update me if serialization has changed");
+        assert_eq!(1783, bytes.len() as u64, "Update me if serialization has changed");
     }
 }

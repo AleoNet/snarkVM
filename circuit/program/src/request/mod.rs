@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod to_tpk;
 mod verify;
 
-use crate::{Identifier, ProgramID, Value};
+use crate::{Identifier, Plaintext, ProgramID, Record, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar, U16};

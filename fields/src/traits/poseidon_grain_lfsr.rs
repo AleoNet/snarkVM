@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -115,7 +115,7 @@ impl PoseidonGrainLFSR {
                 let bigint = F::BigInteger::from_bits_le(&bits)?;
                 bits.clear();
                 // Ensure the number is in the field.
-                if let Some(element) = F::from_repr(bigint) {
+                if let Some(element) = F::from_bigint(bigint) {
                     output.push(element);
                     break;
                 }

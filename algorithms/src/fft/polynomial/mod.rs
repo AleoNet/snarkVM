@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -37,7 +37,7 @@ mod multiplier;
 pub use multiplier::*;
 
 /// Represents either a sparse polynomial or a dense one.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Polynomial<'a, F: Field> {
     /// Represents the case where `self` is a sparse polynomial
     Sparse(Cow<'a, SparsePolynomial<F>>),
@@ -132,6 +132,11 @@ impl<F: Field> TryInto<SparsePolynomial<F>> for Polynomial<'_, F> {
 }
 
 impl<'a, F: Field> Polynomial<'a, F> {
+    /// The zero polynomial.
+    pub fn zero() -> Self {
+        Sparse(Cow::Owned(SparsePolynomial::zero()))
+    }
+
     /// Checks if the given polynomial is zero.
     pub fn is_zero(&self) -> bool {
         match self {
@@ -161,6 +166,14 @@ impl<'a, F: Field> Polynomial<'a, F> {
         match self {
             Dense(p) => Some(p.as_ref()),
             _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn to_dense(&self) -> Cow<'_, DensePolynomial<F>> {
+        match self {
+            Dense(p) => Cow::Borrowed(p.as_ref()),
+            Sparse(p) => Cow::Owned(p.clone().into_owned().into()),
         }
     }
 
@@ -237,6 +250,7 @@ impl<'a, F: Field> Polynomial<'a, F> {
         }
     }
 }
+
 impl<F: PrimeField> Polynomial<'_, F> {
     /// Construct `Evaluations` by evaluating a polynomial over the domain `domain`.
     pub fn evaluate_over_domain(poly: impl Into<Self>, domain: EvaluationDomain<F>) -> Evaluations<F> {

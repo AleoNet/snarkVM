@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -85,7 +85,7 @@ mod tests {
             let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
 
             // Perform the less than comparison.
-            Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
+            Circuit::scope(&format!("{mode_a} {mode_b} {i}"), || {
                 let candidate = candidate_a.is_less_than(&candidate_b);
                 assert_eq!(expected_a < expected_b, candidate.eject_value());
                 assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSyst
     let padded_size = power_of_two.unwrap().size();
     if padded_size > num_public_variables {
         for i in 0..(padded_size - num_public_variables) {
-            cs.alloc_input(|| format!("pad_input_{}", i), || Ok(F::zero())).unwrap();
+            cs.alloc_input(|| format!("pad_input_{i}"), || Ok(F::zero())).unwrap();
         }
     }
 }
@@ -80,17 +80,17 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
         use core::convert::identity as iden;
         // Add dummy constraints of the form 0 * 0 == 0
         for i in 0..matrix_padding {
-            cs.enforce(|| format!("pad_constraint_{}", i), iden, iden, iden);
+            cs.enforce(|| format!("pad_constraint_{i}"), iden, iden, iden);
         }
     } else {
         // Add dummy unconstrained variables
         for i in 0..matrix_padding {
-            let _ = cs.alloc(|| format!("pad_variable_{}", i), || Ok(F::one())).expect("alloc failed");
+            let _ = cs.alloc(|| format!("pad_variable_{i}"), || Ok(F::one())).expect("alloc failed");
         }
     }
 }
 
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `row` polynomial.
     pub row: EvaluationsOnDomain<F>,
@@ -115,7 +115,7 @@ impl<F: PrimeField> MatrixEvals<F> {
 
 /// Contains information about the arithmetization of the matrix M^*.
 /// Here `M^*(i, j) := M(j, i) * u_H(j, j)`. For more details, see [\[COS20\]](https://eprint.iacr.org/2019/1076).
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the row indices of M^*.
     pub row: LabeledPolynomial<F>,

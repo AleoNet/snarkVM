@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -167,7 +167,7 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         };
         let to_wnaf = |e: Self::ScalarField| -> Vec<i32> {
             let mut naf = vec![];
-            let mut e = e.to_repr();
+            let mut e = e.to_bigint();
             while !e.is_zero() {
                 let next = if e.is_odd() {
                     let naf_sign = mod_signed(e.as_ref()[0]);

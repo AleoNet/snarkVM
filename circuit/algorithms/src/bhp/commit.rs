@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -80,16 +80,16 @@ mod tests {
 
     #[test]
     fn test_commit_constant() -> Result<()> {
-        check_commit::<32, 48>(Mode::Constant, 8200, 0, 0, 0)
+        check_commit::<32, 48>(Mode::Constant, 8250, 0, 0, 0)
     }
 
     #[test]
     fn test_commit_public() -> Result<()> {
-        check_commit::<32, 48>(Mode::Public, 1044, 0, 10419, 10491)
+        check_commit::<32, 48>(Mode::Public, 1044, 0, 10279, 10281)
     }
 
     #[test]
     fn test_commit_private() -> Result<()> {
-        check_commit::<32, 48>(Mode::Private, 1044, 0, 10419, 10491)
+        check_commit::<32, 48>(Mode::Private, 1044, 0, 10279, 10281)
     }
 }
