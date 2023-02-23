@@ -77,9 +77,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
-        let mut r_b_s = Vec::with_capacity(state.index_specific_states.len());
+        let mut r_b_s = Vec::with_capacity(state.circuit_specific_states.len());
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_batch_size());
-        for (i, (circuit, state)) in state.index_specific_states.iter_mut().enumerate() {
+        for (i, (circuit, state)) in state.circuit_specific_states.iter_mut().enumerate() {
             let batch_size = state.batch_size;
 
             let z_a = state.z_a.take().unwrap();
@@ -122,7 +122,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut batch_consumed_so_far = 0;
         let mut circuit_specific_batches = BTreeMap::new();
-        for ((circuit, state), r_b_s) in state.index_specific_states.iter().zip(r_b_s) {
+        for ((circuit, state), r_b_s) in state.circuit_specific_states.iter().zip(r_b_s) {
             let batches = batches[batch_consumed_so_far..][..state.batch_size].to_vec();
             circuit_specific_batches.insert(*circuit, batches);
             batch_consumed_so_far += state.batch_size;
@@ -131,7 +131,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.index_specific_states.iter().map(|(c, s)| (*c, s.batch_size)))));
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (*c, s.batch_size)))));
         state.first_round_oracles = Some(Arc::new(oracles));
         Ok(state)
     }
@@ -172,7 +172,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label: String,
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
-        state: &prover::IndexSpecificState<F>,
+        state: &prover::CircuitSpecificState<F>,
     ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let input_domain = state.input_domain;
@@ -210,7 +210,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label: impl ToString,
         evaluations: Vec<F>,
         will_be_evaluated: bool,
-        state: &prover::IndexSpecificState<F>,
+        state: &prover::CircuitSpecificState<F>,
         r: Option<F>,
     ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;

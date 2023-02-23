@@ -32,7 +32,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{SynthesisError, SynthesisResult};
 
-pub struct IndexSpecificState<F: PrimeField> {
+pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
     pub(super) constraint_domain: EvaluationDomain<F>,
     pub(super) non_zero_a_domain: EvaluationDomain<F>,
@@ -66,9 +66,6 @@ pub struct IndexSpecificState<F: PrimeField> {
     /// The length of this list must be equal to the batch size.
     pub(super) mz_poly_randomizer: Option<Vec<F>>,
 
-    /// The challenges sent by the verifier in the first round
-    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
-
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
     /// Polynomials involved in the holographic sumcheck.
@@ -78,10 +75,14 @@ pub struct IndexSpecificState<F: PrimeField> {
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) max_constraint_domain: EvaluationDomain<F>,
-    pub(super) index_specific_states: BTreeMap<&'a Circuit<F, MM>, IndexSpecificState<F>>,
+    pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    pub(super) total_instances: usize,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
+    // / The challenges sent by the verifier in the first round
+    // TODO: not sure yet if we actually need the following:
+    // pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F, MM>>,
 }
 
 pub type PaddedPubInputs<F> = Vec<F>;
@@ -105,7 +106,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         >
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
-        let index_specific_states = indices_and_assignments
+        let mut total_instances = 0;
+        let circuit_specific_states = indices_and_assignments
             .into_iter()
             .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
@@ -131,6 +133,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
 
                 let mut input_domain = None; // TODO: we're in a single circuit, can we just efficiently/cleanly assign the first valid domain?
                 let batch_size = variable_assignments.len();
+                total_instances += batch_size;
                 let mut z_as = Vec::with_capacity(batch_size);
                 let mut z_bs = Vec::with_capacity(batch_size);
                 let mut x_polys = Vec::with_capacity(batch_size);
@@ -149,7 +152,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 }
                 let input_domain = input_domain.unwrap();
                 
-                let state = IndexSpecificState {
+                let state = CircuitSpecificState {
                     input_domain,
                     constraint_domain,
                     non_zero_a_domain,
@@ -162,7 +165,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     z_a: Some(z_as),
                     z_b: Some(z_bs),
                     mz_poly_randomizer: None,
-                    verifier_first_message: None,
                     lhs_polynomials: None,
                     sums: None,
                 };
@@ -173,36 +175,37 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         let max_constraint_domain = max_constraint_domain.ok_or(AHPError::BatchSizeIsZero)?;
         Ok(Self {
             max_constraint_domain,
-            index_specific_states,
+            circuit_specific_states,
+            total_instances,
             first_round_oracles: None,
         })
     }
 
     /// Get the batch size for a given circuit.
     pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
-        self.index_specific_states.get(circuit).map(|s| s.batch_size)
+        self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 
     /// Get the total batch size.
     pub fn total_batch_size(&self) -> usize {
-        self.index_specific_states.values().map(|s| s.batch_size).sum()
+        self.circuit_specific_states.values().map(|s| s.batch_size).sum()
     }
 
     /// Get the public inputs for the entire batch.
     pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
-        self.index_specific_states.get(circuit).map(|s| s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect())
+        self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect())
     }
 
     /// Get the padded public inputs for the entire batch.
     pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
-        self.index_specific_states.get(circuit).map(|s| s.padded_public_variables)
+        self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables)
     }
 
     pub fn fft_precomputation(&self, circuit: &Circuit<F, MM>) -> Option<&FFTPrecomputation<F>> {
-        self.index_specific_states.contains_key(circuit).then(|| &circuit.fft_precomputation)
+        self.circuit_specific_states.contains_key(circuit).then(|| &circuit.fft_precomputation)
     }
 
     pub fn ifft_precomputation(&self, circuit: &Circuit<F, MM>) -> Option<&IFFTPrecomputation<F>> {
-        self.index_specific_states.contains_key(circuit).then(|| &circuit.ifft_precomputation)
+        self.circuit_specific_states.contains_key(circuit).then(|| &circuit.ifft_precomputation)
     }
 }

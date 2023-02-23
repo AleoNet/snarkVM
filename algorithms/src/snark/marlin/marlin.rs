@@ -380,7 +380,7 @@ where
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
             circuit_proving_key.circuit_verifying_key.circuit_info,
-            batch_size,
+            batch_sizes,
             &mut sponge,
         )?;
         // --------------------------------------------------------------------

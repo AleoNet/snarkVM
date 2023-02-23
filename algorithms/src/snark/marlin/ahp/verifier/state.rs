@@ -27,15 +27,15 @@ use snarkvm_fields::PrimeField;
 
 /// State of the AHP verifier.
 #[derive(Debug)]
-pub struct State<F: PrimeField, MM: MarlinMode> {
-    pub(in crate::snark::marlin) batch_size: usize,
+pub struct State<'a, F: PrimeField, MM: MarlinMode> {
+    pub(in crate::snark::marlin) batch_sizes: Vec<usize>,
     pub(crate) input_domain: EvaluationDomain<F>,
     pub(crate) constraint_domain: EvaluationDomain<F>,
     pub(crate) non_zero_a_domain: EvaluationDomain<F>,
     pub(crate) non_zero_b_domain: EvaluationDomain<F>,
     pub(crate) non_zero_c_domain: EvaluationDomain<F>,
 
-    pub(crate) first_round_message: Option<FirstMessage<F>>,
+    pub(crate) first_round_message: Option<FirstMessage<'a, F, MM>>,
     pub(crate) second_round_message: Option<SecondMessage<F>>,
     pub(crate) third_round_message: Option<ThirdMessage<F>>,
 

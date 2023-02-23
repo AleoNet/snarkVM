@@ -20,8 +20,8 @@ use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
         ahp::{
-            indexer::CircuitInfo,
-            verifier::{FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
+            indexer::{Circuit, CircuitInfo},
+            verifier::{BatchCombiners, FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
         },
@@ -30,21 +30,22 @@ use crate::{
     AlgebraicSponge,
 };
 use snarkvm_fields::PrimeField;
+use std::collections::BTreeMap;
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        index_info: CircuitInfo<TargetField>,
-        batch_size: usize,
+    pub fn verifier_first_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        index_info: CircuitInfo<TargetField>, // TODO: this looks like index_info is just about a single circuit, instead of all?
+        batch_sizes: &BTreeMap<&'a Circuit<BaseField, MM>, usize>,
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(FirstMessage<'a, TargetField, MM>, State<TargetField, MM>), AHPError> {
         // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
         }
 
         let constraint_domain_time = start_timer!(|| "Constructing constraint domain");
-        let constraint_domain =
+        let constraint_domain: EvaluationDomain<TargetField> = // TODO: why does vscode complain that this type needs to be annotated?
             EvaluationDomain::new(index_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
         end_timer!(constraint_domain_time);
 
@@ -69,22 +70,41 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         end_timer!(input_domain_time);
 
         let squeeze_time = start_timer!(|| "Squeezing challenges");
-        let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1);
+        let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, rest) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
-        let mut batch_combiners = vec![TargetField::one()];
-        batch_combiners.extend_from_slice(rest);
+        let mut batch_combiners = BTreeMap::new();
+        let mut circuit_combiners_needed = 0; // the first circuit_combiner is simply TargetField::one()
+        // TODO: we should do a review as to what happens when we have more than usize circuit/instance combiners
+        for (circuit, batch_size) in batch_sizes {
+            let mut combiners = BatchCombiners {
+                circuit_combiner: TargetField::one(),
+                instance_combiners: vec![TargetField::one()],
+            };
+            let instances = batch_size;
+            let elems = fs_rng.squeeze_nonnative_field_elements(instances - 1 + circuit_combiners_needed);
+            let (instance_combiners, circuit_combiner) = elems.split_at(instances - 1);
+            assert!(circuit_combiner.len() < 2);
+            if circuit_combiner.len() == 1 {
+                combiners.circuit_combiner = circuit_combiner[0];
+            }
+            for instance_combiner in instance_combiners {
+                combiners.instance_combiners.push(*instance_combiner);
+            }
+            batch_combiners.insert(circuit, combiners);
+            // TODO: to discuss: this is a bit ugly, but could be avoided if either we use an indexmap to count for us what is the first circuit, or we extract the first loop out of the for-loop
+            circuit_combiners_needed = 1; // All circuits after the first need a random circuit combiner
+        }
         end_timer!(squeeze_time);
 
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
         assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
-        // TODO: generate and send also circuit_combiners.
-        let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners };
+        let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners};
 
         let new_state = State {
-            batch_size,
+            batch_sizes,
             input_domain,
             constraint_domain,
             non_zero_a_domain,

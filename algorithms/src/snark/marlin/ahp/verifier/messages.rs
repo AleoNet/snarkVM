@@ -16,19 +16,26 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::snark::marlin::{witness_label, MarlinMode};
+use crate::snark::marlin::{ahp::indexer::Circuit, witness_label, MarlinMode};
+use std::collections::BTreeMap;
+
+#[derive(Clone, Debug)]
+pub struct BatchCombiners<F> {
+    pub circuit_combiner: F,
+    pub instance_combiners: Vec<F>,
+}
 
 /// First message of the verifier.
 #[derive(Clone, Debug)]
-pub struct FirstMessage<F> {
+pub struct FirstMessage<'a, F, MM> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `B`.
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.
     pub eta_c: F,
-    /// Randomizers for combining vectors from the batch.
-    pub batch_combiners: Vec<F>,
+    /// Randomizers for combining vectors from the batch
+    pub batch_combiners: BTreeMap<&'a Circuit<F, MM>, BatchCombiners<F>>,
 }
 
 /// Second verifier message.
