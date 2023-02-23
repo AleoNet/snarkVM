@@ -60,6 +60,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the degree bounds of oracles in the first round.
+    // TODO: think about whether to adjust this like the first and third rounds
     pub fn second_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
         [
@@ -296,7 +297,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 });
             });
 
-        // BTreeMap with 2*batch_combiners.len() entries
         // TODO: annotation might be unnecessary because the return type of the function is already indicated
         let summed_z_m_and_t: BTreeMap<(&'a Circuit<F, MM>, BatchTerms), DensePolynomial<F>> = job_pool.execute_all().try_into().unwrap();
         summed_z_m_and_t

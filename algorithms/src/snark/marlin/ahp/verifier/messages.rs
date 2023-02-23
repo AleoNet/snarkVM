@@ -56,8 +56,8 @@ pub struct ThirdMessage<F> {
 
 /// Query set of the verifier.
 #[derive(Clone, Debug)]
-pub struct QuerySet<F> {
-    pub batch_size: usize,
+pub struct QuerySet<F, MM> {
+    pub batch_sizes: BTreeMap<Circuit<F, MM>, usize>, // TODO: check whether I'm passing cheap references everywhere
     pub g_1_query: (String, F),
     pub z_b_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
@@ -68,8 +68,8 @@ pub struct QuerySet<F> {
     pub matrix_sumcheck_query: (String, F),
 }
 
-impl<F: PrimeField> QuerySet<F> {
-    pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
+impl<F: PrimeField, MM: MarlinMode> QuerySet<F, MM> {
+    pub fn new(state: &super::State<F, MM>) -> Self {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
@@ -81,7 +81,7 @@ impl<F: PrimeField> QuerySet<F> {
         // We also use an optimization: instead of explicitly calculating z_c, we
         // use the "virtual oracle" z_a * z_b
         Self {
-            batch_size: state.batch_size,
+            batch_sizes: state.batch_sizes,
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
@@ -97,8 +97,9 @@ impl<F: PrimeField> QuerySet<F> {
     /// `(polynomial_label, (query_label, query))`.
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
-        for i in 0..self.batch_size {
-            query_set.insert((witness_label("z_b", i), self.z_b_query.clone()));
+        for (circuit, batch_size, i) in self.batch_sizes.enumerate() { // TODO: how to enumerate the map? Use IndexMap?
+            let circuit_id = format!("circuit_{:x?}", circuit.hash);
+            query_set.insert((witness_label(&circuit_id, "z_b", i), self.z_b_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));

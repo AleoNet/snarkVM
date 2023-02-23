@@ -104,19 +104,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         ]
     }
 
-    pub fn max_non_zero_domain(info: &CircuitInfo<F>) -> EvaluationDomain<F> {
-        let non_zero_a_domain = EvaluationDomain::new(info.num_non_zero_a).unwrap();
-        let non_zero_b_domain = EvaluationDomain::new(info.num_non_zero_b).unwrap();
-        let non_zero_c_domain = EvaluationDomain::new(info.num_non_zero_c).unwrap();
-        Self::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain)
-    }
-
-    fn max_non_zero_domain_helper(
-        domain_a: EvaluationDomain<F>,
-        domain_b: EvaluationDomain<F>,
-        domain_c: EvaluationDomain<F>,
-    ) -> EvaluationDomain<F> {
-        [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap()
+    pub fn max_non_zero_domain(infos: Vec<CircuitInfo<F>>) -> EvaluationDomain<F> {
+        infos.flat_map(|info| {
+            let domain_a = EvaluationDomain::new(info.num_non_zero_a).unwrap();
+            let domain_b = EvaluationDomain::new(info.num_non_zero_b).unwrap();
+            let domain_c = EvaluationDomain::new(info.num_non_zero_c).unwrap();
+            [domain_a, domain_b, domain_c]
+        }).into_iter().max_by_key(|d| d.size()).unwrap()
     }
 
     pub fn fft_precomputation(
@@ -146,7 +140,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_inputs: &[Vec<F>],
         evals: &E,
-        prover_third_message: &prover::ThirdMessage<F>,
+        prover_third_message: &prover::ThirdMessage<F, MM>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());

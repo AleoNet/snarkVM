@@ -19,16 +19,18 @@ use core::marker::PhantomData;
 use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
+        ahp::indexer::Circuit,
         ahp::verifier::{FirstMessage, SecondMessage, ThirdMessage},
         MarlinMode,
     },
 };
 use snarkvm_fields::PrimeField;
+use std::collections::BTreeMap;
 
 /// State of the AHP verifier.
 #[derive(Debug)]
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
-    pub(in crate::snark::marlin) batch_sizes: Vec<usize>,
+    pub(in crate::snark::marlin) batch_sizes: BTreeMap<&'a Circuit<F, MM>, usize>,
     pub(crate) input_domain: EvaluationDomain<F>,
     pub(crate) constraint_domain: EvaluationDomain<F>,
     pub(crate) non_zero_a_domain: EvaluationDomain<F>,

@@ -20,7 +20,7 @@ use snarkvm_fields::PrimeField;
 
 use crate::{
     polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
-    snark::marlin::{Circuit, MarlinMode},
+    snark::marlin::{ahp::indexer::Circuit, MarlinMode},
 };
 
 /// The first set of prover oracles.
@@ -127,9 +127,26 @@ impl<F: PrimeField> SecondOracles<F> {
 
 /// The third set of prover oracles.
 #[derive(Debug)]
-pub struct ThirdOracles<F: PrimeField> {
-    // TODO: wrap g_a, g_b, g_c, in an inner struct (say matrix_gs)
-    // Add a BTreeMap<Circuit, MatrixGs> to the struct
+pub struct ThirdOracles<F: PrimeField, MM> {
+    gs: BTreeMap<Circuit<F, MM>, MatrixGs<F>>,
+}
+
+impl<F: PrimeField, MM> ThirdOracles<F, MM> {
+    /// Iterate over the polynomials output by the prover in the third round.
+    // TODO: need to rewrite, see where this is being used.
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        [&self.g_a, &self.g_b, &self.g_c].into_iter()
+    }
+
+    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.gs
+            .values()
+            .all(|b| b.iter().all(|b| b.matches_info(info)))
+    }
+}
+
+#[derive(Debug)]
+pub struct MatrixGs<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
     pub g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
@@ -138,18 +155,14 @@ pub struct ThirdOracles<F: PrimeField> {
     pub g_c: LabeledPolynomial<F>,
 }
 
-impl<F: PrimeField> ThirdOracles<F> {
-    /// Iterate over the polynomials output by the prover in the third round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.g_a, &self.g_b, &self.g_c].into_iter()
-    }
-
+impl<F: PrimeField, MM> ThirdOracles<F, MM> {
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
         Some(self.g_a.info()) == info.get(self.g_a.label())
             && Some(self.g_b.info()) == info.get(self.g_b.label())
             && Some(self.g_c.info()) == info.get(self.g_c.label())
     }
 }
+
 
 #[derive(Debug)]
 pub struct FourthOracles<F: PrimeField> {

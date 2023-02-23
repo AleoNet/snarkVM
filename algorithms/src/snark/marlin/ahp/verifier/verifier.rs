@@ -38,7 +38,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         index_info: CircuitInfo<TargetField>, // TODO: this looks like index_info is just about a single circuit, instead of all?
         batch_sizes: &BTreeMap<&'a Circuit<BaseField, MM>, usize>,
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<'a, TargetField, MM>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(FirstMessage<'a, TargetField, MM>, State<'a, TargetField, MM>), AHPError> {
         // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
@@ -121,10 +121,10 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the second message and next round state.
-    pub fn verifier_second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_second_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(SecondMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
         assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
@@ -136,10 +136,10 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_third_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(ThirdMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(2);
         let r_b = elems[0];
         let r_c = elems[1];
@@ -151,10 +151,10 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_fourth_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<State<TargetField, MM>, AHPError> {
+    ) -> Result<State<'a, TargetField, MM>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
 
@@ -163,7 +163,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField>, State<TargetField, MM>) {
+    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField, MM>, State<TargetField, MM>) {
         (QuerySet::new(&state), state)
     }
 }

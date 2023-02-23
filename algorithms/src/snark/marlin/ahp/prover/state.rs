@@ -24,7 +24,7 @@ use crate::{
         Evaluations as EvaluationsOnDomain,
     },
     snark::marlin::{
-        ahp::{indexer::Circuit, verifier},
+        ahp::indexer::Circuit,
         AHPError,
         MarlinMode,
     },

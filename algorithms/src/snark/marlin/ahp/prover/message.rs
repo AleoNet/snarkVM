@@ -14,18 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::snark::marlin::ahp::indexer::Circuit;
+
 use snarkvm_fields::Field;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
-/// The prover message in the third round.
+use std::collections::BTreeMap;
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ThirdMessage<F: Field> {
+pub struct MatrixSums<F> {
     pub sum_a: F,
     pub sum_b: F,
     pub sum_c: F,
 }
 
-impl<F: Field> ToBytes for ThirdMessage<F> {
+/// The prover message in the third round.
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct ThirdMessage<F: Field, MM> {
+    // TODO: Passing the circuit as reference requires passing a lifetime which makes CanonicalDeserialize complain it already has an 'a
+    pub sums: BTreeMap<Circuit<F, MM>, MatrixSums<F>>,
+}
+
+impl<F: Field, MM> ToBytes for ThirdMessage<F, MM> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }
