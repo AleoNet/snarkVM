@@ -58,7 +58,7 @@ fn program_memory_storage_root(c: &mut Criterion) {
 
             // Insert the key value pairs.
             for mapping_number in 0..num_mappings {
-                let mapping_name = Identifier::from_str(&format!("mapping_{}", mapping_number)).unwrap();
+                let mapping_name = Identifier::from_str(&format!("mapping_{mapping_number}")).unwrap();
 
                 // Initialize the mapping.
                 program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
@@ -69,7 +69,7 @@ fn program_memory_storage_root(c: &mut Criterion) {
             }
 
             c.bench_function(
-                &format!("Storage root: {} mappings w/ {} key-value pairs", num_mappings, num_key_values),
+                &format!("Storage root: {num_mappings} mappings w/ {num_key_values} key-value pairs"),
                 move |b| b.iter(|| program_store.get_checksum().unwrap()),
             );
         }
