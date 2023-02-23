@@ -273,7 +273,7 @@ function compute:
                 let transaction =
                     Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -325,7 +325,7 @@ function compute:
                 // Execute.
                 let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -384,7 +384,7 @@ function compute:
                 )
                 .unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -420,7 +420,8 @@ function compute:
                 // Execute.
                 let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
-                Inclusion::verify_fee(&fee).unwrap();
+                assert!(vm.verify_fee(&fee));
+                assert!(Inclusion::verify_fee(&fee).is_ok());
                 // Return the fee.
                 fee
             })

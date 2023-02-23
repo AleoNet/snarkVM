@@ -98,7 +98,7 @@ impl<N: Network> Transition<N> {
         response: &Response<N>,
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
-        output_registers: &[Register<N>],
+        output_registers: &[Option<Register<N>>],
         proof: Proof<N>,
         fee: i64,
     ) -> Result<Self> {
@@ -207,6 +207,12 @@ impl<N: Network> Transition<N> {
                             ValueType::Record(record_name) => record_name,
                             // Ensure the input type is a record.
                             _ => bail!("Expected a record type at output {index}"),
+                        };
+
+                        // Retrieve the output register.
+                        let output_register = match output_register {
+                            Some(output_register) => output_register,
+                            None => bail!("Expected a register to be paired with a record output"),
                         };
 
                         // Compute the record commitment.
