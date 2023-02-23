@@ -936,6 +936,7 @@ mod tests {
         for i in 0..num_key_value_pairs {
             let key = Plaintext::<N>::from_str(&format!("{i}u32")).unwrap();
 
+            // TODO (raychu86): Speed up the insertions.
             program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
             assert!(program_store.contains_program(&program_id).unwrap());
