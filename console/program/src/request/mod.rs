@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ mod sign;
 mod string;
 mod verify;
 
-use crate::{Identifier, ProgramID, Value, ValueType};
+use crate::{Identifier, Plaintext, ProgramID, Record, Value, ValueType};
 use snarkvm_console_account::{Address, ComputeKey, GraphKey, PrivateKey, Signature, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
@@ -196,7 +196,7 @@ mod test_helpers {
                 let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
 
                 // Construct the input types.
-                let input_types = vec![
+                let input_types = [
                     ValueType::from_str("amount.constant").unwrap(),
                     ValueType::from_str("amount.public").unwrap(),
                     ValueType::from_str("amount.private").unwrap(),
@@ -206,7 +206,7 @@ mod test_helpers {
 
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
+                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
                 assert!(request.verify(&input_types));
                 request
             })

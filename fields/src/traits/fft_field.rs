@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -69,7 +69,7 @@ pub trait FftField: Field + From<u128> + From<u64> + From<u32> + From<u16> + Fro
             }
         } else {
             // Compute the next power of 2.
-            let size = n.next_power_of_two() as u64;
+            let size = n.checked_next_power_of_two()? as u64;
             let log_size_of_group = size.trailing_zeros();
 
             if n != size as usize || log_size_of_group > Self::FftParameters::TWO_ADICITY {

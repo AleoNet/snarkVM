@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -70,6 +70,11 @@ impl<F: PrimeField> Evaluations<F> {
         evals.resize(self.domain.size(), F::zero());
         domain.in_order_ifft_in_place_with_pc(&mut evals, pc);
         DensePolynomial::from_coefficients_vec(evals)
+    }
+
+    /// Returns the evaluations of `self`.
+    pub fn evaluations(&self) -> &[F] {
+        &self.evaluations
     }
 
     pub fn domain(&self) -> EvaluationDomain<F> {

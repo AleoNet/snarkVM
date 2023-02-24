@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ fn standard_window<G: AffineCurve>(
     c: usize,
 ) -> (G::Projective, usize) {
     let mut res = G::Projective::zero();
-    let fr_one = G::ScalarField::one().to_repr();
+    let fr_one = G::ScalarField::one().to_bigint();
 
     // We only process unit scalars once in the first window.
     if w_start == 0 {

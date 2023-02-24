@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -67,14 +67,15 @@ use snarkvm_fields::{
     Zero,
 };
 use snarkvm_utilities::{
-    biginteger::{BigInteger, BigInteger384},
+    biginteger::{BigInteger, BigInteger256, BigInteger384},
     rand::{TestRng, Uniform},
+    BitIteratorBE,
 };
 
 use rand::Rng;
 use std::{
     cmp::Ordering,
-    ops::{AddAssign, MulAssign, SubAssign},
+    ops::{AddAssign, Mul, MulAssign, SubAssign},
 };
 
 pub(crate) const ITERATIONS: usize = 10;
@@ -479,7 +480,9 @@ fn test_fq_ordering() {
     // BigInteger384's ordering is well-tested, but we still need to make sure the
     // Fq elements aren't being compared in Montgomery form.
     for i in 0..100 {
-        assert!(Fq::from_repr(BigInteger384::from(i + 1)).unwrap() > Fq::from_repr(BigInteger384::from(i)).unwrap());
+        assert!(
+            Fq::from_bigint(BigInteger384::from(i + 1)).unwrap() > Fq::from_bigint(BigInteger384::from(i)).unwrap()
+        );
     }
 }
 
@@ -487,8 +490,8 @@ fn test_fq_ordering() {
 fn test_fq_legendre() {
     assert_eq!(QuadraticResidue, Fq::one().legendre());
     assert_eq!(Zero, Fq::zero().legendre());
-    assert_eq!(QuadraticResidue, Fq::from_repr(BigInteger384::from(4)).unwrap().legendre());
-    assert_eq!(QuadraticNonResidue, Fq::from_repr(BigInteger384::from(5)).unwrap().legendre());
+    assert_eq!(QuadraticResidue, Fq::from_bigint(BigInteger384::from(4)).unwrap().legendre());
+    assert_eq!(QuadraticNonResidue, Fq::from_bigint(BigInteger384::from(5)).unwrap().legendre());
 }
 
 #[test]
@@ -617,6 +620,17 @@ fn test_fq12_mul_by_034() {
 }
 
 #[test]
+fn test_g1_projective_glv() {
+    let mut rng = TestRng::default();
+
+    let point = G1Projective::rand(&mut rng);
+    let scalar = Fr::rand(&mut rng);
+    let affine = point.to_affine();
+    assert_eq!(point.mul(scalar), affine.mul(scalar));
+    assert_eq!(affine.mul(scalar), affine.mul_bits(BitIteratorBE::new_without_leading_zeros(scalar.to_bigint())));
+}
+
+#[test]
 fn test_g1_projective_curve() {
     let mut rng = TestRng::default();
 
@@ -677,7 +691,7 @@ fn test_bilinearity() {
 
     let ans1 = Bls12_377::pairing(sa, b);
     let ans2 = Bls12_377::pairing(a, sb);
-    let ans3 = Bls12_377::pairing(a, b).pow(s.to_repr());
+    let ans3 = Bls12_377::pairing(a, b).pow(s.to_bigint());
 
     assert_eq!(ans1, ans2);
     assert_eq!(ans2, ans3);

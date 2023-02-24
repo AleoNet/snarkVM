@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -27,8 +27,6 @@ use crate::PrivateKey;
 
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Scalar};
-
-use base58::{FromBase58, ToBase58};
 
 /// The account view key used to decrypt records and ciphertext.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

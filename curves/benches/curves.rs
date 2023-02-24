@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -48,8 +48,8 @@ criterion_group!(
     bls12_377::fq::bench_fq_inverse,
     bls12_377::fq::bench_fq_negate,
     bls12_377::fq::bench_fq_sqrt,
-    bls12_377::fq::bench_fq_into_repr,
-    bls12_377::fq::bench_fq_from_repr,
+    bls12_377::fq::bench_fq_to_bigint,
+    bls12_377::fq::bench_fq_from_bigint,
 );
 
 criterion_group!(
@@ -88,8 +88,8 @@ criterion_group!(
     bls12_377::fr::bench_fr_inverse,
     bls12_377::fr::bench_fr_negate,
     bls12_377::fr::bench_fr_sqrt,
-    bls12_377::fr::bench_fr_into_repr,
-    bls12_377::fr::bench_fr_from_repr,
+    bls12_377::fr::bench_fr_to_bigint,
+    bls12_377::fr::bench_fr_from_bigint,
 );
 
 criterion_group!(

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ impl<N: Network> Request<N> {
         private_key: &PrivateKey<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
-        inputs: &[Value<N>],
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
@@ -70,15 +70,7 @@ impl<N: Network> Request<N> {
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
-            &[
-                U16::<N>::new(N::ID).to_bits_le(),
-                program_id.name().to_bits_le(),
-                program_id.network().to_bits_le(),
-                function_name.to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
+            &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
         )?;
 
         // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
@@ -86,11 +78,20 @@ impl<N: Network> Request<N> {
         message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
         message.extend([tvk, tcm, function_id]);
 
+        // Initialize a vector to store the prepared inputs.
+        let mut prepared_inputs = Vec::with_capacity(inputs.len());
         // Initialize a vector to store the input IDs.
         let mut input_ids = Vec::with_capacity(inputs.len());
 
         // Prepare the inputs.
-        for (index, (input, input_type)) in inputs.iter().zip_eq(input_types).enumerate() {
+        for (index, (input, input_type)) in inputs.zip_eq(input_types).enumerate() {
+            // Prepare the input.
+            let input = input.try_into().map_err(|_| {
+                anyhow!("Failed to parse input #{index} ('{input_type}') for '{program_id}/{function_name}'")
+            })?;
+            // Store the prepared input.
+            prepared_inputs.push(input.clone());
+
             match input_type {
                 // A constant input is hashed (using `tcm`) to a field element.
                 ValueType::Constant(..) => {
@@ -99,8 +100,9 @@ impl<N: Network> Request<N> {
 
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                    // Construct the preimage as `(input || tcm || index)`.
-                    let mut preimage = input.to_fields()?;
+                    // Construct the preimage as `(function ID || input || tcm || index)`.
+                    let mut preimage = vec![function_id];
+                    preimage.extend(input.to_fields()?);
                     preimage.push(tcm);
                     preimage.push(index);
                     // Hash the input to a field element.
@@ -118,8 +120,9 @@ impl<N: Network> Request<N> {
 
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                    // Construct the preimage as `(input || tcm || index)`.
-                    let mut preimage = input.to_fields()?;
+                    // Construct the preimage as `(function ID || input || tcm || index)`.
+                    let mut preimage = vec![function_id];
+                    preimage.extend(input.to_fields()?);
                     preimage.push(tcm);
                     preimage.push(index);
                     // Hash the input to a field element.
@@ -137,8 +140,8 @@ impl<N: Network> Request<N> {
 
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                    // Compute the input view key as `Hash(tvk || index)`.
-                    let input_view_key = N::hash_psd2(&[tvk, index])?;
+                    // Compute the input view key as `Hash(function ID || tvk || index)`.
+                    let input_view_key = N::hash_psd4(&[function_id, tvk, index])?;
                     // Compute the ciphertext.
                     let ciphertext = match &input {
                         Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
@@ -178,17 +181,10 @@ impl<N: Network> Request<N> {
                     // Compute `gamma` as `sk_sig * H`.
                     let gamma = h * sk_sig;
 
-                    // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                    let sn_nonce = N::hash_to_scalar_psd2(&[
-                        N::serial_number_domain(),
-                        gamma.mul_by_cofactor().to_x_coordinate(),
-                    ])?;
-                    // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                    let serial_number =
-                        N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
-
-                    // Compute the tag as `Hash(sk_tag || commitment)`.
-                    let tag = N::hash_psd2(&[sk_tag, commitment])?;
+                    // Compute the `serial_number` from `gamma`.
+                    let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, commitment)?;
+                    // Compute the tag.
+                    let tag = Record::<N, Plaintext<N>>::tag(sk_tag, commitment)?;
 
                     // Add (`H`, `r * H`, `gamma`, `tag`) to the preimage.
                     message.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));
@@ -204,8 +200,9 @@ impl<N: Network> Request<N> {
 
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                    // Construct the preimage as `(input || tvk || index)`.
-                    let mut preimage = input.to_fields()?;
+                    // Construct the preimage as `(function ID || input || tvk || index)`.
+                    let mut preimage = vec![function_id];
+                    preimage.extend(input.to_fields()?);
                     preimage.push(tvk);
                     preimage.push(index);
                     // Hash the input to a field element.
@@ -230,7 +227,7 @@ impl<N: Network> Request<N> {
             program_id,
             function_name,
             input_ids,
-            inputs: inputs.to_vec(),
+            inputs: prepared_inputs,
             signature: Signature::from((challenge, response, compute_key)),
             sk_tag,
             tvk,

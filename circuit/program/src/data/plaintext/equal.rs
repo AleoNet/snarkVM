@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
     fn is_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_equal(b),
-            (Self::Interface(a, _), Self::Interface(b, _)) => match a.len() == b.len() {
+            (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each member for equality.
                     let mut equal = Boolean::constant(true);
@@ -34,7 +34,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(false),
             },
-            (Self::Literal(..), _) | (Self::Interface(..), _) => Boolean::constant(false),
+            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::constant(false),
         }
     }
 
@@ -42,7 +42,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_not_equal(b),
-            (Self::Interface(a, _), Self::Interface(b, _)) => match a.len() == b.len() {
+            (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each member for inequality.
                     let mut not_equal = Boolean::constant(false);
@@ -53,7 +53,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(true),
             },
-            (Self::Literal(..), _) | (Self::Interface(..), _) => Boolean::constant(true),
+            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::constant(true),
         }
     }
 }
@@ -108,13 +108,13 @@ mod tests {
         let plaintext = sample_plaintext(mode);
         let mismatched_plaintext = sample_mismatched_plaintext(mode);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_equal(&plaintext);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_equal(&mismatched_plaintext);
             assert!(!candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -135,13 +135,13 @@ mod tests {
         let plaintext = sample_plaintext(mode);
         let mismatched_plaintext = sample_mismatched_plaintext(mode);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_not_equal(&mismatched_plaintext);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = plaintext.is_not_equal(&plaintext);
             assert!(!candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);

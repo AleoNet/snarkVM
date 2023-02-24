@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ impl FixedBase {
         multiples_of_g: &[Vec<T>],
         scalar: &T::ScalarField,
     ) -> T {
-        let scalar_val = scalar.to_repr().to_bits_le();
+        let scalar_val = scalar.to_bigint().to_bits_le();
 
         cfg_into_iter!(0..outerc)
             .map(|outer| {

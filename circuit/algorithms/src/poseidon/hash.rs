@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@ impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
 
     #[inline]
     fn hash(&self, input: &[Self::Input]) -> Self::Output {
-        self.hash_many(input, 1)[0].clone()
+        self.hash_many(input, 1).swap_remove(0)
     }
 }
 

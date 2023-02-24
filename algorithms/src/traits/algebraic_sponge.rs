@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -62,7 +62,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize>: Clone + Debug {
         }
         let elements = bits
             .chunks(capacity)
-            .map(|bits| F::from_repr(F::BigInteger::from_bits_be(bits).unwrap()).unwrap())
+            .map(|bits| F::from_bigint(F::BigInteger::from_bits_be(bits).unwrap()).unwrap())
             .collect::<SmallVec<[F; 10]>>();
 
         self.absorb_native_field_elements(&elements);
@@ -105,7 +105,7 @@ pub(crate) mod nonnative_params {
         ($x:expr) => {{
             use snarkvm_utilities::ToBits;
             let num = $x;
-            let num_bits = num.to_repr().to_bits_be();
+            let num_bits = num.to_bigint().to_bits_be();
             let mut skipped_bits = 0;
             for b in num_bits.iter() {
                 if *b == false {

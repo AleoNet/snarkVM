@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -144,15 +144,15 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("BitOr: ({} | {}) {}", mode_a, mode_b, i);
+            let name = format!("BitOr: ({mode_a} | {mode_b}) {i}");
             check_or::<I>(&name, first, second, mode_a, mode_b);
             check_or::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
 
-            let name = format!("BitOr Identity: ({} | {}) {}", mode_a, mode_b, i);
+            let name = format!("BitOr Identity: ({mode_a} | {mode_b}) {i}");
             check_or::<I>(&name, console::Integer::zero(), first, mode_a, mode_b);
             check_or::<I>(&name, first, console::Integer::zero(), mode_a, mode_b); // Commute the operation.
 
-            let name = format!("BitOr Invariant: ({} | {}) {}", mode_a, mode_b, i);
+            let name = format!("BitOr Invariant: ({mode_a} | {mode_b}) {i}");
             let invariant = if I::is_signed() { -console::Integer::one() } else { console::Integer::MAX };
             check_or::<I>(&name, invariant, first, mode_a, mode_b);
             check_or::<I>(&name, first, invariant, mode_a, mode_b); // Commute the operation.
@@ -174,7 +174,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("BitOr: ({} | {})", first, second);
+                let name = format!("BitOr: ({first} | {second})");
                 check_or::<I>(&name, first, second, mode_a, mode_b);
             }
         }

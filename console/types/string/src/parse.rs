@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -77,10 +77,9 @@ mod tests {
 
         let rng = &mut TestRng::default();
 
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String =
-                (0..(CurrentEnvironment::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(CurrentEnvironment::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= CurrentEnvironment::MAX_STRING_BYTES as usize);
 

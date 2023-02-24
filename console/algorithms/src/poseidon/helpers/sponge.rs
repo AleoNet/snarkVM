@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -120,7 +120,7 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
             let e = self.state[0].deref_mut();
-            *e = e.pow(&[self.parameters.alpha]);
+            *e = e.pow([self.parameters.alpha]);
         }
     }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -68,6 +68,17 @@ lazy_static! {
     pub static ref POSEIDON_4: Poseidon4<Testnet3> = Poseidon4::<Testnet3>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+
+    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
+        map
+    };
+    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<MarlinVerifyingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_credit_keys!(map, MarlinVerifyingKey<Console>, Verifier);
+        map
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -122,8 +133,53 @@ impl Network for Testnet3 {
     const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
-    const NAME: &'static str = "Aleo Testnet3";
+    const NAME: &'static str = "Aleo Testnet 3";
+
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8] {
+        snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
+    }
+
+    /// Returns the proving key for the given function name in `credits.aleo`.
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>> {
+        CREDITS_PROVING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the verifying key for the given function name in `credits.aleo`.
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>> {
+        CREDITS_VERIFYING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the `proving key` for the inclusion circuit.
+    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first 2 bytes, which is the encoded version.
+            Arc::new(
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])
+                    .expect("Failed to load inclusion proving key."),
+            )
+        })
+    }
+
+    /// Returns the `verifying key` for the inclusion circuit.
+    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first 2 bytes, which is the encoded version.
+            Arc::new(
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[2..])
+                    .expect("Failed to load inclusion verifying key."),
+            )
+        })
+    }
 
     /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>> {

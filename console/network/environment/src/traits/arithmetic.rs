@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,6 +35,13 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, without checking specific conditions.
+pub trait DivUnchecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_unchecked(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for dividing two values, enforcing an overflow never occurs.

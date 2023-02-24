@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_compiler::{Block, ProgramMemory, ProgramStore, VM};
 use snarkvm_console::{account::PrivateKey, network::Testnet3, prelude::*};
+use snarkvm_synthesizer::{Block, ConsensusMemory, ConsensusStore, VM};
 
 use rand::thread_rng;
 use std::{
@@ -25,10 +25,10 @@ use std::{
 };
 
 pub fn generate<N: Network>(private_key: PrivateKey<N>) -> Result<Vec<u8>> {
-    // Initialize the program store.
-    let store = ProgramStore::<N, ProgramMemory<N>>::open(None)?;
+    // Initialize the consensus store.
+    let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
     // Initialize the VM.
-    let vm = VM::new(store)?;
+    let vm = VM::from(store)?;
     // Create a genesis block.
     let genesis_block = Block::genesis(&vm, &private_key, &mut thread_rng())?;
     // assert!(genesis_block.verify(&VM::<N>::new()?));

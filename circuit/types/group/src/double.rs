@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -81,7 +81,7 @@ mod tests {
             // Constant variable
             let affine = Group::<Circuit>::new(Mode::Constant, point);
 
-            Circuit::scope(&format!("Constant {}", i), || {
+            Circuit::scope(&format!("Constant {i}"), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(3, 0, 0, 0);
@@ -91,7 +91,7 @@ mod tests {
             // Public variable
             let affine = Group::<Circuit>::new(Mode::Public, point);
 
-            Circuit::scope(&format!("Public {}", i), || {
+            Circuit::scope(&format!("Public {i}"), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(1, 0, 5, 5);
@@ -101,7 +101,7 @@ mod tests {
             // Private variable
             let affine = Group::<Circuit>::new(Mode::Private, point);
 
-            Circuit::scope(&format!("Private {}", i), || {
+            Circuit::scope(&format!("Private {i}"), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(1, 0, 5, 5);

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -49,8 +49,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-    use rand::Rng;
-
     const ITERATIONS: u32 = 128;
 
     fn check_to_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
@@ -58,15 +56,15 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_le();
-                assert_eq!((expected_num_bytes * 8) as usize, candidate.len());
+                assert_eq!(expected_num_bytes * 8, candidate.len());
 
                 // Ensure every bit matches.
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
@@ -83,15 +81,15 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(Circuit::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::MAX_STRING_BYTES as usize);
 
             let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_bits_be();
-                assert_eq!((expected_num_bytes * 8) as usize, candidate.len());
+                assert_eq!(expected_num_bytes * 8, candidate.len());
 
                 // Ensure every bit matches.
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {

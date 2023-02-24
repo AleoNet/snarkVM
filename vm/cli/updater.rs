@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -84,7 +84,7 @@ impl Updater {
         if let Ok(latest_version) = Self::update_available() {
             let mut output = "🟢 A new version is available! Run".bold().green().to_string();
             output += &" `aleo update` ".bold().white();
-            output += &format!("to update to v{}.", latest_version).bold().green();
+            output += &format!("to update to v{latest_version}.").bold().green();
             output
         } else {
             "".to_string()

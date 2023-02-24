@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,7 +46,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 } else {
                     // Ensure that `other` is not zero.
                     // Note that all other implementations of `div_wrapped` and `div_checked` invoke this check.
-                    E::assert(other.is_not_equal(&Self::zero()));
+                    E::assert_neq(other, &Self::zero());
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
                         self.unsigned_division_via_witness(other).0
@@ -206,16 +206,16 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Div: {} / {}", first, second);
+            let name = format!("Div: {first} / {second}");
             check_div::<I>(&name, first, second, mode_a, mode_b);
 
-            let name = format!("Div by One: {} / 1", first);
+            let name = format!("Div by One: {first} / 1");
             check_div::<I>(&name, first, console::Integer::one(), mode_a, mode_b);
 
-            let name = format!("Div by Self: {} / {}", first, first);
+            let name = format!("Div by Self: {first} / {first}");
             check_div::<I>(&name, first, first, mode_a, mode_b);
 
-            let name = format!("Div by Zero: {} / 0", first);
+            let name = format!("Div by Zero: {first} / 0");
             check_div::<I>(&name, first, console::Integer::zero(), mode_a, mode_b);
         }
 
@@ -246,7 +246,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Div: ({} / {})", first, second);
+                let name = format!("Div: ({first} / {second})");
                 check_div::<I>(&name, first, second, mode_a, mode_b);
             }
         }

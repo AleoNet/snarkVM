@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -131,12 +131,12 @@ mod tests {
                 Field::<Circuit>::new(mode, console::Field::from_bits_be(&bits_be).unwrap())
             };
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let num_bits_with_capacity = I::BITS + 1;
                 let candidate = candidate.to_upper_bits_be(num_bits_with_capacity as usize);
                 assert_eq!(num_bits_with_capacity, candidate.len() as u64);
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter().skip(1)).enumerate() {
-                    assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
+                    assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{i}");
                 }
                 assert_count!(ToUpperBits<Boolean>() => Field, &(mode, num_bits_with_capacity));
                 assert_output_mode!(ToUpperBits<Boolean>() => Field, &mode, candidate);

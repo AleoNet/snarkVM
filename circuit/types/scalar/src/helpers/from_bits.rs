@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -109,7 +109,7 @@ mod tests {
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = Scalar::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
@@ -120,7 +120,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+            Circuit::scope(&format!("Excess {mode} {i}"), || {
                 let candidate = Scalar::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
@@ -145,7 +145,7 @@ mod tests {
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = Scalar::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
@@ -156,7 +156,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = vec![vec![Boolean::new(mode, false); i as usize], given_bits].concat();
 
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+            Circuit::scope(&format!("Excess {mode} {i}"), || {
                 let candidate = Scalar::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());

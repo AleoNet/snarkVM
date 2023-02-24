@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@ impl<E: Environment> Ord for Scalar<E> {
     /// Returns the lexicographic ordering of `self` and `other`.
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_repr().cmp(&other.to_repr())
+        self.to_bigint().cmp(&other.to_bigint())
     }
 }
 

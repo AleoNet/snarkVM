@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -148,17 +148,17 @@ mod tests {
 
     #[test]
     fn test_verify_bhp512_constant() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Constant, 32, 1024, (53360, 0, 0, 0))
+        check_verify!(BHP1024, BHP512, Constant, 32, 1024, (52960, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13901, 0, 46478, 46877))
+        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13501, 0, 45810, 45875))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13901, 0, 46478, 46877))
+        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13501, 0, 45810, 45875))
     }
 
     #[test]

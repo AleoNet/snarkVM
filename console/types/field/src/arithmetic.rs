@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -188,7 +188,7 @@ impl<E: Environment> Pow<Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Field<E>) -> Self::Output {
-        Field::new(self.field.pow(other.field.to_repr()))
+        Field::new(self.field.pow(other.field.to_bigint()))
     }
 }
 
@@ -198,7 +198,7 @@ impl<E: Environment> Pow<&Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: &Field<E>) -> Self::Output {
-        Field::new(self.field.pow(other.field.to_repr()))
+        Field::new(self.field.pow(other.field.to_bigint()))
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -76,7 +76,7 @@ pub use nom::{
     branch::alt,
     bytes::{complete::tag, streaming::take},
     character::complete::{alpha1, alphanumeric1, char, one_of},
-    combinator::{map, map_res, opt, recognize},
+    combinator::{complete, fail, map, map_res, opt, recognize},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::{pair, terminated},
 };

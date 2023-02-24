@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -98,17 +98,17 @@ mod tests {
 
     #[test]
     fn test_hash_leaf_bhp1024_constant() -> Result<()> {
-        check_hash_leaf!(BHP1024, Constant, 1024, (1807, 0, 0, 0))
+        check_hash_leaf!(BHP1024, Constant, 1024, (1791, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_public() -> Result<()> {
-        check_hash_leaf!(BHP1024, Public, 1024, (429, 0, 1772, 1786))
+        check_hash_leaf!(BHP1024, Public, 1024, (413, 0, 1744, 1744))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_private() -> Result<()> {
-        check_hash_leaf!(BHP1024, Private, 1024, (429, 0, 1772, 1786))
+        check_hash_leaf!(BHP1024, Private, 1024, (413, 0, 1744, 1744))
     }
 
     #[test]

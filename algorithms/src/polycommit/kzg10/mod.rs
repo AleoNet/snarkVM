@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,13 +23,13 @@
 
 use crate::{
     fft::{DensePolynomial, Polynomial},
-    msm::{FixedBase, VariableBase},
+    msm::VariableBase,
     polycommit::PCError,
 };
+use anyhow::anyhow;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{Field, One, PrimeField, Zero};
-use snarkvm_parameters::testnet3::PowersOfG;
-use snarkvm_utilities::{cfg_iter, rand::Uniform, BitIteratorBE};
+use snarkvm_fields::{One, PrimeField, Zero};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, rand::Uniform, BitIteratorBE};
 
 use core::{
     marker::PhantomData,
@@ -37,9 +37,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use itertools::Itertools;
-use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -50,21 +48,18 @@ pub use data_structures::*;
 use super::sonic_pc::LabeledPolynomialWithBasis;
 
 #[derive(Debug, PartialEq, Eq)]
-#[allow(deprecated)]
-pub enum KZG10DegreeBoundsConfig {
-    #[deprecated]
-    ALL,
-    MARLIN,
-    LIST(Vec<usize>),
-    NONE,
+pub enum KZGDegreeBounds {
+    All,
+    Marlin,
+    List(Vec<usize>),
+    None,
 }
 
-#[allow(deprecated)]
-impl KZG10DegreeBoundsConfig {
+impl KZGDegreeBounds {
     pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
         match self {
-            KZG10DegreeBoundsConfig::ALL => (0..max_degree).collect(),
-            KZG10DegreeBoundsConfig::MARLIN => {
+            KZGDegreeBounds::All => (0..max_degree).collect(),
+            KZGDegreeBounds::Marlin => {
                 // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
                 // Consider that we are using radix-2 FFT,
                 // there are only a few possible domain sizes and therefore degree bounds.
@@ -82,8 +77,8 @@ impl KZG10DegreeBoundsConfig {
 
                 radix_2_possible_domain_sizes
             }
-            KZG10DegreeBoundsConfig::LIST(v) => v.clone(),
-            KZG10DegreeBoundsConfig::NONE => vec![],
+            KZGDegreeBounds::List(v) => v.clone(),
+            KZGDegreeBounds::None => vec![],
         }
     }
 }
@@ -98,118 +93,10 @@ pub struct KZG10<E: PairingEngine>(PhantomData<E>);
 impl<E: PairingEngine> KZG10<E> {
     /// Constructs public parameters when given as input the maximum degree `degree`
     /// for the polynomial commitment scheme.
-    pub fn setup<R: RngCore>(
-        max_degree: usize,
-        supported_degree_bounds_config: &KZG10DegreeBoundsConfig,
-        produce_g2_powers: bool,
-        rng: &mut R,
-    ) -> Result<UniversalParams<E>, PCError> {
-        if max_degree < 1 {
-            return Err(PCError::DegreeIsZero);
-        }
-        let max_lagrange_size =
-            if max_degree.is_power_of_two() { max_degree } else { max_degree.next_power_of_two() >> 1 };
-
-        if !max_lagrange_size.is_power_of_two() {
-            return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
-        }
-        if max_lagrange_size > max_degree + 1 {
-            return Err(PCError::LagrangeBasisSizeIsTooLarge);
-        }
-        let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
-        let scalar_bits = E::Fr::size_in_bits();
-
-        // Compute the `toxic waste`.
-        let beta = E::Fr::rand(rng);
-        let g = E::G1Projective::rand(rng);
-        let gamma_g = E::G1Projective::rand(rng);
-        let h = E::G2Projective::rand(rng);
-
-        // Compute `beta^i G`.
-        let powers_of_beta = {
-            let mut powers_of_beta = vec![E::Fr::one()];
-            let mut cur = beta;
-            for _ in 0..max_degree {
-                powers_of_beta.push(cur);
-                cur *= &beta;
-            }
-            powers_of_beta
-        };
-        let window_size = FixedBase::get_mul_window_size(max_degree + 1);
-        let g_time = start_timer!(|| "Generating powers of G");
-        let g_table = FixedBase::get_window_table(scalar_bits, window_size, g);
-        let powers_of_beta_g = FixedBase::msm::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
-        end_timer!(g_time);
-
-        // Compute `gamma beta^i G`.
-        let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
-        let gamma_g_table = FixedBase::get_window_table(scalar_bits, window_size, gamma_g);
-        let mut powers_of_beta_times_gamma_g =
-            FixedBase::msm::<E::G1Projective>(scalar_bits, window_size, &gamma_g_table, &powers_of_beta);
-        // Add an additional power of gamma_g, because we want to be able to support
-        // up to D queries.
-        powers_of_beta_times_gamma_g.push(powers_of_beta_times_gamma_g.last().unwrap().mul(beta));
-        end_timer!(gamma_g_time);
-
-        // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
-        let powers_of_beta_g = E::G1Projective::batch_normalization_into_affine(powers_of_beta_g);
-        let powers_of_beta_times_gamma_g =
-            E::G1Projective::batch_normalization_into_affine(powers_of_beta_times_gamma_g)
-                .into_iter()
-                .enumerate()
-                .collect();
-
-        // This part is used to derive the universal verification parameters.
-        let list = supported_degree_bounds_config.get_list::<E::Fr>(max_degree);
-
-        let supported_degree_bounds =
-            if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE { list.clone() } else { vec![] };
-
-        // Compute `neg_powers_of_beta_h`.
-        let inverse_neg_powers_of_beta_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let inverse_neg_powers_of_beta_h =
-            if produce_g2_powers && *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
-                let mut map = BTreeMap::<usize, E::G2Affine>::new();
-
-                let mut neg_powers_of_beta = vec![];
-                for i in list.iter() {
-                    neg_powers_of_beta.push(beta.pow([(max_degree - *i) as u64]).inverse().unwrap());
-                }
-
-                let window_size = FixedBase::get_mul_window_size(neg_powers_of_beta.len());
-                let neg_h_table = FixedBase::get_window_table(scalar_bits, window_size, h);
-                let neg_powers_of_h =
-                    FixedBase::msm::<E::G2Projective>(scalar_bits, window_size, &neg_h_table, &neg_powers_of_beta);
-
-                let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
-
-                for (i, affine) in list.iter().zip_eq(affines.iter()) {
-                    map.insert(*i, *affine);
-                }
-
-                map
-            } else {
-                BTreeMap::new()
-            };
-        end_timer!(inverse_neg_powers_of_beta_h_time);
-
-        let beta_h = h.mul(beta).to_affine();
-        let h = h.to_affine();
-        let prepared_h = h.prepare();
-        let prepared_beta_h = beta_h.prepare();
-
-        let powers = PowersOfG::<E>::setup(powers_of_beta_g, powers_of_beta_times_gamma_g)?;
-        let pp = UniversalParams {
-            powers: Arc::new(RwLock::new(powers)),
-            h,
-            beta_h,
-            supported_degree_bounds,
-            inverse_neg_powers_of_beta_h,
-            prepared_h,
-            prepared_beta_h,
-        };
-        end_timer!(setup_time);
-        Ok(pp)
+    pub fn load_srs(max_degree: usize) -> Result<UniversalParams<E>, PCError> {
+        let params = UniversalParams::load()?;
+        params.download_powers_for(0..(max_degree + 1))?;
+        Ok(params)
     }
 
     /// Outputs a commitment to `polynomial`.
@@ -219,7 +106,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
+    ) -> Result<(KZGCommitment<E>, KZGRandomness<E>), PCError> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
 
         let commit_time = start_timer!(|| format!(
@@ -244,18 +131,18 @@ impl<E: PairingEngine> KZG10<E> {
             Polynomial::Sparse(polynomial) => polynomial
                 .coeffs()
                 .map(|(i, coeff)| {
-                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
+                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_bigint()))
                 })
                 .sum(),
         };
 
-        let mut randomness = Randomness::empty();
+        let mut randomness = KZGRandomness::empty();
         if let Some(hiding_degree) = hiding_bound {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
-                start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
+                start_timer!(|| format!("Sampling a random polynomial of degree {hiding_degree}"));
 
-            randomness = Randomness::rand(hiding_degree, false, &mut rng);
+            randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
             Self::check_hiding_bound(
                 randomness.blinding_polynomial.degree(),
                 powers.powers_of_beta_times_gamma_g.len(),
@@ -276,7 +163,7 @@ impl<E: PairingEngine> KZG10<E> {
         commitment.add_assign_mixed(&random_commitment);
 
         end_timer!(commit_time);
-        Ok((Commitment(commitment.into()), randomness))
+        Ok((KZGCommitment(commitment.into()), randomness))
     }
 
     /// Outputs a commitment to `polynomial`.
@@ -286,9 +173,12 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
+    ) -> Result<(KZGCommitment<E>, KZGRandomness<E>), PCError> {
         Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
-        assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
+        assert_eq!(
+            evaluations.len().checked_next_power_of_two().ok_or(PCError::LagrangeBasisSizeIsTooLarge)?,
+            lagrange_basis.size()
+        );
 
         let commit_time = start_timer!(|| format!(
             "Committing to polynomial of degree {} with hiding_bound: {:?}",
@@ -296,7 +186,7 @@ impl<E: PairingEngine> KZG10<E> {
             hiding_bound,
         ));
 
-        let evaluations = evaluations.iter().map(|e| e.to_repr()).collect::<Vec<_>>();
+        let evaluations = evaluations.iter().map(|e| e.to_bigint()).collect::<Vec<_>>();
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
         let mut commitment = VariableBase::msm(&lagrange_basis.lagrange_basis_at_beta_g, &evaluations);
         end_timer!(msm_time);
@@ -305,13 +195,13 @@ impl<E: PairingEngine> KZG10<E> {
             return Err(PCError::Terminated);
         }
 
-        let mut randomness = Randomness::empty();
+        let mut randomness = KZGRandomness::empty();
         if let Some(hiding_degree) = hiding_bound {
             let mut rng = rng.ok_or(PCError::MissingRng)?;
             let sample_random_poly_time =
-                start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
+                start_timer!(|| format!("Sampling a random polynomial of degree {hiding_degree}"));
 
-            randomness = Randomness::rand(hiding_degree, false, &mut rng);
+            randomness = KZGRandomness::rand(hiding_degree, false, &mut rng);
             Self::check_hiding_bound(
                 randomness.blinding_polynomial.degree(),
                 lagrange_basis.powers_of_beta_times_gamma_g.len(),
@@ -332,7 +222,7 @@ impl<E: PairingEngine> KZG10<E> {
         commitment.add_assign_mixed(&random_commitment);
 
         end_timer!(commit_time);
-        Ok((Commitment(commitment.into()), randomness))
+        Ok((KZGCommitment(commitment.into()), randomness))
     }
 
     /// Compute witness polynomial.
@@ -344,7 +234,7 @@ impl<E: PairingEngine> KZG10<E> {
     pub fn compute_witness_polynomial(
         polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
-        randomness: &Randomness<E>,
+        randomness: &KZGRandomness<E>,
     ) -> Result<(DensePolynomial<E::Fr>, Option<DensePolynomial<E::Fr>>), PCError> {
         let divisor = DensePolynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
 
@@ -369,10 +259,10 @@ impl<E: PairingEngine> KZG10<E> {
     pub(crate) fn open_with_witness_polynomial(
         powers: &Powers<E>,
         point: E::Fr,
-        randomness: &Randomness<E>,
+        randomness: &KZGRandomness<E>,
         witness_polynomial: &DensePolynomial<E::Fr>,
         hiding_witness_polynomial: Option<&DensePolynomial<E::Fr>>,
-    ) -> Result<Proof<E>, PCError> {
+    ) -> Result<KZGProof<E>, PCError> {
         Self::check_degree_is_too_large(witness_polynomial.degree(), powers.size())?;
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
@@ -395,16 +285,47 @@ impl<E: PairingEngine> KZG10<E> {
             None
         };
 
-        Ok(Proof { w: w.to_affine(), random_v })
+        Ok(KZGProof { w: w.to_affine(), random_v })
+    }
+
+    /// On input a polynomial `p` in Lagrange basis, and a point `point`,
+    /// outputs an evaluation proof for the same.
+    pub fn open_lagrange(
+        lagrange_basis: &LagrangeBasis<E>,
+        domain_elements: &[E::Fr],
+        evaluations: &[E::Fr],
+        point: E::Fr,
+        evaluation_at_point: E::Fr,
+    ) -> Result<KZGProof<E>, PCError> {
+        Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
+        // Ensure that the point is not in the domain
+        if lagrange_basis.domain.evaluate_vanishing_polynomial(point).is_zero() {
+            Err(anyhow!("Point cannot be in the domain"))?;
+        }
+        if evaluations.len().checked_next_power_of_two().ok_or_else(|| anyhow!("Evaluations length is too large"))?
+            != lagrange_basis.size()
+        {
+            Err(anyhow!("`evaluations.len()` must equal `domain.size()`"))?;
+        }
+
+        let mut divisor_evals = cfg_iter!(domain_elements).map(|&e| e - point).collect::<Vec<_>>();
+        snarkvm_fields::batch_inversion(&mut divisor_evals);
+        cfg_iter_mut!(divisor_evals).zip_eq(evaluations).for_each(|(divisor_eval, &eval)| {
+            *divisor_eval *= eval - evaluation_at_point;
+        });
+        let (witness_comm, _) =
+            Self::commit_lagrange(lagrange_basis, &divisor_evals, None, &AtomicBool::new(false), None)?;
+
+        Ok(KZGProof { w: witness_comm.0, random_v: None })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
-    pub(crate) fn open(
+    pub fn open(
         powers: &Powers<E>,
         polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
-        rand: &Randomness<E>,
-    ) -> Result<Proof<E>, PCError> {
+        rand: &KZGRandomness<E>,
+    ) -> Result<KZGProof<E>, PCError> {
         Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
         let open_time = start_timer!(|| format!("Opening polynomial of degree {}", polynomial.degree()));
 
@@ -423,10 +344,10 @@ impl<E: PairingEngine> KZG10<E> {
     /// committed inside `commitment`.
     pub fn check(
         vk: &VerifierKey<E>,
-        commitment: &Commitment<E>,
+        commitment: &KZGCommitment<E>,
         point: E::Fr,
         value: E::Fr,
-        proof: &Proof<E>,
+        proof: &KZGProof<E>,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| "Checking evaluation");
         let mut inner = commitment.0.to_projective() - vk.g.to_projective().mul(value);
@@ -446,10 +367,10 @@ impl<E: PairingEngine> KZG10<E> {
     /// `commitment_i` at `point_i`.
     pub fn batch_check<R: RngCore>(
         vk: &VerifierKey<E>,
-        commitments: &[Commitment<E>],
+        commitments: &[KZGCommitment<E>],
         points: &[E::Fr],
         values: &[E::Fr],
-        proofs: &[Proof<E>],
+        proofs: &[KZGProof<E>],
         rng: &mut R,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| format!("Checking {} evaluation proofs", commitments.len()));
@@ -495,7 +416,7 @@ impl<E: PairingEngine> KZG10<E> {
         )
         .is_one();
         end_timer!(pairing_time);
-        end_timer!(check_time, || format!("Result: {}", result));
+        end_timer!(check_time, || format!("Result: {result}"));
         Ok(result)
     }
 
@@ -563,7 +484,7 @@ fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &DensePolynomial<
 
 fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
     let to_bigint_time = start_timer!(|| "Converting polynomial coeffs to bigints");
-    let coeffs = cfg_iter!(p).map(|s| s.to_repr()).collect::<Vec<_>>();
+    let coeffs = cfg_iter!(p).map(|s| s.to_bigint()).collect::<Vec<_>>();
     end_timer!(to_bigint_time);
     coeffs
 }
@@ -583,13 +504,21 @@ mod tests {
     impl<E: PairingEngine> KZG10<E> {
         /// Specializes the public parameters for a given maximum degree `d` for polynomials
         /// `d` should be less that `pp.max_degree()`.
-        pub(crate) fn trim(pp: &UniversalParams<E>, mut supported_degree: usize) -> (Powers<E>, VerifierKey<E>) {
+        pub(crate) fn trim(
+            pp: &UniversalParams<E>,
+            mut supported_degree: usize,
+            hiding_bound: Option<usize>,
+        ) -> (Powers<E>, VerifierKey<E>) {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
             let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1).unwrap().to_vec();
-            let powers_of_beta_times_gamma_g =
-                (0..=supported_degree).map(|i| pp.get_powers_times_gamma_g()[&i]).collect();
+
+            let powers_of_beta_times_gamma_g = if let Some(hiding_bound) = hiding_bound {
+                (0..=(hiding_bound + 1)).map(|i| pp.powers_of_beta_times_gamma_g()[&i]).collect()
+            } else {
+                vec![]
+            };
 
             let powers = Powers {
                 powers_of_beta_g: Cow::Owned(powers_of_beta_g),
@@ -597,9 +526,9 @@ mod tests {
             };
             let vk = VerifierKey {
                 g: pp.power_of_beta_g(0).unwrap(),
-                gamma_g: pp.get_powers_times_gamma_g()[&0],
+                gamma_g: pp.powers_of_beta_times_gamma_g()[&0],
                 h: pp.h,
-                beta_h: pp.beta_h,
+                beta_h: pp.beta_h(),
                 prepared_h: pp.prepared_h.clone(),
                 prepared_beta_h: pp.prepared_beta_h.clone(),
             };
@@ -609,10 +538,8 @@ mod tests {
 
     #[test]
     fn test_kzg10_universal_params_serialization() {
-        let rng = &mut TestRng::default();
-
         let degree = 4;
-        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
+        let pp = KZG_Bls12_377::load_srs(degree).unwrap();
 
         let pp_bytes = pp.to_bytes_le().unwrap();
         let pp_recovered: UniversalParams<Bls12_377> = FromBytes::read_le(&pp_bytes[..]).unwrap();
@@ -628,10 +555,10 @@ mod tests {
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
-            let (ck, vk) = KZG10::trim(&pp, degree);
-            let p = DensePolynomial::rand(degree, rng);
+            let pp = KZG10::<E>::load_srs(degree)?;
             let hiding_bound = Some(1);
+            let (ck, vk) = KZG10::trim(&pp, degree, hiding_bound);
+            let p = DensePolynomial::rand(degree, rng);
             let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
@@ -651,10 +578,10 @@ mod tests {
         let rng = &mut TestRng::default();
         for _ in 0..100 {
             let degree = 50;
-            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
-            let (ck, vk) = KZG10::trim(&pp, 2);
-            let p = DensePolynomial::rand(1, rng);
+            let pp = KZG10::<E>::load_srs(degree)?;
             let hiding_bound = Some(1);
+            let (ck, vk) = KZG10::trim(&pp, 2, hiding_bound);
+            let p = DensePolynomial::rand(1, rng);
             let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
@@ -673,12 +600,13 @@ mod tests {
     fn batch_check_test_template<E: PairingEngine>() -> Result<(), PCError> {
         let rng = &mut TestRng::default();
         for _ in 0..10 {
+            let hiding_bound = Some(1);
             let mut degree = 0;
             while degree <= 1 {
                 degree = usize::rand(rng) % 20;
             }
-            let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
-            let (ck, vk) = KZG10::trim(&pp, degree);
+            let pp = KZG10::<E>::load_srs(degree)?;
+            let (ck, vk) = KZG10::trim(&pp, degree, hiding_bound);
 
             let mut comms = Vec::new();
             let mut values = Vec::new();
@@ -687,7 +615,6 @@ mod tests {
 
             for _ in 0..10 {
                 let p = DensePolynomial::rand(degree, rng);
-                let hiding_bound = Some(1);
                 let (comm, rand) =
                     KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
@@ -725,8 +652,8 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let max_degree = 123;
-        let pp = KZG_Bls12_377::setup(max_degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
-        let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree);
+        let pp = KZG_Bls12_377::load_srs(max_degree).unwrap();
+        let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree, None);
 
         let p = DensePolynomial::<Fr>::rand(max_degree + 1, rng);
         assert!(p.degree() > max_degree);

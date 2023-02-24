@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ use snarkvm_utilities::{
 use std::sync::Arc;
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     /// The circuit verifying key.
     pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -75,16 +75,16 @@ mod tests {
 
     #[test]
     fn test_hash_constant() -> Result<()> {
-        check_hash::<32, 48>(Mode::Constant, 7311, 0, 0, 0)
+        check_hash::<32, 48>(Mode::Constant, 7239, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_public() -> Result<()> {
-        check_hash::<32, 48>(Mode::Public, 542, 0, 8662, 8733)
+        check_hash::<32, 48>(Mode::Public, 470, 0, 8522, 8523)
     }
 
     #[test]
     fn test_hash_private() -> Result<()> {
-        check_hash::<32, 48>(Mode::Private, 542, 0, 8662, 8733)
+        check_hash::<32, 48>(Mode::Private, 470, 0, 8522, 8523)
     }
 }

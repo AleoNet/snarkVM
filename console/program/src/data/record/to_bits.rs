@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
         let data_bits_le = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_le(), entry.to_bits_le()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
             .flatten()
             .collect::<Vec<_>>();
 
@@ -44,7 +44,7 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
         let data_bits_be = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_be(), entry.to_bits_be()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
             .flatten()
             .collect::<Vec<_>>();
 
@@ -67,7 +67,7 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
         let data_bits_le = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_le(), entry.to_bits_le()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
             .flatten()
             .collect::<Vec<_>>();
 
@@ -88,7 +88,7 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
         let data_bits_be = self
             .data
             .iter()
-            .flat_map(|(identifier, entry)| vec![identifier.to_bits_be(), entry.to_bits_be()])
+            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
             .flatten()
             .collect::<Vec<_>>();
 

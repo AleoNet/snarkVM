@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -41,7 +41,7 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
 }
 
 pub(crate) fn witness_label(poly: &str, i: usize) -> String {
-    format!("{poly}_{:0>8}", i)
+    format!("{poly}_{i:0>8}")
 }
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
@@ -72,7 +72,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// must be with respect to the number of formatted public inputs.
     pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, AHPError> {
         let padded_matrix_dim = matrices::padded_matrix_dim(num_variables, num_constraints);
-        let zk_bound = 1;
+        let zk_bound = Self::zk_bound().unwrap_or(0);
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
             .ok_or(AHPError::PolynomialDegreeTooLarge)?;
         let non_zero_domain_size =
@@ -80,11 +80,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         Ok(*[
             2 * constraint_domain_size + zk_bound - 2,
-            if MM::ZK { 3 * constraint_domain_size + 2 * zk_bound - 3 } else { 0 }, //  mask_poly
+            if MM::ZK { constraint_domain_size + 3 } else { 0 }, //  mask_poly
             constraint_domain_size,
             constraint_domain_size,
-            non_zero_domain_size - 1,
-            non_zero_domain_size, //  due to vanishing polynomial; for convenience, we increase the number by one regardless of the mode.
+            non_zero_domain_size - 1, // non-zero polynomials
         ]
         .iter()
         .max()
@@ -488,7 +487,7 @@ mod tests {
                     other.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
                 let fast =
                     domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(x, &other);
-                assert_eq!(fast, manual, "failed for self {:?} and other {:?}", domain, other);
+                assert_eq!(fast, manual, "failed for self {domain:?} and other {other:?}");
             }
         }
     }
@@ -507,9 +506,9 @@ mod tests {
         }
         let first = poly.coeffs[0] * size_as_fe;
         let last = *poly.coeffs.last().unwrap() * size_as_fe;
-        println!("sum: {:?}", sum);
-        println!("a_0: {:?}", first);
-        println!("a_n: {:?}", last);
+        println!("sum: {sum:?}");
+        println!("a_0: {first:?}");
+        println!("a_n: {last:?}");
         println!("first + last: {:?}\n", first + last);
         assert_eq!(sum, first + last);
     }
@@ -535,7 +534,7 @@ mod tests {
 
                 for element in domain_i.elements() {
                     if j_elements.contains(&element) {
-                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {} vs {}", i, j);
+                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {i} vs {j}");
                     } else {
                         assert_eq!(slow_selector.evaluate(element), Fr::zero());
                     }

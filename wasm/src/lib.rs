@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,8 +23,11 @@ pub use snarkvm_curves::{bls12_377::*, edwards_bls12::*};
 #[cfg(feature = "fields")]
 pub use snarkvm_fields::*;
 
-#[cfg(feature = "r1cs")]
-pub use snarkvm_r1cs::*;
+#[cfg(feature = "utilities")]
+pub use snarkvm_utilities::*;
+
+#[cfg(feature = "synthesizer")]
+pub use snarkvm_synthesizer::*;
 
 #[cfg(test)]
 mod tests;

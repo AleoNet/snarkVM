@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -280,7 +280,7 @@ pub(crate) fn bench_fq_sqrt(c: &mut Criterion) {
     });
 }
 
-pub(crate) fn bench_fq_into_repr(c: &mut Criterion) {
+pub(crate) fn bench_fq_to_bigint(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
     let mut rng = TestRng::default();
@@ -288,26 +288,26 @@ pub(crate) fn bench_fq_into_repr(c: &mut Criterion) {
     let v: Vec<Fq> = (0..SAMPLES).map(|_| Fq::rand(&mut rng)).collect();
 
     let mut count = 0;
-    c.bench_function("bls12_377: fq_into_repr", |c| {
+    c.bench_function("bls12_377: fq_to_bigint", |c| {
         c.iter(|| {
             count = (count + 1) % SAMPLES;
-            v[count].to_repr()
+            v[count].to_bigint()
         })
     });
 }
 
-pub(crate) fn bench_fq_from_repr(c: &mut Criterion) {
+pub(crate) fn bench_fq_from_bigint(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
     let mut rng = TestRng::default();
 
-    let v: Vec<FqRepr> = (0..SAMPLES).map(|_| Fq::rand(&mut rng).to_repr()).collect();
+    let v: Vec<FqRepr> = (0..SAMPLES).map(|_| Fq::rand(&mut rng).to_bigint()).collect();
 
     let mut count = 0;
-    c.bench_function("bls12_377: fq_from_repr", |c| {
+    c.bench_function("bls12_377: fq_from_bigint", |c| {
         c.iter(|| {
             count = (count + 1) % SAMPLES;
-            Fq::from_repr(v[count])
+            Fq::from_bigint(v[count])
         })
     });
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -64,16 +64,16 @@ mod tests {
 
     #[test]
     fn test_from_x_coordinate_constant() {
-        check_from_x_coordinate(Mode::Constant, 3, 0, 0, 0);
+        check_from_x_coordinate(Mode::Constant, 11, 0, 0, 0);
     }
 
     #[test]
     fn test_from_x_coordinate_public() {
-        check_from_x_coordinate(Mode::Public, 2, 0, 3, 3);
+        check_from_x_coordinate(Mode::Public, 4, 0, 15, 13);
     }
 
     #[test]
     fn test_from_x_coordinate_private() {
-        check_from_x_coordinate(Mode::Private, 2, 0, 3, 3);
+        check_from_x_coordinate(Mode::Private, 4, 0, 15, 13);
     }
 }

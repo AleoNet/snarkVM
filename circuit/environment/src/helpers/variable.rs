@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -260,9 +260,9 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for &Variable<F> {
 impl<F: PrimeField> fmt::Debug for Variable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            Self::Constant(value) => format!("Constant({})", value),
-            Self::Public(index, value) => format!("Public({}, {})", index, value),
-            Self::Private(index, value) => format!("Private({}, {})", index, value),
+            Self::Constant(value) => format!("Constant({value})"),
+            Self::Public(index, value) => format!("Public({index}, {value})"),
+            Self::Private(index, value) => format!("Private({index}, {value})"),
         })
     }
 }

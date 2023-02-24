@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ impl<N: Network> FromStr for GraphKey<N> {
     /// Reads in an account graph key from a base58 string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Encode the string into base58.
-        let data = s.from_base58().map_err(|err| anyhow!("{:?}", err))?;
+        let data = bs58::decode(s).into_vec().map_err(|err| anyhow!("{:?}", err))?;
         if data.len() != 41 {
             bail!("Invalid account graph key length: found {}, expected 41", data.len())
         } else if data[0..9] != GRAPH_KEY_PREFIX {
@@ -43,7 +43,7 @@ impl<N: Network> fmt::Display for GraphKey<N> {
         graph_key[0..9].copy_from_slice(&GRAPH_KEY_PREFIX);
         self.sk_tag.write_le(&mut graph_key[9..41]).map_err(|_| fmt::Error)?;
         // Encode the graph key into base58.
-        write!(f, "{}", graph_key.to_base58())
+        write!(f, "{}", bs58::encode(graph_key).into_string())
     }
 }
 

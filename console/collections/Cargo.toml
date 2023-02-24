@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-collections"
-version = "0.9.0"
+version = "0.9.13"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Collections for a decentralized virtual machine"
 license = "GPL-3.0"
@@ -13,11 +13,11 @@ harness = false
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
-version = "0.9.0"
+version = "0.9.13"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "0.9.0"
+version = "0.9.13"
 default-features = false
 features = [ "field", "integers" ]
 
@@ -33,8 +33,9 @@ optional = true
 path = "../network"
 
 [dev-dependencies.criterion]
-version = "0.3.5"
+version = "0.4.0"
 
 [features]
 default = [ "parallel" ]
 parallel = [ "rayon" ]
+timer = [ "aleo-std/timer" ]
