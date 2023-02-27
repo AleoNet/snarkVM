@@ -42,7 +42,7 @@ fn sample_key_value_pairs(
 
 pub fn populate_program_memory(
     program_store: &mut ProgramMemory<Testnet3>,
-    parameters: &Vec<Vec<usize>>,
+    parameters: &[Vec<usize>],
     rng: &mut TestRng,
 ) -> Result<()> {
     // For each program, initialize its associated state.

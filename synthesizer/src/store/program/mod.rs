@@ -1047,9 +1047,27 @@ mod tests {
 
     #[test]
     fn test_large_key_value_set() {
+        // Initialize a program ID.
+
+        // Initialize a new program store.
+        let program_store = ProgramMemory::open(None).unwrap();
+
+        // Test checksums over mappings of increasing size.
+        for i in 0..10 {
+            // Initialize a program ID and mapping name for the current iteration.
+            let program_id = ProgramID::<CurrentNetwork>::from_str(&format!("hello_{i}.aleo")).unwrap();
+            let mapping_name = Identifier::from_str("account").unwrap();
+
+            // Check the current iteration.
+            check_large_key_value_set(&program_store, program_id, mapping_name, 1 << (10 + i));
+        }
+    }
+
+    #[test]
+    fn test_large_checksum() {
         // Initialize a program ID and mapping name.
-        let program_id = ProgramID::<CurrentNetwork>::from_str(&format!("hello.aleo")).unwrap();
-        let mapping_name = Identifier::from_str(&format!("account")).unwrap();
+        let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
+        let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
         let program_store = ProgramMemory::open(None).unwrap();
@@ -1073,14 +1091,15 @@ mod tests {
 
         let mut total_entries = 0;
         // Benchmark checksums as the size of the mapping increases.
-        for i in 0..=30 {
+        for _ in 0..=30 {
             // Benchmark the amount of time it takes to add the keys into the mapping.
             println!("Adding keys to the mapping.");
             let previous_total_entries = total_entries;
             let add_keys_start = std::time::Instant::now();
 
             // Double the size of the mapping in each iteration.
-            for j in total_entries..=(total_entries * 2) {
+            let (start, end) = (total_entries, total_entries * 2);
+            for j in start..=end {
                 // Insert the KV pair into the mapping.
                 let key = Plaintext::<CurrentNetwork>::from_str(&format!("{j}u32")).unwrap();
                 program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1094,7 +1113,11 @@ mod tests {
                 // Ensure the value returns Some(value).
                 assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
             }
-            println!("Added {} keys in {} seconds.", total_entries - previous_total_entries, add_keys_start.elapsed().as_secs_f64());
+            println!(
+                "Added {} keys in {} seconds.",
+                total_entries - previous_total_entries,
+                add_keys_start.elapsed().as_secs_f64()
+            );
 
             // Benchmark the time it takes to compute the checksum.
             println!("Computing checksum.");

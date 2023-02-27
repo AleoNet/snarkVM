@@ -21,20 +21,10 @@ extern crate criterion;
 mod utilities;
 use utilities::*;
 
-use anyhow::Result;
-use console::{
-    network::Testnet3,
-    program::{Identifier, Plaintext, ProgramID, Value},
-    types::Group,
-};
+use console::network::Testnet3;
 use snarkvm_synthesizer::{ProgramMemory, ProgramStorage};
-use snarkvm_utilities::{TestRng, ToBits, Uniform};
-use std::{iter, str::FromStr};
+use snarkvm_utilities::TestRng;
 
-use console::{
-    prelude::{Network, Zero},
-    types::Field,
-};
 use criterion::Criterion;
 
 fn program_memory_storage_root(c: &mut Criterion) {

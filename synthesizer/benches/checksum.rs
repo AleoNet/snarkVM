@@ -30,7 +30,7 @@ use console::{
     prelude::{Network, Zero},
     types::Field,
 };
-use criterion::{Criterion, SamplingMode};
+use criterion::Criterion;
 use snarkvm_synthesizer::{helpers::MapRead, ProgramMemory, ProgramStorage};
 
 // A helper function to lazily prepare the input for the checksum computation.
@@ -66,18 +66,18 @@ fn compare_checksums_by_hash_function(c: &mut Criterion) {
         // Initialize parameters corresponding to the number and size of the mappings.
         let parameters = [1 << i];
 
-        // // Benchmark BHP256(BHP256).
-        // group.bench_with_input(format!("BHP256(BHP256): {} bits", 1 << i), &parameters, |b, parameters| {
-        //     b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp256, Testnet3::hash_bhp256))
-        // });
-        // // Benchmark BHP512(BHP512).
-        // group.bench_with_input(format!("BHP512(BHP512): {} bits", 1 << i), &parameters, |b, parameters| {
-        //     b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp512, Testnet3::hash_bhp512))
-        // });
-        // // Benchmark BHP768(BHP768).
-        // group.bench_with_input(format!("BHP768(BHP768): {} bits", 1 << i), &parameters, |b, parameters| {
-        //     b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp768, Testnet3::hash_bhp768))
-        // });
+        // Benchmark BHP256(BHP256).
+        group.bench_with_input(format!("BHP256(BHP256): {} bits", 1 << i), &parameters, |b, parameters| {
+            b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp256, Testnet3::hash_bhp256))
+        });
+        // Benchmark BHP512(BHP512).
+        group.bench_with_input(format!("BHP512(BHP512): {} bits", 1 << i), &parameters, |b, parameters| {
+            b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp512, Testnet3::hash_bhp512))
+        });
+        // Benchmark BHP768(BHP768).
+        group.bench_with_input(format!("BHP768(BHP768): {} bits", 1 << i), &parameters, |b, parameters| {
+            b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp768, Testnet3::hash_bhp768))
+        });
         // Benchmark BHP1024(BHP1024).
         group.bench_with_input(format!("BHP1024(BHP1024): {} bits", 1 << i), &parameters, |b, parameters| {
             b.iter(|| run_checksum_benchmark(parameters, Testnet3::hash_bhp1024, Testnet3::hash_bhp1024))
@@ -133,7 +133,7 @@ fn compare_checksum_and_storage_root(c: &mut Criterion) {
 criterion_group! {
     name = checksum;
     config = Criterion::default().sample_size(10);
-    targets = compare_checksums_by_hash_function
+    targets = compare_checksums_by_hash_function, compare_checksum_and_storage_root
 }
 
 criterion_main!(checksum);
