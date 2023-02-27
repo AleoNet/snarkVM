@@ -35,6 +35,11 @@ harness = false
 required-features = [ "setup" ]
 
 [[bench]]
+name = "checksum"
+path = "benches/checksum.rs"
+harness = false
+
+[[bench]]
 name = "storage_root"
 path = "benches/storage_root.rs"
 harness = false

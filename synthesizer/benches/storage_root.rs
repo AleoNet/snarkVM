@@ -17,56 +17,37 @@
 #[macro_use]
 extern crate criterion;
 
+#[path = "./utilities.rs"]
+mod utilities;
+use utilities::*;
+
+use anyhow::Result;
 use console::{
     network::Testnet3,
     program::{Identifier, Plaintext, ProgramID, Value},
     types::Group,
 };
 use snarkvm_synthesizer::{ProgramMemory, ProgramStorage};
-use snarkvm_utilities::{TestRng, Uniform};
-use std::str::FromStr;
+use snarkvm_utilities::{TestRng, ToBits, Uniform};
+use std::{iter, str::FromStr};
 
+use console::{
+    prelude::{Network, Zero},
+    types::Field,
+};
 use criterion::Criterion;
-
-fn sample_key_value_pairs(
-    num_key_value_pairs: usize,
-    rng: &mut TestRng,
-) -> Vec<(Plaintext<Testnet3>, Value<Testnet3>)> {
-    let mut key_value_pairs = Vec::with_capacity(num_key_value_pairs);
-
-    let value = Value::<Testnet3>::from_str(&format!("{}", Group::<Testnet3>::rand(rng))).unwrap();
-
-    for i in 0..num_key_value_pairs {
-        let key = Plaintext::<Testnet3>::from_str(&format!("{i}u32")).unwrap();
-        key_value_pairs.push((key, value.clone()));
-    }
-
-    key_value_pairs
-}
 
 fn program_memory_storage_root(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
-    let program_id = ProgramID::<Testnet3>::from_str("benchmark_storage_root.aleo").unwrap();
-
-    let key_value_pairs = sample_key_value_pairs(1000, rng);
-
     for num_mappings in [10, 100, 1000] {
         for num_key_values in [10, 100, 1000] {
             // Initialize a new program store.
-            let program_store = ProgramMemory::<Testnet3>::open(None).unwrap();
+            let mut program_store = ProgramMemory::<Testnet3>::open(None).unwrap();
 
-            // Insert the key value pairs.
-            for mapping_number in 0..num_mappings {
-                let mapping_name = Identifier::from_str(&format!("mapping_{}", mapping_number)).unwrap();
-
-                // Initialize the mapping.
-                program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
-
-                for (key, value) in key_value_pairs.iter().take(num_key_values) {
-                    program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
-                }
-            }
+            // Populate the program store.
+            let parameters = vec![vec![num_key_values]; num_mappings];
+            populate_program_memory(&mut program_store, &parameters, rng).unwrap();
 
             c.bench_function(
                 &format!("Storage root: {} mappings w/ {} key-value pairs", num_mappings, num_key_values),
@@ -76,6 +57,7 @@ fn program_memory_storage_root(c: &mut Criterion) {
     }
 }
 
+// Benchmark the storage root computation over an in-memory program store.
 criterion_group! {
     name = storage_root;
     config = Criterion::default().sample_size(50);
