@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 use crate::{
     fft,
     fft::{
-        domain::IFFTPrecomputation,
+        domain::{FFTPrecomputation, IFFTPrecomputation},
         polynomial::PolyMultiplier,
         DensePolynomial,
         EvaluationDomain,
@@ -47,11 +47,6 @@ use rand_core::RngCore;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-enum BatchTerms {
-    SZM,
-    T,
-}
-
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the number of oracles sent by the prover in the second round.
@@ -73,9 +68,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the second round message and the next state.
-    // TODO: strategy will be very similar to matrix_sumcheck:
-    // multiply per-circuit sumcheck equation by the selector polynomial * randomizer,
-    // and then sum over all of these circuit-specific equations.
     pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<'a, F, MM>,
         mut state: prover::State<'a, F, MM>,
@@ -121,25 +113,32 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_lhs<'a>(
         state: &prover::State<F, MM>,
         batch_combiners: &BTreeMap<&Circuit<F, MM>, verifier::BatchCombiners<F>>,
-        summed_z_m_and_t: BTreeMap<(&'a Circuit<F, MM>, BatchTerms), DensePolynomial<F>>,
+        summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>>,
         alpha: F,
     ) -> DensePolynomial<F> {
 
         let mut job_pool = ExecutionPool::with_capacity(2 * state.circuit_specific_states.len());
+        let H_max_size = state.max_constraint_domain.size_as_field_element;
 
-        cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches).map(|batch| {
-            let circuit_specific_state = state.circuit_specific_states[batch.0];
-            let summed_z_m = summed_z_m_and_t[(batch.0, BatchTerms::SZM)];
-            let t = summed_z_m_and_t[(batch.0, BatchTerms::T)];
-            let circuit_combiner = batch_combiners[batch.0].circuit_combiner;
+        for (i, (circuit, oracles)) in state.first_round_oracles.as_ref().unwrap().batches.iter().enumerate() {
+            let circuit_specific_state = state.circuit_specific_states[circuit];
+            let summed_z_m = &summed_z_m_and_t[circuit][2*i];
+            let t = &summed_z_m_and_t[circuit][2*i + 1];
+            let circuit_combiner = batch_combiners[circuit].circuit_combiner;
+            let instance_combiners = batch_combiners[circuit].instance_combiners;
+            let x_polys = &circuit_specific_state.x_polys;
+            let input_domain = circuit_specific_state.input_domain;
+            let constraint_domain = &circuit_specific_state.constraint_domain;
+            let fft_precomputation = &circuit.fft_precomputation;
+            let ifft_precomputation = &circuit.ifft_precomputation;
 
             job_pool.add_job(|| {
                 let z_time = start_timer!(|| "Compute z poly"); // TODO: annotate with circuit index
-                let z = cfg_iter!(batch.1)
-                    .zip_eq(batch_combiners[batch.0])
-                    .zip(&circuit_specific_state.x_polys)
+                let z = cfg_iter!(oracles)
+                    .zip_eq(instance_combiners)
+                    .zip(x_polys)
                     .map(|((oracles, &instance_combiner), x_poly)| {
-                        let mut z = oracles.w_poly.polynomial().as_dense().unwrap().mul_by_vanishing_poly(circuit_specific_state.input_domain);
+                        let mut z = oracles.w_poly.polynomial().as_dense().unwrap().mul_by_vanishing_poly(input_domain);
                         // Zip safety: `x_poly` is smaller than `z_poly`.
                         z.coeffs.iter_mut().zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
                         cfg_iter_mut!(z.coeffs).for_each(|z| *z *= &instance_combiner);
@@ -150,27 +149,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 end_timer!(z_time);
 
-                let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(&circuit_specific_state, t, summed_z_m, z, *alpha);
+                let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(constraint_domain, fft_precomputation, ifft_precomputation, t, summed_z_m, &z, *alpha);
+        
                 circuit_specific_lhs *= circuit_combiner;
+
+                // Let H_max = largest_non_zero_domain;
+                // Let H = non_zero_domain;
+                // Let s := H_max.selector_polynomial(H) = (v_H_max / v_H) * (H.size() / H_max.size());
+                // Let v_H_max := H_max.vanishing_polynomial();
+                // Let v_H := H.vanishing_polynomial();
+
+                // Later on, we multiply `lhs` by s, and divide by v_H_max.
+                // Substituting in s, we get that lhs * s / v_H_max = (lhs / v_H) * (H.size() / H_max.size());
+                // That's what we're computing here.
+                
+                let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+                assert!(remainder.is_zero());
+                let multiplier = constraint_domain.size_as_field_element / H_max_size;
+                cfg_iter_mut!(circuit_specific_lhs.coeffs).for_each(|c| *c *= multiplier);        
+
                 circuit_specific_lhs
             });
-        });
-
-        // TODO: sum over index_specific_lhs, multiplying by the selector polynomial * randomizer.
-        // Selector polynomial = v_H_max / v_H.
-        // Use the same trick from the matrix sumcheck to avoid unnecessary multiplications.
-        //
-        // Comments from that section duplicated here for convenience:
-        // Let K_max = largest_non_zero_domain;
-        // Let K = non_zero_domain;
-        // Let s := K_max.selector_polynomial(K) = (v_K_max / v_K) * (K.size() / K_max.size());
-        // Let v_K_max := K_max.vanishing_polynomial();
-        // Let v_K := K.vanishing_polynomial();
-
-        // Later on, we multiply `h` by s, and divide by v_K_max.
-        // Substituting in s, we get that h * s / v_K_max = h / v_K * (K.size() / K_max.size());
-        // That's what we're computing here.
-
+        }
         // TODO: check if annotation is required
         let circuit_specific_lhs_s: Vec<DensePolynomial<F>> = job_pool.execute_all().try_into().unwrap();
         let mut lhs_sum = circuit_specific_lhs_s.sum();
@@ -182,25 +182,26 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_circuit_specific_lhs(
-        state: &prover::CircuitSpecificState<F>,
-        t: DensePolynomial<F>,
-        summed_z_m: DensePolynomial<F>,
-        z: DensePolynomial<F>,
+        constraint_domain: &EvaluationDomain<F>,
+        fft_precomputation: &FFTPrecomputation<F>,
+        ifft_precomputation: &IFFTPrecomputation<F>,
+        t: &DensePolynomial<F>,
+        summed_z_m: &DensePolynomial<F>,
+        z: &DensePolynomial<F>,
         alpha: F,
     ) -> DensePolynomial<F> {
-        let constraint_domain = state.constraint_domain;
         let q_1_time = start_timer!(|| "Compute LHS of sumcheck");
 
-        let mul_domain_size = (constraint_domain.size() + summed_z_m.coeffs.len()).max(t.coeffs.len() + z.len());
+        let mul_domain_size = (*constraint_domain.size() + summed_z_m.coeffs.len()).max(t.coeffs.len() + z.len());
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
         let mut multiplier = PolyMultiplier::new();
-        multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
-        multiplier.add_polynomial(summed_z_m, "summed_z_m");
-        multiplier.add_polynomial(z, "z");
-        multiplier.add_polynomial(t, "t");
+        multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
+        multiplier.add_polynomial(*summed_z_m, "summed_z_m");
+        multiplier.add_polynomial(*z, "z");
+        multiplier.add_polynomial(*t, "t");
         let r_alpha_x_evals = {
-            let r_alpha_x_evals = constraint_domain
+            let r_alpha_x_evals = *constraint_domain
                 .batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(alpha, &mul_domain);
             fft::Evaluations::from_vec_and_domain(r_alpha_x_evals, mul_domain)
         };
@@ -221,84 +222,85 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         eta_b: F,
         eta_c: F,
         batch_combiners: &BTreeMap<&'a Circuit<F, MM>, verifier::BatchCombiners<F>>,
-    ) -> BTreeMap<(&'a Circuit<F, MM>, BatchTerms), DensePolynomial<F>> {
+    ) -> BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>> {
         let constraint_domain = state.max_constraint_domain;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
 
         assert!(batch_combiners.len() == state.circuit_specific_states.len());
         let mut job_pool = ExecutionPool::with_capacity(2 * state.circuit_specific_states.len());
 
-        cfg_iter!(state.circuit_specific_states)
-            .map(|circuit_state| {
-                let fft_precomputation = &circuit_state.0.fft_precomputation;
-                let ifft_precomputation = &circuit_state.0.ifft_precomputation;
-                let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
-                job_pool.add_job(|| {
-                    let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly"); // TODO: timers should get a label
-                    let summed_z_m = cfg_iter!(first_msg.batches[circuit_state.0])
-                        .zip_eq(batch_combiners[circuit_state.0].instance_combiners)
-                        .map(|(entry, combiner)| {
-                            let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
-                            let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
-                            assert!(z_a.degree() < constraint_domain.size());
-                            if MM::ZK {
-                                assert_eq!(z_b.degree(), constraint_domain.size());
-                            } else {
-                                assert!(z_b.degree() < constraint_domain.size());
-                            }
-        
-                            // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
-                            // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
-                            // This is better since it reduces the number of required
-                            // multiplications by `constraint_domain.size()`.
-                            let mut summed_z_m = {
-                                // Mutate z_b in place to compute eta_c * z_b + 1
-                                // This saves us an additional memory allocation.
-                                cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
-                                z_b.coeffs[0] += F::one();
-                                let mut multiplier = PolyMultiplier::new();
-                                multiplier.add_polynomial_ref(z_a, "z_a");
-                                multiplier.add_polynomial_ref(&z_b, "eta_c_z_b_plus_one");
-                                multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
-                                let result = multiplier.multiply().unwrap();
-                                // Start undoing in place mutation, by first subtracting the 1 that we added...
-                                z_b.coeffs[0] -= F::one();
-                                result
-                            };
-                            // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
-                            cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
-        
-                            // Multiply by linear combination coefficient.
-                            cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
+        for (circuit, circuit_specific_state) in state.circuit_specific_states.iter() {
+            let fft_precomputation = &circuit.fft_precomputation;
+            let ifft_precomputation = &circuit.ifft_precomputation;
+            let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
+            job_pool.add_job(|| {
+                let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly"); // TODO: timers should get a label
+                let summed_z_m = cfg_iter!(first_msg.batches[circuit])
+                    .zip_eq(batch_combiners[circuit].instance_combiners)
+                    .map(|(entry, combiner)| {
+                        let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
+                        let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
+                        assert!(z_a.degree() < constraint_domain.size());
+                        if MM::ZK {
+                            assert_eq!(z_b.degree(), constraint_domain.size());
+                        } else {
+                            assert!(z_b.degree() < constraint_domain.size());
+                        }
+    
+                        // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
+                        // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
+                        // This is better since it reduces the number of required
+                        // multiplications by `constraint_domain.size()`.
+                        let mut summed_z_m = {
+                            // Mutate z_b in place to compute eta_c * z_b + 1
+                            // This saves us an additional memory allocation.
+                            cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
+                            z_b.coeffs[0] += F::one();
+                            let mut multiplier = PolyMultiplier::new();
+                            multiplier.add_polynomial_ref(z_a, "z_a");
+                            multiplier.add_polynomial_ref(&z_b, "eta_c_z_b_plus_one");
+                            multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
+                            let result = multiplier.multiply().unwrap();
+                            // Start undoing in place mutation, by first subtracting the 1 that we added...
+                            z_b.coeffs[0] -= F::one();
+                            result
+                        };
+                        // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
+                        cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
+    
+                        // Multiply by linear combination coefficient.
+                        cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
 
-                            assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
-                            end_timer!(summed_z_m_poly_time);
-                            summed_z_m
-                        })
-                        .sum::<DensePolynomial<_>>();
-                    ((circuit_state.0, BatchTerms::SZM), summed_z_m)
-                });
-        
-                job_pool.add_job(|| {
-                    let t_poly_time = start_timer!(|| "Compute t poly"); // TODO: this should get a label
-        
-                    let r_alpha_x_evals =
-                        constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
-                    let t = Self::calculate_t(
-                        &[&circuit_state.1.a, &circuit_state.1.b, &circuit_state.1.c],
-                        [F::one(), eta_b, eta_c],
-                        &state.input_domain,
-                        &state.constraint_domain,
-                        &r_alpha_x_evals,
-                        ifft_precomputation,
-                    );
-                    end_timer!(t_poly_time);
-                    ((circuit_state.0, BatchTerms::T), t)
-                });
+                        assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
+                        end_timer!(summed_z_m_poly_time);
+                        summed_z_m
+                    })
+                    .sum::<DensePolynomial<_>>();
+                (circuit, summed_z_m)
             });
+    
+            job_pool.add_job(|| {
+                let t_poly_time = start_timer!(|| "Compute t poly"); // TODO: this should get a label
+    
+                let r_alpha_x_evals =
+                    constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
+                let t = Self::calculate_t(
+                    &[&circuit_specific_state.a, &circuit_specific_state.b, &circuit_specific_state.c],
+                    [F::one(), eta_b, eta_c],
+                    &state.input_domain,
+                    &state.constraint_domain,
+                    &r_alpha_x_evals,
+                    ifft_precomputation,
+                );
+                end_timer!(t_poly_time);
+                (circuit, t)
+            });
+        }
+
+        // instead of BatchTerms identifier, I can just use the assumption of job ordering
 
         // TODO: annotation might be unnecessary because the return type of the function is already indicated
-        let summed_z_m_and_t: BTreeMap<(&'a Circuit<F, MM>, BatchTerms), DensePolynomial<F>> = job_pool.execute_all().try_into().unwrap();
+        let summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>> = job_pool.execute_all().try_into().unwrap();
         summed_z_m_and_t
     }
 

@@ -44,14 +44,10 @@ use itertools::Itertools;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-enum BatchTerms {
-    A,
-    B,
-    C,
-}
 type Sum<F> = F;
 type LHS<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
+struct SumcheckHelperResult<F>(Sum<F>, LHS<F>, Gpoly<F>);
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the third round.
@@ -87,7 +83,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::SecondMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<F, MM>, prover::ThirdOracles<F, MM>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<'a, F, MM>, prover::ThirdOracles<F, MM>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state
@@ -102,105 +98,77 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
-        let all_index_info = cfg_iter!(state.circuit_specific_states).map(|s|{ s.0.index_info.clone() }).collect::<Vec<_>>();
-        let largest_non_zero_domain_size = Self::max_non_zero_domain(all_index_info).size_as_field_element;
-
         let mut pool = ExecutionPool::with_capacity(3*state.circuit_specific_states.len());
-        cfg_iter!(state.circuit_specific_states)
-            .map(|circuit_state| {
-                pool.add_job(|| {
-                    let result = Self::matrix_sumcheck_helper(
-                        "a",
-                        circuit_state.non_zero_a_domain,
-                        &circuit_state.index.a_arith,
-                        *alpha,
-                        beta,
-                        v_H_alpha_v_H_beta,
-                        largest_non_zero_domain_size,
-                        circuit_state.fft_precomputation(),
-                        circuit_state.ifft_precomputation(),
-                    );
-                    ((circuit_state.0, BatchTerms::A), result)
-                });
 
-                pool.add_job(|| {
-                    let result = Self::matrix_sumcheck_helper(
-                        "b",
-                        circuit_state.non_zero_b_domain,
-                        &circuit_state.index.b_arith,
-                        *alpha,
-                        beta,
-                        v_H_alpha_v_H_beta,
-                        largest_non_zero_domain_size,
-                        circuit_state.fft_precomputation(),
-                        circuit_state.ifft_precomputation(),
-                    );
-                    ((circuit_state.0, BatchTerms::B), result)
-                });
+        for (circuit, circuit_state) in state.circuit_specific_states.iter() {
+            let largest_non_zero_domain_size = Self::max_non_zero_domain(&circuit_state.0.index_info).size_as_field_element;
+            pool.add_job(|| {
+                let result = Self::matrix_sumcheck_helper(
+                    "a",
+                    circuit_state.non_zero_a_domain,
+                    &circuit_state.index.a_arith,
+                    *alpha,
+                    beta,
+                    v_H_alpha_v_H_beta,
+                    largest_non_zero_domain_size,
+                    circuit_state.fft_precomputation(),
+                    circuit_state.ifft_precomputation(),
+                );
+                (circuit, result)
+            });
 
-                pool.add_job(|| {
-                    let result = Self::matrix_sumcheck_helper(
-                        "c",
-                        circuit_state.non_zero_c_domain,
-                        &circuit_state.index.c_arith,
-                        *alpha,
-                        beta,
-                        v_H_alpha_v_H_beta,
-                        largest_non_zero_domain_size,
-                        circuit_state.fft_precomputation(),
-                        circuit_state.ifft_precomputation(),
-                    );
-                    ((circuit_state.0, BatchTerms::C), result)
-                });
-        });
+            pool.add_job(|| {
+                let result = Self::matrix_sumcheck_helper(
+                    "b",
+                    circuit_state.non_zero_b_domain,
+                    &circuit_state.index.b_arith,
+                    *alpha,
+                    beta,
+                    v_H_alpha_v_H_beta,
+                    largest_non_zero_domain_size,
+                    circuit_state.fft_precomputation(),
+                    circuit_state.ifft_precomputation(),
+                );
+                (circuit, result)
+            });
 
-        // TODO: check if annotation is needed
-        // TODO: think about a cleaner or more direct way to acquire all of the sumcheck_terms values
-        let sumcheck_terms: BTreeMap<(&'a Circuit<F, MM>, BatchTerms), (Sum<F>, LHS<F>, Gpoly<F>)> = pool.execute_all().try_into().unwrap();
-        let sums_a: BTreeMap<&'a Circuit<F, MM>, Sum<F>> = BTreeMap::new();
-        let sums_b: BTreeMap<&'a Circuit<F, MM>, Sum<F>> = BTreeMap::new();
-        let sums_c: BTreeMap<&'a Circuit<F, MM>, Sum<F>> = BTreeMap::new();
-        let lhs_a: BTreeMap<&'a Circuit<F, MM>, LHS<F>> = BTreeMap::new();
-        let lhs_b: BTreeMap<&'a Circuit<F, MM>, LHS<F>> = BTreeMap::new();
-        let lhs_c: BTreeMap<&'a Circuit<F, MM>, LHS<F>> = BTreeMap::new();
-        let gs_a: BTreeMap<&'a Circuit<F, MM>, Gpoly<F>> = BTreeMap::new();
-        let gs_b: BTreeMap<&'a Circuit<F, MM>, Gpoly<F>> = BTreeMap::new();
-        let gs_c: BTreeMap<&'a Circuit<F, MM>, Gpoly<F>> = BTreeMap::new();
-        for terms in sumcheck_terms {
-            if terms.0.1 == BatchTerms::A {
-                sums_a.insert(terms.0.0, terms.1.0);
-                lhs_a.insert(terms.0.0, terms.1.1);
-                gs_a.insert(terms.0.0, terms.1.2);
-            } else if terms.0.1 == BatchTerms::B {
-                sums_b.insert(terms.0.0, terms.1.0);
-                lhs_b.insert(terms.0.0, terms.1.1);
-                gs_b.insert(terms.0.0, terms.1.2);
-            } else if terms.0.1 == BatchTerms::C {
-                sums_c.insert(terms.0.0, terms.1.0);
-                lhs_b.insert(terms.0.0, terms.1.1);
-                gs_c.insert(terms.0.0, terms.1.2);
-            }
+            pool.add_job(|| {
+                let result = Self::matrix_sumcheck_helper(
+                    "c",
+                    circuit_state.non_zero_c_domain,
+                    &circuit_state.index.c_arith,
+                    *alpha,
+                    beta,
+                    v_H_alpha_v_H_beta,
+                    largest_non_zero_domain_size,
+                    circuit_state.fft_precomputation(),
+                    circuit_state.ifft_precomputation(),
+                );
+                (circuit, result)
+            });
         }
-        let sums = sums_a.iter().zip(sums_b.iter()).zip(sums_c.iter()).map(|((a, b), c)| {
-            state.circuit_specific_states[a.0].sums = Some([a.1, b.1, c.1]);
+
+        // TODO: check we're not making unnecessary copies
+        let sums: BTreeMap<&'a Circuit<F, MM>, prover::message::MatrixSums> = BTreeMap::new();
+        let gs: BTreeMap<&'a Circuit<F, MM>, prover::MatrixGs> = BTreeMap::new();
+        for res in pool.execute_all().tuples() {
+            let (a, b, c): ((&'a Circuit<F, MM>, SumcheckHelperResult<F>), (&'a Circuit<F, MM>, SumcheckHelperResult<F>), (&'a Circuit<F, MM>, SumcheckHelperResult<F>)) = res;
+            assert!(a.0 == b.0 && b.0 == c.0);
+            state.circuit_specific_states[a.0].sums = Some([a.1[0], b.1[0], c.1[0]]); // TODO: where do we use this? We're saving the state twice, which is a waste
             let matrix_sum = prover::message::MatrixSums {
-                sum_a: a.1,
-                sum_b: b.1,
-                sum_c: c.1,
+                sum_a: a.1.0,
+                sum_b: b.1.0,
+                sum_c: c.1.0,
             };
-            (a.0, matrix_sum)
-        }).collect::<BTreeMap<&'a Circuit<F, MM>, prover::message::MatrixSums<F>>>();
-        lhs_a.iter().zip(lhs_b.iter()).zip(lhs_c.iter()).map(|((a, b), c)| {
-            state.circuit_specific_states[a.0].lhs_polynomials = Some([a.1, b.1, c.1]);
-        });
-        let gs = gs_a.iter().zip(gs_b.iter()).zip(gs_c.iter()).map(|((a, b), c)| {
-            let matrix_g = prover::MatrixGs {
-                g_a: a.1,
-                g_b: b.1,
-                g_c: c.1,
+            sums.insert(a.0, matrix_sum);
+            state.circuit_specific_states[a.0].lhs_polynomials = Some([a.1.1, b.1.1, c.1.1]);
+            let matrix_gs = prover::MatrixGs {
+                g_a: a.1.2,
+                g_b: b.1.2,
+                g_c: c.1.2,
             };
-            (a.0, matrix_g)
-        }).collect::<BTreeMap<&'a Circuit<F, MM>, prover::MatrixGs<F>>>();
+            gs.insert(a.0, matrix_gs);
+        }
 
         let msg = prover::ThirdMessage { sums };
         let oracles = prover::ThirdOracles { gs };

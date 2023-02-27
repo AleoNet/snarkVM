@@ -30,12 +30,11 @@ pub struct MatrixSums<F> {
 
 /// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ThirdMessage<F: Field, MM> {
-    // TODO: Passing the circuit as reference requires passing a lifetime which makes CanonicalDeserialize complain it already has an 'a
-    pub sums: BTreeMap<Circuit<F, MM>, MatrixSums<F>>,
+pub struct ThirdMessage<'b, F: Field, MM> {
+    pub sums: BTreeMap<&'b Circuit<F, MM>, MatrixSums<F>>,
 }
 
-impl<F: Field, MM> ToBytes for ThirdMessage<F, MM> {
+impl<'b, F: Field, MM> ToBytes for ThirdMessage<'b, F, MM> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

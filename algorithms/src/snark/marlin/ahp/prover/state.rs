@@ -201,6 +201,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables)
     }
 
+    // TODO: think about removing these getters, as the circuit already contains the information it is just double checking
     pub fn fft_precomputation(&self, circuit: &Circuit<F, MM>) -> Option<&FFTPrecomputation<F>> {
         self.circuit_specific_states.contains_key(circuit).then(|| &circuit.fft_precomputation)
     }
