@@ -48,11 +48,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok(oracles)
     }
 
-    /// Output the number of oracles sent by the prover in the third round.
-    pub fn num_fourth_round_oracles() -> usize {
-        1
-    }
-
     /// Output the degree bounds of oracles in the third round.
     pub fn fourth_round_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         [("h_2".into(), PolynomialInfo::new("h_2".into(), None, None))].into()

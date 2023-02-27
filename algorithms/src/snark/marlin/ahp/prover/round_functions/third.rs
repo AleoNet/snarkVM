@@ -50,12 +50,6 @@ type Gpoly<F> = LabeledPolynomial<F>;
 struct SumcheckHelperResult<F: PrimeField>(Sum<F>, LHS<F>, Gpoly<F>);
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-    /// Output the number of oracles sent by the prover in the third round.
-    // TODO: update this according to the number of circuits (3 * num_circuits).
-    pub fn num_third_round_oracles() -> usize {
-        3
-    }
-
     /// Output the degree bounds of oracles in the first round.
     // TODO: to verify if this is correct, see if we're 'consuming' this information in a similar way to the first round
     pub fn third_round_polynomial_info<'a>(

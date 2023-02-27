@@ -42,12 +42,6 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-    /// Output the number of oracles sent by the prover in the first round.
-    // TODO: fix this
-    pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        3 * batch_size + (MM::ZK as usize)
-    }
-
     /// Output the degree bounds of oracles in the first round.
     pub fn first_round_polynomial_info<'a>(
         circuits: impl Iterator<Item = (&'a Circuit<F, MM>, usize)>,

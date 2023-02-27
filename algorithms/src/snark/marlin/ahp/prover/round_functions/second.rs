@@ -49,11 +49,6 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
-    /// Output the number of oracles sent by the prover in the second round.
-    pub fn num_second_round_oracles() -> usize {
-        2
-    }
-
     /// Output the degree bounds of oracles in the first round.
     // TODO: think about whether to adjust this like the first and third rounds
     pub fn second_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
