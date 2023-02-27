@@ -35,12 +35,12 @@ pub struct Commitments<E: PairingEngine> {
     pub g_1: sonic_pc::Commitment<E>,
     /// Commitment to the `h_1` polynomial.
     pub h_1: sonic_pc::Commitment<E>,
-    /// Commitment to the `g_a` polynomial.
-    pub g_a: sonic_pc::Commitment<E>,
-    /// Commitment to the `g_b` polynomial.
-    pub g_b: sonic_pc::Commitment<E>,
-    /// Commitment to the `g_c` polynomial.
-    pub g_c: sonic_pc::Commitment<E>,
+    /// Commitment to the `g_a` polynomials.
+    pub g_a_commitments: Vec<sonic_pc::Commitment<E>>,
+    /// Commitment to the `g_b` polynomials.
+    pub g_b_commitments: Vec<sonic_pc::Commitment<E>>,
+    /// Commitment to the `g_c` polynomials.
+    pub g_c_commitments: Vec<sonic_pc::Commitment<E>>,
     /// Commitment to the `h_2` polynomial.
     pub h_2: sonic_pc::Commitment<E>,
 }
@@ -213,7 +213,7 @@ impl<F: PrimeField> Evaluations<F> {
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Proof<E: PairingEngine> {
+pub struct Proof<'a, E: PairingEngine, MM> {
     /// The number of instances being proven in this proof.
     batch_size: usize,
 
@@ -223,20 +223,20 @@ pub struct Proof<E: PairingEngine> {
     /// Evaluations of some of the committed polynomials.
     pub evaluations: Evaluations<E::Fr>,
 
-    /// Prover message: sum_a, sum_b, sum_c
-    pub msg: ahp::prover::ThirdMessage<E::Fr>,
+    /// Prover message: sum_a, sum_b, sum_c for each instance
+    pub msg: ahp::prover::ThirdMessage<'a, E::Fr, MM>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<E: PairingEngine> Proof<E> {
+impl<'a, E: PairingEngine, MM> Proof<'a, E, MM> {
     /// Construct a new proof.
     pub fn new(
         batch_size: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
-        msg: ahp::prover::ThirdMessage<E::Fr>,
+        msg: ahp::prover::ThirdMessage<'a, E::Fr, MM>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         if commitments.witness_commitments.len() != batch_size {
@@ -259,7 +259,7 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
-impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
+impl<'a, E: PairingEngine, MM> CanonicalSerialize for Proof<'a, E, MM> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         CanonicalSerialize::serialize_with_mode(&self.batch_size, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
@@ -280,7 +280,7 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> Valid for Proof<E> {
+impl<'a, E: PairingEngine, MM> Valid for Proof<'a, E, MM> {
     fn check(&self) -> Result<(), SerializationError> {
         self.batch_size.check()?;
         self.commitments.check()?;
@@ -290,7 +290,7 @@ impl<E: PairingEngine> Valid for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
+impl<'a, E: PairingEngine, MM> CanonicalDeserialize for Proof<'a, E, MM> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -307,13 +307,13 @@ impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> ToBytes for Proof<E> {
+impl<'a, E: PairingEngine, MM> ToBytes for Proof<'a, E, MM> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         Self::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<E: PairingEngine> FromBytes for Proof<E> {
+impl<'a, E: PairingEngine, MM> FromBytes for Proof<'a, E, MM> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

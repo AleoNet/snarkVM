@@ -27,7 +27,7 @@ use crate::{
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{indexer::Circuit, indexer::CircuitInfo, verifier, AHPError, AHPForR1CS},
+        ahp::{indexer::Circuit, verifier, AHPError, AHPForR1CS},
         matrices::MatrixArithmetization,
         prover,
         MarlinMode,
@@ -83,7 +83,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::SecondMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<'a, F, MM>, prover::ThirdOracles<F, MM>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<'a, F, MM>, prover::ThirdOracles<'a, F, MM>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state

@@ -127,22 +127,8 @@ impl<F: PrimeField> SecondOracles<F> {
 
 /// The third set of prover oracles.
 #[derive(Debug)]
-pub struct ThirdOracles<F: PrimeField, MM> {
-    gs: BTreeMap<Circuit<F, MM>, MatrixGs<F>>,
-}
-
-impl<F: PrimeField, MM> ThirdOracles<F, MM> {
-    /// Iterate over the polynomials output by the prover in the third round.
-    // TODO: need to rewrite, see where this is being used.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.g_a, &self.g_b, &self.g_c].into_iter()
-    }
-
-    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.gs
-            .values()
-            .all(|b| b.iter().all(|b| b.matches_info(info)))
-    }
+pub struct ThirdOracles<'a, F: PrimeField, MM: MarlinMode> {
+    gs: BTreeMap<&'a Circuit<F, MM>, MatrixGs<F>>,
 }
 
 #[derive(Debug)]
@@ -155,14 +141,30 @@ pub struct MatrixGs<F: PrimeField> {
     pub g_c: LabeledPolynomial<F>,
 }
 
-impl<F: PrimeField, MM> ThirdOracles<F, MM> {
+
+impl<'a, F: PrimeField, MM: MarlinMode> ThirdOracles<'a, F, MM> {
+    /// Iterate over the polynomials output by the prover in the third round.
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        let iters = std::iter::empty::<&LabeledPolynomial<F>>();
+        for (circuit, gs) in &self.gs {
+            let new_iters = [&gs.g_a, &gs.g_b, &gs.g_c].into_iter();
+            iters = iters.chain(new_iters);
+        }
+        iters
+    }
+
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.gs
+            .values()
+            .all(|b| b.iter().all(|b| b.matches_matrix_info(info)))
+    }
+
+    pub fn matches_matrix_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
         Some(self.g_a.info()) == info.get(self.g_a.label())
             && Some(self.g_b.info()) == info.get(self.g_b.label())
             && Some(self.g_c.info()) == info.get(self.g_c.label())
     }
 }
-
 
 #[derive(Debug)]
 pub struct FourthOracles<F: PrimeField> {

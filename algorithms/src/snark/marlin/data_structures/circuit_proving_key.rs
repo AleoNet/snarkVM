@@ -62,3 +62,10 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
         Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuits, committer_key })
     }
 }
+
+impl<E: PairingEngine, MM: MarlinMode> CircuitProvingKey<E, MM> {
+        /// Iterate over the indexed polynomials.
+        pub fn iter_circuit_polys(&self) -> impl Iterator<Item = &sonic_pc::LabeledPolynomial<E::Fr>> {
+            (*self.circuits).iter()
+        }    
+}

@@ -18,6 +18,8 @@ use crate::traits::{AlgebraicSponge, SNARK};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
+use std::collections::BTreeMap;
+
 #[derive(Copy, Clone)]
 pub struct Circuit<F: Field> {
     pub a: Option<F>,
@@ -83,7 +85,7 @@ mod marlin {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
             struct $test_struct {}
             impl $test_struct {
-                pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
+                pub(crate) fn test_circuit<'a>(num_constraints: usize, num_variables: usize) {
                     let rng = &mut snarkvm_utilities::rand::TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
@@ -116,43 +118,64 @@ mod marlin {
                     }
 
                     for _ in 0..10 {
-                        for batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                            let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..batch_size)
-                                .map(|_| {
-                                    let a = Fr::rand(rng);
-                                    let b = Fr::rand(rng);
-                                    let mut c = a;
-                                    c.mul_assign(&b);
-                                    let mut d = c;
-                                    d.mul_assign(&b);
+                        for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                            for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                                let circuits: &BTreeMap<&'a Circuit<Fr, MarlinNonHidingMode>, &[ConstraintSynthesizer<Fr>]> = BTreeMap::new();
+                                let inputs: &BTreeMap<&'a Circuit<Fr, MarlinNonHidingMode>, &[[Fr]]> = BTreeMap::new();
 
-                                    let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
-                                    (circ, [c, d])
-                                })
-                                .unzip();
-                            let (index_pk, index_vk) =
-                                $marlin_inst::circuit_setup(&universal_srs, &circuit_batch[0]).unwrap();
-                            println!("Called circuit setup");
+                                for i in 0..circuit_batch_size {
+                                    let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
+                                    .map(|_| {
+                                        let inputs: Vec<Fr> = Vec::with_capacity(2+i);
+                                        let a = Fr::rand(rng);
+                                        let b = Fr::rand(rng);
+                                        let mut c = a;
+                                        c.mul_assign(&b);
+                                        inputs.push(c);
+                                        let mut d = c;
+                                        d.mul_assign(&b);
+                                        inputs.push(d);
+                                        for _ in 0..i {
+                                            let mut new_var = inputs[1 + i];
+                                            new_var.mul_assign(&b);
+                                            inputs.push(new_var);
+                                        }
 
-                            let proof =
-                                $marlin_inst::prove_batch(&fs_parameters, &index_pk, &circuit_batch, rng).unwrap();
-                            println!("Called prover");
+                                        // TODO: might need to adjust num_constraints and num_variables given that we're building a bigger circuit now
+                                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+                                        (circ, inputs[..])
+                                    })
+                                    .unzip();
+                                    // TODO: how to we correctly reference the circuits and inputs?
+                                    circuits.insert(circuit_batch[0], circuit_batch);
+                                    inputs.insert(circuit_batch[0], input_batch);
+                                }
+                                let unique_instances = circuits.map(|(circuit, instances)| &instances[0]);
+                                let (index_pk, index_vk) =
+                                    $marlin_inst::circuit_setup(&universal_srs, &unique_instances).unwrap();
+                                println!("Called circuit setup");
 
-                            assert!(
-                                $marlin_inst::verify_batch(&fs_parameters, &index_vk, &input_batch, &proof).unwrap(),
-                                "Batch verification failed with {batch_size} inputs"
-                            );
-                            println!("Called verifier");
-                            println!("\nShould not verify (i.e. verifier messages should print below):");
-                            assert!(
-                                !$marlin_inst::verify_batch(
-                                    &fs_parameters,
-                                    &index_vk,
-                                    &vec![[Fr::rand(rng), Fr::rand(rng)]; batch_size],
-                                    &proof
-                                )
-                                .unwrap()
-                            );
+                                let proof =
+                                    $marlin_inst::prove_batch(&fs_parameters, &index_pk, &circuits, rng).unwrap();
+                                println!("Called prover");
+
+                                assert!(
+                                    $marlin_inst::verify_batch(&fs_parameters, &index_vk, &inputs, &proof).unwrap(),
+                                    "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits"
+                                );
+                                println!("Called verifier");
+                                println!("\nShould not verify (i.e. verifier messages should print below):");
+                                // TODO: create fake circuit inputs
+                                assert!(
+                                    !$marlin_inst::verify_batch(
+                                        &fs_parameters,
+                                        &index_vk,
+                                        &vec![[Fr::rand(rng), Fr::rand(rng)]; batch_size],
+                                        &proof
+                                    )
+                                    .unwrap()
+                                );
+                            }
                         }
                     }
                 }

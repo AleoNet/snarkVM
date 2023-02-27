@@ -42,8 +42,9 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
+    // TODO: instead of a Vector, perhaps I will end up needing a BtreeMap, mapping circuit_info to circuit_commitments
     /// Stores information about the size of the circuit, as well as its defined field.
-    pub circuit_info: CircuitInfo<E::Fr>,
+    pub circuit_info: Vec<CircuitInfo<E::Fr>>,
     /// Commitments to the indexed polynomials.
     pub circuit_commitments: Vec<sonic_pc::Commitment<E>>,
     /// The verifier key for this index, trimmed from the universal SRS.

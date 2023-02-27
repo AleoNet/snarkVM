@@ -16,7 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledPolynomial, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, indexer::Circuit, EvaluationsProvider},
         proof,
@@ -75,11 +75,17 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
     pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>>(
-        c: &C,
+        circuits: &[&C],
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
-        let circuit = AHPForR1CS::<_, MM>::index(c)?;
-        let srs = Self::universal_setup(&circuit.max_degree())?;
-        Self::circuit_setup(&srs, c)
+        let mut max_degree = 0;
+        let mut indexed_circuits = vec![];
+        for c in circuits {
+            let indexed_circuit = AHPForR1CS::<_, MM>::index(c)?;
+            indexed_circuits.push(indexed_circuit);
+            max_degree = max_degree.max(indexed_circuit.max_degree());
+        }
+        let srs = Self::universal_setup(&max_degree)?;
+        return Self::circuit_setup(&srs, &indexed_circuits.as_slice());
     }
 
     /// Generates the circuit proving and verifying keys.
@@ -87,47 +93,59 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     #[allow(clippy::type_complexity)]
     pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
-        circuit: &C,
+        circuits: &[&C],
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
-        // TODO: Add check that c is in the correct mode.
-        // Increase the universal SRS size to support the circuit size.
-        let index = AHPForR1CS::<_, MM>::index(circuit)?;
-        if universal_srs.max_degree() < index.max_degree() {
-            universal_srs
-                .download_powers_for(0..index.max_degree())
-                .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), index.max_degree()))?;
+        let mut constraint_domain_sizes = Vec::with_capacity(circuits.len());
+        let mut coefficient_supports = Vec::with_capacity(circuits.len());
+        let mut index_info = Vec::with_capacity(circuits.len());
+        let mut indexed_circuits = Vec::with_capacity(circuits.len());
+        let mut max_degree = 0;
+        let mut index_iters = std::iter::empty::<&LabeledPolynomial<E::Fr>>();
+        for circuit in circuits {
+            let indexed_circuit = AHPForR1CS::<_, MM>::index(circuit)?;
+            // TODO: Add check that c is in the correct mode.
+            // Increase the universal SRS size to support the circuit size.
+            if universal_srs.max_degree() < indexed_circuit.max_degree() {
+                universal_srs
+                    .download_powers_for(0..indexed_circuit.max_degree())
+                    .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), indexed_circuit.max_degree()))?;
+            }                
+            coefficient_supports.push(AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info));
+            constraint_domain_sizes.push(indexed_circuit.constraint_domain_size());
+            max_degree = max_degree.max(indexed_circuit.max_degree());
+            index_iters.chain(indexed_circuit.iter());
+            index_info.push(indexed_circuit.index_info);
+            indexed_circuits.push(indexed_circuit);
         }
-
-        let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&index.index_info);
 
         // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
             universal_srs,
-            index.max_degree(),
-            [index.constraint_domain_size()],
+            max_degree,
+            constraint_domain_sizes.as_slice(),
             supported_hiding_bound,
-            Some(&coefficient_support),
+            Some(&coefficient_supports.as_slice()),
         )?;
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
-            SonicKZG10::<E, FS>::commit(&committer_key, index.iter().map(Into::into), None)?;
+            SonicKZG10::<E, FS>::commit(&committer_key, index_iters.map(Into::into), None)?;
         end_timer!(commit_time);
 
         circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
         let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
         let circuit_verifying_key = CircuitVerifyingKey {
-            circuit_info: index.index_info,
+            circuit_info: index_info,
             circuit_commitments,
             verifier_key,
             mode: PhantomData,
         };
 
         let circuit_proving_key = CircuitProvingKey {
-            circuit: Arc::new(index),
+            circuits: Arc::new(indexed_circuits),
             circuit_commitment_randomness,
             circuit_verifying_key: circuit_verifying_key.clone(),
             committer_key: Arc::new(committer_key),
@@ -170,9 +188,9 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         sponge
     }
 
-    fn absorb_labeled_with_msg(
+    fn absorb_labeled_with_msg<'a>(
         comms: &[LabeledCommitment<Commitment<E>>],
-        message: &prover::ThirdMessage<E::Fr>,
+        message: &prover::ThirdMessage<'a, E::Fr, MM>,
         sponge: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
@@ -190,7 +208,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         end_timer!(sponge_time);
     }
 
-    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
+    fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<'a, E::Fr, MM>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
         sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c]);
@@ -209,7 +227,7 @@ where
     type Certificate = Certificate<E>;
     type FSParameters = FS::Parameters;
     type FiatShamirRng = FS;
-    type Proof = Proof<E>;
+    type Proof<'a> = Proof<'a, E, MM>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
@@ -330,7 +348,7 @@ where
     fn prove_batch_with_terminator<'a, C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         circuit_proving_key: &CircuitProvingKey<E, MM>,
-        circuits: &BTreeMap<&'a Circuit<E::Fr, MM>, &[C]>, // TODO: do we want to bubble up these changes up the call chain?
+        circuits: &BTreeMap<&'a Circuit<E::Fr, MM>, &[C]>,
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
@@ -460,11 +478,10 @@ where
 
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = circuit_proving_key
-            .circuit
-            .iter() // 12 items
-            .chain(first_round_oracles.iter_for_open()) // 3 * batch_size + (MM::ZK as usize) items
+            .iter_circuit_polys() // 12 items per circuit
+            .chain(first_round_oracles.iter_for_open()) // 3 per instance + (MM::ZK as usize) items
             .chain(second_oracles.iter())// 2 items
-            .chain(third_oracles.iter())// 3 items
+            .chain(third_oracles.iter())// 3 items per circuit
             .chain(fourth_oracles.iter())// 1 item
             .collect();
 
@@ -480,6 +497,11 @@ where
                 z_b: *c[2].commitment(),
             })
             .collect();
+        let third_commitments_chunked = first_commitments.chunks_exact(3);
+        let g_a_commitments = third_commitments_chunked.map(|c| *c[0].commitment()).collect::<Vec<_>>();
+        let g_b_commitments = third_commitments_chunked.map(|c| *c[1].commitment()).collect::<Vec<_>>();
+        let g_c_commitments = third_commitments_chunked.map(|c| *c[2].commitment()).collect::<Vec<_>>();
+
         #[rustfmt::skip]
         let commitments = proof::Commitments {
             witness_commitments,
@@ -489,9 +511,9 @@ where
             h_1: *second_commitments[1].commitment(),
 
 
-            g_a: *third_commitments[0].commitment(),
-            g_b: *third_commitments[1].commitment(),
-            g_c: *third_commitments[2].commitment(),
+            g_a_commitments: *g_a_commitments,
+            g_b_commitments: *g_b_commitments,
+            g_c_commitments: *g_c_commitments,
 
             h_2: *fourth_commitments[0].commitment(),
         };
