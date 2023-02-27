@@ -164,7 +164,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         fs_parameters: &FS::Parameters,
         batch_sizes: Vec<usize>,
         circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>],
-        inputs: &Vec<Vec<E::Fr>>,
+        inputs: &Vec<Vec<Vec<E::Fr>>>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -172,8 +172,10 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             sponge.absorb_bytes(&batch_size.to_le_bytes());
         }
         sponge.absorb_native_field_elements(circuit_commitments);
-        for input in inputs {
-            sponge.absorb_nonnative_field_elements(input.iter().copied());
+        for circuit_specific_input in inputs {
+            for instance_specific_input in circuit_specific_input {
+                sponge.absorb_nonnative_field_elements(input.iter().copied());
+            }
         }
         sponge
     }
@@ -360,12 +362,17 @@ where
         Self::terminate(terminator)?;
 
         let prover_state = AHPForR1CS::<_, MM>::init_prover(circuits)?;
-        let (batch_sizes, public_inputs, padded_public_inputs): (Vec<_>, Vec<_>, Vec<_>) = cfg_iter!(circuits).map(|(c, _)| {
-            let batch_size = prover_state.batch_size(c).ok_or(SNARKError::Message("No batch_size found".into()))?;
-            let public_input = prover_state.public_inputs(c).ok_or(SNARKError::Message("No public_inputs found".into()))?;
-            let padded_public_input = prover_state.padded_public_inputs(c).ok_or(SNARKError::Message("No padded_public_inputs found".into()))?;
-            Ok((batch_size, padded_public_input))
-        }).collect::<Vec<_>>().into_iter().multiunzip();
+        let mut batch_sizes: Vec<usize> = Vec::with_capacity(circuits.len());
+        let mut public_inputs: BTreeMap<&'a Circuit<E::Fr, MM>, &Vec<Vec<E::Fr>>> = BTreeMap::new();
+        let mut padded_public_inputs: Vec<Vec<Vec<E::Fr>>> = Vec::with_capacity(circuits.len());
+        for (circuit, _) in circuits {
+            let batch_size = prover_state.batch_size(circuit)?;
+            let public_input = prover_state.public_inputs(circuit)?;
+            let padded_public_input = prover_state.padded_public_inputs(circuit)?;
+            batch_sizes.push(batch_size);
+            public_inputs.push(public_input);
+            padded_public_inputs.push(padded_public_inputs);            
+        }
         assert_eq!(prover_state.total_batch_size(), batch_sizes.iter().sum::<usize>());
 
         let mut sponge = Self::init_sponge(
@@ -549,7 +556,7 @@ where
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
-            &public_input,
+            &public_inputs,
             &polynomials,
             &prover_third_message,
             &verifier_state,
@@ -601,7 +608,7 @@ where
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
-        public_inputs: &[B],
+        public_inputs: &BTreeMap<&'a Circuit<E::Fr, MM>, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;

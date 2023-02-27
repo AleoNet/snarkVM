@@ -148,14 +148,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         
                 circuit_specific_lhs *= circuit_combiner;
 
-                // Let H_max = largest_non_zero_domain;
-                // Let H = non_zero_domain;
-                // Let s := H_max.selector_polynomial(H) = (v_H_max / v_H) * (H.size() / H_max.size());
-                // Let v_H_max := H_max.vanishing_polynomial();
+                // Let H = largest_domain;
+                // Let H_i = domain;
+                // Let s := H.selector_polynomial(H_i) = (v_H / v_H_i) * (H_i.size() / H.size());
                 // Let v_H := H.vanishing_polynomial();
+                // Let v_H_i := H_i.vanishing_polynomial();
 
-                // Later on, we multiply `lhs` by s, and divide by v_H_max.
-                // Substituting in s, we get that lhs * s / v_H_max = (lhs / v_H) * (H.size() / H_max.size());
+                // Later on, we multiply `lhs` by s, and divide by v_H.
+                // Substituting in s, we get that lhs * s / v_H = (lhs / v_H_i) * (H_i.size() / H.size());
                 // That's what we're computing here.
                 
                 let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();

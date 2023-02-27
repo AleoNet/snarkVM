@@ -27,7 +27,7 @@ pub struct BatchCombiners<F> {
 
 /// First message of the verifier.
 #[derive(Clone, Debug)]
-pub struct FirstMessage<'a, F, MM> {
+pub struct FirstMessage<'a, F: PrimeField, MM: MarlinMode> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `B`.
@@ -46,17 +46,15 @@ pub struct SecondMessage<F> {
 }
 
 /// Third message of the verifier.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct ThirdMessage<F> {
-    /// Randomizer for the h-polynomial for `B`.
-    pub r_b: F,
-    /// Randomizer for the h-polynomial for `C`.
-    pub r_c: F,
+    /// Randomizers for the h-polynomial for `A_i`, `B_i`, `C_i` for circuit i.
+    pub rs: Vec<F>,
 }
 
 /// Query set of the verifier.
 #[derive(Clone, Debug)]
-pub struct QuerySet<F, MM> {
+pub struct QuerySet<F: PrimeField, MM: MarlinMode> {
     pub batch_sizes: BTreeMap<Circuit<F, MM>, usize>, // TODO: check whether I'm passing cheap references everywhere
     pub g_1_query: (String, F),
     pub z_b_query: (String, F),

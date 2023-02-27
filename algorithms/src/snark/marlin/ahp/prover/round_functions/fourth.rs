@@ -35,14 +35,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: prover::State<'a, F, MM>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
-        let verifier::ThirdMessage { r_b, r_c, .. } = verifier_message;
-        let [mut lhs_a, mut lhs_b, mut lhs_c] = state.lhs_polynomials.unwrap();
-        lhs_b *= *r_b;
-        lhs_c *= *r_c;
-
-        lhs_a += &lhs_b;
-        lhs_a += &lhs_c;
-        let h_2 = LabeledPolynomial::new("h_2".into(), lhs_a, None, None);
+        let verifier::ThirdMessage { rs } = verifier_message;
+        let lhs_s: Vec<_> = state.lhs_polynomials.unwrap();
+        let lhs_sum = lhs_s[0];
+        for i in 1..lhs_s.size() {
+            lhs_sum += &(lhs_s[i]*rs[i]);
+        }
+        let h_2 = LabeledPolynomial::new("h_2".into(), lhs_sum, None, None);
         let oracles = prover::FourthOracles { h_2 };
         assert!(oracles.matches_info(&Self::fourth_round_polynomial_info()));
         Ok(oracles)

@@ -27,15 +27,22 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
 
-/// State of the AHP verifier.
-#[derive(Debug)]
-pub struct State<'a, F: PrimeField, MM: MarlinMode> {
-    pub(in crate::snark::marlin) batch_sizes: BTreeMap<&'a Circuit<F, MM>, usize>,
+pub struct CircuitSpecificState<F: PrimeField> {
     pub(crate) input_domain: EvaluationDomain<F>,
     pub(crate) constraint_domain: EvaluationDomain<F>,
     pub(crate) non_zero_a_domain: EvaluationDomain<F>,
     pub(crate) non_zero_b_domain: EvaluationDomain<F>,
     pub(crate) non_zero_c_domain: EvaluationDomain<F>,
+
+    /// The number of instances being proved in this batch.
+    pub(in crate::snark::marlin) batch_size: usize,
+}
+/// State of the AHP verifier.
+#[derive(Debug)]
+pub struct State<'a, F: PrimeField, MM: MarlinMode> {
+    pub(crate) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    pub(crate) largest_constraint_domain: EvaluationDomain<F>,
+    pub(crate) largest_non_zero_domain: EvaluationDomain<F>,
 
     pub(crate) first_round_message: Option<FirstMessage<'a, F, MM>>,
     pub(crate) second_round_message: Option<SecondMessage<F>>,

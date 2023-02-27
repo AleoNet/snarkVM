@@ -75,6 +75,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) max_constraint_domain: EvaluationDomain<F>,
+    pub(super) max_non_zero_domain: EvaluationDomain<F>,
     pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
     pub(super) total_instances: usize,
     /// The first round oracles sent by the prover.
@@ -106,6 +107,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         >
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
+        let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
         let mut total_instances = 0;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
@@ -130,6 +132,18 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
                 let non_zero_c_domain =
                     EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+                max_non_zero_domain = match max_non_zero_domain {
+                    Some(max_d) => {
+                        let max_domain_candidate = Self::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain);
+                        if max_d.size() < max_domain_candidate {
+                            Some(max_domain_candidate)
+                        } else {
+                            Some(max_d)
+                        }
+                    },
+                    None => Some(max_non_zero_domain),
+                };
 
                 let mut input_domain = None; // TODO: we're in a single circuit, can we just efficiently/cleanly assign the first valid domain?
                 let batch_size = variable_assignments.len();
@@ -173,8 +187,11 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             .collect::<SynthesisResult<BTreeMap<_, _>>>()?;
 
         let max_constraint_domain = max_constraint_domain.ok_or(AHPError::BatchSizeIsZero)?;
+        let max_non_zero_domain = max_non_zero_domain.ok_or(AHPError::BatchSizeIsZero)?;
+
         Ok(Self {
             max_constraint_domain,
+            max_non_zero_domain,
             circuit_specific_states,
             total_instances,
             first_round_oracles: None,

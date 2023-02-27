@@ -95,7 +95,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut pool = ExecutionPool::with_capacity(3*state.circuit_specific_states.len());
 
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
-            let largest_non_zero_domain_size = Self::max_non_zero_domain(&circuit_state.0.index_info).size_as_field_element;
+            let largest_non_zero_domain_size = state.max_non_zero_domain;
             pool.add_job(|| {
                 let result = Self::matrix_sumcheck_helper(
                     "a",
@@ -243,14 +243,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
                 multiplier.multiply().unwrap()
             };
-        // Let K_max = largest_non_zero_domain;
-        // Let K = non_zero_domain;
-        // Let s := K_max.selector_polynomial(K) = (v_K_max / v_K) * (K.size() / K_max.size());
-        // Let v_K_max := K_max.vanishing_polynomial();
-        // Let v_K := K.vanishing_polynomial();
 
-        // Later on, we multiply `h` by s, and divide by v_K_max.
-        // Substituting in s, we get that h * s / v_K_max = h / v_K * (K.size() / K_max.size());
+        // TODO: largest_non_zero_domain_size needs to be the largest of *all* non-zero domains.
+
+        // Let K = largest_non_zero_domain;
+        // Let K_M = non_zero_domain;
+        // Let s := K.selector_polynomial(K) = (v_K / v_K_M) * (K_M.size() / K.size());
+        // Let v_K := K.vanishing_polynomial();
+        // Let v_K_M := K_M.vanishing_polynomial();
+
+        // Later on, we multiply `h` by s, and divide by v_K.
+        // Substituting in s, we get that h * s / v_K = h / v_K_M * (K_M.size() / K.size());
         // That's what we're computing here.
         let (mut h, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
         assert!(remainder.is_zero());
