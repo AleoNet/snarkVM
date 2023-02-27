@@ -47,7 +47,7 @@ use rayon::prelude::*;
 type Sum<F> = F;
 type LHS<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
-struct SumcheckHelperResult<F>(Sum<F>, LHS<F>, Gpoly<F>);
+struct SumcheckHelperResult<F: PrimeField>(Sum<F>, LHS<F>, Gpoly<F>);
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the third round.
