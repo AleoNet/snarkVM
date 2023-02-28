@@ -50,7 +50,7 @@ pub trait SNARK {
         + Eq
         + Send
         + Sync;
-    type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
+    type Proof<'a>: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
@@ -91,7 +91,7 @@ pub trait SNARK {
         proving_key: &Self::ProvingKey,
         input_and_witness: &BTreeMap<&'a Circuit<Self::ScalarField, Self::MM>, &[C]>,
         rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError> {
+    ) -> Result<Self::Proof<'a>, SNARKError> {
         Self::prove_batch_with_terminator(fs_parameters, proving_key, input_and_witness, &AtomicBool::new(false), rng)
     }
 
@@ -101,7 +101,7 @@ pub trait SNARK {
         input_and_witness: &C,
         circuit: &'a Circuit<Self::ScalarField, Self::MM>,
         rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError> {
+    ) -> Result<Self::Proof<'a>, SNARKError> {
         let input_and_witnesses = BTreeMap::new();
         input_and_witnesses.insert(circuit, vec![*input_and_witness].as_slice());
         Self::prove_batch(fs_parameters, proving_key, &input_and_witnesses, rng)
@@ -113,7 +113,7 @@ pub trait SNARK {
         input_and_witness: &BTreeMap<&'a Circuit<Self::ScalarField, Self::MM>, &[C]>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError>;
+    ) -> Result<Self::Proof<'a>, SNARKError>;
 
     fn prove_with_terminator<'a, C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
@@ -122,7 +122,7 @@ pub trait SNARK {
         circuit: &'a Circuit<Self::ScalarField, Self::MM>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError> {
+    ) -> Result<Self::Proof<'a>, SNARKError> {
         let input_and_witnesses = BTreeMap::new();
         input_and_witnesses.insert(circuit, vec![*input_and_witness].as_slice());
         Self::prove_batch_with_terminator(
@@ -145,14 +145,14 @@ pub trait SNARK {
         fs_parameters: &Self::FSParameters,
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
         input: &BTreeMap<&'a Circuit<Self::ScalarField, Self::MM>, &[B]>,
-        proof: &Self::Proof,
+        proof: &Self::Proof<'a>,
     ) -> Result<bool, SNARKError>;
 
     fn verify_batch<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         inputs: &BTreeMap<&'a Circuit<Self::ScalarField, Self::MM>, &[B]>,
-        proof: &Self::Proof,
+        proof: &Self::Proof<'a>,
     ) -> Result<bool, SNARKError> {
         let preparation_time = start_timer!(|| "Preparing vk");
         let processed_verifying_key = verifying_key.prepare();
@@ -165,7 +165,7 @@ pub trait SNARK {
         verifying_key: &Self::VerifyingKey,
         input: B,
         circuit: &'a Circuit<Self::ScalarField, Self::MM>,
-        proof: &Self::Proof,
+        proof: &Self::Proof<'a>,
     ) -> Result<bool, SNARKError> {
         let inputs = BTreeMap::new();
         inputs.insert(circuit, vec![input].as_slice());

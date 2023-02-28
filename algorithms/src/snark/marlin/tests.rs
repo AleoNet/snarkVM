@@ -110,20 +110,20 @@ mod marlin {
                         assert!($marlin_inst::verify_vk(&fs_parameters, &circ, &index_vk, &certificate).unwrap());
 
                         let indexed_circuit = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circ).unwrap();
-                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, indexed_circuit, rng).unwrap();
+                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, &indexed_circuit, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, [c, d], &circ, &proof).unwrap());
+                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, [c, d], &indexed_circuit, &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [a, a], &circ, &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [a, a], &indexed_circuit, &proof).unwrap());
                     }
 
                     for _ in 0..10 {
                         for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
                             for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                                let circuits: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &Vec<Circuit<Fr>>> = BTreeMap::new();
-                                let inputs: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &Vec<Vec<Fr>>> = BTreeMap::new();
+                                let circuits: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &[Circuit<Fr>]> = BTreeMap::new();
+                                let inputs: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &[Vec<Fr>]> = BTreeMap::new();
 
                                 for i in 0..circuit_batch_size {
                                     let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
@@ -149,8 +149,8 @@ mod marlin {
                                     })
                                     .unzip();
                                     let indexed_circuit = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap();
-                                    circuits.insert(&indexed_circuit, &circuit_batch);
-                                    inputs.insert(&indexed_circuit, &input_batch);
+                                    circuits.insert(&indexed_circuit, circuit_batch.as_slice());
+                                    inputs.insert(&indexed_circuit, input_batch.as_slice());
                                 }
                                 let unique_instances = circuits.iter().map(|(circuit, instances)| &instances[0]).collect::<Vec<_>>();
 

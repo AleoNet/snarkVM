@@ -211,7 +211,9 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<'a, E::Fr, MM>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
-        sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c]);
+        for (_, sum) in msg.sums {
+            sponge.absorb_nonnative_field_elements([sum.sum_a, sum.sum_b, sum.sum_c]);
+        }
         end_timer!(sponge_time);
     }
 }
@@ -234,6 +236,7 @@ where
     type UniversalSetupParameters = UniversalSRS<E>;
     type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
+    type MM = MM;
 
     fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
@@ -351,7 +354,7 @@ where
         circuits: &BTreeMap<&'a Circuit<E::Fr, MM>, &[C]>,
         terminator: &AtomicBool,
         zk_rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError> {
+    ) -> Result<Self::Proof<'a>, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         if circuits.len() == 0 {
             return Err(SNARKError::EmptyBatch);
@@ -403,7 +406,7 @@ where
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
             circuit_proving_key.circuit_verifying_key.circuit_info,
-            batch_sizes,
+            &batch_sizes,
             &mut sponge,
         )?;
         // --------------------------------------------------------------------
@@ -512,9 +515,9 @@ where
             g_1: *second_commitments[0].commitment(),
             h_1: *second_commitments[1].commitment(),
 
-            g_a: third_commitments_chunked.map(|c| *c[0].commitment()).collect(),
-            g_b: third_commitments_chunked.map(|c| *c[1].commitment()).collect(),
-            g_c: third_commitments_chunked.map(|c| *c[2].commitment()).collect(),
+            g_a_commitments: third_commitments_chunked.map(|c| *c[0].commitment()).collect(),
+            g_b_commitments: third_commitments_chunked.map(|c| *c[1].commitment()).collect(),
+            g_c_commitments: third_commitments_chunked.map(|c| *c[2].commitment()).collect(),
 
             h_2: *fourth_commitments[0].commitment(),
         };
@@ -603,7 +606,7 @@ where
         fs_parameters: &Self::FSParameters,
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
         public_inputs: &BTreeMap<&'a Circuit<E::Fr, MM>, &[B]>,
-        proof: &Self::Proof,
+        proof: &Self::Proof<'a>,
     ) -> Result<bool, SNARKError> {
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;
         if public_inputs.is_empty() {
