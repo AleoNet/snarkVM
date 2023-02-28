@@ -251,8 +251,8 @@ where
         srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
-            SRS::CircuitSpecific => Self::circuit_specific_setup(circuit),
-            SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
+            SRS::CircuitSpecific => Self::circuit_specific_setup(&[circuit]),
+            SRS::Universal(srs) => Self::circuit_setup(srs, &[circuit]),
         }
         .map_err(SNARKError::from)
     }
@@ -274,7 +274,7 @@ where
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
+        for (poly, &c) in proving_key.circuits.iter().zip(linear_combination_challenges) {
             lc.add(c, poly.label());
         }
 

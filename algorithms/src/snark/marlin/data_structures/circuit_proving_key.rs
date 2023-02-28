@@ -27,6 +27,7 @@ use snarkvm_utilities::{
 };
 
 use std::sync::Arc;
+use std::ops::Deref;
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,6 +67,6 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
 impl<E: PairingEngine, MM: MarlinMode> CircuitProvingKey<E, MM> {
         /// Iterate over the indexed polynomials.
         pub fn iter_circuit_polys(&self) -> impl Iterator<Item = &sonic_pc::LabeledPolynomial<E::Fr>> {
-            (*self.circuits).iter()
+            self.circuits.deref().iter().flat_map(|c|c.iter())
         }    
 }
