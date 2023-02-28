@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{polycommit::sonic_pc, snark::marlin::ahp, SNARKError};
+use crate::{polycommit::sonic_pc, snark::marlin::{ahp, Circuit, MarlinMode}, SNARKError};
 
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
@@ -25,6 +25,8 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
 };
+
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Commitments<E: PairingEngine> {
@@ -57,9 +59,15 @@ impl<E: PairingEngine> Commitments<E> {
         CanonicalSerialize::serialize_with_mode(&self.mask_poly, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_1, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_a, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_b, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_c, &mut writer, compress)?;
+        for comm in &self.g_a_commitments {
+            comm.serialize_with_mode(&mut writer, compress)?;
+        }
+        for comm in &self.g_b_commitments {
+            comm.serialize_with_mode(&mut writer, compress)?;
+        }
+        for comm in &self.g_c_commitments {
+            comm.serialize_with_mode(&mut writer, compress)?;
+        }
         CanonicalSerialize::serialize_with_mode(&self.h_2, &mut writer, compress)?;
         Ok(())
     }
@@ -71,9 +79,12 @@ impl<E: PairingEngine> Commitments<E> {
         size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1, compress);
         size += CanonicalSerialize::serialized_size(&self.h_1, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_a, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_b, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_c, compress);
+        size += self.g_a_commitments.len()
+            * CanonicalSerialize::serialized_size(&self.g_a_commitments[0], compress);
+        size += self.g_b_commitments.len()
+            * CanonicalSerialize::serialized_size(&self.g_b_commitments[0], compress);
+        size += self.g_c_commitments.len()
+            * CanonicalSerialize::serialized_size(&self.g_c_commitments[0], compress);
         size += CanonicalSerialize::serialized_size(&self.h_2, compress);
         size
     }
@@ -84,18 +95,15 @@ impl<E: PairingEngine> Commitments<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
-        let mut witness_commitments = Vec::new();
-        for _ in 0..batch_size {
-            witness_commitments.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
-        }
+        let deserialize_batch = |size| { (0..size).map(|| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?).collect()? };
         Ok(Commitments {
-            witness_commitments,
+            witness_commitments: deserialize_batch(batch_size),
             mask_poly: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             h_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            g_a_commitments: deserialize_batch(batch_size),
+            g_b_commitments: deserialize_batch(batch_size),
+            g_c_commitments: deserialize_batch(batch_size),
             h_2: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }
@@ -111,33 +119,32 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_b: sonic_pc::Commitment<E>,
 }
 
+// TODO: we're deserializing this, should we still keep references to objects...?
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Evaluations<F: PrimeField> {
-    /// Evaluation of `z_b_i`'s at `beta`.
-    pub z_b_evals: Vec<F>,
+pub struct Evaluations<'a, F: PrimeField, MM: MarlinMode> {
+    /// Evaluations of `z_b_i_j`'s at `beta`.
+    pub z_b_evals: BTreeMap<&'a Circuit<F, MM>, Vec<F>>,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
-    /// Evaluation of `g_a` at `beta`.
-    pub g_a_eval: F,
-    /// Evaluation of `g_b` at `gamma`.
-    pub g_b_eval: F,
-    /// Evaluation of `g_c` at `gamma`.
-    pub g_c_eval: F,
+    /// Evaluation of `g_a_i`'s at `beta`.
+    pub g_a_evals: BTreeMap<&'a Circuit<F, MM>, F>,
+    /// Evaluation of `g_b_i`'s at `gamma`.
+    pub g_b_evals: BTreeMap<&'a Circuit<F, MM>, F>,
+    /// Evaluation of `g_c_i`'s at `gamma`.
+    pub g_c_evals: BTreeMap<&'a Circuit<F, MM>, F>,
 }
 
-impl<F: PrimeField> Evaluations<F> {
+impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
     fn serialize_with_mode<W: snarkvm_utilities::Write>(
         &self,
         mut writer: W,
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        for z_b_eval in &self.z_b_evals {
-            CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?;
-        }
+        self.z_b_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_a_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_b_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_c_eval, &mut writer, compress)?;
+        self.g_a_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
+        self.g_b_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
+        self.g_c_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
         Ok(())
     }
 
@@ -145,9 +152,9 @@ impl<F: PrimeField> Evaluations<F> {
         let mut size = 0;
         size += self.z_b_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_a_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_b_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_c_eval, compress);
+        size += self.g_a_eval.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.g_b_eval.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.g_c_eval.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size
     }
 
@@ -157,43 +164,56 @@ impl<F: PrimeField> Evaluations<F> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
-        let mut z_b_evals = Vec::with_capacity(batch_size);
-        for _ in 0..batch_size {
-            z_b_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
-        }
+        let deserialize_batch = |size| { (0..size).map(|| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?).collect()? };
         Ok(Evaluations {
-            z_b_evals,
-            g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_a_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_b_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_c_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            z_b_evals: deserialize_batch(batch_size),
+            g_1_eval: deserialize_batch(1)[0],
+            g_a_evals: deserialize_batch(batch_size),
+            g_b_evals: deserialize_batch(batch_size),
+            g_c_evals: deserialize_batch(batch_size),
         })
     }
 }
 
-impl<F: PrimeField> Evaluations<F> {
-    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
-        let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then_some(*v)).collect::<Vec<_>>();
-        assert_eq!(z_b_evals.len(), batch_size);
-        Self { z_b_evals, g_1_eval: map["g_1"], g_a_eval: map["g_a"], g_b_eval: map["g_b"], g_c_eval: map["g_c"] }
+impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
+    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<&'a Circuit<F, MM>, usize>) -> Self {
+        let z_b_evals = map.iter().filter_map(|(k, v)| k.contains("z_b_").then_some(*v) ).collect::<Vec<_>>();
+        assert_eq!(z_b_evals.len(), batch_sizes.map(|_,s|s).sum());
+        let g_a_evals = map.iter().filter_map(|(k, v)| k.contains("g_a_").then_some(*v) ).collect::<Vec<_>>();
+        let g_b_evals = map.iter().filter_map(|(k, v)| k.contains("g_b_").then_some(*v) ).collect::<Vec<_>>();
+        let g_c_evals = map.iter().filter_map(|(k, v)| k.contains("g_c_").then_some(*v) ).collect::<Vec<_>>();
+        Self { z_b_evals, g_1_eval: map["g_1"], g_a_evals, g_b_evals, g_c_evals }
     }
 
     pub(crate) fn get(&self, label: &str) -> Option<F> {
-        if let Some(index) = label.strip_prefix("z_b_") {
-            self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
+        let circuit_id = label.split(" ").collect::<Vec<&str>>()[0];
+        if let Some(index) = label.contains("z_b_") {
+            self.get_from_evaluations(&self.z_b_evals, circuit_id, index)
+        } else if let Some(index) = label.contains("g_a_") {
+            self.get_from_evaluations(&self.g_a_evals, circuit_id, index)
+        } else if let Some(index) = label.contains("g_b_") {
+            self.get_from_evaluations(&self.g_b_evals, circuit_id, index)
+        } else if let Some(index) = label.contains("g_c_") {
+            self.get_from_evaluations(&self.g_c_evals, circuit_id, index)
         } else {
             match label {
                 "g_1" => Some(self.g_1_eval),
-                "g_a" => Some(self.g_a_eval),
-                "g_b" => Some(self.g_b_eval),
-                "g_c" => Some(self.g_c_eval),
                 _ => None,
             }
         }
     }
+
+    // TODO: index type is probably incorrect
+    fn get_from_evaluations(evaluations_to_iter: &BTreeMap<&Circuit<F, MM>, Vec<F>>, circuit_id: &str, index: usize) -> Option<F> {
+        for (circuit, evaluations) in evaluations_to_iter.iter() {
+            if format!("{:x?}", circuit.hash) == circuit_id {
+                evaluations.get(index.parse::<usize>().unwrap()).copied();
+            }
+        }
+    }    
 }
 
-impl<F: PrimeField> Valid for Evaluations<F> {
+impl<'a, F: PrimeField, MM: MarlinMode> Valid for Evaluations<'a, F, MM> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
         self.g_1_eval.check()?;
@@ -203,7 +223,7 @@ impl<F: PrimeField> Valid for Evaluations<F> {
     }
 }
 
-impl<F: PrimeField> Evaluations<F> {
+impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
         result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
@@ -213,7 +233,7 @@ impl<F: PrimeField> Evaluations<F> {
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Proof<'a, E: PairingEngine, MM> {
+pub struct Proof<'a, E: PairingEngine, MM: MarlinMode> {
     /// The number of instances being proven in this proof.
     batch_size: usize,
 
@@ -221,7 +241,7 @@ pub struct Proof<'a, E: PairingEngine, MM> {
     pub commitments: Commitments<E>,
 
     /// Evaluations of some of the committed polynomials.
-    pub evaluations: Evaluations<E::Fr>,
+    pub evaluations: Evaluations<'a, E::Fr, MM>,
 
     /// Prover message: sum_a, sum_b, sum_c for each instance
     pub msg: ahp::prover::ThirdMessage<'a, E::Fr, MM>,
@@ -230,12 +250,12 @@ pub struct Proof<'a, E: PairingEngine, MM> {
     pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<'a, E: PairingEngine, MM> Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> Proof<'a, E, MM> {
     /// Construct a new proof.
     pub fn new(
         batch_size: usize,
         commitments: Commitments<E>,
-        evaluations: Evaluations<E::Fr>,
+        evaluations: Evaluations<'a, E::Fr, MM>,
         msg: ahp::prover::ThirdMessage<'a, E::Fr, MM>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
@@ -259,7 +279,7 @@ impl<'a, E: PairingEngine, MM> Proof<'a, E, MM> {
     }
 }
 
-impl<'a, E: PairingEngine, MM> CanonicalSerialize for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalSerialize for Proof<'a, E, MM> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         CanonicalSerialize::serialize_with_mode(&self.batch_size, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
@@ -280,7 +300,7 @@ impl<'a, E: PairingEngine, MM> CanonicalSerialize for Proof<'a, E, MM> {
     }
 }
 
-impl<'a, E: PairingEngine, MM> Valid for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> Valid for Proof<'a, E, MM> {
     fn check(&self) -> Result<(), SerializationError> {
         self.batch_size.check()?;
         self.commitments.check()?;
@@ -290,7 +310,7 @@ impl<'a, E: PairingEngine, MM> Valid for Proof<'a, E, MM> {
     }
 }
 
-impl<'a, E: PairingEngine, MM> CanonicalDeserialize for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalDeserialize for Proof<'a, E, MM> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -307,13 +327,13 @@ impl<'a, E: PairingEngine, MM> CanonicalDeserialize for Proof<'a, E, MM> {
     }
 }
 
-impl<'a, E: PairingEngine, MM> ToBytes for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> ToBytes for Proof<'a, E, MM> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         Self::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<'a, E: PairingEngine, MM> FromBytes for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> FromBytes for Proof<'a, E, MM> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

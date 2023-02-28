@@ -70,6 +70,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 mod marlin {
     use super::*;
     use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
+    use crate::snark::marlin::Circuit as MarlinCircuit;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
@@ -102,26 +103,27 @@ mod marlin {
 
                         let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
 
-                        let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
+                        let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &[&circ]).unwrap();
                         println!("Called circuit setup");
 
                         let certificate = $marlin_inst::prove_vk(&fs_parameters, &index_vk, &index_pk).unwrap();
                         assert!($marlin_inst::verify_vk(&fs_parameters, &circ, &index_vk, &certificate).unwrap());
 
-                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, rng).unwrap();
+                        let indexed_circuit = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circ).unwrap();
+                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, indexed_circuit, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
+                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, [c, d], &circ, &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [a, a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [a, a], &circ, &proof).unwrap());
                     }
 
                     for _ in 0..10 {
                         for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
                             for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                                let circuits: &BTreeMap<&'a Circuit<Fr, MarlinNonHidingMode>, &[ConstraintSynthesizer<Fr>]> = BTreeMap::new();
-                                let inputs: &BTreeMap<&'a Circuit<Fr, MarlinNonHidingMode>, &[[Fr]]> = BTreeMap::new();
+                                let circuits: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &Vec<Circuit<Fr>>> = BTreeMap::new();
+                                let inputs: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &Vec<Vec<Fr>>> = BTreeMap::new();
 
                                 for i in 0..circuit_batch_size {
                                     let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
@@ -143,16 +145,17 @@ mod marlin {
 
                                         // TODO: might need to adjust num_constraints and num_variables given that we're building a bigger circuit now
                                         let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
-                                        (circ, inputs[..])
+                                        (circ, inputs)
                                     })
                                     .unzip();
-                                    // TODO: how to we correctly reference the circuits and inputs?
-                                    circuits.insert(circuit_batch[0], circuit_batch);
-                                    inputs.insert(circuit_batch[0], input_batch);
+                                    let indexed_circuit = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap();
+                                    circuits.insert(&indexed_circuit, &circuit_batch);
+                                    inputs.insert(&indexed_circuit, &input_batch);
                                 }
-                                let unique_instances = circuits.map(|(circuit, instances)| &instances[0]);
+                                let unique_instances = circuits.iter().map(|(circuit, instances)| &instances[0]).collect::<Vec<_>>();
+
                                 let (index_pk, index_vk) =
-                                    $marlin_inst::circuit_setup(&universal_srs, &unique_instances).unwrap();
+                                    $marlin_inst::circuit_setup(&universal_srs, &unique_instances.as_slice()).unwrap();
                                 println!("Called circuit setup");
 
                                 let proof =
@@ -165,12 +168,20 @@ mod marlin {
                                 );
                                 println!("Called verifier");
                                 println!("\nShould not verify (i.e. verifier messages should print below):");
-                                // TODO: create fake circuit inputs
+                                let fake_inputs: BTreeMap<&'a MarlinCircuit<Fr, MarlinHidingMode>, &[Vec<Fr>]> = BTreeMap::new();
+                                for (circuit, instance_input) in inputs.iter() {
+                                    let fake_instance_input = Vec::with_capacity(instance_input.len());
+                                    for input in instance_input.iter() {
+                                        let fake_input = vec![Fr::rand(rng); input.len()];
+                                        fake_instance_input.push(fake_input);
+                                    }
+                                    fake_inputs.insert(circuit, fake_instance_input.as_slice());    
+                                }
                                 assert!(
                                     !$marlin_inst::verify_batch(
                                         &fs_parameters,
                                         &index_vk,
-                                        &vec![[Fr::rand(rng), Fr::rand(rng)]; batch_size],
+                                        &fake_inputs,
                                         &proof
                                     )
                                     .unwrap()
