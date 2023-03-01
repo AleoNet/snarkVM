@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -55,7 +55,7 @@ impl<N: Network> FromBytes for RecordType<N> {
         ];
         // Ensure the entries has no duplicate names.
         if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
-            return Err(error(format!("Duplicate entry type found in record '{}'", name)));
+            return Err(error(format!("Duplicate entry type found in record '{name}'")));
         }
         // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
         if entries.len() > N::MAX_DATA_ENTRIES {

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -66,7 +66,7 @@ impl<N: Network> Certificate<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified certificate for '{function_name}': {} ms", elapsed).dimmed());
+                    println!("{}", format!(" • Verified certificate for '{function_name}': {elapsed} ms").dimmed());
                 }
 
                 is_valid

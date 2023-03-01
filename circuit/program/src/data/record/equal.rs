@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -116,13 +116,13 @@ mod tests {
         let record = sample_record(mode);
         let mismatched_record = sample_mismatched_record(mode);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_equal(&record);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_equal(&mismatched_record);
             assert!(!candidate.eject_value());
         });
@@ -142,13 +142,13 @@ mod tests {
         let record = sample_record(mode);
         let mismatched_record = sample_mismatched_record(mode);
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_not_equal(&mismatched_record);
             assert!(candidate.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
 
-        Circuit::scope(&format!("{}", mode), || {
+        Circuit::scope(format!("{mode}"), || {
             let candidate = record.is_not_equal(&record);
             assert!(!candidate.eject_value());
         });

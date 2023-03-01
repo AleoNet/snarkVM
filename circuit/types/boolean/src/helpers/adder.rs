@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -55,8 +55,8 @@ mod tests {
         Circuit::scope(name, || {
             let case = format!("({} ADD {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
             let (candidate_sum, candidate_carry) = a.adder(&b, &c);
-            assert_eq!(expected_sum, candidate_sum.eject_value(), "SUM {}", case);
-            assert_eq!(expected_carry, candidate_carry.eject_value(), "CARRY {}", case);
+            assert_eq!(expected_sum, candidate_sum.eject_value(), "SUM {case}");
+            assert_eq!(expected_carry, candidate_carry.eject_value(), "CARRY {case}");
             assert_scope!(case, num_constants, num_public, num_private, num_constraints);
         });
     }

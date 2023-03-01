@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -515,12 +515,12 @@ impl<N: Network> Display for Cast<N> {
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
-            eprintln!("The number of operands must be nonzero and <= {}", max_operands);
+            eprintln!("The number of operands must be nonzero and <= {max_operands}");
             return Err(fmt::Error);
         }
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
+        self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
         write!(f, "into {} as {}", self.destination, self.register_type)
     }
 }
@@ -557,7 +557,7 @@ impl<N: Network> FromBytes for Cast<N> {
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         if num_operands.is_zero() || num_operands > max_operands {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", max_operands)));
+            return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
         }
 
         // Return the operation.
@@ -575,7 +575,7 @@ impl<N: Network> ToBytes for Cast<N> {
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", max_operands)));
+            return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
         }
 
         // Write the number of operands.
@@ -630,7 +630,7 @@ mod tests {
         let mut string = "cast ".to_string();
         let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES);
         for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
-            string.push_str(&format!("r{} ", i));
+            string.push_str(&format!("r{i} "));
             operands.push(Operand::Register(Register::Locator(i as u64)));
         }
         string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES));
@@ -655,7 +655,7 @@ mod tests {
         let mut string = "cast ".to_string();
         let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES + 2);
         for i in 0..CurrentNetwork::MAX_DATA_ENTRIES + 2 {
-            string.push_str(&format!("r{} ", i));
+            string.push_str(&format!("r{i} "));
             operands.push(Operand::Register(Register::Locator(i as u64)));
         }
         string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 2));
@@ -679,7 +679,7 @@ mod tests {
     fn test_parse_cast_into_record_too_many_operands() {
         let mut string = "cast ".to_string();
         for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES + 2 {
-            string.push_str(&format!("r{} ", i));
+            string.push_str(&format!("r{i} "));
         }
         string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 3));
         assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
@@ -689,7 +689,7 @@ mod tests {
     fn test_parse_cast_into_plaintext_too_many_operands() {
         let mut string = "cast ".to_string();
         for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
-            string.push_str(&format!("r{} ", i));
+            string.push_str(&format!("r{i} "));
         }
         string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES + 1));
         assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");

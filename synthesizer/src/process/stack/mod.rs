@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -412,6 +412,7 @@ impl<N: Network> PartialEq for Stack<N> {
         self.program == other.program
             && self.external_stacks == other.external_stacks
             && self.register_types == other.register_types
+            && self.finalize_types == other.finalize_types
     }
 }
 

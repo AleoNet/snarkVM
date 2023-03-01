@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -65,7 +65,7 @@ impl Command {
                                     Ok("".to_string())
                                 }
                             }
-                            Err(e) => Ok(format!("\nFailed to update snarkVM to the latest version\n{}\n", e)),
+                            Err(e) => Ok(format!("\nFailed to update snarkVM to the latest version\n{e}\n")),
                         }
                     } else {
                         Ok("".to_string())

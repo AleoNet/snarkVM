@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -128,7 +128,7 @@ mod tests {
         let zero = i8::zero();
 
         let candidate = Integer::<CurrentEnvironment, i8>::new(zero);
-        assert_eq!("0i8", &format!("{}", candidate));
+        assert_eq!("0i8", &format!("{candidate}"));
     }
 
     #[test]
@@ -136,7 +136,7 @@ mod tests {
         let one = i8::one();
 
         let candidate = Integer::<CurrentEnvironment, i8>::new(one);
-        assert_eq!("1i8", &format!("{}", candidate));
+        assert_eq!("1i8", &format!("{candidate}"));
     }
 
     #[test]
@@ -145,6 +145,6 @@ mod tests {
         let two = one + one;
 
         let candidate = Integer::<CurrentEnvironment, i8>::new(two);
-        assert_eq!("2i8", &format!("{}", candidate));
+        assert_eq!("2i8", &format!("{candidate}"));
     }
 }

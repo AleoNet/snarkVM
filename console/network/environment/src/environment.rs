@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -33,11 +33,11 @@ pub trait Environment:
     'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync
 {
     type Affine: AffineCurve<
-        Projective = Self::Projective,
-        BaseField = Self::Field,
-        ScalarField = Self::Scalar,
-        Coordinates = (Self::Field, Self::Field),
-    >;
+            Projective = Self::Projective,
+            BaseField = Self::Field,
+            ScalarField = Self::Scalar,
+            Coordinates = (Self::Field, Self::Field),
+        >;
     type BigInteger: BigInteger;
     type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
     type PairingCurve: PairingEngine<Fr = Self::Field>;
