@@ -27,16 +27,16 @@ impl<N: Network> Parser for Mapping<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the mapping name from the string.
-        let (string, name) = Identifier::<N>::parse(string)?;
+        let (string, name) = cut(Identifier::<N>::parse)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
-        let (string, _) = tag(":")(string)?;
+        let (string, _) = cut(tag(":"))(string)?;
 
         // Parse the key statement from the string.
-        let (string, key) = MapKey::parse(string)?;
+        let (string, key) = cut(MapKey::parse)(string)?;
         // Parse the value statement from the string.
-        let (string, value) = MapValue::parse(string)?;
+        let (string, value) = cut(MapValue::parse)(string)?;
 
         // Return the mapping.
         Ok((string, Self::new(name, key, value)))
