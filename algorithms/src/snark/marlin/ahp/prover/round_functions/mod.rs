@@ -17,9 +17,11 @@
 use crate::snark::marlin::{
     ahp::{indexer::Circuit, AHPError, AHPForR1CS},
     prover,
+    CircuitProvingKey,
     MarlinMode,
 };
 use std::collections::BTreeMap;
+use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
@@ -39,12 +41,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>>(
-        circuits: &BTreeMap<&'a Circuit<F, MM>, &[C]>,
-    ) -> Result<prover::State<'a, F, MM>, AHPError> {
+        circuits_to_constraints: &BTreeMap<&[u8; 32], &[&C]>,
+    ) -> Result<prover::State<'a, F>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
-        let indices_and_assignments = cfg_iter!(circuits)
-            .map(|circuit| {
+        let indices_and_assignments = cfg_iter!(circuits_to_constraints)
+            .map(|(circuit, constraints)| {
                 let num_non_zero_a = circuit.0.index_info.num_non_zero_a;
                 let num_non_zero_b = circuit.0.index_info.num_non_zero_b;
                 let num_non_zero_c = circuit.0.index_info.num_non_zero_c;

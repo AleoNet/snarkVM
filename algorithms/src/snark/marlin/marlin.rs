@@ -75,32 +75,25 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
     pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>>(
-        circuits: &[&C],
+        circuit: &C,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
-        let mut max_degree = 0;
-        for c in circuits {
-            let indexed_circuit = AHPForR1CS::<E::Fr, MM>::index(*c)?;
-            max_degree = max_degree.max(indexed_circuit.max_degree());
-        }
-        let srs = Self::universal_setup(&max_degree)?;
-        return Self::circuit_setup(&srs, circuits);
+        let indexed_circuit = AHPForR1CS::<E::Fr, MM>::index(circuit)?;
+        let srs = Self::universal_setup(&indexed_circuit.max_degree())?;
+        return Self::circuit_setup(&srs, circuit);
     }
 
-    /// Generates the circuit proving and verifying keys.
-    /// This is a deterministic algorithm that anyone can rerun.
-    #[allow(clippy::type_complexity)]
-    pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
+    pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
-    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
+    ) -> Result<(Vec<CircuitProvingKey<E, MM>>, Vec<CircuitVerifyingKey<E, MM>>), SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         let mut constraint_domain_sizes = Vec::with_capacity(circuits.len());
         let mut coefficient_supports = Vec::with_capacity(circuits.len()*4);
         let mut index_info = Vec::with_capacity(circuits.len());
         let mut indexed_circuits = Vec::with_capacity(circuits.len());
+        let mut index_iters = Vec::with_capacity(circuits.len());
         let mut max_degree = 0;
-        let mut index_iters = std::iter::empty::<&LabeledPolynomial<E::Fr>>();
         for circuit in circuits {
             let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
@@ -113,12 +106,13 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info).map(|b|coefficient_supports.push(b));
             constraint_domain_sizes.push(indexed_circuit.constraint_domain_size());
             max_degree = max_degree.max(indexed_circuit.max_degree());
-            index_iters.chain(indexed_circuit.iter());
             index_info.push(indexed_circuit.index_info);
             indexed_circuits.push(indexed_circuit);
+            index_iters.push(indexed_circuit.iter());
         }
 
         // Marlin only needs degree 2 random polynomials.
+        // TODO: can we use the same commitment and verifier key for all proving/verifying keys?
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
             universal_srs,
@@ -128,30 +122,50 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             Some(coefficient_supports.as_slice()),
         )?;
 
-        let commit_time = start_timer!(|| "Commit to index polynomials");
-        let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
-            SonicKZG10::<E, FS>::commit(&committer_key, index_iters.map(Into::into), None)?;
-        end_timer!(commit_time);
+        let circuit_proving_keys = Vec::with_capacity(circuits.len());
+        let circuit_verifying_keys = Vec::with_capacity(circuits.len());
+        for (i, circuit) in circuits.iter().enumerate() {
+            let commit_time = start_timer!(|| "Commit to index polynomials");
+            let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
+                SonicKZG10::<E, FS>::commit(&committer_key, index_iters[i].map(Into::into), None)?;
+            end_timer!(commit_time);
 
-        circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
-        let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
-        let circuit_verifying_key = CircuitVerifyingKey {
-            circuit_info: index_info,
-            circuit_commitments,
-            verifier_key,
-            mode: PhantomData,
-        };
+            circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
+            let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
+            let circuit_verifying_key = CircuitVerifyingKey {
+                circuit_info: index_info[i],
+                circuit_commitments,
+                verifier_key,
+                mode: PhantomData,
+                hash: format!("{:x?}", indexed_circuits[i].hash),
+            };
+            circuit_verifying_keys.push(circuit_verifying_key);
 
-        let circuit_proving_key = CircuitProvingKey {
-            circuits: Arc::new(indexed_circuits),
-            circuit_commitment_randomness,
-            circuit_verifying_key: circuit_verifying_key.clone(),
-            committer_key: Arc::new(committer_key),
-        };
+            let circuit_proving_key = CircuitProvingKey {
+                circuit: Arc::new(indexed_circuits[i]),
+                circuit_commitment_randomness,
+                circuit_verifying_key: circuit_verifying_key.clone(),
+                committer_key: Arc::new(committer_key),
+            };
+            circuit_proving_keys.push(circuit_proving_key);
+        }
 
         end_timer!(index_time);
 
-        Ok((circuit_proving_key, circuit_verifying_key))
+        Ok((circuit_proving_keys, circuit_verifying_keys))
+
+    }
+
+    /// Generates the circuit proving and verifying keys.
+    /// This is a deterministic algorithm that anyone can rerun.
+    #[allow(clippy::type_complexity)]
+    pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
+        universal_srs: &UniversalSRS<E>,
+        circuit: &C,
+    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
+        let (proving_keys, verifying_keys) = Self::batch_circuit_setup(universal_srs, &[circuit])?;
+        assert!(proving_keys.len() == 1 && verifying_keys.len() == 1);
+        Ok((proving_keys[0], verifying_keys[1]))
     }
 
     fn terminate(terminator: &AtomicBool) -> Result<(), MarlinError> {
@@ -190,7 +204,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
     fn absorb_labeled_with_msg<'a>(
         comms: &[LabeledCommitment<Commitment<E>>],
-        message: &prover::ThirdMessage<'a, E::Fr, MM>,
+        message: &prover::ThirdMessage<'a, E::Fr>,
         sponge: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
@@ -208,7 +222,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         end_timer!(sponge_time);
     }
 
-    fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<'a, E::Fr, MM>, sponge: &mut FS) {
+    fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<'a, E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
         for (_, sum) in msg.sums {
@@ -229,14 +243,13 @@ where
     type Certificate = Certificate<E>;
     type FSParameters = FS::Parameters;
     type FiatShamirRng = FS;
-    type Proof<'a> = Proof<'a, E, MM>;
+    type Proof<'a> = Proof<'a, E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<E>;
     type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
-    type MM = MM;
 
     fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
@@ -274,7 +287,7 @@ where
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        for (poly, &c) in proving_key.circuits.iter().zip(linear_combination_challenges) {
+        for (poly, &c) in proving_key.iter_circuit_polys().zip(linear_combination_challenges) {
             lc.add(c, poly.label());
         }
 
@@ -350,36 +363,45 @@ where
     #[allow(clippy::only_used_in_recursion)]
     fn prove_batch_with_terminator<'a, C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        circuit_proving_key: &CircuitProvingKey<E, MM>,
-        circuits: &BTreeMap<&'a Circuit<E::Fr, MM>, &[C]>,
+        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[&C]>,
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof<'a>, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
-        if circuits.len() == 0 {
+        if keys_to_constraints.len() == 0 {
             return Err(SNARKError::EmptyBatch);
         }
 
         Self::terminate(terminator)?;
 
-        let prover_state = AHPForR1CS::<_, MM>::init_prover(circuits)?;
-        let mut batch_sizes: BTreeMap<&'a Circuit<E::Fr, MM>, usize> = BTreeMap::new();
-        let mut public_inputs: BTreeMap<&'a Circuit<E::Fr, MM>, &[Vec<E::Fr>]> = BTreeMap::new();
-        let mut padded_public_inputs: BTreeMap<&'a Circuit<E::Fr, MM>, &Vec<Vec<E::Fr>>> = BTreeMap::new();
-        for (circuit, _) in circuits {
-            let batch_size = prover_state.batch_size(circuit)?;
-            let public_input = &prover_state.public_inputs(circuit)?;
-            let padded_public_input = &prover_state.padded_public_inputs(circuit)?;
-            batch_sizes.insert(circuit, batch_size);
-            public_inputs.insert(circuit, public_input);
-            padded_public_inputs.insert(circuit, padded_public_input);
+        let circuits_to_constraints = BTreeMap::new();
+        for (pk, constraints) in keys_to_constraints.iter() {
+            circuits_to_constraints.insert(pk.circuit.hash, constraints);
+        }
+        // TODO: if we pass in the CircuitProvingKey, we also have to pass the PairingEngine, which creates a lot of changes, but perhaps we can avoid passing F?
+        let prover_state = AHPForR1CS::<_, MM>::init_prover(circuits_to_constraints)?;
+        let mut batch_sizes = BTreeMap::new();
+        let mut public_inputs = BTreeMap::new();
+        let mut padded_public_inputs = BTreeMap::new();
+        for (pk, _) in &keys_to_constraints.iter() {
+            let batch_size = prover_state.batch_size(pk.circuit.hash)?;
+            let public_input = &prover_state.public_inputs(pk.circuit.hash)?;
+            let padded_public_input = &prover_state.padded_public_inputs(pk.circuit.hash)?;
+            batch_sizes.insert(pk.circuit_verifying_key.circuit_index, batch_size);
+            public_inputs.insert(pk.circuit.hash, public_input);
+            padded_public_inputs.insert(pk.circuit.hash, padded_public_input);
         }
         assert_eq!(prover_state.total_batch_size(), batch_sizes.iter().map(|(c, s)| s).sum::<usize>());
+
+        let circuit_commitments = keys_to_constraints
+            .iter()
+            .map(|(pk, _)| pk.circuit_verifying_key.circuit_commitments.clone())
+            .collect::<Vec<_>>().as_slice();
 
         let mut sponge = Self::init_sponge(
             fs_parameters,
             &batch_sizes,
-            &circuit_proving_key.circuit_verifying_key.circuit_commitments,
+            circuit_commitments,
             &padded_public_inputs,
         );
 
@@ -394,7 +416,7 @@ where
         let (first_commitments, first_commitment_randomnesses) = {
             let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
             SonicKZG10::<E, FS>::commit(
-                &circuit_proving_key.committer_key,
+                &keys_to_constraints[0].committer_key, // TODO: this is a hack
                 first_round_oracles.iter_for_commit(),
                 Some(zk_rng),
             )?
@@ -405,7 +427,6 @@ where
         Self::terminate(terminator)?;
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
-            circuit_proving_key.circuit_verifying_key.circuit_info,
             &batch_sizes,
             &mut sponge,
         )?;
@@ -487,11 +508,12 @@ where
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = circuit_proving_key
             .iter_circuit_polys() // 12 items per circuit
-            .chain(first_round_oracles.iter_for_open()) // 3 per instance + (MM::ZK as usize) items
+            .chain(first_round_oracles.iter_for_open()) // 3 per instance_batch_size + (MM::ZK as usize) items
             .chain(second_oracles.iter())// 2 items
             .chain(third_oracles.iter())// 3 items per circuit
             .chain(fourth_oracles.iter())// 1 item
             .collect();
+        // TODO, somewhere, asserts that out number of oracles matches num_prover_oracles.
 
         Self::terminate(terminator)?;
 
@@ -602,11 +624,10 @@ where
         Ok(proof)
     }
 
-    fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
+    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
-        public_inputs: &BTreeMap<&'a Circuit<E::Fr, MM>, &[B]>,
-        proof: &Self::Proof<'a>,
+        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as Prepare>::Prepared, &[B]>,
+        proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;
         if public_inputs.is_empty() {

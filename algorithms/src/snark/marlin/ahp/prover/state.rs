@@ -73,14 +73,14 @@ pub struct CircuitSpecificState<F: PrimeField> {
 }
 
 /// State for the AHP prover.
-pub struct State<'a, F: PrimeField, MM: MarlinMode> {
+pub struct State<'a, F: PrimeField> {
     pub(super) max_constraint_domain: EvaluationDomain<F>,
     pub(super) max_non_zero_domain: EvaluationDomain<F>,
-    pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    pub(super) circuit_specific_states: BTreeMap<&'a [u8; 32], CircuitSpecificState<F>>,
     pub(super) total_instances: usize,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
+    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F>>>,
     // / The challenges sent by the verifier in the first round
     // TODO: not sure yet if we actually need the following:
     // pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F, MM>>,
@@ -97,7 +97,7 @@ pub struct Assignments<F>(
     pub Zb<F>
 );
 
-impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F> {
     pub fn initialize(
         // TODO: which map should we use?
         // IndexMap or BTreeMap?
@@ -182,7 +182,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     lhs_polynomials: None,
                     sums: None,
                 };
-                Ok((circuit, state))
+                Ok((circuit.hash, state))
             })
             .collect::<SynthesisResult<BTreeMap<_, _>>>()?;
 
@@ -199,7 +199,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     }
 
     /// Get the batch size for a given circuit.
-    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
+    pub fn batch_size(&self, circuit: &[u8; 32]) -> Option<usize> {
         self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 
@@ -209,21 +209,21 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     }
 
     /// Get the public inputs for the entire batch.
-    pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+    pub fn public_inputs(&self, circuit: &[u8; 32]) -> Option<Vec<Vec<F>>> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect())
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+    pub fn padded_public_inputs(&self, circuit: &[u8; 32]) -> Option<Vec<Vec<F>>> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables)
     }
 
     // TODO: think about removing these getters, as the circuit already contains the information it is just double checking
-    pub fn fft_precomputation(&self, circuit: &Circuit<F, MM>) -> Option<&FFTPrecomputation<F>> {
+    pub fn fft_precomputation(&self, circuit: &[u8; 32]) -> Option<&FFTPrecomputation<F>> {
         self.circuit_specific_states.contains_key(circuit).then(|| &circuit.fft_precomputation)
     }
 
-    pub fn ifft_precomputation(&self, circuit: &Circuit<F, MM>) -> Option<&IFFTPrecomputation<F>> {
+    pub fn ifft_precomputation(&self, circuit: &[u8; 32]) -> Option<&IFFTPrecomputation<F>> {
         self.circuit_specific_states.contains_key(circuit).then(|| &circuit.ifft_precomputation)
     }
 }

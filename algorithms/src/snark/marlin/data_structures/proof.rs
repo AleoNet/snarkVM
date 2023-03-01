@@ -95,15 +95,17 @@ impl<E: PairingEngine> Commitments<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
-        let deserialize_batch = |size| { (0..size).map(|| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?).collect()? };
+        // Generic let expressions are not possible, so we define a helper function separately for witness and g_a commitments
+        let deserialize_wc_batch = |size| { (0..size).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)).collect::<Result<_,_>>() };
+        let deserialize_g_batch  = |size| { (0..size).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)).collect::<Result<_,_>>() };
         Ok(Commitments {
-            witness_commitments: deserialize_batch(batch_size),
+            witness_commitments: deserialize_wc_batch(batch_size)?,
             mask_poly: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             h_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_a_commitments: deserialize_batch(batch_size),
-            g_b_commitments: deserialize_batch(batch_size),
-            g_c_commitments: deserialize_batch(batch_size),
+            g_a_commitments: deserialize_g_batch(batch_size)?,
+            g_b_commitments: deserialize_g_batch(batch_size)?,
+            g_c_commitments: deserialize_g_batch(batch_size)?,
             h_2: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }
@@ -121,20 +123,20 @@ pub struct WitnessCommitments<E: PairingEngine> {
 
 // TODO: we're deserializing this, should we still keep references to objects...?
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Evaluations<'a, F: PrimeField, MM: MarlinMode> {
+pub struct Evaluations<'a, F: PrimeField> {
     /// Evaluations of `z_b_i_j`'s at `beta`.
-    pub z_b_evals: BTreeMap<&'a Circuit<F, MM>, Vec<F>>,
+    pub z_b_evals: BTreeMap<&'a [u8; 32], Vec<F>>,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a_i`'s at `beta`.
-    pub g_a_evals: BTreeMap<&'a Circuit<F, MM>, F>,
+    pub g_a_evals: BTreeMap<&'a [u8; 32], F>,
     /// Evaluation of `g_b_i`'s at `gamma`.
-    pub g_b_evals: BTreeMap<&'a Circuit<F, MM>, F>,
+    pub g_b_evals: BTreeMap<&'a [u8; 32], F>,
     /// Evaluation of `g_c_i`'s at `gamma`.
-    pub g_c_evals: BTreeMap<&'a Circuit<F, MM>, F>,
+    pub g_c_evals: BTreeMap<&'a [u8; 32], F>,
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
     fn serialize_with_mode<W: snarkvm_utilities::Write>(
         &self,
         mut writer: W,
@@ -175,7 +177,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
     }
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<&'a Circuit<F, MM>, usize>) -> Self {
         let z_b_evals = map.iter().filter_map(|(k, v)| k.contains("z_b_").then_some(*v) ).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_sizes.map(|_,s|s).sum());
@@ -213,7 +215,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
     }    
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Valid for Evaluations<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> Valid for Evaluations<'a, F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
         self.g_1_eval.check()?;
@@ -223,7 +225,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> Valid for Evaluations<'a, F, MM> {
     }
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
         result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
@@ -233,7 +235,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F, MM> {
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Proof<'a, E: PairingEngine, MM: MarlinMode> {
+pub struct Proof<'a, E: PairingEngine> {
     /// The number of instances being proven in this proof.
     batch_size: usize,
 
@@ -241,22 +243,22 @@ pub struct Proof<'a, E: PairingEngine, MM: MarlinMode> {
     pub commitments: Commitments<E>,
 
     /// Evaluations of some of the committed polynomials.
-    pub evaluations: Evaluations<'a, E::Fr, MM>,
+    pub evaluations: Evaluations<'a, E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c for each instance
-    pub msg: ahp::prover::ThirdMessage<'a, E::Fr, MM>,
+    pub msg: ahp::prover::ThirdMessage<'a, E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> Proof<'a, E, MM> {
+impl<'a, E: PairingEngine> Proof<'a, E> {
     /// Construct a new proof.
     pub fn new(
         batch_size: usize,
         commitments: Commitments<E>,
-        evaluations: Evaluations<'a, E::Fr, MM>,
-        msg: ahp::prover::ThirdMessage<'a, E::Fr, MM>,
+        evaluations: Evaluations<'a, E::Fr>,
+        msg: ahp::prover::ThirdMessage<'a, E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         if commitments.witness_commitments.len() != batch_size {
@@ -279,7 +281,7 @@ impl<'a, E: PairingEngine, MM: MarlinMode> Proof<'a, E, MM> {
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalSerialize for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalSerialize for Proof<'a, E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         CanonicalSerialize::serialize_with_mode(&self.batch_size, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
@@ -300,7 +302,7 @@ impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalSerialize for Proof<'a, E, M
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> Valid for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> Valid for Proof<'a, E> {
     fn check(&self) -> Result<(), SerializationError> {
         self.batch_size.check()?;
         self.commitments.check()?;
@@ -310,7 +312,7 @@ impl<'a, E: PairingEngine, MM: MarlinMode> Valid for Proof<'a, E, MM> {
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalDeserialize for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalDeserialize for Proof<'a, E> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -327,13 +329,13 @@ impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalDeserialize for Proof<'a, E,
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> ToBytes for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> ToBytes for Proof<'a, E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         Self::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> FromBytes for Proof<'a, E, MM> {
+impl<'a, E: PairingEngine, MM: MarlinMode> FromBytes for Proof<'a, E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

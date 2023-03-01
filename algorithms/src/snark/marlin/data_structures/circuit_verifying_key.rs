@@ -38,19 +38,22 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use core::{fmt, marker::PhantomData, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::cmp::Ordering;
 
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
-    // TODO: instead of a Vector, perhaps I will end up needing a BtreeMap, mapping circuit_info to circuit_commitments
     /// Stores information about the size of the circuit, as well as its defined field.
-    pub circuit_info: Vec<CircuitInfo<E::Fr>>,
+    pub circuit_info: CircuitInfo<E::Fr>,
     /// Commitments to the indexed polynomials.
     pub circuit_commitments: Vec<sonic_pc::Commitment<E>>,
     /// The verifier key for this index, trimmed from the universal SRS.
     pub verifier_key: sonic_pc::VerifierKey<E>,
     #[doc(hidden)]
     pub mode: PhantomData<MM>,
+    // TODO: we are also storing the hash in proving_key.circuit. Investigate how to consolidate
+    // TODO: it would be more consistent to store the hash array of bytes, but we'll need to impl serialize/deserialize
+    pub hash: String,
 }
 
 impl<E: PairingEngine, MM: MarlinMode> Prepare for CircuitVerifyingKey<E, MM> {
@@ -236,5 +239,17 @@ impl<'de, E: PairingEngine, MM: MarlinMode> Deserialize<'de> for CircuitVerifyin
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "verifying key"),
         }
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitVerifyingKey<E, MM> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.hash.cmp(&other.hash)
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> PartialOrd for CircuitVerifyingKey<E, MM> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

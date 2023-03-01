@@ -75,9 +75,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &verifier::SecondMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<'a, F, MM>, prover::ThirdOracles<'a, F, MM>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<'a, F>, prover::ThirdOracles<'a, F>, prover::State<'a, F>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state

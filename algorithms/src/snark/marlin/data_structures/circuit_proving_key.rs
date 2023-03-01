@@ -26,8 +26,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use std::sync::Arc;
-use std::ops::Deref;
+use std::{sync::Arc, cmp::Ordering};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,8 +35,8 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
-    /// The circuits themselves.
-    pub circuits: Arc<Vec<Circuit<E::Fr, MM>>>,
+    /// The circuit itself.
+    pub circuit: Arc<Circuit<E::Fr, MM>>,
     /// The committer key for this index, trimmed from the universal SRS.
     pub committer_key: Arc<sonic_pc::CommitterKey<E>>,
 }
@@ -46,7 +45,7 @@ impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitProvingKey<E, MM> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(&self.circuit_verifying_key, &mut writer)?;
         CanonicalSerialize::serialize_compressed(&self.circuit_commitment_randomness, &mut writer)?;
-        CanonicalSerialize::serialize_compressed(&self.circuits, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit, &mut writer)?;
 
         self.committer_key.write_le(&mut writer)
     }
@@ -57,16 +56,21 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         let circuit_verifying_key = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
         let circuit_commitment_randomness = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
-        let circuits = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
+        let circuit = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
         let committer_key = Arc::new(FromBytes::read_le(&mut reader)?);
 
-        Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuits, committer_key })
+        Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> CircuitProvingKey<E, MM> {
-        /// Iterate over the indexed polynomials.
-        pub fn iter_circuit_polys(&self) -> impl Iterator<Item = &sonic_pc::LabeledPolynomial<E::Fr>> {
-            self.circuits.deref().iter().flat_map(|c|c.iter())
-        }    
+impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitProvingKey<E, MM> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.circuit.hash.cmp(&other.circuit.hash)
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> PartialOrd for CircuitProvingKey<E, MM> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }

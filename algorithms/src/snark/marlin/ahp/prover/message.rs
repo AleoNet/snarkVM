@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::snark::marlin::{ahp::indexer::Circuit, MarlinMode};
-
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
@@ -30,11 +28,11 @@ pub struct MatrixSums<F: std::marker::Sync> {
 
 /// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ThirdMessage<'b, F: PrimeField, MM: std::marker::Sync + MarlinMode> {
-    pub sums: BTreeMap<&'b Circuit<F, MM>, MatrixSums<F>>,
+pub struct ThirdMessage<'b, F: PrimeField> {
+    pub sums: BTreeMap<&'b [u8; 32], MatrixSums<F>>,
 }
 
-impl<'b, F: PrimeField, MM: MarlinMode> ToBytes for ThirdMessage<'b, F, MM> {
+impl<'b, F: PrimeField> ToBytes for ThirdMessage<'b, F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

@@ -25,13 +25,14 @@ use crate::{
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
-pub struct FirstOracles<'a, F: PrimeField, MM: MarlinMode> {
-    pub(in crate::snark::marlin) batches: BTreeMap<&'a Circuit<F, MM>, Vec<SingleEntry<F>>>,
+pub struct FirstOracles<'a, F: PrimeField> {
+    pub(in crate::snark::marlin) batches: BTreeMap<&'a [u8; 32], Vec<SingleEntry<F>>>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> FirstOracles<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> FirstOracles<'a, F> {
+
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
     #[allow(clippy::needless_collect)]
@@ -127,8 +128,8 @@ impl<F: PrimeField> SecondOracles<F> {
 
 /// The third set of prover oracles.
 #[derive(Debug)]
-pub struct ThirdOracles<'a, F: PrimeField, MM: MarlinMode> {
-    gs: BTreeMap<&'a Circuit<F, MM>, MatrixGs<F>>,
+pub struct ThirdOracles<'a, F: PrimeField> {
+    gs: BTreeMap<&'a [u8; 32], MatrixGs<F>>,
 }
 
 #[derive(Debug)]
@@ -142,7 +143,7 @@ pub struct MatrixGs<F: PrimeField> {
 }
 
 
-impl<'a, F: PrimeField, MM: MarlinMode> ThirdOracles<'a, F, MM> {
+impl<'a, F: PrimeField> ThirdOracles<'a, F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         let iters = std::iter::empty::<&LabeledPolynomial<F>>();
