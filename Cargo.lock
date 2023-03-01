@@ -2568,8 +2568,20 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-synthesizer-program",
  "snarkvm-utilities",
  "tracing",
+]
+
+[[package]]
+name = "snarkvm-synthesizer-program"
+version = "0.9.13"
+dependencies = [
+ "indexmap",
+ "paste",
+ "rand",
+ "snarkvm-circuit",
+ "snarkvm-console",
 ]
 
 [[package]]

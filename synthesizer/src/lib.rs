@@ -25,6 +25,9 @@
 #[macro_use]
 extern crate tracing;
 
+pub use snarkvm_synthesizer_program as program;
+pub use snarkvm_synthesizer_program::*;
+
 pub mod block;
 pub use block::*;
 
@@ -34,14 +37,14 @@ pub use coinbase_puzzle::*;
 pub mod process;
 pub use process::*;
 
-pub mod program;
-pub use program::*;
-
 pub mod snark;
 pub use snark::*;
 
 pub mod store;
 pub use store::*;
+
+pub mod traits;
+pub use traits::*;
 
 pub mod vm;
 pub use vm::*;

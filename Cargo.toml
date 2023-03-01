@@ -63,6 +63,7 @@ members = [
   "parameters",
   "r1cs",
   "synthesizer",
+  "synthesizer/program",
   "utilities",
   "utilities/derives",
   "wasm"

@@ -47,6 +47,10 @@ setup = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [ ]
 
+[dependencies.snarkvm-synthesizer-program]
+path = "./program"
+version = "0.9.13"
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
