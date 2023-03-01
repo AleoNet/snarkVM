@@ -65,9 +65,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<'a, F, MM>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F>,
         _r: &mut R,
-    ) -> (prover::SecondOracles<F>, prover::State<'a, F, MM>) {
+    ) -> (prover::SecondOracles<F>, prover::State<'a, F>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let zk_bound = Self::zk_bound();
@@ -106,7 +106,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_lhs<'a>(
-        state: &prover::State<F, MM>,
+        state: &prover::State<'a, F>,
         batch_combiners: &BTreeMap<&Circuit<F, MM>, verifier::BatchCombiners<F>>,
         summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>>,
         alpha: F,
@@ -212,7 +212,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_summed_z_m_and_t<'a>(
-        state: &prover::State<F, MM>,
+        state: &prover::State<'a, F>,
         alpha: F,
         eta_b: F,
         eta_c: F,

@@ -32,7 +32,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the fourth round message and the next state.
     pub fn prover_fourth_round<'a, R: RngCore>(
         verifier_message: &verifier::ThirdMessage<F>,
-        state: prover::State<'a, F, MM>,
+        state: prover::State<'a, F>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
         let verifier::ThirdMessage { rs } = verifier_message;

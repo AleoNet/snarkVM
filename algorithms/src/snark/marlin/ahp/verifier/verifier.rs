@@ -36,16 +36,19 @@ use std::collections::BTreeMap;
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        batch_sizes: &BTreeMap<&'a _, usize>,
+        batch_sizes: &BTreeMap<&[u8; 32], (CircuitInfo<BaseField>, usize)>, // TODO: use BaseField or TargetField?
+        max_constraint_domain: EvaluationDomain<BaseField>, // TODO: use BaseField or TargetField?
+        largest_non_zero_domain: EvaluationDomain<BaseField>,
         fs_rng: &mut R,
     ) -> Result<(FirstMessage<'a, TargetField, MM>, State<'a, TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, rest) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
         let mut batch_combiners = BTreeMap::new();
+        let mut circuit_specific_states = BTreeMap::new();
         let mut circuit_combiners_needed = 0; // the first circuit_combiner is simply TargetField::one()
 
-        for (index_info, batch_size) in batch_sizes {
+        for (circuit_hash, (index_info, batch_size)) in batch_sizes {
             let squeeze_time = start_timer!(|| "Squeezing challenges");
             // TODO: we should do a review as to what happens when we have more than usize circuit/instance combiners
             let mut combiners = BatchCombiners {
@@ -62,7 +65,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             for instance_combiner in instance_combiners {
                 combiners.instance_combiners.push(*instance_combiner);
             }
-            batch_combiners.insert(circuit, combiners);
+            batch_combiners.insert(circuit_hash, combiners);
             // TODO: to discuss: this is a bit ugly, but could be avoided if either we use an indexmap to count for us what is the first circuit, or we extract the first loop out of the for-loop
             circuit_combiners_needed = 1; // All circuits after the first need a random circuit combiner
             end_timer!(squeeze_time);
@@ -97,38 +100,33 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 EvaluationDomain::new(index_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(input_domain_time);
 
-            let new_circuit_specific_state = CircuitSpecificState {
-                batch_sizes,
+            let circuit_specific_state = CircuitSpecificState {
                 input_domain,
                 constraint_domain,
                 non_zero_a_domain,
                 non_zero_b_domain,
                 non_zero_c_domain,
-            }
+                batch_size,
+            };
+            circuit_specific_states.insert(circuit_hash, circuit_specific_state);
         }
 
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
-        assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero()); // TODO: check on biggest constraint domain?
+        assert!(!max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
         let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners};
 
 
         let new_state = State {
-            circuit_specific_states: new_circuit_specific_state,
-            largest_constraint_domain: largest_constraint_domain,
+            circuit_specific_states: circuit_specific_states,
+            largest_constraint_domain: max_constraint_domain,
             largest_non_zero_domain: largest_non_zero_domain,
 
             first_round_message: Some(message.clone()),
             second_round_message: None,
             third_round_message: None,
 
-            gamma: None,
-            mode: PhantomData,
-
-            first_round_message: Some(message.clone()),
-            second_round_message: None,
-            third_round_message: None,
             gamma: None,
             mode: PhantomData,
         };
@@ -156,11 +154,11 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(2);
-        let r_b = elems[0];
-        let r_c = elems[1];
-        // TODO: (maybe) generate more circuit_combiners here.
-        let message = ThirdMessage { r_b, r_c };
+        
+        let num_instances = state.circuit_specific_states.map(|state|state.batch_size).sum(); // TODO: see if this can be precomputed more efficiently
+        let elems = fs_rng.squeeze_nonnative_field_elements(2 + 3*(num_instances - 1));
+        let rs = elems.map(|elem|elem).collect::<Vec<_>>();
+        let message = ThirdMessage { rs };
 
         state.third_round_message = Some(message);
         Ok((message, state))

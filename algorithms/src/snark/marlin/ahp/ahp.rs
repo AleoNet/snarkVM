@@ -146,7 +146,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<'a, E: EvaluationsProvider<F>>(
         public_inputs: &BTreeMap<&'a Circuit<F, MM>, &Vec<Vec<F>>>,
         evals: &E,
-        prover_third_message: &prover::ThirdMessage<F, MM>,
+        prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());

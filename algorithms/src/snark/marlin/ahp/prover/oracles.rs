@@ -31,7 +31,7 @@ pub struct FirstOracles<'a, F: PrimeField> {
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> FirstOracles<'a, F> {
+impl<'a, F: PrimeField> FirstOracles<'a, F> {
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.

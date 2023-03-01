@@ -67,13 +67,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the first round message and the next state.
     #[allow(clippy::type_complexity)]
     pub fn prover_first_round<'a, R: RngCore>(
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F>,
         rng: &mut R,
-    ) -> Result<prover::State<'a, F, MM>, AHPError> {
+    ) -> Result<prover::State<'a, F>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let mut r_b_s = Vec::with_capacity(state.circuit_specific_states.len());
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_batch_size());
-        for (i, (circuit, state)) in state.circuit_specific_states.iter_mut().enumerate() {
+        for (i, (circuit_hash, state)) in state.circuit_specific_states.iter_mut().enumerate() {
             let batch_size = state.batch_size;
 
             let z_a = state.z_a.take().unwrap();
@@ -84,16 +84,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             assert_eq!(z_b.len(), batch_size);
             assert_eq!(private_variables.len(), batch_size);
 
-            let circuit_id = format!("circuit_{:x?}", circuit.hash);
+            let circuit_id = format!("circuit_{:x?}", circuit_hash);
 
             let state_ref = &state;
             for (i, (z_a, z_b, private_variables, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, &state.x_polys).enumerate()
             {
-                job_pool.add_job(move || Self::calculate_w(&circuit, witness_label(&circuit_id, "w", i), private_variables, x_poly, state_ref));
-                job_pool.add_job(move || Self::calculate_z_m(&circuit, witness_label(&circuit_id, "z_a", i), z_a, false, state_ref, None));
+                job_pool.add_job(move || Self::calculate_w(witness_label(&circuit_id, "w", i), private_variables, x_poly, state_ref));
+                job_pool.add_job(move || Self::calculate_z_m(witness_label(&circuit_id, "z_a", i), z_a, false, state_ref, None));
                 let r_b = F::rand(rng);
-                job_pool.add_job(move || Self::calculate_z_m(&circuit, witness_label(&circuit_id, "z_b", i), z_b, true, state_ref, Some(r_b)));
+                job_pool.add_job(move || Self::calculate_z_m(witness_label(&circuit_id, "z_b", i), z_b, true, state_ref, Some(r_b)));
                 if MM::ZK {
                     circuit_r_b_s.push(r_b);
                 }
@@ -162,7 +162,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_w(
-        circuit: &Circuit<F, MM>,
         label: String,
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
@@ -178,7 +177,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let x_evals = {
             let mut coeffs = x_poly.coeffs.clone();
             coeffs.resize(constraint_domain.size(), F::zero());
-            constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, &circuit.fft_precomputation);
+            constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, &state.fft_precomputation);
             coeffs
         };
 
@@ -190,7 +189,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect();
         let w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain)
-            .interpolate_with_pc(&circuit.ifft_precomputation);
+            .interpolate_with_pc(&state.ifft_precomputation);
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(input_domain).unwrap();
         assert!(remainder.is_zero());
 
@@ -200,7 +199,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_z_m(
-        circuit: &Circuit<F, MM>,
         label: impl ToString,
         evaluations: Vec<F>,
         will_be_evaluated: bool,
@@ -215,7 +213,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
 
-        let mut poly = evals.interpolate_with_pc_by_ref(&circuit.ifft_precomputation);
+        let mut poly = evals.interpolate_with_pc_by_ref(&state.ifft_precomputation);
         if should_randomize {
             poly += &(&v_H * r.unwrap());
         }

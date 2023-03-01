@@ -136,7 +136,7 @@ pub struct Evaluations<'a, F: PrimeField> {
     pub g_c_evals: BTreeMap<&'a [u8; 32], F>,
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
+impl<'a, F: PrimeField> Evaluations<'a, F> {
     fn serialize_with_mode<W: snarkvm_utilities::Write>(
         &self,
         mut writer: W,
@@ -177,8 +177,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
     }
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
-    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<&'a Circuit<F, MM>, usize>) -> Self {
+impl<'a, F: PrimeField> Evaluations<'a, F> {
+    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<&[u8; 32], usize>) -> Self {
         let z_b_evals = map.iter().filter_map(|(k, v)| k.contains("z_b_").then_some(*v) ).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_sizes.map(|_,s|s).sum());
         let g_a_evals = map.iter().filter_map(|(k, v)| k.contains("g_a_").then_some(*v) ).collect::<Vec<_>>();
@@ -205,17 +205,16 @@ impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
         }
     }
 
-    // TODO: index type is probably incorrect
-    fn get_from_evaluations(evaluations_to_iter: &BTreeMap<&Circuit<F, MM>, Vec<F>>, circuit_id: &str, index: usize) -> Option<F> {
-        for (circuit, evaluations) in evaluations_to_iter.iter() {
-            if format!("{:x?}", circuit.hash) == circuit_id {
+    fn get_from_evaluations(evaluations_to_iter: &BTreeMap<&[u8; 32], Vec<F>>, circuit_id: &str, index: usize) -> Option<F> {
+        for (circuit_hash, evaluations) in evaluations_to_iter.iter() {
+            if format!("{:x?}", circuit_hash) == circuit_id {
                 evaluations.get(index.parse::<usize>().unwrap()).copied();
             }
         }
     }    
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Valid for Evaluations<'a, F> {
+impl<'a, F: PrimeField> Valid for Evaluations<'a, F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
         self.g_1_eval.check()?;
@@ -225,7 +224,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> Valid for Evaluations<'a, F> {
     }
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> Evaluations<'a, F> {
+impl<'a, F: PrimeField> Evaluations<'a, F> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
         result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
@@ -281,7 +280,7 @@ impl<'a, E: PairingEngine> Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalSerialize for Proof<'a, E> {
+impl<'a, E: PairingEngine> CanonicalSerialize for Proof<'a, E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         CanonicalSerialize::serialize_with_mode(&self.batch_size, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
@@ -302,7 +301,7 @@ impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalSerialize for Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> Valid for Proof<'a, E> {
+impl<'a, E: PairingEngine> Valid for Proof<'a, E> {
     fn check(&self) -> Result<(), SerializationError> {
         self.batch_size.check()?;
         self.commitments.check()?;
@@ -312,7 +311,7 @@ impl<'a, E: PairingEngine, MM: MarlinMode> Valid for Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalDeserialize for Proof<'a, E> {
+impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<'a, E> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -329,13 +328,13 @@ impl<'a, E: PairingEngine, MM: MarlinMode> CanonicalDeserialize for Proof<'a, E>
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> ToBytes for Proof<'a, E> {
+impl<'a, E: PairingEngine> ToBytes for Proof<'a, E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         Self::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<'a, E: PairingEngine, MM: MarlinMode> FromBytes for Proof<'a, E> {
+impl<'a, E: PairingEngine> FromBytes for Proof<'a, E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

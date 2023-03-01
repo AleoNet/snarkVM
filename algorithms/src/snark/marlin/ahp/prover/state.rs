@@ -24,9 +24,8 @@ use crate::{
         Evaluations as EvaluationsOnDomain,
     },
     snark::marlin::{
-        ahp::indexer::Circuit,
+        CircuitInfo,
         AHPError,
-        MarlinMode,
     },
 };
 use snarkvm_fields::PrimeField;
@@ -38,6 +37,8 @@ pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) non_zero_a_domain: EvaluationDomain<F>,
     pub(super) non_zero_b_domain: EvaluationDomain<F>,
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
+    pub(super) fft_precomputation: FFTPrecomputation<F>,
+    pub(super) ifft_precomputation: FFTPrecomputation<F>,
 
     /// The number of instances being proved in this batch.
     pub(in crate::snark) batch_size: usize,
@@ -74,13 +75,13 @@ pub struct CircuitSpecificState<F: PrimeField> {
 
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField> {
-    pub(super) max_constraint_domain: EvaluationDomain<F>,
-    pub(super) max_non_zero_domain: EvaluationDomain<F>,
     pub(super) circuit_specific_states: BTreeMap<&'a [u8; 32], CircuitSpecificState<F>>,
     pub(super) total_instances: usize,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F>>>,
+    pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
+    pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
     // / The challenges sent by the verifier in the first round
     // TODO: not sure yet if we actually need the following:
     // pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F, MM>>,
@@ -97,13 +98,13 @@ pub struct Assignments<F>(
     pub Zb<F>
 );
 
-impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F> {
+impl<'a, F: PrimeField> State<'a, F> {
     pub fn initialize(
         // TODO: which map should we use?
         // IndexMap or BTreeMap?
         indices_and_assignments: BTreeMap<
-            &'a Circuit<F, MM>,
-            Vec<Assignments<F>>
+            &[u8; 32], 
+            (CircuitInfo<F>, Vec<Assignments<F>>),
         >
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
@@ -111,7 +112,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F> {
         let mut total_instances = 0;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
-            .map(|(circuit, variable_assignments)| {
+            .map(|(circuit, (index_info, variable_assignments))| {
                 let index_info = &circuit.index_info;
                 let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
                     .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -172,6 +173,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F> {
                     non_zero_a_domain,
                     non_zero_b_domain,
                     non_zero_c_domain,
+                    fft_precomputation: index_info.fft_precomputation,
+                    ifft_precomputation: index_info.ifft_precomputation,                
                     batch_size,
                     padded_public_variables,
                     x_polys,
