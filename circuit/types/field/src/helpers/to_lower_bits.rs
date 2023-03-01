@@ -33,7 +33,7 @@ impl<E: Environment> ToLowerBits for Field<E> {
         }
 
         // Construct a vector of `Boolean`s comprising the bits of the field value.
-        let bits = witness!(|self| self.to_bits_le().into_iter().take(k).collect::<Vec<_>>());
+        let bits: Vec<Boolean<E>> = witness!(|self| self.to_bits_le().into_iter().take(k).collect::<Vec<_>>());
 
         // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = Field::zero();
