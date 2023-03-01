@@ -27,18 +27,29 @@ impl<N: Network> Parser for Finalize<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the associated function name from the string.
-        let (string, name) = Identifier::<N>::parse(string)?;
+        let (string, name) = cut(Identifier::<N>::parse)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
-        let (string, _) = tag(":")(string)?;
+        let (string, _) = cut(tag(":"))(string)?;
+
+        // Helper parser to check that the next token is not `input`.
+        let peek_not_input = not(peek(preceded(Sanitizer::parse_whitespaces, tag(Input::<N>::type_name()))));
+        // Helper parser to check that the next token is `output`.
+        let mut peek_output = peek(preceded(Sanitizer::parse_whitespaces, tag(Output::<N>::type_name())));
 
         // Parse the inputs from the string.
-        let (string, inputs) = many0(Input::parse)(string)?;
+        let (string, (inputs, _)) = many_till(Input::parse, peek_not_input)(string)?;
+
         // Parse the commands from the string.
-        let (string, commands) = many1(Command::parse)(string)?;
+        // Note that there must be at least one command in the `finalize` block.
+        let (string, first) = Command::parse(string)?;
+        let (string, (rest, _)) = many_till(Command::parse, &mut peek_output)(string)?;
+        let mut commands = vec![first];
+        commands.extend(rest);
+
         // Parse the outputs from the string.
-        let (string, outputs) = many0(Output::parse)(string)?;
+        let (string, (outputs, _)) = many_till(Output::parse, not(peek_output))(string)?;
 
         map_res(take(0usize), move |_| {
             // Initialize a new finalize.
