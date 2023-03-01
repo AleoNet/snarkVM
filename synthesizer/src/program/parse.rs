@@ -45,15 +45,16 @@ impl<N: Network> Parser for Program<N> {
         let (string, _) = tag(";")(string)?;
 
         // Parse the struct or function from the string.
-        let (string, components) = many1(alt((
-            map(Mapping::parse, |mapping| P::<N>::M(mapping)),
-            map(Struct::parse, |struct_| P::<N>::I(struct_)),
-            map(RecordType::parse, |record| P::<N>::R(record)),
-            map(Closure::parse, |closure| P::<N>::C(closure)),
-            map(Function::parse, |function| P::<N>::F(function)),
-        )))(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
+        let (string, (components, _)) = many_till(
+            alt((
+                map(Mapping::parse, |mapping| P::<N>::M(mapping)),
+                map(Struct::parse, |struct_| P::<N>::I(struct_)),
+                map(RecordType::parse, |record| P::<N>::R(record)),
+                map(Closure::parse, |closure| P::<N>::C(closure)),
+                map(Function::parse, |function| P::<N>::F(function)),
+            )),
+            Sanitizer::eoi,
+        )(string)?;
 
         // Return the program.
         map_res(take(0usize), move |_| {
@@ -262,5 +263,21 @@ function compute:
         assert_eq!(expected, format!("{program}"));
 
         Ok(())
+    }
+
+    #[test]
+    fn test_program_parse_fails() {
+        // Initialize a new program.
+        let result = Program::<CurrentNetwork>::parse(
+            r"
+program foo.aleo;
+
+function foo_1: output self.caller as address.public;
+floop
+function foo_2: output self.caller as address.public;
+",
+        );
+        println!("{:?}", result);
+        assert!(result.is_err());
     }
 }
