@@ -116,12 +116,12 @@ pub mod prelude {
     pub use itertools::Itertools;
     pub use nom::{
         branch::alt,
-        bytes::complete::tag,
         character::complete::{alpha1, alphanumeric1, char, one_of},
         combinator::{map, map_res, opt, recognize},
         multi::{many0, many1},
         sequence::{pair, terminated},
     };
+    pub use nom_supreme::tag::complete::tag;
     pub use num_traits::{Inv, One as NumOne, Pow, Unsigned};
     pub use once_cell::unsync::OnceCell;
 }

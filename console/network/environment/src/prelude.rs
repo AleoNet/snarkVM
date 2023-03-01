@@ -74,11 +74,17 @@ pub use bech32::{self, FromBase32, ToBase32};
 pub use itertools::Itertools;
 pub use nom::{
     branch::alt,
-    bytes::{complete::tag, streaming::take},
+    bytes::streaming::take,
     character::complete::{alpha1, alphanumeric1, char, one_of},
-    combinator::{complete, fail, map, map_res, opt, recognize},
-    multi::{many0, many1, separated_list0, separated_list1},
-    sequence::{pair, terminated},
+    combinator::{complete, cond, cut, fail, map, map_res, not, opt, peek, recognize},
+    error::{ErrorKind, ParseError, VerboseError},
+    multi::{many0, many1, many_till, separated_list0, separated_list1},
+    sequence::{pair, preceded, terminated},
+    Err,
+};
+pub use nom_supreme::{
+    error::{BaseErrorKind, ErrorTree},
+    tag::complete::tag,
 };
 pub use num_traits::{One, Pow, Zero};
 pub use rand::{
