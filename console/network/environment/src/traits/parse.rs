@@ -15,9 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use nom::{error::VerboseError, IResult};
+use nom_supreme::error::ErrorTree;
 
 /// The `nom`-compatible parser return type.
-pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
+// pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
+pub type ParserResult<'a, O> = IResult<&'a str, O, ErrorTree<&'a str>>;
+
+/// A custom error type for parsing and validation.
+/// This is used to provide more context to the user and downstream tools.
+// pub enum ParserError<I>
 
 /// Operations to parse a string literal into an object.
 pub trait Parser: core::fmt::Display + core::str::FromStr {

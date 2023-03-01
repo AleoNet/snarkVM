@@ -18,12 +18,15 @@ use crate::{string_parser::is_char_supported, ParserResult};
 
 use nom::{
     branch::alt,
-    bytes::complete::tag,
     character::complete::{anychar, char, line_ending, multispace1},
     combinator::{cut, map, recognize, value, verify},
     error::{ErrorKind, VerboseError, VerboseErrorKind},
     multi::fold_many0,
     sequence::{preceded, terminated},
+};
+use nom_supreme::{
+    error::{BaseErrorKind, ErrorTree},
+    tag::complete::tag,
 };
 
 pub struct Sanitizer;
@@ -76,11 +79,14 @@ impl Sanitizer {
     /// End-of-input parser.
     ///
     /// Yields `()` if the parser is at the end of the input; an error otherwise.
-    fn eoi(string: &str) -> ParserResult<()> {
+    pub fn eoi(string: &str) -> ParserResult<()> {
         match string.is_empty() {
             true => Ok((string, ())),
+            // false => {
+            //     Err(nom::Err::Error(VerboseError { errors: vec![(string, VerboseErrorKind::Nom(ErrorKind::Eof))] }))
+            // }
             false => {
-                Err(nom::Err::Error(VerboseError { errors: vec![(string, VerboseErrorKind::Nom(ErrorKind::Eof))] }))
+                Err(nom::Err::Error(ErrorTree::Base { location: string, kind: BaseErrorKind::Kind(ErrorKind::Eof) }))
             }
         }
     }
