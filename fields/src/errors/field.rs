@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -37,12 +37,12 @@ pub enum FieldError {
 
 impl From<std::io::Error> for FieldError {
     fn from(error: std::io::Error) -> Self {
-        FieldError::Crate("std::io", format!("{:?}", error))
+        FieldError::Crate("std::io", format!("{error:?}"))
     }
 }
 
 impl From<FieldError> for std::io::Error {
     fn from(error: FieldError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{error}"))
     }
 }

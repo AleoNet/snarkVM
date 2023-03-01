@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -61,7 +61,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
         // Load the deployments from the store.
-        for transaction_id in transaction_store.deployment_ids() {
+        for transaction_id in transaction_store.deployment_transaction_ids() {
             // Retrieve the deployment.
             match transaction_store.get_deployment(&transaction_id)? {
                 // Load the deployment.
@@ -273,7 +273,7 @@ function compute:
                 let transaction =
                     Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -325,7 +325,66 @@ function compute:
                 // Execute.
                 let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(vm.verify_transaction(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+                // Fetch the unspent records.
+                let records =
+                    genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
+                // Select a record to spend.
+                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+                // Initialize the VM.
+                let vm = sample_vm();
+                // Update the VM.
+                vm.add_next_block(&genesis).unwrap();
+
+                // Authorize.
+                let authorization = vm
+                    .authorize(
+                        &caller_private_key,
+                        "credits.aleo",
+                        "mint",
+                        [
+                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                        ]
+                        .into_iter(),
+                        rng,
+                    )
+                    .unwrap();
+                assert_eq!(authorization.len(), 1);
+
+                // Execute.
+                let transaction = Transaction::execute_authorization_with_additional_fee(
+                    &vm,
+                    &caller_private_key,
+                    authorization,
+                    Some((record, 100)),
+                    None,
+                    rng,
+                )
+                .unwrap();
+                // Verify.
+                assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -361,7 +420,8 @@ function compute:
                 // Execute.
                 let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
-                Inclusion::verify_fee(&fee).unwrap();
+                assert!(vm.verify_fee(&fee));
+                assert!(Inclusion::verify_fee(&fee).is_ok());
                 // Return the fee.
                 fee
             })

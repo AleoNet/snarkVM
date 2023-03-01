@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -585,7 +585,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             for (coeff, label) in lc.iter() {
                 if label.is_one() {
-                    for (&(ref label, _), ref mut eval) in evaluations.iter_mut() {
+                    for ((label, _), ref mut eval) in evaluations.iter_mut() {
                         if label == &lc_label {
                             **eval -= coeff;
                         }
@@ -605,7 +605,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     coeffs_and_comms.push((*coeff, cur_comm.commitment()));
                 }
             }
-            let lc_time = start_timer!(|| format!("Combining {} commitments for {}", num_polys, lc_label));
+            let lc_time = start_timer!(|| format!("Combining {num_polys} commitments for {lc_label}"));
             lc_commitments.push(Self::combine_commitments(coeffs_and_comms));
             end_timer!(lc_time);
             lc_info.push((lc_label, degree_bound));

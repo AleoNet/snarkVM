@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -225,7 +225,7 @@ mod tests {
             // Sample a random element.
             let point = Uniform::rand(&mut rng);
 
-            Circuit::scope(&format!("Constant {}", i), || {
+            Circuit::scope(&format!("Constant {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(10, 0, 0, 0);
@@ -237,7 +237,7 @@ mod tests {
             // Sample a random element.
             let point = Uniform::rand(&mut rng);
 
-            Circuit::scope(&format!("Public {}", i), || {
+            Circuit::scope(&format!("Public {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(4, 2, 14, 14);
@@ -249,7 +249,7 @@ mod tests {
             // Sample a random element.
             let point = Uniform::rand(&mut rng);
 
-            Circuit::scope(&format!("Private {}", i), || {
+            Circuit::scope(&format!("Private {i}"), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(4, 0, 14, 13);

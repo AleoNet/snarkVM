@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -104,6 +104,6 @@ mod tests {
     fn test_value_display() {
         // Literal
         let value = MapValue::<CurrentNetwork>::parse("value abc as field.public;").unwrap().1;
-        assert_eq!(format!("{}", value), "value abc as field.public;");
+        assert_eq!(format!("{value}"), "value abc as field.public;");
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -155,7 +155,7 @@ mod tests {
         first: C,
         second: C,
     ) {
-        println!("Checking homomorphic addition on {} + {}", first, second);
+        println!("Checking homomorphic addition on {first} + {second}");
 
         // Compute the expected hash, by hashing them individually and summing their results.
         let a = pedersen.hash_uncompressed(&first.to_bits_le());

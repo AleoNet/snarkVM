@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -33,8 +33,8 @@ impl<N: Network> FromBytes for Deployment<N> {
 
         // Read the number of entries in the bundle.
         let num_entries = u16::read_le(&mut reader)?;
-        // Read the bundle.
-        let mut bundle = IndexMap::with_capacity(num_entries as usize);
+        // Read the verifying keys.
+        let mut verifying_keys = Vec::with_capacity(num_entries as usize);
         for _ in 0..num_entries {
             // Read the identifier.
             let identifier = Identifier::<N>::read_le(&mut reader)?;
@@ -43,10 +43,11 @@ impl<N: Network> FromBytes for Deployment<N> {
             // Read the certificate.
             let certificate = Certificate::<N>::read_le(&mut reader)?;
             // Add the entry.
-            bundle.insert(identifier, (verifying_key, certificate));
+            verifying_keys.push((identifier, (verifying_key, certificate)));
         }
 
-        Ok(Self { edition, program, verifying_keys: bundle })
+        // Return the deployment.
+        Self::new(edition, program, verifying_keys).map_err(|err| error(format!("{err}")))
     }
 }
 

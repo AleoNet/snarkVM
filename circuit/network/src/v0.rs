@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -442,7 +442,7 @@ mod tests {
         let circuit = CurrentAleo {};
         let _candidate = create_example_circuit::<CurrentAleo>();
         let output = format!("{circuit}");
-        println!("{}", output);
+        println!("{output}");
     }
 
     #[test]

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -43,19 +43,19 @@ fn bench_serialization<T: Serialize + DeserializeOwned + ToBytes + FromBytes + C
     // snarkvm_utilities::ToBytes
     {
         let object = object.clone();
-        c.bench_function(&format!("{}::to_bytes_le", name), move |b| b.iter(|| object.to_bytes_le().unwrap()));
+        c.bench_function(&format!("{name}::to_bytes_le"), move |b| b.iter(|| object.to_bytes_le().unwrap()));
     }
     // bincode::serialize
     {
         let object = object.clone();
-        c.bench_function(&format!("{}::serialize (bincode)", name), move |b| {
+        c.bench_function(&format!("{name}::serialize (bincode)"), move |b| {
             b.iter(|| bincode::serialize(&object).unwrap())
         });
     }
     // serde_json::to_string
     {
         let object = object.clone();
-        c.bench_function(&format!("{}::to_string (serde_json)", name), move |b| {
+        c.bench_function(&format!("{name}::to_string (serde_json)"), move |b| {
             b.iter(|| serde_json::to_string(&object).unwrap())
         });
     }
@@ -67,19 +67,19 @@ fn bench_serialization<T: Serialize + DeserializeOwned + ToBytes + FromBytes + C
     // snarkvm_utilities::FromBytes
     {
         let buffer = object.to_bytes_le().unwrap();
-        c.bench_function(&format!("{}::from_bytes_le", name), move |b| b.iter(|| T::from_bytes_le(&buffer).unwrap()));
+        c.bench_function(&format!("{name}::from_bytes_le"), move |b| b.iter(|| T::from_bytes_le(&buffer).unwrap()));
     }
     // bincode::deserialize
     {
         let buffer = bincode::serialize(&object).unwrap();
-        c.bench_function(&format!("{}::deserialize (bincode)", name), move |b| {
+        c.bench_function(&format!("{name}::deserialize (bincode)"), move |b| {
             b.iter(|| bincode::deserialize::<T>(&buffer).unwrap())
         });
     }
     // serde_json::from_str
     {
         let object = serde_json::to_string(&object).unwrap();
-        c.bench_function(&format!("{}::from_str (serde_json)", name), move |b| {
+        c.bench_function(&format!("{name}::from_str (serde_json)"), move |b| {
             b.iter(|| serde_json::from_str::<T>(&object).unwrap())
         });
     }
