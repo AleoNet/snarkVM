@@ -54,11 +54,11 @@ impl<N: Network> Parser for Struct<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the struct name from the string.
-        let (string, name) = Identifier::parse(string)?;
+        let (string, name) = cut(Identifier::parse)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
-        let (string, _) = tag(":")(string)?;
+        let (string, _) = cut(tag(":"))(string)?;
         // Parse the members from the string.
         let (string, members) = map_res(many1(parse_tuple), |members| {
             // Ensure the members has no duplicate names.

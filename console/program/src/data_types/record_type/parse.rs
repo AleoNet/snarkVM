@@ -54,47 +54,48 @@ impl<N: Network> Parser for RecordType<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the record name from the string.
-        let (string, name) = Identifier::parse(string)?;
+        let (string, name) = cut(Identifier::parse)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
-        let (string, _) = tag(":")(string)?;
+        let (string, _) = cut(tag(":"))(string)?;
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the "owner" tag from the string.
-        let (string, _) = tag("owner")(string)?;
+        let (string, _) = cut(tag("owner"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "as" from the string.
-        let (string, _) = tag("as")(string)?;
+        let (string, _) = cut(tag("as"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the owner visibility from the string.
-        let (string, owner) = alt((
+        // TODO: Test cut
+        let (string, owner) = cut(alt((
             map(tag("address.public"), |_| PublicOrPrivate::Public),
             map(tag("address.private"), |_| PublicOrPrivate::Private),
-        ))(string)?;
+        )))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
-        let (string, _) = tag(";")(string)?;
+        let (string, _) = cut(tag(";"))(string)?;
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the "gates" tag from the string.
-        let (string, _) = tag("gates")(string)?;
+        let (string, _) = cut(tag("gates"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "as" from the string.
-        let (string, _) = tag("as")(string)?;
+        let (string, _) = cut(tag("as"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the gates visibility from the string.
-        let (string, gates) = alt((
+        let (string, gates) = cut(alt((
             map(tag("u64.public"), |_| PublicOrPrivate::Public),
             map(tag("u64.private"), |_| PublicOrPrivate::Private),
-        ))(string)?;
+        )))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
