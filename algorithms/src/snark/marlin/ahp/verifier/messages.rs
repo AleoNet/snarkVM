@@ -27,7 +27,7 @@ pub struct BatchCombiners<F> {
 
 /// First message of the verifier.
 #[derive(Clone, Debug)]
-pub struct FirstMessage<'a, F: PrimeField, MM: MarlinMode> {
+pub struct FirstMessage<'a, F: PrimeField> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `B`.
@@ -35,7 +35,7 @@ pub struct FirstMessage<'a, F: PrimeField, MM: MarlinMode> {
     /// Randomizer for the lincheck for `C`.
     pub eta_c: F,
     /// Randomizers for combining vectors from the batch
-    pub batch_combiners: BTreeMap<&'a Circuit<F, MM>, BatchCombiners<F>>,
+    pub batch_combiners: BTreeMap<&'a [u8; 32], BatchCombiners<F>>,
 }
 
 /// Second verifier message.

@@ -108,7 +108,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
                 universal_srs,
                 indexed_circuit.max_degree(),
-                indexed_circuit.constraint_domain_size(),
+                [indexed_circuit.constraint_domain_size()],
                 supported_hiding_bound,
                 Some(coefficient_supports.as_slice()),
             )?;
@@ -125,7 +125,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 circuit_commitments,
                 verifier_key,
                 mode: PhantomData,
-                hash: format!("{:x?}", indexed_circuit.index_info.hash),
+                hash: format!("{:x?}", indexed_circuit.hash),
             };
             circuit_verifying_keys.push(circuit_verifying_key);
 
@@ -163,15 +163,17 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     fn init_sponge<'a>(
         fs_parameters: &FS::Parameters,
         batch_sizes: &BTreeMap<&[u8; 32], (CircuitInfo<E::Fr>, usize)>,
-        circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>],
-        inputs: &BTreeMap<&'a Circuit<E::Fr, MM>, &Vec<Vec<E::Fr>>>,
+        circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
+        inputs: &BTreeMap<&[u8; 32], &Vec<Vec<E::Fr>>>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         for (_, batch_size) in batch_sizes.iter() {
             sponge.absorb_bytes(&batch_size.1.to_le_bytes());
         }
-        sponge.absorb_native_field_elements(circuit_commitments);
+        for circuit_specific_commitments in circuit_commitments {
+            sponge.absorb_native_field_elements(circuit_specific_commitments);
+        }
         for (_, circuit_specific_input) in inputs {
             for instance_specific_input in circuit_specific_input.iter() {
                 sponge.absorb_nonnative_field_elements(instance_specific_input.iter().copied());
@@ -252,8 +254,8 @@ where
         srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
-            SRS::CircuitSpecific => Self::circuit_specific_setup(&[circuit]),
-            SRS::Universal(srs) => Self::circuit_setup(srs, &[circuit]),
+            SRS::CircuitSpecific => Self::circuit_specific_setup(circuit),
+            SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
         }
         .map_err(SNARKError::from)
     }
@@ -275,7 +277,7 @@ where
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        for (poly, &c) in proving_key.iter_circuit_polys().zip(linear_combination_challenges) {
+        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
             lc.add(c, poly.label());
         }
 
@@ -363,25 +365,27 @@ where
         Self::terminate(terminator)?;
 
         let circuits_to_constraints = BTreeMap::new();
-        for (pk, constraints) in keys_to_constraints.iter() {
-            circuits_to_constraints.insert(pk.circuit.hash, constraints);
+        for (pk, constraints) in keys_to_constraints {
+            circuits_to_constraints.insert(&pk.circuit.hash, *constraints);
         }
-        let prover_state = AHPForR1CS::<_, MM>::init_prover(circuits_to_constraints)?;
+        let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints)?;
         
         let mut batch_sizes = BTreeMap::new();
         let mut public_inputs = BTreeMap::new();
         let mut padded_public_inputs = BTreeMap::new();
         let mut keys_to_inputs = BTreeMap::new();
+        let mut committer_key_union;
         for (pk, _) in keys_to_constraints.iter() {
-            let batch_size = prover_state.batch_size(&pk.circuit.hash)?;
-            let public_input = &prover_state.public_inputs(&pk.circuit.hash)?;
-            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit.hash)?;
-            batch_sizes.insert(pk.circuit.hash, (pk.circuit_verifying_key.circuit_info, batch_size));
-            public_inputs.insert(pk.circuit.hash, public_input);
-            padded_public_inputs.insert(pk.circuit.hash, padded_public_input);
-            public_inputs.insert(&pk.verifying_key, public_input);
+            let batch_size = prover_state.batch_size(&pk.circuit.hash).ok_or(SNARKError::Message("Circuit not found".into()))?;
+            let public_input = &prover_state.public_inputs(&pk.circuit.hash).ok_or(SNARKError::Message("Circuit not found".into()))?;
+            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit.hash).ok_or(SNARKError::Message("Circuit not found".into()))?;
+            batch_sizes.insert(&pk.circuit.hash, (pk.circuit_verifying_key.circuit_info, batch_size));
+            public_inputs.insert(&pk.circuit.hash, public_input);
+            padded_public_inputs.insert(&pk.circuit.hash, padded_public_input);
+            committer_key_union = pk.committer_key.clone();
+            // public_inputs.insert(&pk.circuit_verifying_key, public_input);
         }
-        assert_eq!(prover_state.total_batch_size(), batch_sizes.iter().map(|(c, s)| s).sum::<usize>());
+        assert_eq!(prover_state.total_batch_size(), batch_sizes.iter().map(|(_, (_, s))| s).sum::<usize>());
 
         let circuit_commitments = keys_to_constraints
             .iter()
@@ -406,7 +410,7 @@ where
         let (first_commitments, first_commitment_randomnesses) = {
             let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
             SonicKZG10::<E, FS>::commit(
-                &keys_to_constraints[0].committer_key, // TODO: are all committer keys the same?
+                &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
                 first_round_oracles.iter_for_commit(),
                 Some(zk_rng),
             )?
@@ -434,7 +438,7 @@ where
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &keys_to_constraints[0].committer_key, // TODO: are all committer keys the same?
+            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
             second_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
@@ -459,7 +463,7 @@ where
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
         let (third_commitments, third_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &keys_to_constraints[0].committer_key, // TODO: are all committer keys the same?
+            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
             third_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
@@ -483,7 +487,7 @@ where
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
         let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &keys_to_constraints[0].committer_key, // TODO: are all committer keys the same?
+            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
             fourth_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
@@ -592,7 +596,7 @@ where
         sponge.absorb_nonnative_field_elements(evaluations.to_field_elements());
 
         let pc_proof = SonicKZG10::<E, FS>::open_combinations(
-            &keys_to_constraints[0].committer_key, // TODO: do we have multiple committer keys?
+            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
             lc_s.values(),
             polynomials,
             &labeled_commitments,
@@ -603,7 +607,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E, MM>::new(batch_sizes, commitments, evaluations, prover_third_message, pc_proof)?;
+        let proof = Proof::<'a, E>::new(batch_sizes, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
 
         #[cfg(debug_assertions)]

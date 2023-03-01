@@ -64,7 +64,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
-        verifier_message: &verifier::FirstMessage<'a, F, MM>,
+        verifier_message: &verifier::FirstMessage<'a, F>,
         mut state: prover::State<'a, F>,
         _r: &mut R,
     ) -> (prover::SecondOracles<F>, prover::State<'a, F>) {

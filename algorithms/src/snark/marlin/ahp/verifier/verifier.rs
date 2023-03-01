@@ -38,9 +38,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     pub fn verifier_first_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         batch_sizes: &BTreeMap<&[u8; 32], (CircuitInfo<BaseField>, usize)>, // TODO: use BaseField or TargetField?
         max_constraint_domain: EvaluationDomain<BaseField>, // TODO: use BaseField or TargetField?
-        largest_non_zero_domain: EvaluationDomain<BaseField>,
+        largest_non_zero_domain: EvaluationDomain<BaseField>, // TODO: use BaseField or TargetField?
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<'a, TargetField, MM>, State<'a, TargetField, MM>), AHPError> {
+    ) -> Result<(FirstMessage<'a, TargetField>, State<'a, TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, rest) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
@@ -55,9 +55,8 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 circuit_combiner: TargetField::one(),
                 instance_combiners: vec![TargetField::one()],
             };
-            let instances = batch_size;
-            let elems = fs_rng.squeeze_nonnative_field_elements(instances - 1 + circuit_combiners_needed);
-            let (instance_combiners, circuit_combiner) = elems.split_at(instances - 1);
+            let elems = fs_rng.squeeze_nonnative_field_elements(*batch_size - 1 + circuit_combiners_needed);
+            let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
             assert!(circuit_combiner.len() < 2);
             if circuit_combiner.len() == 1 {
                 combiners.circuit_combiner = circuit_combiner[0];
@@ -65,7 +64,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             for instance_combiner in instance_combiners {
                 combiners.instance_combiners.push(*instance_combiner);
             }
-            batch_combiners.insert(circuit_hash, combiners);
+            batch_combiners.insert(*circuit_hash, combiners);
             // TODO: to discuss: this is a bit ugly, but could be avoided if either we use an indexmap to count for us what is the first circuit, or we extract the first loop out of the for-loop
             circuit_combiners_needed = 1; // All circuits after the first need a random circuit combiner
             end_timer!(squeeze_time);
@@ -106,7 +105,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 non_zero_a_domain,
                 non_zero_b_domain,
                 non_zero_c_domain,
-                batch_size,
+                batch_size: *batch_size,
             };
             circuit_specific_states.insert(circuit_hash, circuit_specific_state);
         }

@@ -44,7 +44,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(crate) largest_constraint_domain: EvaluationDomain<F>,
     pub(crate) largest_non_zero_domain: EvaluationDomain<F>,
 
-    pub(crate) first_round_message: Option<FirstMessage<'a, F, MM>>,
+    pub(crate) first_round_message: Option<FirstMessage<'a, F>>,
     pub(crate) second_round_message: Option<SecondMessage<F>>,
     pub(crate) third_round_message: Option<ThirdMessage<F>>,
 

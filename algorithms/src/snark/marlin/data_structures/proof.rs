@@ -142,21 +142,21 @@ impl<'a, F: PrimeField> Evaluations<'a, F> {
         mut writer: W,
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        self.z_b_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
+        self.z_b_evals.iter().map(|(_, z_b_eval)| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)).collect::<Result<_,_>>()?;
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
-        self.g_a_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
-        self.g_b_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
-        self.g_c_evals.map(|z_b_eval| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?).collect()?;
+        self.g_a_evals.iter().map(|(_, z_b_eval)| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)).collect::<Result<_,_>>()?;
+        self.g_b_evals.iter().map(|(_, z_b_eval)| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)).collect::<Result<_,_>>()?;
+        self.g_c_evals.iter().map(|(_, z_b_eval)| CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)).collect::<Result<_,_>>()?;
         Ok(())
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
         let mut size = 0;
-        size += self.z_b_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.z_b_evals.iter().map(|(_, s)| s.serialized_size(compress)).sum::<usize>();
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
-        size += self.g_a_eval.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
-        size += self.g_b_eval.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
-        size += self.g_c_eval.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.g_a_evals.iter().map(|(_, s)| s.serialized_size(compress)).sum::<usize>();
+        size += self.g_b_evals.iter().map(|(_, s)| s.serialized_size(compress)).sum::<usize>();
+        size += self.g_c_evals.iter().map(|(_, s)| s.serialized_size(compress)).sum::<usize>();
         size
     }
 
@@ -166,13 +166,15 @@ impl<'a, F: PrimeField> Evaluations<'a, F> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
-        let deserialize_batch = |size| { (0..size).map(|| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?).collect()? };
+        let deserialize_batch_z = |size| { (0..size).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?).collect() };
+        let deserialize_batch_g_1 = ||{CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)};
+        let deserialize_batch_g_m = |size| { (0..size).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?).collect() };
         Ok(Evaluations {
-            z_b_evals: deserialize_batch(batch_size),
-            g_1_eval: deserialize_batch(1)[0],
-            g_a_evals: deserialize_batch(batch_size),
-            g_b_evals: deserialize_batch(batch_size),
-            g_c_evals: deserialize_batch(batch_size),
+            z_b_evals: deserialize_batch_z(batch_size)?,
+            g_1_eval: deserialize_batch_g_1()?,
+            g_a_evals: deserialize_batch_g_m(batch_size)?,
+            g_b_evals: deserialize_batch_g_m(batch_size)?,
+            g_c_evals: deserialize_batch_g_m(batch_size)?,
         })
     }
 }
