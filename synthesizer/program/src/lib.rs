@@ -18,6 +18,7 @@ mod closure;
 pub use closure::*;
 
 pub mod finalize;
+pub use finalize::*;
 
 mod function;
 pub use function::*;

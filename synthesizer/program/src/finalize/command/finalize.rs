@@ -57,31 +57,6 @@ impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
-    /// Evaluates the instruction.
-    #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
-    ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() > N::MAX_INPUTS {
-            bail!("'{}' expects <= {} operands, found {} operands", Self::opcode(), N::MAX_INPUTS, self.operands.len())
-        }
-
-        // Load the operands values.
-        let _inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
-
-        // Finalize the inputs.
-        match VARIANT {
-            0 => {}
-            _ => bail!("Invalid 'finalize' variant: {VARIANT}"),
-        }
-        Ok(())
-    }
-}
-
 impl<N: Network, const VARIANT: u8> Parser for FinalizeOperation<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]

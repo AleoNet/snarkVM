@@ -25,6 +25,7 @@ use crate::{
     ProgramStore,
     Stack,
 };
-use console::network::prelude::*;
-use console::program::{Identifier, Literal, Plaintext, Value};
-
+use console::{
+    network::prelude::*,
+    program::{Identifier, Literal, Plaintext, Value},
+};

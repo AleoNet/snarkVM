@@ -43,9 +43,6 @@ pub use snark::*;
 pub mod store;
 pub use store::*;
 
-pub mod traits;
-pub use traits::*;
-
 pub mod vm;
 pub use vm::*;
 
