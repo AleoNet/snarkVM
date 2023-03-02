@@ -25,13 +25,13 @@ use crate::{
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
-pub struct FirstOracles<'a, F: PrimeField> {
-    pub(in crate::snark::marlin) batches: BTreeMap<&'a [u8; 32], Vec<SingleEntry<F>>>,
+pub struct FirstOracles<'a, F: PrimeField, MM: MarlinMode> {
+    pub(in crate::snark::marlin) batches: BTreeMap<&'a Circuit<F, MM>, Vec<SingleEntry<F>>>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
 
-impl<'a, F: PrimeField> FirstOracles<'a, F> {
+impl<'a, F: PrimeField, MM: MarlinMode> FirstOracles<'a, F, MM> {
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.

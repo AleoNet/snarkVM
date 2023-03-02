@@ -17,6 +17,7 @@
 use crate::snark::marlin::{
     ahp::{indexer::Circuit, AHPError, AHPForR1CS},
     prover,
+    CircuitInfo,
     CircuitProvingKey,
     MarlinMode,
 };
@@ -41,19 +42,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>>(
-        circuits_to_constraints: &BTreeMap<&[u8; 32], &[&C]>,
-    ) -> Result<prover::State<'a, F>, AHPError> {
+        circuits_to_constraints: &BTreeMap<&'a Circuit<F, MM>, &[&C]>,
+    ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let indices_and_assignments = cfg_iter!(circuits_to_constraints)
             .map(|(circuit, constraints)| {
-                let num_non_zero_a = circuit.0.index_info.num_non_zero_a;
-                let num_non_zero_b = circuit.0.index_info.num_non_zero_b;
-                let num_non_zero_c = circuit.0.index_info.num_non_zero_c;
+                let num_non_zero_a = circuit.index_info.num_non_zero_a;
+                let num_non_zero_b = circuit.index_info.num_non_zero_b;
+                let num_non_zero_c = circuit.index_info.num_non_zero_c;
 
-                let circuit_id = format!("circuit_{:x?}", circuit.0.hash);
+                let circuit_id = format!("circuit_{:x?}", circuit.hash);
 
-                let assignments = cfg_iter!(circuit.1).enumerate().map(|(i, instance)| {
+                let assignments = cfg_iter!(constraints).enumerate().map(|(i, instance)| {
                     let constraint_time = start_timer!(|| format!("Generating constraints and witnesses for {circuit_id} and index {i}"));
                     let mut pcs = prover::ConstraintSystem::new();
                     instance.generate_constraints(&mut pcs)?;
@@ -86,8 +87,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         println!("Number of non-zero entries in C: {}", num_non_zero_c);
                     }
 
-                    if circuit.0.index_info.num_constraints != num_constraints
-                        || circuit.0.index_info.num_variables != (num_public_variables + num_private_variables)
+                    if circuit.index_info.num_constraints != num_constraints
+                        || circuit.index_info.num_variables != (num_public_variables + num_private_variables)
                     {
                         return Err(AHPError::InstanceDoesNotMatchIndex);
                     }
@@ -95,13 +96,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     Self::formatted_public_input_is_admissible(&padded_public_variables)?;
 
                     let eval_z_a_time = start_timer!(|| format!("For {circuit_id}, evaluating z_A_{i}"));
-                    let z_a = cfg_iter!(circuit.0.a)
+                    let z_a = cfg_iter!(circuit.a)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();
                     end_timer!(eval_z_a_time);
 
                     let eval_z_b_time = start_timer!(|| format!("For {circuit_id}, evaluating z_B_{i}"));
-                    let z_b = cfg_iter!(circuit.0.b)
+                    let z_b = cfg_iter!(circuit.b)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();
                     end_timer!(eval_z_b_time);
@@ -114,10 +115,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     ))
                 })
                 .collect::<Result<Vec<prover::Assignments<F>>, AHPError>>()?;
-                Ok((*circuit.0, assignments))
+                Ok((*circuit, assignments))
             })
             .collect::<Result<
-                BTreeMap<&Circuit<F, MM>, Vec<prover::Assignments<F>>>, 
+                BTreeMap<&'a Circuit<F, MM>, Vec<prover::Assignments<F>>>, 
                 AHPError>
             >()?;
 

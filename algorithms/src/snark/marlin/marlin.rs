@@ -31,7 +31,7 @@ use crate::{
         UniversalSRS,
     },
     AlgebraicSponge,
-    Prepare,
+    PrepareOrd,
     SNARKError,
     SNARK,
     SRS,
@@ -44,6 +44,7 @@ use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{cfg_iter, to_bytes_le, ToBytes};
 
 use std::{borrow::Borrow, collections::BTreeMap, sync::Arc};
+use std::ops::Deref;
 
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
@@ -100,7 +101,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                     .download_powers_for(0..indexed_circuit.max_degree())
                     .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), indexed_circuit.max_degree()))?;
             }                
-            let coefficient_supports = AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info);
+            let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Marlin only needs degree 2 random polynomials.
             // TODO: investigate whether we can re-use keys across circuits-
@@ -110,7 +111,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 indexed_circuit.max_degree(),
                 [indexed_circuit.constraint_domain_size()],
                 supported_hiding_bound,
-                Some(coefficient_supports.as_slice()),
+                Some(coefficient_support.as_slice()),
             )?;
 
             let commit_time = start_timer!(|| "Commit to index polynomials");
@@ -366,7 +367,7 @@ where
 
         let circuits_to_constraints = BTreeMap::new();
         for (pk, constraints) in keys_to_constraints {
-            circuits_to_constraints.insert(&pk.circuit.hash, *constraints);
+            circuits_to_constraints.insert(pk.circuit.deref(), *constraints); // TODO: should we pass Arc everywhere instead of a &?
         }
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints)?;
         
@@ -376,9 +377,9 @@ where
         let mut keys_to_inputs = BTreeMap::new();
         let mut committer_key_union;
         for (pk, _) in keys_to_constraints.iter() {
-            let batch_size = prover_state.batch_size(&pk.circuit.hash).ok_or(SNARKError::Message("Circuit not found".into()))?;
-            let public_input = &prover_state.public_inputs(&pk.circuit.hash).ok_or(SNARKError::Message("Circuit not found".into()))?;
-            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit.hash).ok_or(SNARKError::Message("Circuit not found".into()))?;
+            let batch_size = prover_state.batch_size(&pk.circuit.hash).ok_or(SNARKError::CircuitNotFound)?;
+            let public_input = &prover_state.public_inputs(&pk.circuit.hash).ok_or(SNARKError::CircuitNotFound)?;
+            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit.hash).ok_or(SNARKError::CircuitNotFound)?;
             batch_sizes.insert(&pk.circuit.hash, (pk.circuit_verifying_key.circuit_info, batch_size));
             public_inputs.insert(&pk.circuit.hash, public_input);
             padded_public_inputs.insert(&pk.circuit.hash, padded_public_input);
@@ -621,7 +622,7 @@ where
 
     fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as Prepare>::Prepared, &[B]>,
+        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof<'a>,
     ) -> Result<bool, SNARKError> {
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;

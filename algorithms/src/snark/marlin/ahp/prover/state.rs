@@ -24,8 +24,10 @@ use crate::{
         Evaluations as EvaluationsOnDomain,
     },
     snark::marlin::{
-        CircuitInfo,
+        Circuit,
         AHPError,
+        AHPForR1CS, MarlinMode,
+        ahp::verifier,
     },
 };
 use snarkvm_fields::PrimeField;
@@ -37,8 +39,6 @@ pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) non_zero_a_domain: EvaluationDomain<F>,
     pub(super) non_zero_b_domain: EvaluationDomain<F>,
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
-    pub(super) fft_precomputation: FFTPrecomputation<F>,
-    pub(super) ifft_precomputation: FFTPrecomputation<F>,
 
     /// The number of instances being proved in this batch.
     pub(in crate::snark) batch_size: usize,
@@ -74,17 +74,17 @@ pub struct CircuitSpecificState<F: PrimeField> {
 }
 
 /// State for the AHP prover.
-pub struct State<'a, F: PrimeField> {
-    pub(super) circuit_specific_states: BTreeMap<&'a [u8; 32], CircuitSpecificState<F>>,
+pub struct State<'a, F: PrimeField, MM: MarlinMode> {
+    pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
     pub(super) total_instances: usize,
+    pub(super) max_num_constraints: usize,
+    /// The challenges sent by the verifier in the first round
+    pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F>>>,
+    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
     pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
-    // / The challenges sent by the verifier in the first round
-    // TODO: not sure yet if we actually need the following:
-    // pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F, MM>>,
 }
 
 pub type PaddedPubInputs<F> = Vec<F>;
@@ -98,21 +98,22 @@ pub struct Assignments<F>(
     pub Zb<F>
 );
 
-impl<'a, F: PrimeField> State<'a, F> {
+impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
         // TODO: which map should we use?
         // IndexMap or BTreeMap?
         indices_and_assignments: BTreeMap<
-            &[u8; 32], 
-            (CircuitInfo<F>, Vec<Assignments<F>>),
+            &'a Circuit<F, MM>, 
+            Vec<Assignments<F>>
         >
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
+        let mut max_num_constraints = 0;
         let mut total_instances = 0;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
-            .map(|(circuit, (index_info, variable_assignments))| {
+            .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
                 let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
                     .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -134,21 +135,22 @@ impl<'a, F: PrimeField> State<'a, F> {
                 let non_zero_c_domain =
                     EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
+                let max_domain_candidate = AHPForR1CS::<_, MM>::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain);
                 max_non_zero_domain = match max_non_zero_domain {
                     Some(max_d) => {
-                        let max_domain_candidate = Self::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain);
-                        if max_d.size() < max_domain_candidate {
+                        if max_d.size() < max_domain_candidate.size() {
                             Some(max_domain_candidate)
                         } else {
                             Some(max_d)
                         }
                     },
-                    None => Some(max_non_zero_domain),
+                    None => Some(max_domain_candidate),
                 };
 
                 let mut input_domain = None; // TODO: we're in a single circuit, can we just efficiently/cleanly assign the first valid domain?
                 let batch_size = variable_assignments.len();
                 total_instances += batch_size;
+                max_num_constraints = max_num_constraints.max(index_info.num_constraints);
                 let mut z_as = Vec::with_capacity(batch_size);
                 let mut z_bs = Vec::with_capacity(batch_size);
                 let mut x_polys = Vec::with_capacity(batch_size);
@@ -173,8 +175,6 @@ impl<'a, F: PrimeField> State<'a, F> {
                     non_zero_a_domain,
                     non_zero_b_domain,
                     non_zero_c_domain,
-                    fft_precomputation: index_info.fft_precomputation,
-                    ifft_precomputation: index_info.ifft_precomputation,                
                     batch_size,
                     padded_public_variables,
                     x_polys,
@@ -185,7 +185,7 @@ impl<'a, F: PrimeField> State<'a, F> {
                     lhs_polynomials: None,
                     sums: None,
                 };
-                Ok((circuit.hash, state))
+                Ok((circuit, state))
             })
             .collect::<SynthesisResult<BTreeMap<_, _>>>()?;
 
@@ -197,12 +197,13 @@ impl<'a, F: PrimeField> State<'a, F> {
             max_non_zero_domain,
             circuit_specific_states,
             total_instances,
+            max_num_constraints,
             first_round_oracles: None,
         })
     }
 
     /// Get the batch size for a given circuit.
-    pub fn batch_size(&self, circuit: &[u8; 32]) -> Option<usize> {
+    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
         self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 
@@ -212,21 +213,12 @@ impl<'a, F: PrimeField> State<'a, F> {
     }
 
     /// Get the public inputs for the entire batch.
-    pub fn public_inputs(&self, circuit: &[u8; 32]) -> Option<Vec<Vec<F>>> {
+    pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect())
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &[u8; 32]) -> Option<Vec<Vec<F>>> {
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables)
-    }
-
-    // TODO: think about removing these getters, as the circuit already contains the information it is just double checking
-    pub fn fft_precomputation(&self, circuit: &[u8; 32]) -> Option<&FFTPrecomputation<F>> {
-        self.circuit_specific_states.contains_key(circuit).then(|| &circuit.fft_precomputation)
-    }
-
-    pub fn ifft_precomputation(&self, circuit: &[u8; 32]) -> Option<&IFFTPrecomputation<F>> {
-        self.circuit_specific_states.contains_key(circuit).then(|| &circuit.ifft_precomputation)
     }
 }

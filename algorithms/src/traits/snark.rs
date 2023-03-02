@@ -22,8 +22,15 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use std::{borrow::Borrow, collections::BTreeMap, fmt::Debug, sync::atomic::AtomicBool};
 
-/// Defines a trait that describes preparing from an unprepared version to a prepare version.
+/// Defines trait that describes preparing from an unprepared version to a prepare version.
 pub trait Prepare {
+    type Prepared;
+    fn prepare(&self) -> Self::Prepared;
+}
+
+/// Defines trait that describes preparing from an unprepared version to an orderable prepare version.
+pub trait PrepareOrd {
+    // NOTE: merging this with the Prepare trait is possible but introduces more complexity 
     type Prepared: Ord;
     fn prepare(&self) -> Self::Prepared;
 }
@@ -63,7 +70,7 @@ pub trait SNARK {
         + Sync
         + ToBytes
         + FromBytes
-        + Prepare
+        + PrepareOrd
         + for<'a> From<&'a Self::ProvingKey>
         + From<Self::ProvingKey>
         + ToConstraintField<Self::BaseField>
@@ -138,7 +145,7 @@ pub trait SNARK {
 
     fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as Prepare>::Prepared, &[B]>,
+        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof<'a>,
     ) -> Result<bool, SNARKError>;
 
@@ -151,7 +158,7 @@ pub trait SNARK {
         let prepared_keys_to_inputs = keys_to_inputs.iter().map(|(key, inputs)| {
             let prepared_key = key.prepare();
             (&prepared_key, *inputs)
-        }).collect::<BTreeMap<&<Self::VerifyingKey as Prepare>::Prepared, &[B]>>();
+        }).collect::<BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
         end_timer!(preparation_time);
         Self::verify_batch_prepared(fs_parameters, &prepared_keys_to_inputs, proof)
     }

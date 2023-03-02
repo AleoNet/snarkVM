@@ -29,7 +29,7 @@ pub struct MatrixSums<F: std::marker::Sync> {
 /// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ThirdMessage<'b, F: PrimeField> {
-    pub sums: BTreeMap<&'b [u8; 32], MatrixSums<F>>,
+    pub sums: BTreeMap<&'b Circuit<F, MM>, MatrixSums<F>>,
 }
 
 impl<'b, F: PrimeField> ToBytes for ThirdMessage<'b, F> {

@@ -27,6 +27,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
 
+#[derive(Debug)]
 pub struct CircuitSpecificState<F: PrimeField> {
     pub(crate) input_domain: EvaluationDomain<F>,
     pub(crate) constraint_domain: EvaluationDomain<F>,

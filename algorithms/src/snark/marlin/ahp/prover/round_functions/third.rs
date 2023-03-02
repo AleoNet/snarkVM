@@ -75,9 +75,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &verifier::SecondMessage<F>,
-        mut state: prover::State<'a, F>,
+        mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<'a, F>, prover::ThirdOracles<'a, F>, prover::State<'a, F>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<'a, F>, prover::ThirdOracles<'a, F>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state
@@ -87,8 +87,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let beta = verifier_message.beta;
 
-        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
-        let v_H_at_beta = state.constraint_domain.evaluate_vanishing_polynomial(beta);
+        let v_H_at_alpha = state.max_constraint_domain.evaluate_vanishing_polynomial(*alpha);
+        let v_H_at_beta = state.max_constraint_domain.evaluate_vanishing_polynomial(beta);
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 

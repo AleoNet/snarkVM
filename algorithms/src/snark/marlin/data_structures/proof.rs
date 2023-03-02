@@ -123,20 +123,20 @@ pub struct WitnessCommitments<E: PairingEngine> {
 
 // TODO: we're deserializing this, should we still keep references to objects...?
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Evaluations<'a, F: PrimeField> {
+pub struct Evaluations<F: PrimeField> {
     /// Evaluations of `z_b_i_j`'s at `beta`.
-    pub z_b_evals: BTreeMap<&'a [u8; 32], Vec<F>>,
+    pub z_b_evals: BTreeMap<[u8; 32], Vec<F>>,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a_i`'s at `beta`.
-    pub g_a_evals: BTreeMap<&'a [u8; 32], F>,
+    pub g_a_evals: BTreeMap<[u8; 32], F>,
     /// Evaluation of `g_b_i`'s at `gamma`.
-    pub g_b_evals: BTreeMap<&'a [u8; 32], F>,
+    pub g_b_evals: BTreeMap<[u8; 32], F>,
     /// Evaluation of `g_c_i`'s at `gamma`.
-    pub g_c_evals: BTreeMap<&'a [u8; 32], F>,
+    pub g_c_evals: BTreeMap<[u8; 32], F>,
 }
 
-impl<'a, F: PrimeField> Evaluations<'a, F> {
+impl<'a, F: PrimeField> Evaluations<F> {
     fn serialize_with_mode<W: snarkvm_utilities::Write>(
         &self,
         mut writer: W,
@@ -179,7 +179,7 @@ impl<'a, F: PrimeField> Evaluations<'a, F> {
     }
 }
 
-impl<'a, F: PrimeField> Evaluations<'a, F> {
+impl<'a, F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<&[u8; 32], usize>) -> Self {
         let z_b_evals = map.iter().filter_map(|(k, v)| k.contains("z_b_").then_some(*v) ).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_sizes.map(|_,s|s).sum());
@@ -190,7 +190,7 @@ impl<'a, F: PrimeField> Evaluations<'a, F> {
     }
 
     pub(crate) fn get(&self, label: &str) -> Option<F> {
-        let circuit_id = label.split(" ").collect::<Vec<&str>>()[0];
+        let circuit_id = label.split("_").collect::<Vec<&str>>()[1];
         if let Some(index) = label.contains("z_b_") {
             self.get_from_evaluations(&self.z_b_evals, circuit_id, index)
         } else if let Some(index) = label.contains("g_a_") {
@@ -216,7 +216,7 @@ impl<'a, F: PrimeField> Evaluations<'a, F> {
     }    
 }
 
-impl<'a, F: PrimeField> Valid for Evaluations<'a, F> {
+impl<'a, F: PrimeField> Valid for Evaluations<F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
         self.g_1_eval.check()?;
@@ -226,7 +226,7 @@ impl<'a, F: PrimeField> Valid for Evaluations<'a, F> {
     }
 }
 
-impl<'a, F: PrimeField> Evaluations<'a, F> {
+impl<'a, F: PrimeField> Evaluations<F> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
         result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
@@ -244,7 +244,7 @@ pub struct Proof<'a, E: PairingEngine> {
     pub commitments: Commitments<E>,
 
     /// Evaluations of some of the committed polynomials.
-    pub evaluations: Evaluations<'a, E::Fr>,
+    pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c for each instance
     pub msg: ahp::prover::ThirdMessage<'a, E::Fr>,
@@ -258,7 +258,7 @@ impl<'a, E: PairingEngine> Proof<'a, E> {
     pub fn new(
         batch_size: usize,
         commitments: Commitments<E>,
-        evaluations: Evaluations<'a, E::Fr>,
+        evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::ThirdMessage<'a, E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {

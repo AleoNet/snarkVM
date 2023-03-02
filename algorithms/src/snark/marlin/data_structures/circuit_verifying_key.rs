@@ -18,7 +18,7 @@ use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc,
     snark::marlin::{ahp::indexer::*, CircuitProvingKey, MarlinMode, PreparedCircuitVerifyingKey},
-    Prepare,
+    PrepareOrd,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
@@ -56,7 +56,7 @@ pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
     pub hash: String,
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Prepare for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine, MM: MarlinMode> PrepareOrd for CircuitVerifyingKey<E, MM> {
     type Prepared = PreparedCircuitVerifyingKey<E, MM>;
 
     /// Prepare the circuit verifying key.

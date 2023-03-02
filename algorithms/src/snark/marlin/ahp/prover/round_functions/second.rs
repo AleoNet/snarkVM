@@ -37,6 +37,7 @@ use crate::{
         prover,
         MarlinMode,
     },
+    SNARKError,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
@@ -50,9 +51,8 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the first round.
-    // TODO: think about whether to adjust this like the first and third rounds
-    pub fn second_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
+    pub fn second_round_polynomial_info(max_num_constraints: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(max_num_constraints).unwrap();
         [
             PolynomialInfo::new("g_1".into(), Some(constraint_domain_size - 2), Self::zk_bound()),
             PolynomialInfo::new("h_1".into(), None, None),
@@ -65,9 +65,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<'a, F>,
-        mut state: prover::State<'a, F>,
+        mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> (prover::SecondOracles<F>, prover::State<'a, F>) {
+    ) -> (prover::SecondOracles<F>, prover::State<'a, F, MM>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let zk_bound = Self::zk_bound();
@@ -97,7 +97,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(max_constraint_domain.size() - 2), zk_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
-        assert!(oracles.matches_info(&Self::second_round_polynomial_info(&state.index.index_info)));
+        assert!(oracles.matches_info(&Self::second_round_polynomial_info(state.max_num_constraints)));
 
         state.verifier_first_message = Some(verifier_message.clone());
         end_timer!(round_time);
@@ -106,10 +106,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_lhs<'a>(
-        state: &prover::State<'a, F>,
-        batch_combiners: &BTreeMap<&Circuit<F, MM>, verifier::BatchCombiners<F>>,
-        summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>>,
-        alpha: F,
+        state: &prover::State<'a, F, MM>,
+        batch_combiners: &BTreeMap<&'a [u8; 32], verifier::BatchCombiners<F>>,
+        summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, Vec<DensePolynomial<F>>>,
+        alpha: &F,
     ) -> DensePolynomial<F> {
 
         let mut job_pool = ExecutionPool::with_capacity(2 * state.circuit_specific_states.len());
@@ -119,8 +119,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let circuit_specific_state = state.circuit_specific_states[circuit];
             let summed_z_m = &summed_z_m_and_t[circuit][2*i];
             let t = &summed_z_m_and_t[circuit][2*i + 1];
-            let circuit_combiner = batch_combiners[circuit].circuit_combiner;
-            let instance_combiners = batch_combiners[circuit].instance_combiners;
+            let circuit_combiner = batch_combiners[&circuit.hash].circuit_combiner;
+            let instance_combiners = batch_combiners[&circuit.hash].instance_combiners;
             let x_polys = &circuit_specific_state.x_polys;
             let input_domain = circuit_specific_state.input_domain;
             let constraint_domain = &circuit_specific_state.constraint_domain;
@@ -132,7 +132,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let z = cfg_iter!(oracles)
                     .zip_eq(instance_combiners)
                     .zip(x_polys)
-                    .map(|((oracles, &instance_combiner), x_poly)| {
+                    .map(|((oracles, instance_combiner), x_poly)| {
                         let mut z = oracles.w_poly.polynomial().as_dense().unwrap().mul_by_vanishing_poly(input_domain);
                         // Zip safety: `x_poly` is smaller than `z_poly`.
                         z.coeffs.iter_mut().zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
@@ -212,11 +212,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_summed_z_m_and_t<'a>(
-        state: &prover::State<'a, F>,
+        state: &prover::State<'a, F, MM>,
         alpha: F,
         eta_b: F,
         eta_c: F,
-        batch_combiners: &BTreeMap<&'a Circuit<F, MM>, verifier::BatchCombiners<F>>,
+        batch_combiners: &BTreeMap<&'a [u8; 32], verifier::BatchCombiners<F>>,
     ) -> BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>> {
         let constraint_domain = state.max_constraint_domain;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
@@ -224,14 +224,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(batch_combiners.len() == state.circuit_specific_states.len());
         let mut job_pool = ExecutionPool::with_capacity(2 * state.circuit_specific_states.len());
 
-        for (circuit, circuit_specific_state) in state.circuit_specific_states.iter() {
+        for (circuit, circuit_specific_state) in state.circuit_specific_states {
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
             let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
             job_pool.add_job(|| {
                 let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly"); // TODO: timers should get a label
-                let summed_z_m = cfg_iter!(first_msg.batches[circuit])
-                    .zip_eq(batch_combiners[circuit].instance_combiners)
+                let summed_z_m = cfg_iter!(first_msg.batches[&circuit])
+                    .zip_eq(batch_combiners[&circuit.hash].instance_combiners)
                     .map(|(entry, combiner)| {
                         let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
                         let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
@@ -264,7 +264,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
     
                         // Multiply by linear combination coefficient.
-                        cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
+                        cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= combiner);
 
                         assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
                         end_timer!(summed_z_m_poly_time);
@@ -280,10 +280,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let r_alpha_x_evals =
                     constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
                 let t = Self::calculate_t(
-                    &[&circuit_specific_state.a, &circuit_specific_state.b, &circuit_specific_state.c],
+                    &[&circuit.a, &circuit.b, &circuit.c],
                     [F::one(), eta_b, eta_c],
-                    &state.input_domain,
-                    &state.constraint_domain,
+                    &circuit_specific_state.input_domain,
+                    &circuit_specific_state.constraint_domain,
                     &r_alpha_x_evals,
                     ifft_precomputation,
                 );
@@ -292,10 +292,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             });
         }
 
-        // instead of BatchTerms identifier, I can just use the assumption of job ordering
-
         // TODO: annotation might be unnecessary because the return type of the function is already indicated
-        let summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>> = job_pool.execute_all().try_into().unwrap();
+        let summed_z_m_and_t: Vec<BTreeMap<&'a Circuit<F, MM>, Vec<DensePolynomial<F>>>> = job_pool.execute_all().try_into().unwrap();
         summed_z_m_and_t
     }
 
