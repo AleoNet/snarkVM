@@ -236,7 +236,7 @@ impl<'a, F: PrimeField> Evaluations<F> {
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Proof<'a, E: PairingEngine> {
+pub struct Proof<E: PairingEngine> {
     /// The number of instances being proven in this proof.
     batch_size: usize,
 
@@ -247,19 +247,19 @@ pub struct Proof<'a, E: PairingEngine> {
     pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c for each instance
-    pub msg: ahp::prover::ThirdMessage<'a, E::Fr>,
+    pub msg: ahp::prover::ThirdMessage<E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<'a, E: PairingEngine> Proof<'a, E> {
+impl<'a, E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
         batch_size: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
-        msg: ahp::prover::ThirdMessage<'a, E::Fr>,
+        msg: ahp::prover::ThirdMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         if commitments.witness_commitments.len() != batch_size {
@@ -282,7 +282,7 @@ impl<'a, E: PairingEngine> Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine> CanonicalSerialize for Proof<'a, E> {
+impl<'a, E: PairingEngine> CanonicalSerialize for Proof<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         CanonicalSerialize::serialize_with_mode(&self.batch_size, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
@@ -303,7 +303,7 @@ impl<'a, E: PairingEngine> CanonicalSerialize for Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine> Valid for Proof<'a, E> {
+impl<'a, E: PairingEngine> Valid for Proof<E> {
     fn check(&self) -> Result<(), SerializationError> {
         self.batch_size.check()?;
         self.commitments.check()?;
@@ -313,7 +313,7 @@ impl<'a, E: PairingEngine> Valid for Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<'a, E> {
+impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<E> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -330,13 +330,13 @@ impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<'a, E> {
     }
 }
 
-impl<'a, E: PairingEngine> ToBytes for Proof<'a, E> {
+impl<'a, E: PairingEngine> ToBytes for Proof<E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         Self::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<'a, E: PairingEngine> FromBytes for Proof<'a, E> {
+impl<'a, E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

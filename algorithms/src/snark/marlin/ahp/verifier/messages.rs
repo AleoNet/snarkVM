@@ -49,7 +49,9 @@ pub struct SecondMessage<F> {
 #[derive(Clone, Debug)]
 pub struct ThirdMessage<F> {
     /// Randomizers for the h-polynomial for `A_i`, `B_i`, `C_i` for circuit i.
-    pub rs: Vec<F>,
+    pub r_a: Vec<F>,
+    pub r_b: Vec<F>,
+    pub r_c: Vec<F>,
 }
 
 /// Query set of the verifier.

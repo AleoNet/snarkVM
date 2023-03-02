@@ -199,6 +199,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             total_instances,
             max_num_constraints,
             first_round_oracles: None,
+            verifier_first_message: None,
         })
     }
 

@@ -108,7 +108,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_lhs<'a>(
         state: &prover::State<'a, F, MM>,
         batch_combiners: &BTreeMap<&'a [u8; 32], verifier::BatchCombiners<F>>,
-        summed_z_m_and_t: BTreeMap<&'a Circuit<F, MM>, Vec<DensePolynomial<F>>>,
+        summed_z_m_and_t: Vec<(&'a [u8; 32], DensePolynomial<F>)>,
         alpha: &F,
     ) -> DensePolynomial<F> {
 
@@ -117,8 +117,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         for (i, (circuit, oracles)) in state.first_round_oracles.as_ref().unwrap().batches.iter().enumerate() {
             let circuit_specific_state = state.circuit_specific_states[circuit];
-            let summed_z_m = &summed_z_m_and_t[circuit][2*i];
-            let t = &summed_z_m_and_t[circuit][2*i + 1];
+            let summed_z_m = &summed_z_m_and_t[2*i];
+            assert!(*summed_z_m.0 == circuit.hash);
+            let summed_z_m = summed_z_m.1;
+            let summed_t = &summed_z_m_and_t[2*i + 1];
+            assert!(*summed_t.0 == circuit.hash);
+            let summed_t = summed_t.1;
             let circuit_combiner = batch_combiners[&circuit.hash].circuit_combiner;
             let instance_combiners = batch_combiners[&circuit.hash].instance_combiners;
             let x_polys = &circuit_specific_state.x_polys;
@@ -144,7 +148,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 end_timer!(z_time);
 
-                let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(constraint_domain, fft_precomputation, ifft_precomputation, t, summed_z_m, &z, *alpha);
+                let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(constraint_domain, fft_precomputation, ifft_precomputation, &summed_t, &summed_z_m, &z, *alpha);
         
                 circuit_specific_lhs *= circuit_combiner;
 
@@ -158,7 +162,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 // Substituting in s, we get that lhs * s / v_H = (lhs / v_H_i) * (H_i.size() / H.size());
                 // That's what we're computing here.
                 
-                let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+                let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(*constraint_domain).unwrap();
                 assert!(remainder.is_zero());
                 let multiplier = constraint_domain.size_as_field_element / H_max_size;
                 cfg_iter_mut!(circuit_specific_lhs.coeffs).for_each(|c| *c *= multiplier);        
@@ -168,7 +172,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         // TODO: check if annotation is required
         let circuit_specific_lhs_s: Vec<DensePolynomial<F>> = job_pool.execute_all().try_into().unwrap();
-        let mut lhs_sum = circuit_specific_lhs_s.sum();
+        let mut lhs_sum = *circuit_specific_lhs_s.iter().sum::<&DensePolynomial<F>>();
 
         let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
@@ -187,7 +191,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> DensePolynomial<F> {
         let q_1_time = start_timer!(|| "Compute LHS of sumcheck");
 
-        let mul_domain_size = (*constraint_domain.size() + summed_z_m.coeffs.len()).max(t.coeffs.len() + z.len());
+        let mul_domain_size = (constraint_domain.size() + summed_z_m.coeffs.len()).max(t.coeffs.len() + z.len());
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
         let mut multiplier = PolyMultiplier::new();
@@ -196,7 +200,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         multiplier.add_polynomial(*z, "z");
         multiplier.add_polynomial(*t, "t");
         let r_alpha_x_evals = {
-            let r_alpha_x_evals = *constraint_domain
+            let r_alpha_x_evals = constraint_domain
                 .batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(alpha, &mul_domain);
             fft::Evaluations::from_vec_and_domain(r_alpha_x_evals, mul_domain)
         };
@@ -217,7 +221,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         eta_b: F,
         eta_c: F,
         batch_combiners: &BTreeMap<&'a [u8; 32], verifier::BatchCombiners<F>>,
-    ) -> BTreeMap<&'a Circuit<F, MM>, DensePolynomial<F>> {
+    ) -> Vec<(&'a [u8; 32], DensePolynomial<F>)> {
         let constraint_domain = state.max_constraint_domain;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
 
@@ -271,7 +275,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         summed_z_m
                     })
                     .sum::<DensePolynomial<_>>();
-                (circuit, summed_z_m)
+                (&circuit.hash, summed_z_m)
             });
     
             job_pool.add_job(|| {
@@ -288,12 +292,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     ifft_precomputation,
                 );
                 end_timer!(t_poly_time);
-                (circuit, t)
+                (&circuit.hash, t)
             });
         }
 
         // TODO: annotation might be unnecessary because the return type of the function is already indicated
-        let summed_z_m_and_t: Vec<BTreeMap<&'a Circuit<F, MM>, Vec<DensePolynomial<F>>>> = job_pool.execute_all().try_into().unwrap();
+        let summed_z_m_and_t: Vec<(&'a [u8; 32], DensePolynomial<F>)> = job_pool.execute_all().try_into().unwrap();
         summed_z_m_and_t
     }
 

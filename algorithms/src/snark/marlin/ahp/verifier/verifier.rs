@@ -155,9 +155,20 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<(ThirdMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
         
         let num_instances = state.circuit_specific_states.map(|state|state.batch_size).sum(); // TODO: see if this can be precomputed more efficiently
-        let elems = fs_rng.squeeze_nonnative_field_elements(2 + 3*(num_instances - 1));
-        let rs = elems.map(|elem|elem).collect::<Vec<_>>();
-        let message = ThirdMessage { rs };
+        let r_a = Vec::with_capacity(num_instances);
+        let r_b = Vec::with_capacity(num_instances);
+        let r_c = Vec::with_capacity(num_instances);
+        let first_elems = fs_rng.squeeze_nonnative_field_elements(2);
+        r_a.push(TargetField::one());
+        r_b.push(first_elems[0]);
+        r_c.push(first_elems[1]);
+        for i in 1..num_instances {
+            let elems = fs_rng.squeeze_nonnative_field_elements(3);
+            r_a.push(first_elems[0]);
+            r_b.push(first_elems[1]);
+            r_c.push(first_elems[2]);
+        }
+        let message = ThirdMessage { r_a, r_b, r_c };
 
         state.third_round_message = Some(message);
         Ok((message, state))

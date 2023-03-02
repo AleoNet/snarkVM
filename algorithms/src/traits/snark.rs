@@ -57,7 +57,7 @@ pub trait SNARK {
         + Eq
         + Send
         + Sync;
-    type Proof<'a>: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
+    type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync + Ord;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
@@ -97,7 +97,7 @@ pub trait SNARK {
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
         rng: &mut R,
-    ) -> Result<Self::Proof<'a>, SNARKError> {
+    ) -> Result<Self::Proof, SNARKError> {
         Self::prove_batch_with_terminator(fs_parameters, keys_to_constraints, &AtomicBool::new(false), rng)
     }
 
@@ -106,7 +106,7 @@ pub trait SNARK {
         proving_key: &Self::ProvingKey,
         constraints: &C,
         rng: &mut R,
-    ) -> Result<Self::Proof<'a>, SNARKError> {
+    ) -> Result<Self::Proof, SNARKError> {
         let keys_to_constraints = BTreeMap::new();
         keys_to_constraints.insert(proving_key, vec![constraints].as_slice());
         Self::prove_batch(fs_parameters, &keys_to_constraints, rng)
@@ -117,7 +117,7 @@ pub trait SNARK {
         keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<Self::Proof<'a>, SNARKError>;
+    ) -> Result<Self::Proof, SNARKError>;
 
     fn prove_with_terminator<'a, C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
@@ -125,7 +125,7 @@ pub trait SNARK {
         constraints: &C,
         terminator: &AtomicBool,
         rng: &mut R,
-    ) -> Result<Self::Proof<'a>, SNARKError> {
+    ) -> Result<Self::Proof, SNARKError> {
         let keys_to_constraints = BTreeMap::new();
         keys_to_constraints.insert(proving_key, vec![constraints].as_slice());
         Self::prove_batch_with_terminator(
@@ -146,13 +146,13 @@ pub trait SNARK {
     fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
-        proof: &Self::Proof<'a>,
+        proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
     fn verify_batch<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
-        proof: &Self::Proof<'a>,
+        proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let preparation_time = start_timer!(|| "Preparing vks");
         let prepared_keys_to_inputs = keys_to_inputs.iter().map(|(key, inputs)| {
@@ -167,7 +167,7 @@ pub trait SNARK {
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         input: B,
-        proof: &Self::Proof<'a>,
+        proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let keys_to_inputs = BTreeMap::new();
         keys_to_inputs.insert(verifying_key, vec![input].as_slice());

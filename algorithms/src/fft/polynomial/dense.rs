@@ -457,6 +457,13 @@ impl<F: Field> std::iter::Sum for DensePolynomial<F> {
     }
 }
 
+/// Multiplies `self` by `other: DensePolynomial`.
+impl<'a, 'b, F: Field> std::iter::Sum<&'b DensePolynomial<F>> for &'a DensePolynomial<F> {
+    fn sum<I: Iterator<Item = &'b DensePolynomial<F>>>(iter: I) -> Self {
+        iter.fold(&DensePolynomial::zero(), |a, b| &(a + b))
+    }
+}
+
 impl<F: Field> Deref for DensePolynomial<F> {
     type Target = [F];
 

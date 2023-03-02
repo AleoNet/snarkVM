@@ -38,6 +38,7 @@ use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
 use rand_core::RngCore;
+use itertools::Itertools;
 
 #[cfg(not(feature = "parallel"))]
 use itertools::Itertools;
@@ -55,7 +56,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn third_round_polynomial_info<'a>(
         circuits: impl Iterator<Item = (&'a Circuit<F, MM>, usize)>
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let mut polynomials = circuits.flat_map(|(circuit, batch_size)| {
+        circuits.flat_map(|(circuit, batch_size)| {
             let circuit_id = format!("circuit_{:x?}", circuit.hash);
 
             let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(circuit.index_info.num_non_zero_a).unwrap();
@@ -69,7 +70,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     PolynomialInfo::new(witness_label(&circuit_id, "g_c", i), Some(non_zero_c_size - 2), None)
                 ]
             })
-        }).collect::<Vec<_>>();
+            .into_iter()
+            .map(|info| (info.label().into(), info))
+            .collect::<BTreeMap<PolynomialLabel, PolynomialInfo>>()
+        }).collect()
     }
 
     /// Output the third round message and the next state.
@@ -77,7 +81,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::SecondMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<'a, F>, prover::ThirdOracles<'a, F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<'a, F>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state
@@ -95,73 +99,72 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut pool = ExecutionPool::with_capacity(3*state.circuit_specific_states.len());
 
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
-            let largest_non_zero_domain_size = state.max_non_zero_domain;
+            let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
             pool.add_job(|| {
                 let result = Self::matrix_sumcheck_helper(
                     "a",
                     circuit_state.non_zero_a_domain,
-                    &circuit_state.index.a_arith,
+                    &circuit.a_arith,
                     *alpha,
                     beta,
                     v_H_alpha_v_H_beta,
                     largest_non_zero_domain_size,
-                    circuit_state.fft_precomputation(),
-                    circuit_state.ifft_precomputation(),
+                    &circuit.fft_precomputation,
+                    &circuit.ifft_precomputation,
                 );
-                (circuit, result)
+                (*circuit, result)
             });
 
             pool.add_job(|| {
                 let result = Self::matrix_sumcheck_helper(
                     "b",
                     circuit_state.non_zero_b_domain,
-                    &circuit_state.index.b_arith,
+                    &circuit.b_arith,
                     *alpha,
                     beta,
                     v_H_alpha_v_H_beta,
                     largest_non_zero_domain_size,
-                    circuit_state.fft_precomputation(),
-                    circuit_state.ifft_precomputation(),
+                    &circuit.fft_precomputation,
+                    &circuit.ifft_precomputation,
                 );
-                (circuit, result)
+                (*circuit, result)
             });
 
             pool.add_job(|| {
                 let result = Self::matrix_sumcheck_helper(
                     "c",
                     circuit_state.non_zero_c_domain,
-                    &circuit_state.index.c_arith,
+                    &circuit.c_arith,
                     *alpha,
                     beta,
                     v_H_alpha_v_H_beta,
                     largest_non_zero_domain_size,
-                    circuit_state.fft_precomputation(),
-                    circuit_state.ifft_precomputation(),
+                    &circuit.fft_precomputation,
+                    &circuit.ifft_precomputation,
                 );
-                (circuit, result)
+                (*circuit, result)
             });
         }
 
         // TODO: check we're not making unnecessary copies
-        let sums: BTreeMap<&'a Circuit<F, MM>, prover::message::MatrixSums> = BTreeMap::new();
-        let gs: BTreeMap<&'a Circuit<F, MM>, prover::MatrixGs> = BTreeMap::new();
-        for res in pool.execute_all().tuples() {
-            let (a, b, c): ((&'a Circuit<F, MM>, SumcheckHelperResult<F>), (&'a Circuit<F, MM>, SumcheckHelperResult<F>), (&'a Circuit<F, MM>, SumcheckHelperResult<F>)) = res;
+        let sums = BTreeMap::new();
+        let gs = BTreeMap::new();
+        for (a, b, c) in pool.execute_all().iter().tuples() {
             assert!(a.0 == b.0 && b.0 == c.0);
-            state.circuit_specific_states[a.0].sums = Some([a.1[0], b.1[0], c.1[0]]); // TODO: where do we use this? We're saving the state twice, which is a waste
+            state.circuit_specific_states[a.0].sums = Some([a.1.0, b.1.0, c.1.0]); // TODO: where do we use this? We're saving the state twice, which is a waste
             let matrix_sum = prover::message::MatrixSums {
                 sum_a: a.1.0,
                 sum_b: b.1.0,
                 sum_c: c.1.0,
             };
-            sums.insert(a.0, matrix_sum);
+            sums.insert(a.0.hash.to_vec(), matrix_sum);
             state.circuit_specific_states[a.0].lhs_polynomials = Some([a.1.1, b.1.1, c.1.1]);
             let matrix_gs = prover::MatrixGs {
                 g_a: a.1.2,
                 g_b: b.1.2,
                 g_c: c.1.2,
             };
-            gs.insert(a.0, matrix_gs);
+            gs.insert(&a.0.hash, matrix_gs);
         }
 
         let msg = prover::ThirdMessage { sums };

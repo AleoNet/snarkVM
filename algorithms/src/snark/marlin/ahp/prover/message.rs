@@ -20,19 +20,19 @@ use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MatrixSums<F: std::marker::Sync> {
+pub struct MatrixSums<F: std::marker::Sync + CanonicalSerialize + CanonicalDeserialize> {
     pub sum_a: F,
     pub sum_b: F,
     pub sum_c: F,
 }
 
 /// The prover message in the third round.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ThirdMessage<'b, F: PrimeField> {
-    pub sums: BTreeMap<&'b Circuit<F, MM>, MatrixSums<F>>,
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)] 
+pub struct ThirdMessage<F: PrimeField> {
+    pub sums: BTreeMap<Vec<u8>, MatrixSums<F>>,
 }
 
-impl<'b, F: PrimeField> ToBytes for ThirdMessage<'b, F> {
+impl<'b, F: PrimeField> ToBytes for ThirdMessage<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

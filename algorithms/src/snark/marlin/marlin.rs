@@ -195,7 +195,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
     fn absorb_labeled_with_msg<'a>(
         comms: &[LabeledCommitment<Commitment<E>>],
-        message: &prover::ThirdMessage<'a, E::Fr>,
+        message: &prover::ThirdMessage<E::Fr>,
         sponge: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
@@ -213,7 +213,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         end_timer!(sponge_time);
     }
 
-    fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<'a, E::Fr>, sponge: &mut FS) {
+    fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
         for (_, sum) in msg.sums {
@@ -234,7 +234,7 @@ where
     type Certificate = Certificate<E>;
     type FSParameters = FS::Parameters;
     type FiatShamirRng = FS;
-    type Proof<'a> = Proof<'a, E>;
+    type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
@@ -357,7 +357,7 @@ where
         keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[&C]>,
         terminator: &AtomicBool,
         zk_rng: &mut R,
-    ) -> Result<Self::Proof<'a>, SNARKError> {
+    ) -> Result<Self::Proof, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         if keys_to_constraints.len() == 0 {
             return Err(SNARKError::EmptyBatch);
@@ -623,7 +623,7 @@ where
     fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
-        proof: &Self::Proof<'a>,
+        proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;
         if public_inputs.is_empty() {

@@ -146,12 +146,9 @@ pub struct MatrixGs<F: PrimeField> {
 impl<'a, F: PrimeField> ThirdOracles<'a, F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        let iters = std::iter::empty::<&LabeledPolynomial<F>>();
-        for (circuit, gs) in &self.gs {
-            let new_iters = [&gs.g_a, &gs.g_b, &gs.g_c].into_iter();
-            iters = iters.chain(new_iters);
-        }
-        iters
+        self.gs.iter().flat_map(|(_, gs)| {
+            [&gs.g_a, &gs.g_b, &gs.g_c].into_iter()//;
+        })
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
