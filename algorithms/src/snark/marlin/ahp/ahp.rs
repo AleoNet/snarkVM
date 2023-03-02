@@ -144,7 +144,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Public input should be unformatted.
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<'a, E: EvaluationsProvider<F>>(
-        public_inputs: &BTreeMap<&'a Circuit<F, MM>, &Vec<Vec<F>>>,
+        public_inputs: &BTreeMap<&'a [u8; 32], &Vec<Vec<F>>>,
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
@@ -152,7 +152,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(!public_inputs.is_empty());
         let largest_constraint_domain = state.largest_constraint_domain;
         let largest_non_zero_domain = state.largest_non_zero_domain;
-        for (circuit, circuit_state) in state.circuit_specific_states.iter() {
+        for (circuit, circuit_state) in state.circuit_specific_states {
             let constraint_domain = circuit_state.constraint_domain;
 
             let non_zero_a_domain = circuit_state.non_zero_a_domain;
@@ -182,17 +182,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let prover::ThirdMessage { sums } = prover_third_message;
 
         let mut t_at_beta_s = Vec::with_capacity(state.circuit_specific_states.len());
-        for (circuit, circuit_state) in state.circuit_specific_states.iter() {
+        for (circuit, circuit_state) in state.circuit_specific_states {
             #[rustfmt::skip]
             let t_at_beta =
-                eta_a * state.non_zero_a_domain.size_as_field_element * sums[circuit].sum_a +
-                eta_b * state.non_zero_b_domain.size_as_field_element * sums[circuit].sum_b +
-                eta_c * state.non_zero_c_domain.size_as_field_element * sums[circuit].sum_c;
+                eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums[&circuit.to_vec()].sum_a +
+                eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums[&circuit.to_vec()].sum_b +
+                eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums[&circuit.to_vec()].sum_c;
     
             t_at_beta_s.push(t_at_beta);
         }
 
-        let rs = state.third_round_message.as_ref().unwrap().rs;
+        let verifier::ThirdMessage { r_a, r_b, r_c } = state.third_round_message.as_ref().unwrap();
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
@@ -200,16 +200,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         // Lincheck sumcheck:
         let lincheck_time = start_timer!(|| "Lincheck");
-        let z_b_s: &BTreeMap<&'a Circuit<F, MM>, &Vec<LinearCombination<F>>>;
-        for (circuit, circuit_state) in state.circuit_specific_states.iter() {
-            let circuit_id = format!("circuit_{:x?}", circuit.hash);
+        let z_b_s = BTreeMap::new();
+        for (circuit_hash, circuit_state) in state.circuit_specific_states {
+            let circuit_id = format!("circuit_{:x?}", circuit_hash);
             let z_b_i = (0..circuit_state.batch_size)
             .map(|i| {
                 let z_b = witness_label(&circuit_id, "z_b", i);
                 LinearCombination::new(z_b.clone(), [(F::one(), z_b)])
             })
             .collect::<Vec<_>>();
-            z_b_s.insert(circuit, &z_b_i);
+            z_b_s.insert(circuit_hash, &z_b_i);
         }
 
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
@@ -235,12 +235,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(v_X_at_beta_time);
 
         let z_b_s_at_beta = z_b_s.iter().map(|(circuit, z_b_i)| {
-            z_b_i.map(|z_b|{
+            let z_b_i_s = z_b_i.iter().map(|z_b|{
                 evals.get_lc_eval(z_b, beta)
-            }).collect::<Result<Vec<F>, _>>()?;
-            (circuit, z_b_i)
-        }).collect::<Result<BTreeMap<&'a Circuit<F, MM>, &Vec<F>>, _>>()?;
-        let batch_z_b_at_beta: F = z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|((_, z_b_i_at_beta), (_, combiners))| {
+            }).collect::<Result<Vec<F>, _>>();
+            (*circuit, *z_b_i)
+        }).collect::<BTreeMap<&'a [u8;32], &Vec<_>>>();
+        let batch_z_b_at_beta: F = z_b_s_at_beta.values().zip_eq(batch_combiners.values()).map(|(z_b_i_at_beta, combiners)| {
             z_b_i_at_beta.iter().zip_eq(combiners.instance_combiners).map(|(z_b_at_beta, instance_combiner)| {
                 *z_b_at_beta * instance_combiner
             }).sum()
@@ -248,11 +248,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let mut combined_x_at_betas: Vec<F> = Vec::with_capacity(state.circuit_specific_states.len());
-        for (circuit, circuit_state) in state.circuit_specific_states.iter() {
+        for (circuit_hash, circuit_state) in state.circuit_specific_states.iter() {
             let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
-            let combined_x_at_beta = batch_combiners[circuit]
+            let combined_x_at_beta = batch_combiners[circuit_hash]
+                .instance_combiners
                 .iter()
-                .zip_eq(&circuit_state.public_inputs)
+                .zip_eq(public_inputs[circuit_hash])
                 .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
                 .sum::<F>();
             combined_x_at_betas.push(combined_x_at_beta);
@@ -264,14 +265,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            for (i, ((circuit, z_b_i_at_beta), (_, combiners))) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
-                let circuit_id = format!("circuit_{:x?}", circuit.hash);
+            for (i, ((circuit_hash, z_b_i_at_beta), (_, combiners))) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
+                let circuit_id = format!("circuit_{:x?}", circuit_hash);
                 for (j, (z_b_at_beta, instance_combiner)) in z_b_i_at_beta.iter().zip_eq(combiners.instance_combiners).enumerate() {
                     lincheck_sumcheck
                         .add(r_alpha_at_beta * instance_combiner * (eta_a + eta_c * z_b_i_at_beta[j]), witness_label(&circuit_id, "z_a", j))
                         .add(-t_at_beta_s[i] * v_X_at_beta[i] * instance_combiner, witness_label(&circuit_id, "w", j));
                 lincheck_sumcheck
-                    .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One)
+                    .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One);
                 }
             }
             lincheck_sumcheck
@@ -282,8 +283,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        for z_b in z_b_s {
-            linear_combinations.insert(z_b.label.clone(), z_b);
+        for (circuit_hash, z_b) in z_b_s {
+            for z_b_i in z_b {
+                linear_combinations.insert(z_b_i.label.clone(), *z_b_i);
+            }
         }
         linear_combinations.insert("g_1".into(), g_1);
         linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
@@ -292,27 +295,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
-        for (circuit, circuit_state) in state.circuit_specific_states.iter() {
+        for (i, (circuit_hash, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
             let g_a = LinearCombination::new("g_a", [(F::one(), "g_a")]);
             let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
             let selector_a = largest_non_zero_domain.evaluate_selector_polynomial(circuit_state.non_zero_a_domain, gamma);
             let lhs_a =
-                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, *sums[circuit].sum_a, selector_a);
-            matrix_sumcheck += (rs[circuit].r_a, &lhs_a); // TODO: minor optimization, make sure the first r_a (which is simply 1) is ignored
+                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[&circuit_hash.to_vec()].sum_a, selector_a);
+            matrix_sumcheck += (r_a[i], &lhs_a); // TODO: minor optimization, make sure the first r_a (which is simply 1) is ignored
 
             let g_b = LinearCombination::new("g_b", [(F::one(), "g_b")]);
             let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
             let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(circuit_state.non_zero_b_domain, gamma);
             let lhs_b =
-                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, *sums[circuit].sum_b, selector_b);
-            matrix_sumcheck += (rs[circuit].r_b, &lhs_b);
+                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[&circuit_hash.to_vec()].sum_b, selector_b);
+            matrix_sumcheck += (r_b[i], &lhs_b);
     
             let g_c = LinearCombination::new("g_c", [(F::one(), "g_c")]);
             let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
             let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(circuit_state.non_zero_c_domain, gamma);
             let lhs_c =
-                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, *sums[circuit].sum_c, selector_c);
-            matrix_sumcheck += (rs[circuit].r_c, &lhs_c);
+                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[&circuit_hash.to_vec()].sum_c, selector_c);
+            matrix_sumcheck += (r_c[i], &lhs_c);
 
             linear_combinations.insert("g_a".into(), g_a);
             linear_combinations.insert("g_b".into(), g_b);
