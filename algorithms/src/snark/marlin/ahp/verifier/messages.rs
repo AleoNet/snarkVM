@@ -56,8 +56,8 @@ pub struct ThirdMessage<F> {
 
 /// Query set of the verifier.
 #[derive(Clone, Debug)]
-pub struct QuerySet<'a, F: PrimeField, MM: MarlinMode> {
-    pub batch_sizes: BTreeMap<&'a Circuit<F, MM>, usize>,
+pub struct QuerySet<'a, F: PrimeField> {
+    pub batch_sizes: BTreeMap<&'a [u8;32], usize>,
     pub g_1_query: (String, F),
     pub z_b_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
@@ -68,8 +68,8 @@ pub struct QuerySet<'a, F: PrimeField, MM: MarlinMode> {
     pub matrix_sumcheck_query: (String, F),
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> QuerySet<'a, F, MM> {
-    pub fn new(state: &super::State<F, MM>) -> Self {
+impl<'a, F: PrimeField> QuerySet<'a, F> {
+    pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
@@ -81,7 +81,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> QuerySet<'a, F, MM> {
         // We also use an optimization: instead of explicitly calculating z_c, we
         // use the "virtual oracle" z_a * z_b
         Self {
-            batch_sizes: state.batch_sizes,
+            batch_sizes: state.circuit_specific_states.iter().map(|(c,s)|(*c, s.batch_size)).collect::<BTreeMap<_,_>>(),
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
@@ -97,23 +97,17 @@ impl<'a, F: PrimeField, MM: MarlinMode> QuerySet<'a, F, MM> {
     /// `(polynomial_label, (query_label, query))`.
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
-        for (circuit, batch_size) in self.batch_sizes.iter() {
+        for (circuit_hash, batch_size) in self.batch_sizes {
             for i in 0..batch_size {
-                let circuit_id = format!("circuit_{:x?}", circuit.hash);
+                let circuit_id = format!("circuit_{:x?}", circuit_hash);
                 query_set.insert((witness_label(&circuit_id, "z_b", i), self.z_b_query.clone()));
-            }
-        }
-        query_set.insert(("g_1".into(), self.g_1_query.clone()));
-        query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
-
-        for (circuit, batch_size) in self.batch_sizes.iter() {
-            for i in 0..batch_size {
-                let circuit_id = format!("circuit_{:x?}", circuit.hash);
                 query_set.insert((witness_label(&circuit_id, "g_a", i), self.g_a_query.clone()));
                 query_set.insert((witness_label(&circuit_id, "g_b", i), self.g_b_query.clone()));
                 query_set.insert((witness_label(&circuit_id, "g_c", i), self.g_c_query.clone()));
             }
         }
+        query_set.insert(("g_1".into(), self.g_1_query.clone()));
+        query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
         query_set.insert(("matrix_sumcheck".into(), self.matrix_sumcheck_query.clone()));
         query_set
     }

@@ -142,25 +142,26 @@ pub struct MatrixGs<F: PrimeField> {
     pub g_c: LabeledPolynomial<F>,
 }
 
+impl<F: PrimeField> MatrixGs<F> {
+    pub fn matches_matrix_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        Some(self.g_a.info()) == info.get(self.g_a.label())
+            && Some(self.g_b.info()) == info.get(self.g_b.label())
+            && Some(self.g_c.info()) == info.get(self.g_c.label())
+    }
+}
 
 impl<'a, F: PrimeField> ThirdOracles<'a, F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        self.gs.iter().flat_map(|(_, gs)| {
-            [&gs.g_a, &gs.g_b, &gs.g_c].into_iter()//;
+        self.gs.values().flat_map(|gs| {
+            [&gs.g_a, &gs.g_b, &gs.g_c].into_iter()
         })
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
         self.gs
             .values()
-            .all(|b| b.iter().all(|b| b.matches_matrix_info(info)))
-    }
-
-    pub fn matches_matrix_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        Some(self.g_a.info()) == info.get(self.g_a.label())
-            && Some(self.g_b.info()) == info.get(self.g_b.label())
-            && Some(self.g_c.info()) == info.get(self.g_c.label())
+            .all(|b| b.matches_matrix_info(info))
     }
 }
 

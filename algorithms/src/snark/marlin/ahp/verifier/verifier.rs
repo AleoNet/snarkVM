@@ -32,13 +32,14 @@ use crate::{
 };
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
+use smallvec::SmallVec;
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        batch_sizes: &BTreeMap<&[u8; 32], (CircuitInfo<BaseField>, usize)>, // TODO: use BaseField or TargetField?
-        max_constraint_domain: EvaluationDomain<BaseField>, // TODO: use BaseField or TargetField?
-        largest_non_zero_domain: EvaluationDomain<BaseField>, // TODO: use BaseField or TargetField?
+        batch_sizes: &BTreeMap<&[u8; 32], (CircuitInfo<TargetField>, usize)>,
+        max_constraint_domain: EvaluationDomain<TargetField>,
+        largest_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
     ) -> Result<(FirstMessage<'a, TargetField>, State<'a, TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
@@ -107,7 +108,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 non_zero_c_domain,
                 batch_size: *batch_size,
             };
-            circuit_specific_states.insert(circuit_hash, circuit_specific_state);
+            circuit_specific_states.insert(*circuit_hash, circuit_specific_state);
         }
 
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
@@ -140,7 +141,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<(SecondMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
-        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!state.largest_constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = SecondMessage { beta };
         state.second_round_message = Some(message);
@@ -154,7 +155,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
         
-        let num_instances = state.circuit_specific_states.map(|state|state.batch_size).sum(); // TODO: see if this can be precomputed more efficiently
+        let num_instances = state.circuit_specific_states.values().map(|s|s.batch_size).sum(); // TODO: see if this can be precomputed more efficiently
         let r_a = Vec::with_capacity(num_instances);
         let r_b = Vec::with_capacity(num_instances);
         let r_c = Vec::with_capacity(num_instances);
@@ -163,7 +164,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         r_b.push(first_elems[0]);
         r_c.push(first_elems[1]);
         for i in 1..num_instances {
-            let elems = fs_rng.squeeze_nonnative_field_elements(3);
+            let elems: SmallVec<[TargetField; 10]> = fs_rng.squeeze_nonnative_field_elements(3);
             r_a.push(first_elems[0]);
             r_b.push(first_elems[1]);
             r_c.push(first_elems[2]);
@@ -187,7 +188,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField, MM>, State<TargetField, MM>) {
+    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField>, State<TargetField, MM>) {
         (QuerySet::new(&state), state)
     }
 }
