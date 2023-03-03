@@ -24,10 +24,11 @@ use crate::{
     Registers,
     Stack,
 };
-use aleo_std::prelude::{finish, lap, timer};
 use console::{
     account::Address,
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, Response, Value},
     types::Field,
 };
+
+use aleo_std::prelude::{finish, lap, timer};
