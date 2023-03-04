@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Opcode, Operand};
-use console::{
-    network::prelude::*,
-    program::{Identifier, Literal, Plaintext, Value},
-};
+use console::{network::prelude::*, program::Identifier};
 
 /// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
 #[derive(Clone, PartialEq, Eq, Hash)]

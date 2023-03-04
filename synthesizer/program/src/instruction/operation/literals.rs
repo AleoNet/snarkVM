@@ -17,7 +17,7 @@
 use crate::{Opcode, Operand, Operation};
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
+    program::{Literal, LiteralType, Register},
 };
 
 use core::marker::PhantomData;

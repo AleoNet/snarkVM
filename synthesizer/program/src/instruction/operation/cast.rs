@@ -17,25 +17,8 @@
 use crate::{Opcode, Operand};
 use console::{
     network::prelude::*,
-    program::{
-        Balance,
-        Entry,
-        EntryType,
-        Literal,
-        LiteralType,
-        Owner,
-        Plaintext,
-        PlaintextType,
-        Record,
-        Register,
-        RegisterType,
-        Value,
-        ValueType,
-    },
-    types::Field,
+    program::{Register, RegisterType},
 };
-
-use indexmap::IndexMap;
 
 /// Casts the operands into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]

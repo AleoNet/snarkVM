@@ -53,7 +53,7 @@ use console::{
         },
         Network,
     },
-    program::{Register, RegisterType},
+    program::Register,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]

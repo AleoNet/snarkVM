@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Opcode, Operand};
-use console::{
-    network::prelude::*,
-    program::{Register, RegisterType},
-};
+use console::{network::prelude::*, program::Register};
 
 /// Asserts two operands are equal to each other.
 pub type AssertEq<N> = AssertInstruction<N, { Variant::AssertEq as u8 }>;

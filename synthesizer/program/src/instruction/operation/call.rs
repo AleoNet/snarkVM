@@ -17,7 +17,7 @@
 use crate::{Opcode, Operand};
 use console::{
     network::prelude::*,
-    program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
+    program::{Identifier, Locator, Register},
 };
 
 /// The operator references a function name or closure name.

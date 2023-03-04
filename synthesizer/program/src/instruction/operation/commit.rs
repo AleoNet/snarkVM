@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Opcode, Operand};
-use console::{
-    network::prelude::*,
-    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
-};
+use console::{network::prelude::*, program::Register};
 
 /// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
 pub type CommitBHP256<N> = CommitInstruction<N, { Committer::BHP256 as u8 }>;
