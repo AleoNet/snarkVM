@@ -45,7 +45,6 @@ mod authorize;
 mod deploy;
 mod evaluate_finalize;
 mod helpers;
-mod output_types;
 mod program;
 
 use crate::{
