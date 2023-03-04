@@ -55,7 +55,7 @@ impl<N: Network> Stack<N> {
         // Evaluate the instructions.
         for instruction in closure.instructions() {
             // If the evaluation fails, bail and return the error.
-            if let Err(error) = instruction.evaluate(self, &mut registers) {
+            if let Err(error) = self.evaluate_instruction(instruction, &mut registers) {
                 bail!("Failed to evaluate instruction ({instruction}): {error}");
             }
         }
@@ -139,12 +139,12 @@ impl<N: Network> Stack<N> {
             // If the circuit is in execute mode, then evaluate the instructions.
             if let CallStack::Execute(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
-                if let Err(error) = instruction.evaluate(self, &mut registers) {
+                if let Err(error) = self.evaluate_instruction(instruction, &mut registers) {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
             // Execute the instruction.
-            instruction.execute(self, &mut registers)?;
+            self.execute_instruction(instruction, &mut registers)?;
         }
         lap!(timer, "Execute the instructions");
 

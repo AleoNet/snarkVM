@@ -58,7 +58,7 @@ impl<N: Network> Stack<N> {
         if is.operands().len() != 2 {
             bail!(
                 "Instruction '{}' expects 2 operands, found {} operands",
-                IsInstruction::opcode(),
+                IsInstruction::<N, VARIANT>::opcode(),
                 is.operands().len()
             )
         }

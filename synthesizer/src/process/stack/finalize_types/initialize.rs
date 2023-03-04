@@ -326,7 +326,7 @@ impl<N: Network> FinalizeTypes<N> {
         }
 
         // Compute the destination register types.
-        let destination_types = instruction.output_types(stack, &operand_types)?;
+        let destination_types = stack.instruction_output_types(instruction, &operand_types)?;
 
         // Insert the destination register.
         for (destination, destination_type) in
