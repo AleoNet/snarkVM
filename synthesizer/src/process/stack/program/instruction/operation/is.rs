@@ -70,4 +70,31 @@ impl<N: Network> Stack<N> {
         // Store the output.
         registers.store_circuit(stack, &self.destination, output)
     }
+
+    /// Returns the output type from the given program and input types.
+    #[inline]
+    pub fn is_output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+        // Ensure the number of input types is correct.
+        if input_types.len() != 2 {
+            bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
+        }
+        // Ensure the operands are of the same type.
+        if input_types[0] != input_types[1] {
+            bail!(
+                "Instruction '{}' expects inputs of the same type. Found inputs of type '{}' and '{}'",
+                Self::opcode(),
+                input_types[0],
+                input_types[1]
+            )
+        }
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 2 {
+            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        }
+
+        match VARIANT {
+            0 | 1 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Boolean))]),
+            _ => bail!("Invalid 'is' variant: {VARIANT}"),
+        }
+    }
 }

@@ -86,4 +86,41 @@ impl<N: Network> Stack<N> {
         // Evaluate the operation and store the output.
         registers.store_literal_circuit(stack, &self.destination, output)
     }
+
+    /// Returns the output type from the given program and input types.
+    #[inline]
+    pub fn literals_output_types(
+        &self,
+        _stack: &Stack<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
+        // Ensure the number of input types is correct.
+        if input_types.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())
+        }
+        // Ensure the number of operands is correct.
+        if self.operands.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
+        }
+
+        // Convert all input types into `LiteralType`s. If any are not a `LiteralType`, return an error.
+        let input_types = input_types
+            .iter()
+            .copied()
+            .map(|input_type| match input_type {
+                RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(literal_type),
+                RegisterType::Plaintext(PlaintextType::Struct(..)) => {
+                    bail!("Expected literal type, found '{input_type}'")
+                }
+                RegisterType::Record(..) => bail!("Expected literal type, found '{input_type}'"),
+                RegisterType::ExternalRecord(..) => bail!("Expected literal type, found '{input_type}'"),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Compute the output type.
+        let output = O::output_type(&input_types.try_into().map_err(|_| anyhow!("Failed to prepare operand types"))?)?;
+
+        // Return the output type.
+        Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(output))])
+    }
 }

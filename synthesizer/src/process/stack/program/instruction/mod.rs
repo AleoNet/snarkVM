@@ -40,3 +40,11 @@ mod operation;
 //        instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
 //    }
 //}
+
+//impl<N: Network> Stack<N> {
+//    /// Returns the output type from the given input types.
+//    #[inline]
+//    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+//        instruction!(self, |instruction| instruction.output_types(stack, input_types))
+//    }
+//}
