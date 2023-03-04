@@ -51,4 +51,39 @@ impl<N: Network> Stack<N> {
         // Evaluate the operation and store the output.
         registers.store_literal(stack, &self.destination, output)
     }
+
+    /// Executes the instruction.
+    #[inline]
+    pub fn execute_literals<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
+        }
+
+        // Load the operands literals.
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_literal_circuit(stack, operand)).try_collect()?;
+        // Compute the operands register types.
+        let input_types: Vec<_> =
+            inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
+
+        // Compute the operation.
+        let output = O::execute(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
+        // Compute the output type.
+        let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
+
+        // Retrieve the expected output type.
+        let expected_types = self.output_types(stack, &input_types)?;
+        // Ensure there is exactly one output.
+        ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
+        // Ensure the output type is correct.
+        ensure!(expected_types[0] == output_type, "Expected output type '{}', found {output_type}", expected_types[0]);
+
+        // Evaluate the operation and store the output.
+        registers.store_literal_circuit(stack, &self.destination, output)
+    }
 }

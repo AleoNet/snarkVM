@@ -44,7 +44,6 @@ pub use registers::*;
 mod authorize;
 mod deploy;
 mod evaluate_finalize;
-mod execute;
 mod helpers;
 mod output_types;
 mod program;

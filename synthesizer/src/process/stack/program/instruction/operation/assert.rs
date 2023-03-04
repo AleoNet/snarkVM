@@ -59,4 +59,33 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
         }
         Ok(())
     }
+
+    /// Executes the instruction.
+    #[inline]
+    pub fn execute_assert<A: circuit::Aleo<Network = N>>(
+        &self,
+        assert: &AssertInstruction<N, VARIANT>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if assert.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                AssertInstruction::opcode(),
+                assert.operands().len()
+            )
+        }
+
+        // Retrieve the inputs.
+        let input_a = registers.load_circuit(&self, &assert.operands()[0])?;
+        let input_b = registers.load_circuit(&self, &assert.operands()[1])?;
+
+        // Assert the inputs.
+        match VARIANT {
+            0 => A::assert(input_a.is_equal(&input_b)),
+            1 => A::assert(input_a.is_not_equal(&input_b)),
+            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
+        }
+        Ok(())
+    }
 }

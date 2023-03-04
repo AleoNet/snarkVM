@@ -46,4 +46,39 @@ impl<N: Network> Stack<N> {
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(output))))
     }
+
+    /// Executes the instruction.
+    #[inline]
+    pub fn execute_hash<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
+        use circuit::{ToBits, ToFields};
+
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 1 {
+            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
+        }
+        // Load the operand.
+        let input = registers.load_circuit(stack, &self.operands[0])?;
+        // Hash the input.
+        let output = match VARIANT {
+            0 => A::hash_bhp256(&input.to_bits_le()),
+            1 => A::hash_bhp512(&input.to_bits_le()),
+            2 => A::hash_bhp768(&input.to_bits_le()),
+            3 => A::hash_bhp1024(&input.to_bits_le()),
+            4 => A::hash_ped64(&input.to_bits_le()),
+            5 => A::hash_ped128(&input.to_bits_le()),
+            6 => A::hash_psd2(&input.to_fields()),
+            7 => A::hash_psd4(&input.to_fields()),
+            8 => A::hash_psd8(&input.to_fields()),
+            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+        };
+        // Convert the output to a stack value.
+        let output =
+            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
+        // Store the output.
+        registers.store_circuit(stack, &self.destination, output)
+    }
 }
