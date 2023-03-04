@@ -15,3 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod operation;
+
+use console::network::prelude::*;
+
+//impl<N: Network> Stack<N> {
+//    /// Executes the instruction.
+//    #[inline]
+//    pub fn execute<A: circuit::Aleo<Network = N>>(
+//        &self,
+//        stack: &Stack<N>,
+//        registers: &mut Registers<N, A>,
+//    ) -> Result<()> {
+//        instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
+//    }
+//}
