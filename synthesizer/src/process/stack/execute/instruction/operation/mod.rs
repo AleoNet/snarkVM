@@ -24,4 +24,6 @@ mod literals;
 
 use crate::{AssertInstruction, Call, CallOperator, Registers, Stack, CallStack};
 use console::network::prelude::*;
-use console::program::Request;
+use console::program::{Request, RegisterType, PlaintextType, ValueType, EntryType, Field};
+
+use indexmap::IndexMap;

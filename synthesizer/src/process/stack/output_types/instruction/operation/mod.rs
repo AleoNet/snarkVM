@@ -23,4 +23,5 @@ mod is;
 mod literals;
 
 use crate::{Stack, Call, CallOperator};
-use console::{network::prelude::*, program::{RegisterType, ValueType, Locator}};
+use console::{network::prelude::*, program::{RegisterType, EntryType, PlaintextType, ValueType, Locator}};
+
