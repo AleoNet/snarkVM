@@ -22,7 +22,7 @@ mod hash;
 mod is;
 mod literals;
 
-use crate::{Call, CallOperator, Stack};
+use crate::{Call, CallOperator, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{EntryType, LiteralType, Locator, PlaintextType, RegisterType, ValueType},
