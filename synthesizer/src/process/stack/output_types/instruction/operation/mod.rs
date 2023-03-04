@@ -22,5 +22,5 @@ mod hash;
 mod is;
 mod literals;
 
-use crate::Stack;
-use console::{network::prelude::*, program::RegisterType};
+use crate::{Stack, Call, CallOperator};
+use console::{network::prelude::*, program::{RegisterType, ValueType, Locator}};

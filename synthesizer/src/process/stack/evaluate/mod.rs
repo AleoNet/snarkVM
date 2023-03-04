@@ -20,7 +20,7 @@ mod function;
 mod instruction;
 
 use crate::{
-    program::{Closure, FinalizeOperation, Operand},
+    Closure, FinalizeOperation, Operand,
     CallStack,
     Registers,
     Stack,

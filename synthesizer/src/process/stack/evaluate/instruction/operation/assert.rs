@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network, const VARIANT: u8> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_assert<A: circuit::Aleo<Network = N>>(
         &self,
         assert: &AssertInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,

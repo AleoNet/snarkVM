@@ -22,5 +22,8 @@ mod hash;
 mod is;
 mod literals;
 
-use crate::{AssertInstruction, Registers, Stack};
+use crate::{AssertInstruction, Call, CallOperator, Registers, Stack};
 use console::network::prelude::*;
+use console::program::{RegisterType, PlaintextType, Value, Plaintext, Literal, Balance, Entry, EntryType, Field, Record};
+
+use indexmap::IndexMap;
