@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{Opcode, Operand};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
@@ -93,95 +93,6 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     #[inline]
     pub fn destinations(&self) -> Vec<Register<N>> {
         vec![self.destination.clone()]
-    }
-}
-
-impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
-    /// Evaluates the instruction.
-    #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
-    ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-        // Load the operand.
-        let input = registers.load(stack, &self.operands[0])?;
-        // Hash the input.
-        let output = match VARIANT {
-            0 => N::hash_bhp256(&input.to_bits_le())?,
-            1 => N::hash_bhp512(&input.to_bits_le())?,
-            2 => N::hash_bhp768(&input.to_bits_le())?,
-            3 => N::hash_bhp1024(&input.to_bits_le())?,
-            4 => N::hash_ped64(&input.to_bits_le())?,
-            5 => N::hash_ped128(&input.to_bits_le())?,
-            6 => N::hash_psd2(&input.to_fields()?)?,
-            7 => N::hash_psd4(&input.to_fields()?)?,
-            8 => N::hash_psd8(&input.to_fields()?)?,
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
-        };
-        // Store the output.
-        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(output))))
-    }
-
-    /// Executes the instruction.
-    #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
-    ) -> Result<()> {
-        use circuit::{ToBits, ToFields};
-
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-        // Load the operand.
-        let input = registers.load_circuit(stack, &self.operands[0])?;
-        // Hash the input.
-        let output = match VARIANT {
-            0 => A::hash_bhp256(&input.to_bits_le()),
-            1 => A::hash_bhp512(&input.to_bits_le()),
-            2 => A::hash_bhp768(&input.to_bits_le()),
-            3 => A::hash_bhp1024(&input.to_bits_le()),
-            4 => A::hash_ped64(&input.to_bits_le()),
-            5 => A::hash_ped128(&input.to_bits_le()),
-            6 => A::hash_psd2(&input.to_fields()),
-            7 => A::hash_psd4(&input.to_fields()),
-            8 => A::hash_psd8(&input.to_fields()),
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
-        };
-        // Convert the output to a stack value.
-        let output =
-            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
-        // Store the output.
-        registers.store_circuit(stack, &self.destination, output)
-    }
-
-    /// Returns the output type from the given program and input types.
-    #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
-        // Ensure the number of input types is correct.
-        if input_types.len() != 1 {
-            bail!("Instruction '{}' expects 1 inputs, found {} inputs", Self::opcode(), input_types.len())
-        }
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
-        // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
-
-        match VARIANT {
-            0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 => {
-                Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))])
-            }
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
-        }
     }
 }
 
