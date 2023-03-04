@@ -218,7 +218,10 @@ impl<N: Network> ToBytes for Cast<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{network::Testnet3, program::Identifier};
+    use console::{
+        network::Testnet3,
+        program::{Identifier, PlaintextType},
+    };
 
     type CurrentNetwork = Testnet3;
 

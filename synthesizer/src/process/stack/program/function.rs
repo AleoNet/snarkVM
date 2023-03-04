@@ -17,6 +17,125 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
+    /// Evaluates a program function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
+        let timer = timer!("Stack::evaluate_function");
+
+        // Retrieve the next request, based on the call stack mode.
+        let (request, call_stack) = match &call_stack {
+            CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
+            CallStack::Execute(authorization, ..) => (authorization.peek_next()?, call_stack.replicate()),
+            _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
+        };
+        lap!(timer, "Retrieve the next request");
+
+        // Ensure the network ID matches.
+        ensure!(
+            **request.network_id() == N::ID,
+            "Network ID mismatch. Expected {}, but found {}",
+            N::ID,
+            request.network_id()
+        );
+
+        // Retrieve the function, inputs, and transition view key.
+        let function = self.get_function(request.function_name())?;
+        let inputs = request.inputs();
+        let caller = *request.caller();
+        let tvk = *request.tvk();
+
+        // Ensure the number of inputs matches.
+        if function.inputs().len() != inputs.len() {
+            bail!(
+                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                function.name(),
+                self.program.id(),
+                function.inputs().len(),
+                inputs.len()
+            )
+        }
+        lap!(timer, "Perform input checks");
+
+        // Initialize the registers.
+        let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(function.name())?.clone());
+        // Set the transition caller.
+        registers.set_caller(caller);
+        // Set the transition view key.
+        registers.set_tvk(tvk);
+        lap!(timer, "Initialize the registers");
+
+        // Ensure the request is well-formed.
+        ensure!(request.verify(&function.input_types()), "Request is invalid");
+        lap!(timer, "Verify the request");
+
+        // Store the inputs.
+        function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
+            // Assign the input value to the register.
+            registers.store(self, register, input.clone())
+        })?;
+        lap!(timer, "Store the inputs");
+
+        // Evaluate the instructions.
+        for instruction in function.instructions() {
+            // If the evaluation fails, bail and return the error.
+            if let Err(error) = instruction.evaluate(self, &mut registers) {
+                bail!("Failed to evaluate instruction ({instruction}): {error}");
+            }
+        }
+        lap!(timer, "Evaluate the instructions");
+
+        // Retrieve the output operands.
+        let output_operands = &function.outputs().iter().map(|output| output.operand()).collect::<Vec<_>>();
+        lap!(timer, "Retrieve the output operands");
+
+        // Load the outputs.
+        let outputs = output_operands
+            .iter()
+            .map(|operand| {
+                match operand {
+                    // If the operand is a literal, use the literal directly.
+                    Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
+                    // If the operand is a register, retrieve the stack value from the register.
+                    Operand::Register(register) => registers.load(self, &Operand::Register(register.clone())),
+                    // If the operand is the program ID, convert the program ID into an address.
+                    Operand::ProgramID(program_id) => {
+                        Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
+                    }
+                    // If the operand is the caller, retrieve the caller from the registers.
+                    Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+        lap!(timer, "Load the outputs");
+
+        finish!(timer);
+
+        // Map the output operands to registers.
+        let output_registers = output_operands
+            .iter()
+            .map(|operand| match operand {
+                Operand::Register(register) => Some(register.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        // Compute the response.
+        Response::new(
+            request.network_id(),
+            self.program.id(),
+            function.name(),
+            request.inputs().len(),
+            request.tvk(),
+            request.tcm(),
+            outputs,
+            &function.output_types(),
+            &output_registers,
+        )
+    }
+
     /// Executes a program function on the given inputs.
     ///
     /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
@@ -437,23 +556,5 @@ impl<N: Network> Stack<N> {
 
         // Return the response.
         Ok(response)
-    }
-
-    /// Prints the current state of the circuit.
-    #[cfg(debug_assertions)]
-    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
-        use colored::Colorize;
-
-        // Determine if the circuit is satisfied.
-        let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
-        // Determine the count.
-        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
-
-        // Print the log.
-        println!(
-            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
-            scope.into().bold(),
-            width = 20
-        );
     }
 }

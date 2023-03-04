@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network, const VARIANT: u8> Stack<N> {
     /// Evaluates the finalize operation.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_finalize<A: circuit::Aleo<Network = N>>(
         &self,
         finalize_operation: &FinalizeOperation<N, VARIANT>,
         registers: &mut Registers<N, A>,

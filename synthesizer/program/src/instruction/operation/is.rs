@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Opcode, Operand};
-use console::{network::prelude::*, program::Register};
+use console::{
+    network::prelude::*,
+    program::{Literal, LiteralType, Plaintext, Register, Value},
+};
 
 /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
 pub type IsEq<N> = IsInstruction<N, { Variant::IsEq as u8 }>;

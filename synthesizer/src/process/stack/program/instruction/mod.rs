@@ -16,8 +16,6 @@
 
 mod operation;
 
-use console::network::prelude::*;
-
 //
 //impl<N: Network> Stack<N> {
 //    /// Evaluates the instruction.

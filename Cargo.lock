@@ -2577,9 +2577,11 @@ dependencies = [
 name = "snarkvm-synthesizer-program"
 version = "0.9.13"
 dependencies = [
+ "bincode",
  "indexmap",
  "paste",
  "rand",
+ "serde_json",
  "snarkvm-circuit",
  "snarkvm-console",
 ]

@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_is<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
@@ -29,24 +29,15 @@ impl<N: Network> Stack<N> {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
-        // Retrieve the input and randomizer.
-        let input = registers.load(stack, &self.operands[0])?;
-        let randomizer = registers.load(stack, &self.operands[1])?;
-        // Retrieve the randomizer.
-        let randomizer = match randomizer {
-            Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
-            _ => bail!("Invalid randomizer type for the commit evaluation, expected a scalar"),
-        };
+        // Retrieve the inputs.
+        let input_a = registers.load(stack, &self.operands[0])?;
+        let input_b = registers.load(stack, &self.operands[1])?;
 
-        // Commit the input.
+        // Check the inputs.
         let output = match VARIANT {
-            0 => Literal::Field(N::commit_bhp256(&input.to_bits_le(), &randomizer)?),
-            1 => Literal::Field(N::commit_bhp512(&input.to_bits_le(), &randomizer)?),
-            2 => Literal::Field(N::commit_bhp768(&input.to_bits_le(), &randomizer)?),
-            3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
-            4 => Literal::Group(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
-            5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            0 => Literal::Boolean(Boolean::new(input_a == input_b)),
+            1 => Literal::Boolean(Boolean::new(input_a != input_b)),
+            _ => bail!("Invalid 'is' variant: {VARIANT}"),
         };
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))

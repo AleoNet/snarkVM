@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_literals<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
