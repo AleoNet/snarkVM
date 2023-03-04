@@ -22,8 +22,10 @@ mod hash;
 mod is;
 mod literals;
 
-use crate::{AssertInstruction, Call, CallOperator, Registers, Stack, CallStack};
-use console::network::prelude::*;
-use console::program::{Request, RegisterType, PlaintextType, ValueType, EntryType, Field};
+use crate::{AssertInstruction, Call, CallOperator, CallStack, Registers, Stack};
+use console::{
+    network::prelude::*,
+    program::{EntryType, Field, PlaintextType, RegisterType, Request, ValueType},
+};
 
 use indexmap::IndexMap;

@@ -19,12 +19,7 @@ mod finalize;
 mod function;
 mod instruction;
 
-use crate::{
-    Closure, FinalizeOperation, Operand,
-    CallStack,
-    Registers,
-    Stack,
-};
+use crate::{CallStack, Closure, FinalizeOperation, Operand, Registers, Stack};
 use console::{
     account::Address,
     network::prelude::*,

@@ -23,7 +23,9 @@ mod is;
 mod literals;
 
 use crate::{AssertInstruction, Call, CallOperator, Registers, Stack};
-use console::network::prelude::*;
-use console::program::{RegisterType, PlaintextType, Value, Plaintext, Literal, Balance, Entry, EntryType, Field, Record};
+use console::{
+    network::prelude::*,
+    program::{Balance, Entry, EntryType, Field, Literal, Plaintext, PlaintextType, Record, RegisterType, Value},
+};
 
 use indexmap::IndexMap;

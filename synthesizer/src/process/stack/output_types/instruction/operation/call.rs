@@ -33,7 +33,6 @@ impl<N: Network> Stack<N> {
         }
     }
 
-
     /// Returns the output type from the given program and input types.
     #[inline]
     pub fn output_types(&self, call: &Call<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
