@@ -22,7 +22,19 @@ mod hash;
 mod is;
 mod literals;
 
-use crate::{AssertInstruction, Call, CallOperator, Registers, Stack};
+use crate::{
+    AssertInstruction,
+    Call,
+    CallOperator,
+    CallStack,
+    Cast,
+    CommitInstruction,
+    HashInstruction,
+    IsInstruction,
+    Literals,
+    Registers,
+    Stack,
+};
 use console::{
     network::prelude::*,
     program::{
@@ -32,11 +44,16 @@ use console::{
         EntryType,
         Field,
         Literal,
+        LiteralType,
+        Locator,
+        Owner,
         Plaintext,
         PlaintextType,
         Record,
         RegisterType,
+        Request,
         Value,
+        ValueType,
     },
 };
 

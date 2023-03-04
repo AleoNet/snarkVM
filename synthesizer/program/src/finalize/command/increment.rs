@@ -21,11 +21,11 @@ use console::{network::prelude::*, program::Identifier};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Increment<N: Network> {
     /// The mapping name.
-    mapping: Identifier<N>,
+    pub mapping: Identifier<N>,
     /// The first operand.
-    first: Operand<N>,
+    pub first: Operand<N>,
     /// The second operand.
-    second: Operand<N>,
+    pub second: Operand<N>,
 }
 
 impl<N: Network> Increment<N> {

@@ -26,9 +26,9 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct MapKey<N: Network> {
     /// The key name.
-    name: Identifier<N>,
+    pub name: Identifier<N>,
     /// The key finalize type.
-    finalize_type: FinalizeType<N>,
+    pub finalize_type: FinalizeType<N>,
 }
 
 impl<N: Network> MapKey<N> {

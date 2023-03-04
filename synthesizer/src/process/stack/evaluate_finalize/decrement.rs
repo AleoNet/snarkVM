@@ -33,16 +33,16 @@ impl<N: Network> Stack<N> {
         // Load the first operand as a plaintext.
         let key = registers.load_plaintext(&self, decrement.key())?;
         // Load the second operand as a literal.
-        let decrement = registers.load_literal(&self, decrement.value())?;
+        let amount = registers.load_literal(&self, decrement.value())?;
 
         // Retrieve the starting value from storage as a literal.
-        let start = match store.get_value(self.program_id(), &decrement.mapping, &key)? {
+        let start = match store.get_value(self.program_id(), decrement.mapping_name(), &key)? {
             Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
             Some(Value::Plaintext(Plaintext::Struct(..))) => bail!("Cannot 'decrement' by an 'struct'"),
             Some(Value::Record(..)) => bail!("Cannot 'decrement' by a 'record'"),
             // If the key does not exist, set the starting value to 0.
             // Infer the starting type from the decrement type.
-            None => match decrement {
+            None => match amount {
                 Literal::Address(..) => bail!("Cannot 'decrement' by an 'address'"),
                 Literal::Boolean(..) => bail!("Cannot 'decrement' by a 'boolean'"),
                 Literal::Field(..) => Literal::Field(Zero::zero()),
@@ -63,7 +63,7 @@ impl<N: Network> Stack<N> {
         };
 
         // Decrement the value.
-        let outcome = match (start, decrement) {
+        let outcome = match (start, amount) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.sub(b)),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a.sub(b)),
             (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.sub(b)),
@@ -83,7 +83,7 @@ impl<N: Network> Stack<N> {
         // Construct the value.
         let value = Value::Plaintext(Plaintext::from(outcome));
         // Update the value in storage.
-        store.update_key_value(self.program_id(), decrement.mapping(), key, value)?;
+        store.update_key_value(self.program_id(), decrement.mapping_name(), key, value)?;
 
         Ok(())
     }

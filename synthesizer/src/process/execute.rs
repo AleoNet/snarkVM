@@ -161,7 +161,7 @@ impl<N: Network> Process<N> {
             for instruction in function.instructions() {
                 if let Instruction::Call(call) = instruction {
                     // Determine if this is a function call.
-                    if call.is_function_call(stack)? {
+                    if stack.is_function_call(call)? {
                         num_function_calls += 1;
                     }
                 }
@@ -294,7 +294,7 @@ impl<N: Network> Process<N> {
                 // Evaluate the commands.
                 for command in finalize.commands() {
                     // If the evaluation fails, bail and return the error.
-                    if let Err(error) = command.evaluate_finalize(stack, store, &mut registers) {
+                    if let Err(error) = stack.evaluate_finalize_command(command, store, &mut registers) {
                         bail!("'finalize' failed to evaluate command ({command}): {error}");
                     }
                 }

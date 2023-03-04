@@ -256,7 +256,7 @@ impl<N: Network> Stack<N> {
             // If the instruction was a function call, then set the tracker to `true`.
             if let Instruction::Call(call) = instruction {
                 // Check if the call is a function call.
-                if call.is_function_call(self)? {
+                if self.is_function_call(call)? {
                     contains_function_call = true;
                 }
             }

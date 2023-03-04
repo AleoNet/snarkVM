@@ -31,17 +31,17 @@ impl<N: Network> Stack<N> {
         let (substack, resource) = match &call.operator() {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
-                (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
+                (self.get_external_stack(locator.program_id())?.clone(), locator.resource())
             }
             CallOperator::Resource(resource) => {
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
-                if stack.program().contains_function(resource) {
+                if self.program().contains_function(resource) {
                     bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
                 }
 
-                (stack.clone(), resource)
+                (self.clone(), resource)
             }
         };
 
@@ -73,13 +73,13 @@ impl<N: Network> Stack<N> {
         }
         // Else, throw an error.
         else {
-            bail!("Call operator '{}' is invalid or unsupported.", self.operator)
+            bail!("Call operator '{}' is invalid or unsupported.", call.operator())
         };
 
         // Assign the outputs to the destination registers.
-        for (output, register) in outputs.into_iter().zip_eq(&self.destinations) {
+        for (output, register) in outputs.into_iter().zip_eq(&call.destinations()) {
             // Assign the output to the register.
-            registers.store(stack, register, output)?;
+            registers.store(self, register, output)?;
         }
 
         Ok(())
@@ -94,23 +94,23 @@ impl<N: Network> Stack<N> {
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> =
-            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
+            call.operands().iter().map(|operand| registers.load_circuit(self, operand)).try_collect()?;
 
         // Retrieve the substack and resource.
-        let (substack, resource) = match &self.operator {
+        let (substack, resource) = match call.operator() {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
-                (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
+                (self.get_external_stack(locator.program_id())?.clone(), locator.resource())
             }
             CallOperator::Resource(resource) => {
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
-                if stack.program().contains_function(resource) {
+                if self.program().contains_function(resource) {
                     bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
                 }
 
-                (stack.clone(), resource)
+                (self.clone(), resource)
             }
         };
 
@@ -286,13 +286,13 @@ impl<N: Network> Stack<N> {
         }
         // Else, throw an error.
         else {
-            bail!("Call operator '{}' is invalid or unsupported.", self.operator)
+            bail!("Call operator '{}' is invalid or unsupported.", call.operator())
         };
 
         // Assign the outputs to the destination registers.
-        for (output, register) in outputs.into_iter().zip_eq(&self.destinations) {
+        for (output, register) in outputs.into_iter().zip_eq(&call.destinations()) {
             // Assign the output to the register.
-            registers.store_circuit(stack, register, output)?;
+            registers.store_circuit(self, register, output)?;
         }
 
         Ok(())
@@ -318,36 +318,36 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn call_output_types(&self, call: &Call<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the program and resource.
-        let (is_external, program, resource) = match &self.operator {
+        let (is_external, program, resource) = match call.operator() {
             // Retrieve the program and resource from the locator.
             CallOperator::Locator(locator) => {
-                (true, stack.get_external_program(locator.program_id())?, locator.resource())
+                (true, self.get_external_program(locator.program_id())?, locator.resource())
             }
             CallOperator::Resource(resource) => {
                 // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
-                if stack.program().contains_function(resource) {
+                if self.program().contains_function(resource) {
                     bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
                 }
 
-                (false, stack.program(), resource)
+                (false, self.program(), resource)
             }
         };
 
         // If the operator is a closure, retrieve the closure and compute the output types.
         if let Ok(closure) = program.get_closure(resource) {
             // Ensure the number of operands matches the number of input statements.
-            if closure.inputs().len() != self.operands.len() {
-                bail!("Expected {} inputs, found {}", closure.inputs().len(), self.operands.len())
+            if closure.inputs().len() != call.operands().len() {
+                bail!("Expected {} inputs, found {}", closure.inputs().len(), call.operands().len())
             }
             // Ensure the number of inputs matches the number of input statements.
             if closure.inputs().len() != input_types.len() {
                 bail!("Expected {} input types, found {}", closure.inputs().len(), input_types.len())
             }
             // Ensure the number of destinations matches the number of output statements.
-            if closure.outputs().len() != self.destinations.len() {
-                bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
+            if closure.outputs().len() != call.destinations().len() {
+                bail!("Expected {} outputs, found {}", closure.outputs().len(), call.destinations().len())
             }
             // Return the output register types.
             Ok(closure.outputs().iter().map(|output| *output.register_type()).collect())
@@ -355,16 +355,16 @@ impl<N: Network> Stack<N> {
         // If the operator is a function, retrieve the function and compute the output types.
         else if let Ok(function) = program.get_function(resource) {
             // Ensure the number of operands matches the number of input statements.
-            if function.inputs().len() != self.operands.len() {
-                bail!("Expected {} inputs, found {}", function.inputs().len(), self.operands.len())
+            if function.inputs().len() != call.operands().len() {
+                bail!("Expected {} inputs, found {}", function.inputs().len(), call.operands().len())
             }
             // Ensure the number of inputs matches the number of input statements.
             if function.inputs().len() != input_types.len() {
                 bail!("Expected {} input types, found {}", function.inputs().len(), input_types.len())
             }
             // Ensure the number of destinations matches the number of output statements.
-            if function.outputs().len() != self.destinations.len() {
-                bail!("Expected {} outputs, found {}", function.outputs().len(), self.destinations.len())
+            if function.outputs().len() != call.destinations().len() {
+                bail!("Expected {} outputs, found {}", function.outputs().len(), call.destinations().len())
             }
             // Return the output register types.
             function
@@ -382,7 +382,7 @@ impl<N: Network> Stack<N> {
         }
         // Else, throw an error.
         else {
-            bail!("Call operator '{}' is invalid or unsupported.", self.operator)
+            bail!("Call operator '{}' is invalid or unsupported.", call.operator())
         }
     }
 }

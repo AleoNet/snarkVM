@@ -19,19 +19,23 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate_is<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_is<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
-        stack: &Stack<N>,
+        is: &IsInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        if is.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                IsInstruction::<N, VARIANT>::opcode(),
+                is.operands().len()
+            )
         }
 
         // Retrieve the inputs.
-        let input_a = registers.load(stack, &self.operands[0])?;
-        let input_b = registers.load(stack, &self.operands[1])?;
+        let input_a = registers.load(self, &is.operands()[0])?;
+        let input_b = registers.load(self, &is.operands()[1])?;
 
         // Check the inputs.
         let output = match VARIANT {
@@ -40,24 +44,28 @@ impl<N: Network> Stack<N> {
             _ => bail!("Invalid 'is' variant: {VARIANT}"),
         };
         // Store the output.
-        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
+        registers.store(self, &is.destinations()[0], Value::Plaintext(Plaintext::from(output)))
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute_is<A: circuit::Aleo<Network = N>>(
+    pub fn execute_is<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
-        stack: &Stack<N>,
+        is: &IsInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        if is.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                IsInstruction::opcode(),
+                is.operands().len()
+            )
         }
 
         // Retrieve the inputs.
-        let input_a = registers.load_circuit(stack, &self.operands[0])?;
-        let input_b = registers.load_circuit(stack, &self.operands[1])?;
+        let input_a = registers.load_circuit(self, &is.operands()[0])?;
+        let input_b = registers.load_circuit(self, &is.operands()[1])?;
 
         // Check the inputs.
         let output = match VARIANT {
@@ -68,28 +76,40 @@ impl<N: Network> Stack<N> {
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
-        registers.store_circuit(stack, &self.destination, output)
+        registers.store_circuit(self, &is.destinations()[0], output)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn is_output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn is_output_types<const VARIANT: u8>(
+        &self,
+        is: &IsInstruction<N, VARIANT>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
-            bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
+            bail!(
+                "Instruction '{}' expects 2 inputs, found {} inputs",
+                IsInstruction::<N, VARIANT>::opcode(),
+                input_types.len()
+            )
         }
         // Ensure the operands are of the same type.
         if input_types[0] != input_types[1] {
             bail!(
                 "Instruction '{}' expects inputs of the same type. Found inputs of type '{}' and '{}'",
-                Self::opcode(),
+                IsInstruction::<N, VARIANT>::opcode(),
                 input_types[0],
                 input_types[1]
             )
         }
         // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        if is.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                IsInstruction::<N, VARIANT>::opcode(),
+                is.operands().len()
+            )
         }
 
         match VARIANT {

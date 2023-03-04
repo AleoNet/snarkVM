@@ -27,9 +27,9 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.
-    register: Register<N>,
+    pub register: Register<N>,
     /// The input register type.
-    register_type: RegisterType<N>,
+    pub register_type: RegisterType<N>,
 }
 
 impl<N: Network> Input<N> {

@@ -306,7 +306,7 @@ impl<N: Network> Stack<N> {
         for instruction in self.get_function(function_name)?.instructions() {
             if let Instruction::Call(call) = instruction {
                 // Determine if this is a function call.
-                if call.is_function_call(self)? {
+                if self.is_function_call(call)? {
                     // Increment by the number of calls.
                     num_calls += match call.operator() {
                         CallOperator::Locator(locator) => {

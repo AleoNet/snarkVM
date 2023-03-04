@@ -22,7 +22,7 @@ pub type AssertEq<N> = AssertInstruction<N, { Variant::AssertEq as u8 }>;
 /// Asserts two operands are **not** equal to each other.
 pub type AssertNeq<N> = AssertInstruction<N, { Variant::AssertNeq as u8 }>;
 
-enum Variant {
+pub enum Variant {
     AssertEq,
     AssertNeq,
 }
@@ -31,7 +31,7 @@ enum Variant {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct AssertInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
-    operands: Vec<Operand<N>>,
+    pub operands: Vec<Operand<N>>,
 }
 
 impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {

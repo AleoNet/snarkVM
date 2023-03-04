@@ -26,9 +26,9 @@ use console::{network::prelude::*, program::FinalizeType};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output operand.
-    operand: Operand<N>,
+    pub operand: Operand<N>,
     /// The output finalize type.
-    finalize_type: FinalizeType<N>,
+    pub finalize_type: FinalizeType<N>,
 }
 
 impl<N: Network> Output<N> {

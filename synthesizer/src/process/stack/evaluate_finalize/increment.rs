@@ -19,30 +19,30 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Evaluates the increment command.
     #[inline]
-    pub fn evaluate_finalize<P: ProgramStorage<N>>(
+    pub fn evaluate_increment<P: ProgramStorage<N>>(
         &self,
         increment: &Increment<N>,
         store: &ProgramStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping(self.program_id(), increment.mapping())? {
-            bail!("Mapping '{}/{}' does not exist in storage", self.program_id(), increment.mapping());
+        if !store.contains_mapping(self.program_id(), increment.mapping_name())? {
+            bail!("Mapping '{}/{}' does not exist in storage", self.program_id(), increment.mapping_name());
         }
 
         // Load the first operand as a plaintext.
         let key = registers.load_plaintext(self, increment.key())?;
         // Load the second operand as a literal.
-        let increment = registers.load_literal(self, increment.value())?;
+        let amount = registers.load_literal(self, increment.value())?;
 
         // Retrieve the starting value from storage as a literal.
-        let start = match store.get_value(self.program_id(), increment.mapping(), &key)? {
+        let start = match store.get_value(self.program_id(), increment.mapping_name(), &key)? {
             Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
             Some(Value::Plaintext(Plaintext::Struct(..))) => bail!("Cannot 'increment' by an 'struct'"),
             Some(Value::Record(..)) => bail!("Cannot 'increment' by a 'record'"),
             // If the key does not exist, set the starting value to 0.
             // Infer the starting type from the increment type.
-            None => match increment {
+            None => match amount {
                 Literal::Address(..) => bail!("Cannot 'increment' by an 'address'"),
                 Literal::Boolean(..) => bail!("Cannot 'increment' by a 'boolean'"),
                 Literal::Field(..) => Literal::Field(Zero::zero()),
@@ -63,7 +63,7 @@ impl<N: Network> Stack<N> {
         };
 
         // Increment the value.
-        let outcome = match (start, increment) {
+        let outcome = match (start, amount) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.add(b)),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a.add(b)),
             (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add(b)),
@@ -83,7 +83,7 @@ impl<N: Network> Stack<N> {
         // Construct the value.
         let value = Value::Plaintext(Plaintext::from(outcome));
         // Update the value in storage.
-        store.update_key_value(self.program_id(), increment.mapping(), key, value)?;
+        store.update_key_value(self.program_id(), increment.mapping_name(), key, value)?;
 
         Ok(())
     }

@@ -26,9 +26,9 @@ use console::{network::prelude::*, program::RegisterType};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output operand.
-    operand: Operand<N>,
+    pub operand: Operand<N>,
     /// The output register type.
-    register_type: RegisterType<N>,
+    pub register_type: RegisterType<N>,
 }
 
 impl<N: Network> Output<N> {

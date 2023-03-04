@@ -20,7 +20,7 @@ use console::{network::prelude::*, program::Register};
 /// Finalizes the operands on-chain.
 pub type FinalizeCommand<N> = FinalizeOperation<N, { Variant::FinalizeCommand as u8 }>;
 
-enum Variant {
+pub enum Variant {
     FinalizeCommand,
 }
 

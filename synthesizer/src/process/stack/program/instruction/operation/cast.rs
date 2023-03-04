@@ -21,20 +21,20 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn evaluate_cast<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        cast: &Cast<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+        let inputs: Vec<_> = cast.operands().iter().map(|operand| registers.load(self, operand)).try_collect()?;
 
-        match self.register_type {
+        match cast.register_type() {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Ensure the operands is not empty.
                 ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_name)?;
+                let struct_ = self.program().get_struct(&struct_name)?;
 
                 // Initialize the struct members.
                 let mut members = IndexMap::new();
@@ -45,7 +45,7 @@ impl<N: Network> Stack<N> {
                     let plaintext = match member {
                         Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            self.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -59,14 +59,14 @@ impl<N: Network> Stack<N> {
                 // Construct the struct.
                 let struct_ = Plaintext::Struct(members, Default::default());
                 // Store the struct.
-                registers.store(stack, &self.destination, Value::Plaintext(struct_))
+                registers.store(self, &cast.destinations()[0], Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
                 ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let record_type = stack.program().get_record(&record_name)?;
+                let record_type = self.program().get_record(&record_name)?;
 
                 // Initialize the record owner.
                 let owner: Owner<N, Plaintext<N>> = match &inputs[0] {
@@ -107,7 +107,7 @@ impl<N: Network> Stack<N> {
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            self.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -123,7 +123,7 @@ impl<N: Network> Stack<N> {
                 }
 
                 // Prepare the index as a field element.
-                let index = Field::from_u64(self.destination.locator());
+                let index = Field::from_u64(cast.destinations()[0].locator());
                 // Compute the randomizer as `HashToScalar(tvk || index)`.
                 let randomizer = N::hash_to_scalar_psd2(&[registers.tvk()?, index])?;
                 // Compute the nonce from the randomizer.
@@ -132,7 +132,7 @@ impl<N: Network> Stack<N> {
                 // Construct the record.
                 let record = Record::<N, Plaintext<N>>::from_plaintext(owner, gates, entries, nonce)?;
                 // Store the record.
-                registers.store(stack, &self.destination, Value::Record(record))
+                registers.store(self, &cast.destinations()[0], Value::Record(record))
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
@@ -144,23 +144,23 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn execute_cast<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        cast: &Cast<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
         // Load the operands values.
         let inputs: Vec<_> =
-            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
+            cast.operands().iter().map(|operand| registers.load_circuit(self, operand)).try_collect()?;
 
-        match self.register_type {
+        match cast.register_type() {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_)) => {
                 // Ensure the operands is not empty.
                 ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_)?;
+                let struct_ = self.program().get_struct(&struct_)?;
 
                 // Initialize the struct members.
                 let mut members = IndexMap::new();
@@ -171,7 +171,7 @@ impl<N: Network> Stack<N> {
                     let plaintext = match member {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.matches_register_type(
+                            self.matches_register_type(
                                 &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
                                 &register_type,
                             )?;
@@ -190,14 +190,14 @@ impl<N: Network> Stack<N> {
                 // Construct the struct.
                 let struct_ = circuit::Plaintext::Struct(members, Default::default());
                 // Store the struct.
-                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
+                registers.store_circuit(self, &cast.destinations()[0], circuit::Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
                 ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let record_type = stack.program().get_record(&record_name)?;
+                let record_type = self.program().get_record(&record_name)?;
 
                 // Initialize the record owner.
                 let owner: circuit::Owner<A, circuit::Plaintext<A>> = match &inputs[0] {
@@ -245,7 +245,7 @@ impl<N: Network> Stack<N> {
                     let plaintext = match entry {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.matches_register_type(
+                            self.matches_register_type(
                                 &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
                                 &register_type,
                             )?;
@@ -266,7 +266,7 @@ impl<N: Network> Stack<N> {
                 }
 
                 // Prepare the index as a constant field element.
-                let index = circuit::Field::constant(Field::from_u64(self.destination.locator()));
+                let index = circuit::Field::constant(Field::from_u64(cast.destinations()[0].locator()));
                 // Compute the randomizer as `HashToScalar(tvk || index)`.
                 let randomizer = A::hash_to_scalar_psd2(&[registers.tvk_circuit()?, index]);
                 // Compute the nonce from the randomizer.
@@ -275,7 +275,7 @@ impl<N: Network> Stack<N> {
                 // Construct the record.
                 let record = circuit::Record::<A, circuit::Plaintext<A>>::from_plaintext(owner, gates, entries, nonce)?;
                 // Store the record.
-                registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
+                registers.store_circuit(self, &cast.destinations()[0], circuit::Value::Record(record))
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
@@ -285,22 +285,22 @@ impl<N: Network> Stack<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn cast_output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn cast_output_types(&self, cast: &Cast<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
-            input_types.len() == self.operands.len(),
+            input_types.len() == cast.operands().len(),
             "Instruction '{}' expects {} operands, found {} operands",
-            Self::opcode(),
+            Cast::<N>::opcode(),
             input_types.len(),
-            self.operands.len(),
+            cast.operands().len(),
         );
 
         // Ensure the output type is defined in the program.
-        match self.register_type {
+        match cast.register_type() {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_name)?;
+                let struct_ = self.program().get_struct(&struct_name)?;
                 // Ensure the input types match the struct.
                 for ((_, member_type), input_type) in struct_.members().iter().zip_eq(input_types) {
                     match input_type {
@@ -324,7 +324,7 @@ impl<N: Network> Stack<N> {
             }
             RegisterType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
-                let record = stack.program().get_record(&record_name)?;
+                let record = self.program().get_record(&record_name)?;
 
                 // Ensure the input types length is at least 2.
                 ensure!(input_types.len() >= 2, "Casting to a record requires at least two operands");
@@ -369,6 +369,6 @@ impl<N: Network> Stack<N> {
             }
         }
 
-        Ok(vec![self.register_type])
+        Ok(vec![*cast.register_type()])
     }
 }

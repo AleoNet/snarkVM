@@ -19,19 +19,23 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate_commit<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_commit<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
-        stack: &Stack<N>,
+        commit: &CommitInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        if commit.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                CommitInstruction::<N, VARIANT>::opcode(),
+                commit.operands().len()
+            )
         }
 
         // Retrieve the input and randomizer.
-        let input = registers.load(stack, &self.operands[0])?;
-        let randomizer = registers.load(stack, &self.operands[1])?;
+        let input = registers.load(self, &commit.operands()[0])?;
+        let randomizer = registers.load(self, &commit.operands()[1])?;
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
@@ -49,26 +53,30 @@ impl<N: Network> Stack<N> {
             _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Store the output.
-        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
+        registers.store(self, &commit.destinations()[0], Value::Plaintext(Plaintext::from(output)))
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute_commit<A: circuit::Aleo<Network = N>>(
+    pub fn execute_commit<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
-        stack: &Stack<N>,
+        commit: &CommitInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         use circuit::ToBits;
 
         // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        if commit.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                CommitInstruction::<N, VARIANT>::opcode(),
+                commit.operands().len()
+            )
         }
 
         // Retrieve the input and randomizer.
-        let input = registers.load_circuit(stack, &self.operands[0])?;
-        let randomizer = registers.load_circuit(stack, &self.operands[1])?;
+        let input = registers.load_circuit(self, &commit.operands()[0])?;
+        let randomizer = registers.load_circuit(self, &commit.operands()[1])?;
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
@@ -90,23 +98,31 @@ impl<N: Network> Stack<N> {
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
-        registers.store_circuit(stack, &self.destination, output)
+        registers.store_circuit(self, &commit.destinations()[0], output)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn commit_output_types(
+    pub fn commit_output_types<const VARIANT: u8>(
         &self,
-        _stack: &Stack<N>,
+        commit: &CommitInstruction<N, VARIANT>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
-            bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
+            bail!(
+                "Instruction '{}' expects 2 inputs, found {} inputs",
+                CommitInstruction::<N, VARIANT>::opcode(),
+                input_types.len()
+            )
         }
         // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        if commit.operands().len() != 2 {
+            bail!(
+                "Instruction '{}' expects 2 operands, found {} operands",
+                CommitInstruction::<N, VARIANT>::opcode(),
+                commit.operands().len()
+            )
         }
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.

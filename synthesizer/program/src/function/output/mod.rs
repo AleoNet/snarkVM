@@ -26,9 +26,9 @@ use console::{network::prelude::*, program::ValueType};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output operand.
-    operand: Operand<N>,
+    pub operand: Operand<N>,
     /// The output value type.
-    value_type: ValueType<N>,
+    pub value_type: ValueType<N>,
 }
 
 impl<N: Network> Output<N> {

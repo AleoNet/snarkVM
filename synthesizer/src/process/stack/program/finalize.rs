@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network, const VARIANT: u8> Stack<N> {
+impl<N: Network> Stack<N> {
     /// Evaluates the finalize operation.
     #[inline]
-    pub fn evaluate_finalize<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_finalize<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
         finalize_operation: &FinalizeOperation<N, VARIANT>,
         registers: &mut Registers<N, A>,
@@ -28,7 +28,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
         if finalize_operation.operands().len() > N::MAX_INPUTS {
             bail!(
                 "'{}' expects <= {} operands, found {} operands",
-                Self::opcode(),
+                FinalizeOperation::<N, VARIANT>::opcode(),
                 N::MAX_INPUTS,
                 finalize_operation.operands().len()
             )

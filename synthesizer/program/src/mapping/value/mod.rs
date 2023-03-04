@@ -32,6 +32,12 @@ pub struct MapValue<N: Network> {
 }
 
 impl<N: Network> MapValue<N> {
+    /// Initializes a new value statement with the given name and finalize type.
+    #[inline]
+    pub const fn new(name: Identifier<N>, finalize_type: FinalizeType<N>) -> Self {
+        Self { name, finalize_type }
+    }
+
     /// Returns the value name.
     #[inline]
     pub const fn name(&self) -> &Identifier<N> {

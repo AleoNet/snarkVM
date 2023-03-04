@@ -19,17 +19,21 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate_hash<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_hash<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
-        stack: &Stack<N>,
+        hash: &HashInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
+        if hash.operands().len() != 1 {
+            bail!(
+                "Instruction '{}' expects 1 operands, found {} operands",
+                HashInstruction::<N, VARIANT>::opcode(),
+                hash.operands().len()
+            )
         }
         // Load the operand.
-        let input = registers.load(stack, &self.operands[0])?;
+        let input = registers.load(self, &hash.operands()[0])?;
         // Hash the input.
         let output = match VARIANT {
             0 => N::hash_bhp256(&input.to_bits_le())?,
@@ -44,24 +48,28 @@ impl<N: Network> Stack<N> {
             _ => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Store the output.
-        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(output))))
+        registers.store(self, &hash.destinations()[0], Value::Plaintext(Plaintext::from(Literal::Field(output))))
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute_hash<A: circuit::Aleo<Network = N>>(
+    pub fn execute_hash<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
-        stack: &Stack<N>,
+        hash: &HashInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         use circuit::{ToBits, ToFields};
 
         // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
+        if hash.operands().len() != 1 {
+            bail!(
+                "Instruction '{}' expects 1 operands, found {} operands",
+                HashInstruction::<N, VARIANT>::opcode(),
+                hash.operands().len()
+            )
         }
         // Load the operand.
-        let input = registers.load_circuit(stack, &self.operands[0])?;
+        let input = registers.load_circuit(self, &hash.operands()[0])?;
         // Hash the input.
         let output = match VARIANT {
             0 => A::hash_bhp256(&input.to_bits_le()),
@@ -79,23 +87,31 @@ impl<N: Network> Stack<N> {
         let output =
             circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
         // Store the output.
-        registers.store_circuit(stack, &self.destination, output)
+        registers.store_circuit(self, &hash.destinations()[0], output)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn hash_output_types(
+    pub fn hash_output_types<const VARIANT: u8>(
         &self,
-        _stack: &Stack<N>,
+        hash: &HashInstruction<N, VARIANT>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 1 {
-            bail!("Instruction '{}' expects 1 inputs, found {} inputs", Self::opcode(), input_types.len())
+            bail!(
+                "Instruction '{}' expects 1 inputs, found {} inputs",
+                HashInstruction::<N, VARIANT>::opcode(),
+                input_types.len()
+            )
         }
         // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
+        if hash.operands().len() != 1 {
+            bail!(
+                "Instruction '{}' expects 1 operands, found {} operands",
+                HashInstruction::<N, VARIANT>::opcode(),
+                hash.operands().len()
+            )
         }
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.

@@ -27,7 +27,7 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Import<N: Network> {
     /// The imported program ID.
-    program_id: ProgramID<N>,
+    pub program_id: ProgramID<N>,
 }
 
 impl<N: Network> Import<N> {

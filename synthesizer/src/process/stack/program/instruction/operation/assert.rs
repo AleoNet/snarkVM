@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network, const VARIANT: u8> Stack<N> {
+impl<N: Network> Stack<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate_assert<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_assert<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
         assert: &AssertInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
@@ -28,7 +28,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
         if assert.operands().len() != 2 {
             bail!(
                 "Instruction '{}' expects 2 operands, found {} operands",
-                AssertInstruction::opcode(),
+                AssertInstruction::<N, VARIANT>::opcode(),
                 assert.operands().len()
             )
         }
@@ -43,7 +43,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
                 if input_a != input_b {
                     bail!(
                         "'{}' failed: '{input_a}' is not equal to '{input_b}' (should be equal)",
-                        AssertInstruction::opcode()
+                        AssertInstruction::<N, VARIANT>::opcode()
                     )
                 }
             }
@@ -51,7 +51,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
                 if input_a == input_b {
                     bail!(
                         "'{}' failed: '{input_a}' is equal to '{input_b}' (should not be equal)",
-                        AssertInstruction::opcode()
+                        AssertInstruction::<N, VARIANT>::opcode()
                     )
                 }
             }
@@ -62,7 +62,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute_assert<A: circuit::Aleo<Network = N>>(
+    pub fn execute_assert<A: circuit::Aleo<Network = N>, const VARIANT: u8>(
         &self,
         assert: &AssertInstruction<N, VARIANT>,
         registers: &mut Registers<N, A>,
@@ -71,7 +71,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
         if assert.operands().len() != 2 {
             bail!(
                 "Instruction '{}' expects 2 operands, found {} operands",
-                AssertInstruction::opcode(),
+                AssertInstruction::<N, VARIANT>::opcode(),
                 assert.operands().len()
             )
         }
@@ -91,20 +91,24 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn assert_output_types(
+    pub fn assert_output_types<const VARIANT: u8>(
         &self,
-        assert: &Stack<N>,
+        assert: &AssertInstruction<N, VARIANT>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
-            bail!("Instruction '{}' expects 2 inputs, found {} inputs", AssertInstruction::opcode(), input_types.len())
+            bail!(
+                "Instruction '{}' expects 2 inputs, found {} inputs",
+                AssertInstruction::<N, VARIANT>::opcode(),
+                input_types.len()
+            )
         }
         // Ensure the operands are of the same type.
         if input_types[0] != input_types[1] {
             bail!(
                 "Instruction '{}' expects inputs of the same type. Found inputs of type '{}' and '{}'",
-                AssertInstruction::opcode(),
+                AssertInstruction::<N, VARIANT>::opcode(),
                 input_types[0],
                 input_types[1]
             )
@@ -113,7 +117,7 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
         if assert.operands().len() != 2 {
             bail!(
                 "Instruction '{}' expects 2 operands, found {} operands",
-                AssertInstruction::opcode(),
+                AssertInstruction::<N, VARIANT>::opcode(),
                 assert.operands().len()
             )
         }
@@ -128,11 +132,11 @@ impl<N: Network, const VARIANT: u8> Stack<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ProvingKey, VerifyingKey};
+    use crate::{AssertEq, AssertNeq, Opcode, Operand, ProvingKey, VerifyingKey};
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
-        program::{Literal, LiteralType},
+        program::{Literal, LiteralType, Register},
     };
 
     use std::collections::HashMap;
