@@ -23,10 +23,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::{
-    program::finalize::{Finalize, FinalizeCommand},
-    Instruction,
-};
+use crate::{Finalize, FinalizeCommand, Instruction};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, ValueType},

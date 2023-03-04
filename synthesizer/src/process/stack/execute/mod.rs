@@ -16,6 +16,7 @@
 
 mod closure;
 mod function;
+mod instruction;
 
 use crate::{
     program::{Closure, Function, Instruction, Operand, Program},

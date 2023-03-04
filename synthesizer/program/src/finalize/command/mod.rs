@@ -23,7 +23,7 @@ pub use finalize::*;
 mod increment;
 pub use increment::*;
 
-use crate::{FinalizeRegisters, Instruction, ProgramStorage, ProgramStore, Stack};
+use crate::Instruction;
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]

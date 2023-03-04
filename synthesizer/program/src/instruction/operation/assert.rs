@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{Opcode, Operand};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
@@ -61,93 +61,6 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     #[inline]
     pub fn destinations(&self) -> Vec<Register<N>> {
         vec![]
-    }
-}
-
-impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
-    /// Evaluates the instruction.
-    #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
-    ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
-        // Retrieve the inputs.
-        let input_a = registers.load(stack, &self.operands[0])?;
-        let input_b = registers.load(stack, &self.operands[1])?;
-
-        // Assert the inputs.
-        match VARIANT {
-            0 => {
-                if input_a != input_b {
-                    bail!("'{}' failed: '{input_a}' is not equal to '{input_b}' (should be equal)", Self::opcode())
-                }
-            }
-            1 => {
-                if input_a == input_b {
-                    bail!("'{}' failed: '{input_a}' is equal to '{input_b}' (should not be equal)", Self::opcode())
-                }
-            }
-            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
-        }
-        Ok(())
-    }
-
-    /// Executes the instruction.
-    #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
-    ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
-        // Retrieve the inputs.
-        let input_a = registers.load_circuit(stack, &self.operands[0])?;
-        let input_b = registers.load_circuit(stack, &self.operands[1])?;
-
-        // Assert the inputs.
-        match VARIANT {
-            0 => A::assert(input_a.is_equal(&input_b)),
-            1 => A::assert(input_a.is_not_equal(&input_b)),
-            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
-        }
-        Ok(())
-    }
-
-    /// Returns the output type from the given program and input types.
-    #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
-        // Ensure the number of input types is correct.
-        if input_types.len() != 2 {
-            bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
-        }
-        // Ensure the operands are of the same type.
-        if input_types[0] != input_types[1] {
-            bail!(
-                "Instruction '{}' expects inputs of the same type. Found inputs of type '{}' and '{}'",
-                Self::opcode(),
-                input_types[0],
-                input_types[1]
-            )
-        }
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 2 {
-            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
-        match VARIANT {
-            0 | 1 => Ok(vec![]),
-            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
-        }
     }
 }
 

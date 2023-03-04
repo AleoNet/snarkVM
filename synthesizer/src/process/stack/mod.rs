@@ -47,6 +47,7 @@ mod evaluate;
 mod evaluate_finalize;
 mod execute;
 mod helpers;
+mod output_types;
 
 use crate::{
     CallOperator,
