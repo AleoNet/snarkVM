@@ -32,6 +32,7 @@ mod field {
         Inverse,
         Mode,
         SquareRoot,
+        ToBits,
         Transcribe,
     };
     use snarkvm_circuit_types::{Compare, DivUnchecked, Double, Equal, Field, Pow, Square, Ternary};
@@ -138,7 +139,7 @@ mod field {
         for _i in 0..10 {
             bits.push(Boolean::<FormalCircuit>::new(Mode::Private, false));
         }
-        let mut constant = vec![true, true, true, false, false, false, true, true, false, true];
+        let constant = vec![true, true, true, false, false, false, true, true, false, true];
         let is_lte = !constant.iter().zip_eq(bits).fold(Boolean::constant(false), |rest_is_less, (this, that)| {
             if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
         });
