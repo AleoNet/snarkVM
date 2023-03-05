@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This test file will output JSON R1CS files for boolean gadgets in `circuits/types/boolean/`
+//! This test file will output JSON R1CS files for field gadgets in `circuits/types/field/`
 //!
 //! [Run all tests]: `cargo test -- --show-output`
 //!
@@ -23,7 +23,7 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod field {
-    use snarkvm_circuit::{Boolean, Itertools};
+    use snarkvm_circuit::{Boolean, FromStr, Itertools};
     use snarkvm_circuit_environment::{
         Environment,
         FormalCircuit,
@@ -191,7 +191,7 @@ mod field {
     }
 
     #[test]
-    fn pow10() {
+    fn pow10() {  // variable field to the power of constant 10
         let one = ConsoleField::one();
         let two = one + one;
         let four = two + two;
@@ -207,6 +207,99 @@ mod field {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// pow10");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn c7237005577332262213973186563042994240829374041602535252466099000494570602495pow() {  // constant 2^252 - 1 to the power of a variable field
+
+        let two_to_the_252_minus_1 = ConsoleField::from_str("7237005577332262213973186563042994240829374041602535252466099000494570602495field");
+
+        let a = Field::<FormalCircuit>::new(Mode::Constant, two_to_the_252_minus_1.unwrap());
+        let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = a.pow(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// c7237005577332262213973186563042994240829374041602535252466099000494570602495pow");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn c15pow() {  // constant 15 to the power of a variable field
+        let fifteen = ConsoleField::from_str("15field");
+
+        let a = Field::<FormalCircuit>::new(Mode::Constant, fifteen.unwrap());
+        let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = a.pow(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// c15pow");  // 15field ** field
+        println!("{}", output);
+    }
+
+    #[test]
+    fn c11pow() {  // constant 11 to the power of a variable field
+        let eleven = ConsoleField::from_str("11field");
+
+        let a = Field::<FormalCircuit>::new(Mode::Constant, eleven.unwrap());
+        let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = a.pow(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// c11pow");  // 11field ** field
+        println!("{}", output);
+    }
+
+    #[test]
+    fn c6pow() {  // constant 6 to the power of a variable field
+        let one = ConsoleField::one();
+        let two = one + one;
+        let four = two + two;
+        let six = four + two;
+
+        let a = Field::<FormalCircuit>::new(Mode::Constant, six);
+        let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = a.pow(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// c6pow");  // 6field ** field
+        println!("{}", output);
+    }
+
+    #[test]
+    fn c1pow() {  // constant 1 to the power of a variable field
+        let one = ConsoleField::one();
+
+        let a = Field::<FormalCircuit>::new(Mode::Constant, one);
+        let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = a.pow(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// c1pow");  // 1field ** field
+        println!("{}", output);
+    }
+
+    #[test]
+    fn c0pow() {  // constant 0 to the power of a variable field
+
+        let a = Field::<FormalCircuit>::new(Mode::Constant, ConsoleField::zero());
+        let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = a.pow(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// c0pow");  // 0field ** field
         println!("{}", output);
     }
 
