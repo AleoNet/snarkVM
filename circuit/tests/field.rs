@@ -276,4 +276,16 @@ mod field {
         println!("// ternary");
         println!("{}", output);
     }
+
+    #[test]
+    fn to_bits_le() {
+        let a = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::zero());
+        let _candidate = a.to_bits_le();
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// to bits le");
+        println!("{}", output);
+    }
 }
