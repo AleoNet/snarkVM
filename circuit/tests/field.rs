@@ -148,7 +148,7 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// from_bits_le");
+        println!("// from_bits_le_diff_const");
         println!("{}", output);
     }
 
@@ -378,7 +378,7 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// to bits le");
+        println!("// to_bits_le");
         println!("{}", output);
     }
 }
