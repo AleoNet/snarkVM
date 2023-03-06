@@ -34,16 +34,18 @@ impl<N: Network> Parser for Function<N> {
         let (string, _) = cut(tag(":"))(string)?;
 
         // Helper parser to check that the next token is not `input`.
-        let peek_not_input = not(peek(preceded(Sanitizer::parse_whitespaces, tag(Input::<N>::type_name()))));
+        let peek_not_input = not(peek(preceded(Sanitizer::parse, tag(Input::<N>::type_name()))));
+        // Helper parser to check that the next token is not an instruction.
+        let peek_not_instruction = not(peek(preceded(Sanitizer::parse, Instruction::<N>::parse)));
         // Helper parser to check that the next token is `output`.
-        let mut peek_output = peek(preceded(Sanitizer::parse_whitespaces, tag(Output::<N>::type_name())));
+        let peek_not_output = not(peek(preceded(Sanitizer::parse, tag(Output::<N>::type_name()))));
 
         // Parse the inputs from the string.
         let (string, (inputs, _)) = many_till(Input::parse, peek_not_input)(string)?;
         // Parse the instructions from the string.
-        let (string, (instructions, _)) = many_till(Instruction::parse, &mut peek_output)(string)?;
+        let (string, (instructions, _)) = many_till(Instruction::parse, peek_not_instruction)(string)?;
         // Parse the outputs from the string.
-        let (string, (outputs, _)) = many_till(Output::parse, not(peek_output))(string)?;
+        let (string, (outputs, _)) = many_till(Output::parse, peek_not_output)(string)?;
 
         // Parse an optional finalize command from the string.
         let (string, command) = opt(FinalizeCommand::parse)(string)?;

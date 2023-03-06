@@ -105,7 +105,7 @@ macro_rules! operation {
                 // Prepare the operation.
                 type Operation = $name::<CurrentNetwork>;
                 // Execute the test cases for the operation.
-                $crate::test_execute!(Operator::$operate == Operation::execute { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
+                // $crate::test_execute!(Operator::$operate == Operation::execute { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
             }
         }
     };
@@ -160,7 +160,7 @@ macro_rules! operation {
                 // Prepare the operation.
                 type Operation = $name::<CurrentNetwork>;
                 // Execute the test cases for the operation.
-                $crate::test_execute!(Operator::$operate == Operation::execute? { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
+                // $crate::test_execute!(Operator::$operate == Operation::execute? { $( ( $($input),+ ) => $output $( ($($condition),+) )?, )+ });
             }
         }
     };

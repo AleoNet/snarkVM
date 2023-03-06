@@ -53,7 +53,7 @@ impl<N: Network> Parser for Program<N> {
                 map(Closure::parse, |closure| P::<N>::C(closure)),
                 map(Function::parse, |function| P::<N>::F(function)),
             )),
-            Sanitizer::eoi,
+            preceded(Sanitizer::parse, Sanitizer::eoi),
         )(string)?;
 
         // Return the program.
