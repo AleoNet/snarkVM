@@ -191,7 +191,8 @@ mod field {
     }
 
     #[test]
-    fn pow10() {  // variable field to the power of constant 10
+    fn pow10() {
+        // variable field to the power of constant 10
         let one = ConsoleField::one();
         let two = one + one;
         let four = two + two;
@@ -211,9 +212,11 @@ mod field {
     }
 
     #[test]
-    fn c7237005577332262213973186563042994240829374041602535252466099000494570602495pow() {  // constant 2^252 - 1 to the power of a variable field
+    fn c7237005577332262213973186563042994240829374041602535252466099000494570602495pow() {
+        // constant 2^252 - 1 to the power of a variable field
 
-        let two_to_the_252_minus_1 = ConsoleField::from_str("7237005577332262213973186563042994240829374041602535252466099000494570602495field");
+        let two_to_the_252_minus_1 =
+            ConsoleField::from_str("7237005577332262213973186563042994240829374041602535252466099000494570602495field");
 
         let a = Field::<FormalCircuit>::new(Mode::Constant, two_to_the_252_minus_1.unwrap());
         let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
@@ -227,7 +230,8 @@ mod field {
     }
 
     #[test]
-    fn c15pow() {  // constant 15 to the power of a variable field
+    fn c15pow() {
+        // constant 15 to the power of a variable field
         let fifteen = ConsoleField::from_str("15field");
 
         let a = Field::<FormalCircuit>::new(Mode::Constant, fifteen.unwrap());
@@ -237,12 +241,13 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// c15pow");  // 15field ** field
+        println!("// c15pow"); // 15field ** field
         println!("{}", output);
     }
 
     #[test]
-    fn c11pow() {  // constant 11 to the power of a variable field
+    fn c11pow() {
+        // constant 11 to the power of a variable field
         let eleven = ConsoleField::from_str("11field");
 
         let a = Field::<FormalCircuit>::new(Mode::Constant, eleven.unwrap());
@@ -252,12 +257,13 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// c11pow");  // 11field ** field
+        println!("// c11pow"); // 11field ** field
         println!("{}", output);
     }
 
     #[test]
-    fn c6pow() {  // constant 6 to the power of a variable field
+    fn c6pow() {
+        // constant 6 to the power of a variable field
         let one = ConsoleField::one();
         let two = one + one;
         let four = two + two;
@@ -270,12 +276,13 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// c6pow");  // 6field ** field
+        println!("// c6pow"); // 6field ** field
         println!("{}", output);
     }
 
     #[test]
-    fn c1pow() {  // constant 1 to the power of a variable field
+    fn c1pow() {
+        // constant 1 to the power of a variable field
         let one = ConsoleField::one();
 
         let a = Field::<FormalCircuit>::new(Mode::Constant, one);
@@ -285,12 +292,13 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// c1pow");  // 1field ** field
+        println!("// c1pow"); // 1field ** field
         println!("{}", output);
     }
 
     #[test]
-    fn c0pow() {  // constant 0 to the power of a variable field
+    fn c0pow() {
+        // constant 0 to the power of a variable field
 
         let a = Field::<FormalCircuit>::new(Mode::Constant, ConsoleField::zero());
         let b = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
@@ -299,7 +307,7 @@ mod field {
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("// c0pow");  // 0field ** field
+        println!("// c0pow"); // 0field ** field
         println!("{}", output);
     }
 

@@ -60,3 +60,7 @@ version = "1.0"
 
 [dependencies.serde]
 version = "1.0"
+
+[dev-dependencies.snarkvm-console-types-integers]
+path = "../console/types/integers"
+version = "0.9.11"
