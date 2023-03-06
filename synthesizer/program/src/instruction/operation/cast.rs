@@ -32,6 +32,12 @@ pub struct Cast<N: Network> {
 }
 
 impl<N: Network> Cast<N> {
+    /// Initializes a new cast instruction with the given operands, destination register, and register type.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>, destination: Register<N>, register_type: RegisterType<N>) -> Self {
+        Self { operands, destination, register_type }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

@@ -26,12 +26,18 @@ use console::{network::prelude::*, program::FinalizeType};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output operand.
-    pub operand: Operand<N>,
+    operand: Operand<N>,
     /// The output finalize type.
-    pub finalize_type: FinalizeType<N>,
+    finalize_type: FinalizeType<N>,
 }
 
 impl<N: Network> Output<N> {
+    /// Initializes a new output statement with the given operand and finalize type.
+    #[inline]
+    pub const fn new(operand: Operand<N>, finalize_type: FinalizeType<N>) -> Self {
+        Self { operand, finalize_type }
+    }
+
     /// Returns the output operand.
     #[inline]
     pub const fn operand(&self) -> &Operand<N> {

@@ -29,6 +29,12 @@ pub struct Decrement<N: Network> {
 }
 
 impl<N: Network> Decrement<N> {
+    /// Initializes a new decrement statement with the given mapping name, first operand, and second operand.
+    #[inline]
+    pub fn new(mapping: Identifier<N>, first: Operand<N>, second: Operand<N>) -> Self {
+        Self { mapping, first, second }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

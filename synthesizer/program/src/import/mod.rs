@@ -31,6 +31,12 @@ pub struct Import<N: Network> {
 }
 
 impl<N: Network> Import<N> {
+    /// Initializes a new import statement with the given program ID.
+    #[inline]
+    pub const fn new(program_id: ProgramID<N>) -> Self {
+        Self { program_id }
+    }
+
     /// Returns the imported program ID.
     #[inline]
     pub const fn program_id(&self) -> &ProgramID<N> {

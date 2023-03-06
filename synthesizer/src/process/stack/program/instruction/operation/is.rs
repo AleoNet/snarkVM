@@ -122,9 +122,9 @@ impl<N: Network> Stack<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ProvingKey, VerifyingKey};
+    use crate::{IsEq, IsNeq, Opcode, Operand, ProvingKey, VerifyingKey};
     use circuit::AleoV0;
-    use console::network::Testnet3;
+    use console::{network::Testnet3, program::Register};
 
     use std::collections::HashMap;
 
@@ -184,7 +184,7 @@ mod tests {
         mode_a: Option<circuit::Mode>,
         mode_b: Option<circuit::Mode>,
     ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
-        use crate::{Authorization, CallStack};
+        use crate::Authorization;
         use console::program::Identifier;
 
         // Initialize the function name.
@@ -255,7 +255,7 @@ mod tests {
         {
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_a, None, None).unwrap();
-            operation.evaluate(&stack, &mut registers).unwrap();
+            stack.evaluate_is(&operation, &mut registers).unwrap();
 
             // Retrieve the output.
             let output_a = registers.load_literal(&stack, &destination_operand).unwrap();
@@ -276,7 +276,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
-            operation.execute::<CurrentAleo>(&stack, &mut registers).unwrap();
+            stack.execute_is::<CurrentAleo, VARIANT>(&operation, &mut registers).unwrap();
 
             // Retrieve the output.
             let output_b = registers.load_literal_circuit(&stack, &destination_operand).unwrap();
@@ -318,7 +318,7 @@ mod tests {
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_b, None, None).unwrap();
-            operation.evaluate(&stack, &mut registers).unwrap();
+            stack.evaluate_is(&operation, &mut registers).unwrap();
 
             // Retrieve the output.
             let output_a = registers.load_literal(&stack, &destination_operand).unwrap();
@@ -339,7 +339,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
-            operation.execute::<CurrentAleo>(&stack, &mut registers).unwrap();
+            stack.execute_is::<CurrentAleo, VARIANT>(&operation, &mut registers).unwrap();
 
             // Retrieve the output.
             let output_b = registers.load_literal_circuit(&stack, &destination_operand).unwrap();
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn test_is_eq_succeeds() {
         // Initialize the operation.
-        let operation = |operands, destination| IsEq::<CurrentNetwork> { operands, destination };
+        let operation = |operands, destination| IsEq::<CurrentNetwork>::new(operands, destination);
         // Initialize the opcode.
         let opcode = IsEq::<CurrentNetwork>::opcode();
 
@@ -463,7 +463,7 @@ mod tests {
     #[test]
     fn test_is_neq_succeeds() {
         // Initialize the operation.
-        let operation = |operands, destination| IsNeq::<CurrentNetwork> { operands, destination };
+        let operation = |operands, destination| IsNeq::<CurrentNetwork>::new(operands, destination);
         // Initialize the opcode.
         let opcode = IsNeq::<CurrentNetwork>::opcode();
 

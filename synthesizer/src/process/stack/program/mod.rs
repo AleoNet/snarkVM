@@ -66,10 +66,11 @@ mod tests {
     use console::{
         account::{Address, PrivateKey},
         network::Testnet3,
-        program::{Locator, Plaintext, Record, Value, ValueType},
+        program::{Plaintext, Record, Value},
         types::Field,
     };
 
+    use crate::{Execution, Inclusion};
     use parking_lot::RwLock;
     use std::sync::Arc;
 

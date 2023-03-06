@@ -27,12 +27,18 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.
-    pub register: Register<N>,
+    register: Register<N>,
     /// The input register type.
-    pub register_type: RegisterType<N>,
+    register_type: RegisterType<N>,
 }
 
 impl<N: Network> Input<N> {
+    /// Initializes a new input statement with the given register and register type.
+    #[inline]
+    pub const fn new(register: Register<N>, register_type: RegisterType<N>) -> Self {
+        Self { register, register_type }
+    }
+
     /// Returns the input register.
     #[inline]
     pub const fn register(&self) -> &Register<N> {

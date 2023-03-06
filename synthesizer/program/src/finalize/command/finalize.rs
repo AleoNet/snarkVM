@@ -32,6 +32,12 @@ pub struct FinalizeOperation<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
+    /// Initializes a new finalize operation with the given operands.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>) -> Self {
+        Self { operands }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

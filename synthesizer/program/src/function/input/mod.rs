@@ -33,6 +33,12 @@ pub struct Input<N: Network> {
 }
 
 impl<N: Network> Input<N> {
+    /// Initializes a new input statement with the given register and value type.
+    #[inline]
+    pub const fn new(register: Register<N>, value_type: ValueType<N>) -> Self {
+        Self { register, value_type }
+    }
+
     /// Returns the input register.
     #[inline]
     pub const fn register(&self) -> &Register<N> {

@@ -35,6 +35,12 @@ pub struct AssertInstruction<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
+    /// Initializes a new assert operation with the given operands.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>) -> Self {
+        Self { operands }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

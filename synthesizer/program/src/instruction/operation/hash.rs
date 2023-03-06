@@ -60,6 +60,12 @@ pub struct HashInstruction<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
+    /// Initializes a new hash instruction with the given operands and destination.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>, destination: Register<N>) -> Self {
+        Self { operands, destination }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

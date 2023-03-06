@@ -42,6 +42,12 @@ pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPE
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
     Literals<N, O, NUM_OPERANDS>
 {
+    /// Initializes a new literal operation with the given operands.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>, destination: Register<N>) -> Self {
+        Self { operands, destination, _phantom: PhantomData }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

@@ -32,6 +32,12 @@ pub struct Output<N: Network> {
 }
 
 impl<N: Network> Output<N> {
+    /// Initializes a new output statement with the given operand and value type.
+    #[inline]
+    pub const fn new(operand: Operand<N>, value_type: ValueType<N>) -> Self {
+        Self { operand, value_type }
+    }
+
     /// Returns the output operand.
     #[inline]
     pub const fn operand(&self) -> &Operand<N> {

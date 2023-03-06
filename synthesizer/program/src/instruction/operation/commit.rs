@@ -50,6 +50,12 @@ pub struct CommitInstruction<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
+    /// Initializes a new commit instruction with the given operands and destination.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>, destination: Register<N>) -> Self {
+        Self { operands, destination }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

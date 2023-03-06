@@ -21,6 +21,7 @@ mod commit;
 mod hash;
 mod is;
 mod literals;
+mod macros;
 
 use crate::{
     AssertInstruction,

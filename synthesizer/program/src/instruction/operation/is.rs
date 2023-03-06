@@ -37,6 +37,12 @@ pub struct IsInstruction<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
+    /// Initializes a new `is` operation with the given operands.
+    #[inline]
+    pub const fn new(operands: Vec<Operand<N>>, destination: Register<N>) -> Self {
+        Self { operands, destination }
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {

@@ -195,8 +195,8 @@ mod tests {
         mode_a: Option<circuit::Mode>,
         mode_b: Option<circuit::Mode>,
     ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
-        use crate::{Authorization, CallStack};
-        use console::program::{Identifier, Plaintext, Value};
+        use crate::Authorization;
+        use console::program::Identifier;
 
         // Initialize the function name.
         let function_name = Identifier::from_str("run")?;
@@ -259,7 +259,7 @@ mod tests {
         {
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_a, None, None).unwrap();
-            let result_a = operation.evaluate(&stack, &mut registers);
+            let result_a = stack.evaluate_assert(&operation, &mut registers);
 
             // Ensure the result is correct.
             match VARIANT {
@@ -273,7 +273,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
-            let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
+            let result_b = stack.execute_assert::<CurrentAleo, VARIANT>(&operation, &mut registers);
 
             // Ensure the result is correct.
             match VARIANT {
@@ -308,7 +308,7 @@ mod tests {
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_b, None, None).unwrap();
-            let result_a = operation.evaluate(&stack, &mut registers);
+            let result_a = stack.evaluate_assert(&operation, &mut registers);
 
             // Ensure the result is correct.
             match VARIANT {
@@ -322,7 +322,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
-            let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
+            let result_b = stack.execute_assert::<CurrentAleo, VARIANT>(&operation, &mut registers);
 
             // Ensure the result is correct.
             match VARIANT {

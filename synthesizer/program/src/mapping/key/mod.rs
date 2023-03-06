@@ -32,6 +32,12 @@ pub struct MapKey<N: Network> {
 }
 
 impl<N: Network> MapKey<N> {
+    /// Initializes a new key statement with the given name and finalize type.
+    #[inline]
+    pub const fn new(name: Identifier<N>, finalize_type: FinalizeType<N>) -> Self {
+        Self { name, finalize_type }
+    }
+
     /// Returns the key name.
     #[inline]
     pub const fn name(&self) -> &Identifier<N> {
