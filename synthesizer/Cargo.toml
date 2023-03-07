@@ -160,3 +160,6 @@ version = "3.4"
 
 [dev-dependencies.tracing-test]
 version = "0.2"
+
+[dev-dependencies.walkdir]
+version = "2"
