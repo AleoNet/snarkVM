@@ -377,9 +377,9 @@ where
         let mut keys_to_inputs = BTreeMap::new();
         let mut committer_key_union;
         for (pk, _) in keys_to_constraints.iter() {
-            let batch_size = prover_state.batch_size(&pk.circuit.hash).ok_or(SNARKError::CircuitNotFound)?;
-            let public_input = &prover_state.public_inputs(&pk.circuit.hash).ok_or(SNARKError::CircuitNotFound)?;
-            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit.hash).ok_or(SNARKError::CircuitNotFound)?;
+            let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
+            let public_input = &prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
+            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             batch_sizes.insert(&pk.circuit.hash, (pk.circuit_verifying_key.circuit_info, batch_size));
             public_inputs.insert(&pk.circuit.hash, public_input);
             padded_public_inputs.insert(&pk.circuit.hash, padded_public_input);
