@@ -26,14 +26,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
-struct ParserTest<F: Parser> {
+pub type FileParserTest<F: Parser> = ParserTest<F, 0>;
+pub type LineParserTest<F: Parser> = ParserTest<F, 1>;
+
+struct ParserTest<F: Parser, const PARSE_MODE: u8> {
     path: PathBuf,
     input: String,
     expectation: Option<String>,
     phantom: PhantomData<F>,
 }
 
-impl<F: Parser> Test for ParserTest<F> {
+impl<F: Parser, const PARSE_MODE: u8> Test for ParserTest<F, PARSE_MODE> {
     fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Read the test file.
         let input = std::fs::read_to_string(&path).expect("Failed to read input file.");
@@ -44,10 +47,20 @@ impl<F: Parser> Test for ParserTest<F> {
     }
 
     fn run(&self) {
-        // Run the desired parser.
-        let result = F::parse(&self.input);
-        // Convert the result into a readable format.
-        let output = convert_result(result, &self.input);
+        // A helper to run the parser and convert the result into a readable format.
+        let run_parser = |input: &str| {
+            // Run the desired parser.
+            let result = F::parse(input);
+            // Convert the result into a readable format.
+            convert_result(result, input)
+        };
+        let output = match PARSE_MODE {
+            // If the `PARSE_MODE` is 0, then run the test on the entire input.
+            0 => run_parser(&self.input),
+            // If the `PARSE_MODE` is 1, then run the test on each line of the input.
+            1 => self.input.lines().map(|line| run_parser(line)).collect::<Vec<_>>().join("\n"),
+            _ => panic!("PARSE_MODE must be 0 or 1."),
+        };
         // Check the result against the expectation.
         check_and_log_expectation(&self.path, &self.expectation, &output);
     }
@@ -55,6 +68,6 @@ impl<F: Parser> Test for ParserTest<F> {
 
 #[test]
 fn test_program_parser() {
-    let runner = Runner::<ParserTest<Program<Testnet3>>>::initialize("./tests/parser/program");
+    let runner = Runner::<FileParserTest<Program<Testnet3>>>::initialize("./tests/parser/program");
     runner.run();
 }
