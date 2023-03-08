@@ -236,14 +236,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let z_b_s_at_beta = z_b_s.iter().map(|(circuit, z_b_i)| {
             let z_b_i_s = z_b_i.iter().map(|z_b|{
-                evals.get_lc_eval(z_b, beta)
-            }).collect::<Result<Vec<F>, _>>();
-            (*circuit, *z_b_i)
-        }).collect::<BTreeMap<&'a [u8;32], &Vec<_>>>();
+                evals.get_lc_eval(z_b, beta).unwrap()
+            }).collect::<Vec<F>>();
+            (*circuit, &z_b_i_s)
+        }).collect::<BTreeMap<&'a [u8;32], &Vec<F>>>();
         let batch_z_b_at_beta: F = z_b_s_at_beta.values().zip_eq(batch_combiners.values()).map(|(z_b_i_at_beta, combiners)| {
             z_b_i_at_beta.iter().zip_eq(combiners.instance_combiners).map(|(z_b_at_beta, instance_combiner)| {
                 *z_b_at_beta * instance_combiner
-            }).sum()
+            }).sum::<F>()
         }).sum();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
