@@ -29,6 +29,7 @@ use std::{
 pub type FileParserTest<F> = ParserTest<F, 0>;
 pub type LineParserTest<F> = ParserTest<F, 1>;
 
+/// Defines a test that runs a parser on a given input.
 pub struct ParserTest<F: Parser, const PARSE_MODE: u8> {
     path: PathBuf,
     input: String,
