@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod expectations;
+pub use expectations::*;
+
 pub mod runners;
 pub use runners::*;
 
@@ -22,5 +25,8 @@ pub use traits::*;
 
 use console::network::prelude::*;
 
-use std::path::Path;
+use std::{
+    env::current_dir,
+    path::{Path, PathBuf},
+};
 use walkdir::WalkDir;

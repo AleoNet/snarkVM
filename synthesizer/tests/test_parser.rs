@@ -37,44 +37,19 @@ impl<F: Parser> Test for ParserTest<F> {
     fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Read the test file.
         let input = std::fs::read_to_string(&path).expect("Failed to read input file.");
-        // If the `REWRITE_EXPECTATIONS` environment variable is not set, then read the expectation file.
-        let expectation = match std::env::var("REWRITE_EXPECTATIONS").is_ok() {
-            true => None,
-            false => {
-                let current_dir = std::env::current_dir().expect("Failed to get current directory.");
-                let tests_dir = current_dir.join("tests/tests");
-                let expectations_dir = current_dir.join("tests/expectations");
-                let expectation_path =
-                    expectations_dir.join(path.as_ref().strip_prefix(&tests_dir).unwrap().with_extension("out"));
-                let expectation = std::fs::read_to_string(expectation_path).expect("Failed to read expectation file.");
-                Some(expectation)
-            }
-        };
+        // Load the expectation file.
+        let expectation = load_expectation(&path);
 
         Ok(Self { path: path.as_ref().to_path_buf(), input, expectation, phantom: Default::default() })
     }
 
     fn run(&self) {
-        let output = F::parse(&self.input);
-        let output_string = convert_result(output, &self.input);
-        match &self.expectation {
-            // If the `REWRITE_EXPECTATIONS` environment variable is set, then rewrite the expectation file.
-            None => {
-                let current_dir = std::env::current_dir().expect("Failed to get current directory.");
-                let tests_dir = current_dir.join("tests/tests");
-                let expectations_dir = current_dir.join("tests/expectations");
-                let expectation_path =
-                    expectations_dir.join(self.path.strip_prefix(&tests_dir).unwrap().with_extension("out"));
-
-                std::fs::write(expectation_path, output_string).expect("Failed to write expectations.");
-            }
-            // Otherwise check the output against the expectation.
-            Some(expectation) => {
-                if expectation != &output_string {
-                    eprintln!("Expected:\n{}\nGot:\n{}\n", expectation, output_string)
-                }
-            }
-        }
+        // Run the desired parser.
+        let result = F::parse(&self.input);
+        // Convert the result into a readable format.
+        let output = convert_result(result, &self.input);
+        // Check the result against the expectation.
+        check_and_log_expectation(&self.path, &self.expectation, &output);
     }
 }
 

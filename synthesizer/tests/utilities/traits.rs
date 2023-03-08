@@ -16,8 +16,11 @@
 
 use super::*;
 
+/// A general interface for a test.
 pub trait Test: Sized {
+    /// Loads the test from the given path.
     fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
 
+    /// Runs the test.
     fn run(&self);
 }

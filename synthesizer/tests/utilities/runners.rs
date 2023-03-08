@@ -16,12 +16,14 @@
 
 use super::*;
 
+/// A utility for loading an running tests of type `T`.
 pub struct Runner<T: Test> {
     tests: Vec<T>,
 }
 
 impl<T: Test> Runner<T> {
-    // Note that `dir` must be a relative path from `[...]/snarkVM/synthesizer/tests`.
+    /// Initializes the test runner by recursively reading all files in the `dir` directory.
+    /// Note that `dir` must be a relative path from `[...]/snarkVM/synthesizer/tests`.
     pub fn initialize<P: AsRef<Path>>(dir: P) -> Self {
         let test_dir =
             std::env::current_dir().expect("Failed to retrieve the current directory.").join("tests").join(dir);
@@ -54,6 +56,7 @@ impl<T: Test> Runner<T> {
         Self { tests }
     }
 
+    /// Runs all tests.
     pub fn run(&self) {
         for test in &self.tests {
             test.run();
