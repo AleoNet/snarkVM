@@ -17,7 +17,7 @@
 mod utilities;
 use utilities::*;
 
-use snarkvm_synthesizer::Program;
+use snarkvm_synthesizer::{Instruction, Program};
 
 use console::network::{prelude::*, Testnet3};
 
@@ -26,10 +26,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub type FileParserTest<F: Parser> = ParserTest<F, 0>;
-pub type LineParserTest<F: Parser> = ParserTest<F, 1>;
+pub type FileParserTest<F> = ParserTest<F, 0>;
+pub type LineParserTest<F> = ParserTest<F, 1>;
 
-struct ParserTest<F: Parser, const PARSE_MODE: u8> {
+pub struct ParserTest<F: Parser, const PARSE_MODE: u8> {
     path: PathBuf,
     input: String,
     expectation: Option<String>,
@@ -69,5 +69,11 @@ impl<F: Parser, const PARSE_MODE: u8> Test for ParserTest<F, PARSE_MODE> {
 #[test]
 fn test_program_parser() {
     let runner = Runner::<FileParserTest<Program<Testnet3>>>::initialize("./tests/parser/program");
+    runner.run();
+}
+
+#[test]
+fn test_instruction_parser() {
+    let runner = Runner::<LineParserTest<Instruction<Testnet3>>>::initialize("./tests/parser/instruction");
     runner.run();
 }
