@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
+use itertools::Itertools;
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
@@ -25,6 +26,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
     ops::{AddAssign, MulAssign, SubAssign},
+    sync::Arc,
 };
 
 use super::{LabeledPolynomial, PolynomialInfo};
@@ -308,6 +310,48 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `hash`
         let hash = sha256(&hash_input);
         hash.write_le(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromIterator<Arc<CommitterKey<E>>> for CommitterKey<E> {
+
+    fn from_iter<T: IntoIterator<Item = Arc<Self>>>(committer_keys: T) -> Self {
+        let mut union_committer_key = CommitterKey::<E>{
+            powers_of_beta_g: vec![],
+            lagrange_bases_at_beta_g: BTreeMap::new(),
+            powers_of_beta_times_gamma_g: vec![],
+            shifted_powers_of_beta_g: None,
+            shifted_powers_of_beta_times_gamma_g: None,
+            enforced_degree_bounds: None,
+            max_degree: 0,
+        };
+        let mut enforced_degree_bounds = HashSet::<usize>::new();
+        for ck in committer_keys {
+            if ck.powers_of_beta_g.len() > union_committer_key.powers_of_beta_g.len() {
+                union_committer_key.powers_of_beta_g = ck.powers_of_beta_g;
+                union_committer_key.powers_of_beta_times_gamma_g = ck.powers_of_beta_times_gamma_g;
+                union_committer_key.shifted_powers_of_beta_g = ck.shifted_powers_of_beta_g;
+                union_committer_key.shifted_powers_of_beta_times_gamma_g = ck.shifted_powers_of_beta_times_gamma_g;
+                union_committer_key.max_degree = ck.max_degree;
+            }
+            for lb in ck.lagrange_bases_at_beta_g.iter() {
+                union_committer_key.lagrange_bases_at_beta_g.insert(*lb.0, *lb.1);
+            }
+            match ck.enforced_degree_bounds {
+                Some(edbs) => {
+                    for edb in edbs {
+                        enforced_degree_bounds.insert(edb);
+                    }
+                },
+                None => (),
+            }
+        }
+
+        if enforced_degree_bounds.len() > 0 {
+            union_committer_key.enforced_degree_bounds = Some(enforced_degree_bounds.into_iter().collect_vec());
+        }
+
+        union_committer_key
     }
 }
 

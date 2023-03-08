@@ -16,7 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, LabeledPolynomial, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledPolynomial, LabeledCommitment, QuerySet, Randomness, SonicKZG10, CommitterKey},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, indexer::Circuit, EvaluationsProvider},
         proof,
@@ -104,7 +104,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Marlin only needs degree 2 random polynomials.
-            // TODO: investigate whether we can re-use keys across circuits-
             let supported_hiding_bound = 1;
             let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
                 universal_srs,
@@ -375,7 +374,6 @@ where
         let mut public_inputs = BTreeMap::new();
         let mut padded_public_inputs = BTreeMap::new();
         let mut keys_to_inputs = BTreeMap::new();
-        let mut committer_key_union;
         for (pk, _) in keys_to_constraints.iter() {
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let public_input = &prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
@@ -383,10 +381,10 @@ where
             batch_sizes.insert(&pk.circuit.hash, (pk.circuit_verifying_key.circuit_info, batch_size));
             public_inputs.insert(&pk.circuit.hash, public_input);
             padded_public_inputs.insert(&pk.circuit.hash, padded_public_input);
-            committer_key_union = pk.committer_key.clone();
-            // public_inputs.insert(&pk.circuit_verifying_key, public_input);
         }
         assert_eq!(prover_state.total_batch_size(), batch_sizes.iter().map(|(_, (_, s))| s).sum::<usize>());
+
+        let committer_key = CommitterKey::from_iter(keys_to_constraints.keys().map(|pk|pk.committer_key));
 
         let circuit_commitments = keys_to_constraints
             .iter()
@@ -411,7 +409,7 @@ where
         let (first_commitments, first_commitment_randomnesses) = {
             let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
             SonicKZG10::<E, FS>::commit(
-                &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
+                &committer_key,
                 first_round_oracles.iter_for_commit(),
                 Some(zk_rng),
             )?
@@ -439,7 +437,7 @@ where
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
+            &committer_key,
             second_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
@@ -464,7 +462,7 @@ where
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
         let (third_commitments, third_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
+            &committer_key,
             third_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
@@ -488,7 +486,7 @@ where
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
         let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &keys_to_constraints[0].committer_key, // TODO: take the union of the committer keys
+            &committer_key,
             fourth_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
