@@ -273,6 +273,102 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     }
 
     #[inline]
+    // TODO: Cleanup
+    /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
+    /// The leaf indices must be sorted in descending order and must be unique.
+    pub fn update_batch(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
+        let timer = timer!("MerkleTree::batch_update");
+
+        // Check that there are updates to perform.
+        ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
+
+        // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
+        let start = match self.number_of_leaves.checked_next_power_of_two() {
+            Some(num_leaves) => num_leaves - 1,
+            None => bail!("Integer overflow when computing the Merkle tree start index"),
+        };
+
+        // Allocate a vector to store the updated hashes.
+        let mut hashes = Vec::with_capacity(updates.len());
+
+        // Note that this unwrap is safe, as we have already checked that there are updates to perform.
+        let ((leaf_index, leaf), updates) = updates.split_first().unwrap();
+
+        // Hash the leaf and add it to the updated hashes.
+        hashes.push((start + leaf_index, self.leaf_hasher.hash_leaf(leaf)?));
+        // Store the latest leaf index.
+        let mut latest_leaf_index = *leaf_index;
+
+        // Compute the remaining hashes.
+        for (leaf_index, leaf) in updates {
+            // Check that the leaf indices are sorted in descending order.
+            ensure!(*leaf_index < latest_leaf_index, "Leaf indices must be sorted in strictly descending order");
+            // Check that the leaf index is within the bounds of the Merkle tree.
+            ensure!(
+                *leaf_index < self.number_of_leaves,
+                "Leaf index must be less than the number of leaves in the Merkle tree"
+            );
+            latest_leaf_index = *leaf_index;
+
+            // Compute the leaf hash.
+            let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
+            // Add the leaf hash to the updated hashes.
+            hashes.push((start + leaf_index, leaf_hash));
+        }
+
+        // Compute the parent hashes for the updated leaves.
+        let mut current = 0;
+        while current < hashes.len() - 1 {
+            let (current_leaf_index, current_leaf_hash) = hashes[current];
+            // Note that this unwrap is safe, since `current_leaf_index` can never be the root.
+            let sibling_leaf_index = sibling(current_leaf_index).unwrap();
+            // Check if the sibling hash is the next hash in the vector.
+            let sibling_is_next = hashes[current + 1].0 == sibling_leaf_index;
+            // Get the sibling hash.
+            let sibling_leaf_hash = match sibling_is_next {
+                true => hashes[current + 1].1,
+                false => self.tree[sibling_leaf_index],
+            };
+            // Order the current and sibling hashes.
+            let (left, right) = match is_left_child(current_leaf_index) {
+                true => (current_leaf_hash, sibling_leaf_hash),
+                false => (sibling_leaf_hash, current_leaf_hash),
+            };
+            // Compute the parent hash.
+            let parent_hash = self.path_hasher.hash_children(&left, &right)?;
+            // Compute the parent index.
+            // Note that this unwrap is safe, since `current_leaf_index` can never be the root.
+            let parent_index = parent(current_leaf_index).unwrap();
+            // Add the parent hash to the updated hashes.
+            hashes.push((parent_index, parent_hash));
+            // Update the current index.
+            match sibling_is_next {
+                true => current += 2,
+                false => current += 1,
+            }
+        }
+
+        // Compute the padding depth.
+        let padding_depth = DEPTH - tree_depth::<DEPTH>(self.tree.len())?;
+
+        // Update the root hash.
+        // This unwrap is safe, as the updated hashes is guaranteed to have at least one element.
+        let mut root_hash = hashes.last().unwrap().1;
+        for _ in 0..padding_depth {
+            // Update the root hash, by hashing the current root hash with the empty hash.
+            root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
+        }
+        self.root = root_hash;
+
+        // Update the rest of the tree with the updated hashes.
+        for (index, hash) in hashes {
+            self.tree[index] = hash;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
     /// Returns a new Merkle tree with the last 'n' leaves removed from it.
     pub fn prepare_remove_last_n(&self, n: usize) -> Result<Self> {
         let timer = timer!("MerkleTree::prepare_remove_last_n");
