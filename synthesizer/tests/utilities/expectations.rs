@@ -16,6 +16,91 @@
 
 use super::*;
 
+/// An expectation that treats the contents of a file as the expected result.
+pub struct FileExpectation {
+    pub path: PathBuf,
+    pub content: String,
+    pub rewrite: bool,
+}
+
+impl Expectation for FileExpectation {
+    type Output = String;
+
+    /// Loads the expectation from the given path.
+    /// If the `REWRITE_EXPECTATIONS` environment variable is set, the expectation is loaded as empty.
+    fn load<P: AsRef<Path>>(input: P) -> Result<Self> {
+        let rewrite = std::env::var("REWRITE_EXPECTATIONS").is_ok();
+        let content = match rewrite {
+            true => String::new(),
+            false => std::fs::read_to_string(input.as_ref())?,
+        };
+
+        Ok(Self { path: input.as_ref().to_path_buf(), content, rewrite })
+    }
+
+    /// Checks the expectation against the given output.
+    fn check(&self, output: &Self::Output) -> Result<()> {
+        match self.rewrite {
+            false if self.content != *output => bail!("{}", print_difference(&self.content, output)),
+            _ => Ok(()),
+        }
+    }
+
+    /// Saves the expectation to the given path.
+    fn save(&self, output: &Self::Output) -> Result<()> {
+        if self.rewrite {
+            std::fs::write(&self.path, output)?;
+        }
+        Ok(())
+    }
+}
+
+/// An expectation that treats contents of a file as a sequence of expected results.
+pub struct LineExpectation {
+    pub path: PathBuf,
+    pub content: serde_yaml::Sequence,
+    pub rewrite: bool,
+}
+
+impl Expectation for LineExpectation {
+    type Output = Vec<String>;
+
+    /// Loads the expectation from the given path.
+    /// If the `REWRITE_EXPECTATIONS` environment variable is set, the expectation is loaded as empty.
+    fn load<P: AsRef<Path>>(input: P) -> Result<Self> {
+        let rewrite = std::env::var("REWRITE_EXPECTATIONS").is_ok();
+        let content = match rewrite {
+            true => Vec::new(),
+            false => serde_yaml::from_str(&std::fs::read_to_string(input.as_ref())?)?,
+        };
+
+        Ok(Self { path: input.as_ref().to_path_buf(), content, rewrite })
+    }
+
+    /// Checks the expectation against the given output.
+    fn check(&self, output: &Self::Output) -> Result<()> {
+        if !self.rewrite {
+            self.content.iter().zip_eq(output.iter()).try_for_each(|(expected, actual)| {
+                let expected = expected.as_str().ok_or_else(|| anyhow!("Expected string"))?;
+                if expected != actual {
+                    bail!("{}", print_difference(&expected, actual));
+                }
+                Ok(())
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Saves the expectation to the given path.
+    fn save(&self, output: &Self::Output) -> Result<()> {
+        if self.rewrite {
+            let content = serde_yaml::to_string(&output)?;
+            std::fs::write(&self.path, content)?;
+        }
+        Ok(())
+    }
+}
+
 /// Constructs the path to the expectation file corresponding to the given test file.
 pub fn get_expectation_path<P: AsRef<Path>>(test_path: P) -> PathBuf {
     // Get the current directory.
@@ -28,31 +113,27 @@ pub fn get_expectation_path<P: AsRef<Path>>(test_path: P) -> PathBuf {
     expectations_dir.join(test_path.as_ref().to_path_buf().strip_prefix(tests_dir).unwrap().with_extension("out"))
 }
 
-/// Loads the expectation file if `REWRITE_EXPECTATIONS` is not set.
-pub fn load_expectation<P: AsRef<Path>>(path: P) -> Option<String> {
-    // If the `REWRITE_EXPECTATIONS` environment variable is not set, then read the expectation file.
-    match std::env::var("REWRITE_EXPECTATIONS").is_ok() {
-        true => None,
-        false => {
-            let expectation_path = get_expectation_path(path);
-            let expectation = std::fs::read_to_string(expectation_path).expect("Failed to read expectation file.");
-            Some(expectation)
-        }
-    }
-}
+/// Helper function to print the difference between the expected and actual output.
+fn print_difference(expected: &str, actual: &str) -> String {
+    let mut message = r"
+============================================================
+============================================================
+EXPECTED
+============================================================
+"
+        .to_string();
+    message.push_str(expected);
+    message.push_str(r"
+============================================================
+ACTUAL
+============================================================
+"
+    );
+    message.push_str(actual);
+    message.push_str(r"
+============================================================
 
-/// If `REWRITE_EXPECTATIONS` is set, then rewrite the expectation file.
-/// Otherwise, check the output against the expectation.
-pub fn check_and_log_expectation<P: AsRef<Path>>(path: P, expectation: &Option<String>, output: &str) {
-    match expectation {
-        // If the `REWRITE_EXPECTATIONS` environment variable is set, then rewrite the expectation file.
-        None => {
-            let expectation_path = get_expectation_path(path);
-            std::fs::write(expectation_path, output).expect("Failed to write expectations.");
-        }
-        // Otherwise check the output against the expectation.
-        Some(expectation) => {
-            assert_eq!(expectation, output);
-        }
-    }
+"
+    );
+    message
 }

@@ -33,8 +33,7 @@ pub trait Expectation: Sized {
     fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
 
     /// Checks the expectation against the given output.
-    fn check(&self, output: Self::Output) -> bool;
+    fn check(&self, output: &Self::Output) -> Result<()>;
 
-    /// Saves the expectation to the given path.
-    fn save<P: AsRef<Path>>(&self, output: P) -> Result<()>;
+    fn save(&self, output: &Self::Output) -> Result<()>;
 }
