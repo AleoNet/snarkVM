@@ -24,3 +24,17 @@ pub trait Test: Sized {
     /// Runs the test.
     fn run(&self);
 }
+
+/// A general interface for an expectation.
+pub trait Expectation: Sized {
+    type Output;
+
+    /// Loads the expectation from the given path.
+    fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
+
+    /// Checks the expectation against the given output.
+    fn check(&self, output: Self::Output) -> bool;
+
+    /// Saves the expectation to the given path.
+    fn save<P: AsRef<Path>>(&self, output: P) -> Result<()>;
+}
