@@ -17,5 +17,6 @@
 use super::*;
 
 mod append;
+mod batch;
 mod remove;
 mod update;
