@@ -28,9 +28,9 @@ use criterion::Criterion;
 
 const DEPTH: u8 = 32;
 
-// const NUM_LEAVES: &[usize] = &[10, 100, 200, 500, 1000, 10000];
-const NUM_LEAVES: &[usize] = &[10, 100, 1000, 10000, 100000, 1000000];
-const APPEND_SIZES: &[usize] = &[10, 100, 1000, 10000, 100000];
+const NUM_LEAVES: &[usize] = &[10, 100, 1000, 10000];
+const APPEND_SIZES: &[usize] = &[10, 100, 1000];
+const UPDATE_SIZES: &[usize] = &[10, 100, 1000];
 
 /// Generates the specified number of random Merkle tree leaves.
 macro_rules! generate_leaves {
@@ -91,10 +91,116 @@ fn append(c: &mut Criterion) {
     }
 }
 
+fn update(c: &mut Criterion) {
+    let mut rng = TestRng::default();
+
+    for num_leaves in NUM_LEAVES {
+        let leaves = generate_leaves!(*num_leaves, &mut rng);
+
+        let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
+        let index: usize = Uniform::rand(&mut rng);
+        let new_leaf = generate_leaves!(1, &mut rng);
+
+        c.bench_function(
+            &format!("MerkleTree::update (updating a single leaf in a tree with {num_leaves} leaves)"),
+            move |b| {
+                b.iter_with_setup(
+                    || merkle_tree.clone(),
+                    |mut merkle_tree| {
+                        merkle_tree.update(index % num_leaves, &new_leaf[0]).unwrap();
+                    },
+                )
+            },
+        );
+
+        for num_new_leaves in UPDATE_SIZES {
+            let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
+            let new_leaves = generate_leaves!(*num_new_leaves, &mut rng);
+            let updates = new_leaves
+                .iter()
+                .map(|leaf| {
+                    let index: usize = Uniform::rand(&mut rng);
+                    (index % num_leaves, leaf)
+                })
+                .collect::<Vec<_>>();
+
+            c.bench_function(
+                &format!("MerkleTree::update (updating {num_new_leaves} leaves in a tree with {num_leaves} leaves)"),
+                move |b| {
+                    b.iter_with_setup(
+                        || merkle_tree.clone(),
+                        |mut merkle_tree| {
+                            for (index, new_leaf) in updates.iter() {
+                                merkle_tree.update(*index, new_leaf).unwrap();
+                            }
+                        },
+                    )
+                },
+            );
+        }
+    }
+}
+
+fn batch_update(c: &mut Criterion) {
+    let mut rng = TestRng::default();
+
+    for num_leaves in NUM_LEAVES {
+        let leaves = generate_leaves!(*num_leaves, &mut rng);
+
+        let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
+        let mut new_leaf = generate_leaves!(1, &mut rng);
+        let index: usize = Uniform::rand(&mut rng);
+        let updates = vec![(index % num_leaves, new_leaf.pop().unwrap())];
+
+        c.bench_function(
+            &format!("MerkleTree::batch_update (updating a single leaf in a tree with {num_leaves} leaves)"),
+            move |b| {
+                b.iter_with_setup(
+                    || merkle_tree.clone(),
+                    |mut merkle_tree| {
+                        merkle_tree.batch_update(&updates).unwrap();
+                    },
+                )
+            },
+        );
+
+        for num_new_leaves in UPDATE_SIZES {
+            let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
+            let new_leaves = generate_leaves!(*num_new_leaves, &mut rng);
+
+            let mut updates = new_leaves
+                .into_iter()
+                .map(|leaf| {
+                    let index: usize = Uniform::rand(&mut rng);
+                    (index % num_leaves, leaf)
+                })
+                .collect::<Vec<_>>();
+            updates.sort_by(|(a, _), (b, _)| a.cmp(b));
+            updates.reverse();
+            updates.dedup_by_key(|(a, _)| *a);
+
+            c.bench_function(
+                &format!(
+                    "MerkleTree::batch_update (updating {} leaves in a tree with {num_leaves} leaves)",
+                    updates.len()
+                ),
+                move |b| {
+                    b.iter_with_setup(
+                        || merkle_tree.clone(),
+                        |mut merkle_tree| {
+                            merkle_tree.batch_update(&updates).unwrap();
+                        },
+                    )
+                },
+            );
+        }
+    }
+}
+
 criterion_group! {
     name = merkle_tree;
     config = Criterion::default().sample_size(10);
-    targets = new, append
+    targets = new, append, update, batch_update,
 }
 
 criterion_main!(merkle_tree);
