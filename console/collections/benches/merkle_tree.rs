@@ -29,8 +29,8 @@ use criterion::Criterion;
 const DEPTH: u8 = 32;
 
 // const NUM_LEAVES: &[usize] = &[10, 100, 200, 500, 1000, 10000];
-const NUM_LEAVES: &[usize] = &[10, 100, 1000, 10000];
-const APPEND_SIZES: &[usize] = &[10, 100, 1000];
+const NUM_LEAVES: &[usize] = &[10, 100, 1000, 10000, 100000, 1000000];
+const APPEND_SIZES: &[usize] = &[10, 100, 1000, 10000, 100000];
 
 /// Generates the specified number of random Merkle tree leaves.
 macro_rules! generate_leaves {
