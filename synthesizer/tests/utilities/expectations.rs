@@ -87,7 +87,7 @@ impl Expectation for LineExpectation {
                 |(expected, (test, actual))| {
                     let expected = expected.as_str().ok_or_else(|| anyhow!("Expected string"))?;
                     if expected != actual {
-                        bail!("{}", print_difference(test, &expected, actual));
+                        bail!("{}", print_difference(test, expected, actual));
                     }
                     Ok(())
                 },

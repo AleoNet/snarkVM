@@ -17,19 +17,15 @@
 mod utilities;
 use utilities::*;
 
-use snarkvm_synthesizer::{Instruction, Program};
+use snarkvm_synthesizer::Instruction;
 
 use console::network::{prelude::*, Testnet3};
 
-use std::{
-    marker::PhantomData,
-    path::{Path, PathBuf},
-};
+use std::{marker::PhantomData, path::Path};
 
 /// Defines a test that runs a parser on a given input.
 /// The test is defined at the granularity of a single line in a file.
 pub struct LineParserTest<F: Parser> {
-    path: PathBuf,
     inputs: Vec<String>,
     expectation: LineExpectation,
     phantom: PhantomData<F>,
@@ -46,7 +42,7 @@ impl<F: Parser> Test for LineParserTest<F> {
         // Load the expectation file.
         let expectation = LineExpectation::load(get_expectation_path(&path))?;
 
-        Ok(Self { path: path.as_ref().to_path_buf(), inputs, expectation, phantom: Default::default() })
+        Ok(Self { inputs, expectation, phantom: Default::default() })
     }
 
     fn run(&self) {
