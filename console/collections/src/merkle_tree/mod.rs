@@ -212,7 +212,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     // TODO: Cleanup
     /// Updates the Merkle tree at the location of the given leaf index with the new leaf.
     pub fn update(&mut self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<()> {
-        let timer = timer!("MerkleTree::update");
+        let _timer = timer!("MerkleTree::update");
 
         // Check that the leaf index is within the bounds of the Merkle tree.
         ensure!(
@@ -277,7 +277,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
     /// The leaf indices must be sorted in descending order and must be unique.
     pub fn batch_update(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
-        let timer = timer!("MerkleTree::batch_update");
+        let _timer = timer!("MerkleTree::batch_update");
 
         // Check that there are updates to perform.
         ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
