@@ -38,7 +38,11 @@ pub struct LineParserTest<F: Parser> {
 impl<F: Parser> Test for LineParserTest<F> {
     fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Read the test file.
-        let inputs = std::fs::read_to_string(&path).expect("Failed to read input file.").lines().map(|l| l.to_string()).collect();
+        let inputs = std::fs::read_to_string(&path)
+            .expect("Failed to read input file.")
+            .lines()
+            .map(|l| l.to_string())
+            .collect();
         // Load the expectation file.
         let expectation = LineExpectation::load(get_expectation_path(&path))?;
 
@@ -48,12 +52,11 @@ impl<F: Parser> Test for LineParserTest<F> {
     fn run(&self) {
         let outputs = self.inputs.iter().map(|input| convert_result(F::parse(input), input)).collect();
         // Check the results against the expectations.
-        self.expectation.check(&outputs).expect("Failed to check expectation.");
+        self.expectation.check(&self.inputs, &outputs).expect("Failed to check expectation.");
         // Save the results to the expectation file.
         self.expectation.save(&outputs).expect("Failed to save expectation.");
     }
 }
-
 
 #[test]
 fn test_instruction_parser() {

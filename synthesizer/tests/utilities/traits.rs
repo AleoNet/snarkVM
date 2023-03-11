@@ -27,13 +27,14 @@ pub trait Test: Sized {
 
 /// A general interface for an expectation.
 pub trait Expectation: Sized {
+    type Test;
     type Output;
 
     /// Loads the expectation from the given path.
     fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
 
     /// Checks the expectation against the given output.
-    fn check(&self, output: &Self::Output) -> Result<()>;
+    fn check(&self, test: &Self::Test, output: &Self::Output) -> Result<()>;
 
     fn save(&self, output: &Self::Output) -> Result<()>;
 }

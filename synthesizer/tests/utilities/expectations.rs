@@ -25,6 +25,7 @@ pub struct FileExpectation {
 
 impl Expectation for FileExpectation {
     type Output = String;
+    type Test = String;
 
     /// Loads the expectation from the given path.
     /// If the `REWRITE_EXPECTATIONS` environment variable is set, the expectation is loaded as empty.
@@ -39,9 +40,9 @@ impl Expectation for FileExpectation {
     }
 
     /// Checks the expectation against the given output.
-    fn check(&self, output: &Self::Output) -> Result<()> {
+    fn check(&self, test: &Self::Test, output: &Self::Output) -> Result<()> {
         match self.rewrite {
-            false if self.content != *output => bail!("{}", print_difference(&self.content, output)),
+            false if self.content != *output => bail!("{}", print_difference(&self.content, test, output)),
             _ => Ok(()),
         }
     }
@@ -56,6 +57,7 @@ impl Expectation for FileExpectation {
 }
 
 /// An expectation that treats contents of a file as a sequence of expected results.
+/// LineExpectation assumes that the file is a YAML sequence of strings.
 pub struct LineExpectation {
     pub path: PathBuf,
     pub content: serde_yaml::Sequence,
@@ -64,6 +66,7 @@ pub struct LineExpectation {
 
 impl Expectation for LineExpectation {
     type Output = Vec<String>;
+    type Test = Vec<String>;
 
     /// Loads the expectation from the given path.
     /// If the `REWRITE_EXPECTATIONS` environment variable is set, the expectation is loaded as empty.
@@ -78,15 +81,17 @@ impl Expectation for LineExpectation {
     }
 
     /// Checks the expectation against the given output.
-    fn check(&self, output: &Self::Output) -> Result<()> {
+    fn check(&self, test: &Self::Test, output: &Self::Output) -> Result<()> {
         if !self.rewrite {
-            self.content.iter().zip_eq(output.iter()).try_for_each(|(expected, actual)| {
-                let expected = expected.as_str().ok_or_else(|| anyhow!("Expected string"))?;
-                if expected != actual {
-                    bail!("{}", print_difference(&expected, actual));
-                }
-                Ok(())
-            })?;
+            self.content.iter().zip_eq(test.iter().zip_eq(output.iter())).try_for_each(
+                |(expected, (test, actual))| {
+                    let expected = expected.as_str().ok_or_else(|| anyhow!("Expected string"))?;
+                    if expected != actual {
+                        bail!("{}", print_difference(test, &expected, actual));
+                    }
+                    Ok(())
+                },
+            )?;
         }
         Ok(())
     }
@@ -114,26 +119,37 @@ pub fn get_expectation_path<P: AsRef<Path>>(test_path: P) -> PathBuf {
 }
 
 /// Helper function to print the difference between the expected and actual output.
-fn print_difference(expected: &str, actual: &str) -> String {
+fn print_difference(test: &str, expected: &str, actual: &str) -> String {
     let mut message = r"
 ============================================================
+TEST
+------------------------------------------------------------
+"
+    .to_string();
+    message.push_str(test);
+    message.push_str(
+        r"
+
 ============================================================
 EXPECTED
-============================================================
-"
-        .to_string();
+------------------------------------------------------------
+",
+    );
     message.push_str(expected);
-    message.push_str(r"
+    message.push_str(
+        r"
+
 ============================================================
 ACTUAL
-============================================================
-"
+------------------------------------------------------------
+",
     );
     message.push_str(actual);
-    message.push_str(r"
+    message.push_str(
+        r"
 ============================================================
 
-"
+",
     );
     message
 }

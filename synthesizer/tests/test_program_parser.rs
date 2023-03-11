@@ -49,7 +49,7 @@ impl<F: Parser> Test for FileParserTest<F> {
         // Run the parser and convert the result into a readable format.
         let output = convert_result(F::parse(&self.input), &self.input);
         // Check the result against the expectation.
-        self.expectation.check(&output).expect("Failed to check expectation.");
+        self.expectation.check(&self.input, &output).expect("Failed to check expectation.");
         // Save the result to the expectation file.
         self.expectation.save(&output).expect("Failed to save expectation.");
     }
