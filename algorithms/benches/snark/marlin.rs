@@ -24,7 +24,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, LinearCombination, LookupTable};
 use snarkvm_utilities::{ops::MulAssign, Uniform};
 
 use criterion::Criterion;
@@ -39,6 +39,15 @@ pub struct Benchmark<F: Field> {
     pub b: Option<F>,
     pub num_constraints: usize,
     pub num_variables: usize,
+}
+
+#[derive(Clone)]
+pub struct BenchmarkWithLookup<F: Field> {
+    pub a: Option<F>,
+    pub b: Option<F>,
+    pub num_constraints: usize,
+    pub num_variables: usize,
+    pub table: LookupTable<F>,
 }
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<ConstraintF> {
@@ -67,6 +76,45 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<Constr
         Ok(())
     }
 }
+
+impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkWithLookup<ConstraintF> {
+    fn generate_constraints<C: ConstraintSystem<ConstraintF>>(&self, cs: &mut C) -> Result<(), SynthesisError> {
+        cs.add_lookup_table(self.table.clone());
+        let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+        let c = cs.alloc_input(
+            || "c",
+            || {
+                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                a.mul_assign(&b);
+                Ok(a)
+            },
+        )?;
+        let num_lookups = 90;
+        for i in 0..1 { //num_lookups {
+            cs.enforce_lookup(
+                || format!("c_lookup {}", i),
+                |lc| lc + LinearCombination::from(a),
+                |lc| lc + LinearCombination::from(b),
+                |lc| lc + LinearCombination::from(c),
+                0,
+            )?;
+        }
+
+        for i in 0..(self.num_variables - 3) {
+            let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        }
+
+        for i in 0..(self.num_constraints - 1 - num_lookups) {
+            cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+        }
+
+        Ok(())
+    }
+}
+
 
 fn snark_universal_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
@@ -101,11 +149,13 @@ fn snark_circuit_setup(c: &mut Criterion) {
 
 fn snark_prove(c: &mut Criterion) {
     let num_constraints = 100;
-    let num_variables = 100;
+    let num_variables = 10;
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
+    let mut z = x;
+    z.mul_assign(&y);
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
@@ -115,6 +165,31 @@ fn snark_prove(c: &mut Criterion) {
     let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
     c.bench_function("snark_prove", move |b| b.iter(|| MarlinInst::prove(&params.0, &circuit, rng).unwrap()));
+
+}
+
+fn snark_lookup_prove(c: &mut Criterion) {
+    let num_constraints = 100;
+    let num_variables = 10;
+    let rng = &mut thread_rng();
+
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+    let mut z = x;
+    z.mul_assign(&y);
+
+    let mut table = LookupTable::default();
+    let lookup_value = [x, y];
+    table.fill(lookup_value, z);
+
+    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+
+    let circuit = BenchmarkWithLookup::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables, table };
+
+    let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+
+    c.bench_function("snark_lookup_prove", move |b| b.iter(|| MarlinInst::prove(&params.0, &circuit, rng).unwrap()));
 }
 
 fn snark_verify(c: &mut Criterion) {
@@ -146,8 +221,9 @@ fn snark_verify(c: &mut Criterion) {
 
 criterion_group! {
     name = marlin_snark;
-    config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify,
+    config = Criterion::default().sample_size(10).measurement_time(std::time::Duration::from_secs(10));
+    // targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_lookup_prove, snark_verify,
+    targets = snark_prove, snark_lookup_prove
 }
 
 criterion_main!(marlin_snark);
