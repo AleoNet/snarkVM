@@ -99,7 +99,7 @@ version = "1.17"
 version = "0.12"
 
 [dependencies.paste]
-version = "1.0.11"
+version = "1.0.12"
 
 [dependencies.rand]
 version = "0.8"
