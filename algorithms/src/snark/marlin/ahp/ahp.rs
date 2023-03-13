@@ -197,6 +197,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = BTreeMap::new();
+        let mut cached_selectors = BTreeMap::new(); 
 
         // Lincheck sumcheck:
         let lincheck_time = start_timer!(|| "Lincheck");
@@ -259,6 +260,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             combined_x_at_betas.push(combined_x_at_beta);
         }
 
+        // TODO: where to multiply the selectors? To elements here or just before creating the (virtual) commitment?
+        // let selector_i = Self::get_selector_evaluation(&cached_selectors, &largest_constraint_domain, &circuit_state.constraint_domain, beta);
+
         #[rustfmt::skip]
         let lincheck_sumcheck = {
             let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
@@ -298,21 +302,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         for (i, (circuit_hash, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
             let g_a = LinearCombination::new("g_a", [(F::one(), "g_a")]);
             let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
-            let selector_a = largest_non_zero_domain.evaluate_selector_polynomial(circuit_state.non_zero_a_domain, gamma);
+            let selector_a = Self::get_selector_evaluation(&cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
             let lhs_a =
                 Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[&circuit_hash.to_vec()].sum_a, selector_a);
             matrix_sumcheck += (r_a[i], &lhs_a); // TODO: minor optimization, make sure the first r_a (which is simply 1) is ignored
 
             let g_b = LinearCombination::new("g_b", [(F::one(), "g_b")]);
             let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
-            let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(circuit_state.non_zero_b_domain, gamma);
+            let selector_b = Self::get_selector_evaluation(&cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
             let lhs_b =
                 Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[&circuit_hash.to_vec()].sum_b, selector_b);
             matrix_sumcheck += (r_b[i], &lhs_b);
     
             let g_c = LinearCombination::new("g_c", [(F::one(), "g_c")]);
             let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
-            let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(circuit_state.non_zero_c_domain, gamma);
+            let selector_c = Self::get_selector_evaluation(&cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
             let lhs_c =
                 Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[&circuit_hash.to_vec()].sum_c, selector_c);
             matrix_sumcheck += (r_c[i], &lhs_c);
@@ -358,6 +362,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         lhs -= &b;
         lhs *= selector_at_gamma;
         lhs
+    }
+
+    fn get_selector_evaluation(
+        cached_selector_evaluations: &BTreeMap<u64, F>,
+        largest_non_zero_domain: &EvaluationDomain<F>,
+        target_domain: &EvaluationDomain<F>,
+        gamma: F,
+    ) -> F {
+        match cached_selector_evaluations.get(&target_domain.size) {
+            Some(selector) => *selector,
+            None => {
+                let selector = largest_non_zero_domain.evaluate_selector_polynomial(*target_domain, gamma);
+                cached_selector_evaluations.insert(target_domain.size, selector);
+                selector
+            },  
+        }
     }
 }
 
