@@ -93,7 +93,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkWithLoo
             },
         )?;
         let num_lookups = 90;
-        for i in 0..1 { //num_lookups {
+        for i in 0..num_lookups {
             cs.enforce_lookup(
                 || format!("c_lookup {}", i),
                 |lc| lc + LinearCombination::from(a),
