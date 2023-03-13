@@ -216,7 +216,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let bivariate_poly_time = start_timer!(|| "Bivariate poly");
-        let r_alpha_at_beta = largest_constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
+        let mut r_alpha_at_beta_s = Vec::with_capacity(state.circuit_specific_states.len());
+        for (_, circuit_state) in state.circuit_specific_states {
+            r_alpha_at_beta_s.push(largest_constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta));
+        }
         end_timer!(bivariate_poly_time);
 
         let v_H_at_alpha_time = start_timer!(|| "v_H_at_alpha");
@@ -241,10 +244,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             }).collect::<Vec<F>>();
             (*circuit, &z_b_i_s)
         }).collect::<BTreeMap<&'a [u8;32], &Vec<F>>>();
-        let batch_z_b_at_beta: F = z_b_s_at_beta.values().zip_eq(batch_combiners.values()).map(|(z_b_i_at_beta, combiners)| {
-            z_b_i_at_beta.iter().zip_eq(combiners.instance_combiners).map(|(z_b_at_beta, instance_combiner)| {
+        let batch_z_b_at_beta: F = z_b_s_at_beta.values()
+                                                .zip_eq(batch_combiners.values())
+                                                .zip_eq(r_alpha_at_beta_s)
+                                                .map(|((z_b_i_at_beta, combiners), r_alpha_at_beta)| {
+            let z_b_at_beta = z_b_i_at_beta.iter()
+                                           .zip_eq(combiners.instance_combiners)
+                                           .map(|(z_b_at_beta, instance_combiner)| {
                 *z_b_at_beta * instance_combiner
-            }).sum::<F>()
+            }).sum::<F>();
+            r_alpha_at_beta * z_b_at_beta
         }).sum();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
@@ -271,7 +280,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             }
             for (i, ((circuit_hash, z_b_i_at_beta), (_, combiners))) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
                 let circuit_id = format!("circuit_{:x?}", circuit_hash);
-                for (j, (z_b_at_beta, instance_combiner)) in z_b_i_at_beta.iter().zip_eq(combiners.instance_combiners).enumerate() {
+                for (j, ((z_b_at_beta, instance_combiner), r_alpha_at_beta)) in z_b_i_at_beta.iter()
+                                                            .zip_eq(combiners.instance_combiners)
+                                                            .zip_eq(r_alpha_at_beta_s)
+                                                            .enumerate() {
                     lincheck_sumcheck
                         .add(r_alpha_at_beta * instance_combiner * (eta_a + eta_c * z_b_i_at_beta[j]), witness_label(&circuit_id, "z_a", j))
                         .add(-t_at_beta_s[i] * v_X_at_beta[i] * instance_combiner, witness_label(&circuit_id, "w", j));
@@ -280,7 +292,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 }
             }
             lincheck_sumcheck
-                .add(r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One)
+                .add(eta_b * batch_z_b_at_beta, LCTerm::One)
                 .add(-v_H_at_beta, "h_1")
                 .add(-beta * g_1_at_beta, LCTerm::One);
             lincheck_sumcheck
