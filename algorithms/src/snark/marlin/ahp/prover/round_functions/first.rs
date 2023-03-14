@@ -44,12 +44,12 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the degree bounds of oracles in the first round.
     pub fn first_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (CircuitId, usize)>,
+        circuits: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut polynomials = circuits.flat_map(|(circuit_id, batch_size)| {
             let circuit_id_str = format!("circuit_{:x?}", circuit_id);
 
-            (0..batch_size).flat_map(|i| {
+            (0..*batch_size).flat_map(|i| {
                 [
                     PolynomialInfo::new(witness_label(&circuit_id_str, "w", i), None, Self::zk_bound()),
                     PolynomialInfo::new(witness_label(&circuit_id_str, "z_a", i), None, Self::zk_bound()),
@@ -124,7 +124,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (c.hash, s.batch_size)))));
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (&c.hash, &s.batch_size)))));
         state.first_round_oracles = Some(Arc::new(oracles));
         Ok(state)
     }

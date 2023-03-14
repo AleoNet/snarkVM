@@ -96,17 +96,22 @@ impl<E: PairingEngine> Commitments<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
-        // Generic let expressions are not possible, so we define a helper function separately for witness and g_a commitments
-        let deserialize_wc_batch = |size| { (0..size).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)).collect::<Result<_,_>>() };
-        let deserialize_g_batch  = |size| { (0..size).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)).collect::<Result<_,_>>() };
         Ok(Commitments {
-            witness_commitments: deserialize_wc_batch(batch_size)?,
+            witness_commitments: (0..batch_size).map(|_| {
+                    CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)
+                }).collect::<Result<_,_>>()?,
             mask_poly: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             h_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_a_commitments: deserialize_g_batch(batch_size)?,
-            g_b_commitments: deserialize_g_batch(batch_size)?,
-            g_c_commitments: deserialize_g_batch(batch_size)?,
+            g_a_commitments: (0..batch_size).map(|_| {
+                    CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)
+                }).collect::<Result<_,_>>()?,
+            g_b_commitments: (0..batch_size).map(|_| {
+                    CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)
+                }).collect::<Result<_,_>>()?,
+            g_c_commitments: (0..batch_size).map(|_| {
+                    CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)
+                }).collect::<Result<_,_>>()?,
             h_2: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }
@@ -179,21 +184,20 @@ impl<'a, F: PrimeField> Evaluations<F> {
 
 impl<'a, F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<CircuitId, usize>) -> Self {
-        let z_b_evals: BTreeMap<CircuitId, Vec<F>> = BTreeMap::new();
-        let g_a_evals = BTreeMap::new();
-        let g_b_evals = BTreeMap::new();
-        let g_c_evals = BTreeMap::new();
+        let mut z_b_evals: BTreeMap<CircuitId, Vec<F>> = BTreeMap::new();
+        let mut g_a_evals = BTreeMap::new();
+        let mut g_b_evals = BTreeMap::new();
+        let mut g_c_evals = BTreeMap::new();
         
         for (label, value) in map {
             let circuit_id = <CircuitId>::from_hex(label.split("_")
                                                             .collect::<Vec<&str>>()[1])
                                                             .expect("Decoding circuit_id failed");
-            // NOTE: try_insert is unstable
             if label.contains("z_b_") {
-                if let Some(z_b_i) = z_b_evals.get(&circuit_id) {
+                if let Some(z_b_i) = z_b_evals.get_mut(&circuit_id) {
                     z_b_i.push(*value);
                 } else {
-                    let values = Vec::with_capacity(batch_sizes[&circuit_id]);
+                    let mut values = Vec::with_capacity(batch_sizes[&circuit_id]);
                     values.push(*value);
                     z_b_evals.insert(circuit_id, values);
                 }
@@ -286,26 +290,26 @@ impl<'a, E: PairingEngine> Proof<E> {
         if commitments.witness_commitments.len() != total_batch_size {
             return Err(SNARKError::BatchSizeMismatch);
         }
-        for (circuit_id, z_b_evals_i) in evaluations.z_b_evals {
-            if z_b_evals_i.len() != batch_sizes[&circuit_id] {
+        for (circuit_id, z_b_evals_i) in evaluations.z_b_evals.iter() {
+            if z_b_evals_i.len() != batch_sizes[circuit_id] {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
         Ok(Self { batch_sizes, commitments, evaluations, msg, pc_proof })
     }
 
-    pub fn batch_sizes(&self) -> Result<BTreeMap<CircuitId, usize>, SNARKError> {
+    pub fn batch_sizes(&self) -> Result<&BTreeMap<CircuitId, usize>, SNARKError> {
         let mut total_batch_size = 0;
-        for ((circuit_id, z_b_evals_i), (_, batch_size)) in self.evaluations.z_b_evals.iter().zip(self.batch_sizes) {
+        for (z_b_evals_i, batch_size) in self.evaluations.z_b_evals.values().zip(self.batch_sizes.values()) {
             total_batch_size += batch_size;
-            if z_b_evals_i.len() != batch_size {
+            if z_b_evals_i.len() != *batch_size {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
         if self.commitments.witness_commitments.len() != total_batch_size {
             return Err(SNARKError::BatchSizeMismatch);
         }
-        Ok(self.batch_sizes)
+        Ok(&self.batch_sizes)
     }
 }
 

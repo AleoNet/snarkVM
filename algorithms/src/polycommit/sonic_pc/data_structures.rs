@@ -364,7 +364,7 @@ impl<E: PairingEngine> CommitterKey<E> {
         self.powers_of_beta_g.len() - 1
     }
 
-    pub fn union<T: IntoIterator<Item = Arc<Self>>>(committer_keys: T) -> Self {
+    pub fn union<'a, T: IntoIterator<Item = &'a Self> + Clone>(committer_keys: T) -> Self {
         let mut union_committer_key = CommitterKey::<E>{
             powers_of_beta_g: vec![],
             lagrange_bases_at_beta_g: BTreeMap::new(),
@@ -375,24 +375,24 @@ impl<E: PairingEngine> CommitterKey<E> {
             max_degree: 0,
         };
         let mut enforced_degree_bounds = HashSet::<usize>::new();
+        let biggest_ck = committer_keys.clone().into_iter().max_by_key(|ck|ck.supported_degree()).unwrap();
         for ck in committer_keys {
-            if ck.supported_degree() > union_committer_key.supported_degree() {
-                union_committer_key.powers_of_beta_g = ck.powers_of_beta_g;
-                union_committer_key.powers_of_beta_times_gamma_g = ck.powers_of_beta_times_gamma_g;
-                union_committer_key.shifted_powers_of_beta_g = ck.shifted_powers_of_beta_g;
-                union_committer_key.shifted_powers_of_beta_times_gamma_g = ck.shifted_powers_of_beta_times_gamma_g;
-                union_committer_key.max_degree = ck.max_degree;
-            }
-            union_committer_key.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g);
-            match ck.enforced_degree_bounds {
+            union_committer_key.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
+            match &ck.enforced_degree_bounds {
                 Some(edbs) => {
                     for edb in edbs {
-                        enforced_degree_bounds.insert(edb);
+                        enforced_degree_bounds.insert(*edb);
                     }
                 },
                 None => (),
             }
         }
+
+        union_committer_key.powers_of_beta_g = biggest_ck.powers_of_beta_g.clone();
+        union_committer_key.powers_of_beta_times_gamma_g = biggest_ck.powers_of_beta_times_gamma_g.clone();
+        union_committer_key.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.clone();
+        union_committer_key.shifted_powers_of_beta_times_gamma_g = biggest_ck.shifted_powers_of_beta_times_gamma_g.clone();
+        union_committer_key.max_degree = biggest_ck.max_degree;
 
         if enforced_degree_bounds.len() > 0 {
             union_committer_key.enforced_degree_bounds = Some(enforced_degree_bounds.into_iter().collect_vec());
@@ -460,25 +460,23 @@ impl<E: PairingEngine> VerifierKey<E> {
         self.supported_degree
     }
 
-    pub fn union<T: IntoIterator<Item = Self>>(verifier_keys: T) -> Self {
+    pub fn union<'a, T: IntoIterator<Item = &'a Self> + Clone>(verifier_keys: T) -> Self {
+        let biggest_vk = verifier_keys.clone().into_iter().max_by_key(|vk|vk.supported_degree()).unwrap();
+
         let mut union_verifier_key = VerifierKey::<E>{
-            vk: verifier_keys.into_iter().next().unwrap().vk,
+            vk: biggest_vk.vk.clone(),
             degree_bounds_and_neg_powers_of_h: None,
             degree_bounds_and_prepared_neg_powers_of_h: None,
-            supported_degree: 0,
-            max_degree: 0,
+            supported_degree: biggest_vk.supported_degree,
+            max_degree: biggest_vk.max_degree,
         };
 
         let mut bounds_seen = HashSet::<usize>::new();
         let mut bounds_and_neg_powers = vec![];
         let mut bounds_and_prepared_neg_powers = vec![];
         for vk in verifier_keys {
-            if vk.supported_degree() > union_verifier_key.supported_degree() {
-                union_verifier_key.supported_degree = vk.supported_degree;
-                union_verifier_key.max_degree = vk.max_degree;
-            }
-            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.unwrap();
-            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.unwrap();
+            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.clone().unwrap();
+            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.clone().unwrap();
             assert!(new_bounds.len() == new_prep_bounds.len());
             for ((bound, neg_powers),(_, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
                 if bounds_seen.insert(*bound) {

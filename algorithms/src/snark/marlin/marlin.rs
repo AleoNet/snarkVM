@@ -127,12 +127,12 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 mode: PhantomData,
                 hash: indexed_circuit.hash,
             };
-            circuit_verifying_keys.push(circuit_verifying_key);
+            circuit_verifying_keys.push(circuit_verifying_key.clone());
 
             let circuit_proving_key = CircuitProvingKey {
                 circuit: Arc::new(indexed_circuit),
                 circuit_commitment_randomness,
-                circuit_verifying_key: circuit_verifying_key.clone(),
+                circuit_verifying_key: circuit_verifying_key,
                 committer_key: Arc::new(committer_key),
             };
             circuit_proving_keys.push(circuit_proving_key);
@@ -151,9 +151,9 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         universal_srs: &UniversalSRS<E>,
         circuit: &C,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
-        let (proving_keys, verifying_keys) = Self::batch_circuit_setup(universal_srs, &[circuit])?;
+        let (mut proving_keys, mut verifying_keys) = Self::batch_circuit_setup(universal_srs, &[circuit])?;
         assert!(proving_keys.len() == 1 && verifying_keys.len() == 1);
-        Ok((proving_keys[0], verifying_keys[1]))
+        Ok((proving_keys.remove(0), verifying_keys.remove(0)))
     }
 
     fn terminate(terminator: &AtomicBool) -> Result<(), MarlinError> {
@@ -164,7 +164,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         fs_parameters: &FS::Parameters,
         batch_sizes: &BTreeMap<CircuitId, usize>,
         circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
-        inputs: &BTreeMap<&CircuitId, &Vec<Vec<E::Fr>>>,
+        inputs: &BTreeMap<&CircuitId, Vec<Vec<E::Fr>>>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -215,7 +215,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
-        for (_, sum) in msg.sums {
+        for (_, sum) in msg.sums.iter() {
             sponge.absorb_nonnative_field_elements([sum.sum_a, sum.sum_b, sum.sum_c]);
         }
         end_timer!(sponge_time);
@@ -364,43 +364,48 @@ where
 
         Self::terminate(terminator)?;
 
-        let circuits_to_constraints = BTreeMap::new();
+        let mut circuits_to_constraints = BTreeMap::new();
         for (pk, constraints) in keys_to_constraints {
-            circuits_to_constraints.insert(pk.circuit.deref(), *constraints); // TODO: should we pass Arc everywhere instead of a &?
+            circuits_to_constraints.insert(pk.circuit.deref(), *constraints);
         }
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints)?;
 
         // extract information from the prover key and state to consume in further calculations  
         let mut batch_sizes = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
+        let mut public_inputs_vec = Vec::with_capacity(keys_to_constraints.len()); // TODO: no need for this, the data is already in the prover_state? Consider using Arc?
         let mut public_inputs = BTreeMap::new();
         let mut padded_public_inputs = BTreeMap::new();
         let mut vk_to_inputs = BTreeMap::new();
         let mut total_batch_size = 0;
-        for (pk, _) in keys_to_constraints.iter() {
+        for pk in keys_to_constraints.keys() {
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
-            let public_input = &prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
-            let padded_public_input = &prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
-            batch_sizes.insert(pk.circuit.hash, batch_size); // Not using references because Proof::new consumes batch_sizes 
-            circuit_infos.insert(&pk.circuit.hash, &pk.circuit_verifying_key.circuit_info);
-            public_inputs.insert(&pk.circuit.hash, public_input);
-            padded_public_inputs.insert(&pk.circuit.hash, padded_public_input);
-            vk_to_inputs.insert(&pk.circuit_verifying_key, public_input.as_slice());
+            let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
+            let padded_public_input = prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
+            let circuit_id = &pk.circuit.hash;
+            batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
+            circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
+            public_inputs_vec.push(public_input);
+            padded_public_inputs.insert(circuit_id, padded_public_input);
             total_batch_size += batch_size;
         }
-        assert_eq!(prover_state.total_batch_size(), total_batch_size); //batch_sizes.iter().map(|(_, s)| s).sum::<usize>());
-
-        let committer_key = CommitterKey::union(keys_to_constraints.keys().map(|pk|pk.committer_key));
+        assert_eq!(prover_state.total_batch_size(), total_batch_size);
+        let committer_key = CommitterKey::union(keys_to_constraints.keys().map(|pk|pk.committer_key.deref()));
+        for (i, pk) in keys_to_constraints.keys().enumerate() {
+            let circuit_id = &pk.circuit.hash;
+            public_inputs.insert(circuit_id, public_inputs_vec[i].as_slice());
+            vk_to_inputs.insert(&pk.circuit_verifying_key, public_inputs[&pk.circuit.hash]);
+        }
 
         let circuit_commitments = keys_to_constraints
             .iter()
             .map(|(pk, _)| pk.circuit_verifying_key.circuit_commitments.clone())
-            .collect::<Vec<_>>().as_slice();
+            .collect::<Vec<_>>();
 
         let mut sponge = Self::init_sponge(
             fs_parameters,
             &batch_sizes,
-            circuit_commitments,
+            circuit_commitments.as_slice(),
             &padded_public_inputs,
         );
 
@@ -539,8 +544,8 @@ where
             g_1: *second_commitments[0].commitment(),
             h_1: *second_commitments[1].commitment(),
 
-            g_a_commitments: third_commitments_chunked.map(|c| *c[0].commitment()).collect(),
-            g_b_commitments: third_commitments_chunked.map(|c| *c[1].commitment()).collect(),
+            g_a_commitments: third_commitments_chunked.clone().map(|c| *c[0].commitment()).collect(),
+            g_b_commitments: third_commitments_chunked.clone().map(|c| *c[1].commitment()).collect(),
             g_c_commitments: third_commitments_chunked.map(|c| *c[2].commitment()).collect(),
 
             h_2: *fourth_commitments[0].commitment(),
@@ -559,7 +564,7 @@ where
 
         // Gather commitment randomness together.
         let commitment_randomnesses: Vec<Randomness<E>> = keys_to_constraints.iter()
-            .flat_map(|(pk, _)|pk.circuit_commitment_randomness)
+            .flat_map(|(pk, _)|pk.circuit_commitment_randomness.clone())
             .clone()
             .into_iter()
             .chain(first_commitment_randomnesses)
@@ -594,7 +599,7 @@ where
             }
         }
 
-        let evaluations = proof::Evaluations::from_map(&evaluations, batch_sizes);
+        let evaluations = proof::Evaluations::from_map(&evaluations, batch_sizes.clone());
         end_timer!(eval_time);
 
         Self::terminate(terminator)?;
@@ -650,12 +655,13 @@ where
         let mut max_num_constraints = 0;
         let mut max_num_non_zero = 0;
         let mut public_inputs = BTreeMap::new();
+        let mut public_inputs_vec = Vec::with_capacity(keys_to_inputs.len()); // TODO: can I just use existing state? Same as for the prover
         let mut padded_public_inputs = BTreeMap::new();
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut vks = Vec::with_capacity(keys_to_inputs.len());
-        for (vk, public_inputs_i) in keys_to_inputs {
-            vks.push(vk.orig_vk.verifier_key);
+        for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
+            vks.push(&vk.orig_vk.verifier_key);
 
             max_num_constraints = max_num_constraints.max(vk.orig_vk.circuit_info.num_constraints);
             max_num_non_zero = max_num_non_zero.max(vk.orig_vk.circuit_info.num_non_zero_a);
@@ -682,9 +688,12 @@ where
                     })
                     .unzip()
             };
-            public_inputs.insert(&vk.orig_vk.hash, &parsed_public_inputs_i);
-            padded_public_inputs.insert(&vk.orig_vk.hash, &padded_public_inputs_i);
+            public_inputs_vec.push(parsed_public_inputs_i);
+            padded_public_inputs.insert(&vk.orig_vk.hash, padded_public_inputs_i);
             circuit_infos.insert(&vk.orig_vk.hash, &vk.orig_vk.circuit_info);
+        }
+        for (i, vk) in keys_to_inputs.keys().enumerate() {
+            public_inputs.insert(&vk.orig_vk.hash, public_inputs_vec[i].as_slice());
         }
 
         let verifier_key = VerifierKey::<E>::union(vks);
@@ -696,7 +705,7 @@ where
         let circuit_commitments = keys_to_inputs
             .iter()
             .map(|(vk, _)| vk.orig_vk.circuit_commitments.clone())
-            .collect::<Vec<_>>().as_slice();
+            .collect::<Vec<_>>();
 
         let comms = &proof.commitments;
         let proof_has_correct_zk_mode = if MM::ZK {
@@ -714,7 +723,7 @@ where
 
         let verifier_time = start_timer!(|| format!("Marlin::Verify with batch sizes: {:?}", batch_sizes));
 
-        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.into_iter());
+        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
         let circuit_ids = batch_sizes.iter().flat_map(|(circuit_id, batch_size)| {
             let circuit_id_str = format!("circuit_{:x?}", circuit_id);
             vec![circuit_id_str; *batch_size]
@@ -748,7 +757,7 @@ where
         ];
 
         let third_round_info =
-            AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(circuit_infos.into_iter());
+            AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(circuit_infos.clone().into_iter());
         let third_commitments = comms.g_a_commitments
             .iter()
             .zip(comms.g_b_commitments.iter())
@@ -767,7 +776,7 @@ where
         let mut sponge = Self::init_sponge(
             fs_parameters,
             &batch_sizes,
-            &circuit_commitments,
+            &circuit_commitments.as_slice(),
             &padded_public_inputs,
         );
 
@@ -811,12 +820,11 @@ where
         // correct degree.
 
         // Gather commitments in one vector.
-        // TODO: remove this comment. let vk_commitments = circuit_commitments.iter().flat_map(|c|*c).collect_vec();
-        let commitments: Vec<_> = circuit_commitments 
+        let commitments: Vec<_> = circuit_commitments
             .iter()
-            .flat_map(|c|*c)
+            .flatten()
             .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
+            .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
             .chain(second_commitments)
             .chain(third_commitments)
