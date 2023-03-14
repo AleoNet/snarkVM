@@ -69,7 +69,7 @@ fn bhp1024(c: &mut Criterion) {
 
 criterion_group! {
     name = bhp;
-    config = Criterion::default().sample_size(50);
+    config = Criterion::default().sample_size(1000);
     targets = bhp256, bhp512, bhp768, bhp1024
 }
 
