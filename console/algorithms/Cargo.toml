@@ -7,6 +7,11 @@ license = "GPL-3.0"
 edition = "2021"
 
 [[bench]]
+name = "bhp"
+path = "benches/bhp.rs"
+harness = false
+
+[[bench]]
 name = "poseidon_sponge"
 path = "benches/poseidon.rs"
 harness = false
