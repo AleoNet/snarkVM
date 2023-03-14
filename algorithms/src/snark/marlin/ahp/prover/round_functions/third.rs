@@ -27,7 +27,7 @@ use crate::{
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{indexer::Circuit, verifier, AHPError, AHPForR1CS},
+        ahp::{indexer::CircuitInfo, CircuitId, verifier, AHPError, AHPForR1CS},
         matrices::MatrixArithmetization,
         prover,
         MarlinMode,
@@ -54,22 +54,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the degree bounds of oracles in the first round.
     // TODO: to verify if this is correct, see if we're 'consuming' this information in a similar way to the first round
     pub fn third_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (&'a Circuit<F, MM>, usize)>
+        circuits: impl Iterator<Item = (&'a CircuitId, &'a CircuitInfo<F>)>
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        circuits.flat_map(|(circuit, batch_size)| {
-            let circuit_id = format!("circuit_{:x?}", circuit.hash);
+        circuits.flat_map(|(circuit_id, circuit_info)| {
+            let circuit_id = format!("circuit_{:x?}", circuit_id);
 
-            let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(circuit.index_info.num_non_zero_a).unwrap();
-            let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(circuit.index_info.num_non_zero_b).unwrap();
-            let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(circuit.index_info.num_non_zero_c).unwrap();
+            let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_a).unwrap();
+            let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_b).unwrap();
+            let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_c).unwrap();
     
-            (0..batch_size).flat_map(|i| {
-                [   
-                    PolynomialInfo::new(witness_label(&circuit_id, "g_a", i), Some(non_zero_a_size - 2), None),
-                    PolynomialInfo::new(witness_label(&circuit_id, "g_b", i), Some(non_zero_b_size - 2), None),
-                    PolynomialInfo::new(witness_label(&circuit_id, "g_c", i), Some(non_zero_c_size - 2), None)
-                ]
-            })
+            [   
+                PolynomialInfo::new(witness_label(&circuit_id, "g_a", 0), Some(non_zero_a_size - 2), None),
+                PolynomialInfo::new(witness_label(&circuit_id, "g_b", 0), Some(non_zero_b_size - 2), None),
+                PolynomialInfo::new(witness_label(&circuit_id, "g_c", 0), Some(non_zero_c_size - 2), None)
+            ]
             .into_iter()
             .map(|info| (info.label().into(), info))
             .collect::<BTreeMap<PolynomialLabel, PolynomialInfo>>()
@@ -157,7 +155,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 sum_b: b.1.0,
                 sum_c: c.1.0,
             };
-            sums.insert(a.0.hash.to_vec(), matrix_sum);
+            sums.insert(a.0.hash, matrix_sum);
             state.circuit_specific_states[a.0].lhs_polynomials = Some([a.1.1, b.1.1, c.1.1]);
             let matrix_gs = prover::MatrixGs {
                 g_a: a.1.2,
@@ -170,7 +168,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let msg = prover::ThirdMessage { sums };
         let oracles = prover::ThirdOracles { gs };
 
-        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (*c, s.batch_size)))));
+        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (&c.hash, &c.index_info)))));
 
         end_timer!(round_time);
 

@@ -20,7 +20,7 @@ use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
         ahp::{
-            indexer::{Circuit, CircuitInfo},
+            indexer::{CircuitId, CircuitInfo},
             verifier::{BatchCombiners, FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
@@ -37,7 +37,8 @@ use smallvec::SmallVec;
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        batch_sizes: &BTreeMap<&[u8; 32], (CircuitInfo<TargetField>, usize)>,
+        batch_sizes: &BTreeMap<CircuitId, usize>,
+        circuit_infos: &BTreeMap<&CircuitId, &CircuitInfo<TargetField>>,
         max_constraint_domain: EvaluationDomain<TargetField>,
         largest_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
@@ -49,7 +50,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let mut circuit_specific_states = BTreeMap::new();
         let mut circuit_combiners_needed = 0; // the first circuit_combiner is simply TargetField::one()
 
-        for (circuit_hash, (index_info, batch_size)) in batch_sizes {
+        for (batch_size, (circuit_id, circuit_info)) in batch_sizes.values().zip(circuit_infos) {
             let squeeze_time = start_timer!(|| "Squeezing challenges");
             // TODO: we should do a review as to what happens when we have more than usize circuit/instance combiners
             let mut combiners = BatchCombiners {
@@ -65,39 +66,39 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             for instance_combiner in instance_combiners {
                 combiners.instance_combiners.push(*instance_combiner);
             }
-            batch_combiners.insert(*circuit_hash, combiners);
+            batch_combiners.insert(*circuit_id, combiners);
             // TODO: to discuss: this is a bit ugly, but could be avoided if either we use an indexmap to count for us what is the first circuit, or we extract the first loop out of the for-loop
             circuit_combiners_needed = 1; // All circuits after the first need a random circuit combiner
             end_timer!(squeeze_time);
 
             // Check that the R1CS is a square matrix.
-            if index_info.num_constraints != index_info.num_variables {
+            if circuit_info.num_constraints != circuit_info.num_variables {
                 return Err(AHPError::NonSquareMatrix);
             }
 
             let constraint_domain_time = start_timer!(|| "Constructing constraint domain");
             let constraint_domain: EvaluationDomain<TargetField> = // TODO: why does vscode complain that this type needs to be annotated?
-                EvaluationDomain::new(index_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+                EvaluationDomain::new(circuit_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(constraint_domain_time);
 
             let non_zero_a_time = start_timer!(|| "Constructing non-zero-a domain");
             let non_zero_a_domain =
-                EvaluationDomain::new(index_info.num_non_zero_a).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+                EvaluationDomain::new(circuit_info.num_non_zero_a).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(non_zero_a_time);
 
             let non_zero_b_time = start_timer!(|| "Constructing non-zero-b domain");
             let non_zero_b_domain =
-                EvaluationDomain::new(index_info.num_non_zero_b).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+                EvaluationDomain::new(circuit_info.num_non_zero_b).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(non_zero_b_time);
 
             let non_zero_c_time = start_timer!(|| "Constructing non-zero-c domain");
             let non_zero_c_domain =
-                EvaluationDomain::new(index_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+                EvaluationDomain::new(circuit_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(non_zero_c_time);
 
             let input_domain_time = start_timer!(|| "Constructing input domain");
             let input_domain =
-                EvaluationDomain::new(index_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+                EvaluationDomain::new(circuit_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(input_domain_time);
 
             let circuit_specific_state = CircuitSpecificState {
@@ -108,7 +109,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 non_zero_c_domain,
                 batch_size: *batch_size,
             };
-            circuit_specific_states.insert(*circuit_hash, circuit_specific_state);
+            circuit_specific_states.insert(*circuit_id, circuit_specific_state);
         }
 
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");

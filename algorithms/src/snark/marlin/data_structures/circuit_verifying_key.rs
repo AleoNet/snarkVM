@@ -52,8 +52,7 @@ pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
     #[doc(hidden)]
     pub mode: PhantomData<MM>,
     // TODO: we are also storing the hash in proving_key.circuit. Investigate how to consolidate
-    // TODO: it would be more consistent to store the hash array of bytes, but we'll need to impl serialize/deserialize
-    pub hash: String,
+    pub hash: CircuitId,
 }
 
 impl<E: PairingEngine, MM: MarlinMode> PrepareOrd for CircuitVerifyingKey<E, MM> {

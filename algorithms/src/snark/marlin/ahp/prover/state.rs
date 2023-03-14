@@ -115,6 +115,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             .into_iter()
             .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
+                // TODO: instead of creating EvaluationDomains for constraint_domain and non_zero_domain, I think we only have to do this at the end after getting the biggest
                 let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
                     .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
                 max_constraint_domain = match max_constraint_domain {

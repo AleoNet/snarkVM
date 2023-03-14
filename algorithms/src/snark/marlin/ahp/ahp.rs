@@ -21,7 +21,7 @@ use crate::{
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
-        ahp::{matrices, verifier, AHPError, Circuit, CircuitInfo},
+        ahp::{matrices, verifier, AHPError, Circuit, CircuitInfo, CircuitId},
         prover,
         MarlinMode,
     },
@@ -144,7 +144,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Public input should be unformatted.
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<'a, E: EvaluationsProvider<F>>(
-        public_inputs: &BTreeMap<&'a [u8; 32], &Vec<Vec<F>>>,
+        public_inputs: &BTreeMap<&'a CircuitId, &Vec<Vec<F>>>,
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
@@ -161,7 +161,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let input_domain = circuit_state.input_domain;
     
             let largest_non_zero_domain =
-                Self::max_non_zero_domain_helper(circuit_state.non_zero_a_domain, circuit_state.non_zero_b_domain, circuit_state.non_zero_c_domain);
+                Self::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain);
     
             let public_inputs = public_inputs[circuit]
                 .iter()
@@ -182,12 +182,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let prover::ThirdMessage { sums } = prover_third_message;
 
         let mut t_at_beta_s = Vec::with_capacity(state.circuit_specific_states.len());
-        for (circuit, circuit_state) in state.circuit_specific_states {
+        for (circuit_id, circuit_state) in state.circuit_specific_states {
             #[rustfmt::skip]
             let t_at_beta =
-                eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums[&circuit.to_vec()].sum_a +
-                eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums[&circuit.to_vec()].sum_b +
-                eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums[&circuit.to_vec()].sum_c;
+                eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums[circuit_id].sum_a +
+                eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums[circuit_id].sum_b +
+                eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums[circuit_id].sum_c;
     
             t_at_beta_s.push(t_at_beta);
         }
@@ -238,12 +238,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         end_timer!(v_X_at_beta_time);
 
-        let z_b_s_at_beta = z_b_s.iter().map(|(circuit, z_b_i)| {
+        let z_b_s_at_beta = z_b_s.iter().map(|(circuit_id, z_b_i)| {
             let z_b_i_s = z_b_i.iter().map(|z_b|{
                 evals.get_lc_eval(z_b, beta).unwrap()
             }).collect::<Vec<F>>();
-            (*circuit, &z_b_i_s)
-        }).collect::<BTreeMap<&'a [u8;32], &Vec<F>>>();
+            (*circuit_id, &z_b_i_s)
+        }).collect::<BTreeMap<&'a CircuitId, &Vec<F>>>();
         let batch_z_b_at_beta: F = z_b_s_at_beta.values()
                                                 .zip_eq(batch_combiners.values())
                                                 .zip_eq(r_alpha_at_beta_s)
@@ -258,12 +258,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let mut combined_x_at_betas: Vec<F> = Vec::with_capacity(state.circuit_specific_states.len());
-        for (circuit_hash, circuit_state) in state.circuit_specific_states.iter() {
+        for (circuit_id, circuit_state) in state.circuit_specific_states.iter() {
             let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
-            let combined_x_at_beta = batch_combiners[circuit_hash]
+            let combined_x_at_beta = batch_combiners[circuit_id]
                 .instance_combiners
                 .iter()
-                .zip_eq(public_inputs[circuit_hash])
+                .zip_eq(public_inputs[circuit_id])
                 .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
                 .sum::<F>();
             combined_x_at_betas.push(combined_x_at_beta);
@@ -316,21 +316,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
             let selector_a = Self::get_selector_evaluation(&cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
             let lhs_a =
-                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[&circuit_hash.to_vec()].sum_a, selector_a);
+                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[*circuit_hash].sum_a, selector_a);
             matrix_sumcheck += (r_a[i], &lhs_a); // TODO: minor optimization, make sure the first r_a (which is simply 1) is ignored
 
             let g_b = LinearCombination::new("g_b", [(F::one(), "g_b")]);
             let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
             let selector_b = Self::get_selector_evaluation(&cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
             let lhs_b =
-                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[&circuit_hash.to_vec()].sum_b, selector_b);
+                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[*circuit_hash].sum_b, selector_b);
             matrix_sumcheck += (r_b[i], &lhs_b);
     
             let g_c = LinearCombination::new("g_c", [(F::one(), "g_c")]);
             let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
             let selector_c = Self::get_selector_evaluation(&cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
             let lhs_c =
-                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[&circuit_hash.to_vec()].sum_c, selector_c);
+                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[*circuit_hash].sum_c, selector_c);
             matrix_sumcheck += (r_c[i], &lhs_c);
 
             linear_combinations.insert("g_a".into(), g_a);

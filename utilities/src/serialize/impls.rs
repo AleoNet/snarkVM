@@ -398,10 +398,67 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     }
 }
 
+impl<T: CanonicalDeserialize> CanonicalDeserialize for [T; 32] {
+    #[inline]
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let len = u64::deserialize_with_mode(&mut reader, compress, validate)?;
+        assert!(len == 32); // in the future we can parametrize the array on length
+        let mut values = vec![];
+        for _ in 0..len {
+            values.push(T::deserialize_with_mode(&mut reader, compress, Validate::No)?);
+        }
+
+        if let Validate::Yes = validate {
+            T::batch_check(values.iter())?
+        }
+        let arr = values.try_into()
+            .unwrap_or_else(|values: Vec<T>| panic!("Expected a Vec of length {} but it was {}", 32, values.len()));
+
+        Ok(arr)
+    }
+}
+
+impl<T: Valid> Valid for [T; 32] {
+    #[inline]
+    fn check(&self) -> Result<(), SerializationError> {
+        T::batch_check(self.iter())
+    }
+
+    #[inline]
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        T::batch_check(batch.flat_map(|v| v.iter()))
+    }
+}
+
 impl<T: CanonicalSerialize> CanonicalSerialize for [T] {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         let len = self.len() as u64;
+        len.serialize_with_mode(&mut writer, compress)?;
+        for item in self.iter() {
+            item.serialize_with_mode(&mut writer, compress)?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn serialized_size(&self, compress: Compress) -> usize {
+        8 + self.iter().map(|item| item.serialized_size(compress)).sum::<usize>()
+    }
+}
+
+impl<T: CanonicalSerialize> CanonicalSerialize for [T; 32] {
+    #[inline]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        let len = self.len() as u64;
+        assert!(len == 32); // in the future we can parametrize the array on length
         len.serialize_with_mode(&mut writer, compress)?;
         for item in self.iter() {
             item.serialize_with_mode(&mut writer, compress)?;

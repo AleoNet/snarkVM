@@ -28,6 +28,8 @@ use sha2::Digest;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
+pub type CircuitId = [u8; 32];
+
 /// The indexed version of the constraint system.
 /// This struct contains three kinds of objects:
 /// 1) `index_info` is information about the index, such as the size of the
@@ -55,7 +57,7 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
     pub(crate) _mode: PhantomData<MM>,
-    pub(crate) hash: [u8; 32]
+    pub(crate) hash: CircuitId,
 }
 
 impl<F: PrimeField, MM: MarlinMode> Eq for Circuit<F, MM> {}
