@@ -70,8 +70,6 @@ pub struct CircuitSpecificState<F: PrimeField> {
 
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
-    /// Polynomials involved in the holographic sumcheck.
-    pub(super) sums: Option<[F; 3]>,
 }
 
 /// State for the AHP prover.
@@ -185,7 +183,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     z_b: Some(z_bs),
                     mz_poly_randomizer: None,
                     lhs_polynomials: None,
-                    sums: None,
                 };
                 Ok((circuit, state))
             })

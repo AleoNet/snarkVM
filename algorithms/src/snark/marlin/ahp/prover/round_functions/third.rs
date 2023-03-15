@@ -98,7 +98,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
             let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
-            pool.add_job(|| {
+            pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     "a",
                     circuit_state.non_zero_a_domain,
@@ -113,7 +113,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            pool.add_job(|| {
+            pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     "b",
                     circuit_state.non_zero_b_domain,
@@ -128,7 +128,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            pool.add_job(|| {
+            pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     "c",
                     circuit_state.non_zero_c_domain,
@@ -144,25 +144,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             });
         }
 
-        // TODO: check we're not making unnecessary copies
-        let sums = BTreeMap::new();
-        let gs = BTreeMap::new();
-        for (a, b, c) in pool.execute_all().iter().tuples() {
-            assert!(a.0 == b.0 && b.0 == c.0);
-            state.circuit_specific_states[a.0].sums = Some([a.1.0, b.1.0, c.1.0]); // TODO: where do we use this? We're saving the state twice, which is a waste
+        let mut sums = BTreeMap::new();
+        let mut gs = BTreeMap::new();
+        for (
+            (circuit_a, (sum_a, lhs_a, g_a)), 
+            (circuit_b, (sum_b, lhs_b, g_b)), 
+            (circuit_c, (sum_c, lhs_c, g_c))
+        ) in pool.execute_all().into_iter().tuples() {
+            assert!(circuit_a == circuit_b && circuit_a == circuit_c);
             let matrix_sum = prover::message::MatrixSums {
-                sum_a: a.1.0,
-                sum_b: b.1.0,
-                sum_c: c.1.0,
+                sum_a: sum_a,
+                sum_b: sum_b,
+                sum_c: sum_c,
             };
-            sums.insert(a.0.hash, matrix_sum);
-            state.circuit_specific_states[a.0].lhs_polynomials = Some([a.1.1, b.1.1, c.1.1]);
+            sums.insert(circuit_a.hash, matrix_sum);
+            state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
             let matrix_gs = prover::MatrixGs {
-                g_a: a.1.2,
-                g_b: b.1.2,
-                g_c: c.1.2,
+                g_a: g_a,
+                g_b: g_b,
+                g_c: g_c,
             };
-            gs.insert(&a.0.hash, matrix_gs);
+            gs.insert(&circuit_a.hash, matrix_gs);
         }
 
         let msg = prover::ThirdMessage { sums };
