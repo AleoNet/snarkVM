@@ -632,7 +632,7 @@ where
 
     fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
+        keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
 

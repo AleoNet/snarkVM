@@ -69,7 +69,7 @@ pub struct QuerySet<'a, F: PrimeField> {
 }
 
 impl<'a, F: PrimeField> QuerySet<'a, F> {
-    pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
+    pub fn new<MM: MarlinMode>(state: &super::State<'a, F, MM>) -> Self {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
@@ -97,7 +97,7 @@ impl<'a, F: PrimeField> QuerySet<'a, F> {
     /// `(polynomial_label, (query_label, query))`.
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
-        for (circuit_hash, batch_size) in self.batch_sizes {
+        for (circuit_hash, &batch_size) in self.batch_sizes.iter() {
             for i in 0..batch_size {
                 let circuit_id = format!("circuit_{:x?}", circuit_hash);
                 query_set.insert((witness_label(&circuit_id, "z_b", i), self.z_b_query.clone()));

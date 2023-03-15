@@ -107,8 +107,9 @@ pub trait SNARK {
         constraints: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        let keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(proving_key, vec![constraints].as_slice());
+        let mut keys_to_constraints = BTreeMap::new();
+        let constraints_vec = vec![constraints];
+        keys_to_constraints.insert(proving_key, constraints_vec.as_slice());
         Self::prove_batch(fs_parameters, &keys_to_constraints, rng)
     }
 
@@ -126,8 +127,9 @@ pub trait SNARK {
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        let keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(proving_key, vec![constraints].as_slice());
+        let mut keys_to_constraints = BTreeMap::new();
+        let constraints_vec = vec![constraints];
+        keys_to_constraints.insert(proving_key, constraints_vec.as_slice());
         Self::prove_batch_with_terminator(
             fs_parameters,
             &keys_to_constraints,
@@ -145,7 +147,7 @@ pub trait SNARK {
 
     fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        keys_to_inputs: &BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
+        keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
@@ -157,8 +159,8 @@ pub trait SNARK {
         let preparation_time = start_timer!(|| "Preparing vks");
         let prepared_keys_to_inputs = keys_to_inputs.iter().map(|(key, inputs)| {
             let prepared_key = key.prepare();
-            (&prepared_key, *inputs)
-        }).collect::<BTreeMap<&<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
+            (prepared_key, *inputs)
+        }).collect::<BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
         end_timer!(preparation_time);
         Self::verify_batch_prepared(fs_parameters, &prepared_keys_to_inputs, proof)
     }
@@ -169,8 +171,9 @@ pub trait SNARK {
         input: B,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        let keys_to_inputs = BTreeMap::new();
-        keys_to_inputs.insert(verifying_key, vec![input].as_slice());
+        let mut keys_to_inputs = BTreeMap::new();
+        let input_vec = vec![input];
+        keys_to_inputs.insert(verifying_key, input_vec.as_slice());
         Self::verify_batch(fs_parameters, &keys_to_inputs, proof)
     }
 }

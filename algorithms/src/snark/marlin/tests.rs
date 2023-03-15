@@ -122,13 +122,13 @@ mod marlin {
                     for _ in 0..10 {
                         for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
                             for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                                let constraints: BTreeMap<[u8; 32], &[&Circuit<Fr>]> = BTreeMap::new();
-                                let inputs: BTreeMap<[u8; 32], &[Vec<Fr>]> = BTreeMap::new();
+                                let mut constraints = BTreeMap::new();
+                                let mut inputs = BTreeMap::new();
 
                                 for i in 0..circuit_batch_size {
                                     let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
                                     .map(|_| {
-                                        let inputs: Vec<Fr> = Vec::with_capacity(2+i);
+                                        let mut inputs: Vec<Fr> = Vec::with_capacity(2+i);
                                         let a = Fr::rand(rng);
                                         let b = Fr::rand(rng);
                                         let mut c = a;
@@ -145,26 +145,34 @@ mod marlin {
 
                                         // TODO: might need to adjust num_constraints and num_variables given that we're building a bigger circuit now
                                         let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
-                                        (&circ, inputs)
+                                        (circ, inputs)
                                     })
                                     .unzip();
-                                    let circuit_hash = AHPForR1CS::<Fr, MarlinHidingMode>::index(circuit_batch[0]).unwrap().hash;
-                                    constraints.insert(circuit_hash, circuit_batch.as_slice());
-                                    inputs.insert(circuit_hash, input_batch.as_slice());
+                                    let circuit_hash = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().hash;
+                                    constraints.insert(circuit_hash, circuit_batch);
+                                    inputs.insert(circuit_hash, input_batch);
                                 }
-                                let unique_instances = constraints.iter().map(|(circuit, instances)| instances[0]).collect::<Vec<_>>();
+                                let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();
 
                                 let (index_pks, index_vks) =
-                                    $marlin_inst::batch_circuit_setup(&universal_srs, &unique_instances.as_slice()).unwrap();
+                                    $marlin_inst::batch_circuit_setup(&universal_srs, unique_instances.as_slice()).unwrap();
                                 println!("Called circuit setup");
 
-                                let pks_to_constraints = BTreeMap::new();
-                                let vks_to_inputs = BTreeMap::new();
+                                let mut pks_to_constraints = BTreeMap::new();
+                                let mut vks_to_inputs = BTreeMap::new();
+                                let mut constraint_refs = Vec::with_capacity(index_pks.len());
                                 for (index_pk, index_vk) in index_pks.iter().zip(index_vks.iter()) {
-                                    let circuit_constraints = constraints[&index_pk.circuit.hash];
-                                    let circuit_inputs = inputs[&index_pk.circuit.hash];
-                                    pks_to_constraints.insert(index_pk, circuit_constraints);
-                                    vks_to_inputs.insert(index_vk, circuit_inputs);
+                                    let circuit_constraints = &constraints[&index_pk.circuit.hash];
+                                    let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
+                                    for constraint in circuit_constraints.iter() {
+                                        circuit_constraint_refs.push(constraint)
+                                    }
+                                    constraint_refs.push(circuit_constraint_refs);
+                                    let circuit_inputs = &inputs[&index_pk.circuit.hash];
+                                    vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
+                                }
+                                for (i, (index_pk, index_vk)) in index_pks.iter().zip(index_vks.iter()).enumerate() {
+                                    pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
                                 }
 
                                 let proof =
@@ -177,14 +185,18 @@ mod marlin {
                                 );
                                 println!("Called verifier");
                                 println!("\nShould not verify (i.e. verifier messages should print below):");
-                                let vks_to_fake_inputs = BTreeMap::new();
+                                let mut fake_instance_inputs = Vec::with_capacity(vks_to_inputs.len());
                                 for (vk, instance_input) in vks_to_inputs.iter() {
-                                    let fake_instance_input = Vec::with_capacity(instance_input.len());
+                                    let mut fake_instance_input = Vec::with_capacity(instance_input.len());
                                     for input in instance_input.iter() {
                                         let fake_input = vec![Fr::rand(rng); input.len()];
                                         fake_instance_input.push(fake_input);
                                     }
-                                    vks_to_fake_inputs.insert(*vk, fake_instance_input.as_slice());
+                                    fake_instance_inputs.push(fake_instance_input);
+                                }
+                                let mut vks_to_fake_inputs = BTreeMap::new();
+                                for (i, vk) in vks_to_inputs.keys().enumerate() {
+                                    vks_to_fake_inputs.insert(*vk, fake_instance_inputs[i].as_slice());
                                 }
                                 assert!(
                                     !$marlin_inst::verify_batch(

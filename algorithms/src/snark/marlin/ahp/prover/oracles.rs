@@ -129,7 +129,7 @@ impl<F: PrimeField> SecondOracles<F> {
 /// The third set of prover oracles.
 #[derive(Debug)]
 pub struct ThirdOracles<'a, F: PrimeField> {
-    gs: BTreeMap<&'a [u8; 32], MatrixGs<F>>,
+    pub gs: BTreeMap<&'a [u8; 32], MatrixGs<F>>,
 }
 
 #[derive(Debug)]
