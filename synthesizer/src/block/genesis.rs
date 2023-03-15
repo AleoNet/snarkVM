@@ -29,7 +29,7 @@ impl<N: Network> Block<N> {
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{}_u64", N::STARTING_SUPPLY)];
         // Authorize the call to start.
-        let authorization = vm.authorize(private_key, "credits.aleo", "mint", inputs, rng)?;
+        let authorization = vm.authorize(private_key, "credits.aleo", "mint_private", inputs, rng)?;
         // Execute the genesis function.
         let transaction = Transaction::execute_authorization(vm, authorization, None, rng)?;
 

@@ -407,7 +407,7 @@ pub(crate) mod test_helpers {
                 // Prepare the function inputs.
                 let inputs = [address.to_string(), "1_u64".to_string()];
                 // Authorize the call to start.
-                let authorization = vm.authorize(&private_key, "credits.aleo", "mint", inputs, rng).unwrap();
+                let authorization = vm.authorize(&private_key, "credits.aleo", "mint_private", inputs, rng).unwrap();
 
                 // Construct the transaction.
                 let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();

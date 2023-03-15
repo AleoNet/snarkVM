@@ -362,7 +362,7 @@ function compute:
                     .authorize(
                         &caller_private_key,
                         "credits.aleo",
-                        "mint",
+                        "mint_private",
                         [
                             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
                             Value::<CurrentNetwork>::from_str("1u64").unwrap(),

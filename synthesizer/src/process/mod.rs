@@ -438,7 +438,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("mint").unwrap(),
+                Identifier::from_str("mint_private").unwrap(),
                 [r0.clone(), r1.clone()].iter(),
                 rng,
             )

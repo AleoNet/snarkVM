@@ -108,13 +108,28 @@ record credits:
     owner as address.private;
     gates as u64.private;
 
-function mint:
+mapping account:
+    key left as address.public;
+    value right as u64.public;
+
+function mint_private:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as credits.record;
     output r2 as credits.record;
 
-function transfer:
+function mint_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    
+    finalize r0 r1;
+
+finalize mint_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    increment account[r0] by r1;
+
+function transfer_private:
     input r0 as credits.record;
     input r1 as address.private;
     input r2 as u64.private;
@@ -124,6 +139,47 @@ function transfer:
     output r4 as credits.record;
     output r5 as credits.record;
 
+function transfer_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    
+    finalize self.caller r0 r1;
+    
+finalize transfer_public:
+    input r0 as address.public;
+    input r1 as address.public;
+    input r2 as u64.public;
+    decrement account[r0] by r2;
+    increment account[r1] by r2;
+     
+function transfer_private_to_public:
+    input r0 as credits.record;
+    input r1 as address.public;
+    input r2 as u64.public;
+    sub r0.gates r2 into r3;
+    cast r0.owner r3 into r4 as credits.record;
+    output r4 as credits.record;
+    
+    finalize r1 r2;
+    
+finalize transfer_private_to_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    increment account[r0] by r1;
+
+function transfer_public_to_private:
+    input r0 as address.public;
+    input r1 as u64.public;
+    cast r0 r1 into r2 as credits.record;
+    output r2 as credits.record;
+
+    finalize self.caller r1;
+
+finalize transfer_public_to_private:
+    input r0 as address.public;
+    input r1 as u64.public;
+    decrement account[r0] by r1;
+    
 function join:
     input r0 as credits.record;
     input r1 as credits.record;
@@ -619,7 +675,7 @@ impl<N: Network> Program<N> {
     /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
     #[inline]
     pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint"
+        program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint_private"
     }
 }
 
