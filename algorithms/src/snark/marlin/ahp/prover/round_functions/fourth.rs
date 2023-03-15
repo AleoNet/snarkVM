@@ -22,7 +22,7 @@ use crate::{
         ahp::{verifier, AHPError, AHPForR1CS},
         prover,
         MarlinMode,
-    },
+    }, fft::DensePolynomial,
 };
 
 use itertools::Itertools;
@@ -33,16 +33,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the fourth round message and the next state.
     pub fn prover_fourth_round<'a, R: RngCore>(
         verifier_message: &verifier::ThirdMessage<F>,
-        state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, MM>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
         let verifier::ThirdMessage { r_a, r_b, r_c } = verifier_message;
-        let lhs_s = state.circuit_specific_states.iter().map(|(_,s)|s.lhs_polynomials.unwrap()).collect_vec();
-        let lhs_sum = lhs_s[0][0];
-        for i in 1..lhs_s.len() {
-            lhs_sum += &(lhs_s[i][0]*r_a[i]);
-            lhs_sum += &(lhs_s[i][1]*r_b[i]);
-            lhs_sum += &(lhs_s[i][2]*r_c[i]);
+        let mut lhs_s = state.circuit_specific_states.iter_mut().map(|(_,s)| s.lhs_polynomials.as_mut().unwrap()).collect_vec();
+        let mut lhs_sum = DensePolynomial::zero();
+        for i in 0..lhs_s.len() {
+            let rs = [r_a[i], r_b[i], r_c[i]];
+            for (lhs_s_i_j, r) in lhs_s[i].into_iter().zip(rs) {
+                lhs_sum += &(std::mem::take(lhs_s_i_j)*r);
+            }
         }
         let h_2 = LabeledPolynomial::new("h_2".into(), lhs_sum, None, None);
         let oracles = prover::FourthOracles { h_2 };
