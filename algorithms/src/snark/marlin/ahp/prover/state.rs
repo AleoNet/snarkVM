@@ -32,6 +32,7 @@ use crate::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{SynthesisError, SynthesisResult};
+use itertools::Itertools;
 
 pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
@@ -216,11 +217,12 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
 
     /// Get the public inputs for the entire batch.
     pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+        // We need to export inputs as they live longer than prover_state
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect())
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
-        self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables)
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
+        self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
     }
 }

@@ -164,7 +164,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         fs_parameters: &FS::Parameters,
         batch_sizes: &BTreeMap<CircuitId, usize>,
         circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
-        inputs: &BTreeMap<&CircuitId, Vec<Vec<E::Fr>>>,
+        inputs: &BTreeMap<&CircuitId, &[Vec<E::Fr>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -370,14 +370,12 @@ where
         }
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints)?;
 
-        // extract information from the prover key and state to consume in further calculations  
+        // extract information from the prover key and state to consume in further calculations 
         let mut batch_sizes = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
-        let mut public_inputs_vec = Vec::with_capacity(keys_to_constraints.len()); // TODO: no need for this, the data is already in the prover_state? Consider using Arc?
-        let mut public_inputs = BTreeMap::new();
         let mut padded_public_inputs = BTreeMap::new();
-        let mut vk_to_inputs = BTreeMap::new();
         let mut total_batch_size = 0;
+        let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
         for pk in keys_to_constraints.keys() {
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
@@ -385,17 +383,13 @@ where
             let circuit_id = &pk.circuit.hash;
             batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
-            public_inputs_vec.push(public_input);
             padded_public_inputs.insert(circuit_id, padded_public_input);
             total_batch_size += batch_size;
+            public_inputs.insert(&pk.circuit.hash, public_input);
         }
         assert_eq!(prover_state.total_batch_size(), total_batch_size);
+
         let committer_key = CommitterKey::union(keys_to_constraints.keys().map(|pk|pk.committer_key.deref()));
-        for (i, pk) in keys_to_constraints.keys().enumerate() {
-            let circuit_id = &pk.circuit.hash;
-            public_inputs.insert(circuit_id, public_inputs_vec[i].as_slice());
-            vk_to_inputs.insert(&pk.circuit_verifying_key, public_inputs[&pk.circuit.hash]);
-        }
 
         let circuit_commitments = keys_to_constraints
             .iter()
@@ -621,6 +615,12 @@ where
         let proof = Proof::<E>::new(batch_sizes, total_batch_size, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
 
+        // Collect verification key and public inputs to verify_batch
+        let mut vk_to_inputs = BTreeMap::new();
+        for pk in keys_to_constraints.keys() {
+            vk_to_inputs.insert(&pk.circuit_verifying_key, public_inputs.get(&pk.circuit.hash).unwrap().as_slice());
+        }
+
         #[cfg(debug_assertions)]
         if !Self::verify_batch(fs_parameters, &vk_to_inputs, &proof)? {
             println!("Invalid proof")
@@ -655,7 +655,7 @@ where
         let mut max_num_constraints = 0;
         let mut max_num_non_zero = 0;
         let mut public_inputs = BTreeMap::new();
-        let mut public_inputs_vec = Vec::with_capacity(keys_to_inputs.len()); // TODO: can I just use existing state? Same as for the prover
+        let mut padded_public_vec = Vec::with_capacity(keys_to_inputs.len());
         let mut padded_public_inputs = BTreeMap::new();
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
@@ -688,12 +688,12 @@ where
                     })
                     .unzip()
             };
-            public_inputs_vec.push(parsed_public_inputs_i);
-            padded_public_inputs.insert(&vk.orig_vk.hash, padded_public_inputs_i);
+            public_inputs.insert(&vk.orig_vk.hash, parsed_public_inputs_i);
+            padded_public_vec.push(padded_public_inputs_i);
             circuit_infos.insert(&vk.orig_vk.hash, &vk.orig_vk.circuit_info);
         }
         for (i, vk) in keys_to_inputs.keys().enumerate() {
-            public_inputs.insert(&vk.orig_vk.hash, public_inputs_vec[i].as_slice());
+            padded_public_inputs.insert(&vk.orig_vk.hash, padded_public_vec[i].as_slice());
         }
 
         let verifier_key = VerifierKey::<E>::union(vks);
