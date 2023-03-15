@@ -60,12 +60,24 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 // Negative Powers of Beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
-// Mint
-impl_remote!(MintProver, REMOTE_URL, "resources/", "mint", "prover");
-impl_remote!(MintVerifier, REMOTE_URL, "resources/", "mint", "verifier");
-// Transfer
-impl_remote!(TransferProver, REMOTE_URL, "resources/", "transfer", "prover");
-impl_remote!(TransferVerifier, REMOTE_URL, "resources/", "transfer", "verifier");
+// Mint Private
+impl_remote!(MintPrivateProver, REMOTE_URL, "resources/", "mint_private", "prover");
+impl_remote!(MintPrivateVerifier, REMOTE_URL, "resources/", "mint_private", "verifier");
+// Mint Public
+impl_remote!(MintPublicProver, REMOTE_URL, "resources/", "mint_public", "prover");
+impl_remote!(MintPublicVerifier, REMOTE_URL, "resources/", "mint_public", "verifier");
+// Transfer Private
+impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
+impl_remote!(TransferPrivateVerifier, REMOTE_URL, "resources/", "transfer_private", "verifier");
+// Transfer Public
+impl_remote!(TransferPublicProver, REMOTE_URL, "resources/", "transfer_public", "prover");
+impl_remote!(TransferPublicVerifier, REMOTE_URL, "resources/", "transfer_public", "verifier");
+// Transfer Public to Private
+impl_remote!(TransferPublicToPrivateProver, REMOTE_URL, "resources/", "transfer_public_to_private", "prover");
+impl_remote!(TransferPublicToPrivateVerifier, REMOTE_URL, "resources/", "transfer_public_to_private", "verifier");
+// Transfer Private to Public
+impl_remote!(TransferPrivateToPublicProver, REMOTE_URL, "resources/", "transfer_private_to_public", "prover");
+impl_remote!(TransferPrivateToPublicVerifier, REMOTE_URL, "resources/", "transfer_private_to_public", "verifier");
 // Join
 impl_remote!(JoinProver, REMOTE_URL, "resources/", "join", "prover");
 impl_remote!(JoinVerifier, REMOTE_URL, "resources/", "join", "verifier");
@@ -81,8 +93,12 @@ macro_rules! insert_credit_keys {
     ($map:ident, $type:ident<$network:ident>, $variant:ident) => {{
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
-            $crate::insert_key!($map, string, $type<$network>, ("mint", $crate::testnet3::[<Mint $variant>]::load_bytes()));
-            $crate::insert_key!($map, string, $type<$network>, ("transfer", $crate::testnet3::[<Transfer $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("mint_private", $crate::testnet3::[<MintPrivate $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("mint_public", $crate::testnet3::[<MintPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet3::[<TransferPrivate $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet3::[<TransferPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::testnet3::[<TransferPrivateToPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::testnet3::[<TransferPublicToPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("join", $crate::testnet3::[<Join $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("split", $crate::testnet3::[<Split $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("fee", $crate::testnet3::[<Fee $variant>]::load_bytes()));
