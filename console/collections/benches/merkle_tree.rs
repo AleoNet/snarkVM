@@ -24,11 +24,11 @@ use snarkvm_console_network::{
 };
 use snarkvm_console_types::Field;
 
-use criterion::Criterion;
+use criterion::{BenchmarkId, Criterion};
 
 const DEPTH: u8 = 32;
 
-const NUM_LEAVES: &[usize] = &[10, 100, 1000, 10000];
+const NUM_LEAVES: &[usize] = &[1, 10, 100, 1000, 10000];
 const APPEND_SIZES: &[usize] = &[10, 100, 1000];
 const UPDATE_SIZES: &[usize] = &[10, 100, 1000];
 
@@ -197,10 +197,37 @@ fn batch_update(c: &mut Criterion) {
     }
 }
 
+fn compare_single_leaf_update(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Single");
+    let mut rng = TestRng::default();
+    for depth in 1..=15 {
+        let num_leaves = 2usize.saturating_pow(depth as u32);
+        let leaves = generate_leaves!(num_leaves, &mut rng);
+
+        let index: usize = Uniform::rand(&mut rng);
+        let index = index % num_leaves;
+
+        let new_leaf = generate_leaves!(1, &mut rng).pop().unwrap();
+
+        let mut tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
+        group.bench_with_input(BenchmarkId::new("Standard", &format!("DEPTH: {depth}")), &new_leaf, |b, new_leaf| {
+            b.iter(|| tree.update(index, new_leaf))
+        });
+
+        let mut tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves).unwrap();
+        group.bench_with_input(
+            BenchmarkId::new("Batch", &format!("DEPTH: {depth}")),
+            &vec![(index, new_leaf)],
+            |b, updates| b.iter(|| tree.batch_update(&updates)),
+        );
+    }
+}
+
 criterion_group! {
     name = merkle_tree;
     config = Criterion::default().sample_size(10);
-    targets = new, append, update, batch_update,
+    targets = new, append, update, batch_update, compare_single_leaf_update,
+    // targets = compare_single_leaf_update,
 }
 
 criterion_main!(merkle_tree);
