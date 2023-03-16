@@ -142,6 +142,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Construct the linear combinations that are checked by the AHP.
     /// Public input should be unformatted.
+    /// We construct the linear combinations as per section 5 of our protocol documentation.
+    /// We can distinguish between:
+    /// (1) simple comitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
+    /// (2) virtual commitments for the lincheck_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<'a, E: EvaluationsProvider<F>>(
         public_inputs: &BTreeMap<&'a CircuitId, Vec<Vec<F>>>,
@@ -259,7 +263,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             combined_x_at_betas.push(combined_x_at_beta);
         }
 
-        // TODO: where to multiply the selectors? To elements here or just before creating the (virtual) commitment?
+        // TODO: where to multiply the selectors and circuit_combiners? To elements here or just before creating the (virtual) commitment?
+        // let batch_combiners[].circuit_combiner
         // let selector_i = Self::get_selector_evaluation(&cached_selectors, &largest_constraint_domain, &circuit_state.constraint_domain, beta);
 
         #[rustfmt::skip]
