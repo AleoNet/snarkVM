@@ -31,6 +31,7 @@ use snarkvm_utilities::{ops::MulAssign, CanonicalDeserialize, CanonicalSerialize
 use criterion::Criterion;
 
 use std::collections::BTreeMap;
+use itertools::Itertools;
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
@@ -150,14 +151,12 @@ fn snark_batch_prove(c: &mut Criterion) {
             all_circuits.push(circuits);
         }
         // We need to create references to the circuits we just created
-        let mut all_circuit_refs = Vec::with_capacity(circuit_batch_size);
-        for i in 0..circuit_batch_size {
-            let mut circuit_refs = Vec::with_capacity(instance_batch_size);
-            for j in 0..circuit_batch_size {
-                circuit_refs.push(&all_circuits[i][j]);
-            }
-            all_circuit_refs.push(circuit_refs);
-        }
+        let all_circuit_refs = (0..circuit_batch_size).map(|i|{
+            (0..instance_batch_size).map(|j|{
+                &all_circuits[i][j]
+            }).collect_vec()
+        }).collect_vec();
+
         for i in 0..circuit_batch_size {
             keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
         }
@@ -208,7 +207,6 @@ fn snark_batch_verify(c: &mut Criterion) {
         let mut pks = Vec::with_capacity(circuit_batch_size);
         let mut vks = Vec::with_capacity(circuit_batch_size);
         let mut all_circuits = Vec::with_capacity(circuit_batch_size);
-        let mut all_circuit_refs = Vec::with_capacity(circuit_batch_size);
         let mut all_inputs = Vec::with_capacity(circuit_batch_size);
         let mut keys_to_constraints = BTreeMap::new();
         let mut keys_to_inputs = BTreeMap::new();
@@ -233,15 +231,12 @@ fn snark_batch_verify(c: &mut Criterion) {
             all_inputs.push(inputs);
         }
         // We need to create references to the circuits and inputs we just created
-        for i in 0..circuit_batch_size {
-            let mut circuit_refs = Vec::with_capacity(instance_batch_size);
-            let mut input_refs = Vec::with_capacity(instance_batch_size);
-            for j in 0..circuit_batch_size {
-                circuit_refs.push(&all_circuits[i][j]);
-                input_refs.push(&all_inputs[i][j]);
-            }
-            all_circuit_refs.push(circuit_refs);
-        }
+        let all_circuit_refs = (0..circuit_batch_size).map(|i|{
+            (0..instance_batch_size).map(|j|{
+                &all_circuits[i][j]
+            }).collect_vec()
+        }).collect_vec();
+
         for i in 0..circuit_batch_size {
             keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
             keys_to_inputs.insert(&vks[i], all_inputs[i].as_slice());

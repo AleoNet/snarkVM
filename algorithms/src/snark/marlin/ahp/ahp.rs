@@ -179,10 +179,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut t_at_beta_s = Vec::with_capacity(state.circuit_specific_states.len());
         for (&circuit_id, circuit_state) in state.circuit_specific_states.iter() {
             #[rustfmt::skip]
+            let sums_i = &sums[circuit_id];
             let t_at_beta =
-                eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums[circuit_id].sum_a +
-                eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums[circuit_id].sum_b +
-                eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums[circuit_id].sum_c;
+                eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums_i.sum_a +
+                eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums_i.sum_b +
+                eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums_i.sum_c;
     
             t_at_beta_s.push(t_at_beta);
         }
@@ -306,31 +307,39 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
-        for (i, (circuit_hash, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
-            let g_a = LinearCombination::new("g_a", [(F::one(), "g_a")]);
+        for (i, (&circuit_id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
+            let circuit_id_str = format!("circuit_{:x?}", circuit_id);
+            let g_a_label = witness_label(&circuit_id_str, "g_a", i);
+            let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
             let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
             let selector_a = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
             let lhs_a =
-                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[*circuit_hash].sum_a, selector_a);
-            matrix_sumcheck += (r_a[i], &lhs_a); // TODO: minor optimization, make sure the first r_a (which is simply 1) is ignored
+                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[circuit_id].sum_a, selector_a);
+            if i == 0 {
+                matrix_sumcheck += &lhs_a;
+            } else {
+                matrix_sumcheck += (r_a[i], &lhs_a);
+            }
 
-            let g_b = LinearCombination::new("g_b", [(F::one(), "g_b")]);
+            let g_b_label = witness_label(&circuit_id_str, "g_b", i);
+            let g_b = LinearCombination::new(g_b_label.clone(), [(F::one(), g_b_label)]);
             let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
             let selector_b = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
             let lhs_b =
-                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[*circuit_hash].sum_b, selector_b);
+                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[circuit_id].sum_b, selector_b);
             matrix_sumcheck += (r_b[i], &lhs_b);
     
-            let g_c = LinearCombination::new("g_c", [(F::one(), "g_c")]);
+            let g_c_label = witness_label(&circuit_id_str, "g_c", i);
+            let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
             let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
             let selector_c = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
             let lhs_c =
-                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[*circuit_hash].sum_c, selector_c);
+                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[circuit_id].sum_c, selector_c);
             matrix_sumcheck += (r_c[i], &lhs_c);
 
-            linear_combinations.insert("g_a".into(), g_a);
-            linear_combinations.insert("g_b".into(), g_b);
-            linear_combinations.insert("g_c".into(), g_c);    
+            linear_combinations.insert(g_a.label.clone(), g_a);
+            linear_combinations.insert(g_b.label.clone(), g_b);
+            linear_combinations.insert(g_c.label.clone(), g_c);    
         }
 
         matrix_sumcheck -=
