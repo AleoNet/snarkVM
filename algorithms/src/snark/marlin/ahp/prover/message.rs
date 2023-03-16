@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 use crate::snark::marlin::CircuitId;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MatrixSums<F: std::marker::Sync + CanonicalSerialize + CanonicalDeserialize> {
+pub struct MatrixSums<F: PrimeField> {
     pub sum_a: F,
     pub sum_b: F,
     pub sum_c: F,
