@@ -368,7 +368,7 @@ mod tests {
             .authorize(
                 &caller_private_key,
                 "testing.aleo",
-                "mint_private",
+                "mint",
                 [
                     Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str("10u64").unwrap(),

@@ -310,7 +310,7 @@ function compute:
                     .authorize(
                         &caller_private_key,
                         "credits.aleo",
-                        "transfer",
+                        "transfer_private",
                         [
                             Value::<CurrentNetwork>::Record(record),
                             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
