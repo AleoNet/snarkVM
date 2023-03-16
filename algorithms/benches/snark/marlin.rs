@@ -30,6 +30,8 @@ use snarkvm_utilities::{ops::MulAssign, TestRng, Uniform};
 
 use criterion::Criterion;
 
+use std::collections::BTreeMap;
+
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
 
@@ -100,7 +102,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
 fn snark_prove(c: &mut Criterion) {
     c.bench_function("snark_prove", move |b| {
         let num_constraints = 100;
-        let num_variables = 100;
+        let num_variables = 25;
         let rng = &mut TestRng::default();
 
         let x = Fr::rand(rng);
@@ -114,6 +116,52 @@ fn snark_prove(c: &mut Criterion) {
 
         let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         b.iter(|| MarlinInst::prove(&fs_parameters, &params.0, &circuit, rng).unwrap())
+    });
+}
+
+fn snark_batch_prove(c: &mut Criterion) {
+    c.bench_function("snark_prove", move |b| {
+        let num_constraints_base = 100;
+        let num_variables_base = 25;
+        let rng = &mut TestRng::default();
+
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let fs_parameters = FS::sample_parameters();
+
+        let circuit_batch_size = 100;
+        let instance_batch_size = 100;
+
+        let mut pks = Vec::with_capacity(circuit_batch_size);
+        let mut all_circuits = Vec::with_capacity(circuit_batch_size);
+        let mut keys_to_constraints = BTreeMap::new();
+        for i in 0..circuit_batch_size {
+            let num_constraints = num_constraints_base + i;
+            let num_variables = num_variables_base + i;
+            let mut circuits = Vec::with_capacity(instance_batch_size);
+            for _ in 0..instance_batch_size {
+                let x = Fr::rand(rng);
+                let y = Fr::rand(rng);
+                let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+                circuits.push(circuit);
+            }
+            let (pk, _) = MarlinInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
+            pks.push(pk);
+            all_circuits.push(circuits);
+        }
+        // We need to create references to the circuits we just created
+        let mut all_circuit_refs = Vec::with_capacity(circuit_batch_size);
+        for i in 0..circuit_batch_size {
+            let mut circuit_refs = Vec::with_capacity(instance_batch_size);
+            for j in 0..circuit_batch_size {
+                circuit_refs.push(&all_circuits[i][j]);
+            }
+            all_circuit_refs.push(circuit_refs);
+        }
+        for i in 0..circuit_batch_size {
+            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+        }
+        b.iter(|| MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap())
     });
 }
 
@@ -139,6 +187,69 @@ fn snark_verify(c: &mut Criterion) {
         let proof = MarlinInst::prove(&fs_parameters, &pk, &circuit, rng).unwrap();
         b.iter(|| {
             let verification = MarlinInst::verify(&fs_parameters, &vk, [z], &proof).unwrap();
+            assert!(verification);
+        })
+    });
+}
+
+fn snark_batch_verify(c: &mut Criterion) {
+    c.bench_function("snark_verify", move |b| {
+        let num_constraints_base = 100;
+        let num_variables_base = 25;
+        let rng = &mut TestRng::default();
+
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let fs_parameters = FS::sample_parameters();
+
+        let circuit_batch_size = 100;
+        let instance_batch_size = 100;
+
+        let mut pks = Vec::with_capacity(circuit_batch_size);
+        let mut vks = Vec::with_capacity(circuit_batch_size);
+        let mut all_circuits = Vec::with_capacity(circuit_batch_size);
+        let mut all_circuit_refs = Vec::with_capacity(circuit_batch_size);
+        let mut all_inputs = Vec::with_capacity(circuit_batch_size);
+        let mut keys_to_constraints = BTreeMap::new();
+        let mut keys_to_inputs = BTreeMap::new();
+        for i in 0..circuit_batch_size {
+            let num_constraints = num_constraints_base + i;
+            let num_variables = num_variables_base + i;
+            let mut circuits = Vec::with_capacity(circuit_batch_size);
+            let mut inputs = Vec::with_capacity(circuit_batch_size);
+            for _ in 0..instance_batch_size {
+                let x = Fr::rand(rng);
+                let y = Fr::rand(rng);
+                let mut z = x;
+                z.mul_assign(&y); 
+                let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+                circuits.push(circuit);
+                inputs.push([z]);
+            }
+            let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
+            pks.push(pk);
+            vks.push(vk);
+            all_circuits.push(circuits);
+            all_inputs.push(inputs);
+        }
+        // We need to create references to the circuits and inputs we just created
+        for i in 0..circuit_batch_size {
+            let mut circuit_refs = Vec::with_capacity(instance_batch_size);
+            let mut input_refs = Vec::with_capacity(instance_batch_size);
+            for j in 0..circuit_batch_size {
+                circuit_refs.push(&all_circuits[i][j]);
+                input_refs.push(&all_inputs[i][j]);
+            }
+            all_circuit_refs.push(circuit_refs);
+        }
+        for i in 0..circuit_batch_size {
+            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+            keys_to_inputs.insert(&vks[i], all_inputs[i].as_slice());
+        }
+
+        let proof = MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap();
+        b.iter(|| {
+            let verification = MarlinInst::verify_batch(&fs_parameters, &keys_to_inputs, &proof).unwrap();
             assert!(verification);
         })
     });
@@ -194,7 +305,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_certificate_prove, snark_certificate_verify,
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_batch_prove, snark_batch_verify, snark_certificate_prove, snark_certificate_verify,
 }
 
 criterion_main!(marlin_snark);
