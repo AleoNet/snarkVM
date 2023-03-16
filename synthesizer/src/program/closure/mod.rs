@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ mod parse;
 use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{Identifier, Register},
+    program::{Identifier, Register, RegisterType},
 };
 
 use indexmap::IndexSet;
@@ -100,9 +100,13 @@ impl<N: Network> Closure<N> {
     /// Adds the given instruction to the closure.
     ///
     /// # Errors
+    /// This method will halt if there are output statements already.
     /// This method will halt if the maximum number of instructions has been reached.
     #[inline]
     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
+        // Ensure that there are no outputs in memory.
+        ensure!(self.outputs.is_empty(), "Cannot add instructions after outputs have been added");
+
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
             self.instructions.len() <= N::MAX_INSTRUCTIONS,
@@ -123,15 +127,14 @@ impl<N: Network> Closure<N> {
     /// Adds the output statement to the closure.
     ///
     /// # Errors
-    /// This method will halt if there are no instructions in memory.
     /// This method will halt if the maximum number of outputs has been reached.
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
-        // Ensure there are instructions in memory.
-        ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
-
         // Ensure the maximum number of outputs has not been exceeded.
         ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
+
+        // Ensure the closure output register is not a record.
+        ensure!(!matches!(output.register_type(), RegisterType::Record(..)), "Output register cannot be a record");
 
         // Insert the output statement.
         self.outputs.insert(output);

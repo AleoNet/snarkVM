@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSyst
     let padded_size = power_of_two.unwrap().size();
     if padded_size > num_public_variables {
         for i in 0..(padded_size - num_public_variables) {
-            cs.alloc_input(|| format!("pad_input_{}", i), || Ok(F::zero())).unwrap();
+            cs.alloc_input(|| format!("pad_input_{i}"), || Ok(F::zero())).unwrap();
         }
     }
 }
@@ -80,12 +80,12 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
         use core::convert::identity as iden;
         // Add dummy constraints of the form 0 * 0 == 0
         for i in 0..matrix_padding {
-            cs.enforce(|| format!("pad_constraint_{}", i), iden, iden, iden);
+            cs.enforce(|| format!("pad_constraint_{i}"), iden, iden, iden);
         }
     } else {
         // Add dummy unconstrained variables
         for i in 0..matrix_padding {
-            let _ = cs.alloc(|| format!("pad_variable_{}", i), || Ok(F::one())).expect("alloc failed");
+            let _ = cs.alloc(|| format!("pad_variable_{i}"), || Ok(F::one())).expect("alloc failed");
         }
     }
 }

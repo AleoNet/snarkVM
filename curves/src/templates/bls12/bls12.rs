@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -57,9 +57,9 @@ pub trait Bls12Parameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Has
     type Fp12Params: Fp12Parameters<Fp6Params = Self::Fp6Params>;
     type G1Parameters: ShortWeierstrassParameters<BaseField = Self::Fp>;
     type G2Parameters: ShortWeierstrassParameters<
-        BaseField = Fp2<Self::Fp2Params>,
-        ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
-    >;
+            BaseField = Fp2<Self::Fp2Params>,
+            ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
+        >;
 
     fn g1_is_in_correct_subgroup(p: &short_weierstrass_jacobian::Affine<Self::G1Parameters>) -> bool {
         p.mul_bits(BitIteratorBE::new(<Self::G1Parameters as ModelParameters>::ScalarField::characteristic())).is_zero()
@@ -108,21 +108,21 @@ impl<P: Bls12Parameters> Bls12<P> {
 impl<P: Bls12Parameters> PairingEngine for Bls12<P>
 where
     G1Affine<P>: PairingCurve<
-        BaseField = <P::G1Parameters as ModelParameters>::BaseField,
-        ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
-        Projective = G1Projective<P>,
-        PairWith = G2Affine<P>,
-        Prepared = G1Prepared<P>,
-        PairingResult = Fp12<P::Fp12Params>,
-    >,
+            BaseField = <P::G1Parameters as ModelParameters>::BaseField,
+            ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
+            Projective = G1Projective<P>,
+            PairWith = G2Affine<P>,
+            Prepared = G1Prepared<P>,
+            PairingResult = Fp12<P::Fp12Params>,
+        >,
     G2Affine<P>: PairingCurve<
-        BaseField = <P::G2Parameters as ModelParameters>::BaseField,
-        ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
-        Projective = G2Projective<P>,
-        PairWith = G1Affine<P>,
-        Prepared = G2Prepared<P>,
-        PairingResult = Fp12<P::Fp12Params>,
-    >,
+            BaseField = <P::G2Parameters as ModelParameters>::BaseField,
+            ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
+            Projective = G2Projective<P>,
+            PairWith = G1Affine<P>,
+            Prepared = G2Prepared<P>,
+            PairingResult = Fp12<P::Fp12Params>,
+        >,
 {
     type Fq = P::Fp;
     type Fqe = Fp2<P::Fp2Params>;

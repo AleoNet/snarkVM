@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -206,10 +206,7 @@ where
 {
     fn take_from_value<D: Deserializer<'de>>(value: &mut serde_json::Value, field: &str) -> Result<Self, D::Error> {
         serde_json::from_value(
-            value
-                .get_mut(field)
-                .ok_or_else(|| de::Error::custom(format!("The \"{}\" field is missing", field)))?
-                .take(),
+            value.get_mut(field).ok_or_else(|| de::Error::custom(format!("The \"{field}\" field is missing")))?.take(),
         )
         .map_err(de::Error::custom)
     }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,11 +46,11 @@ impl<F: Field> fmt::Debug for DensePolynomial<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (i, coeff) in self.coeffs.iter().enumerate().filter(|(_, c)| !c.is_zero()) {
             if i == 0 {
-                write!(f, "\n{:?}", coeff)?;
+                write!(f, "\n{coeff:?}",)?;
             } else if i == 1 {
-                write!(f, " + \n{:?} * x", coeff)?;
+                write!(f, " + \n{coeff:?} * x")?;
             } else {
-                write!(f, " + \n{:?} * x^{}", coeff, i)?;
+                write!(f, " + \n{coeff:?} * x^{i}")?;
             }
         }
         Ok(())
@@ -613,12 +613,12 @@ mod tests {
             // Include polynomials and evaluations
             let num_polys = (rng.next_u32() as usize) % 8;
             let num_evals = (rng.next_u32() as usize) % 4;
-            println!("\nnum_polys {}, num_evals {}", num_polys, num_evals);
+            println!("\nnum_polys {num_polys}, num_evals {num_evals}");
 
             for _ in 1..num_polys {
                 let degree = (rng.next_u32() as usize) % max_degree;
                 mul_degree += degree + 1;
-                println!("poly degree {}", degree);
+                println!("poly degree {degree}");
                 let a = DensePolynomial::<Fr>::rand(degree, rng);
                 naive = naive.naive_mul(&a);
                 multiplier.add_polynomial(a.clone(), "a");
@@ -632,7 +632,7 @@ mod tests {
                 let a = DensePolynomial::<Fr>::rand(mul_degree / 8, rng);
                 eval_degree += a.len() + 1;
                 if eval_degree < domain.size() {
-                    println!("eval degree {}", eval_degree);
+                    println!("eval degree {eval_degree}");
                     let mut a_evals = a.clone().coeffs;
                     domain.fft_in_place(&mut a_evals);
                     let a_evals = Evaluations::from_vec_and_domain(a_evals, domain);

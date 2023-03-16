@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -63,7 +63,7 @@ impl<N: Network> Parser for Struct<N> {
         let (string, members) = map_res(many1(parse_tuple), |members| {
             // Ensure the members has no duplicate names.
             if has_duplicates(members.iter().map(|(identifier, _)| identifier)) {
-                return Err(error(format!("Duplicate identifier found in struct '{}'", name)));
+                return Err(error(format!("Duplicate identifier found in struct '{name}'")));
             }
             // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
             if members.len() > N::MAX_DATA_ENTRIES {
@@ -109,7 +109,7 @@ impl<N: Network> Display for Struct<N> {
             output += &format!("    {identifier} as {plaintext_type};\n");
         }
         output.pop(); // trailing newline
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }
 
@@ -181,7 +181,7 @@ struct message:
     fn test_display() {
         let expected = "struct message:\n    first as field;\n    second as field;";
         let message = Struct::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(expected, format!("{}", message));
+        assert_eq!(expected, format!("{message}"));
     }
 
     #[test]
@@ -199,7 +199,7 @@ struct message:
     fn test_max_members() {
         let mut string = "struct message:\n".to_string();
         for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
-            string += &format!("    member_{} as field;\n", i);
+            string += &format!("    member_{i} as field;\n");
         }
         assert!(Struct::<CurrentNetwork>::parse(&string).is_ok());
     }
@@ -208,7 +208,7 @@ struct message:
     fn test_too_many_members() {
         let mut string = "struct message:\n".to_string();
         for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
-            string += &format!("    member_{} as field;\n", i);
+            string += &format!("    member_{i} as field;\n");
         }
         assert!(Struct::<CurrentNetwork>::parse(&string).is_err());
     }

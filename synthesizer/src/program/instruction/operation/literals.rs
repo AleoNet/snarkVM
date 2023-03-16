@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -254,12 +254,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         }
         // Ensure the number of operands is correct.
         if self.operands.len() > NUM_OPERANDS {
-            eprintln!("The number of operands must be {}", NUM_OPERANDS);
+            eprintln!("The number of operands must be {NUM_OPERANDS}");
             return Err(fmt::Error);
         }
         // Print the operation.
         write!(f, "{} ", O::OPCODE)?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
+        self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
         write!(f, "into {}", self.destination)
     }
 }
@@ -299,7 +299,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         }
         // Ensure the number of operands is correct.
         if self.operands.len() > NUM_OPERANDS {
-            return Err(error(format!("The number of operands must be {}", NUM_OPERANDS)));
+            return Err(error(format!("The number of operands must be {NUM_OPERANDS}")));
         }
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;

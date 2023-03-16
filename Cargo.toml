@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.9.11"
+version = "0.9.14"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -129,58 +129,58 @@ wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "0.9.11"
+version = "0.9.14"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "0.9.11"
+version = "0.9.14"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.68"
+version = "1.0.69"
 optional = true
 
 [dependencies.clap]
@@ -197,7 +197,7 @@ version = "1.9"
 features = [ "rayon" ]
 
 [dependencies.once_cell]
-version = "1.13"
+version = "1.17"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -211,19 +211,20 @@ version = "1"
 optional = true
 
 [dependencies.self_update]
-version = "0.32"
+version = "0.36"
 optional = true
 
 [dependencies.serde_json]
 version = "1.0"
 optional = true
+features = [ "preserve_order" ]
 
 [dependencies.thiserror]
 version = "1.0"
 optional = true
 
 [dependencies.ureq]
-version = "2.5"
+version = "2.6"
 features = [ "json" ]
 
 [dev-dependencies.bincode]
@@ -233,7 +234,7 @@ version = "1.3"
 version = "0.11.2"
 
 [dev-dependencies.tempfile]
-version = "3.3"
+version = "3.4"
 
 [build-dependencies.walkdir]
 version = "2"
