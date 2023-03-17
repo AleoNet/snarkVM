@@ -37,6 +37,7 @@ harness = false
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
+bench = false
 
 [[bench]]
 name = "marlin"
