@@ -1,6 +1,11 @@
 name: Run snarkVM Benchmarks
 
 on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - 'testnet3'
+      - 'testnet3.3'
   push:
     branches:
       - 'testnet3'
