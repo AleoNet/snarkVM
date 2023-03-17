@@ -209,10 +209,9 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     }
 
     #[inline]
-    // TODO: Cleanup
     /// Updates the Merkle tree at the location of the given leaf index with the new leaf.
     pub fn update(&mut self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<()> {
-        let _timer = timer!("MerkleTree::update");
+        let timer = timer!("MerkleTree::update");
 
         // Check that the leaf index is within the bounds of the Merkle tree.
         ensure!(
@@ -225,6 +224,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
         // Compute the new leaf hash.
         let new_leaf_hash = self.leaf_hasher.hash_leaf(new_leaf)?;
+        lap!(timer, "Hashed 1 new leaf");
         // Add the new leaf hash to the path hashes.
         path_hashes.push(new_leaf_hash);
 
@@ -260,6 +260,9 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Update the root hash, by hashing the current root hash with the empty hash.
             root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
         }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        // Update the root hash.
         self.root = root_hash;
 
         // Update the rest of the tree with the new path hashes.
@@ -269,15 +272,15 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             index = parent(index.unwrap());
         }
 
+        finish!(timer);
         Ok(())
     }
 
     #[inline]
-    // TODO: Cleanup
     /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
     /// The leaf indices must be sorted in descending order and must be unique.
     pub fn batch_update(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
-        let _timer = timer!("MerkleTree::batch_update");
+        let timer = timer!("MerkleTree::batch_update");
 
         // TODO: CHeck that the update indices are sorted in descending order and unique.
 
@@ -290,26 +293,24 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             None => bail!("Integer overflow when computing the Merkle tree start index"),
         };
 
-        let check_and_hash_update = |(leaf_index, leaf): &(usize, LH::Leaf)| {
-            // Check that the leaf index is within the bounds of the Merkle tree.
-            ensure!(
-                *leaf_index < self.number_of_leaves,
-                "Leaf index must be less than the number of leaves in the Merkle tree"
-            );
-            // Hash the leaf and add it to the updated hashes.
+        // A helper to compute the leaf hash.
+        let hash_update = |(leaf_index, leaf): &(usize, LH::Leaf)| {
             self.leaf_hasher.hash_leaf(leaf).map(|hash| (start + leaf_index, hash))
         };
 
         // Hash the leaves and add them to the updated hashes.
         let leaf_hashes: Vec<(usize, LH::Hash)> = match updates.len() {
-            0..=100 => updates.iter().map(|update| check_and_hash_update(update)).collect::<Result<Vec<_>>>()?,
-            _ => cfg_iter!(updates).map(|update| check_and_hash_update(update)).collect::<Result<Vec<_>>>()?,
+            0..=100 => updates.iter().map(|update| hash_update(update)).collect::<Result<Vec<_>>>()?,
+            _ => cfg_iter!(updates).map(|update| hash_update(update)).collect::<Result<Vec<_>>>()?,
         };
+        lap!(timer, "Hashed {} new leaves", leaf_hashes.len());
+
         // Store the updated hashes by level.
         let mut updated_hashes = vec![leaf_hashes];
 
         // A helper function to compute the path hashes for a given level.
-        let compute_path_hashes = |inputs: &[(usize, (PH::Hash, PH::Hash))]| match inputs.len() {
+        type Update<PH> = (usize, (<PH as PathHash>::Hash, <PH as PathHash>::Hash));
+        let compute_path_hashes = |inputs: &[Update<PH>]| match inputs.len() {
             0..=100 => inputs
                 .iter()
                 .map(|(index, (left, right))| self.path_hasher.hash_children(left, right).map(|hash| (*index, hash)))
@@ -324,7 +325,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // For each level in the tree, compute the path hashes.
         for level in 0..tree_depth as usize {
             // Prepare the inputs to path hasher.
-            let mut inputs = Vec::with_capacity(updated_hashes[level].len() / 2);
+            let mut inputs = Vec::with_capacity(updated_hashes[level].len());
             let mut current = 0;
             while current < updated_hashes[level].len() {
                 let (current_leaf_index, current_leaf_hash) = updated_hashes[level][current];
@@ -376,12 +377,17 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Update the root hash, by hashing the current root hash with the empty hash.
             root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
         }
+        lap!(timer, "Hashed {} padding levels", padding_depth);
+
+        // Update the root hash.
         self.root = root_hash;
 
         // Update the rest of the tree with the updated hashes.
         for (index, hash) in updated_hashes.into_iter().flatten() {
             self.tree[index] = hash;
         }
+
+        finish!(timer);
         Ok(())
     }
 

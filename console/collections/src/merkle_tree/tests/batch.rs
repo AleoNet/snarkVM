@@ -55,26 +55,18 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
 
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
     if !updates.is_empty() {
-        println!("Updating leaves.");
         // Update the leaves of the Merkle tree.
         merkle_tree.batch_update(updates)?;
-        println!("Checking updated leaves.");
         // Check each additional leaf in the Merkle tree.
         for (leaf_index, leaf) in updates {
-            println!("1");
             // Compute a Merkle proof for the leaf.
             let proof = merkle_tree.prove(*leaf_index, leaf)?;
-            println!("2");
             // Verify the Merkle proof succeeds.
             assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
-            println!("3");
             // Verify the Merkle proof **fails** on an invalid root.
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::zero(), leaf));
-            println!("4");
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::one(), leaf));
-            println!("5");
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
-            println!("6");
         }
     }
     Ok(())
@@ -248,8 +240,6 @@ fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
             // Determine the leaves and additional leaves.
             let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), 256);
 
-            println!("depth: {DEPTH}, num_leaves: {}", num_leaves);
-
             // Construct the leaves.
             let leaves = (0..num_leaves)
                 .map(|_| Field::<CurrentEnvironment>::rand(rng).to_bits_le())
@@ -268,9 +258,6 @@ fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
             batch_updates.sort_by(|(a, _), (b, _)| a.cmp(b));
             batch_updates.reverse();
             batch_updates.dedup_by_key(|(a, _)| *a);
-
-            println!("Number of single updates: {}", single_updates.len());
-            println!("Number of batch updates: {}\n", batch_updates.len());
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =

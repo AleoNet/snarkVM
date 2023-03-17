@@ -169,7 +169,7 @@ fn compare_single_leaf_update(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("Batch", &format!("{depth}")),
             &vec![(index, new_leaf)],
-            |b, updates| b.iter_batched(|| tree.clone(), |mut tree| tree.batch_update(&updates), BatchSize::SmallInput),
+            |b, updates| b.iter_batched(|| tree.clone(), |mut tree| tree.batch_update(updates), BatchSize::SmallInput),
         );
     }
 }
