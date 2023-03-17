@@ -18,6 +18,8 @@ use super::*;
 use snarkvm_console_algorithms::{Poseidon, BHP1024, BHP512};
 use snarkvm_console_types::prelude::Console;
 
+use indexmap::IndexMap;
+
 type CurrentEnvironment = Console;
 
 const ITERATIONS: u128 = 10;
@@ -71,6 +73,50 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
             assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
         }
     }
+    Ok(())
+}
+
+/// Runs the following test:
+/// 1. Construct a Merkle tree of a given depth with a given number of leaves.
+/// 2. Apply the updates to the Merkle tree.
+/// 3. Construct a new Merkle tree with the only the updated leaves.
+/// 4. Check that the Merkle root of the new Merkle tree is the same as the Merkle root of the original Merkle tree.
+fn check_updated_merkle_tree_is_consistent<
+    E: Environment,
+    LH: LeafHash<Hash = PH::Hash>,
+    PH: PathHash<Hash = Field<E>>,
+    const DEPTH: u8,
+>(
+    leaf_hasher: &LH,
+    path_hasher: &PH,
+    leaves: Vec<LH::Leaf>,
+    updates: Vec<(usize, LH::Leaf)>,
+) -> Result<()> {
+    // Construct the Merkle tree for the given leaves.
+    let mut merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, &leaves)?;
+    assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
+
+    // Construct an index map to track the leaves.
+    let mut leaf_map: IndexMap<usize, LH::Leaf> = leaves.into_iter().enumerate().collect::<IndexMap<usize, LH::Leaf>>();
+
+    // Apply the updates to the Merkle tree.
+    for (index, leaf) in &updates {
+        merkle_tree.update(*index, leaf)?;
+    }
+
+    // Add the updated leaves to the index map.
+    for (index, leaf) in updates {
+        leaf_map.insert(index, leaf);
+    }
+
+    // Get the updated leaves.
+    let updated_leaves = leaf_map.values().cloned().collect::<Vec<LH::Leaf>>();
+
+    // Construct a new Merkle tree with the updated leaves.
+    let updated_merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, &updated_leaves)?;
+
+    // Check that the Merkle root of the new Merkle tree is the same as the Merkle root of the original Merkle tree.
+    assert_eq!(merkle_tree.root(), updated_merkle_tree.root());
     Ok(())
 }
 
@@ -277,6 +323,118 @@ fn test_merkle_tree_poseidon() -> Result<()> {
     assert!(run_test::<31>(&mut rng).is_ok());
     assert!(run_test::<32>(&mut rng).is_ok());
     assert!(run_test::<64>(&mut rng).is_ok());
+    Ok(())
+}
+
+#[test]
+fn test_merkle_tree_bhp_update_is_consistent() -> Result<()> {
+    fn run_test<const DEPTH: u8>(rng: &mut TestRng) -> Result<()> {
+        type LH = BHP1024<CurrentEnvironment>;
+        type PH = BHP512<CurrentEnvironment>;
+
+        let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+        let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
+
+        for _ in 0..ITERATIONS {
+            // Determine the leaves and additional leaves.
+            let num_leaves = std::cmp::min(2u128.pow(DEPTH as u32), 1000);
+
+            // Construct the random updates.
+            let updates = (0..num_leaves)
+                .map(|_| {
+                    let index: u128 = Uniform::rand(rng);
+                    ((index % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le())
+                })
+                .collect::<Vec<(usize, Vec<bool>)>>();
+
+            // Check the Merkle tree.
+            check_updated_merkle_tree_is_consistent::<CurrentEnvironment, LH, PH, DEPTH>(
+                &leaf_hasher,
+                &path_hasher,
+                (0..num_leaves)
+                    .map(|_| Field::<CurrentEnvironment>::rand(rng).to_bits_le())
+                    .collect::<Vec<Vec<bool>>>(),
+                updates,
+            )?;
+        }
+        Ok(())
+    }
+
+    let mut rng = TestRng::default();
+
+    // Ensure DEPTH = 0 fails.
+    assert!(run_test::<0>(&mut rng).is_err());
+    // Spot check important depths.
+    assert!(run_test::<1>(&mut rng).is_ok());
+    assert!(run_test::<2>(&mut rng).is_ok());
+    assert!(run_test::<3>(&mut rng).is_ok());
+    assert!(run_test::<4>(&mut rng).is_ok());
+    assert!(run_test::<5>(&mut rng).is_ok());
+    assert!(run_test::<6>(&mut rng).is_ok());
+    assert!(run_test::<7>(&mut rng).is_ok());
+    assert!(run_test::<8>(&mut rng).is_ok());
+    assert!(run_test::<9>(&mut rng).is_ok());
+    assert!(run_test::<10>(&mut rng).is_ok());
+    assert!(run_test::<11>(&mut rng).is_ok());
+    assert!(run_test::<12>(&mut rng).is_ok());
+    assert!(run_test::<13>(&mut rng).is_ok());
+    assert!(run_test::<14>(&mut rng).is_ok());
+    assert!(run_test::<15>(&mut rng).is_ok());
+    Ok(())
+}
+
+#[test]
+fn test_merkle_tree_poseidon_update_is_consistent() -> Result<()> {
+    fn run_test<const DEPTH: u8>(rng: &mut TestRng) -> Result<()> {
+        type LH = Poseidon<CurrentEnvironment, 4>;
+        type PH = Poseidon<CurrentEnvironment, 2>;
+
+        let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+        let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
+
+        for _ in 0..ITERATIONS {
+            // Determine the leaves and additional leaves.
+            let num_leaves = std::cmp::min(2u128.pow(DEPTH as u32), 1000);
+
+            // Construct the random updates.
+            let updates = (0..num_leaves)
+                .map(|_| {
+                    let index: u128 = Uniform::rand(rng);
+                    ((index % num_leaves) as usize, vec![Uniform::rand(rng)])
+                })
+                .collect::<Vec<(usize, Vec<_>)>>();
+
+            // Check the Merkle tree.
+            check_updated_merkle_tree_is_consistent::<CurrentEnvironment, LH, PH, DEPTH>(
+                &leaf_hasher,
+                &path_hasher,
+                (0..num_leaves).map(|_| vec![Uniform::rand(rng)]).collect::<Vec<Vec<_>>>(),
+                updates,
+            )?;
+        }
+        Ok(())
+    }
+
+    let mut rng = TestRng::default();
+
+    // Ensure DEPTH = 0 fails.
+    assert!(run_test::<0>(&mut rng).is_err());
+    // Spot check important depths.
+    assert!(run_test::<1>(&mut rng).is_ok());
+    assert!(run_test::<2>(&mut rng).is_ok());
+    assert!(run_test::<3>(&mut rng).is_ok());
+    assert!(run_test::<4>(&mut rng).is_ok());
+    assert!(run_test::<5>(&mut rng).is_ok());
+    assert!(run_test::<6>(&mut rng).is_ok());
+    assert!(run_test::<7>(&mut rng).is_ok());
+    assert!(run_test::<8>(&mut rng).is_ok());
+    assert!(run_test::<9>(&mut rng).is_ok());
+    assert!(run_test::<10>(&mut rng).is_ok());
+    assert!(run_test::<11>(&mut rng).is_ok());
+    assert!(run_test::<12>(&mut rng).is_ok());
+    assert!(run_test::<13>(&mut rng).is_ok());
+    assert!(run_test::<14>(&mut rng).is_ok());
+    assert!(run_test::<15>(&mut rng).is_ok());
     Ok(())
 }
 

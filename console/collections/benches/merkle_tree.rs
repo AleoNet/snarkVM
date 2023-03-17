@@ -83,7 +83,8 @@ fn update(c: &mut Criterion) {
     // For each number of leaves to update, benchmark the update operation.
     for num_leaves in NUM_LEAVES {
         // Construct a vector of (index, new_leaf) pairs to update the tree with.
-        let updates = generate_leaves!(*UPDATE_SIZES.last().unwrap(), &mut rng)
+        // Note that we need to bound the number of updates since a large number of sequential singular updates to exceedingly long.
+        let updates = generate_leaves!(std::cmp::min(*UPDATE_SIZES.last().unwrap(), 10_000), &mut rng)
             .into_iter()
             .map(|leaf| {
                 let index: usize = Uniform::rand(&mut rng);

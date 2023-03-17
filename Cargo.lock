@@ -2287,6 +2287,7 @@ version = "0.9.14"
 dependencies = [
  "aleo-std",
  "criterion",
+ "indexmap",
  "rayon",
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
