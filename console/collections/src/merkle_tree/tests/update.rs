@@ -186,8 +186,6 @@ fn test_merkle_tree_bhp() -> Result<()> {
                 let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), i);
                 let num_updates = core::cmp::min(num_leaves, core::cmp::min(2u128.pow(DEPTH as u32) - num_leaves, j));
 
-                println!("depth: {}, num_leaves: {}, num_updates: {}", DEPTH, num_leaves, num_updates);
-
                 // Check the Merkle tree.
                 check_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH>(
                     &leaf_hasher,

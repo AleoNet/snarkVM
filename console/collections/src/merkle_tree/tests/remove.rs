@@ -99,7 +99,7 @@ fn test_merkle_tree_bhp_remove() -> Result<()> {
             }
         }
 
-        // Test updating many leaves in the merkle tree (spanning powers of two).
+        // Test removing many leaves from the merkle tree (spanning powers of two).
         for i in 1..ITERATIONS {
             if i >= DEPTH as u128 {
                 continue;
@@ -177,7 +177,7 @@ fn test_merkle_tree_poseidon_remove() -> Result<()> {
             }
         }
 
-        // Test updatining many leaves in the merkle tree (spanning powers of two).
+        // Test removing many leaves from the merkle tree (spanning powers of two).
         for i in 1..ITERATIONS {
             if i >= DEPTH as u128 {
                 continue;
