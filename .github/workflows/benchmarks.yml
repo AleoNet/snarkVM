@@ -1,0 +1,103 @@
+name: Run snarkVM Benchmarks
+
+on:
+  push:
+    branches:
+      - 'testnet3'
+      - 'testnet3.3'
+
+jobs:
+  # Run benchmarks and stores the output to a file
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Criterion
+        run: |
+          cargo install --version=1.0.0-alpha3 cargo-criterion
+
+      - name: Benchmark algorithms
+        run: |
+          cd algorithms
+          cargo criterion --output-format bencher | tee -a ../output.txt
+          cd ..
+
+      - name: Benchmark circuit/environment
+        run: |
+          cd circuit/environment
+          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      - name: Benchmark console/account
+        run: |
+          cd console/account
+          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      - name: Benchmark console/algorithms
+        run: |
+          cd console/algorithms
+          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      - name: Benchmark console/collections
+        run: |
+          cd console/collections
+          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cd ../..
+          
+      - name: Benchmark curves
+        run: |
+          cd curves
+          cargo criterion --output-format bencher | tee -a ../output.txt
+          cd ..
+
+      - name: Benchmark synthesizer
+        run: |
+          cd synthesizer
+          cargo criterion --output-format bencher | tee -a ../output.txt
+          cd ..
+
+      # Clean benchmark output - `TestRng` and `ignored` lines
+      - name: Clean benchmark output
+        run: |
+          sed -i '/TestRng/d' myfile.txt
+          sed -i '/ignored/d' myfile.txt
+
+      # Download previous benchmark result from cache (if exists)
+      - name: Download previous benchmark data
+        uses: actions/cache@v1
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+
+      - name: Store benchmark result
+        uses: rhysd/github-action-benchmark@v1
+        with:
+          name: snarkVM Benchmarks
+          tool: 'cargo'
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-comment-cc-users: '@raychu86'
