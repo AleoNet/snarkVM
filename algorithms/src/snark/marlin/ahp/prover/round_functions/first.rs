@@ -83,18 +83,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             assert_eq!(z_a.len(), batch_size);
             assert_eq!(z_b.len(), batch_size);
             assert_eq!(private_variables.len(), batch_size);
+            assert_eq!(x_polys.len(), batch_size);
             
             let circuit_id = format!("circuit_{:x?}", circuit.hash);
             let c_domain = circuit_state.constraint_domain;
             let i_domain = circuit_state.input_domain;
 
             let mut circuit_r_b_s = Vec::with_capacity(batch_size);
-            for (i, (z_a, z_b, private_variables, x_poly)) in
+            for (j, (z_a, z_b, private_variables, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
             {
-                let witness_label_w = witness_label(&circuit_id.clone(), "w", i);
-                let witness_label_za = witness_label(&circuit_id.clone(), "z_a", i);
-                let witness_label_zb = witness_label(&circuit_id.clone(), "z_b", i);
+                let witness_label_w = witness_label(&circuit_id.clone(), "w", j);
+                let witness_label_za = witness_label(&circuit_id.clone(), "z_a", j);
+                let witness_label_zb = witness_label(&circuit_id.clone(), "z_b", j);
                 job_pool.add_job(move || Self::calculate_w(witness_label_w, private_variables, &x_poly, c_domain, i_domain, circuit));
                 job_pool.add_job(move || Self::calculate_z_m(witness_label_za, z_a, false, c_domain, circuit, None));
                 let r_b = F::rand(rng);
@@ -174,7 +175,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         input_domain: EvaluationDomain<F>,
         circuit: &Circuit<F, MM>,
     ) -> PoolResult<F> {
-        let mut w_extended = private_variables.to_vec();
+        let mut w_extended = private_variables;
         let ratio = constraint_domain.size() / input_domain.size();
         w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
 
