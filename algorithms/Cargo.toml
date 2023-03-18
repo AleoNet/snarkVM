@@ -43,6 +43,11 @@ name = "marlin"
 path = "benches/snark/marlin.rs"
 harness = false
 
+[[bench]]
+name = "polynomials"
+path = "benches/polynomial/polynomials.rs"
+harness = false
+
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.9.14"
