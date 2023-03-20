@@ -151,6 +151,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(constraint_domain, fft_precomputation, ifft_precomputation, summed_t, summed_z_m, z, *alpha);
         
+                // Naive setup:
+                circuit_specific_lhs = circuit_specific_lhs.mul_by_vanishing_poly(state.max_constraint_domain);
+                let (quotient, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(*constraint_domain).unwrap();
+                assert!(remainder.is_zero());
+                circuit_specific_lhs = quotient * (constraint_domain.size_as_field_element / max_constraint_domain_size);
                 circuit_specific_lhs *= circuit_combiner;
 
                 // Let H = largest_domain;
@@ -158,17 +163,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 // Let v_H := H.vanishing_polynomial();
                 // Let v_H_i := H_i.vanishing_polynomial();
                 // Let s := H.selector_polynomial(H_i) = (v_H / v_H_i) * (H_i.size() / H.size());
+                // Let m := masking polynomial
 
-                // Later on, we multiply `lhs` by s, and divide by v_H.
-                // Substituting in s, we get that lhs * s / v_H = (lhs / v_H_i) * (H_i.size() / H.size());
+                // Later on, we multiply `lhs` by s, add m and divide by v_H.
+                // Substituting in s, we get that (lhs * s + m) / v_H = (lhs / v_H_i) * (H_i.size() / H.size()) + m / v_H;
                 // That's what we're computing here.
-                
-                let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(*constraint_domain).unwrap();
-                let multiplier = constraint_domain.size_as_field_element / max_constraint_domain_size;
-                cfg_iter_mut!(circuit_specific_lhs.coeffs).for_each(|c| *c *= multiplier);        
 
-                // TODO: if I continue with this setup, I should remove the division by v_H one level up the callchain.
-                // However, I'm confused about the fact that we now get many small LHS's AND Remainders, can these simply be added up?
+                // TODO: Potential optimization:
+                // let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(*constraint_domain).unwrap();
+                // let multiplier = constraint_domain.size_as_field_element / max_constraint_domain_size;
+                // cfg_iter_mut!(circuit_specific_lhs.coeffs).for_each(|c| *c *= multiplier);        
+                // cfg_iter_mut!(remainder.coeffs).for_each(|c| *c *= multiplier);        
+                // TODO: Can we just sum up all of the remainders, potentially carrying back to the quotient?
+                // TODO: Would also still need to divide m by v_H 
+                // TODO: remove division by v_H one level up the callchain.
 
                 circuit_specific_lhs
             });

@@ -79,7 +79,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let z_a = circuit_state.z_a.take().unwrap();
             let z_b = circuit_state.z_b.take().unwrap();
             let private_variables = core::mem::take(&mut circuit_state.private_variables);
-            let x_polys = core::mem::take(&mut circuit_state.x_polys);
+            let x_polys = circuit_state.x_polys.clone();
             assert_eq!(z_a.len(), batch_size);
             assert_eq!(z_b.len(), batch_size);
             assert_eq!(private_variables.len(), batch_size);
