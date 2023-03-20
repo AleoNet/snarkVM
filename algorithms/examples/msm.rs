@@ -26,7 +26,6 @@ use snarkvm_utilities::{
 };
 
 use anyhow::Result;
-use rayon::prelude::*;
 
 const DEFAULT_POWER_OF_TWO: usize = 20;
 

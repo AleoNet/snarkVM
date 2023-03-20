@@ -686,6 +686,7 @@ impl<F: FftField> EvaluationDomain<F> {
         });
     }
 
+    #[allow(clippy::unnecessary_to_owned)]
     fn io_helper_with_roots<T: DomainCoeff<F>>(&self, xi: &mut [T], roots: &[F]) {
         let mut roots = std::borrow::Cow::Borrowed(roots);
 
