@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.9.13"
+version = "0.9.14"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -28,29 +28,30 @@ crate-type = [ "cdylib", "rlib" ]
 
 [dependencies.snarkvm-console]
 path = "../console"
-version = "0.9.13"
+version = "0.9.14"
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.13"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.13"
+version = "0.9.14"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
-version = "0.9.13"
+version = "0.9.14"
 features = [ "wasm" ]
 optional = true
+default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.13"
+version = "0.9.14"
 optional = true
 
 [dependencies.rand]
@@ -58,7 +59,7 @@ version = "0.8"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.152"
+version = "1.0.156"
 default-features = false
 features = [ "derive" ]
 
