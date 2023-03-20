@@ -26,6 +26,7 @@ pub struct Circuit<F: Field> {
     pub b: Option<F>,
     pub num_constraints: usize,
     pub num_variables: usize,
+    pub mul_depth: usize,
 }
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
@@ -42,26 +43,33 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
                 Ok(a)
             },
         )?;
-        let d = cs.alloc_input(
-            || "d",
-            || {
-                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+        let mut new_vars = Vec::with_capacity(self.mul_depth - 1);
+        for i in 0..(self.mul_depth - 1) {
+            let new_var = cs.alloc_input(
+                || format!("new_var {i}"),
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
-                a.mul_assign(&b);
-                a.mul_assign(&b);
-                Ok(a)
-            },
-        )?;
+                    a.mul_assign(&b);
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
+            new_vars.push(new_var);
+        }
 
-        for i in 0..(self.num_variables - 3) {
+        for i in 0..(self.num_variables - 2 - self.mul_depth) {
             let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         }
 
-        for i in 0..(self.num_constraints - 1) {
+        for i in 0..(self.num_constraints - self.mul_depth + 1) {
             cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + c);
         }
-        cs.enforce(|| "constraint_final", |lc| lc + c, |lc| lc + b, |lc| lc + d);
+
+        for i in 0..(self.mul_depth - 1) {
+            cs.enforce(|| format!("constraint_final {i}"), |lc| lc + c, |lc| lc + b, |lc| lc + new_vars[i]);
+        }
 
         Ok(())
     }
@@ -101,7 +109,7 @@ mod marlin {
                         let mut d = c;
                         d.mul_assign(&b);
 
-                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 };
 
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -143,8 +151,7 @@ mod marlin {
                                             inputs.push(new_var);
                                         }
 
-                                        // TODO: might need to adjust num_constraints and num_variables given that we're building a bigger circuit now
-                                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+                                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 + i };
                                         (circ, inputs)
                                     })
                                     .unzip();
@@ -220,7 +227,7 @@ mod marlin {
                     let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
 
                     let circ =
-                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
+                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
 
                     let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -247,7 +254,7 @@ mod marlin {
                     let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
 
                     let circ =
-                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
+                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
 
                     let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -379,7 +386,7 @@ mod marlin_hiding {
             let mut d = c;
             d.mul_assign(&b);
 
-            let circuit = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+            let circuit = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 };
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
@@ -404,7 +411,7 @@ mod marlin_hiding {
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
-        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
+        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
 
         let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -425,7 +432,7 @@ mod marlin_hiding {
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
-        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
+        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
 
         let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -506,7 +513,7 @@ mod marlin_hiding {
         let c = a * b;
         let d = c * b;
 
-        (Circuit { a: Some(a), b: Some(b), num_constraints, num_variables }, c, d)
+        (Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 }, c, d)
     }
 
     #[test]
