@@ -26,7 +26,6 @@ edition = "2021"
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.9.14"
-default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.15"
