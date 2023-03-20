@@ -35,56 +35,55 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Criterion
-        run: |
-          cargo install --version=1.0.0-alpha3 cargo-criterion
-
       - name: Benchmark algorithms
         run: |
           cd algorithms
-          cargo criterion --output-format bencher | tee -a ../output.txt
+          cargo bench --bench variable_base -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench marlin -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       - name: Benchmark circuit/environment
         run: |
           cd circuit/environment
-          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench linear_combination -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       - name: Benchmark console/account
         run: |
           cd console/account
-          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench account -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       - name: Benchmark console/algorithms
         run: |
           cd console/algorithms
-          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       - name: Benchmark console/collections
         run: |
           cd console/collections
-          cargo criterion --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
           cd ../..
           
       - name: Benchmark curves
         run: |
           cd curves
-          cargo criterion --output-format bencher | tee -a ../output.txt
+          cargo bench --bench curves -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       - name: Benchmark synthesizer
         run: |
           cd synthesizer
-          cargo criterion --output-format bencher | tee -a ../output.txt
+          cargo bench --bench block --output-format bencher | tee -a ../output.txt
+          cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       # Clean benchmark output to remove unnecessary lines
       - name: Clean benchmark output
         run: |
-          sed -n -i '/bench/p' output.txt
+          sed -n -i '/bench:/p' output.txt
 
       # Download previous benchmark result from cache (if exists)
       - name: Download previous benchmark data
