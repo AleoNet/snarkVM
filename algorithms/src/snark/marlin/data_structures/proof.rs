@@ -190,9 +190,11 @@ impl<'a, F: PrimeField> Evaluations<F> {
         let mut g_c_evals = BTreeMap::new();
         
         for (label, value) in map {
-            let circuit_id = <CircuitId>::from_hex(label.split("_")
-                                                            .collect::<Vec<&str>>()[1])
-                                                            .expect("Decoding circuit_id failed");
+            if label == "g_1" {
+                break
+            }
+            
+            let circuit_id = CircuitId::from_witness_label(label);
             if label.contains("z_b_") {
                 if let Some(z_b_i) = z_b_evals.get_mut(&circuit_id) {
                     z_b_i.push(*value);
@@ -213,26 +215,26 @@ impl<'a, F: PrimeField> Evaluations<F> {
     }
 
     pub(crate) fn get(&self, label: &str) -> Option<F> {
-        let mut circuit_id = <CircuitId>::from_hex(label.split("_")
-                                                        .collect::<Vec<&str>>()[1])
-                                                        .expect("Decoding circuit_id failed");
+        if label == "g_1" {
+            return Some(self.g_1_eval)
+        }
+
+        let circuit_id = CircuitId::from_witness_label(label);
         if let Some(index) = label.find("z_b_") {
             if let Some(z_b_eval) = self.z_b_evals.get(&circuit_id) {
-                Some(z_b_eval[index])
+                let j = label[index + 4..].parse::<usize>().unwrap();
+                Some(z_b_eval[j])
             } else {
                 None
             }
-        } else if let Some(index) = label.find("g_a") {
+        } else if let Some(_) = label.find("g_a") {
             self.g_a_evals.get(&circuit_id).copied()
-        } else if let Some(index) = label.find("g_b") {
+        } else if let Some(_) = label.find("g_b") {
             self.g_b_evals.get(&circuit_id).copied()
-        } else if let Some(index) = label.find("g_c") {
+        } else if let Some(_) = label.find("g_c") {
             self.g_c_evals.get(&circuit_id).copied()
         } else {
-            match label {
-                "g_1" => Some(self.g_1_eval),
-                _ => None,
-            }
+            None
         }
     }
 }

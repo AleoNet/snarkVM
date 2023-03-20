@@ -125,7 +125,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 circuit_commitments,
                 verifier_key,
                 mode: PhantomData,
-                hash: indexed_circuit.hash,
+                hash: indexed_circuit.hash.clone(),
             };
             circuit_verifying_keys.push(circuit_verifying_key.clone());
 
@@ -670,7 +670,7 @@ where
 
             let input_domain = 
                 EvaluationDomain::<E::Fr>::new(vk.orig_vk.circuit_info.num_public_inputs).unwrap();
-            input_domains.insert(vk.orig_vk.hash, input_domain);
+            input_domains.insert(vk.orig_vk.hash.clone(), input_domain);
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
                 public_inputs_i
@@ -725,20 +725,19 @@ where
 
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
         let circuit_ids = batch_sizes.iter().flat_map(|(circuit_id, batch_size)| {
-            let circuit_id_str = format!("circuit_{:x?}", circuit_id);
-            vec![circuit_id_str; *batch_size]
+            vec![circuit_id; *batch_size]
         }).collect_vec();
 
         let mut first_commitments = comms
             .witness_commitments
             .iter()
-            .zip(circuit_ids)
+            .zip(circuit_ids.iter())
             .enumerate()
             .flat_map(|(i, (c, circuit_id))| {
                 [
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(&circuit_id, "w", i)], c.w),
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(&circuit_id, "z_a", i)], c.z_a),
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(&circuit_id, "z_b", i)], c.z_b),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "w", i)], c.w),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_a", i)], c.z_a),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_b", i)], c.z_b),
                 ]
             })
             .collect::<Vec<_>>();
@@ -762,11 +761,12 @@ where
             .iter()
             .zip(comms.g_b_commitments.iter())
             .zip(comms.g_c_commitments.iter())
-            .flat_map(|((g_a, g_b), g_c)| {
+            .zip(circuit_ids.iter())
+            .flat_map(|(((g_a, g_b), g_c), circuit_id)| {
                 [
-                    LabeledCommitment::new_with_info(&third_round_info["g_a"], *g_a),
-                    LabeledCommitment::new_with_info(&third_round_info["g_b"], *g_b),
-                    LabeledCommitment::new_with_info(&third_round_info["g_c"], *g_c),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id,"g_a",0)], *g_a),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id,"g_b",0)], *g_b),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id,"g_c",0)], *g_c),
                 ]
             }).collect_vec();
 

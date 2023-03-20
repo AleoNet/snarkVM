@@ -27,8 +27,29 @@ use crate::{
 use sha2::Digest;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
+use hex::FromHex;
 
-pub type CircuitId = [u8; 32];
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
+pub struct CircuitId([u8; 32]);
+
+impl std::fmt::Display for CircuitId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
+    }
+}
+
+impl CircuitId {
+    pub fn from_witness_label(witness_label: &str) -> Self {
+        CircuitId {
+            0: <[u8;32]>::from_hex(witness_label.split("_")
+                .collect::<Vec<&str>>()[1])
+                .expect("Decoding circuit_id failed"),
+        }
+    }
+}
 
 /// The indexed version of the constraint system.
 /// This struct contains three kinds of objects:
@@ -91,7 +112,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         fft_precomputation: FFTPrecomputation<F>,
         ifft_precomputation: IFFTPrecomputation<F>,
     ) -> Self {
-        let hash = Self::hash(&index_info, &a, &b, &c).unwrap();
+        let hash = CircuitId { 0: Self::hash(&index_info, &a, &b, &c).unwrap(), };
         Self {
             index_info,
             a,
@@ -219,7 +240,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let hash = Self::hash(&index_info, &a, &b, &c).unwrap();
+        let hash = CircuitId { 0: Self::hash(&index_info, &a, &b, &c).unwrap(), };
         Ok(Circuit {
             index_info,
             a,

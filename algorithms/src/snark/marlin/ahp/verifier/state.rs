@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
-        ahp::indexer::Circuit,
+        CircuitId,
         ahp::verifier::{FirstMessage, SecondMessage, ThirdMessage},
         MarlinMode,
     },
@@ -41,7 +41,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
 /// State of the AHP verifier.
 #[derive(Debug)]
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
-    pub(crate) circuit_specific_states: BTreeMap<&'a [u8; 32], CircuitSpecificState<F>>,
+    pub(crate) circuit_specific_states: BTreeMap<&'a CircuitId, CircuitSpecificState<F>>,
     pub(crate) largest_constraint_domain: EvaluationDomain<F>,
     pub(crate) largest_non_zero_domain: EvaluationDomain<F>,
 

@@ -149,7 +149,7 @@ mod marlin {
                                     })
                                     .unzip();
                                     let circuit_hash = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().hash;
-                                    constraints.insert(circuit_hash, circuit_batch);
+                                    constraints.insert(circuit_hash.clone(), circuit_batch);
                                     inputs.insert(circuit_hash, input_batch);
                                 }
                                 let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();

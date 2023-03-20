@@ -130,7 +130,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let constraint_domain = &circuit_specific_state.constraint_domain;
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
-            let circuit_id = circuit.hash;
+            let circuit_id = &circuit.hash;
 
             job_pool.add_job(move || {
                 let z_time = start_timer!(|| format!("Compute z poly for circuit {:?}", circuit_id));

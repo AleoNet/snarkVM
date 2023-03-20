@@ -55,7 +55,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         circuits: impl Iterator<Item = (&'a CircuitId, &'a CircuitInfo<F>)>
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         circuits.flat_map(|(circuit_id, circuit_info)| {
-            let circuit_id = format!("circuit_{:x?}", circuit_id);
 
             let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_a).unwrap();
             let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_b).unwrap();
@@ -96,8 +95,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
             let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
-            let circuit_id = format!("circuit_{:x?}", circuit.hash);
-            let label_g_a = witness_label(&circuit_id, "g_a", 0);
+            let label_g_a = witness_label(&circuit.hash, "g_a", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_a,
@@ -113,7 +111,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            let label_g_b = witness_label(&circuit_id, "g_b", 0);
+            let label_g_b = witness_label(&circuit.hash, "g_b", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_b,
@@ -129,7 +127,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            let label_g_c = witness_label(&circuit_id, "g_c", 0);
+            let label_g_c = witness_label(&circuit.hash, "g_c", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_c,
@@ -159,7 +157,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 sum_b: sum_b,
                 sum_c: sum_c,
             };
-            sums.insert(circuit_a.hash, matrix_sum);
+            sums.insert(circuit_a.hash.clone(), matrix_sum);
             state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
             let matrix_gs = prover::MatrixGs {
                 g_a: g_a,
