@@ -20,3 +20,10 @@ mod append;
 mod batch;
 mod remove;
 mod update;
+
+macro_rules! run_tests {
+    ($rng:expr, [$($i:expr),*]) => {
+        $( assert!(run_test::<$i>($rng).is_ok()); )*
+    };
+}
+use run_tests;

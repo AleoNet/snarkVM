@@ -339,10 +339,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
         // Compute the depth of the tree. This corresponds to the number of levels of hashes in the tree.
         let tree_depth = tree_depth::<DEPTH>(self.tree.len())?;
+        // Allocate a vector to store the inputs to the path hasher.
+        let mut inputs = Vec::with_capacity(updated_hashes[0].len());
         // For each level in the tree, compute the path hashes.
         for level in 0..tree_depth as usize {
-            // Prepare the inputs to path hasher.
-            let mut inputs = Vec::with_capacity(updated_hashes[level].len());
             let mut current = 0;
             while current < updated_hashes[level].len() {
                 let (current_leaf_index, current_leaf_hash) = updated_hashes[level][current];
@@ -382,6 +382,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             let path_hashes = compute_path_hashes(&inputs)?;
             // Add the path hashes to the updated hashes.
             updated_hashes.push(path_hashes);
+            // Clear the inputs.
+            inputs.clear();
         }
 
         // Compute the padding depth.

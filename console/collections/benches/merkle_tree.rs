@@ -126,7 +126,7 @@ fn batch_update(c: &mut Criterion) {
                 (index % num_leaves, leaf)
             })
             .collect::<Vec<_>>();
-        updates.sort_by(|(a, _), (b, _)| a.cmp(b));
+        updates.sort_by_key(|(a, _)| *a);
         updates.reverse();
         updates.dedup_by_key(|(a, _)| *a);
 

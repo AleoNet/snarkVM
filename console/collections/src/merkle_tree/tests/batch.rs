@@ -42,17 +42,15 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     let mut rng = TestRng::default();
 
     // Check each leaf in the Merkle tree.
-    if !leaves.is_empty() {
-        for (leaf_index, leaf) in leaves.iter().enumerate() {
-            // Compute a Merkle proof for the leaf.
-            let proof = merkle_tree.prove(leaf_index, leaf)?;
-            // Verify the Merkle proof succeeds.
-            assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
-            // Verify the Merkle proof **fails** on an invalid root.
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::zero(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::one(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
-        }
+    for (leaf_index, leaf) in leaves.iter().enumerate() {
+        // Compute a Merkle proof for the leaf.
+        let proof = merkle_tree.prove(leaf_index, leaf)?;
+        // Verify the Merkle proof succeeds.
+        assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
+        // Verify the Merkle proof **fails** on an invalid root.
+        assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::zero(), leaf));
+        assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::one(), leaf));
+        assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
     }
 
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
@@ -250,22 +248,7 @@ fn test_merkle_tree_bhp() -> Result<()> {
     // Ensure DEPTH = 0 fails.
     assert!(run_test::<0>(&mut rng).is_err());
     // Spot check important depths.
-    assert!(run_test::<1>(&mut rng).is_ok());
-    assert!(run_test::<2>(&mut rng).is_ok());
-    assert!(run_test::<3>(&mut rng).is_ok());
-    assert!(run_test::<4>(&mut rng).is_ok());
-    assert!(run_test::<5>(&mut rng).is_ok());
-    assert!(run_test::<6>(&mut rng).is_ok());
-    assert!(run_test::<7>(&mut rng).is_ok());
-    assert!(run_test::<8>(&mut rng).is_ok());
-    assert!(run_test::<9>(&mut rng).is_ok());
-    assert!(run_test::<10>(&mut rng).is_ok());
-    assert!(run_test::<15>(&mut rng).is_ok());
-    assert!(run_test::<16>(&mut rng).is_ok());
-    assert!(run_test::<17>(&mut rng).is_ok());
-    assert!(run_test::<31>(&mut rng).is_ok());
-    assert!(run_test::<32>(&mut rng).is_ok());
-    assert!(run_test::<64>(&mut rng).is_ok());
+    run_tests!(&mut rng, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 31, 32, 64]);
     Ok(())
 }
 
@@ -305,22 +288,7 @@ fn test_merkle_tree_poseidon() -> Result<()> {
     // Ensure DEPTH = 0 fails.
     assert!(run_test::<0>(&mut rng).is_err());
     // Spot check important depths.
-    assert!(run_test::<1>(&mut rng).is_ok());
-    assert!(run_test::<2>(&mut rng).is_ok());
-    assert!(run_test::<3>(&mut rng).is_ok());
-    assert!(run_test::<4>(&mut rng).is_ok());
-    assert!(run_test::<5>(&mut rng).is_ok());
-    assert!(run_test::<6>(&mut rng).is_ok());
-    assert!(run_test::<7>(&mut rng).is_ok());
-    assert!(run_test::<8>(&mut rng).is_ok());
-    assert!(run_test::<9>(&mut rng).is_ok());
-    assert!(run_test::<10>(&mut rng).is_ok());
-    assert!(run_test::<15>(&mut rng).is_ok());
-    assert!(run_test::<16>(&mut rng).is_ok());
-    assert!(run_test::<17>(&mut rng).is_ok());
-    assert!(run_test::<31>(&mut rng).is_ok());
-    assert!(run_test::<32>(&mut rng).is_ok());
-    assert!(run_test::<64>(&mut rng).is_ok());
+    run_tests!(&mut rng, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 31, 32, 64]);
     Ok(())
 }
 
@@ -344,7 +312,7 @@ fn test_merkle_tree_bhp_batch_update_is_consistent() -> Result<()> {
                     ((index % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le())
                 })
                 .collect::<Vec<(usize, Vec<bool>)>>();
-            updates.sort_by(|(a, _), (b, _)| a.cmp(b));
+            updates.sort_by_key(|(a, _)| *a);
             updates.reverse();
             updates.dedup_by_key(|(a, _)| *a);
 
@@ -366,21 +334,7 @@ fn test_merkle_tree_bhp_batch_update_is_consistent() -> Result<()> {
     // Ensure DEPTH = 0 fails.
     assert!(run_test::<0>(&mut rng).is_err());
     // Spot check important depths.
-    assert!(run_test::<1>(&mut rng).is_ok());
-    assert!(run_test::<2>(&mut rng).is_ok());
-    assert!(run_test::<3>(&mut rng).is_ok());
-    assert!(run_test::<4>(&mut rng).is_ok());
-    assert!(run_test::<5>(&mut rng).is_ok());
-    assert!(run_test::<6>(&mut rng).is_ok());
-    assert!(run_test::<7>(&mut rng).is_ok());
-    assert!(run_test::<8>(&mut rng).is_ok());
-    assert!(run_test::<9>(&mut rng).is_ok());
-    assert!(run_test::<10>(&mut rng).is_ok());
-    assert!(run_test::<11>(&mut rng).is_ok());
-    assert!(run_test::<12>(&mut rng).is_ok());
-    assert!(run_test::<13>(&mut rng).is_ok());
-    assert!(run_test::<14>(&mut rng).is_ok());
-    assert!(run_test::<15>(&mut rng).is_ok());
+    run_tests!(&mut rng, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     Ok(())
 }
 
@@ -404,7 +358,7 @@ fn test_merkle_tree_poseidon_batch_update_is_consistent() -> Result<()> {
                     ((index % num_leaves) as usize, vec![Uniform::rand(rng)])
                 })
                 .collect::<Vec<(usize, Vec<_>)>>();
-            updates.sort_by(|(a, _), (b, _)| a.cmp(b));
+            updates.sort_by_key(|(a, _)| *a);
             updates.reverse();
             updates.dedup_by_key(|(a, _)| *a);
 
@@ -424,21 +378,7 @@ fn test_merkle_tree_poseidon_batch_update_is_consistent() -> Result<()> {
     // Ensure DEPTH = 0 fails.
     assert!(run_test::<0>(&mut rng).is_err());
     // Spot check important depths.
-    assert!(run_test::<1>(&mut rng).is_ok());
-    assert!(run_test::<2>(&mut rng).is_ok());
-    assert!(run_test::<3>(&mut rng).is_ok());
-    assert!(run_test::<4>(&mut rng).is_ok());
-    assert!(run_test::<5>(&mut rng).is_ok());
-    assert!(run_test::<6>(&mut rng).is_ok());
-    assert!(run_test::<7>(&mut rng).is_ok());
-    assert!(run_test::<8>(&mut rng).is_ok());
-    assert!(run_test::<9>(&mut rng).is_ok());
-    assert!(run_test::<10>(&mut rng).is_ok());
-    assert!(run_test::<11>(&mut rng).is_ok());
-    assert!(run_test::<12>(&mut rng).is_ok());
-    assert!(run_test::<13>(&mut rng).is_ok());
-    assert!(run_test::<14>(&mut rng).is_ok());
-    assert!(run_test::<15>(&mut rng).is_ok());
+    run_tests!(&mut rng, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     Ok(())
 }
 
@@ -470,7 +410,7 @@ fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
 
             // Construct the batch updates for the single updates.
             let mut batch_updates = single_updates.clone();
-            batch_updates.sort_by(|(a, _), (b, _)| a.cmp(b));
+            batch_updates.sort_by_key(|(a, _)| *a);
             batch_updates.reverse();
             batch_updates.dedup_by_key(|(a, _)| *a);
 
@@ -499,22 +439,7 @@ fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
     // Ensure DEPTH = 0 fails.
     assert!(run_test::<0>(&mut rng).is_err());
     // Spot check important depths.
-    assert!(run_test::<1>(&mut rng).is_ok());
-    assert!(run_test::<2>(&mut rng).is_ok());
-    assert!(run_test::<3>(&mut rng).is_ok());
-    assert!(run_test::<4>(&mut rng).is_ok());
-    assert!(run_test::<5>(&mut rng).is_ok());
-    assert!(run_test::<6>(&mut rng).is_ok());
-    assert!(run_test::<7>(&mut rng).is_ok());
-    assert!(run_test::<8>(&mut rng).is_ok());
-    assert!(run_test::<9>(&mut rng).is_ok());
-    assert!(run_test::<10>(&mut rng).is_ok());
-    assert!(run_test::<15>(&mut rng).is_ok());
-    assert!(run_test::<16>(&mut rng).is_ok());
-    assert!(run_test::<17>(&mut rng).is_ok());
-    assert!(run_test::<31>(&mut rng).is_ok());
-    assert!(run_test::<32>(&mut rng).is_ok());
-    assert!(run_test::<64>(&mut rng).is_ok());
+    run_tests!(&mut rng, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 31, 32, 64]);
     Ok(())
 }
 
@@ -544,7 +469,7 @@ fn test_merkle_tree_poseidon_single_and_batch_updates_match() -> Result<()> {
 
             // Construct the batch updates for the single updates.
             let mut batch_updates = single_updates.clone();
-            batch_updates.sort_by(|(a, _), (b, _)| a.cmp(b));
+            batch_updates.sort_by_key(|(a, _)| *a);
             batch_updates.reverse();
             batch_updates.dedup_by_key(|(a, _)| *a);
 
@@ -573,22 +498,7 @@ fn test_merkle_tree_poseidon_single_and_batch_updates_match() -> Result<()> {
     // Ensure DEPTH = 0 fails.
     assert!(run_test::<0>(&mut rng).is_err());
     // Spot check important depths.
-    assert!(run_test::<1>(&mut rng).is_ok());
-    assert!(run_test::<2>(&mut rng).is_ok());
-    assert!(run_test::<3>(&mut rng).is_ok());
-    assert!(run_test::<4>(&mut rng).is_ok());
-    assert!(run_test::<5>(&mut rng).is_ok());
-    assert!(run_test::<6>(&mut rng).is_ok());
-    assert!(run_test::<7>(&mut rng).is_ok());
-    assert!(run_test::<8>(&mut rng).is_ok());
-    assert!(run_test::<9>(&mut rng).is_ok());
-    assert!(run_test::<10>(&mut rng).is_ok());
-    assert!(run_test::<15>(&mut rng).is_ok());
-    assert!(run_test::<16>(&mut rng).is_ok());
-    assert!(run_test::<17>(&mut rng).is_ok());
-    assert!(run_test::<31>(&mut rng).is_ok());
-    assert!(run_test::<32>(&mut rng).is_ok());
-    assert!(run_test::<64>(&mut rng).is_ok());
+    run_tests!(&mut rng, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 31, 32, 64]);
     Ok(())
 }
 
@@ -607,7 +517,7 @@ fn test_merkle_tree_depth_3_poseidon() -> Result<()> {
         &leaf_hasher,
         &path_hasher,
         &(0..4).map(|_| vec![Uniform::rand(&mut rng)]).collect::<Vec<_>>(),
-        &(0..1).rev().map(|i| (i, vec![Uniform::rand(&mut rng)])).collect::<Vec<_>>(),
+        &[(0, vec![Uniform::rand(&mut rng)])],
     )
 }
 
@@ -626,10 +536,7 @@ fn test_merkle_tree_depth_3_bhp() -> Result<()> {
         &leaf_hasher,
         &path_hasher,
         &(0..4).map(|_| Field::<CurrentEnvironment>::rand(&mut rng).to_bits_le()).collect::<Vec<Vec<bool>>>(),
-        &(0..1)
-            .rev()
-            .map(|i| (i, Field::<CurrentEnvironment>::rand(&mut rng).to_bits_le()))
-            .collect::<Vec<(usize, Vec<bool>)>>(),
+        &[(0, Field::<CurrentEnvironment>::rand(&mut rng).to_bits_le())],
     )
 }
 
