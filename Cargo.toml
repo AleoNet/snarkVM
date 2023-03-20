@@ -94,6 +94,7 @@ full = [
   "parameters",
   "r1cs",
   "synthesizer",
+  "utilities"
 ]
 cli = [
   "anyhow",
