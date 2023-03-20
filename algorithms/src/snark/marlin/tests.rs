@@ -33,42 +33,35 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
     fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
-        let c = cs.alloc_input(
-            || "c",
-            || {
-                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
-                a.mul_assign(&b);
-                Ok(a)
-            },
-        )?;
-        let mut new_vars = Vec::with_capacity(self.mul_depth - 1);
-        for i in 0..(self.mul_depth - 1) {
-            let new_var = cs.alloc_input(
-                || format!("new_var {i}"),
+        let mut mul_vars = Vec::with_capacity(self.mul_depth);
+        for i in 0..self.mul_depth {
+            let mul_var = cs.alloc_input(
+                || format!("mul_var {i}"),
                 || {
                     let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
                     let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
-                    a.mul_assign(&b);
-                    a.mul_assign(&b);
+                    for _ in 0..(1 + i) {
+                        a.mul_assign(&b);
+                    }
                     Ok(a)
                 },
             )?;
-            new_vars.push(new_var);
+            mul_vars.push(mul_var);
         }
 
         for i in 0..(self.num_variables - 2 - self.mul_depth) {
             let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         }
 
-        for i in 0..(self.num_constraints - self.mul_depth + 1) {
-            cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+        let mul_constraints = self.mul_depth - 1;
+        for i in 0..(self.num_constraints - mul_constraints) {
+            cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + mul_vars[0]);
         }
 
-        for i in 0..(self.mul_depth - 1) {
-            cs.enforce(|| format!("constraint_final {i}"), |lc| lc + c, |lc| lc + b, |lc| lc + new_vars[i]);
+        for i in 0..mul_constraints {
+            cs.enforce(|| format!("constraint_mul {i}"), |lc| lc + mul_vars[i], |lc| lc + b, |lc| lc + mul_vars[i + 1]);
         }
 
         Ok(())
