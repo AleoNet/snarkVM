@@ -50,6 +50,12 @@ type LHS<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
+
+    /// Output the number of oracles sent by the prover in the third round.
+    pub fn num_third_round_oracles(circuits: usize) -> usize {
+        circuits*3
+    }
+
     /// Output the degree bounds of oracles in the third round.
     pub fn third_round_polynomial_info<'a>(
         circuits: impl Iterator<Item = (&'a CircuitId, &'a CircuitInfo<F>)>

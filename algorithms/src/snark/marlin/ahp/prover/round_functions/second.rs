@@ -49,7 +49,11 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-
+    /// Output the number of oracles sent by the prover in the second round.
+    pub fn num_second_round_oracles() -> usize {
+        2
+    }
+    
     /// Output the degree bounds of oracles in the first round.
     pub fn second_round_polynomial_info(max_num_constraints: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(max_num_constraints).unwrap();

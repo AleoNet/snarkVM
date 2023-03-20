@@ -508,13 +508,19 @@ where
 
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = keys_to_constraints.iter()
-            .flat_map(|(pk, _)|pk.circuit.iter()) // 12 items per circuit
-            .chain(first_round_oracles.iter_for_open()) // 3 per instance_batch_size + (MM::ZK as usize) items
-            .chain(second_oracles.iter())// 2 items
-            .chain(third_oracles.iter())// 3 items per circuit
-            .chain(fourth_oracles.iter())// 1 item
+            .flat_map(|(pk, _)|pk.circuit.iter())
+            .chain(first_round_oracles.iter_for_open())
+            .chain(second_oracles.iter())
+            .chain(third_oracles.iter())
+            .chain(fourth_oracles.iter())
             .collect();
-        // TODO, somewhere, asserts that out number of oracles matches num_prover_oracles.
+        assert!(polynomials.len() == 
+            keys_to_constraints.len()*12 + // polys for row, col, rowcol, val
+            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_batch_size) +
+            AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
+            AHPForR1CS::<E::Fr, MM>::num_third_round_oracles(keys_to_constraints.len()) +
+            AHPForR1CS::<E::Fr, MM>::num_fourth_round_oracles()
+        );
 
         Self::terminate(terminator)?;
 
