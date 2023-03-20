@@ -36,5 +36,6 @@ pub trait Expectation: Sized {
     /// Checks the expectation against the given output.
     fn check(&self, test: &Self::Test, output: &Self::Output) -> Result<()>;
 
+    /// Saves the test output.
     fn save(&self, output: &Self::Output) -> Result<()>;
 }
