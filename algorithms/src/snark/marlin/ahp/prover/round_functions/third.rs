@@ -48,11 +48,9 @@ use rayon::prelude::*;
 type Sum<F> = F;
 type LHS<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
-struct SumcheckHelperResult<F: PrimeField>(Sum<F>, LHS<F>, Gpoly<F>);
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-    /// Output the degree bounds of oracles in the first round.
-    // TODO: to verify if this is correct, see if we're 'consuming' this information in a similar way to the first round
+    /// Output the degree bounds of oracles in the third round.
     pub fn third_round_polynomial_info<'a>(
         circuits: impl Iterator<Item = (&'a CircuitId, &'a CircuitInfo<F>)>
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
@@ -98,9 +96,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
             let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
+            let circuit_id = format!("circuit_{:x?}", circuit.hash);
+            let label_g_a = witness_label(&circuit_id, "g_a", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
-                    "a",
+                    label_g_a,
                     circuit_state.non_zero_a_domain,
                     &circuit.a_arith,
                     *alpha,
@@ -113,9 +113,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
+            let label_g_b = witness_label(&circuit_id, "g_b", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
-                    "b",
+                    label_g_b,
                     circuit_state.non_zero_b_domain,
                     &circuit.b_arith,
                     *alpha,
@@ -128,9 +129,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
+            let label_g_c = witness_label(&circuit_id, "g_c", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
-                    "c",
+                    label_g_c,
                     circuit_state.non_zero_c_domain,
                     &circuit.c_arith,
                     *alpha,
@@ -179,7 +181,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     #[allow(clippy::too_many_arguments)]
     fn matrix_sumcheck_helper(
-        label: &str,
+        label: String,
         non_zero_domain: EvaluationDomain<F>,
         arithmetization: &MatrixArithmetization<F>,
         alpha: F,
@@ -263,7 +265,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
         cfg_iter_mut!(h.coeffs).for_each(|c| *c *= multiplier);
 
-        let g = LabeledPolynomial::new("g_".to_string() + label, g, Some(non_zero_domain.size() - 2), None);
+        let g = LabeledPolynomial::new(label, g, Some(non_zero_domain.size() - 2), None);
 
         assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);

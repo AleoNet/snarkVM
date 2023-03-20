@@ -20,7 +20,7 @@ use snarkvm_fields::PrimeField;
 
 use crate::{
     polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
-    snark::marlin::{ahp::indexer::Circuit, MarlinMode},
+    snark::marlin::{ahp::indexer::Circuit, CircuitId, MarlinMode},
 };
 
 /// The first set of prover oracles.
@@ -129,7 +129,7 @@ impl<F: PrimeField> SecondOracles<F> {
 /// The third set of prover oracles.
 #[derive(Debug)]
 pub struct ThirdOracles<'a, F: PrimeField> {
-    pub gs: BTreeMap<&'a [u8; 32], MatrixGs<F>>,
+    pub gs: BTreeMap<&'a CircuitId, MatrixGs<F>>,
 }
 
 #[derive(Debug)]
