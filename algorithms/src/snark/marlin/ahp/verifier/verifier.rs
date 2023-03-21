@@ -67,7 +67,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 combiners.instance_combiners.push(*instance_combiner);
             }
             batch_combiners.insert(*circuit_id, combiners);
-            // TODO: to discuss: this is a bit ugly, but could be avoided if either we use an indexmap to count for us what is the first circuit, or we extract the first loop out of the for-loop
             circuit_combiners_needed = 1; // All circuits after the first need a random circuit combiner
             end_timer!(squeeze_time);
 
@@ -77,7 +76,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             }
 
             let constraint_domain_time = start_timer!(|| "Constructing constraint domain");
-            let constraint_domain: EvaluationDomain<TargetField> = // TODO: why does vscode complain that this type needs to be annotated?
+            let constraint_domain =
                 EvaluationDomain::new(circuit_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
             end_timer!(constraint_domain_time);
 

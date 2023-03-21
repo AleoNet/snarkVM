@@ -127,7 +127,6 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_b: sonic_pc::Commitment<E>,
 }
 
-// TODO: we're deserializing this, should we still keep references to objects...?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evaluations<F: PrimeField> {
     /// Evaluations of `z_b_i_j`'s at `beta`.

@@ -99,8 +99,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut pool = ExecutionPool::with_capacity(3*state.circuit_specific_states.len());
 
+        let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
-            let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
             let label_g_a = witness_label(&circuit.hash, "g_a", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
@@ -252,8 +252,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
                 multiplier.multiply().unwrap()
             };
-
-        // TODO: largest_non_zero_domain_size needs to be the largest of *all* non-zero domains.
 
         // Let K = largest_non_zero_domain;
         // Let K_M = non_zero_domain;
