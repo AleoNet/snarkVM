@@ -534,7 +534,7 @@ where
                 z_b: *c[2].commitment(),
             })
             .collect();
-        let third_commitments_chunked = first_commitments.chunks_exact(3);
+        let third_commitments_chunked = third_commitments.chunks_exact(3);
 
         #[rustfmt::skip]
         let commitments = proof::Commitments {
