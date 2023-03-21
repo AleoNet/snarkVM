@@ -270,18 +270,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
             for (i, (circuit_id, c)) in batch_combiners.iter().enumerate() {
+                let mut circuit_term = LinearCombination::empty(format!("lincheck_sumcheck term {circuit_id}"));
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
-                    lincheck_sumcheck
+                   circuit_term 
                         .add(r_alpha_at_beta_s[i] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[i][j]), witness_label(&circuit_id, "z_a", j))
                         .add(-t_at_beta_s[i] * v_X_at_beta[i] * instance_combiner, witness_label(&circuit_id, "w", j));
                 }
-                lincheck_sumcheck
+               circuit_term 
                     .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One)
                     .add(eta_b * batch_z_b_at_beta, LCTerm::One);
                 let constraint_domain = state.circuit_specific_states[circuit_id].constraint_domain;
                 let selector = Self::get_selector_evaluation(&mut cached_selectors, &largest_constraint_domain, &constraint_domain, beta);
-                lincheck_sumcheck *= selector;
-                lincheck_sumcheck *= c.circuit_combiner;
+                circuit_term *= selector;
+                lincheck_sumcheck += (c.circuit_combiner, &circuit_term);
             }
             lincheck_sumcheck
                 .add(-v_H_at_beta, "h_1")
