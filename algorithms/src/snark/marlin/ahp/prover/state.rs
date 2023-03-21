@@ -147,7 +147,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     None => Some(max_domain_candidate),
                 };
 
-                let mut input_domain = None; // TODO: we're in a single circuit, can we just efficiently/cleanly assign the first valid domain?
+                let first_padded_public_inputs = &variable_assignments[0].0;
+                let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
                 let batch_size = variable_assignments.len();
                 total_instances += batch_size;
                 max_num_constraints = max_num_constraints.max(index_info.num_constraints);
@@ -160,14 +161,12 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 for Assignments(padded_public_input, private_input, z_a, z_b) in variable_assignments {
                     z_as.push(z_a);
                     z_bs.push(z_b);
-                    input_domain = input_domain.or_else(|| EvaluationDomain::new(padded_public_input.len()));
-                    let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain.unwrap())
+                    let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain)
                             .interpolate();
                     x_polys.push(x_poly);
                     padded_public_variables.push(padded_public_input);
                     private_variables.push(private_input);
                 }
-                let input_domain = input_domain.unwrap();
                 
                 let state = CircuitSpecificState {
                     input_domain,

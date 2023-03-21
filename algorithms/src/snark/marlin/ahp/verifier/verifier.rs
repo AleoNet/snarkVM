@@ -52,7 +52,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         for (batch_size, (circuit_id, circuit_info)) in batch_sizes.values().zip(circuit_infos) {
             let squeeze_time = start_timer!(|| "Squeezing challenges");
-            // TODO: we should do a review as to what happens when we have more than usize circuit/instance combiners
             let mut combiners = BatchCombiners {
                 circuit_combiner: TargetField::one(),
                 instance_combiners: vec![TargetField::one()],

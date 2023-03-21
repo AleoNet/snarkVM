@@ -742,19 +742,17 @@ where
             vec![circuit_id; *batch_size]
         }).collect_vec();
 
-        let mut first_commitments = comms
-            .witness_commitments
-            .iter()
-            .zip(circuit_ids.iter())
-            .enumerate()
-            .flat_map(|(i, (c, circuit_id))| {
+        let mut first_commitments = batch_sizes.iter().flat_map(|(circuit_id, &batch_size)|{
+            comms.witness_commitments[0..batch_size].iter().enumerate().flat_map(|(j, w_comm)|{
+                println!("*****j: {j}");
                 [
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "w", i)], c.w),
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_a", i)], c.z_a),
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_b", i)], c.z_b),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "w", j)], w_comm.w),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_a", j)], w_comm.z_a),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_b", j)], w_comm.z_b),
                 ]
-            })
-            .collect::<Vec<_>>();
+            }).collect_vec()
+        }).collect_vec();
+
         if MM::ZK {
             first_commitments.push(LabeledCommitment::new_with_info(
                 first_round_info.get("mask_poly").unwrap(),

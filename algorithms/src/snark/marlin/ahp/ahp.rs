@@ -238,17 +238,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             }).collect::<Vec<F>>();
             z_b_i_s
         }).collect_vec();
-        let batch_z_b_at_beta: F = z_b_s_at_beta.iter()
-                                                .zip_eq(batch_combiners.values())
-                                                .zip_eq(r_alpha_at_beta_s.iter())
-                                                .map(|((z_b_i_at_beta, combiners), &r_alpha_at_beta)| {
+        let batch_z_b_s_at_beta = z_b_s_at_beta.iter()
+                                        .zip_eq(batch_combiners.values())
+                                        .zip_eq(r_alpha_at_beta_s.iter())
+                                        .map(|((z_b_i_at_beta, combiners), &r_alpha_at_beta)| {
             let z_b_at_beta = z_b_i_at_beta.iter()
                                            .zip_eq(combiners.instance_combiners.iter())
                                            .map(|(z_b_at_beta, instance_combiner)| {
                 *z_b_at_beta * instance_combiner
             }).sum::<F>();
             r_alpha_at_beta * z_b_at_beta
-        }).sum();
+        }).collect_vec();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let mut combined_x_at_betas: Vec<F> = Vec::with_capacity(state.circuit_specific_states.len());
@@ -263,6 +263,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             combined_x_at_betas.push(combined_x_at_beta);
         }
 
+        // We're now going to calculate the lincheck_sumcheck
+        // Note that we precalculated a number of terms already to prevent duplicate calculations:
+        // TODO: review if we're consistent in how we're precalculating terms
         #[rustfmt::skip]
         let lincheck_sumcheck = {
             let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
@@ -278,7 +281,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 }
                circuit_term 
                     .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One)
-                    .add(eta_b * batch_z_b_at_beta, LCTerm::One);
+                    .add(eta_b * batch_z_b_s_at_beta[i], LCTerm::One);
                 let constraint_domain = state.circuit_specific_states[circuit_id].constraint_domain;
                 let selector = Self::get_selector_evaluation(&mut cached_selectors, &largest_constraint_domain, &constraint_domain, beta);
                 circuit_term *= selector;
