@@ -560,13 +560,20 @@ function hello_world:
     owner as address.private;
     gates as u64.private;
 
+  record record_c:
+    owner as address.private;
+    gates as u64.private;
+
   function initialize:
     input r0 as record_a.record;
     input r1 as record_b.record;
-    cast r0.owner r0.gates into r2 as record_a.record;
-    cast r1.owner r1.gates into r3 as record_b.record;
-    output r2 as record_a.record;
-    output r3 as record_b.record;",
+    input r2 as record_c.record;
+    cast r0.owner r0.gates into r3 as record_a.record;
+    cast r1.owner r1.gates into r4 as record_b.record;
+    cast r2.owner r2.gates into r5 as record_c.record;
+    output r3 as record_a.record;
+    output r4 as record_b.record;
+    output r5 as record_c.record;",
         )
         .unwrap();
 
@@ -591,6 +598,9 @@ function hello_world:
         let input_b =
             Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private, _nonce: 0group.public }}"))
                 .unwrap();
+        let input_c =
+            Value::from_str(&format!("{{ owner: {caller}.private, gates: 5678u64.private, _nonce: 0group.public }}"))
+                .unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -598,20 +608,24 @@ function hello_world:
                 &caller_private_key,
                 program.id(),
                 function_name,
-                [input_a, input_b].iter(),
+                [input_a, input_b, input_c].iter(),
                 rng,
             )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
-        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        let randomizer_a = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(2)]).unwrap();
+        // Compute the encryption randomizer for the first output as `HashToScalar(tvk || index)`.
+        let randomizer_a = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
         let nonce_a = CurrentNetwork::g_scalar_multiply(&randomizer_a);
 
-        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        let randomizer_b = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
+        // Compute the encryption randomizer for the second output as `HashToScalar(tvk || index)`.
+        let randomizer_b = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(4)]).unwrap();
         let nonce_b = CurrentNetwork::g_scalar_multiply(&randomizer_b);
+
+        // Compute the encryption randomizer for the third output as `HashToScalar(tvk || index)`.
+        let randomizer_c = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(5)]).unwrap();
+        let nonce_c = CurrentNetwork::g_scalar_multiply(&randomizer_c);
 
         // Declare the output value.
         let output_a = Value::from_str(&format!(
@@ -622,6 +636,10 @@ function hello_world:
             "{{ owner: {caller}.private, gates: 4321u64.private, _nonce: {nonce_b}.public }}"
         ))
         .unwrap();
+        let output_c = Value::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5678u64.private, _nonce: {nonce_c}.public }}"
+        ))
+        .unwrap();
 
         // Check again to make sure we didn't modify the authorization before calling `evaluate`.
         assert_eq!(authorization.len(), 1);
@@ -629,9 +647,10 @@ function hello_world:
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
         let candidate = response.outputs();
-        assert_eq!(2, candidate.len());
+        assert_eq!(3, candidate.len());
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
+        assert_eq!(output_c, candidate[2]);
 
         // Check again to make sure we didn't modify the authorization after calling `evaluate`.
         assert_eq!(authorization.len(), 1);
@@ -640,9 +659,10 @@ function hello_world:
         let (response, execution, _inclusion, _metrics) =
             process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
-        assert_eq!(2, candidate.len());
+        assert_eq!(3, candidate.len());
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
+        assert_eq!(output_c, candidate[2]);
 
         process.verify_execution::<false>(&execution).unwrap();
 
