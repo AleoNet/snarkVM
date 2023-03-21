@@ -23,9 +23,11 @@ default-features = false
 
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
+default-features = false
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../utilities"
+default-features = false
 
 [dev-dependencies.anyhow]
 version = "1.0.69"

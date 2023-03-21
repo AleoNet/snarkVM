@@ -62,4 +62,4 @@ version = "1.0"
 [features]
 default = [ "snarkvm-utilities/default" ]
 profiler = [ "aleo-std/profiler" ]
-serial = [ "snarkvm-utilities/default-serial" ]
+serial = [ ]

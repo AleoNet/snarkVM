@@ -46,6 +46,7 @@ harness = false
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.9.14"
+default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
@@ -60,6 +61,7 @@ optional = true
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.9.14"
+default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
@@ -155,7 +157,12 @@ features = [ "preserve_order" ]
 version = "1.0"
 
 [features]
-default = [ "full" ]
+default = [
+  "full",
+  "snarkvm-curves/default",
+  "snarkvm-fields/default",
+  "snarkvm-utilities/default"
+]
 full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
 wasm = [
   "crypto_hash",

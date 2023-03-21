@@ -30,6 +30,7 @@ version = "0.9.14"
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../../utilities"
+default-features = false
 
 [features]
 default = [ "enable_console" ]

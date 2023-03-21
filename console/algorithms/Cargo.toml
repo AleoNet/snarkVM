@@ -29,9 +29,6 @@ version = "0.9.14"
 [dependencies.blake2s_simd]
 version = "1.0"
 
-[dependencies.rayon]
-version = "1"
-
 [dependencies.smallvec]
 version = "1.10"
 default-features = false
@@ -39,6 +36,7 @@ features = [ "const_generics", "const_new" ]
 
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
+default-features = false
 
 [dev-dependencies.criterion]
 version = "0.4.0"

@@ -96,6 +96,7 @@ optional = true
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
+default-features = false
 
 [dev-dependencies.snarkvm-circuit]
 path = "../circuit"
