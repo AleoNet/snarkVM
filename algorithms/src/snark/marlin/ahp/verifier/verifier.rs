@@ -164,11 +164,11 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         r_a.push(TargetField::one());
         r_b.push(first_elems[0]);
         r_c.push(first_elems[1]);
-        for i in 1..num_instances {
+        for _ in 1..num_instances {
             let elems: SmallVec<[TargetField; 10]> = fs_rng.squeeze_nonnative_field_elements(3);
-            r_a.push(first_elems[0]);
-            r_b.push(first_elems[1]);
-            r_c.push(first_elems[2]);
+            r_a.push(elems[0]);
+            r_b.push(elems[1]);
+            r_c.push(elems[2]);
         }
         let message = ThirdMessage { r_a, r_b, r_c };
 

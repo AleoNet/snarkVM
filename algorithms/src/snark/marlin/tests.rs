@@ -121,8 +121,8 @@ mod marlin {
                     }
 
                     for _ in 0..10 {
-                        for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                            for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                        for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                            for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
                                 let mut constraints = BTreeMap::new();
                                 let mut inputs = BTreeMap::new();
 
@@ -132,19 +132,17 @@ mod marlin {
                                         let mut inputs: Vec<Fr> = Vec::with_capacity(2+i);
                                         let a = Fr::rand(rng);
                                         let b = Fr::rand(rng);
-                                        let mut c = a;
-                                        c.mul_assign(&b);
-                                        inputs.push(c);
-                                        let mut d = c;
-                                        d.mul_assign(&b);
-                                        inputs.push(d);
-                                        for _ in 0..i {
-                                            let mut new_var = inputs[1 + i];
-                                            new_var.mul_assign(&b);
+
+                                        let mul_depth = 2 + i;
+                                        for j in 1..(mul_depth + 1) {
+                                            let mut new_var = a;
+                                            for _ in 0..j {
+                                                new_var.mul_assign(&b);
+                                            }
                                             inputs.push(new_var);
                                         }
 
-                                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 + i };
+                                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth };
                                         (circ, inputs)
                                     })
                                     .unzip();

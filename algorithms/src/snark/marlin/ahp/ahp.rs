@@ -273,20 +273,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            for (i, (z_b_i_at_beta, (circuit_id, combiners))) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
-                for (j, ((z_b_i_j_at_beta, instance_combiner), &r_alpha_at_beta)) in z_b_i_at_beta.iter()
+            for (i, ((z_b_i_at_beta, (circuit_id, combiners)), r_alpha_at_beta)) in z_b_s_at_beta.iter()
+                                                                            .zip_eq(batch_combiners)
+                                                                            .zip_eq(r_alpha_at_beta_s)
+                                                                            .enumerate() {
+                for (j, (z_b_i_j_at_beta, instance_combiner)) in z_b_i_at_beta.iter()
                                                             .zip_eq(combiners.instance_combiners.iter())
-                                                            .zip_eq(r_alpha_at_beta_s.iter())
                                                             .enumerate() {
                     lincheck_sumcheck
                         .add(r_alpha_at_beta * instance_combiner * (eta_a + eta_c * z_b_i_j_at_beta), witness_label(&circuit_id, "z_a", j))
                         .add(-t_at_beta_s[i] * v_X_at_beta[i] * instance_combiner, witness_label(&circuit_id, "w", j));
-                lincheck_sumcheck
-                    .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One);
                 }
+                lincheck_sumcheck
+                    .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One)
+                    .add(eta_b * batch_z_b_at_beta, LCTerm::One);
             }
             lincheck_sumcheck
-                .add(eta_b * batch_z_b_at_beta, LCTerm::One)
                 .add(-v_H_at_beta, "h_1")
                 .add(-beta * g_1_at_beta, LCTerm::One);
             lincheck_sumcheck
@@ -306,7 +308,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
         for (i, (&circuit_id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
-            let g_a_label = witness_label(&circuit_id, "g_a", i);
+            let g_a_label = witness_label(&circuit_id, "g_a", 0);
             let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
             let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
             let selector_a = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
@@ -318,7 +320,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 matrix_sumcheck += (r_a[i], &lhs_a);
             }
 
-            let g_b_label = witness_label(&circuit_id, "g_b", i);
+            let g_b_label = witness_label(&circuit_id, "g_b", 0);
             let g_b = LinearCombination::new(g_b_label.clone(), [(F::one(), g_b_label)]);
             let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
             let selector_b = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
@@ -326,7 +328,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[circuit_id].sum_b, selector_b);
             matrix_sumcheck += (r_b[i], &lhs_b);
     
-            let g_c_label = witness_label(&circuit_id, "g_c", i);
+            let g_c_label = witness_label(&circuit_id, "g_c", 0);
             let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
             let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
             let selector_c = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);

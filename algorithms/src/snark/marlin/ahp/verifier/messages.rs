@@ -98,12 +98,12 @@ impl<'a, F: PrimeField> QuerySet<'a, F> {
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         for (circuit_id, &batch_size) in self.batch_sizes.iter() {
-            for i in 0..batch_size {
-                query_set.insert((witness_label(&circuit_id, "z_b", i), self.z_b_query.clone()));
-                query_set.insert((witness_label(&circuit_id, "g_a", i), self.g_a_query.clone()));
-                query_set.insert((witness_label(&circuit_id, "g_b", i), self.g_b_query.clone()));
-                query_set.insert((witness_label(&circuit_id, "g_c", i), self.g_c_query.clone()));
+            for j in 0..batch_size {
+                query_set.insert((witness_label(&circuit_id, "z_b", j), self.z_b_query.clone()));
             }
+            query_set.insert((witness_label(&circuit_id, "g_a", 0), self.g_a_query.clone()));
+            query_set.insert((witness_label(&circuit_id, "g_b", 0), self.g_b_query.clone()));
+            query_set.insert((witness_label(&circuit_id, "g_c", 0), self.g_c_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
