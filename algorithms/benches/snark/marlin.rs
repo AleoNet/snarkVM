@@ -121,7 +121,7 @@ fn snark_prove(c: &mut Criterion) {
 }
 
 fn snark_batch_prove(c: &mut Criterion) {
-    c.bench_function("snark_prove", move |b| {
+    c.bench_function("snark_batch_prove", move |b| {
         let num_constraints_base = 100;
         let num_variables_base = 25;
         let rng = &mut TestRng::default();
@@ -165,7 +165,7 @@ fn snark_batch_prove(c: &mut Criterion) {
 }
 
 fn snark_verify(c: &mut Criterion) {
-    c.bench_function("snark_verify", move |b| {
+    c.bench_function("snark_batch_verify", move |b| {
         let num_constraints = 100;
         let num_variables = 25;
         let rng = &mut TestRng::default();

@@ -365,7 +365,7 @@ impl<E: PairingEngine> CommitterKey<E> {
     }
 
     pub fn union<'a, T: IntoIterator<Item = &'a Self> + Clone>(committer_keys: T) -> Self {
-        let mut union_committer_key = CommitterKey::<E>{
+        let mut union = CommitterKey::<E>{
             powers_of_beta_g: vec![],
             lagrange_bases_at_beta_g: BTreeMap::new(),
             powers_of_beta_times_gamma_g: vec![],
@@ -377,7 +377,7 @@ impl<E: PairingEngine> CommitterKey<E> {
         let mut enforced_degree_bounds = HashSet::<usize>::new();
         let biggest_ck = committer_keys.clone().into_iter().max_by_key(|ck|ck.supported_degree()).unwrap();
         for ck in committer_keys {
-            union_committer_key.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
+            union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
             match &ck.enforced_degree_bounds {
                 Some(edbs) => {
                     for edb in edbs {
@@ -388,17 +388,17 @@ impl<E: PairingEngine> CommitterKey<E> {
             }
         }
 
-        union_committer_key.powers_of_beta_g = biggest_ck.powers_of_beta_g.clone();
-        union_committer_key.powers_of_beta_times_gamma_g = biggest_ck.powers_of_beta_times_gamma_g.clone();
-        union_committer_key.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.clone();
-        union_committer_key.shifted_powers_of_beta_times_gamma_g = biggest_ck.shifted_powers_of_beta_times_gamma_g.clone();
-        union_committer_key.max_degree = biggest_ck.max_degree;
+        union.powers_of_beta_g = biggest_ck.powers_of_beta_g.clone();
+        union.powers_of_beta_times_gamma_g = biggest_ck.powers_of_beta_times_gamma_g.clone();
+        union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.clone();
+        union.shifted_powers_of_beta_times_gamma_g = biggest_ck.shifted_powers_of_beta_times_gamma_g.clone();
+        union.max_degree = biggest_ck.max_degree;
 
         if enforced_degree_bounds.len() > 0 {
-            union_committer_key.enforced_degree_bounds = Some(enforced_degree_bounds.into_iter().collect_vec());
+            union.enforced_degree_bounds = Some(enforced_degree_bounds.into_iter().collect_vec());
         }
 
-        union_committer_key
+       union 
     }
 }
 
@@ -525,7 +525,7 @@ impl<E: PairingEngine> VerifierKey<E> {
     pub fn union<'a, T: IntoIterator<Item = &'a Self> + Clone>(verifier_keys: T) -> Self {
         let biggest_vk = verifier_keys.clone().into_iter().max_by_key(|vk|vk.supported_degree()).unwrap();
 
-        let mut union_verifier_key = VerifierKey::<E>{
+        let mut union = VerifierKey::<E>{
             vk: biggest_vk.vk.clone(),
             degree_bounds_and_neg_powers_of_h: None,
             degree_bounds_and_prepared_neg_powers_of_h: None,
@@ -548,12 +548,12 @@ impl<E: PairingEngine> VerifierKey<E> {
             }
         }
         if bounds_and_neg_powers.len() > 0 {
-            union_verifier_key.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
+            union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
         }
         if bounds_and_prepared_neg_powers.len() > 0 {
-            union_verifier_key.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
+            union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
-        union_verifier_key
+       union 
     }
 }
 

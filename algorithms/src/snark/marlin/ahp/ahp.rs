@@ -156,16 +156,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(!public_inputs.is_empty());
         let largest_constraint_domain = state.largest_constraint_domain;
         let largest_non_zero_domain = state.largest_non_zero_domain;
-        let parsed_public_inputs = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
+        let public_inputs = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
             let input_domain = circuit_state.input_domain;
-            let parsed_public_inputs = public_inputs[circuit_id]
+            let public_inputs = public_inputs[circuit_id]
                 .iter()
                 .map(|p| {
                     let public_input = prover::ConstraintSystem::format_public_input(p);
                     Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
                 }).collect::<Result<Vec<_>, _>>();
-            assert_eq!(parsed_public_inputs.as_ref().unwrap()[0].len(), input_domain.size());
-            parsed_public_inputs
+            assert_eq!(public_inputs.as_ref().unwrap()[0].len(), input_domain.size());
+            public_inputs
         }).collect::<Result<Vec<_>, _>>()?;
 
         let first_round_msg = state.first_round_message.as_ref().unwrap();
@@ -257,7 +257,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let combined_x_at_beta = batch_combiners[circuit_id]
                 .instance_combiners
                 .iter()
-                .zip_eq(parsed_public_inputs[i].iter())
+                .zip_eq(public_inputs[i].iter())
                 .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
                 .sum::<F>();
             combined_x_at_betas.push(combined_x_at_beta);
