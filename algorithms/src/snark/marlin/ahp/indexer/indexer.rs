@@ -19,7 +19,7 @@ use crate::{
     polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
-            indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
+            indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
             matrices::arithmetize_matrix,
             AHPError,
             AHPForR1CS,
@@ -65,9 +65,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         } = Self::index_helper(c)?;
         let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
 
+        let id = CircuitId { 0: Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap(), };
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(label, evals))
+            .map(|(label, evals)| arithmetize_matrix(&id, &label, evals))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
@@ -85,7 +86,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
-        Ok(Circuit::new ( 
+        Ok(Circuit { 
             index_info,
             a,
             b,
@@ -95,23 +96,34 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
-         ))
+            hash: id,
+            _mode: PhantomData,
+        })
     }
 
-    pub fn index_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+    pub fn index_polynomial_info(circuit_ids: Vec<&CircuitId>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
-        for matrix in ["a", "b", "c"] {
-            map.insert(format!("row_{matrix}"), PolynomialInfo::new(format!("row_{matrix}"), None, None));
-            map.insert(format!("col_{matrix}"), PolynomialInfo::new(format!("col_{matrix}"), None, None));
-            map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
-            map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
+        for id in circuit_ids {
+            for matrix in ["a", "b", "c"] {
+                map.insert(format!("circuit_{id}_row_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_row_{matrix}"), None, None));
+                map.insert(format!("circuit_{id}_col_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_col_{matrix}"), None, None));
+                map.insert(format!("circuit_{id}_val_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_val_{matrix}"), None, None));
+                map.insert(format!("circuit_{id}_row_col_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_row_col_{matrix}"), None, None));
+            }
         }
         map
     }
 
-    pub fn index_polynomial_labels() -> impl Iterator<Item = PolynomialLabel> {
-        ["a", "b", "c"].into_iter().flat_map(|matrix| {
-            [format!("row_{matrix}"), format!("col_{matrix}"), format!("val_{matrix}"), format!("row_col_{matrix}")]
+    pub fn index_polynomial_labels<'a>(circuit_ids: Vec<CircuitId>) -> impl Iterator<Item = PolynomialLabel> {
+        circuit_ids.into_iter().flat_map(|id|{
+            ["a", "b", "c"].into_iter().flat_map(move |matrix| {
+                [
+                    format!("circuit_{id}_row_{matrix}"), 
+                    format!("circuit_{id}_col_{matrix}"),
+                    format!("circuit_{id}_val_{matrix}"),
+                    format!("circuit_{id}_row_col_{matrix}")
+                ]
+            })
         })
     }
 
@@ -227,6 +239,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     pub fn evaluate_index_polynomials<C: ConstraintSynthesizer<F>>(
         c: &C,
+        id: &CircuitId,
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;
@@ -238,10 +251,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .into_iter()
         .flat_map(move |(matrix, evals, domain)| {
             let labels = [
-                format!("row_{matrix}"),
-                format!("col_{matrix}"),
-                format!("val_{matrix}"),
-                format!("row_col_{matrix}"),
+                format!("circuit_{id}_row_{matrix}"),
+                format!("circuit_{id}_col_{matrix}"),
+                format!("circuit_{id}_val_{matrix}"),
+                format!("circuit_{id}_row_col_{matrix}"),
             ];
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
             labels.into_iter().zip(evals.evaluate(&lagrange_coefficients_at_point))

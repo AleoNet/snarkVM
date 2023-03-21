@@ -281,11 +281,12 @@ where
             lc.add(c, poly.label());
         }
 
+        let circuit_id = vec![&verifying_key.hash];
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
 
@@ -308,7 +309,8 @@ where
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info();
+        let circuit_id = vec![&verifying_key.hash];
+        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id);
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
@@ -317,7 +319,8 @@ where
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().unwrap();
 
-        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, point)?;
+        let circuit_id = &verifying_key.hash;
+        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, circuit_id, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
@@ -376,6 +379,7 @@ where
         let mut padded_public_inputs = BTreeMap::new();
         let mut total_batch_size = 0;
         let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
+        let mut circuit_ids = Vec::with_capacity(keys_to_constraints.len());
         for pk in keys_to_constraints.keys() {
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
@@ -385,7 +389,8 @@ where
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             padded_public_inputs.insert(circuit_id, padded_public_input);
             total_batch_size += batch_size;
-            public_inputs.insert(&pk.circuit.hash, public_input);
+            public_inputs.insert(circuit_id, public_input);
+            circuit_ids.push(circuit_id);
         }
         assert_eq!(prover_state.total_batch_size(), total_batch_size);
 
@@ -551,10 +556,10 @@ where
             h_2: *fourth_commitments[0].commitment(),
         };
 
-        let labeled_commitments: Vec<_> = keys_to_constraints.iter()
-            .flat_map(|(pk, _)|pk.circuit_verifying_key.iter())
+        let labeled_commitments: Vec<_> = keys_to_constraints.keys()
+            .flat_map(|pk|pk.circuit_verifying_key.iter())
             .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .chain(first_commitments.into_iter())
             .chain(second_commitments.into_iter())
@@ -666,6 +671,7 @@ where
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut vks = Vec::with_capacity(keys_to_inputs.len());
+        let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
             vks.push(&vk.orig_vk.verifier_key);
 
@@ -694,9 +700,11 @@ where
                     })
                     .unzip()
             };
-            public_inputs.insert(&vk.orig_vk.hash, parsed_public_inputs_i);
+            let circuit_id = &vk.orig_vk.hash;
+            public_inputs.insert(circuit_id, parsed_public_inputs_i);
             padded_public_vec.push(padded_public_inputs_i);
-            circuit_infos.insert(&vk.orig_vk.hash, &vk.orig_vk.circuit_info);
+            circuit_infos.insert(circuit_id, &vk.orig_vk.circuit_info);
+            circuit_ids.push(circuit_id);
         }
         for (i, vk) in keys_to_inputs.keys().enumerate() {
             padded_public_inputs.insert(&vk.orig_vk.hash, padded_public_vec[i].as_slice());
@@ -829,7 +837,7 @@ where
         let commitments: Vec<_> = circuit_commitments
             .iter()
             .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
             .chain(second_commitments)

@@ -30,7 +30,7 @@ use snarkvm_utilities::{serialize::*, SerializationError};
 use hex::FromHex;
 
 #[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CircuitId([u8; 32]);
+pub struct CircuitId(pub [u8; 32]);
 
 impl std::fmt::Display for CircuitId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -101,33 +101,6 @@ impl<F: PrimeField, MM: MarlinMode> PartialOrd for Circuit<F, MM> {
 }
 
 impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
-    pub fn new(
-        index_info: CircuitInfo<F>,
-        a: Matrix<F>,
-        b: Matrix<F>,
-        c: Matrix<F>,
-        a_arith: MatrixArithmetization<F>,
-        b_arith: MatrixArithmetization<F>,
-        c_arith: MatrixArithmetization<F>,
-        fft_precomputation: FFTPrecomputation<F>,
-        ifft_precomputation: IFFTPrecomputation<F>,
-    ) -> Self {
-        let hash = CircuitId { 0: Self::hash(&index_info, &a, &b, &c).unwrap(), };
-        Self {
-            index_info,
-            a,
-            b,
-            c,
-            a_arith,
-            b_arith,
-            c_arith,
-            fft_precomputation,
-            ifft_precomputation,
-            _mode: PhantomData,
-            hash,
-        }
-    }
-
     pub fn hash(
         index_info: &CircuitInfo<F>,
         a: &Matrix<F>,

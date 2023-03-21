@@ -263,30 +263,25 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             combined_x_at_betas.push(combined_x_at_beta);
         }
 
-        // TODO: where to multiply the selectors and circuit_combiners? To elements here or just before creating the (virtual) commitment?
-        // let batch_combiners[].circuit_combiner
-        // let selector_i = Self::get_selector_evaluation(&cached_selectors, &largest_constraint_domain, &circuit_state.constraint_domain, beta);
-
         #[rustfmt::skip]
         let lincheck_sumcheck = {
             let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            for (i, ((z_b_i_at_beta, (circuit_id, combiners)), r_alpha_at_beta)) in z_b_s_at_beta.iter()
-                                                                            .zip_eq(batch_combiners)
-                                                                            .zip_eq(r_alpha_at_beta_s)
-                                                                            .enumerate() {
-                for (j, (z_b_i_j_at_beta, instance_combiner)) in z_b_i_at_beta.iter()
-                                                            .zip_eq(combiners.instance_combiners.iter())
-                                                            .enumerate() {
+            for (i, (circuit_id, c)) in batch_combiners.iter().enumerate() {
+                for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
                     lincheck_sumcheck
-                        .add(r_alpha_at_beta * instance_combiner * (eta_a + eta_c * z_b_i_j_at_beta), witness_label(&circuit_id, "z_a", j))
+                        .add(r_alpha_at_beta_s[i] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[i][j]), witness_label(&circuit_id, "z_a", j))
                         .add(-t_at_beta_s[i] * v_X_at_beta[i] * instance_combiner, witness_label(&circuit_id, "w", j));
                 }
                 lincheck_sumcheck
                     .add(-t_at_beta_s[i] * combined_x_at_betas[i], LCTerm::One)
                     .add(eta_b * batch_z_b_at_beta, LCTerm::One);
+                let constraint_domain = state.circuit_specific_states[circuit_id].constraint_domain;
+                let selector = Self::get_selector_evaluation(&mut cached_selectors, &largest_constraint_domain, &constraint_domain, beta);
+                lincheck_sumcheck *= selector;
+                lincheck_sumcheck *= c.circuit_combiner;
             }
             lincheck_sumcheck
                 .add(-v_H_at_beta, "h_1")
@@ -313,7 +308,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
             let selector_a = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
             let lhs_a =
-                Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[circuit_id].sum_a, selector_a);
+                Self::construct_lhs(circuit_id, "a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[circuit_id].sum_a, selector_a);
             if i == 0 {
                 matrix_sumcheck += &lhs_a;
             } else {
@@ -325,7 +320,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
             let selector_b = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
             let lhs_b =
-                Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[circuit_id].sum_b, selector_b);
+                Self::construct_lhs(circuit_id, "b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, sums[circuit_id].sum_b, selector_b);
             matrix_sumcheck += (r_b[i], &lhs_b);
     
             let g_c_label = witness_label(&circuit_id, "g_c", 0);
@@ -333,7 +328,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
             let selector_c = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
             let lhs_c =
-                Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[circuit_id].sum_c, selector_c);
+                Self::construct_lhs(circuit_id, "c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, sums[circuit_id].sum_c, selector_c);
             matrix_sumcheck += (r_c[i], &lhs_c);
 
             linear_combinations.insert(g_a.label.clone(), g_a);
@@ -352,6 +347,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     #[allow(clippy::too_many_arguments)]
     fn construct_lhs(
+        id: &CircuitId,
         label: &str,
         alpha: F,
         beta: F,
@@ -361,15 +357,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         sum: F,
         selector_at_gamma: F,
     ) -> LinearCombination<F> {
+        let label_row = format!("circuit_{id}_row_{label}");
+        let label_col = format!("circuit_{id}_col_{label}");
+        let label_val = format!("circuit_{id}_val_{label}");
+        let label_row_col = format!("circuit_{id}_row_col_{label}");
+        let label_a_poly = format!("circuit_{id}_a_poly_{label}");
+        let label_denom = format!("circuit_{id}_denom_{label}");
+
         let a =
-            LinearCombination::new("a_poly_".to_string() + label, [(v_h_at_alpha_beta, "val_".to_string() + label)]);
+            LinearCombination::new(label_a_poly, [(v_h_at_alpha_beta, label_val)]);
         let alpha_beta = alpha * beta;
 
-        let mut b = LinearCombination::new("denom_".to_string() + label, [
+        let mut b = LinearCombination::new(label_denom, [
             (alpha_beta, LCTerm::One),
-            (-alpha, ("row_".to_string() + label).into()),
-            (-beta, ("col_".to_string() + label).into()),
-            (F::one(), ("row_col_".to_string() + label).into()),
+            (-alpha, (label_row).into()),
+            (-beta, (label_col).into()),
+            (F::one(), (label_row_col).into()),
         ]);
         b *= gamma * g_at_gamma + sum;
 
