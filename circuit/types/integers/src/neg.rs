@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -102,15 +102,15 @@ mod tests {
 
     fn run_test<I: IntegerType + UnwindSafe + Neg<Output = I>>(mode: Mode) {
         // Check the 0 case.
-        check_neg::<I>(&format!("Neg: {} zero", mode), console::Integer::zero(), mode);
+        check_neg::<I>(&format!("Neg: {mode} zero"), console::Integer::zero(), mode);
         // Check the 1 case.
-        check_neg::<I>(&format!("Neg: {} one", mode), -console::Integer::one(), mode);
+        check_neg::<I>(&format!("Neg: {mode} one"), -console::Integer::one(), mode);
         // Check random values.
         let mut rng = TestRng::default();
 
         for i in 0..ITERATIONS {
             let value = Uniform::rand(&mut rng);
-            check_neg::<I>(&format!("Neg: {} {}", mode, i), value, mode);
+            check_neg::<I>(&format!("Neg: {mode} {i}"), value, mode);
         }
     }
 
@@ -127,7 +127,7 @@ mod tests {
         for value in I::MIN..=I::MAX {
             let value = console::Integer::<_, I>::new(value);
 
-            let name = format!("Neg: {}", mode);
+            let name = format!("Neg: {mode}");
             check_neg::<I>(&name, value, mode);
         }
     }

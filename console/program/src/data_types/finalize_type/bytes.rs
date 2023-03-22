@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ impl<N: Network> FromBytes for FinalizeType<N> {
             0 => Ok(Self::Public(PlaintextType::read_le(&mut reader)?)),
             1 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
             2 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
-            3.. => Err(error(format!("Failed to deserialize finalize type variant {}", variant))),
+            3.. => Err(error(format!("Failed to deserialize finalize type variant {variant}"))),
         }
     }
 }

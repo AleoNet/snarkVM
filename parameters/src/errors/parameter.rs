@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -37,31 +37,31 @@ pub enum ParameterError {
 #[cfg(not(feature = "wasm"))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {
-        ParameterError::Crate("curl::error", format!("{:?}", error))
+        ParameterError::Crate("curl::error", format!("{error:?}"))
     }
 }
 
 #[cfg(feature = "wasm")]
 impl From<reqwest::Error> for ParameterError {
     fn from(error: reqwest::Error) -> Self {
-        ParameterError::Crate("request::error", format!("{:?}", error))
+        ParameterError::Crate("request::error", format!("{error:?}"))
     }
 }
 
 impl From<std::io::Error> for ParameterError {
     fn from(error: std::io::Error) -> Self {
-        ParameterError::Crate("std::io", format!("{:?}", error))
+        ParameterError::Crate("std::io", format!("{error:?}"))
     }
 }
 
 impl From<std::path::StripPrefixError> for ParameterError {
     fn from(error: std::path::StripPrefixError) -> Self {
-        ParameterError::Crate("std::path", format!("{:?}", error))
+        ParameterError::Crate("std::path", format!("{error:?}"))
     }
 }
 
 impl From<ParameterError> for std::io::Error {
     fn from(error: ParameterError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{error:?}"))
     }
 }

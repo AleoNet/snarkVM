@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-program"
-version = "0.9.11"
+version = "0.9.14"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Program operations for a decentralized virtual machine"
 license = "GPL-3.0"
@@ -12,19 +12,23 @@ test = [ ]
 
 [dependencies.snarkvm-console-account]
 path = "../account"
-version = "0.9.11"
+version = "0.9.14"
 
 [dependencies.snarkvm-console-collections]
 path = "../collections"
-version = "0.9.11"
+version = "0.9.14"
 
 [dependencies.snarkvm-console-network]
 path = "../network"
-version = "0.9.11"
+version = "0.9.14"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "0.9.11"
+version = "0.9.14"
+
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.9.14"
 
 [dependencies.enum_index]
 version = "0.2"
@@ -33,7 +37,7 @@ version = "0.2"
 version = "0.2"
 
 [dependencies.indexmap]
-version = "1.8"
+version = "1.9"
 
 [dependencies.num-derive]
 version = "0.3"
@@ -42,10 +46,11 @@ version = "0.3"
 version = "0.2"
 
 [dependencies.once_cell]
-version = "1.13.1"
+version = "1.17.1"
 
 [dependencies.serde_json]
 version = "1.0"
+features = [ "preserve_order" ]
 
 [dev-dependencies.bincode]
 version = "1.3"

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -82,16 +82,16 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
-            let name = format!("Mod: {} MOD {}", first, second);
+            let name = format!("Mod: {first} MOD {second}");
             check_modulo::<I>(&name, first, second, mode_a, mode_b);
 
-            let name = format!("Mod by One: {} MOD 1", first);
+            let name = format!("Mod by One: {first} MOD 1");
             check_modulo::<I>(&name, first, console::Integer::one(), mode_a, mode_b);
 
-            let name = format!("Mod by Self: {} MOD {}", first, first);
+            let name = format!("Mod by Self: {first} MOD {first}");
             check_modulo::<I>(&name, first, first, mode_a, mode_b);
 
-            let name = format!("Mod by Zero: {} MOD 0", first);
+            let name = format!("Mod by Zero: {first} MOD 0");
             check_modulo::<I>(&name, first, console::Integer::zero(), mode_a, mode_b);
         }
 
@@ -122,7 +122,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Mod: ({} MOD {})", first, second);
+                let name = format!("Mod: ({first} MOD {second})");
                 check_modulo::<I>(&name, first, second, mode_a, mode_b);
             }
         }

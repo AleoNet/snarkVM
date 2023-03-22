@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -448,12 +448,12 @@ impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
 
         for (variable, coefficient) in &terms {
             output += &match (variable.mode(), coefficient.is_one()) {
-                (Mode::Constant, _) => panic!("Malformed linear combination at: ({} * {:?})", coefficient, variable),
-                (_, true) => format!(" + {:?}", variable),
-                _ => format!(" + {} * {:?}", coefficient, variable),
+                (Mode::Constant, _) => panic!("Malformed linear combination at: ({coefficient} * {variable:?})"),
+                (_, true) => format!(" + {variable:?}"),
+                _ => format!(" + {coefficient} * {variable:?}"),
             };
         }
-        write!(f, "{}", output)
+        write!(f, "{output}")
     }
 }
 
@@ -548,61 +548,61 @@ mod tests {
             let expected = "Constant(1) + Public(1, 1) + Private(0, 1)";
 
             let candidate = LinearCombination::one() + one_public + one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private + one_public + LinearCombination::one();
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private + LinearCombination::one() + one_public;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_public + LinearCombination::one() + one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
         }
         {
             let expected = "Constant(1) + 2 * Public(1, 1) + Private(0, 1)";
 
             let candidate = LinearCombination::one() + one_public + one_public + one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private + one_public + LinearCombination::one() + one_public;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_public + one_private + LinearCombination::one() + one_public;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_public + LinearCombination::one() + one_private + one_public;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
         }
         {
             let expected = "Constant(1) + Public(1, 1) + 2 * Private(0, 1)";
 
             let candidate = LinearCombination::one() + one_public + one_private + one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private + one_public + LinearCombination::one() + one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private + one_private + LinearCombination::one() + one_public;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_public + LinearCombination::one() + one_private + one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
         }
         {
             let expected = "Constant(1) + Public(1, 1)";
 
             let candidate = LinearCombination::one() + one_public + one_private - one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private + one_public + LinearCombination::one() - one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_private - one_private + LinearCombination::one() + one_public;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
 
             let candidate = one_public + LinearCombination::one() + one_private - one_private;
-            assert_eq!(expected, format!("{:?}", candidate));
+            assert_eq!(expected, format!("{candidate:?}"));
         }
     }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Fee<N> {
     /// Serializes the fee into string or bytes.
@@ -42,12 +44,11 @@ impl<'de, N: Network> Deserialize<'de> for Fee<N> {
                 // Parse the fee from a string into a value.
                 let mut fee = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the transitions.
-                let transition = serde_json::from_value(fee["transition"].take()).map_err(de::Error::custom)?;
+                let transition = DeserializeExt::take_from_value::<D>(&mut fee, "transition")?;
                 // Retrieve the global state root.
-                let global_state_root =
-                    serde_json::from_value(fee["global_state_root"].take()).map_err(de::Error::custom)?;
+                let global_state_root = DeserializeExt::take_from_value::<D>(&mut fee, "global_state_root")?;
                 // Retrieve the inclusion proof.
-                let inclusion_proof = serde_json::from_value(fee["inclusion"].take()).map_err(de::Error::custom)?;
+                let inclusion_proof = DeserializeExt::take_from_value::<D>(&mut fee, "inclusion")?;
                 // Recover the fee.
                 Ok(Self::from(transition, global_state_root, inclusion_proof))
             }

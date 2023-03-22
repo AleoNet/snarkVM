@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -102,7 +102,7 @@ mod tests {
     const ITERATIONS: u32 = 1000;
 
     fn check_serialization(expected: Literal<CurrentNetwork>) -> Result<()> {
-        println!("{}", expected);
+        println!("{expected}");
         assert_eq!(expected, Literal::from_bits_le(expected.variant(), &expected.to_bits_le())?);
         assert_eq!(expected, Literal::from_bits_be(expected.variant(), &expected.to_bits_be())?);
         Ok(())

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
+use snarkvm_utilities::DeserializeExt;
 
 impl<N: Network> Serialize for Header<N> {
     /// Serializes the header to a JSON-string or buffer.
@@ -40,10 +42,10 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
             true => {
                 let mut header = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::from(
-                    serde_json::from_value(header["previous_state_root"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["transactions_root"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["coinbase_accumulator_point"].take()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["metadata"].take()).map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "previous_state_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "transactions_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "coinbase_accumulator_point")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "metadata")?,
                 )
                 .map_err(de::Error::custom)?)
             }

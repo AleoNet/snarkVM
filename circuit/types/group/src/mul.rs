@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -243,9 +243,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, num_constant, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, num_constant, 0, 0, 0);
         }
     }
@@ -262,9 +262,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 2751, 2752);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
         }
     }
@@ -281,9 +281,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 2751, 2752);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
         }
     }
@@ -311,9 +311,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
         }
     }
@@ -341,9 +341,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
         }
     }
@@ -360,9 +360,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
@@ -379,9 +379,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
@@ -398,9 +398,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
@@ -417,9 +417,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }

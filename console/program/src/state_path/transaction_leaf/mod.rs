@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -37,6 +37,11 @@ impl<N: Network> TransactionLeaf<N> {
     /// Initializes a new instance of `TransactionLeaf`.
     pub const fn new_deployment(index: u16, id: Field<N>) -> Self {
         Self { variant: 0, index, id }
+    }
+
+    /// Initializes a new instance of `TransactionLeaf`.
+    pub const fn new_deployment_fee(index: u16, id: Field<N>) -> Self {
+        Self { variant: 1, index, id }
     }
 
     /// Initializes a new instance of `TransactionLeaf`.
