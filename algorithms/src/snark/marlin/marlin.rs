@@ -737,18 +737,18 @@ where
         let verifier_time = start_timer!(|| format!("Marlin::Verify with batch sizes: {:?}", batch_sizes));
 
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
-        let circuit_ids = batch_sizes.iter().flat_map(|(circuit_id, batch_size)| {
-            vec![circuit_id; *batch_size]
-        }).collect_vec();
 
+        let mut first_comms_consumed = 0;
         let mut first_commitments = batch_sizes.iter().flat_map(|(circuit_id, &batch_size)|{
-            comms.witness_commitments[0..batch_size].iter().enumerate().flat_map(|(j, w_comm)|{
+            let first_comms = comms.witness_commitments[first_comms_consumed..][..batch_size].iter().enumerate().flat_map(|(j, w_comm)|{
                 [
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "w", j)], w_comm.w),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_a", j)], w_comm.z_a),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_b", j)], w_comm.z_b),
                 ]
-            }).collect_vec()
+            }).collect_vec();
+            first_comms_consumed += batch_size;
+            first_comms
         }).collect_vec();
 
         if MM::ZK {
@@ -769,14 +769,14 @@ where
             AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(circuit_infos.clone().into_iter());
         let third_commitments = comms.g_a_commitments
             .iter()
-            .zip(comms.g_b_commitments.iter())
-            .zip(comms.g_c_commitments.iter())
-            .zip(circuit_ids.iter())
+            .zip_eq(comms.g_b_commitments.iter())
+            .zip_eq(comms.g_c_commitments.iter())
+            .zip_eq(circuit_ids.iter())
             .flat_map(|(((g_a, g_b), g_c), circuit_id)| {
                 [
-                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id,"g_a",0)], *g_a),
-                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id,"g_b",0)], *g_b),
-                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id,"g_c",0)], *g_c),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id, "g_a", 0)], *g_a),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id, "g_b", 0)], *g_b),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id, "g_c", 0)], *g_c),
                 ]
             }).collect_vec();
 
