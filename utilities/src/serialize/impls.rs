@@ -148,7 +148,48 @@ impl_canonical_serialization_uint!(u8);
 impl_canonical_serialization_uint!(u16);
 impl_canonical_serialization_uint!(u32);
 impl_canonical_serialization_uint!(u64);
-impl_canonical_serialization_uint!(usize);
+
+// Serialization comes out as incorrect when on machines or wasm with 32-bit architecture which
+// leads to faulty proofs (because some usize are used in proofs)
+impl CanonicalSerialize for usize {
+    #[inline]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, _compress: Compress) -> Result<(), SerializationError> {
+        let u64_value = *self as u64;
+        Ok(writer.write_all(&u64_value.to_le_bytes())?)
+    }
+
+    #[inline]
+    fn serialized_size(&self, _compress: Compress) -> usize {
+        8
+    }
+}
+
+impl Valid for usize {
+    #[inline]
+    fn check(&self) -> Result<(), SerializationError> {
+        Ok(())
+    }
+
+    #[inline]
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self>) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        Ok(())
+    }
+}
+
+impl CanonicalDeserialize for usize {
+    #[inline]
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        _compress: Compress,
+        _validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let u64_value = u64::deserialize_compressed(&mut reader)?;
+        usize::try_from(u64_value).map_err(|_| SerializationError::IncompatibleTarget)
+    }
+}
 
 impl<T: CanonicalSerialize> CanonicalSerialize for Option<T> {
     #[inline]
