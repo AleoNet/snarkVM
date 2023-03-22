@@ -100,8 +100,11 @@ impl Environment for FormalCircuit {
         let a = a.into();
         let b = b.into();
         let c = c.into();
-        let constraint_json = ConstraintJSON::new(&a, &b, &c);
-        Self::log(format!("{}", serde_json::to_string_pretty(&constraint_json).unwrap()));
+        // Log constraint if all terms are not constant.
+        if !a.is_constant() || !b.is_constant() || !c.is_constant() {
+            let constraint_json = ConstraintJSON::new(&a, &b, &c);
+            Self::log(format!("{}", serde_json::to_string_pretty(&constraint_json).unwrap()));
+        }
         Circuit::enforce(|| (a, b, c))
     }
 
