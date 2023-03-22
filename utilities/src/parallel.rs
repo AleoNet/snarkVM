@@ -192,3 +192,27 @@ macro_rules! cfg_values {
         result
     }};
 }
+
+/// Finds the first element that satisfies the predicate function
+#[macro_export]
+macro_rules! cfg_find {
+    ($self:ident, $object:expr, $func:ident) => {{
+        #[cfg(not(feature = "serial"))]
+        let result = $self.par_values().find_any(|tx| tx.$func($object));
+        #[cfg(feature = "serial")]
+        let result = $self.values().find(|tx| tx.$func($object));
+        result
+    }};
+}
+
+/// Applies a function and returns the first value that is not None
+#[macro_export]
+macro_rules! cfg_find_map {
+    ($self:ident, $object:expr, $func:ident) => {{
+        #[cfg(not(feature = "serial"))]
+        let result = $self.par_values().filter_map(|tx| tx.$func($object)).find_any(|_| true);
+        #[cfg(feature = "serial")]
+        let result = $self.values().find_map(|tx| tx.$func($object));
+        result
+    }};
+}
