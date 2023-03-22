@@ -37,7 +37,6 @@ use crate::{
         prover,
         MarlinMode,
     },
-    SNARKError,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
@@ -134,10 +133,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let constraint_domain = &circuit_specific_state.constraint_domain;
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
-            let circuit_id = &circuit.hash;
+
+            let _circuit_id = &circuit.hash; // seems like a compiler bug marks this as unused
 
             job_pool.add_job(move || {
-                let z_time = start_timer!(|| format!("Compute z poly for circuit {:?}", circuit_id));
+                let z_time = start_timer!(move || format!("Compute z poly for circuit {_circuit_id}"));
                 let z = cfg_iter!(oracles)
                     .zip_eq(instance_combiners)
                     .zip(x_polys)

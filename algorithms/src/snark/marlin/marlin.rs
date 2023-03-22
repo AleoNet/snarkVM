@@ -16,13 +16,12 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, VerifierKey, LabeledPolynomial, LabeledCommitment, QuerySet, Randomness, SonicKZG10, CommitterKey},
+    polycommit::sonic_pc::{Commitment, Evaluations, VerifierKey, LabeledCommitment, QuerySet, Randomness, SonicKZG10, CommitterKey},
     snark::marlin::{
-        ahp::{AHPError, AHPForR1CS, CircuitId, indexer::Circuit, EvaluationsProvider},
+        ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
         proof,
         prover,
         witness_label,
-        CircuitInfo,
         CircuitProvingKey,
         CircuitVerifyingKey,
         MarlinError,
@@ -41,7 +40,7 @@ use rand::{CryptoRng, Rng};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
-use snarkvm_utilities::{cfg_iter, to_bytes_le, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use std::{borrow::Borrow, collections::BTreeMap, sync::Arc};
 use std::ops::Deref;
@@ -377,7 +376,7 @@ where
         let mut batch_sizes = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut padded_public_inputs = BTreeMap::new();
-        let mut total_batch_size = 0;
+        let mut total_instances = 0;
         let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
         let mut circuit_ids = Vec::with_capacity(keys_to_constraints.len());
         for pk in keys_to_constraints.keys() {
@@ -388,11 +387,11 @@ where
             batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             padded_public_inputs.insert(circuit_id, padded_public_input);
-            total_batch_size += batch_size;
+            total_instances += batch_size;
             public_inputs.insert(circuit_id, public_input);
             circuit_ids.push(circuit_id);
         }
-        assert_eq!(prover_state.total_batch_size(), total_batch_size);
+        assert_eq!(prover_state.total_instances, total_instances);
 
         let committer_key = CommitterKey::union(keys_to_constraints.keys().map(|pk|pk.committer_key.deref()));
 
@@ -521,7 +520,7 @@ where
             .collect();
         assert!(polynomials.len() == 
             keys_to_constraints.len()*12 + // polys for row, col, rowcol, val
-            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_batch_size) +
+            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances) +
             AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
             AHPForR1CS::<E::Fr, MM>::num_third_round_oracles(keys_to_constraints.len()) +
             AHPForR1CS::<E::Fr, MM>::num_fourth_round_oracles()
@@ -623,7 +622,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(batch_sizes, total_batch_size, commitments, evaluations, prover_third_message, pc_proof)?;
+        let proof = Proof::<E>::new(batch_sizes, total_instances, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
 
         // Collect verification key and public inputs to verify_batch
@@ -672,7 +671,7 @@ where
         let mut circuit_infos = BTreeMap::new();
         let mut vks = Vec::with_capacity(keys_to_inputs.len());
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
-        for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
+        for (vk, public_inputs_i) in keys_to_inputs.iter() {
             vks.push(&vk.orig_vk.verifier_key);
 
             max_num_constraints = max_num_constraints.max(vk.orig_vk.circuit_info.num_constraints);
@@ -744,7 +743,6 @@ where
 
         let mut first_commitments = batch_sizes.iter().flat_map(|(circuit_id, &batch_size)|{
             comms.witness_commitments[0..batch_size].iter().enumerate().flat_map(|(j, w_comm)|{
-                println!("*****j: {j}");
                 [
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "w", j)], w_comm.w),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "z_a", j)], w_comm.z_a),

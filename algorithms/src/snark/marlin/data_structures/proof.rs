@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{polycommit::sonic_pc, snark::marlin::{ahp, CircuitId, MarlinMode}, SNARKError};
+use crate::{polycommit::sonic_pc, snark::marlin::{ahp, CircuitId}, SNARKError};
 
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
@@ -26,8 +26,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use std::collections::{BTreeMap, HashSet};
-use hex::FromHex;
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Commitments<E: PairingEngine> {
@@ -166,7 +165,6 @@ impl<'a, F: PrimeField> Evaluations<F> {
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
-        batch_size: usize,
         mut reader: R,
         compress: Compress,
         validate: Validate,
@@ -282,13 +280,13 @@ impl<'a, E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
         batch_sizes: BTreeMap<CircuitId, usize>,
-        total_batch_size: usize,
+        total_instances: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::ThirdMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
-        if commitments.witness_commitments.len() != total_batch_size {
+        if commitments.witness_commitments.len() != total_instances {
             return Err(SNARKError::BatchSizeMismatch);
         }
         for (circuit_id, z_b_evals_i) in evaluations.z_b_evals.iter() {
@@ -300,14 +298,14 @@ impl<'a, E: PairingEngine> Proof<E> {
     }
 
     pub fn batch_sizes(&self) -> Result<&BTreeMap<CircuitId, usize>, SNARKError> {
-        let mut total_batch_size = 0;
+        let mut total_instances = 0;
         for (z_b_evals_i, batch_size) in self.evaluations.z_b_evals.values().zip(self.batch_sizes.values()) {
-            total_batch_size += batch_size;
+            total_instances += batch_size;
             if z_b_evals_i.len() != *batch_size {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
-        if self.commitments.witness_commitments.len() != total_batch_size {
+        if self.commitments.witness_commitments.len() != total_instances {
             return Err(SNARKError::BatchSizeMismatch);
         }
         Ok(&self.batch_sizes)
@@ -356,7 +354,7 @@ impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<E> {
         Ok(Proof {
             batch_sizes,
             commitments: Commitments::deserialize_with_mode(total_batch_size, &mut reader, compress, validate)?,
-            evaluations: Evaluations::deserialize_with_mode(total_batch_size, &mut reader, compress, validate)?,
+            evaluations: Evaluations::deserialize_with_mode(&mut reader, compress, validate)?,
             msg: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             pc_proof: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })

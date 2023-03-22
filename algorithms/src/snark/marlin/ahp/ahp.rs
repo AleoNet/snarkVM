@@ -21,7 +21,7 @@ use crate::{
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
-        ahp::{matrices, verifier, AHPError, Circuit, CircuitInfo, CircuitId},
+        ahp::{matrices, verifier, AHPError, CircuitInfo, CircuitId},
         prover,
         MarlinMode,
     },
@@ -232,7 +232,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         end_timer!(v_X_at_beta_time);
 
-        let z_b_s_at_beta = z_b_s.iter().map(|(&circuit_id, z_b_i)| {
+        let z_b_s_at_beta = z_b_s.values().map(|z_b_i| {
             let z_b_i_s = z_b_i.iter().map(|z_b|{
                 evals.get_lc_eval(z_b, beta).unwrap()
             }).collect::<Vec<F>>();
@@ -294,7 +294,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        for (circuit_hash, z_b) in z_b_s {
+        for z_b in z_b_s.into_values() {
             for z_b_i in z_b {
                 linear_combinations.insert(z_b_i.label.clone(), z_b_i);
             }
@@ -313,7 +313,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let selector_a = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
             let lhs_a =
                 Self::construct_lhs(circuit_id, "a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, sums[circuit_id].sum_a, selector_a);
-            if i == 0 {
+            if i == 0 { // because r_a[0] is a boring F::one()
                 matrix_sumcheck += &lhs_a;
             } else {
                 matrix_sumcheck += (r_a[i], &lhs_a);

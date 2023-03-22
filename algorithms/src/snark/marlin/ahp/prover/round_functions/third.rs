@@ -176,7 +176,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let msg = prover::ThirdMessage { sums };
         let oracles = prover::ThirdOracles { gs };
 
-        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (&c.hash, &c.index_info)))));
+        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.keys().map(|c| (&c.hash, &c.index_info)))));
 
         end_timer!(round_time);
 

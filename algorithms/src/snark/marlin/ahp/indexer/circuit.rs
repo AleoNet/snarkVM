@@ -111,7 +111,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         index_info.serialize_uncompressed(&mut sha2)?;
         a.serialize_uncompressed(&mut sha2)?;
         b.serialize_uncompressed(&mut sha2)?;
-        a.serialize_uncompressed(&mut sha2)?;
+        c.serialize_uncompressed(&mut sha2)?;
         Ok(sha2.finalize().into())
     }
 

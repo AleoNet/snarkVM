@@ -17,12 +17,9 @@
 use crate::snark::marlin::{
     ahp::{indexer::Circuit, AHPError, AHPForR1CS},
     prover,
-    CircuitInfo,
-    CircuitProvingKey,
     MarlinMode,
 };
 use std::collections::BTreeMap;
-use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
@@ -52,13 +49,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let num_non_zero_b = circuit.index_info.num_non_zero_b;
                 let num_non_zero_c = circuit.index_info.num_non_zero_c;
 
-                let assignments = cfg_iter!(constraints).enumerate().map(|(i, instance)| {
-                    let constraint_time = start_timer!(|| format!("Generating constraints and witnesses for {:?} and index {i}", circuit.hash));
+                let assignments = cfg_iter!(constraints).enumerate().map(|(_i, instance)| {
+                    let constraint_time = start_timer!(|| format!("Generating constraints and witnesses for {:?} and index {_i}", circuit.hash));
                     let mut pcs = prover::ConstraintSystem::new();
                     instance.generate_constraints(&mut pcs)?;
                     end_timer!(constraint_time);
 
-                    let padding_time = start_timer!(|| format!("Padding matrices to make them square for {:?} and index {i}", circuit.hash));
+                    let padding_time = start_timer!(|| format!("Padding matrices to make them square for {:?} and index {_i}", circuit.hash));
                     crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
                     pcs.make_matrices_square();
                     end_timer!(padding_time);
@@ -93,13 +90,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                     Self::formatted_public_input_is_admissible(&padded_public_variables)?;
 
-                    let eval_z_a_time = start_timer!(|| format!("For {:?}, evaluating z_A_{i}", circuit.hash));
+                    let eval_z_a_time = start_timer!(|| format!("For {:?}, evaluating z_A_{_i}", circuit.hash));
                     let z_a = cfg_iter!(circuit.a)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();
                     end_timer!(eval_z_a_time);
 
-                    let eval_z_b_time = start_timer!(|| format!("For {:?}, evaluating z_B_{i}", circuit.hash));
+                    let eval_z_b_time = start_timer!(|| format!("For {:?}, evaluating z_B_{_i}", circuit.hash));
                     let z_b = cfg_iter!(circuit.b)
                         .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                         .collect();

@@ -26,7 +26,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
     ops::{AddAssign, MulAssign, SubAssign},
-    sync::Arc,
 };
 
 use super::{LabeledPolynomial, PolynomialInfo};

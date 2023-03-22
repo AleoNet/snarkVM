@@ -71,7 +71,6 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 mod marlin {
     use super::*;
     use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
-    use crate::snark::marlin::Circuit as MarlinCircuit;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
@@ -110,7 +109,6 @@ mod marlin {
                         let certificate = $marlin_inst::prove_vk(&fs_parameters, &index_vk, &index_pk).unwrap();
                         assert!($marlin_inst::verify_vk(&fs_parameters, &circ, &index_vk, &certificate).unwrap());
 
-                        let circuit_hash = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circ).unwrap().hash;
                         let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
@@ -184,7 +182,7 @@ mod marlin {
                                 println!("Called verifier");
                                 println!("\nShould not verify (i.e. verifier messages should print below):");
                                 let mut fake_instance_inputs = Vec::with_capacity(vks_to_inputs.len());
-                                for (vk, instance_input) in vks_to_inputs.iter() {
+                                for instance_input in vks_to_inputs.values() {
                                     let mut fake_instance_input = Vec::with_capacity(instance_input.len());
                                     for input in instance_input.iter() {
                                         let fake_input = vec![Fr::rand(rng); input.len()];

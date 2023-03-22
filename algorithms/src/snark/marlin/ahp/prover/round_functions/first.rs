@@ -76,7 +76,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let mut r_b_s = Vec::with_capacity(state.circuit_specific_states.len());
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_batch_size());
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_instances);
         for (circuit, circuit_state) in state.circuit_specific_states.iter_mut() {
             let batch_size = circuit_state.batch_size;
 
@@ -100,9 +100,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let witness_label_za = witness_label(&circuit.hash, "z_a", j);
                 let witness_label_zb = witness_label(&circuit.hash, "z_b", j);
                 job_pool.add_job(move || Self::calculate_w(witness_label_w, private_variables, &x_poly, c_domain, i_domain, circuit));
-                job_pool.add_job(move || Self::calculate_z_m(witness_label_za, z_a, false, c_domain, circuit, None));
+                job_pool.add_job(move || Self::calculate_z_m(witness_label_za, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);
-                job_pool.add_job(move || Self::calculate_z_m(witness_label_zb, z_b, true, c_domain, circuit, Some(r_b)));
+                job_pool.add_job(move || Self::calculate_z_m(witness_label_zb, z_b, c_domain, circuit, Some(r_b)));
                 if MM::ZK {
                     circuit_r_b_s.push(r_b);
                 }
@@ -117,11 +117,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
+                println!("z_a_poly: {:?}", z_a_poly.polynomial.leading_coefficient());
+                println!("z_b_poly: {:?}", z_b_poly.polynomial.leading_coefficient());
+                // println!("z_a: {:?}", z_a.polynomial[0].1);
+                // println!("z_b: {:?}", z_b.polynomial[0].1);
 
                 prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
             })
             .collect::<Vec<_>>();
-        assert_eq!(batches.len(), state.total_batch_size());
+        assert_eq!(batches.len(), state.total_instances);
 
         let mut batch_consumed_so_far = 0;
         let mut circuit_specific_batches = BTreeMap::new();
@@ -209,13 +213,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_z_m(
         label: impl ToString,
         evaluations: Vec<F>,
-        will_be_evaluated: bool,
         constraint_domain: EvaluationDomain<F>,
         circuit: &Circuit<F, MM>,
         r: Option<F>,
     ) -> PoolResult<F> {
+        let should_randomize = MM::ZK && r.is_some();
         let v_H = constraint_domain.vanishing_polynomial();
-        let should_randomize = MM::ZK && will_be_evaluated;
         let label = label.to_string();
         let poly_time = start_timer!(|| format!("Computing {label}"));
 

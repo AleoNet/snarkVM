@@ -18,7 +18,6 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
         DensePolynomial,
         EvaluationDomain,
         Evaluations as EvaluationsOnDomain,
@@ -32,7 +31,6 @@ use crate::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{SynthesisError, SynthesisResult};
-use itertools::Itertools;
 
 pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
@@ -75,7 +73,6 @@ pub struct CircuitSpecificState<F: PrimeField> {
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
-    pub(super) total_instances: usize,
     pub(super) max_num_constraints: usize,
     /// The challenges sent by the verifier in the first round
     pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F>>,
@@ -84,6 +81,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
     pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
+    pub(in crate::snark) total_instances: usize,
 }
 
 pub type PaddedPubInputs<F> = Vec<F>;
@@ -204,11 +202,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     /// Get the batch size for a given circuit.
     pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
         self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
-    }
-
-    /// Get the total batch size.
-    pub fn total_batch_size(&self) -> usize {
-        self.circuit_specific_states.values().map(|s| s.batch_size).sum()
     }
 
     /// Get the public inputs for the entire batch.
