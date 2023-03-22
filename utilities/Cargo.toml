@@ -70,6 +70,6 @@ default-features = false
 
 [features]
 default = [ "aleo-std/cpu", "derive", "num_cpus", "std"]
-serial = [ ]
+serial = [ "derive" ]
 std = [ ]
 derive = [ "snarkvm-utilities-derives" ]

@@ -38,7 +38,12 @@ required-features = [ "setup" ]
 default = [ ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
-serial = [ ]
+serial = [
+  "console/serial",
+  "snarkvm-algorithms/serial",
+  "snarkvm-curves/serial",
+  "snarkvm-fields/serial",
+  "snarkvm-utilities/serial" ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [ ]
