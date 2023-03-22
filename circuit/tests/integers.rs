@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -25,9 +25,9 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod integers {
-    use snarkvm_circuit::{U64, FromStr};
+    use snarkvm_circuit::{FromStr, U64};
     use snarkvm_circuit_environment::{Environment, FormalCircuit, FromBits, Inject, Mode, ToBits, Transcribe};
-    use snarkvm_console_types_integers::{U64 as ConsoleU64, One, Zero, AddWrapped};
+    use snarkvm_console_types_integers::{AddWrapped, One, Zero, U64 as ConsoleU64};
 
     // for ops see circuit/types/integers/{add_checked,add_wrapped}.rs
 
@@ -36,7 +36,7 @@ mod integers {
     fn add_checked_var_var() {
         let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
         let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
-        let _candidate = &a + &b;  // '+' on integers turns into a.add_checked(b)
+        let _candidate = &a + &b; // '+' on integers turns into a.add_checked(b)
 
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
@@ -50,7 +50,7 @@ mod integers {
     fn add_checked_0_var() {
         let a = U64::<FormalCircuit>::new(Mode::Constant, ConsoleU64::zero());
         let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
-        let _candidate = &a + &b;  // '+' on integers turns into a.add_checked(b)
+        let _candidate = &a + &b; // '+' on integers turns into a.add_checked(b)
 
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
@@ -64,7 +64,7 @@ mod integers {
     fn add_checked_1_var() {
         let a = U64::<FormalCircuit>::new(Mode::Constant, ConsoleU64::new(1u64));
         let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
-        let _candidate = &a + &b;  // '+' on integers turns into a.add_checked(b)
+        let _candidate = &a + &b; // '+' on integers turns into a.add_checked(b)
 
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
@@ -78,7 +78,7 @@ mod integers {
     fn add_checked_var_1() {
         let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
         let b = U64::<FormalCircuit>::new(Mode::Constant, ConsoleU64::new(1u64));
-        let _candidate = &a + &b;  // '+' on integers turns into a.add_checked(b)
+        let _candidate = &a + &b; // '+' on integers turns into a.add_checked(b)
 
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();
@@ -93,7 +93,7 @@ mod integers {
     fn add_checked_N_var() {
         let a = U64::<FormalCircuit>::new(Mode::Constant, ConsoleU64::new(18446744073709551614u64));
         let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
-        let _candidate = &a + &b;  // '+' on integers turns into a.add_checked(b)
+        let _candidate = &a + &b; // '+' on integers turns into a.add_checked(b)
 
         // print FormalCircuit to JSON in console
         let transcript = FormalCircuit::clear();

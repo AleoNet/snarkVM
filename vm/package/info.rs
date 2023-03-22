@@ -15,6 +15,7 @@
 use super::*;
 
 use snarkvm_circuit::{CircuitJSON, ConstraintTranscript, Transcribe};
+use snarkvm_utilities::DeserializeExt;
 
 pub struct InfoRequest<N: Network> {
     program: Program<N>,
@@ -68,11 +69,11 @@ impl<'de, N: Network> Deserialize<'de> for InfoRequest<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program.
-            serde_json::from_value(request["program"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "program")?,
             // Retrieve the imports.
-            serde_json::from_value(request["imports"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "imports")?,
             // Retrieve the function name.
-            serde_json::from_value(request["function_name"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut request, "function_name")?,
         ))
     }
 }
@@ -117,9 +118,9 @@ impl<'de, N: Network> Deserialize<'de> for InfoResponse<N> {
         // Recover the leaf.
         Ok(Self::new(
             // Retrieve the program ID.
-            serde_json::from_value(response["program_id"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "program_id")?,
             // Retrieve the function name.
-            serde_json::from_value(response["function_name"].take()).map_err(de::Error::custom)?,
+            DeserializeExt::take_from_value::<D>(&mut response, "function_name")?,
         ))
     }
 }
@@ -152,12 +153,8 @@ impl<N: Network> Package<N> {
 
         // Synthesize each proving and verifying key.
         for function_name in program.functions().keys() {
-            match endpoint {
-                _ => {
-                    let transcript = process.info::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
-                    results.push((*function_name, transcript));
-                }
-            }
+            let transcript = process.info::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
+            results.push((*function_name, transcript));
         }
 
         #[cfg(feature = "aleo-cli")]
