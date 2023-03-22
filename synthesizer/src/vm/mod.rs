@@ -22,6 +22,9 @@ mod execute;
 mod finalize;
 mod verify;
 
+#[cfg(test)]
+mod tests;
+
 use crate::{
     atomic_write_batch,
     block::{Block, Transaction, Transactions, Transition},
@@ -57,6 +60,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn from(store: ConsensusStore<N, C>) -> Result<Self> {
         // Initialize a new process.
         let mut process = Process::load()?;
+
+        // Check that the storage contains the credits mapping. If not, initialize it.
+        let credits = Program::<N>::credits()?;
+        let program_store = store.program_store();
+        for mapping in credits.mappings().values() {
+            let program_id = credits.id();
+            let mapping_name = mapping.name();
+            if !program_store.contains_mapping(program_id, mapping_name)? {
+                program_store.initialize_mapping(program_id, mapping_name)?;
+            }
+        }
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
