@@ -170,8 +170,8 @@ impl Valid for usize {
 
     #[inline]
     fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self>) -> Result<(), SerializationError>
-        where
-            Self: 'a,
+    where
+        Self: 'a,
     {
         Ok(())
     }
