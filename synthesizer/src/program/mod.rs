@@ -677,6 +677,12 @@ impl<N: Network> Program<N> {
     pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
         program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint_private"
     }
+
+    /// Returns `true` if the given program ID and function name corresponds to the `transfer_public_to_private` function.
+    #[inline]
+    pub fn is_transfer_public_to_private(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
+        program_id.to_string() == "credits.aleo" && function_name.to_string() == "transfer_public_to_private"
+    }
 }
 
 impl<N: Network> TypeName for Program<N> {

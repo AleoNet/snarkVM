@@ -312,7 +312,7 @@ impl<N: Network> Stack<N> {
             A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
 
         // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
-        let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
+        let (finalize, circuit_finalize) = if matches!(registers.call_stack(), CallStack::Synthesize(..))
             || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
             || matches!(registers.call_stack(), CallStack::Execute(..))
         {
@@ -329,6 +329,8 @@ impl<N: Network> Stack<N> {
 
                 // Initialize a vector for the (console) finalize inputs.
                 let mut console_finalize_inputs = Vec::with_capacity(command.operands().len());
+                // Initialize a vector for the (circuit) finalize inputs.
+                let mut circuit_finalize_inputs = Vec::with_capacity(command.operands().len());
                 // Initialize a vector for the (circuit) finalize input bits.
                 let mut circuit_finalize_input_bits = Vec::with_capacity(command.operands().len());
 
@@ -361,6 +363,8 @@ impl<N: Network> Stack<N> {
                     console_finalize_inputs.push(value.eject_value());
                     // Store the (circuit) finalize input bits.
                     circuit_finalize_input_bits.extend(value.to_bits_le());
+                    // Store the (circuit) finalize input.
+                    circuit_finalize_inputs.push(value.clone());
                 }
 
                 // Compute the finalize inputs checksum.
@@ -375,13 +379,13 @@ impl<N: Network> Stack<N> {
 
                 lap!(timer, "Construct the finalize inputs");
 
-                // Return the (console) finalize inputs.
-                Some(console_finalize_inputs)
+                // Return the (console and circuit) finalize inputs.
+                (Some(console_finalize_inputs), Some(circuit_finalize_inputs))
             } else {
-                None
+                (None, None)
             }
         } else {
-            None
+            (None, None)
         };
 
         use circuit::{ToField, Zero};
@@ -425,6 +429,32 @@ impl<N: Network> Stack<N> {
                 _ => continue,
             }
         }
+
+        // // If the program and function is a public to private transfer, account for the finalize scope.
+        // if Program::is_transfer_public_to_private(self.program.id(), function.name()) {
+        //     // TODO (raychu86): Consider the fee using the finalize scope.
+        //     match circuit_finalize {
+        //         Some(finalize_inputs) => {
+        //             ensure!(
+        //                 finalize_inputs.len() == 2,
+        //                 "'{}/{}' has an invalid number of 'finalize' inputs",
+        //                 self.program_id(),
+        //                 function.name()
+        //             );
+        //
+        //             // Retrieve the i64 gates.
+        //             if let circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::U64(gates), _)) =
+        //                 &finalize_inputs[1]
+        //             {
+        //                 // Increment the i64 gates.
+        //                 i64_gates += gates.clone().cast_as_dual();
+        //             } else {
+        //                 bail!("'{}/{}' has an invalid 'finalize' object", self.program_id(), function.name());
+        //             }
+        //         }
+        //         None => bail!("'{}/{}' is missing 'finalize' values", self.program_id(), function.name()),
+        //     }
+        // }
 
         // If the program and function is not a coinbase function, then ensure the i64 gates is positive.
         if !Program::is_coinbase(self.program.id(), function.name()) {
