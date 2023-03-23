@@ -236,7 +236,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         eta_c: F,
         batch_combiners: &BTreeMap<&'a CircuitId, verifier::BatchCombiners<F>>,
     ) -> Vec<(&'a CircuitId, DensePolynomial<F>)> {
-        let constraint_domain = state.max_constraint_domain;
+        let max_constraint_domain = state.max_constraint_domain;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
 
         assert!(batch_combiners.len() == state.circuit_specific_states.len());
@@ -259,7 +259,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     .map(|(entry, combiner)| {
                         let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
                         let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
-                        assert!(z_a.degree() < constraint_domain.size());
+                        assert!(z_a.degree() < max_constraint_domain.size());
                         if MM::ZK {
                             assert_eq!(z_b.degree(), circuit_constraint_domain.size());
                         } else {
@@ -269,7 +269,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
                         // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
                         // This is better since it reduces the number of required
-                        // multiplications by `constraint_domain.size()`.
+                        // multiplications by `circuit_constraint_domain.size()`.
                         let mut summed_z_m = {
                             // Mutate z_b in place to compute eta_c * z_b + 1
                             // This saves us an additional memory allocation.
@@ -302,7 +302,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let t_poly_time = start_timer!(|| format!("Compute t poly for circuit {:?}", circuit_id_t));
 
                 let r_alpha_x_evals =
-                    constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
+                    circuit_constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
                 let t = Self::calculate_t(
                     &[&circuit.a, &circuit.b, &circuit.c],
                     [F::one(), eta_b, eta_c],

@@ -255,7 +255,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         // Let K = largest_non_zero_domain;
         // Let K_M = non_zero_domain;
-        // Let s := K.selector_polynomial(K) = (v_K / v_K_M) * (K_M.size() / K.size());
+        // Let s := K.selector_polynomial(K_M) = (v_K / v_K_M) * (K_M.size() / K.size());
         // Let v_K := K.vanishing_polynomial();
         // Let v_K_M := K_M.vanishing_polynomial();
 

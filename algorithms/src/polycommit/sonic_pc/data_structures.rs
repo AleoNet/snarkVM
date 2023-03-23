@@ -394,7 +394,9 @@ impl<E: PairingEngine> CommitterKey<E> {
         union.max_degree = biggest_ck.max_degree;
 
         if enforced_degree_bounds.len() > 0 {
-            union.enforced_degree_bounds = Some(enforced_degree_bounds.into_iter().collect_vec());
+            let mut union_bounds = enforced_degree_bounds.into_iter().collect_vec();
+            union_bounds.sort();
+            union.enforced_degree_bounds = Some(union_bounds);
         }
 
        union 
@@ -547,9 +549,11 @@ impl<E: PairingEngine> VerifierKey<E> {
             }
         }
         if bounds_and_neg_powers.len() > 0 {
+            bounds_and_neg_powers.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
         }
         if bounds_and_prepared_neg_powers.len() > 0 {
+            bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
        union 
