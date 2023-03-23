@@ -92,15 +92,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let beta = verifier_message.beta;
 
-        let v_H_at_alpha = state.max_constraint_domain.evaluate_vanishing_polynomial(*alpha);
-        let v_H_at_beta = state.max_constraint_domain.evaluate_vanishing_polynomial(beta);
-
-        let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
-
         let mut pool = ExecutionPool::with_capacity(3*state.circuit_specific_states.len());
 
         let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
         for (circuit, circuit_state) in state.circuit_specific_states.iter() {
+            let v_H_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
+            let v_H_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
+            let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
+
             let label_g_a = witness_label(&circuit.hash, "g_a", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(

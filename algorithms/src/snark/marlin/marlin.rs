@@ -511,8 +511,8 @@ where
         Self::terminate(terminator)?;
 
         // Gather prover polynomials in one vector.
-        let polynomials: Vec<_> = keys_to_constraints.iter()
-            .flat_map(|(pk, _)|pk.circuit.iter())
+        let polynomials: Vec<_> = keys_to_constraints.keys()
+            .flat_map(|pk|pk.circuit.iter())
             .chain(first_round_oracles.iter_for_open())
             .chain(second_oracles.iter())
             .chain(third_oracles.iter())
