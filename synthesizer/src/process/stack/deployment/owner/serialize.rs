@@ -18,40 +18,40 @@ use super::*;
 
 use snarkvm_utilities::DeserializeExt;
 
-impl<N: Network> Serialize for Admin<N> {
-    /// Serializes the admin into string or bytes.
+impl<N: Network> Serialize for Owner<N> {
+    /// Serializes the owner into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut admin = serializer.serialize_struct("Admin", 2)?;
-                admin.serialize_field("address", &self.address)?;
-                admin.serialize_field("signature", &self.signature)?;
-                admin.end()
+                let mut owner = serializer.serialize_struct("Owner", 2)?;
+                owner.serialize_field("address", &self.address)?;
+                owner.serialize_field("signature", &self.signature)?;
+                owner.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Admin<N> {
-    /// Deserializes the admin from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for Owner<N> {
+    /// Deserializes the owner from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                // Parse the Admin from a string into a value.
-                let mut admin = serde_json::Value::deserialize(deserializer)?;
+                // Parse the Owner from a string into a value.
+                let mut owner = serde_json::Value::deserialize(deserializer)?;
 
-                // Recover the admin.
-                let admin = Self::from(
+                // Recover the owner.
+                let owner = Self::from(
                     // Retrieve the address.
-                    DeserializeExt::take_from_value::<D>(&mut admin, "address")?,
+                    DeserializeExt::take_from_value::<D>(&mut owner, "address")?,
                     // Retrieve the signature.
-                    DeserializeExt::take_from_value::<D>(&mut admin, "signature")?,
+                    DeserializeExt::take_from_value::<D>(&mut owner, "signature")?,
                 );
 
-                Ok(admin)
+                Ok(owner)
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "admin"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "owner"),
         }
     }
 }
@@ -62,8 +62,8 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        // Sample the admin.
-        let expected = test_helpers::sample_admin();
+        // Sample the owner.
+        let expected = test_helpers::sample_owner();
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -71,7 +71,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, Admin::from_str(expected_string)?);
+        assert_eq!(expected, Owner::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -79,8 +79,8 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        // Sample the admin.
-        let expected = test_helpers::sample_admin();
+        // Sample the owner.
+        let expected = test_helpers::sample_owner();
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -88,7 +88,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, Admin::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, Owner::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())

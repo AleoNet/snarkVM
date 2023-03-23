@@ -107,7 +107,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         lap!(timer, "Check for duplicate elements");
 
         match transaction {
-            Transaction::Deploy(id, deployment, fee, admin) => {
+            Transaction::Deploy(id, deployment, fee, owner) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     bail!("Invalid transaction size (deployment): {error}");
@@ -118,8 +118,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Verify the fee.
                 self.check_fee(fee)?;
 
-                // Verify the admin signature.
-                ensure!(admin.verify(*id), "Invalid admin for the deployment transaction");
+                // Verify the owner signature.
+                ensure!(owner.verify(*id), "Invalid owner for the deployment transaction");
             }
             Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.

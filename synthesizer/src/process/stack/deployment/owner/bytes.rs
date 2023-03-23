@@ -16,23 +16,23 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Admin<N> {
-    /// Reads the admin from a buffer.
+impl<N: Network> FromBytes for Owner<N> {
+    /// Reads the owner from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the address.
         let address = Address::read_le(&mut reader)?;
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;
 
-        // Return the admin.
+        // Return the owner.
         Ok(Self::from(address, signature))
     }
 }
 
-impl<N: Network> ToBytes for Admin<N> {
+impl<N: Network> ToBytes for Owner<N> {
     /// Writes the deployment to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the admin address.
+        // Write the owner address.
         self.address.write_le(&mut writer)?;
         // Write the signature.
         self.signature.write_le(&mut writer)
@@ -49,12 +49,12 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         // Construct a new deployment.
-        let expected = test_helpers::sample_admin();
+        let expected = test_helpers::sample_owner();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Admin::read_le(&expected_bytes[..])?);
-        assert!(Admin::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, Owner::read_le(&expected_bytes[..])?);
+        assert!(Owner::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         Ok(())
     }
 }

@@ -38,11 +38,11 @@ impl<N: Network> FromBytes for Transaction<N> {
                 let deployment = Deployment::read_le(&mut reader)?;
                 // Read the fee.
                 let fee = Fee::read_le(&mut reader)?;
-                // Read the admin.
-                let admin = Admin::read_le(&mut reader)?;
+                // Read the owner.
+                let owner = Owner::read_le(&mut reader)?;
 
                 // Initialize the transaction.
-                let transaction = Self::from_deployment(deployment, fee, admin).map_err(|e| error(e.to_string()))?;
+                let transaction = Self::from_deployment(deployment, fee, owner).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
                 (id, transaction)
             }
@@ -87,7 +87,7 @@ impl<N: Network> ToBytes for Transaction<N> {
 
         // Write the transaction.
         match self {
-            Self::Deploy(id, deployment, fee, admin) => {
+            Self::Deploy(id, deployment, fee, owner) => {
                 // Write the variant.
                 0u8.write_le(&mut writer)?;
                 // Write the ID.
@@ -96,8 +96,8 @@ impl<N: Network> ToBytes for Transaction<N> {
                 deployment.write_le(&mut writer)?;
                 // Write the fee.
                 fee.write_le(&mut writer)?;
-                // Write the admin.
-                admin.write_le(&mut writer)
+                // Write the owner.
+                owner.write_le(&mut writer)
             }
             Self::Execute(id, execution, additional_fee) => {
                 // Write the variant.

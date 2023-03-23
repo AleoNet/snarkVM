@@ -21,7 +21,7 @@ mod string;
 
 use crate::{
     block::Transition,
-    process::{Admin, Authorization, Deployment, Execution, Fee},
+    process::{Authorization, Deployment, Execution, Fee, Owner},
     program::Program,
     vm::VM,
     ConsensusStorage,
@@ -48,24 +48,24 @@ use console::{
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Box<Deployment<N>>, Fee<N>, Admin<N>),
+    Deploy(N::TransactionID, Box<Deployment<N>>, Fee<N>, Owner<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn from_deployment(deployment: Deployment<N>, fee: Fee<N>, admin: Admin<N>) -> Result<Self> {
+    pub fn from_deployment(deployment: Deployment<N>, fee: Fee<N>, owner: Owner<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
 
-        // Verify that the admin is correct for the deployment.
-        ensure!(admin.verify(id.into()), "Attempted to create a transaction deployment with an invalid admin");
+        // Verify that the owner is correct for the deployment.
+        ensure!(owner.verify(id.into()), "Attempted to create a transaction deployment with an invalid owner");
 
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id.into(), Box::new(deployment), fee, admin))
+        Ok(Self::Deploy(id.into(), Box::new(deployment), fee, owner))
     }
 
     /// Initializes a new execution transaction.
@@ -97,12 +97,12 @@ impl<N: Network> Transaction<N> {
         // Compute the fee.
         let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
 
-        // Construct the admin.
+        // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let admin = Admin::new(private_key, id.into(), rng)?;
+        let owner = Owner::new(private_key, id.into(), rng)?;
 
         // Initialize the transaction.
-        Self::from_deployment(deployment, fee, admin)
+        Self::from_deployment(deployment, fee, owner)
     }
 
     /// Initializes a new execution transaction from an authorization, and an optional fee.

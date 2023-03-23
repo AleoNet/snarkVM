@@ -19,7 +19,7 @@ use crate::{
     block::Transaction,
     cow_to_cloned,
     cow_to_copied,
-    process::{Admin, Deployment, Fee},
+    process::{Deployment, Fee, Owner},
     program::Program,
     snark::{Certificate, Proof, VerifyingKey},
     store::{
@@ -56,8 +56,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-    /// The mapping of `(program ID, edition)` to `Admin`.
-    type AdminMap: for<'a> Map<'a, (ProgramID<N>, u16), Admin<N>>;
+    /// The mapping of `(program ID, edition)` to `Owner`.
+    type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), Owner<N>>;
 
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
@@ -81,8 +81,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the reverse fee map.
     fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
-    /// Returns the admin map.
-    fn admin_map(&self) -> &Self::AdminMap;
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
@@ -101,7 +101,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.certificate_map().start_atomic();
         self.fee_map().start_atomic();
         self.reverse_fee_map().start_atomic();
-        self.admin_map().start_atomic();
+        self.owner_map().start_atomic();
         self.transition_store().start_atomic();
     }
 
@@ -115,7 +115,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             || self.certificate_map().is_atomic_in_progress()
             || self.fee_map().is_atomic_in_progress()
             || self.reverse_fee_map().is_atomic_in_progress()
-            || self.admin_map().is_atomic_in_progress()
+            || self.owner_map().is_atomic_in_progress()
             || self.transition_store().is_atomic_in_progress()
     }
 
@@ -129,7 +129,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.certificate_map().abort_atomic();
         self.fee_map().abort_atomic();
         self.reverse_fee_map().abort_atomic();
-        self.admin_map().abort_atomic();
+        self.owner_map().abort_atomic();
         self.transition_store().abort_atomic();
     }
 
@@ -143,15 +143,15 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.certificate_map().finish_atomic()?;
         self.fee_map().finish_atomic()?;
         self.reverse_fee_map().finish_atomic()?;
-        self.admin_map().finish_atomic()?;
+        self.owner_map().finish_atomic()?;
         self.transition_store().finish_atomic()
     }
 
     /// Stores the given `deployment transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a deployment.
-        let (transaction_id, deployment, fee, admin) = match transaction {
-            Transaction::Deploy(transaction_id, deployment, fee, admin) => (transaction_id, deployment, fee, admin),
+        let (transaction_id, deployment, fee, owner) = match transaction {
+            Transaction::Deploy(transaction_id, deployment, fee, owner) => (transaction_id, deployment, fee, owner),
             Transaction::Execute(..) => {
                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
             }
@@ -195,8 +195,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             )?;
             self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
 
-            // Store the admin.
-            self.admin_map().insert((program_id, edition), *admin)?;
+            // Store the owner.
+            self.owner_map().insert((program_id, edition), *owner)?;
 
             // Store the fee transition.
             self.transition_store().insert(fee)?;
@@ -253,8 +253,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.fee_map().remove(transaction_id)?;
             self.reverse_fee_map().remove(&transition_id)?;
 
-            // Remove the admin.
-            self.admin_map().remove(&(program_id, edition))?;
+            // Remove the owner.
+            self.owner_map().remove(&(program_id, edition))?;
 
             // Remove the fee transition.
             self.transition_store().remove(&transition_id)?;
@@ -412,8 +412,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         }
     }
 
-    /// Returns the admin for the given `program ID`.
-    fn get_admin(&self, program_id: &ProgramID<N>) -> Result<Option<Admin<N>>> {
+    /// Returns the owner for the given `program ID`.
+    fn get_owner(&self, program_id: &ProgramID<N>) -> Result<Option<Owner<N>>> {
         // TODO (raychu86): Consider program upgrades and edition changes.
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
@@ -421,10 +421,10 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
 
-        // Retrieve the Admin.
-        match self.admin_map().get(&(*program_id, edition))? {
-            Some(admin) => Ok(Some(cow_to_copied!(admin))),
-            None => bail!("Failed to find the Admin for program '{program_id}' (edition {edition})"),
+        // Retrieve the owner.
+        match self.owner_map().get(&(*program_id, edition))? {
+            Some(owner) => Ok(Some(cow_to_copied!(owner))),
+            None => bail!("Failed to find the Owner for program '{program_id}' (edition {edition})"),
         }
     }
 
@@ -441,14 +441,14 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the fee for transaction '{transaction_id}'"),
         };
 
-        // Retrieve the admin.
-        let admin = match self.get_admin(deployment.program_id())? {
-            Some(admin) => admin,
-            None => bail!("Failed to get the admin for transaction '{transaction_id}'"),
+        // Retrieve the owner.
+        let owner = match self.get_owner(deployment.program_id())? {
+            Some(owner) => owner,
+            None => bail!("Failed to get the owner for transaction '{transaction_id}'"),
         };
 
         // Construct the deployment transaction.
-        let deployment_transaction = Transaction::from_deployment(deployment, fee, admin)?;
+        let deployment_transaction = Transaction::from_deployment(deployment, fee, owner)?;
         // Ensure the transaction ID matches.
         match *transaction_id == deployment_transaction.id() {
             true => Ok(Some(deployment_transaction)),
@@ -477,8 +477,8 @@ pub struct DeploymentMemory<N: Network> {
     fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
     /// The reverse fee map.
     reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
-    /// The admin map.
-    admin_map: MemoryMap<(ProgramID<N>, u16), Admin<N>>,
+    /// The owner map.
+    owner_map: MemoryMap<(ProgramID<N>, u16), Owner<N>>,
     /// The transition store.
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
@@ -493,7 +493,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
     type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type AdminMap = MemoryMap<(ProgramID<N>, u16), Admin<N>>;
+    type OwnerMap = MemoryMap<(ProgramID<N>, u16), Owner<N>>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the deployment storage.
@@ -507,7 +507,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             certificate_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
             reverse_fee_map: MemoryMap::default(),
-            admin_map: MemoryMap::default(),
+            owner_map: MemoryMap::default(),
             transition_store,
         })
     }
@@ -552,9 +552,9 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
         &self.reverse_fee_map
     }
 
-    /// Returns the admin map.
-    fn admin_map(&self) -> &Self::AdminMap {
-        &self.admin_map
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap {
+        &self.owner_map
     }
 
     /// Returns the transition store.

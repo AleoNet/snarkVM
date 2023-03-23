@@ -24,13 +24,13 @@ use console::{
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Admin<N: Network> {
+pub struct Owner<N: Network> {
     address: Address<N>,
     signature: Signature<N>,
 }
 
-impl<N: Network> Admin<N> {
-    /// Initializes a new administrator.
+impl<N: Network> Owner<N> {
+    /// Initializes a new owner.
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         transaction_id: N::TransactionID,
@@ -42,12 +42,12 @@ impl<N: Network> Admin<N> {
         Ok(Self { signature, address })
     }
 
-    /// Initializes a new administrator from the address and signature.
+    /// Initializes a new owner from the address and signature.
     pub fn from(address: Address<N>, signature: Signature<N>) -> Self {
         Self { address, signature }
     }
 
-    /// Returns the admin address.
+    /// Returns the owner address.
     pub const fn address(&self) -> Address<N> {
         self.address
     }
@@ -57,7 +57,7 @@ impl<N: Network> Admin<N> {
         &self.signature
     }
 
-    /// Verify that the admin signature is correct.
+    /// Verify that the owner signature is correct.
     pub fn verify(&self, transaction_id: N::TransactionID) -> bool {
         self.signature.verify(&self.address, &[*transaction_id])
     }
@@ -72,8 +72,8 @@ pub(crate) mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    pub(crate) fn sample_admin() -> Admin<CurrentNetwork> {
-        static INSTANCE: OnceCell<Admin<CurrentNetwork>> = OnceCell::new();
+    pub(crate) fn sample_owner() -> Owner<CurrentNetwork> {
+        static INSTANCE: OnceCell<Owner<CurrentNetwork>> = OnceCell::new();
         *INSTANCE.get_or_init(|| {
             // Initialize the RNG.
             let rng = &mut TestRng::default();
@@ -85,12 +85,12 @@ pub(crate) mod test_helpers {
             let field: Field<CurrentNetwork> = rng.gen();
             let transaction_id = field.into();
 
-            Admin::new(&private_key, transaction_id, rng).unwrap()
+            Owner::new(&private_key, transaction_id, rng).unwrap()
         })
     }
 
     #[test]
-    fn test_verify_admin() {
+    fn test_verify_owner() {
         // Initialize the RNG.
         let rng = &mut TestRng::default();
 
@@ -101,14 +101,14 @@ pub(crate) mod test_helpers {
         let field: Field<CurrentNetwork> = rng.gen();
         let transaction_id = field.into();
 
-        let admin = Admin::new(&private_key, transaction_id, rng).unwrap();
+        let owner = Owner::new(&private_key, transaction_id, rng).unwrap();
 
-        // Ensure that the admin is verified for the given transaction id.
-        assert!(admin.verify(transaction_id));
+        // Ensure that the owner is verified for the given transaction id.
+        assert!(owner.verify(transaction_id));
 
-        // Ensure that the admin is not verified for a different transaction id.
+        // Ensure that the owner is not verified for a different transaction id.
         let field: Field<CurrentNetwork> = rng.gen();
         let incorrect_transaction_id = field.into();
-        assert!(!admin.verify(incorrect_transaction_id));
+        assert!(!owner.verify(incorrect_transaction_id));
     }
 }

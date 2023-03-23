@@ -71,7 +71,7 @@ use console::{
         Identifier,
         Literal,
         Locator,
-        Owner,
+        Owner as RecordOwner,
         Plaintext,
         PlaintextType,
         ProgramID,
