@@ -39,7 +39,7 @@ mod credits_tests {
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Construct the new block header.
-        let transactions = Transactions::from(&transactions);
+        let transactions = Transactions::from(transactions);
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             CurrentNetwork::ID,
@@ -102,8 +102,8 @@ mod credits_tests {
 
         // Create a private mint transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "mint_private",
             [Value::from_str(&recipient_address.to_string())?, Value::from_str(&format!("{amount}u64"))?].into_iter(),
@@ -121,7 +121,7 @@ mod credits_tests {
 
         // Check that the output record is correct.
         let (_, record) = output_records[0];
-        let decrypted_record = record.decrypt(&recipient_view_key)?;
+        let decrypted_record = record.decrypt(recipient_view_key)?;
         assert_eq!(***decrypted_record.gates(), amount);
         assert_eq!(**decrypted_record.owner(), recipient_address);
 
@@ -138,8 +138,8 @@ mod credits_tests {
     ) -> Result<Transaction<CurrentNetwork>> {
         // Create a public mint transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "mint_public",
             [Value::from_str(&recipient_address.to_string())?, Value::from_str(&format!("{amount}u64"))?].into_iter(),
@@ -184,8 +184,8 @@ mod credits_tests {
 
         // Create a private mint transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "transfer_private",
             [
@@ -208,7 +208,7 @@ mod credits_tests {
 
         // Check that the output records are correct.
         let (_, record) = output_records[0];
-        let decrypted_record = record.decrypt(&recipient_view_key)?;
+        let decrypted_record = record.decrypt(recipient_view_key)?;
         assert_eq!(***decrypted_record.gates(), amount);
         assert_eq!(**decrypted_record.owner(), recipient_address);
 
@@ -236,8 +236,8 @@ mod credits_tests {
 
         // Create a private mint transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "transfer_private_to_public",
             [
@@ -291,8 +291,8 @@ mod credits_tests {
 
         // Create a private mint transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "transfer_public_to_private",
             [Value::from_str(&recipient_address.to_string())?, Value::from_str(&format!("{amount}u64"))?].into_iter(),
@@ -310,7 +310,7 @@ mod credits_tests {
 
         // Check that the output record is correct.
         let (_, record) = output_records[0];
-        let decrypted_record = record.decrypt(&recipient_view_key)?;
+        let decrypted_record = record.decrypt(recipient_view_key)?;
         assert_eq!(***decrypted_record.gates(), amount);
         assert_eq!(**decrypted_record.owner(), recipient_address);
 
@@ -338,8 +338,8 @@ mod credits_tests {
 
         // Create a private mint transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "transfer_public",
             [Value::from_str(&recipient_address.to_string())?, Value::from_str(&format!("{amount}u64"))?].into_iter(),
@@ -381,8 +381,8 @@ mod credits_tests {
 
         // Create a split transaction.
         let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
+            vm,
+            caller_private_key,
             "credits.aleo",
             "split",
             [Value::Record(credits.clone()), Value::from_str(&format!("{amount}u64"))?].into_iter(),
