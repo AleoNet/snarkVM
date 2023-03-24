@@ -117,10 +117,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
-                println!("z_a_poly: {:?}", z_a_poly.polynomial.leading_coefficient());
-                println!("z_b_poly: {:?}", z_b_poly.polynomial.leading_coefficient());
-                // println!("z_a: {:?}", z_a.polynomial[0].1);
-                // println!("z_b: {:?}", z_b.polynomial[0].1);
 
                 prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
             })

@@ -14,67 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AlgebraicSponge, SNARK};
-use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-
+use crate::{
+    snark::marlin::TestCircuit,
+    traits::{AlgebraicSponge, SNARK}
+};
 use std::collections::BTreeMap;
-
-#[derive(Copy, Clone)]
-pub struct Circuit<F: Field> {
-    pub a: Option<F>,
-    pub b: Option<F>,
-    pub num_constraints: usize,
-    pub num_variables: usize,
-    pub mul_depth: usize,
-}
-
-impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-    fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-        let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
-        let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
-
-        let mut mul_vars = Vec::with_capacity(self.mul_depth);
-        for i in 0..self.mul_depth {
-            let mul_var = cs.alloc_input(
-                || format!("mul_var {i}"),
-                || {
-                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
-
-                    for _ in 0..(1 + i) {
-                        a.mul_assign(&b);
-                    }
-                    Ok(a)
-                },
-            )?;
-            mul_vars.push(mul_var);
-        }
-
-        for i in 0..(self.num_variables - 2 - self.mul_depth) {
-            let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
-        }
-
-        let mul_constraints = self.mul_depth - 1;
-        for i in 0..(self.num_constraints - mul_constraints) {
-            cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + mul_vars[0]);
-        }
-
-        for i in 0..mul_constraints {
-            cs.enforce(|| format!("constraint_mul {i}"), |lc| lc + mul_vars[i], |lc| lc + b, |lc| lc + mul_vars[i + 1]);
-        }
-
-        Ok(())
-    }
-}
 
 mod marlin {
     use super::*;
     use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{TestRng, Uniform};
-
-    use core::ops::MulAssign;
 
     type MarlinSonicInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 
@@ -88,20 +38,15 @@ mod marlin {
             impl $test_struct {
                 pub(crate) fn test_circuit<'a>(num_constraints: usize, num_variables: usize) {
                     let rng = &mut snarkvm_utilities::rand::TestRng::default();
+                    let random = Fr::rand(rng);
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
                     let fs_parameters = FS::sample_parameters();
 
                     for _ in 0..50 {
-                        let a = Fr::rand(rng);
-                        let b = Fr::rand(rng);
-                        let mut c = a;
-                        c.mul_assign(&b);
-                        let mut d = c;
-                        d.mul_assign(&b);
-
-                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 };
+                        let mul_depth = 2;
+                        let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -112,10 +57,10 @@ mod marlin {
                         let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
+                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, public_inputs, &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [a, a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [random, random], &proof).unwrap());
                     }
 
                     for _ in 0..10 {
@@ -127,20 +72,8 @@ mod marlin {
                                 for i in 0..circuit_batch_size {
                                     let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
                                     .map(|_| {
-                                        let mut inputs: Vec<Fr> = Vec::with_capacity(2+i);
-                                        let a = Fr::rand(rng);
-                                        let b = Fr::rand(rng);
-
                                         let mul_depth = 2 + i;
-                                        for j in 1..(mul_depth + 1) {
-                                            let mut new_var = a;
-                                            for _ in 0..j {
-                                                new_var.mul_assign(&b);
-                                            }
-                                            inputs.push(new_var);
-                                        }
-
-                                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth };
+                                        let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
                                         (circ, inputs)
                                     })
                                     .unzip();
@@ -167,7 +100,7 @@ mod marlin {
                                     let circuit_inputs = &inputs[&index_pk.circuit.hash];
                                     vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
                                 }
-                                for (i, (index_pk, index_vk)) in index_pks.iter().zip(index_vks.iter()).enumerate() {
+                                for (i, index_pk) in index_pks.iter().enumerate() {
                                     pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
                                 }
 
@@ -215,8 +148,8 @@ mod marlin {
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
 
-                    let circ =
-                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
+                    let mul_depth = 1;
+                    let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
                     let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -242,8 +175,8 @@ mod marlin {
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
 
-                    let circ =
-                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
+                    let mul_depth = 1;
+                    let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
                     let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -354,7 +287,6 @@ mod marlin_hiding {
         ToBytes,
     };
 
-    use core::ops::MulAssign;
     use std::str::FromStr;
 
     type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
@@ -368,14 +300,8 @@ mod marlin_hiding {
         let fs_parameters = FS::sample_parameters();
 
         for _ in 0..num_times {
-            let a = Fr::rand(rng);
-            let b = Fr::rand(rng);
-            let mut c = a;
-            c.mul_assign(&b);
-            let mut d = c;
-            d.mul_assign(&b);
-
-            let circuit = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 };
+            let mul_depth = 2;
+            let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
@@ -383,10 +309,10 @@ mod marlin_hiding {
             let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
             println!("Called prover");
 
-            assert!(MarlinInst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
+            assert!(MarlinInst::verify(&fs_parameters, &index_vk, public_inputs, &proof).unwrap());
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&fs_parameters, &index_vk, [a, a], &proof).unwrap());
+            assert!(!MarlinInst::verify(&fs_parameters, &index_vk, [Fr::rand(rng), Fr::rand(rng)], &proof).unwrap());
         }
     }
 
@@ -400,7 +326,8 @@ mod marlin_hiding {
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
-        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
+        let mul_depth = 1;
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -421,7 +348,8 @@ mod marlin_hiding {
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
-        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables, mul_depth: 2 };
+        let mul_depth = 1;
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -495,20 +423,13 @@ mod marlin_hiding {
         test_circuit_n_times(num_constraints, num_variables, 1);
     }
 
-    fn setup_test(num_constraints: usize, num_variables: usize) -> (Circuit<Fr>, Fr, Fr) {
-        let rng = &mut TestRng::default();
-        let a = Fr::rand(rng);
-        let b = Fr::rand(rng);
-        let c = a * b;
-        let d = c * b;
-
-        (Circuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth: 2 }, c, d)
-    }
-
     #[test]
     fn check_indexing() {
         let rng = &mut TestRng::default();
-        let (circuit, c, d) = setup_test(1 << 13, 1 << 13);
+        let mul_depth = 2;
+        let num_constraints = 1 << 13;
+        let num_variables = 1 << 13;
+        let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
@@ -524,8 +445,8 @@ mod marlin_hiding {
         let (new_pk, new_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         assert_eq!(index_pk, new_pk);
         assert_eq!(index_vk, new_vk);
-        assert!(MarlinInst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
-        assert!(MarlinInst::verify(&fs_parameters, &new_vk, [c, d], &proof).unwrap());
+        assert!(MarlinInst::verify(&fs_parameters, &index_vk, public_inputs.clone(), &proof).unwrap());
+        assert!(MarlinInst::verify(&fs_parameters, &new_vk, public_inputs, &proof).unwrap());
     }
 
     #[test]
@@ -537,25 +458,31 @@ mod marlin_hiding {
         let fs_parameters = FS::sample_parameters();
 
         // Indexing, proving, and verifying for a circuit with 1 << 13 constraints and 1 << 13 variables.
-        let (circuit1, c1, d1) = setup_test(2usize.pow(15) - 10, 2usize.pow(15) - 10);
+        let mul_depth = 2;
+        let num_constraints = 2usize.pow(15) - 10;
+        let num_variables = 2usize.pow(15) - 10;
+        let (circuit1, public_inputs1) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         let (pk1, vk1) = MarlinInst::circuit_setup(&universal_srs, &circuit1).unwrap();
         println!("Called circuit setup");
 
         let proof1 = MarlinInst::prove(&fs_parameters, &pk1, &circuit1, rng).unwrap();
         println!("Called prover");
-        assert!(MarlinInst::verify(&fs_parameters, &vk1, [c1, d1], &proof1).unwrap());
+        assert!(MarlinInst::verify(&fs_parameters, &vk1, public_inputs1.clone(), &proof1).unwrap());
 
         /*****************************************************************************/
 
         // Indexing, proving, and verifying for a circuit with 1 << 19 constraints and 1 << 19 variables.
-        let (circuit2, c2, d2) = setup_test(2usize.pow(19) - 10, 2usize.pow(19) - 10);
+        let mul_depth = 2;
+        let num_constraints = 2usize.pow(19) - 10;
+        let num_variables = 2usize.pow(19) - 10;
+        let (circuit2, public_inputs2) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         let (pk2, vk2) = MarlinInst::circuit_setup(&universal_srs, &circuit2).unwrap();
         println!("Called circuit setup");
 
         let proof2 = MarlinInst::prove(&fs_parameters, &pk2, &circuit2, rng).unwrap();
         println!("Called prover");
-        assert!(MarlinInst::verify(&fs_parameters, &vk2, [c2, d2], &proof2).unwrap());
+        assert!(MarlinInst::verify(&fs_parameters, &vk2, public_inputs2, &proof2).unwrap());
         /*****************************************************************************/
-        assert!(MarlinInst::verify(&fs_parameters, &vk1, [c1, d1], &proof1).unwrap());
+        assert!(MarlinInst::verify(&fs_parameters, &vk1, public_inputs1, &proof1).unwrap());
     }
 }

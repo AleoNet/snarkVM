@@ -46,6 +46,7 @@ pub(crate) fn witness_label(circuit_id: &CircuitId, poly: &str, i: usize) -> Str
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The linear combinations that are statically known to evaluate to zero.
+    /// These correspond to the virtual commitments as noted in the Aleo marlin protocol docs
     #[rustfmt::skip]
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["matrix_sumcheck", "lincheck_sumcheck"];
 
