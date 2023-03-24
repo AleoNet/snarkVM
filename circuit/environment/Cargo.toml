@@ -16,10 +16,6 @@ package = "snarkvm-console-network"
 path = "../../console/network"
 version = "0.9.14"
 
-[dev-dependencies.snarkvm-algorithms]
-path = "../../algorithms"
-features = [ "polycommit_full", "snark" ]
-
 [dependencies.snarkvm-circuit-environment-witness]
 path = "./witness"
 version = "0.9.14"
@@ -59,6 +55,10 @@ version = "0.2"
 
 [dependencies.once_cell]
 version = "1.17.1"
+
+[dev-dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+features = [ "polycommit_full", "snark" ]
 
 [dev-dependencies.snarkvm-circuit]
 path = "../../circuit"
