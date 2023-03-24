@@ -96,9 +96,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (j, (z_a, z_b, private_variables, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
             {
-                let witness_label_w = witness_label(&circuit.hash, "w", j);
-                let witness_label_za = witness_label(&circuit.hash, "z_a", j);
-                let witness_label_zb = witness_label(&circuit.hash, "z_b", j);
+                let witness_label_w = witness_label(&circuit.id, "w", j);
+                let witness_label_za = witness_label(&circuit.id, "z_a", j);
+                let witness_label_zb = witness_label(&circuit.id, "z_b", j);
                 job_pool.add_job(move || Self::calculate_w(witness_label_w, private_variables, &x_poly, c_domain, i_domain, circuit));
                 job_pool.add_job(move || Self::calculate_z_m(witness_label_za, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);
@@ -127,14 +127,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut circuit_specific_batches = BTreeMap::new();
         for ((circuit, state), r_b_s) in state.circuit_specific_states.iter_mut().zip(r_b_s) {
             let batches = batches[batch_consumed_so_far..][..state.batch_size].to_vec();
-            circuit_specific_batches.insert(*circuit, batches);
+            circuit_specific_batches.insert(circuit.id.clone(), batches);
             batch_consumed_so_far += state.batch_size;
             state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
             end_timer!(round_time);
         }
         let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (&c.hash, &s.batch_size)))));
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size)))));
         state.first_round_oracles = Some(Arc::new(oracles));
         Ok(state)
     }

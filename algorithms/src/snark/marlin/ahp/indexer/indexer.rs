@@ -96,7 +96,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
-            hash: id,
+            id,
             _mode: PhantomData,
         })
     }

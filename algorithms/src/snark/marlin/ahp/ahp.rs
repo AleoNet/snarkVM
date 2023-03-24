@@ -177,17 +177,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let batch_combiners = &first_round_msg.batch_combiners;
         let prover::ThirdMessage { sums } = prover_third_message;
 
-        let mut t_at_beta_s = BTreeMap::new();
-        for (&circuit_id, circuit_state) in state.circuit_specific_states.iter() {
-            #[rustfmt::skip]
+        let t_at_beta_s = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
             let sums_i = &sums[circuit_id];
             let t_at_beta =
                 eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums_i.sum_a +
                 eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums_i.sum_b +
                 eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums_i.sum_c;
-    
-            t_at_beta_s.insert(circuit_id, t_at_beta);
-        }
+            (circuit_id, t_at_beta)
+        }).collect::<BTreeMap<_, _>>();
 
         let verifier::ThirdMessage { r_a, r_b, r_c } = state.third_round_message.as_ref().unwrap();
         let beta = state.second_round_message.unwrap().beta;
@@ -198,15 +195,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         // Lincheck sumcheck:
         let lincheck_time = start_timer!(|| "Lincheck");
-        let mut z_b_s = BTreeMap::new();
-        for (&circuit_id, circuit_state) in state.circuit_specific_states.iter() {
+        let z_b_s = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
             let z_b_i = (0..circuit_state.batch_size).map(|i| {
                     let z_b = witness_label(circuit_id, "z_b", i);
                     LinearCombination::new(z_b.clone(), [(F::one(), z_b)])
                 })
             .collect::<Vec<_>>();
-            z_b_s.insert(circuit_id, z_b_i);
-        }
+            (circuit_id, z_b_i)
+        }).collect::<BTreeMap<_, _>>();
 
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
@@ -222,11 +218,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(v_H_at_beta_time);
 
         let v_X_at_beta_time = start_timer!(|| "v_X_at_beta");
-        let mut v_X_at_beta = BTreeMap::new();
-        for (circuit_id, circuit_state) in state.circuit_specific_states.iter() {
+        let v_X_at_beta = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
             let v_X_i_at_beta = circuit_state.input_domain.evaluate_vanishing_polynomial(beta);
-            v_X_at_beta.insert(circuit_id, v_X_i_at_beta);
-        }
+            (circuit_id, v_X_i_at_beta)
+        }).collect::<BTreeMap<_,_>>();
         end_timer!(v_X_at_beta_time);
 
         let z_b_s_at_beta = z_b_s.iter().map(|(circuit_id, z_b_i)| {
@@ -240,7 +235,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                                         .zip_eq(r_alpha_at_beta_s.values())
                                         .map(|(((circuit_id, z_b_i_at_beta), combiners), &r_alpha_at_beta)| {
             let z_b_at_beta = z_b_i_at_beta.iter()
-                                           .zip_eq(combiners.instance_combiners.iter())
+                                           .zip_eq(&combiners.instance_combiners)
                                            .map(|(z_b_at_beta, instance_combiner)| {
                 *z_b_at_beta * instance_combiner
             }).sum::<F>();
@@ -248,8 +243,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }).collect::<BTreeMap<_,_>>();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
-        let mut combined_x_at_betas = BTreeMap::new();
-        for (i, (circuit_id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
+        let combined_x_at_betas = state.circuit_specific_states.iter()
+                                        .enumerate()
+                                        .map(|(i, (circuit_id, circuit_state))| {
             let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
             let combined_x_at_beta = batch_combiners[circuit_id]
                 .instance_combiners
@@ -257,12 +253,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .zip_eq(public_inputs[i].iter())
                 .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
                 .sum::<F>();
-            combined_x_at_betas.insert(circuit_id, combined_x_at_beta);
-        }
+            (circuit_id, combined_x_at_beta)
+        }).collect::<BTreeMap<_,_>>();
 
         // We're now going to calculate the lincheck_sumcheck
         // Note that we precalculated a number of terms already to prevent duplicate calculations:
-        // TODO: review if we're consistent in how we're precalculating terms
         #[rustfmt::skip]
         let lincheck_sumcheck = {
             let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
@@ -305,7 +300,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
-        for (i, (&circuit_id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
+        for (i, (&id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
             let v_H_i_at_alpha_time = start_timer!(|| "v_H_i_at_alpha");
             let v_H_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(alpha);
             end_timer!(v_H_i_at_alpha_time);
@@ -315,33 +310,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             end_timer!(v_H_i_at_beta_time);
             let v_H_i_alpha_beta = v_H_i_at_alpha * v_H_i_at_beta;
     
-            let g_a_label = witness_label(&circuit_id, "g_a", 0);
-            let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
-            let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
             let selector_a = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
-            let lhs_a =
-                Self::construct_lhs(circuit_id, "a", alpha, beta, gamma, v_H_i_alpha_beta, g_a_at_gamma, sums[circuit_id].sum_a, selector_a);
-            if i == 0 { // because r_a[0] is a boring F::one()
-                matrix_sumcheck += &lhs_a;
-            } else {
-                matrix_sumcheck += (r_a[i], &lhs_a);
-            }
-
-            let g_b_label = witness_label(&circuit_id, "g_b", 0);
-            let g_b = LinearCombination::new(g_b_label.clone(), [(F::one(), g_b_label)]);
-            let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
             let selector_b = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
-            let lhs_b =
-                Self::construct_lhs(circuit_id, "b", alpha, beta, gamma, v_H_i_alpha_beta, g_b_at_gamma, sums[circuit_id].sum_b, selector_b);
-            matrix_sumcheck += (r_b[i], &lhs_b);
-    
-            let g_c_label = witness_label(&circuit_id, "g_c", 0);
-            let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
-            let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
             let selector_c = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
-            let lhs_c =
-                Self::construct_lhs(circuit_id, "c", alpha, beta, gamma, v_H_i_alpha_beta, g_c_at_gamma, sums[circuit_id].sum_c, selector_c);
-            matrix_sumcheck += (r_c[i], &lhs_c);
+
+            let g_a_label = witness_label(id, "g_a", 0);
+            let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
+            let g_b_label = witness_label(id, "g_b", 0);
+            let g_b = LinearCombination::new(g_b_label.clone(), [(F::one(), g_b_label)]);
+            let g_c_label = witness_label(id, "g_c", 0);
+            let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
+
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", alpha, beta, gamma, evals, &g_a, v_H_i_alpha_beta, r_a[i], sums[id].sum_a, selector_a)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", alpha, beta, gamma, evals, &g_b, v_H_i_alpha_beta, r_b[i], sums[id].sum_b, selector_b)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", alpha, beta, gamma, evals, &g_c, v_H_i_alpha_beta, r_c[i], sums[id].sum_c, selector_c)?;
 
             linear_combinations.insert(g_a.label.clone(), g_a);
             linear_combinations.insert(g_b.label.clone(), g_b);
@@ -358,15 +340,35 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    fn add_g_m_term<E: EvaluationsProvider<F>>(
+        matrix_sumcheck: &mut LinearCombination<F>,
+        id: &CircuitId,
+        m: &str,
+        alpha: F,
+        beta: F,
+        gamma: F,
+        evals: &E,
+        g_m: &LinearCombination<F>,
+        v_h_i_alpha_beta: F,
+        r: F,
+        sum: F,
+        selector: F,
+    ) -> Result<(), AHPError> {
+        let g_at_gamma = evals.get_lc_eval(g_m, gamma.clone())?;
+        let b_term = gamma * g_at_gamma + sum; // Xg_m(X) + sum_m
+        let lhs_a = Self::construct_lhs(id, m, alpha, beta, v_h_i_alpha_beta, b_term, selector);
+        *matrix_sumcheck += (r, &lhs_a);
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn construct_lhs(
         id: &CircuitId,
         label: &str,
         alpha: F,
         beta: F,
-        gamma: F,
         v_h_at_alpha_beta: F,
-        g_at_gamma: F,
-        sum: F,
+        b_term: F,
         selector_at_gamma: F,
     ) -> LinearCombination<F> {
         let label_row = format!("circuit_{id}_row_{label}");
@@ -376,8 +378,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let label_a_poly = format!("circuit_{id}_a_poly_{label}");
         let label_denom = format!("circuit_{id}_denom_{label}");
 
-        let a =
-            LinearCombination::new(label_a_poly, [(v_h_at_alpha_beta, label_val)]);
+        let a = LinearCombination::new(label_a_poly, [(v_h_at_alpha_beta, label_val)]);
         let alpha_beta = alpha * beta;
 
         let mut b = LinearCombination::new(label_denom, [
@@ -386,7 +387,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             (-beta, (label_col).into()),
             (F::one(), (label_row_col).into()),
         ]);
-        b *= gamma * g_at_gamma + sum;
+        b *= b_term; // Xg_m(X) + sum_m
 
         let mut lhs = a;
         lhs -= &b;
@@ -400,14 +401,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         target_domain: &EvaluationDomain<F>,
         gamma: F,
     ) -> F {
-        match cached_selector_evaluations.get(&(target_domain.size, largest_domain.size)) {
-            Some(selector) => *selector,
-            None => {
-                let selector = largest_domain.evaluate_selector_polynomial(*target_domain, gamma);
-                cached_selector_evaluations.insert((target_domain.size, largest_domain.size), selector);
-                selector
-            },  
-        }
+        *cached_selector_evaluations.entry((target_domain.size, largest_domain.size)).or_insert({
+            largest_domain.evaluate_selector_polynomial(*target_domain, gamma)
+        })
     }
 }
 

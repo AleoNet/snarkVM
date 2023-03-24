@@ -77,9 +77,9 @@ mod marlin {
                                         (circ, inputs)
                                     })
                                     .unzip();
-                                    let circuit_hash = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().hash;
-                                    constraints.insert(circuit_hash.clone(), circuit_batch);
-                                    inputs.insert(circuit_hash, input_batch);
+                                    let circuit_id = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().id;
+                                    constraints.insert(circuit_id.clone(), circuit_batch);
+                                    inputs.insert(circuit_id, input_batch);
                                 }
                                 let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();
 
@@ -91,13 +91,13 @@ mod marlin {
                                 let mut vks_to_inputs = BTreeMap::new();
                                 let mut constraint_refs = Vec::with_capacity(index_pks.len());
                                 for (index_pk, index_vk) in index_pks.iter().zip(index_vks.iter()) {
-                                    let circuit_constraints = &constraints[&index_pk.circuit.hash];
+                                    let circuit_constraints = &constraints[&index_pk.circuit.id];
                                     let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
                                     for constraint in circuit_constraints.iter() {
                                         circuit_constraint_refs.push(constraint)
                                     }
                                     constraint_refs.push(circuit_constraint_refs);
-                                    let circuit_inputs = &inputs[&index_pk.circuit.hash];
+                                    let circuit_inputs = &inputs[&index_pk.circuit.id];
                                     vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
                                 }
                                 for (i, index_pk) in index_pks.iter().enumerate() {

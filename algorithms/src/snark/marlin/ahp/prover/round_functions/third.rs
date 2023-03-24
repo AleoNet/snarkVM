@@ -100,7 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let v_H_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
             let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
-            let label_g_a = witness_label(&circuit.hash, "g_a", 0);
+            let label_g_a = witness_label(&circuit.id, "g_a", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_a,
@@ -116,7 +116,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            let label_g_b = witness_label(&circuit.hash, "g_b", 0);
+            let label_g_b = witness_label(&circuit.id, "g_b", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_b,
@@ -132,7 +132,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            let label_g_c = witness_label(&circuit.hash, "g_c", 0);
+            let label_g_c = witness_label(&circuit.id, "g_c", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_c,
@@ -162,20 +162,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 sum_b: sum_b,
                 sum_c: sum_c,
             };
-            sums.insert(circuit_a.hash.clone(), matrix_sum);
+            sums.insert(circuit_a.id.clone(), matrix_sum);
             state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
             let matrix_gs = prover::MatrixGs {
                 g_a: g_a,
                 g_b: g_b,
                 g_c: g_c,
             };
-            gs.insert(&circuit_a.hash, matrix_gs);
+            gs.insert(&circuit_a.id, matrix_gs);
         }
 
         let msg = prover::ThirdMessage { sums };
         let oracles = prover::ThirdOracles { gs };
 
-        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.keys().map(|c| (&c.hash, &c.index_info)))));
+        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.keys().map(|c| (&c.id, &c.index_info)))));
 
         end_timer!(round_time);
 
@@ -196,7 +196,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> (Sum<F>, LHS<F>, Gpoly<F>){
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
-            let a_poly_time = start_timer!(|| "Computing a poly");
+            let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));
             let a_poly = {
                 let coeffs = cfg_iter!(arithmetization.val.as_dense().unwrap().coeffs())
                     .map(|a| v_H_alpha_v_H_beta * a)
@@ -211,7 +211,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             (&arithmetization.evals_on_K.row, &arithmetization.evals_on_K.col, &arithmetization.evals_on_K.row_col);
 
         job_pool.add_job(|| {
-            let b_poly_time = start_timer!(|| "Computing b poly");
+            let b_poly_time = start_timer!(|| format!("Computing a poly for {label}"));
             let alpha_beta = alpha * beta;
             let b_poly = {
                 let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
@@ -227,7 +227,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         });
         let [a_poly, b_poly]: [_; 2] = job_pool.execute_all().try_into().unwrap();
 
-        let f_evals_time = start_timer!(|| "Computing f evals on K");
+        let f_evals_time = start_timer!(|| format!("Computing f evals on K for {label}"));
         let mut inverses: Vec<_> = cfg_iter!(row_on_K.evaluations)
             .zip_eq(&col_on_K.evaluations)
             .map(|(r, c)| (beta - r) * (alpha - c))
@@ -238,7 +238,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let f_evals_on_K = inverses;
         end_timer!(f_evals_time);
 
-        let f_poly_time = start_timer!(|| "Computing f poly");
+        let f_poly_time = start_timer!(|| format!("Computing f poly for {label}"));
         let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain)
             .interpolate_with_pc(ifft_precomputation);
         end_timer!(f_poly_time);

@@ -16,7 +16,6 @@
 
 use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
 use hashbrown::{HashMap, HashSet};
-use itertools::Itertools;
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
@@ -373,20 +372,19 @@ impl<E: PairingEngine> CommitterKey<E> {
             enforced_degree_bounds: None,
             max_degree: 0,
         };
-        let mut enforced_degree_bounds = HashSet::<usize>::new();
-        let biggest_ck = committer_keys.clone().into_iter().max_by_key(|ck|ck.supported_degree()).unwrap();
+        let mut enforced_degree_bounds = vec![];
+        let mut biggest_ck = None;
         for ck in committer_keys {
-            union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
-            match &ck.enforced_degree_bounds {
-                Some(edbs) => {
-                    for edb in edbs {
-                        enforced_degree_bounds.insert(*edb);
-                    }
-                },
-                None => (),
+            if biggest_ck.is_none() {
+                biggest_ck = Some(ck);
+            } else if biggest_ck.unwrap().supported_degree() < ck.supported_degree() {
+                biggest_ck = Some(ck);
             }
+            union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
+            enforced_degree_bounds.append(&mut ck.enforced_degree_bounds.clone().unwrap());
         }
 
+        let biggest_ck = biggest_ck.unwrap();
         union.powers_of_beta_g = biggest_ck.powers_of_beta_g.clone();
         union.powers_of_beta_times_gamma_g = biggest_ck.powers_of_beta_times_gamma_g.clone();
         union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.clone();
@@ -394,9 +392,8 @@ impl<E: PairingEngine> CommitterKey<E> {
         union.max_degree = biggest_ck.max_degree;
 
         if enforced_degree_bounds.len() > 0 {
-            let mut union_bounds = enforced_degree_bounds.into_iter().collect_vec();
-            union_bounds.sort();
-            union.enforced_degree_bounds = Some(union_bounds);
+            enforced_degree_bounds.sort();
+            union.enforced_degree_bounds = Some(enforced_degree_bounds);
         }
 
        union 
@@ -524,8 +521,28 @@ impl<E: PairingEngine> VerifierKey<E> {
     }
 
     pub fn union<'a, T: IntoIterator<Item = &'a Self> + Clone>(verifier_keys: T) -> Self {
-        let biggest_vk = verifier_keys.clone().into_iter().max_by_key(|vk|vk.supported_degree()).unwrap();
+        let mut bounds_seen = HashSet::<usize>::new();
+        let mut bounds_and_neg_powers = vec![];
+        let mut bounds_and_prepared_neg_powers = vec![];
+        let mut biggest_vk = None;
+        for vk in verifier_keys {
+            if biggest_vk.is_none() {
+                biggest_vk = Some(vk);
+            } else if biggest_vk.unwrap().supported_degree() < vk.supported_degree() {
+                biggest_vk = Some(vk);
+            }
+            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.clone().unwrap();
+            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.clone().unwrap();
+            assert!(new_bounds.len() == new_prep_bounds.len());
+            for ((bound, neg_powers),(_, prep_neg_powers)) in new_bounds.into_iter().zip(new_prep_bounds) {
+                if bounds_seen.insert(bound) {
+                    bounds_and_neg_powers.push((bound, neg_powers));
+                    bounds_and_prepared_neg_powers.push((bound, prep_neg_powers));
+                }
+            }
+        }
 
+        let biggest_vk = biggest_vk.unwrap();
         let mut union = VerifierKey::<E>{
             vk: biggest_vk.vk.clone(),
             degree_bounds_and_neg_powers_of_h: None,
@@ -534,20 +551,6 @@ impl<E: PairingEngine> VerifierKey<E> {
             max_degree: biggest_vk.max_degree,
         };
 
-        let mut bounds_seen = HashSet::<usize>::new();
-        let mut bounds_and_neg_powers = vec![];
-        let mut bounds_and_prepared_neg_powers = vec![];
-        for vk in verifier_keys {
-            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.clone().unwrap();
-            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.clone().unwrap();
-            assert!(new_bounds.len() == new_prep_bounds.len());
-            for ((bound, neg_powers),(_, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
-                if bounds_seen.insert(*bound) {
-                    bounds_and_neg_powers.push((*bound, *neg_powers));
-                    bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers));
-                }
-            }
-        }
         if bounds_and_neg_powers.len() > 0 {
             bounds_and_neg_powers.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);

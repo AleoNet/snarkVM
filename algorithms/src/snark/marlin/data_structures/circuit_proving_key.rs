@@ -65,7 +65,7 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
 
 impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitProvingKey<E, MM> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.circuit.hash.cmp(&other.circuit.hash)
+        self.circuit.id.cmp(&other.circuit.id)
     }
 }
 

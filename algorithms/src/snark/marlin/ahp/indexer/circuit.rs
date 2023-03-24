@@ -78,19 +78,19 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
     pub(crate) _mode: PhantomData<MM>,
-    pub(crate) hash: CircuitId,
+    pub(crate) id: CircuitId,
 }
 
 impl<F: PrimeField, MM: MarlinMode> Eq for Circuit<F, MM> {}
 impl<F: PrimeField, MM: MarlinMode> PartialEq for Circuit<F, MM> {
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash
+        self.id == other.id
     }
 }
 
 impl<F: PrimeField, MM: MarlinMode> Ord for Circuit<F, MM> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.hash.cmp(&other.hash)
+        self.id.cmp(&other.id)
     }
 }
 
@@ -213,7 +213,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let hash = CircuitId { 0: Self::hash(&index_info, &a, &b, &c).unwrap(), };
+        let id = CircuitId { 0: Self::hash(&index_info, &a, &b, &c).unwrap(), };
         Ok(Circuit {
             index_info,
             a,
@@ -225,7 +225,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             _mode: PhantomData,
-            hash
+            id
         })
     }
 }

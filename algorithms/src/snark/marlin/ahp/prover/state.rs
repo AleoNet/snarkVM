@@ -78,7 +78,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F, MM>>>,
+    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
     pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
     pub(in crate::snark) total_instances: usize,
@@ -112,19 +112,13 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             .into_iter()
             .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
-                // TODO: instead of creating EvaluationDomains for constraint_domain and non_zero_domain, I think we only have to do this at the end after getting the biggest
                 let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
                     .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-                max_constraint_domain = match max_constraint_domain {
-                    Some(max_d) => {
-                        if max_d.size() < constraint_domain.size() {
-                            Some(constraint_domain)
-                        } else {
-                            Some(max_d)
-                        }
-                    },
-                    None => Some(constraint_domain),
-                };
+                if max_constraint_domain.is_none() {
+                    max_constraint_domain = Some(constraint_domain);
+                } else if max_constraint_domain.unwrap().size() < constraint_domain.size() {
+                    max_constraint_domain = Some(constraint_domain);
+                }
 
                 let non_zero_a_domain =
                     EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -134,16 +128,11 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
                 let max_domain_candidate = AHPForR1CS::<_, MM>::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain);
-                max_non_zero_domain = match max_non_zero_domain {
-                    Some(max_d) => {
-                        if max_d.size() < max_domain_candidate.size() {
-                            Some(max_domain_candidate)
-                        } else {
-                            Some(max_d)
-                        }
-                    },
-                    None => Some(max_domain_candidate),
-                };
+                if max_non_zero_domain.is_none() {
+                    max_non_zero_domain = Some(max_domain_candidate);
+                } else if max_non_zero_domain.unwrap().size() < max_domain_candidate.size() {
+                    max_non_zero_domain = Some(max_domain_candidate);
+                }
 
                 let first_padded_public_inputs = &variable_assignments[0].0;
                 let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
@@ -213,5 +202,14 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     /// Get the padded public inputs for the entire batch.
     pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
+    }
+
+    /// Iterate over the lhs_polynomials
+    pub fn iter_lhs_polys(&mut self) -> impl Iterator<Item = &mut DensePolynomial<F>> {
+        let polys = self.circuit_specific_states
+            .values_mut()
+            .flat_map(|s| s.lhs_polynomials.as_mut().unwrap().iter_mut())
+            .collect::<Vec<_>>();
+        polys.into_iter()
     }
 }

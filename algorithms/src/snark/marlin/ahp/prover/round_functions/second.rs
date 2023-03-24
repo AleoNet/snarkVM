@@ -114,27 +114,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         mut summed_z_m_and_t: Vec<(&'a CircuitId, DensePolynomial<F>)>,
         alpha: &F,
     ) -> DensePolynomial<F> {
-
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain_size = state.max_constraint_domain.size_as_field_element;
 
-        for (i, (circuit, oracles)) in state.first_round_oracles.as_ref().unwrap().batches.iter().enumerate() {
+        for (i, (circuit, oracles)) in state.circuit_specific_states.keys()
+                                        .zip(state.first_round_oracles.as_ref().unwrap().batches.values())
+                                        .enumerate() {
             let circuit_specific_state = &state.circuit_specific_states[circuit];
             let summed_z_m = &mut summed_z_m_and_t[2*i];
-            assert!(*summed_z_m.0 == circuit.hash);
+            assert!(*summed_z_m.0 == circuit.id);
             let summed_z_m = core::mem::take(&mut summed_z_m.1);
             let summed_t = &mut summed_z_m_and_t[2*i + 1];
-            assert!(*summed_t.0 == circuit.hash);
+            assert!(*summed_t.0 == circuit.id);
             let summed_t = core::mem::take(&mut summed_t.1);
-            let circuit_combiner = batch_combiners[&circuit.hash].circuit_combiner;
-            let instance_combiners = batch_combiners[&circuit.hash].instance_combiners.clone();
+            let circuit_combiner = batch_combiners[&circuit.id].circuit_combiner;
+            let instance_combiners = batch_combiners[&circuit.id].instance_combiners.clone();
             let x_polys = circuit_specific_state.x_polys.clone();
             let input_domain = circuit_specific_state.input_domain.clone();
             let constraint_domain = &circuit_specific_state.constraint_domain;
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
 
-            let _circuit_id = &circuit.hash; // seems like a compiler bug marks this as unused
+            let _circuit_id = &circuit.id; // seems like a compiler bug marks this as unused
 
             job_pool.add_job(move || {
                 let z_time = start_timer!(move || format!("Compute z poly for circuit {_circuit_id}"));
@@ -246,10 +247,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
             let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
-            let first_msg_i = &first_msg.batches[circuit];
-            let instance_combiners = &batch_combiners[&circuit.hash].instance_combiners;
-            let circuit_id_z_m = &circuit.hash;
-            let circuit_id_t = &circuit.hash;
+            let first_msg_i = &first_msg.batches[&circuit.id];
+            let instance_combiners = &batch_combiners[&circuit.id].instance_combiners;
+            let circuit_id_z_m = &circuit.id;
+            let circuit_id_t = &circuit.id;
             let circuit_constraint_domain = circuit_specific_state.constraint_domain;
             let circuit_input_domain = circuit_specific_state.input_domain;
             job_pool.add_job(move || {

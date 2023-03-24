@@ -124,7 +124,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 circuit_commitments,
                 verifier_key,
                 mode: PhantomData,
-                hash: indexed_circuit.hash.clone(),
+                hash: indexed_circuit.id.clone(),
             };
             circuit_verifying_keys.push(circuit_verifying_key.clone());
 
@@ -383,7 +383,7 @@ where
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let padded_public_input = prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
-            let circuit_id = &pk.circuit.hash;
+            let circuit_id = &pk.circuit.id;
             batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             padded_public_inputs.insert(circuit_id, padded_public_input);
@@ -481,7 +481,7 @@ where
 
         Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
 
-        let (verifier_third_msg, verifier_state) =
+        let (mut verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
@@ -491,7 +491,7 @@ where
         Self::terminate(terminator)?;
 
         let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
+        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&mut verifier_third_msg, prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
@@ -628,7 +628,7 @@ where
         // Collect verification key and public inputs to verify_batch
         let mut vk_to_inputs = BTreeMap::new();
         for pk in keys_to_constraints.keys() {
-            vk_to_inputs.insert(&pk.circuit_verifying_key, public_inputs.get(&pk.circuit.hash).unwrap().as_slice());
+            vk_to_inputs.insert(&pk.circuit_verifying_key, public_inputs.get(&pk.circuit.id).unwrap().as_slice());
         }
 
         #[cfg(debug_assertions)]

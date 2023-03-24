@@ -18,6 +18,7 @@ use snarkvm_fields::PrimeField;
 
 use crate::snark::marlin::{CircuitId, witness_label, MarlinMode};
 use std::collections::BTreeMap;
+use itertools::Itertools;
 
 #[derive(Clone, Debug)]
 pub struct BatchCombiners<F> {
@@ -52,6 +53,17 @@ pub struct ThirdMessage<F> {
     pub r_a: Vec<F>,
     pub r_b: Vec<F>,
     pub r_c: Vec<F>,
+}
+
+impl<F: PrimeField> ThirdMessage<F> {
+    pub fn iter(&mut self) -> impl Iterator<Item = &mut F> {
+        self.r_a.iter_mut()
+            .zip_eq(self.r_b.iter_mut())
+            .zip_eq(self.r_c.iter_mut())
+            .flat_map(|((r_a, r_b), r_c)|{
+                [r_a, r_b, r_c]
+            }).collect_vec().into_iter()
+    }
 }
 
 /// Query set of the verifier.
