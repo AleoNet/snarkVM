@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{FinalizeRegisters, Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
@@ -72,6 +72,35 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 2 {
+            bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
+        }
+
+        // Retrieve the inputs.
+        let input_a = registers.load(stack, &self.operands[0])?;
+        let input_b = registers.load(stack, &self.operands[1])?;
+
+        // Assert the inputs.
+        match VARIANT {
+            0 => {
+                if input_a != input_b {
+                    bail!("'{}' failed: '{input_a}' is not equal to '{input_b}' (should be equal)", Self::opcode())
+                }
+            }
+            1 => {
+                if input_a == input_b {
+                    bail!("'{}' failed: '{input_a}' is equal to '{input_b}' (should not be equal)", Self::opcode())
+                }
+            }
+            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
+        }
+        Ok(())
+    }
+
+    /// Evaluates the instruction in the context of a finalize block.
+    #[inline]
+    pub fn evaluate_finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())

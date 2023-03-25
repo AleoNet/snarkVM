@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{FinalizeRegisters, Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{
@@ -191,6 +191,55 @@ impl<N: Network> Cast<N> {
                 let record = Record::<N, Plaintext<N>>::from_plaintext(owner, gates, entries, nonce)?;
                 // Store the record.
                 registers.store(stack, &self.destination, Value::Record(record))
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
+            }
+        }
+    }
+
+    /// Evaluates the instruction in the context of a finalize block.
+    #[inline]
+    pub fn evaluate_finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        // Load the operands values.
+        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+
+        match self.register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                // Ensure the operands is not empty.
+                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
+
+                // Retrieve the struct and ensure it is defined in the program.
+                let struct_ = stack.program().get_struct(&struct_name)?;
+
+                // Initialize the struct members.
+                let mut members = IndexMap::new();
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
+                    // Compute the register type.
+                    let register_type = RegisterType::Plaintext(*member_type);
+                    // Retrieve the plaintext value from the entry.
+                    let plaintext = match member {
+                        Value::Plaintext(plaintext) => {
+                            // Ensure the member matches the register type.
+                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the struct member is not a record.
+                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
+                    };
+                    // Append the member to the struct members.
+                    members.insert(*member_name, plaintext);
+                }
+
+                // Construct the struct.
+                let struct_ = Plaintext::Struct(members, Default::default());
+                // Store the struct.
+                registers.store(stack, &self.destination, Value::Plaintext(struct_))
+            }
+            RegisterType::Record(_record_name) => {
+                bail!("Illegal operation: Cannot cast to a record in a finalize block.")
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
