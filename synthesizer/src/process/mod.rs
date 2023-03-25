@@ -1595,4 +1595,106 @@ function mint:
             store.get_value(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
         assert_eq!(candidate, Value::from_str("100u64").unwrap());
     }
+
+    #[test]
+    fn test_process_execute_and_finalize_load_store() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program testing.aleo;
+
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
+
+function compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    input r2 as u64.public;
+    add r1 r2 into r3;
+    finalize r0 r3;
+
+finalize compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    load.d account[r0] 0u64 into r2;
+    add r1 r2 into r3;
+    store r3 into account[r0];
+    load account[r0] into r4;
+    add r1 r4 into r5;
+    store r5 into account[r0];
+",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the program ID.
+        let program_id = program.id();
+        // Declare the mapping.
+        let mapping_name = Identifier::from_str("account").unwrap();
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let mut process = Process::load().unwrap();
+
+        // Initialize a new program store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+
+        // Add the program to the process.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+        // Check that the deployment verifies.
+        process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+        // Finalize the deployment.
+        process.finalize_deployment(&store, &deployment).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("3u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("5u64").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Verify the execution.
+        process.verify_execution::<true>(&execution).unwrap();
+
+        // Now, finalize the execution.
+        process.finalize_execution(&store, &execution).unwrap();
+
+        // Check that the account balance is now 8.
+        let candidate =
+            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        assert_eq!(candidate, Value::from_str("16u64").unwrap());
+    }
 }
