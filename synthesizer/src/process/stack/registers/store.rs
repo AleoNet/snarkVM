@@ -66,7 +66,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> StoreCircuit<N, A> for Registers
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store_circuit(
+    fn store_circuit(
         &mut self,
         stack: &Stack<N>,
         register: &Register<N>,
