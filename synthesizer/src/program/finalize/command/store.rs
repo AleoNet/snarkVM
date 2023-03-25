@@ -20,8 +20,7 @@ use console::{
     program::{Identifier, Value},
 };
 
-// TODO: Verify that the desired format is `store r1 into accounts[r0]`.
-
+/// A store command, e.g. `store r1 into mapping[r0];`
 /// Stores the `value` operand into the `key` entry in `mapping`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Store<N: Network> {
