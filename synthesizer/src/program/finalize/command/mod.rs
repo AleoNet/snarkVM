@@ -26,6 +26,9 @@ pub use increment::*;
 mod load;
 pub use load::*;
 
+mod load_default;
+pub use load_default::*;
+
 mod store;
 pub use store::*;
 
@@ -42,6 +45,8 @@ pub enum Command<N: Network> {
     Increment(Increment<N>),
     /// Loads the value stored at the `key` operand in `mapping` into `destination`.
     Load(Load<N>),
+    /// Loads the value stored at the `key` operand in `mapping` into `destination`, using `default` if the key is not present.
+    LoadDefault(LoadDefault<N>),
     /// Stores the `value` operand into the `key` entry in `mapping`.
     Store(Store<N>),
 }
@@ -60,6 +65,7 @@ impl<N: Network> Command<N> {
             Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
             Command::Increment(increment) => increment.evaluate_finalize(stack, store, registers),
             Command::Load(load) => load.evaluate_finalize(stack, store, registers),
+            Command::LoadDefault(load_default) => load_default.evaluate_finalize(stack, store, registers),
             Command::Store(store_instruction) => store_instruction.evaluate_finalize(stack, store, registers),
         }
     }
@@ -79,10 +85,12 @@ impl<N: Network> FromBytes for Command<N> {
             2 => Ok(Self::Increment(Increment::read_le(&mut reader)?)),
             // Read the load.
             3 => Ok(Self::Load(Load::read_le(&mut reader)?)),
+            // Read the default load.
+            4 => Ok(Self::LoadDefault(LoadDefault::read_le(&mut reader)?)),
             // Read the store.
-            4 => Ok(Self::Store(Store::read_le(&mut reader)?)),
+            5 => Ok(Self::Store(Store::read_le(&mut reader)?)),
             // Invalid variant.
-            5.. => Err(error(format!("Invalid command variant: {variant}"))),
+            6.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -115,9 +123,15 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the load.
                 load.write_le(&mut writer)
             }
-            Self::Store(store) => {
+            Self::LoadDefault(load_default) => {
                 // Write the variant.
                 4u8.write_le(&mut writer)?;
+                // Write the load default.
+                load_default.write_le(&mut writer)
+            }
+            Self::Store(store) => {
+                // Write the variant.
+                5u8.write_le(&mut writer)?;
                 // Write the store.
                 store.write_le(&mut writer)
             }
@@ -134,6 +148,7 @@ impl<N: Network> Parser for Command<N> {
         alt((
             map(Decrement::parse, |decrement| Self::Decrement(decrement)),
             map(Increment::parse, |increment| Self::Increment(increment)),
+            map(LoadDefault::parse, |load_default| Self::LoadDefault(load_default)),
             map(Load::parse, |load| Self::Load(load)),
             map(Store::parse, |store| Self::Store(store)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
@@ -174,6 +189,7 @@ impl<N: Network> Display for Command<N> {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
             Self::Increment(increment) => Display::fmt(increment, f),
             Self::Load(load) => Display::fmt(load, f),
+            Self::LoadDefault(load_default) => Display::fmt(load_default, f),
             Self::Store(store) => Display::fmt(store, f),
         }
     }

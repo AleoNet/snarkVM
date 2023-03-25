@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::finalize::{Load, Store};
+use crate::finalize::{Load, LoadDefault, Store};
 use console::program::FinalizeType;
 
 impl<N: Network> FinalizeTypes<N> {
@@ -193,6 +193,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Increment(increment) => self.check_increment(stack, finalize_name, increment)?,
             Command::Load(load) => self.check_load(stack, finalize_name, load)?,
+            Command::LoadDefault(load_default) => self.check_load_default(stack, finalize_name, load_default)?,
             Command::Store(store) => self.check_store(stack, finalize_name, store)?,
         }
         Ok(())
@@ -432,6 +433,88 @@ impl<N: Network> FinalizeTypes<N> {
             }
         }
 
+        Ok(())
+    }
+
+    /// Ensures the given default load command is well-formed.
+    #[inline]
+    fn check_load_default(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &LoadDefault<N>) -> Result<()> {
+        // Ensure the declared mapping in default load is defined in the program.
+        if !stack.program().contains_mapping(load.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
+        }
+
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(load.mapping_name()).unwrap();
+        // Get the mapping key type, checking that it is not a record or external record.
+        let mapping_key_type = match mapping.key().finalize_type() {
+            FinalizeType::Public(key_type) => key_type,
+            FinalizeType::Record(_) => bail!("A mapping key cannot be a record."),
+            FinalizeType::ExternalRecord(_) => bail!("A mapping key cannot be an external record."),
+        };
+        // Get the mapping value type, checking that it is not a record or external record.
+        let mapping_value_type = match mapping.value().finalize_type() {
+            FinalizeType::Public(value_type) => value_type,
+            FinalizeType::Record(_) => bail!("A mapping value cannot be a record."),
+            FinalizeType::ExternalRecord(_) => bail!("A mapping value cannot be an external record."),
+        };
+
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, load.key())?;
+        // Ensure the key is not a record or external record.
+        match key_type {
+            // Check that the key type in the mapping matches the key type in the load.
+            RegisterType::Plaintext(load_key_type) => {
+                if *mapping_key_type != load_key_type {
+                    bail!(
+                        "Key type in default load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+                    )
+                }
+            }
+            RegisterType::Record(..) => bail!("Default load cannot use a 'record' as a key (found at '{load}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Default load cannot use an 'external record' as a key (found at '{load}')")
+            }
+        }
+
+        // Retrieve the register type of the default value.
+        let default_value_type = self.get_type_from_operand(stack, load.default())?;
+        // Ensure the default value is not a record or external record.
+        match default_value_type {
+            // Check that the default value type in the mapping matches the default value type in the load.
+            RegisterType::Plaintext(load_default_value_type) => {
+                if *mapping_value_type != load_default_value_type {
+                    bail!(
+                        "Default value type in default load '{load_default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                    )
+                }
+            }
+            RegisterType::Record(..) => {
+                bail!("Default load cannot use a 'record' as a default value (found at '{load}')")
+            }
+            RegisterType::ExternalRecord(..) => {
+                bail!("Default load cannot use an 'external record' as a default value (found at '{load}')")
+            }
+        }
+
+        // Retrieve the register type of the destination register.
+        let value_type = self.get_type(stack, load.destination())?;
+        // Ensure the destination register type is a plaintext type.
+        match value_type {
+            // Check that the value type in the mapping matches the type of the destination register.
+            RegisterType::Plaintext(destination_value_type) => {
+                if *mapping_value_type != destination_value_type {
+                    bail!(
+                        "Value type in default load '{destination_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                    )
+                }
+            }
+            RegisterType::Record(..) => bail!("Cannot load a 'record' (found at '{load}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Cannot load an 'external record' (found at '{load}')")
+            }
+        }
         Ok(())
     }
 
