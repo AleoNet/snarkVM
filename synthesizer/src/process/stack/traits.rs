@@ -131,7 +131,12 @@ pub trait StoreCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// This method should halt if the given register is an input register.
     /// This method should halt if the register is already used.
     #[inline]
-    fn store_literal(&mut self, stack: &Stack<N>, register: &Register<N>, literal: circuit::Literal<A>) -> Result<()> {
+    fn store_literal_circuit(
+        &mut self,
+        stack: &Stack<N>,
+        register: &Register<N>,
+        literal: circuit::Literal<A>,
+    ) -> Result<()> {
         self.store_circuit(stack, register, circuit::Value::Plaintext(circuit::Plaintext::from(literal)))
     }
 }

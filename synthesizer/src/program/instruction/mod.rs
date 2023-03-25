@@ -359,7 +359,7 @@ impl<N: Network> Instruction<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        instruction!(self, |instruction| instruction.evaluate::<A>(stack, registers))
+        instruction!(self, |instruction| instruction.evaluate(stack, registers))
     }
 
     /// Evaluates the instruction in the context of the finalize block.

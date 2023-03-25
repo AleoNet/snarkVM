@@ -57,7 +57,6 @@ impl<N: Network> Command<N> {
     ) -> Result<()> {
         match self {
             Command::Decrement(decrement) => decrement.evaluate_finalize(stack, store, registers),
-            // TODO: Consider using a trait for `Registers::load/store` in Instruction::evaluate, reduces code duplication.
             Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
             Command::Increment(increment) => increment.evaluate_finalize(stack, store, registers),
             Command::Load(load) => load.evaluate_finalize(stack, store, registers),
