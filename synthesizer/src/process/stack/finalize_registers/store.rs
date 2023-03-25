@@ -16,18 +16,7 @@
 
 use super::*;
 
-impl<N: Network> FinalizeRegisters<N> {
-    /// Assigns the given literal to the given register, assuming the register is not already assigned.
-    ///
-    /// # Errors
-    /// This method will halt if the given register is a register member.
-    /// This method will halt if the given register is an input register.
-    /// This method will halt if the register is already used.
-    #[inline]
-    pub fn store_literal(&mut self, stack: &Stack<N>, register: &Register<N>, literal: Literal<N>) -> Result<()> {
-        self.store(stack, register, Value::Plaintext(Plaintext::from(literal)))
-    }
-
+impl<N: Network> Store<N> for FinalizeRegisters<N> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -35,7 +24,7 @@ impl<N: Network> FinalizeRegisters<N> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
+    fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.

@@ -17,7 +17,7 @@
 mod load;
 mod store;
 
-use crate::{FinalizeTypes, Operand, Stack};
+use crate::{FinalizeTypes, Load, Operand, Stack, Store};
 use console::{
     network::prelude::*,
     program::{Entry, Literal, Plaintext, Register, Value},
