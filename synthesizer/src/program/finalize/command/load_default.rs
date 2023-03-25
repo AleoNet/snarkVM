@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, load) = LoadDefault::<CurrentNetwork>::parse("load account[r0] r1 into r2;").unwrap();
+        let (string, load) = LoadDefault::<CurrentNetwork>::parse("load.d account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(load.mapping, Identifier::from_str("account").unwrap());
         assert_eq!(load.operands().len(), 2, "The number of operands is incorrect");
