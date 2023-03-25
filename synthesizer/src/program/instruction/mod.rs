@@ -26,7 +26,7 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{Registers, Stack};
+use crate::{FinalizeRegisters, Registers, Stack};
 use console::{
     network::{
         prelude::{
@@ -360,6 +360,12 @@ impl<N: Network> Instruction<N> {
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate::<A>(stack, registers))
+    }
+
+    /// Evaluates the instruction in the context of the finalize block.
+    #[inline]
+    pub fn evaluate_finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        instruction!(self, |instruction| instruction.evaluate_finalize(stack, registers))
     }
 
     /// Executes the instruction.
