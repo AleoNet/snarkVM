@@ -131,12 +131,14 @@ impl<N: Network> Parser for Command<N> {
     /// Parses the string into the command.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the command.
+        // Note that the order of the parsers is important.
         alt((
             map(Decrement::parse, |decrement| Self::Decrement(decrement)),
-            map(Instruction::parse, |instruction| Self::Instruction(instruction)),
             map(Increment::parse, |increment| Self::Increment(increment)),
             map(Load::parse, |load| Self::Load(load)),
             map(Store::parse, |store| Self::Store(store)),
+            map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
 }

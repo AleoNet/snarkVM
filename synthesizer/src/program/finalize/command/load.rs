@@ -20,8 +20,7 @@ use console::{
     program::{Identifier, Register, Value},
 };
 
-// TODO: Verify that the desired format is `load accounts[r0] into r1;`.
-
+/// A load command, e.g. `load accounts[r0] into r1;`.
 /// Loads the value stored at `operand` in `mapping` into `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Load<N: Network> {
