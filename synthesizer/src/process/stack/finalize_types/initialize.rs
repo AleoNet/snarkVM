@@ -26,11 +26,15 @@ impl<N: Network> FinalizeTypes<N> {
         // Initialize a map of registers to their types.
         let mut finalize_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
+        println!("initialize_finalize_types: L29");
+
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
             // Check the input register type.
             finalize_types.check_input(stack, input.register(), &RegisterType::from(*input.finalize_type()))?;
         }
+
+        println!("initialize_finalize_types: L36");
 
         // Step 2. Check the commands are well-formed.
         for command in finalize.commands() {
@@ -38,11 +42,15 @@ impl<N: Network> FinalizeTypes<N> {
             finalize_types.check_command(stack, finalize.name(), command)?;
         }
 
+        println!("initialize_finalize_types: L43");
+
         // Step 3. Check the outputs are well-formed.
         for output in finalize.outputs() {
             // Check the output operand type.
             finalize_types.check_output(stack, output.operand(), &RegisterType::from(*output.finalize_type()))?;
         }
+
+        println!("initialize_finalize_types: L50");
 
         Ok(finalize_types)
     }
@@ -77,6 +85,7 @@ impl<N: Network> FinalizeTypes<N> {
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
     fn add_destination(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+        println!("adding destination: {:?} and type: {:?}", register, register_type);
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
@@ -375,7 +384,8 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensures the given load command is well-formed.
     #[inline]
-    fn check_load(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &Load<N>) -> Result<()> {
+    fn check_load(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &Load<N>) -> Result<()> {
+        println!("Checking load command: {:#?}", load);
         // Ensure the declared mapping in load is defined in the program.
         if !stack.program().contains_mapping(load.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
@@ -414,31 +424,23 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Load cannot use an 'external record' as a key (found at '{load}')")
             }
         }
-
-        // Retrieve the register type of the destination register.
-        let value_type = self.get_type(stack, load.destination())?;
-        // Ensure the destination register type is a plaintext type.
-        match value_type {
-            // Check that the value type in the mapping matches the type of the destination register.
-            RegisterType::Plaintext(destination_value_type) => {
-                if *mapping_value_type != destination_value_type {
-                    bail!(
-                        "Value type in load '{destination_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Cannot load a 'record' (found at '{load}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Cannot load an 'external record' (found at '{load}')")
-            }
-        }
-
+        // Get the destination register.
+        let destination = load.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, RegisterType::Plaintext(*mapping_value_type))?;
         Ok(())
     }
 
     /// Ensures the given default load command is well-formed.
     #[inline]
-    fn check_load_default(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &LoadDefault<N>) -> Result<()> {
+    fn check_load_default(
+        &mut self,
+        stack: &Stack<N>,
+        finalize_name: &Identifier<N>,
+        load: &LoadDefault<N>,
+    ) -> Result<()> {
         // Ensure the declared mapping in default load is defined in the program.
         if !stack.program().contains_mapping(load.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
@@ -497,24 +499,12 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Default load cannot use an 'external record' as a default value (found at '{load}')")
             }
         }
-
-        // Retrieve the register type of the destination register.
-        let value_type = self.get_type(stack, load.destination())?;
-        // Ensure the destination register type is a plaintext type.
-        match value_type {
-            // Check that the value type in the mapping matches the type of the destination register.
-            RegisterType::Plaintext(destination_value_type) => {
-                if *mapping_value_type != destination_value_type {
-                    bail!(
-                        "Value type in default load '{destination_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Cannot load a 'record' (found at '{load}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Cannot load an 'external record' (found at '{load}')")
-            }
-        }
+        // Get the destination register.
+        let destination = load.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, RegisterType::Plaintext(*mapping_value_type))?;
         Ok(())
     }
 
@@ -577,7 +567,6 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Cannot store an 'external record' (found at '{store}')")
             }
         }
-
         Ok(())
     }
 
