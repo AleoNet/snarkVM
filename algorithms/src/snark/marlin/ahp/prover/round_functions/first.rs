@@ -51,13 +51,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn first_round_polynomial_info<'a>(
         circuits: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let mut polynomials = circuits.flat_map(|(circuit_id, &batch_size)| {
+        let mut polynomials = circuits.flat_map(|(&circuit_id, &batch_size)| {
 
             (0..batch_size).flat_map(move |i| {
                 [
-                    PolynomialInfo::new(witness_label(&circuit_id, "w", i), None, Self::zk_bound()),
-                    PolynomialInfo::new(witness_label(&circuit_id, "z_a", i), None, Self::zk_bound()),
-                    PolynomialInfo::new(witness_label(&circuit_id, "z_b", i), None, Self::zk_bound())
+                    PolynomialInfo::new(witness_label(circuit_id, "w", i), None, Self::zk_bound()),
+                    PolynomialInfo::new(witness_label(circuit_id, "z_a", i), None, Self::zk_bound()),
+                    PolynomialInfo::new(witness_label(circuit_id, "z_b", i), None, Self::zk_bound())
                 ]
             })
 
@@ -96,9 +96,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (j, (z_a, z_b, private_variables, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
             {
-                let witness_label_w = witness_label(&circuit.id, "w", j);
-                let witness_label_za = witness_label(&circuit.id, "z_a", j);
-                let witness_label_zb = witness_label(&circuit.id, "z_b", j);
+                let witness_label_w = witness_label(circuit.id, "w", j);
+                let witness_label_za = witness_label(circuit.id, "z_a", j);
+                let witness_label_zb = witness_label(circuit.id, "z_b", j);
                 job_pool.add_job(move || Self::calculate_w(witness_label_w, private_variables, &x_poly, c_domain, i_domain, circuit));
                 job_pool.add_job(move || Self::calculate_z_m(witness_label_za, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);

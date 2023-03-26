@@ -58,7 +58,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the third round.
     pub fn third_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (&'a CircuitId, &'a CircuitInfo<F>)>
+        circuits: impl Iterator<Item = (CircuitId, &'a CircuitInfo<F>)>
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         circuits.flat_map(|(circuit_id, circuit_info)| {
 
@@ -67,9 +67,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_c).unwrap();
     
             [   
-                PolynomialInfo::new(witness_label(&circuit_id, "g_a", 0), Some(non_zero_a_size - 2), None),
-                PolynomialInfo::new(witness_label(&circuit_id, "g_b", 0), Some(non_zero_b_size - 2), None),
-                PolynomialInfo::new(witness_label(&circuit_id, "g_c", 0), Some(non_zero_c_size - 2), None)
+                PolynomialInfo::new(witness_label(circuit_id, "g_a", 0), Some(non_zero_a_size - 2), None),
+                PolynomialInfo::new(witness_label(circuit_id, "g_b", 0), Some(non_zero_b_size - 2), None),
+                PolynomialInfo::new(witness_label(circuit_id, "g_c", 0), Some(non_zero_c_size - 2), None)
             ]
             .into_iter()
             .map(|info| (info.label().into(), info))
@@ -82,7 +82,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::SecondMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<'a, F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<F>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state
@@ -100,7 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let v_H_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
             let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
-            let label_g_a = witness_label(&circuit.id, "g_a", 0);
+            let label_g_a = witness_label(circuit.id, "g_a", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_a,
@@ -116,7 +116,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            let label_g_b = witness_label(&circuit.id, "g_b", 0);
+            let label_g_b = witness_label(circuit.id, "g_b", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_b,
@@ -132,7 +132,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (*circuit, result)
             });
 
-            let label_g_c = witness_label(&circuit.id, "g_c", 0);
+            let label_g_c = witness_label(circuit.id, "g_c", 0);
             pool.add_job(move || {
                 let result = Self::matrix_sumcheck_helper(
                     label_g_c,
@@ -158,24 +158,24 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         ) in pool.execute_all().into_iter().tuples() {
             assert!(circuit_a == circuit_b && circuit_a == circuit_c);
             let matrix_sum = prover::message::MatrixSums {
-                sum_a: sum_a,
-                sum_b: sum_b,
-                sum_c: sum_c,
+                sum_a,
+                sum_b,
+                sum_c,
             };
             sums.insert(circuit_a.id.clone(), matrix_sum);
             state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
             let matrix_gs = prover::MatrixGs {
-                g_a: g_a,
-                g_b: g_b,
-                g_c: g_c,
+                g_a,
+                g_b,
+                g_c,
             };
-            gs.insert(&circuit_a.id, matrix_gs);
+            gs.insert(circuit_a.id, matrix_gs);
         }
 
         let msg = prover::ThirdMessage { sums };
         let oracles = prover::ThirdOracles { gs };
 
-        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.keys().map(|c| (&c.id, &c.index_info)))));
+        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.keys().map(|c| (c.id, &c.index_info)))));
 
         end_timer!(round_time);
 

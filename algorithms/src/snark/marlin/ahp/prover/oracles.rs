@@ -128,8 +128,8 @@ impl<F: PrimeField> SecondOracles<F> {
 
 /// The third set of prover oracles.
 #[derive(Debug)]
-pub struct ThirdOracles<'a, F: PrimeField> {
-    pub gs: BTreeMap<&'a CircuitId, MatrixGs<F>>,
+pub struct ThirdOracles<F: PrimeField> {
+    pub gs: BTreeMap<CircuitId, MatrixGs<F>>,
 }
 
 #[derive(Debug)]
@@ -150,7 +150,7 @@ impl<F: PrimeField> MatrixGs<F> {
     }
 }
 
-impl<'a, F: PrimeField> ThirdOracles<'a, F> {
+impl<'a, F: PrimeField> ThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         self.gs.values().flat_map(|gs| {

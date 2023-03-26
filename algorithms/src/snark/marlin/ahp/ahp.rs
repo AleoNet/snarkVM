@@ -40,7 +40,7 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
     mode: PhantomData<MM>,
 }
 
-pub(crate) fn witness_label(circuit_id: &CircuitId, poly: &str, i: usize) -> String {
+pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
     format!("circuit_{circuit_id}_{poly}_{i:0>8}")
 }
 
@@ -149,7 +149,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// (2) virtual commitments for the lincheck_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<'a, E: EvaluationsProvider<F>>(
-        public_inputs: &BTreeMap<&'a CircuitId, Vec<Vec<F>>>,
+        public_inputs: &BTreeMap<CircuitId, Vec<Vec<F>>>,
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
@@ -195,7 +195,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         // Lincheck sumcheck:
         let lincheck_time = start_timer!(|| "Lincheck");
-        let z_b_s = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
+        let z_b_s = state.circuit_specific_states.iter().map(|(&circuit_id, circuit_state)| {
             let z_b_i = (0..circuit_state.batch_size).map(|i| {
                     let z_b = witness_label(circuit_id, "z_b", i);
                     LinearCombination::new(z_b.clone(), [(F::one(), z_b)])
@@ -267,8 +267,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (id, c) in batch_combiners.iter() {
                 let mut circuit_term = LinearCombination::empty(format!("lincheck_sumcheck term {id}"));
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
-                    let z_a_j = witness_label(&id, "z_a", j);
-                    let w_j = witness_label(&id, "w", j);
+                    let z_a_j = witness_label(*id, "z_a", j);
+                    let w_j = witness_label(*id, "w", j);
                     circuit_term 
                         .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[id][j]), z_a_j)
                         .add(-t_at_beta_s[id] * v_X_at_beta[id] * instance_combiner, w_j);
@@ -321,9 +321,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_c_label = witness_label(id, "g_c", 0);
             let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
 
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", alpha, beta, gamma, evals, &g_a, v_H_i_alpha_beta, r_a[i], sums[id].sum_a, selector_a)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", alpha, beta, gamma, evals, &g_b, v_H_i_alpha_beta, r_b[i], sums[id].sum_b, selector_b)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", alpha, beta, gamma, evals, &g_c, v_H_i_alpha_beta, r_c[i], sums[id].sum_c, selector_c)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", alpha, beta, gamma, evals, &g_a, v_H_i_alpha_beta, r_a[i], sums[&id].sum_a, selector_a)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", alpha, beta, gamma, evals, &g_b, v_H_i_alpha_beta, r_b[i], sums[&id].sum_b, selector_b)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", alpha, beta, gamma, evals, &g_c, v_H_i_alpha_beta, r_c[i], sums[&id].sum_c, selector_c)?;
 
             linear_combinations.insert(g_a.label.clone(), g_a);
             linear_combinations.insert(g_b.label.clone(), g_b);
@@ -342,7 +342,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     #[allow(clippy::too_many_arguments)]
     fn add_g_m_term<E: EvaluationsProvider<F>>(
         matrix_sumcheck: &mut LinearCombination<F>,
-        id: &CircuitId,
+        id: CircuitId,
         m: &str,
         alpha: F,
         beta: F,
@@ -363,7 +363,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     #[allow(clippy::too_many_arguments)]
     fn construct_lhs(
-        id: &CircuitId,
+        id: CircuitId,
         label: &str,
         alpha: F,
         beta: F,

@@ -35,13 +35,13 @@ use smallvec::SmallVec;
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         batch_sizes: &BTreeMap<CircuitId, usize>,
-        circuit_infos: &BTreeMap<&'a CircuitId, &CircuitInfo<TargetField>>,
+        circuit_infos: &BTreeMap<CircuitId, &CircuitInfo<TargetField>>,
         max_constraint_domain: EvaluationDomain<TargetField>,
         largest_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<'a, TargetField>, State<'a, TargetField, MM>), AHPError> {
+    ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, _) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
@@ -137,9 +137,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the second message and next round state.
     pub fn verifier_second_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<'a, TargetField, MM>,
+        mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(SecondMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
+    ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
         assert!(!state.largest_constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
@@ -152,9 +152,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<'a, TargetField, MM>,
+        mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(ThirdMessage<TargetField>, State<'a, TargetField, MM>), AHPError> {
+    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
         
         let num_instances = state.total_instances;
         let mut r_a = Vec::with_capacity(num_instances);
@@ -178,9 +178,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_fourth_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<'a, TargetField, MM>,
+        mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<State<'a, TargetField, MM>, AHPError> {
+    ) -> Result<State<TargetField, MM>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
 

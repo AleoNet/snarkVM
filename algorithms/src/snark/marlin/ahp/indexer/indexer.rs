@@ -68,7 +68,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let id = CircuitId { 0: Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap(), };
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(&id, &label, evals))
+            .map(|(label, evals)| arithmetize_matrix(id, &label, evals))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
@@ -101,7 +101,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         })
     }
 
-    pub fn index_polynomial_info(circuit_ids: Vec<&CircuitId>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+    pub fn index_polynomial_info(circuit_ids: Vec<CircuitId>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
         for id in circuit_ids {
             for matrix in ["a", "b", "c"] {
@@ -239,7 +239,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     pub fn evaluate_index_polynomials<C: ConstraintSynthesizer<F>>(
         c: &C,
-        id: &CircuitId,
+        id: CircuitId,
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;

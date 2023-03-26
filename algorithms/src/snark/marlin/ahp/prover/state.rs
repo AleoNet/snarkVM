@@ -75,7 +75,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
     pub(super) max_num_constraints: usize,
     /// The challenges sent by the verifier in the first round
-    pub(super) verifier_first_message: Option<verifier::FirstMessage<'a, F>>,
+    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,

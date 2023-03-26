@@ -163,7 +163,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         fs_parameters: &FS::Parameters,
         batch_sizes: &BTreeMap<CircuitId, usize>,
         circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
-        inputs: &BTreeMap<&CircuitId, &[Vec<E::Fr>]>,
+        inputs: &BTreeMap<CircuitId, &[Vec<E::Fr>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -280,7 +280,7 @@ where
             lc.add(c, poly.label());
         }
 
-        let circuit_id = vec![&verifying_key.hash];
+        let circuit_id = vec![verifying_key.hash];
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
@@ -308,7 +308,7 @@ where
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
-        let circuit_id = vec![&verifying_key.hash];
+        let circuit_id = vec![verifying_key.hash];
         let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id);
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
@@ -318,7 +318,7 @@ where
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().unwrap();
 
-        let circuit_id = &verifying_key.hash;
+        let circuit_id = verifying_key.hash;
         let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, circuit_id, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
@@ -383,7 +383,7 @@ where
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let padded_public_input = prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
-            let circuit_id = &pk.circuit.id;
+            let circuit_id = pk.circuit.id;
             batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             padded_public_inputs.insert(circuit_id, padded_public_input);
@@ -699,14 +699,14 @@ where
                     })
                     .unzip()
             };
-            let circuit_id = &vk.orig_vk.hash;
+            let circuit_id = vk.orig_vk.hash;
             public_inputs.insert(circuit_id, parsed_public_inputs_i);
             padded_public_vec.push(padded_public_inputs_i);
             circuit_infos.insert(circuit_id, &vk.orig_vk.circuit_info);
             circuit_ids.push(circuit_id);
         }
         for (i, vk) in keys_to_inputs.keys().enumerate() {
-            padded_public_inputs.insert(&vk.orig_vk.hash, padded_public_vec[i].as_slice());
+            padded_public_inputs.insert(vk.orig_vk.hash, padded_public_vec[i].as_slice());
         }
 
         let verifier_key = VerifierKey::<E>::union(vks);
@@ -736,10 +736,10 @@ where
 
         let verifier_time = start_timer!(|| format!("Marlin::Verify with batch sizes: {:?}", batch_sizes));
 
-        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
+        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.into_iter());
 
         let mut first_comms_consumed = 0;
-        let mut first_commitments = batch_sizes.iter().flat_map(|(circuit_id, &batch_size)|{
+        let mut first_commitments = batch_sizes.iter().flat_map(|(&circuit_id, &batch_size)|{
             let first_comms = comms.witness_commitments[first_comms_consumed..][..batch_size].iter().enumerate().flat_map(|(j, w_comm)|{
                 [
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label(circuit_id, "w", j)], w_comm.w),
@@ -774,9 +774,9 @@ where
             .zip_eq(circuit_ids.iter())
             .flat_map(|(((g_a, g_b), g_c), circuit_id)| {
                 [
-                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id, "g_a", 0)], *g_a),
-                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id, "g_b", 0)], *g_b),
-                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(circuit_id, "g_c", 0)], *g_c),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(*circuit_id, "g_a", 0)], *g_a),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(*circuit_id, "g_b", 0)], *g_b),
+                    LabeledCommitment::new_with_info(&third_round_info[&witness_label(*circuit_id, "g_c", 0)], *g_c),
                 ]
             }).collect_vec();
 

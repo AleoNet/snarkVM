@@ -29,7 +29,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
 use hex::FromHex;
 
-#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitId(pub [u8; 32]);
 
 impl std::fmt::Display for CircuitId {
