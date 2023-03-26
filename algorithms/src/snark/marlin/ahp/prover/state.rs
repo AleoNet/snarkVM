@@ -97,8 +97,6 @@ pub struct Assignments<F>(
 
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
-        // TODO: which map should we use?
-        // IndexMap or BTreeMap?
         indices_and_assignments: BTreeMap<
             &'a Circuit<F, MM>, 
             Vec<Assignments<F>>

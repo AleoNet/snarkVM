@@ -78,7 +78,7 @@ const MIN_PARALLEL_CHUNK_SIZE: usize = 1 << 7;
 /// Defines a domain over which finite field (I)FFTs can be performed. Works
 /// only for fields that have a large multiplicative subgroup of size that is
 /// a power-of-2.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize, Default)]
 pub struct EvaluationDomain<F: FftField> {
     /// The size of the domain.
     pub size: u64,
