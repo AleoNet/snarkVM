@@ -64,7 +64,7 @@ pub struct BenchmarkWithLookup<F: Field> {
     pub z: Option<F>,
     pub num_xors: usize,
     pub num_variables: usize,
-    pub table: LookupTable<F>,
+    pub tables: Vec<LookupTable<F>>,
 }
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<ConstraintF> {
@@ -141,17 +141,24 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkXOR<Con
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkWithLookup<ConstraintF> {
     fn generate_constraints<C: ConstraintSystem<ConstraintF>>(&self, cs: &mut C) -> Result<(), SynthesisError> {
-        cs.add_lookup_table(self.table.clone());
+        for table in &self.tables {
+            cs.add_lookup_table(table.clone());
+        }
         let x = cs.alloc_input(|| "x", || self.x.ok_or(SynthesisError::AssignmentMissing))?;
         let y = cs.alloc_input(|| "y", || self.y.ok_or(SynthesisError::AssignmentMissing))?;
         let z = cs.alloc_input(|| "z", || self.z.ok_or(SynthesisError::AssignmentMissing))?;
         for i in 0..self.num_xors {
+            let mut table_index = 0;
+            // this is a very silly test and assumes we have two equal tables
+            if i % 2 == 0 { 
+                table_index = 0;
+            }
             cs.enforce_lookup(
                 || format!("c_lookup {}", i),
                 |lc| lc + LinearCombination::from(x),
                 |lc| lc + LinearCombination::from(y),
                 |lc| lc + LinearCombination::from(z),
-                0,
+                table_index,
             )?;
         }
 
@@ -288,16 +295,21 @@ fn snark_lookup_prove(c: &mut Criterion) {
         sym_3.mul_assign(&y);
         let mut z = sym_1;
         z.sub_assign(&sym_3);
-
-        let mut table = LookupTable::default();
-        let lookup_value = [x, y];
-        table.fill(lookup_value, z);
+        
+        let mut tables = vec![];
+        let num_tables = 2;
+        for _ in 0..num_tables {
+            let mut table = LookupTable::default();
+            let lookup_value = [x, y];
+            table.fill(lookup_value, z);
+            tables.push(table);
+        }
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let circuit = BenchmarkWithLookup::<Fr> { x: Some(x), y: Some(y), z: Some(z), num_xors, num_variables, table };
+        let circuit = BenchmarkWithLookup::<Fr> { x: Some(x), y: Some(y), z: Some(z), num_xors, num_variables, tables };
 
         let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
