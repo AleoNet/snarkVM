@@ -93,7 +93,7 @@ pub trait SNARK {
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError>;
 
-    fn prove_batch<'a, C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
         rng: &mut R,
@@ -101,7 +101,7 @@ pub trait SNARK {
         Self::prove_batch_with_terminator(fs_parameters, keys_to_constraints, &AtomicBool::new(false), rng)
     }
 
-    fn prove<'a, C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         constraints: &C,
@@ -113,14 +113,14 @@ pub trait SNARK {
         Self::prove_batch(fs_parameters, &keys_to_constraints, rng)
     }
 
-    fn prove_batch_with_terminator<'a, C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_batch_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
-    fn prove_with_terminator<'a, C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         constraints: &C,
@@ -145,13 +145,13 @@ pub trait SNARK {
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError>;
 
-    fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
+    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
-    fn verify_batch<'a, B: Borrow<Self::VerifierInput>>(
+    fn verify_batch<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
@@ -165,7 +165,7 @@ pub trait SNARK {
         Self::verify_batch_prepared(fs_parameters, &prepared_keys_to_inputs, proof)
     }
 
-    fn verify<'a, B: Borrow<Self::VerifierInput>>(
+    fn verify<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         input: B,

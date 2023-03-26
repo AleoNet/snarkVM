@@ -84,11 +84,11 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(in crate::snark) total_instances: usize,
 }
 
-pub type PaddedPubInputs<F> = Vec<F>;
-pub type PrivateInputs<F> = Vec<F>;
-pub type Za<F> = Vec<F>;
-pub type Zb<F> = Vec<F>;
-pub struct Assignments<F>(
+type PaddedPubInputs<F> = Vec<F>;
+type PrivateInputs<F> = Vec<F>;
+type Za<F> = Vec<F>;
+type Zb<F> = Vec<F>;
+pub(super) struct Assignments<F>(
     pub PaddedPubInputs<F>,
     pub PrivateInputs<F>,
     pub Za<F>,
@@ -96,7 +96,7 @@ pub struct Assignments<F>(
 );
 
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
-    pub fn initialize(
+    pub(super) fn initialize(
         indices_and_assignments: BTreeMap<
             &'a Circuit<F, MM>, 
             Vec<Assignments<F>>

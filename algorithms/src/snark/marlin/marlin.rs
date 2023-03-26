@@ -353,7 +353,7 @@ where
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn prove_batch_with_terminator<'a, C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[&C]>,
         terminator: &AtomicBool,
@@ -396,8 +396,8 @@ where
         let committer_key = CommitterKey::union(keys_to_constraints.keys().map(|pk|pk.committer_key.deref()));
 
         let circuit_commitments = keys_to_constraints
-            .iter()
-            .map(|(pk, _)| pk.circuit_verifying_key.circuit_commitments.clone())
+            .keys()
+            .map(|pk| pk.circuit_verifying_key.circuit_commitments.clone())
             .collect::<Vec<_>>();
 
         let mut sponge = Self::init_sponge(
@@ -567,8 +567,8 @@ where
             .collect();
 
         // Gather commitment randomness together.
-        let commitment_randomnesses: Vec<Randomness<E>> = keys_to_constraints.iter()
-            .flat_map(|(pk, _)|pk.circuit_commitment_randomness.clone())
+        let commitment_randomnesses: Vec<Randomness<E>> = keys_to_constraints.keys()
+            .flat_map(|pk|pk.circuit_commitment_randomness.clone())
             .clone()
             .into_iter()
             .chain(first_commitment_randomnesses)
@@ -640,7 +640,7 @@ where
         Ok(proof)
     }
 
-    fn verify_batch_prepared<'a, B: Borrow<Self::VerifierInput>>(
+    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
