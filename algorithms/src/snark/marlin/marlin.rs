@@ -83,6 +83,8 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         return Self::circuit_setup(&srs, circuit);
     }
 
+    // TODO: implement optimizations resulting from batching 
+    //       (e.g. computing a common set of Lagrange powers, FFT precomputations, etc)
     pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
@@ -152,7 +154,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let (mut proving_keys, mut verifying_keys) = Self::batch_circuit_setup(universal_srs, &[circuit])?;
         assert!(proving_keys.len() == 1 && verifying_keys.len() == 1);
-        Ok((proving_keys.remove(0), verifying_keys.remove(0)))
+        Ok((proving_keys.pop().unwrap(), verifying_keys.pop().unwrap()))
     }
 
     fn terminate(terminator: &AtomicBool) -> Result<(), MarlinError> {
@@ -161,22 +163,19 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
     fn init_sponge(
         fs_parameters: &FS::Parameters,
-        batch_sizes: &BTreeMap<CircuitId, usize>,
+        inputs_and_batch_sizes: &BTreeMap<CircuitId, (usize, &[Vec<E::Fr>])>,
         circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
-        inputs: &BTreeMap<CircuitId, &[Vec<E::Fr>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-        for (_, batch_size) in batch_sizes.iter() {
+        for (batch_size, inputs) in inputs_and_batch_sizes.values() {
             sponge.absorb_bytes(&batch_size.to_le_bytes());
+            for input in inputs.iter() {
+                sponge.absorb_nonnative_field_elements(input.iter().copied());
+            }
         }
         for circuit_specific_commitments in circuit_commitments {
             sponge.absorb_native_field_elements(circuit_specific_commitments);
-        }
-        for (_, circuit_specific_input) in inputs {
-            for instance_specific_input in circuit_specific_input.iter() {
-                sponge.absorb_nonnative_field_elements(instance_specific_input.iter().copied());
-            }
         }
         sponge
     }
@@ -375,7 +374,7 @@ where
         // extract information from the prover key and state to consume in further calculations 
         let mut batch_sizes = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
-        let mut padded_public_inputs = BTreeMap::new();
+        let mut inputs_and_batch_sizes = BTreeMap::new();
         let mut total_instances = 0;
         let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
         let mut circuit_ids = Vec::with_capacity(keys_to_constraints.len());
@@ -386,7 +385,7 @@ where
             let circuit_id = pk.circuit.id;
             batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
-            padded_public_inputs.insert(circuit_id, padded_public_input);
+            inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
             total_instances += batch_size;
             public_inputs.insert(circuit_id, public_input);
             circuit_ids.push(circuit_id);
@@ -402,9 +401,8 @@ where
 
         let mut sponge = Self::init_sponge(
             fs_parameters,
-            &batch_sizes,
+            &inputs_and_batch_sizes,
             circuit_commitments.as_slice(),
-            &padded_public_inputs,
         );
 
         // --------------------------------------------------------------------
@@ -669,7 +667,7 @@ where
         let mut max_non_zero_domain = None;
         let mut public_inputs = BTreeMap::new();
         let mut padded_public_vec = Vec::with_capacity(keys_to_inputs.len());
-        let mut padded_public_inputs = BTreeMap::new();
+        let mut inputs_and_batch_sizes = BTreeMap::new();
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut vks = Vec::with_capacity(keys_to_inputs.len());
@@ -708,8 +706,8 @@ where
             circuit_infos.insert(circuit_id, &vk.orig_vk.circuit_info);
             circuit_ids.push(circuit_id);
         }
-        for (i, vk) in keys_to_inputs.keys().enumerate() {
-            padded_public_inputs.insert(vk.orig_vk.hash, padded_public_vec[i].as_slice());
+        for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes.values()).enumerate() {
+            inputs_and_batch_sizes.insert(vk.orig_vk.hash, (batch_size, padded_public_vec[i].as_slice()));
         }
 
         let verifier_key = VerifierKey::<E>::union(vks);
@@ -784,9 +782,8 @@ where
 
         let mut sponge = Self::init_sponge(
             fs_parameters,
-            &batch_sizes,
+            &inputs_and_batch_sizes,
             &circuit_commitments.as_slice(),
-            &padded_public_inputs,
         );
 
         // --------------------------------------------------------------------
