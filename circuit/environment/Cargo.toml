@@ -42,7 +42,7 @@ version = "0.9.14"
 default-features = false
 
 [dependencies.indexmap]
-version = "1.9.2"
+version = "1.9.3"
 
 [dependencies.itertools]
 version = "0.10.1"
