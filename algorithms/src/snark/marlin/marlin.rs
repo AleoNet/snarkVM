@@ -39,7 +39,7 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
-use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
+use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use std::{borrow::Borrow, collections::BTreeMap, sync::Arc};
@@ -159,7 +159,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         if terminator.load(Ordering::Relaxed) { Err(MarlinError::Terminated) } else { Ok(()) }
     }
 
-    fn init_sponge<'a>(
+    fn init_sponge(
         fs_parameters: &FS::Parameters,
         batch_sizes: &BTreeMap<CircuitId, usize>,
         circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
@@ -214,7 +214,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
-        for (_, sum) in msg.sums.iter() {
+        for sum in msg.sums.values() {
             sponge.absorb_nonnative_field_elements([sum.sum_a, sum.sum_b, sum.sum_c]);
         }
         end_timer!(sponge_time);
@@ -662,8 +662,8 @@ where
         }
 
         // collect values into structures for our calculations
-        let mut max_num_constraints = 0;
-        let mut max_num_non_zero = 0;
+        let mut max_constraint_domain = None;
+        let mut max_non_zero_domain = None;
         let mut public_inputs = BTreeMap::new();
         let mut padded_public_vec = Vec::with_capacity(keys_to_inputs.len());
         let mut padded_public_inputs = BTreeMap::new();
@@ -674,11 +674,11 @@ where
         for (vk, public_inputs_i) in keys_to_inputs.iter() {
             vks.push(&vk.orig_vk.verifier_key);
 
-            max_num_constraints = max_num_constraints.max(vk.orig_vk.circuit_info.num_constraints);
-            max_num_non_zero = max_num_non_zero.max(vk.orig_vk.circuit_info.num_non_zero_a);
-            max_num_non_zero = max_num_non_zero.max(vk.orig_vk.circuit_info.num_non_zero_b);
-            max_num_non_zero = max_num_non_zero.max(vk.orig_vk.circuit_info.num_non_zero_c);
-
+            let constraint_domains = AHPForR1CS::<_, MM>::max_constraint_domain(&vk.orig_vk.circuit_info, max_constraint_domain)?;
+            max_constraint_domain = constraint_domains.max_constraint_domain;
+            let non_zero_domains = AHPForR1CS::<_, MM>::max_non_zero_domain(&vk.orig_vk.circuit_info, max_non_zero_domain)?;
+            max_non_zero_domain = non_zero_domains.max_non_zero_domain;
+ 
             let input_domain = 
                 EvaluationDomain::<E::Fr>::new(vk.orig_vk.circuit_info.num_public_inputs).unwrap();
             input_domains.insert(vk.orig_vk.hash.clone(), input_domain);
@@ -710,10 +710,6 @@ where
         }
 
         let verifier_key = VerifierKey::<E>::union(vks);
-        let max_constraint_domain = EvaluationDomain::new(max_num_constraints)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let largest_non_zero_domain = EvaluationDomain::new(max_num_non_zero)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let circuit_commitments = keys_to_inputs
             .iter()
@@ -759,7 +755,7 @@ where
         }
 
         let second_round_info =
-            AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(max_num_constraints);
+            AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(max_constraint_domain.unwrap().size());
         let second_commitments = [
             LabeledCommitment::new_with_info(&second_round_info["g_1"], comms.g_1),
             LabeledCommitment::new_with_info(&second_round_info["h_1"], comms.h_1),
@@ -795,7 +791,7 @@ where
         let first_round_time = start_timer!(|| "First round");
         Self::absorb_labeled(&first_commitments, &mut sponge);
         let (_, verifier_state) =
-            AHPForR1CS::<_, MM>::verifier_first_round(&batch_sizes, &circuit_infos, max_constraint_domain, largest_non_zero_domain, &mut sponge)?;
+            AHPForR1CS::<_, MM>::verifier_first_round(&batch_sizes, &circuit_infos, max_constraint_domain.unwrap(), max_non_zero_domain.unwrap(), &mut sponge)?;
         end_timer!(first_round_time);
         // --------------------------------------------------------------------
 

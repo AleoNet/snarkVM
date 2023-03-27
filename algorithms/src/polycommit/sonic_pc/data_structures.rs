@@ -869,19 +869,19 @@ impl<F: Field> MulAssign<F> for LinearCombination<F> {
 /// that `p[label]` is to be queried at.
 ///
 /// Added the third field: the point name.
-pub type QuerySet<'a, T> = BTreeSet<(String, (String, T))>;
+pub type QuerySet<T> = BTreeSet<(String, (String, T))>;
 
 /// `Evaluations` is the result of querying a set of labeled polynomials or equations
 /// `p` at a `QuerySet` `Q`. It maps each element of `Q` to the resulting evaluation.
 /// That is, if `(label, query)` is an element of `Q`, then `evaluation.get((label, query))`
 /// should equal `p[label].evaluate(query)`.
-pub type Evaluations<'a, F> = BTreeMap<(String, F), F>;
+pub type Evaluations<F> = BTreeMap<(String, F), F>;
 
 /// Evaluate the given polynomials at `query_set`.
 pub fn evaluate_query_set<'a, F: PrimeField>(
     polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
-    query_set: &QuerySet<'a, F>,
-) -> Evaluations<'a, F> {
+    query_set: &QuerySet<F>,
+) -> Evaluations<F> {
     let polys: HashMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
     let mut evaluations = Evaluations::new();
     for (label, (_point_name, point)) in query_set {

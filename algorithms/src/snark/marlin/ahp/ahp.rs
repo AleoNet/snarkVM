@@ -28,6 +28,7 @@ use crate::{
 };
 use itertools::Itertools;
 use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::SynthesisError;
 
 use core::{borrow::Borrow, marker::PhantomData};
 use std::collections::BTreeMap;
@@ -43,6 +44,19 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
 pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
     format!("circuit_{circuit_id}_{poly}_{i:0>8}")
 }
+
+pub(crate) struct ConstraintDomains<F: PrimeField> {
+    pub(crate) max_constraint_domain: Option<EvaluationDomain<F>>,
+    pub(crate) constraint_domain: EvaluationDomain<F>,
+}
+
+pub(crate) struct NonZeroDomains<F: PrimeField> {
+    pub(crate) max_non_zero_domain: Option<EvaluationDomain<F>>,
+    pub(crate) domain_a: EvaluationDomain<F>,
+    pub(crate) domain_b: EvaluationDomain<F>,
+    pub(crate) domain_c: EvaluationDomain<F>,
+}
+
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The linear combinations that are statically known to evaluate to zero.
@@ -105,19 +119,32 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         ]
     }
 
-    pub fn max_non_zero_domain(info: &CircuitInfo<F>) -> EvaluationDomain<F> {
-        let non_zero_a_domain = EvaluationDomain::new(info.num_non_zero_a).unwrap();
-        let non_zero_b_domain = EvaluationDomain::new(info.num_non_zero_b).unwrap();
-        let non_zero_c_domain = EvaluationDomain::new(info.num_non_zero_c).unwrap();
-        Self::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain)
+    pub(crate) fn max_constraint_domain(info: &CircuitInfo<F>, max_candidate: Option<EvaluationDomain<F>>) -> Result<ConstraintDomains<F>, SynthesisError> {
+        let constraint_domain = EvaluationDomain::new(info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let mut max_constraint_domain = Some(constraint_domain);
+        if max_candidate.is_some() && max_candidate.unwrap().size() > constraint_domain.size() {
+            max_constraint_domain = max_candidate;
+        }
+        Ok(ConstraintDomains{
+            max_constraint_domain,
+            constraint_domain,
+        })
     }
-
-    pub fn max_non_zero_domain_helper(
-        domain_a: EvaluationDomain<F>,
-        domain_b: EvaluationDomain<F>,
-        domain_c: EvaluationDomain<F>,
-    ) -> EvaluationDomain<F> {
-        [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap()
+    pub(crate) fn max_non_zero_domain(info: &CircuitInfo<F>, max_candidate: Option<EvaluationDomain<F>>) -> Result<NonZeroDomains<F>, SynthesisError> {
+        let domain_a = EvaluationDomain::new(info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_b = EvaluationDomain::new(info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_c = EvaluationDomain::new(info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let new_candidate = [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap();
+        let mut max_non_zero_domain = Some(new_candidate);
+        if max_candidate.is_some() && max_candidate.unwrap().size() > new_candidate.size() {
+            max_non_zero_domain = max_candidate;
+        }
+        Ok(NonZeroDomains{
+            max_non_zero_domain,
+            domain_a,
+            domain_b,
+            domain_c,
+        })
     }
 
     pub fn fft_precomputation(
@@ -416,7 +443,7 @@ pub trait EvaluationsProvider<F: PrimeField>: core::fmt::Debug {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
-impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::Evaluations<'a, F> {
+impl<F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::Evaluations<F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))

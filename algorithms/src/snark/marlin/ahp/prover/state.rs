@@ -30,7 +30,7 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{SynthesisError, SynthesisResult};
+use snarkvm_r1cs::SynthesisResult;
 
 pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
@@ -73,7 +73,6 @@ pub struct CircuitSpecificState<F: PrimeField> {
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
-    pub(super) max_num_constraints: usize,
     /// The challenges sent by the verifier in the first round
     pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
     /// The first round oracles sent by the prover.
@@ -104,39 +103,21 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
-        let mut max_num_constraints = 0;
         let mut total_instances = 0;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
             .map(|(circuit, variable_assignments)| {
                 let index_info = &circuit.index_info;
-                let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
-                    .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-                if max_constraint_domain.is_none() {
-                    max_constraint_domain = Some(constraint_domain);
-                } else if max_constraint_domain.unwrap().size() < constraint_domain.size() {
-                    max_constraint_domain = Some(constraint_domain);
-                }
+                let constraint_domains = AHPForR1CS::<_, MM>::max_constraint_domain(index_info, max_constraint_domain)?;
+                max_constraint_domain = constraint_domains.max_constraint_domain;
 
-                let non_zero_a_domain =
-                    EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-                let non_zero_b_domain =
-                    EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-                let non_zero_c_domain =
-                    EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-                let max_domain_candidate = AHPForR1CS::<_, MM>::max_non_zero_domain_helper(non_zero_a_domain, non_zero_b_domain, non_zero_c_domain);
-                if max_non_zero_domain.is_none() {
-                    max_non_zero_domain = Some(max_domain_candidate);
-                } else if max_non_zero_domain.unwrap().size() < max_domain_candidate.size() {
-                    max_non_zero_domain = Some(max_domain_candidate);
-                }
+                let non_zero_domains = AHPForR1CS::<_, MM>::max_non_zero_domain(index_info, max_non_zero_domain)?;
+                max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
                 let first_padded_public_inputs = &variable_assignments[0].0;
                 let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
                 let batch_size = variable_assignments.len();
                 total_instances += batch_size;
-                max_num_constraints = max_num_constraints.max(index_info.num_constraints);
                 let mut z_as = Vec::with_capacity(batch_size);
                 let mut z_bs = Vec::with_capacity(batch_size);
                 let mut x_polys = Vec::with_capacity(batch_size);
@@ -155,10 +136,10 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 
                 let state = CircuitSpecificState {
                     input_domain,
-                    constraint_domain,
-                    non_zero_a_domain,
-                    non_zero_b_domain,
-                    non_zero_c_domain,
+                    constraint_domain: constraint_domains.constraint_domain,
+                    non_zero_a_domain: non_zero_domains.domain_a,
+                    non_zero_b_domain: non_zero_domains.domain_b,
+                    non_zero_c_domain: non_zero_domains.domain_c,
                     batch_size,
                     padded_public_variables,
                     x_polys,
@@ -180,7 +161,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             max_non_zero_domain,
             circuit_specific_states,
             total_instances,
-            max_num_constraints,
             first_round_oracles: None,
             verifier_first_message: None,
         })

@@ -107,7 +107,7 @@ impl<'a, F: PrimeField> QuerySet<F> {
 
     /// Returns a `BTreeSet` containing elements of the form
     /// `(polynomial_label, (query_label, query))`.
-    pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
+    pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         for (&circuit_id, &batch_size) in self.batch_sizes.iter() {
             for j in 0..batch_size {

@@ -59,8 +59,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
     
     /// Output the degree bounds of oracles in the first round.
-    pub fn second_round_polynomial_info(max_num_constraints: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(max_num_constraints).unwrap();
+    pub fn second_round_polynomial_info(constraint_domain_size: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         [
             PolynomialInfo::new("g_1".into(), Some(constraint_domain_size - 2), Self::zk_bound()),
             PolynomialInfo::new("h_1".into(), None, None),
@@ -105,7 +104,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(max_constraint_domain.size() - 2), zk_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
-        assert!(oracles.matches_info(&Self::second_round_polynomial_info(state.max_num_constraints)));
+        assert!(oracles.matches_info(&Self::second_round_polynomial_info(state.max_constraint_domain.size())));
 
         state.verifier_first_message = Some(verifier_message.clone());
         end_timer!(round_time);

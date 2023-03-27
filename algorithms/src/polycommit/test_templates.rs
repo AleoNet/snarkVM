@@ -59,8 +59,8 @@ struct TestInfo {
 pub struct TestComponents<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
     pub verification_key: VerifierKey<E>,
     pub commitments: Vec<LabeledCommitment<Commitment<E>>>,
-    pub query_set: QuerySet<'static, E::Fr>,
-    pub evaluations: Evaluations<'static, E::Fr>,
+    pub query_set: QuerySet<E::Fr>,
+    pub evaluations: Evaluations<E::Fr>,
     pub batch_lc_proof: Option<BatchLCProof<E>>,
     pub batch_proof: Option<BatchProof<E>>,
     pub randomness: Vec<Randomness<E>>,
