@@ -83,15 +83,20 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(in crate::snark) total_instances: usize,
 }
 
+/// The public inputs for a single instance.
 type PaddedPubInputs<F> = Vec<F>;
+/// The private inputs for a single instance.
 type PrivateInputs<F> = Vec<F>;
+/// The z_i_j*A_i vector for a single instance.
 type Za<F> = Vec<F>;
+/// The z_i_j*B_i vector for a single instance.
 type Zb<F> = Vec<F>;
+/// Assignments for a single instance.
 pub(super) struct Assignments<F>(
-    pub PaddedPubInputs<F>,
-    pub PrivateInputs<F>,
-    pub Za<F>,
-    pub Zb<F>
+    pub(super) PaddedPubInputs<F>,
+    pub(super) PrivateInputs<F>,
+    pub(super) Za<F>,
+    pub(super) Zb<F>
 );
 
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {

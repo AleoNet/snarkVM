@@ -129,17 +129,17 @@ impl<F: PrimeField> SecondOracles<F> {
 /// The third set of prover oracles.
 #[derive(Debug)]
 pub struct ThirdOracles<F: PrimeField> {
-    pub gs: BTreeMap<CircuitId, MatrixGs<F>>,
+    pub(super) gs: BTreeMap<CircuitId, MatrixGs<F>>,
 }
 
 #[derive(Debug)]
-pub struct MatrixGs<F: PrimeField> {
+pub(super) struct MatrixGs<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
-    pub g_a: LabeledPolynomial<F>,
+    pub(super) g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
-    pub g_b: LabeledPolynomial<F>,
+    pub(super) g_b: LabeledPolynomial<F>,
     /// The polynomial `g_c` resulting from the second sumcheck.
-    pub g_c: LabeledPolynomial<F>,
+    pub(super) g_c: LabeledPolynomial<F>,
 }
 
 impl<F: PrimeField> MatrixGs<F> {

@@ -20,10 +20,11 @@ use crate::snark::marlin::{CircuitId, witness_label, MarlinMode};
 use std::collections::BTreeMap;
 use itertools::Itertools;
 
+/// Randomizers used to combine circuit-specific and instance-specific elements in the AHP sumchecks
 #[derive(Clone, Debug)]
-pub struct BatchCombiners<F> {
-    pub circuit_combiner: F,
-    pub instance_combiners: Vec<F>,
+pub(crate) struct BatchCombiners<F> {
+    pub(crate) circuit_combiner: F,
+    pub(crate) instance_combiners: Vec<F>,
 }
 
 /// First message of the verifier.
@@ -36,7 +37,7 @@ pub struct FirstMessage<F: PrimeField> {
     /// Randomizer for the lincheck for `C`.
     pub eta_c: F,
     /// Randomizers for combining vectors from the batch
-    pub batch_combiners: BTreeMap<CircuitId, BatchCombiners<F>>,
+    pub(crate) batch_combiners: BTreeMap<CircuitId, BatchCombiners<F>>,
 }
 
 /// Second verifier message.
