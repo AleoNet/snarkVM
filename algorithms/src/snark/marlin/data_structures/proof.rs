@@ -129,15 +129,15 @@ pub struct WitnessCommitments<E: PairingEngine> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evaluations<F: PrimeField> {
     /// Evaluations of `z_b_i_j`'s at `beta`.
-    pub z_b_evals: BTreeMap<CircuitId, Vec<F>>,
+    pub z_b_evals: Vec<Vec<F>>,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a_i`'s at `beta`.
-    pub g_a_evals: BTreeMap<CircuitId, F>,
+    pub g_a_evals: Vec<F>,
     /// Evaluation of `g_b_i`'s at `gamma`.
-    pub g_b_evals: BTreeMap<CircuitId, F>,
+    pub g_b_evals: Vec<F>,
     /// Evaluation of `g_c_i`'s at `gamma`.
-    pub g_c_evals: BTreeMap<CircuitId, F>,
+    pub g_c_evals: Vec<F>,
 }
 
 impl<'a, F: PrimeField> Evaluations<F> {
@@ -181,10 +181,10 @@ impl<'a, F: PrimeField> Evaluations<F> {
 
 impl<'a, F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<CircuitId, usize>) -> Self {
-        let mut z_b_evals: BTreeMap<CircuitId, Vec<F>> = BTreeMap::new();
-        let mut g_a_evals = BTreeMap::new();
-        let mut g_b_evals = BTreeMap::new();
-        let mut g_c_evals = BTreeMap::new();
+        let mut z_b_evals_collect: BTreeMap<CircuitId, Vec<F>> = BTreeMap::new();
+        let mut g_a_evals = Vec::with_capacity(batch_sizes.len());
+        let mut g_b_evals = Vec::with_capacity(batch_sizes.len());
+        let mut g_c_evals = Vec::with_capacity(batch_sizes.len());
         
         for (label, value) in map {
             if label == "g_1" {
@@ -193,46 +193,52 @@ impl<'a, F: PrimeField> Evaluations<F> {
             
             let circuit_id = CircuitId::from_witness_label(label);
             if label.contains("z_b_") {
-                if let Some(z_b_i) = z_b_evals.get_mut(&circuit_id) {
+                if let Some(z_b_i) = z_b_evals_collect.get_mut(&circuit_id) {
                     z_b_i.push(*value);
                 } else {
                     let mut values = Vec::with_capacity(batch_sizes[&circuit_id]);
                     values.push(*value);
-                    z_b_evals.insert(circuit_id, values);
+                    z_b_evals_collect.insert(circuit_id, values);
                 }
             } else if label.contains("g_a") {
-                g_a_evals.insert(circuit_id, *value);
+                g_a_evals.push(*value);
             } else if label.contains("g_b") {
-                g_b_evals.insert(circuit_id, *value);
+                g_b_evals.push(*value);
             } else if label.contains("g_c") {
-                g_c_evals.insert(circuit_id, *value);
+                g_c_evals.push(*value);
             }
         }
+        let z_b_evals = z_b_evals_collect.into_iter().map(|(_, v)| v).collect();
         Self { z_b_evals, g_1_eval: map["g_1"], g_a_evals, g_b_evals, g_c_evals }
     }
 
-    pub(crate) fn get(&self, label: &str) -> Option<F> {
+    pub(crate) fn get(&self, circuit_index: usize, label: &str) -> Option<F> {
         if label == "g_1" {
             return Some(self.g_1_eval)
         }
 
-        let circuit_id = CircuitId::from_witness_label(label);
         if let Some(index) = label.find("z_b_") {
-            if let Some(z_b_eval) = self.z_b_evals.get(&circuit_id) {
-                let j = label[index + 4..].parse::<usize>().unwrap();
-                Some(z_b_eval[j])
-            } else {
-                None
-            }
+            let z_b_eval_circuit = &self.z_b_evals[circuit_index];
+            let instance_index = label[index + 4..].parse::<usize>().unwrap();
+            z_b_eval_circuit.get(instance_index).copied()
         } else if let Some(_) = label.find("g_a") {
-            self.g_a_evals.get(&circuit_id).copied()
+            self.g_a_evals.get(circuit_index).copied()
         } else if let Some(_) = label.find("g_b") {
-            self.g_b_evals.get(&circuit_id).copied()
+            self.g_b_evals.get(circuit_index).copied()
         } else if let Some(_) = label.find("g_c") {
-            self.g_c_evals.get(&circuit_id).copied()
+            self.g_c_evals.get(circuit_index).copied()
         } else {
             None
         }
+    }
+
+    pub fn to_field_elements(&self) -> Vec<F> {
+        let mut result: Vec<F> = self.z_b_evals.clone().into_iter().flatten().collect();
+        result.extend([self.g_1_eval]);
+        result.extend(self.g_a_evals.clone());
+        result.extend(self.g_b_evals.clone());
+        result.extend(self.g_c_evals.clone());
+        result
     }
 }
 
@@ -246,22 +252,11 @@ impl<'a, F: PrimeField> Valid for Evaluations<F> {
     }
 }
 
-impl<'a, F: PrimeField> Evaluations<F> {
-    pub fn to_field_elements(&self) -> Vec<F> {
-        let mut result = self.z_b_evals.iter().flat_map(|(_,e)|e.clone()).collect::<Vec<F>>();
-        result.extend([self.g_1_eval]);
-        result.extend(self.g_a_evals.iter().map(|(_,e)|e.clone()));
-        result.extend(self.g_b_evals.iter().map(|(_,e)|e.clone()));
-        result.extend(self.g_c_evals.iter().map(|(_,e)|e.clone()));
-        result
-    }
-}
-
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof<E: PairingEngine> {
     /// The number of instances being proven in this proof.
-    batch_sizes: BTreeMap<CircuitId, usize>,
+    batch_sizes: Vec<usize>,
 
     /// Commitments to prover polynomials.
     pub commitments: Commitments<E>,
@@ -279,7 +274,7 @@ pub struct Proof<E: PairingEngine> {
 impl<'a, E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
-        batch_sizes: BTreeMap<CircuitId, usize>,
+        batch_sizes_map: BTreeMap<CircuitId, usize>,
         total_instances: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
@@ -289,19 +284,20 @@ impl<'a, E: PairingEngine> Proof<E> {
         if commitments.witness_commitments.len() != total_instances {
             return Err(SNARKError::BatchSizeMismatch);
         }
-        for (circuit_id, z_b_evals_i) in evaluations.z_b_evals.iter() {
-            if z_b_evals_i.len() != batch_sizes[circuit_id] {
+        let batch_sizes: Vec<usize> = batch_sizes_map.into_values().collect();
+        for (i, z_b_evals_i) in evaluations.z_b_evals.iter().enumerate() {
+            if z_b_evals_i.len() != batch_sizes[i] {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
         Ok(Self { batch_sizes, commitments, evaluations, msg, pc_proof })
     }
 
-    pub fn batch_sizes(&self) -> Result<&BTreeMap<CircuitId, usize>, SNARKError> {
+    pub fn batch_sizes(&self) -> Result<&Vec<usize>, SNARKError> {
         let mut total_instances = 0;
-        for (z_b_evals_i, batch_size) in self.evaluations.z_b_evals.values().zip(self.batch_sizes.values()) {
+        for (z_b_evals_i, &batch_size) in self.evaluations.z_b_evals.iter().zip(self.batch_sizes.iter()) {
             total_instances += batch_size;
-            if z_b_evals_i.len() != *batch_size {
+            if z_b_evals_i.len() != batch_size {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
@@ -349,8 +345,8 @@ impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let batch_sizes: BTreeMap<CircuitId, usize> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let total_batch_size = batch_sizes.iter().map(|(_,s)|s).sum();
+        let batch_sizes: Vec<usize> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let total_batch_size = batch_sizes.iter().sum();
         Ok(Proof {
             batch_sizes,
             commitments: Commitments::deserialize_with_mode(total_batch_size, &mut reader, compress, validate)?,

@@ -650,13 +650,16 @@ where
             return Err(SNARKError::EmptyBatch);
         }
 
-        let batch_sizes = proof.batch_sizes()?;
-        for (vk, public_inputs_i) in keys_to_inputs {
+        let batch_sizes_vec = proof.batch_sizes()?;
+        let mut batch_sizes = BTreeMap::new();
+        for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
+            batch_sizes.insert(vk.orig_vk.hash, batch_sizes_vec[i]);
+
             if public_inputs_i.is_empty() {
                 return Err(SNARKError::EmptyBatch);
             }
 
-            if public_inputs_i.len() != proof.batch_sizes()?[&vk.orig_vk.hash] {
+            if public_inputs_i.len() != batch_sizes_vec[i] {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
@@ -732,7 +735,7 @@ where
 
         let verifier_time = start_timer!(|| format!("Marlin::Verify with batch sizes: {:?}", batch_sizes));
 
-        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.into_iter());
+        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
 
         let mut first_comms_consumed = 0;
         let mut first_commitments = batch_sizes.iter().flat_map(|(&circuit_id, &batch_size)|{
@@ -845,11 +848,20 @@ where
 
         let mut evaluations = Evaluations::new();
 
+        let mut current_circuit_id = "".to_string();
+        let mut circuit_index: i64 = -1;
         for (label, (_point_name, q)) in query_set.to_set() {
             if AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), E::Fr::zero());
             } else {
-                let eval = proof.evaluations.get(&label).ok_or_else(|| AHPError::MissingEval(label.clone()))?;
+                if label != "g_1" {
+                    let circuit_id = format!("{}", CircuitId::from_witness_label(&label));
+                    if circuit_id != current_circuit_id {
+                        circuit_index += 1;
+                        current_circuit_id = circuit_id;
+                    }
+                }
+                let eval = proof.evaluations.get(circuit_index as usize, &label).ok_or_else(|| AHPError::MissingEval(label.clone()))?;
                 evaluations.insert((label, q), eval);
             }
         }
