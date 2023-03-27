@@ -44,7 +44,7 @@ impl<N: Network> LoadDefault<N> {
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> Vec<Operand<N>> {
-        vec![self.key.clone()]
+        vec![self.key.clone(), self.default.clone()]
     }
 
     /// Returns the mapping name.
