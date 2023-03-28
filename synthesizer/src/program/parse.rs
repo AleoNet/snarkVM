@@ -27,6 +27,7 @@ impl<N: Network> Parser for Program<N> {
             R(RecordType<N>),
             C(Closure<N>),
             F(Function<N>),
+            T(Table<N>),
         }
 
         // Parse the imports from the string.
@@ -51,6 +52,7 @@ impl<N: Network> Parser for Program<N> {
             map(RecordType::parse, |record| P::<N>::R(record)),
             map(Closure::parse, |closure| P::<N>::C(closure)),
             map(Function::parse, |function| P::<N>::F(function)),
+            map(Table::parse, |table| P::<N>::T(table)),
         )))(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -73,6 +75,7 @@ impl<N: Network> Parser for Program<N> {
                     P::R(record) => program.add_record(record.clone()),
                     P::C(closure) => program.add_closure(closure.clone()),
                     P::F(function) => program.add_function(function.clone()),
+                    P::T(table) => program.add_table(table.clone()),
                 };
 
                 match result {
@@ -177,6 +180,13 @@ impl<N: Network> Display for Program<N> {
                     Some(function) => program.push_str(&format!("{function}\n\n")),
                     None => {
                         eprintln!("Function '{identifier}' is not defined.");
+                        return Err(fmt::Error);
+                    }
+                },
+                ProgramDefinition::Table => match self.tables.get(identifier) {
+                    Some(table) => program.push_str(&format!("{table}\n\n")),
+                    None => {
+                        eprintln!("Table '{identifier}' is not defined.");
                         return Err(fmt::Error);
                     }
                 },

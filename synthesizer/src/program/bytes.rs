@@ -55,6 +55,8 @@ impl<N: Network> FromBytes for Program<N> {
                 3 => program.add_closure(Closure::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the function.
                 4 => program.add_function(Function::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
+                // Read the table.
+                5 => program.add_table(Table::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Invalid variant.
                 _ => return Err(error(format!("Failed to parse program. Invalid component variant '{variant}'"))),
             }
@@ -128,6 +130,15 @@ impl<N: Network> ToBytes for Program<N> {
                         function.write_le(&mut writer)?;
                     }
                     None => return Err(error(format!("Function '{identifier}' is not defined."))),
+                },
+                ProgramDefinition::Table => match self.tables.get(identifier) {
+                    Some(table) => {
+                        // Write the variant.
+                        5u8.write_le(&mut writer)?;
+                        // Write the table.
+                        table.write_le(&mut writer)?;
+                    }
+                    None => return Err(error(format!("Table '{identifier}' is not defined."))),
                 },
             }
         }

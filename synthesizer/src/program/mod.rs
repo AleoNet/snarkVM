@@ -31,6 +31,9 @@ pub use instruction::*;
 mod mapping;
 pub use mapping::*;
 
+mod table;
+pub use table::*;
+
 mod bytes;
 mod parse;
 mod serialize;
@@ -54,6 +57,8 @@ enum ProgramDefinition {
     Closure,
     /// A program function.
     Function,
+    /// A lookup table.
+    Table,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -74,6 +79,8 @@ pub struct Program<N: Network> {
     closures: IndexMap<Identifier<N>, Closure<N>>,
     /// A map of the declared functions for the program.
     functions: IndexMap<Identifier<N>, Function<N>>,
+    /// A map of the declared lookup tables for the program.
+    tables: IndexMap<Identifier<N>, Table<N>>,
 }
 
 impl<N: Network> Program<N> {
@@ -94,6 +101,7 @@ impl<N: Network> Program<N> {
             records: IndexMap::new(),
             closures: IndexMap::new(),
             functions: IndexMap::new(),
+            tables: IndexMap::new(),
         })
     }
 
@@ -175,6 +183,11 @@ function fee:
         &self.functions
     }
 
+    /// Returns the tables in the program.
+    pub const fn tables(&self) -> &IndexMap<Identifier<N>, Table<N>> {
+        &self.tables
+    }
+
     /// Returns `true` if the program contains an import with the given program ID.
     pub fn contains_import(&self, id: &ProgramID<N>) -> bool {
         self.imports.contains_key(id)
@@ -203,6 +216,11 @@ function fee:
     /// Returns `true` if the program contains a function with the given name.
     pub fn contains_function(&self, name: &Identifier<N>) -> bool {
         self.functions.contains_key(name)
+    }
+
+    /// Returns `true` if the program contains a table with the given name.
+    pub fn contains_table(&self, name: &Identifier<N>) -> bool {
+        self.tables.contains_key(name)
     }
 
     /// Returns the mapping with the given name.
@@ -269,6 +287,17 @@ function fee:
         ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Return the function.
         Ok(function)
+    }
+
+    /// Returns the table with the given name.
+    pub fn get_table(&self, name: &Identifier<N>) -> Result<Table<N>> {
+        // Attempt to retrieve the table.
+        let table = self.tables.get(name).cloned().ok_or_else(|| anyhow!("Table '{name}' is not defined."))?;
+        // Ensure the table name matches.
+        ensure!(table.name() == name, "Expected table '{name}', but found table '{}'", table.name());
+        // Ensure that the table contains at least one input.
+        ensure!(!table.inputs().is_empty(), "Table is missing input statements");
+        Ok(table)
     }
 }
 
@@ -525,6 +554,55 @@ impl<N: Network> Program<N> {
         }
         Ok(())
     }
+
+    /// Adds a new table to the program.
+    ///
+    /// # Errors
+    /// This method will halt if the table was previously added.
+    /// This method will halt if the table name is already in use in the program.
+    /// This method will halt if the table name is a reserved opcode or keyword.
+    /// This method will halt if the table's columns are not defined.
+    #[inline]
+    fn add_table(&mut self, table: Table<N>) -> Result<()> {
+        // Retrieve the table name.
+        let table_name = *table.name();
+
+        // Ensure the table name is new.
+        ensure!(self.is_unique_name(&table_name), "'{table_name}' is already in use.");
+        // Ensure the table name is not a reserved opcode.
+        ensure!(!Self::is_reserved_opcode(&table_name.to_string()), "'{table_name}' is a reserved opcode.");
+        // Ensure the table name is not a reserved keyword.
+        ensure!(!Self::is_reserved_keyword(&table_name), "'{table_name}' is a reserved keyword.");
+        // Ensure that the table has at least one input.
+        ensure!(!table.inputs().is_empty(), "Cannot evaluate a table without at least one input.");
+        // Ensure that the table inputs types are defined.
+        for input in table.inputs() {
+            // Ensure the member type is already defined in the program.
+            match input.type_() {
+                PlaintextType::Literal(..) => continue,
+                PlaintextType::Struct(identifier) => {
+                    // Ensure the member struct name exists in the program.
+                    if !self.structs.contains_key(identifier) {
+                        bail!("'{identifier}' in table '{table_name}' is not defined.")
+                    }
+                }
+            }
+        }
+        // Ensure that the table outputs types are defined.
+        for output in table.outputs() {
+            // Ensure the member type is already defined in the program.
+            match output.type_() {
+                PlaintextType::Literal(..) => continue,
+                PlaintextType::Struct(identifier) => {
+                    // Ensure the member struct name exists in the program.
+                    if !self.structs.contains_key(identifier) {
+                        bail!("'{identifier}' in table '{table_name}' is not defined.")
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<N: Network> Program<N> {
@@ -574,6 +652,7 @@ impl<N: Network> Program<N> {
         "mapping",
         "key",
         "value",
+        "table",
         // Reserved (catch all)
         "global",
         "return",
@@ -741,6 +820,29 @@ function compute:
         assert!(program.contains_function(&Identifier::from_str("compute")?));
         // Ensure the retrieved function matches.
         assert_eq!(function, program.get_function(&Identifier::from_str("compute")?)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_program_table() -> Result<()> {
+        // Create a new table.
+        let table = Table::<CurrentNetwork>::from_str(
+            r"
+table foo:
+    input field;
+    output u8;",
+        )?;
+
+        // Initialize a new program.
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
+
+        // Add the table to the program.
+        program.add_table(table.clone())?;
+        // Ensure the table was added.
+        assert!(program.contains_table(&Identifier::from_str("foo")?));
+        // Ensure the retrieved table matches.
+        assert_eq!(table, program.get_table(&Identifier::from_str("foo")?)?);
 
         Ok(())
     }
