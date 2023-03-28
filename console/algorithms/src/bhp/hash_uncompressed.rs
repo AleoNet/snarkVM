@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -75,8 +75,11 @@ mod tests {
     #[test]
     fn test_bhp256_input_size() -> Result<()> {
         let bhp = BHP256::<CurrentEnvironment>::setup("BHPTest")?;
+
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut rng)).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
         }
         Ok(())
@@ -85,8 +88,11 @@ mod tests {
     #[test]
     fn test_bhp512_input_size() -> Result<()> {
         let bhp = BHP512::<CurrentEnvironment>::setup("BHPTest")?;
+
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut rng)).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
         }
         Ok(())
@@ -95,8 +101,11 @@ mod tests {
     #[test]
     fn test_bhp768_input_size() -> Result<()> {
         let bhp = BHP768::<CurrentEnvironment>::setup("BHPTest")?;
+
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut rng)).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
         }
         Ok(())
@@ -105,8 +114,11 @@ mod tests {
     #[test]
     fn test_bhp1024_input_size() -> Result<()> {
         let bhp = BHP1024::<CurrentEnvironment>::setup("BHPTest")?;
+
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut rng)).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
         }
         Ok(())

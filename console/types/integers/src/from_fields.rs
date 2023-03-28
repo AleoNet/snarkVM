@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -38,9 +38,11 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_from_fields<I: IntegerType>() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = Integer::<CurrentEnvironment, I>::rand(&mut test_rng());
+            let expected = Integer::<CurrentEnvironment, I>::rand(&mut rng);
 
             // Perform the operation.
             let candidate = Integer::from_fields(&expected.to_fields()?)?;

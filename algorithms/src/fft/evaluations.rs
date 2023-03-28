@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_iter_mut, serialize::*};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -72,8 +72,22 @@ impl<F: PrimeField> Evaluations<F> {
         DensePolynomial::from_coefficients_vec(evals)
     }
 
+    /// Returns the evaluations of `self`.
+    pub fn evaluations(&self) -> &[F] {
+        &self.evaluations
+    }
+
     pub fn domain(&self) -> EvaluationDomain<F> {
         self.domain
+    }
+
+    pub fn evaluate(&self, point: &F) -> F {
+        let coeffs = self.domain.evaluate_all_lagrange_coefficients(*point);
+        self.evaluate_with_coeffs(&coeffs)
+    }
+
+    pub fn evaluate_with_coeffs(&self, lagrange_coefficients_at_point: &[F]) -> F {
+        cfg_iter!(self.evaluations).zip_eq(lagrange_coefficients_at_point).map(|(a, b)| *a * b).sum()
     }
 }
 

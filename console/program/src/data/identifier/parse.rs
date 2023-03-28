@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -37,20 +37,15 @@ impl<N: Network> FromStr for Identifier<N> {
 
     /// Reads in an identifier from a string.
     fn from_str(identifier: &str) -> Result<Self, Self::Err> {
-        // Ensure the identifier is not an empty string, and does not start with a number.
+        // Ensure the identifier is not an empty string, and starts with an ASCII letter.
         match identifier.chars().next() {
-            Some(character) => ensure!(!character.is_numeric(), "Identifier cannot start with a number"),
-            None => bail!("Identifier cannot be an empty string"),
+            Some(character) => ensure!(character.is_ascii_alphabetic(), "Identifier must start with a letter"),
+            None => bail!("Identifier cannot be empty"),
         }
 
-        // Ensure the identifier is alphanumeric and underscores.
-        if identifier.chars().any(|character| !character.is_alphanumeric() && character != '_') {
-            bail!("Identifier '{identifier}' must be alphanumeric and underscores")
-        }
-
-        // Ensure the identifier is not solely underscores.
-        if identifier.chars().all(|character| character == '_') {
-            bail!("Identifier cannot consist solely of underscores")
+        // Ensure the identifier consists of ASCII letters, ASCII digits, and underscores.
+        if identifier.chars().any(|character| !character.is_ascii_alphanumeric() && character != '_') {
+            bail!("Identifier '{identifier}' must consist of letters, digits, and underscores")
         }
 
         // Ensure identifier fits within the data capacity of the base field.
@@ -61,7 +56,10 @@ impl<N: Network> FromStr for Identifier<N> {
 
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        Ok(Self(Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?, identifier.len() as u8))
+        Ok(Self(
+            Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?,
+            u8::try_from(identifier.len()).or_halt_with::<N>("Identifier `from_str` exceeds maximum length"),
+        ))
     }
 }
 
@@ -126,10 +124,12 @@ mod tests {
         assert_eq!("foo_bar", candidate.to_string());
         assert_eq!("-baz", remainder);
 
+        let mut rng = TestRng::default();
+
         // Check random identifiers.
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
@@ -169,9 +169,11 @@ mod tests {
         let candidate = Identifier::<CurrentNetwork>::from_str("foo_bar").unwrap();
         assert_eq!("foo_bar", candidate.to_string());
 
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
@@ -185,6 +187,9 @@ mod tests {
 
     #[test]
     fn test_from_str_fails() {
+        // Must be non-empty.
+        assert!(Identifier::<CurrentNetwork>::from_str("").is_err());
+
         // Must be alphanumeric or underscore.
         assert!(Identifier::<CurrentNetwork>::from_str("foo_bar~baz").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("foo_bar-baz").is_err());
@@ -202,6 +207,13 @@ mod tests {
         assert!(Identifier::<CurrentNetwork>::from_str("1foo").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("12").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("111").is_err());
+
+        // Must not start with underscore.
+        assert!(Identifier::<CurrentNetwork>::from_str("_foo").is_err());
+
+        // Must be ASCII.
+        assert!(Identifier::<CurrentNetwork>::from_str("\u{03b1}").is_err()); // Greek alpha
+        assert!(Identifier::<CurrentNetwork>::from_str("\u{03b2}").is_err()); // Greek beta
 
         // Must fit within the data capacity of a base field element.
         let identifier = Identifier::<CurrentNetwork>::from_str(

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -73,17 +73,19 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element `a`.
-            let expected_a = Uniform::rand(&mut test_rng());
+            let expected_a = Uniform::rand(&mut rng);
             let candidate_a = Scalar::<Circuit>::new(mode_a, expected_a);
 
             // Sample a random element `b`.
-            let expected_b = Uniform::rand(&mut test_rng());
+            let expected_b = Uniform::rand(&mut rng);
             let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
 
             // Perform the less than comparison.
-            Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
+            Circuit::scope(&format!("{mode_a} {mode_b} {i}"), || {
                 let candidate = candidate_a.is_less_than(&candidate_b);
                 assert_eq!(expected_a < expected_b, candidate.eject_value());
                 assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);

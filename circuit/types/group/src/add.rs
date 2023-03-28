@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -44,8 +44,8 @@ impl<E: Environment> Add<&Self> for Group<E> {
                 false => (other, &self),
             };
 
-            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
-            let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
+            let a = Field::constant(console::Field::new(E::EDWARDS_A));
+            let d = Field::constant(console::Field::new(E::EDWARDS_D));
 
             // Compute U = (-A * x1 + y1) * (x2 + y2)
             let u1 = (&this.x * &-&a) + &this.y;
@@ -171,18 +171,20 @@ mod tests {
     }
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let a = Group::<Circuit>::new(mode_a, first);
             let b = Group::<Circuit>::new(mode_b, second);
 
             let expected = first + second;
 
-            let name = format!("Add: a + b {}", i);
+            let name = format!("Add: a + b {i}");
             check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
+            let name = format!("AddAssign: a + b {i}");
             check_add_assign(&name, &expected, &a, &b);
         }
     }
@@ -234,9 +236,11 @@ mod tests {
 
     #[test]
     fn test_add_matches() {
+        let mut rng = TestRng::default();
+
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
-        let b = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut rng);
+        let b = Uniform::rand(&mut rng);
         let expected = a + b;
 
         // Constant

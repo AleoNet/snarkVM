@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,6 +17,7 @@
 mod bytes;
 mod serialize;
 mod string;
+mod to_address;
 mod try_from;
 
 #[cfg(feature = "compute_key")]
@@ -25,9 +26,7 @@ use crate::ComputeKey;
 use crate::PrivateKey;
 
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Scalar;
-
-use base58::{FromBase58, ToBase58};
+use snarkvm_console_types::{Address, Scalar};
 
 /// The account view key used to decrypt records and ciphertext.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -60,9 +59,11 @@ mod tests {
 
     #[test]
     fn test_from_scalar() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let expected = ViewKey::try_from(private_key)?;
 
             // Check the scalar representation.

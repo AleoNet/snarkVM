@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -50,9 +50,11 @@ mod tests {
 
     #[test]
     fn test_try_from() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new compute key and view key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let compute_key = ComputeKey::try_from(private_key)?;
             let view_key = ViewKey::try_from(private_key)?;
 

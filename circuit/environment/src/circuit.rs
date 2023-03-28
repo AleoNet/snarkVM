@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -33,13 +33,9 @@ pub struct Circuit;
 
 impl Environment for Circuit {
     type Affine = <console::Testnet3 as console::Environment>::Affine;
-    type AffineParameters = <console::Testnet3 as console::Environment>::AffineParameters;
     type BaseField = Field;
     type Network = console::Testnet3;
     type ScalarField = <console::Testnet3 as console::Environment>::Scalar;
-
-    /// The maximum number of characters allowed in a string.
-    const NUM_STRING_BYTES: u32 = u8::MAX as u32;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {
@@ -160,10 +156,7 @@ impl Environment for Circuit {
                             assert_eq!(
                                 a.value() * b.value(),
                                 c.value(),
-                                "Constant constraint failed: ({} * {}) =?= {}",
-                                a,
-                                b,
-                                c
+                                "Constant constraint failed: ({a} * {b}) =?= {c}"
                             );
 
                             // match self.counter.scope().is_empty() {
@@ -293,7 +286,7 @@ impl Environment for Circuit {
     /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
     ///  Circuits should not have easy access to this during synthesis.
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
-    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+    fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         CIRCUIT.with(|circuit| {
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
@@ -355,8 +348,8 @@ mod tests {
     #[test]
     fn test_print_circuit() {
         let _candidate = create_example_circuit::<Circuit>();
-        let output = format!("{}", Circuit);
-        println!("{}", output);
+        let output = format!("{Circuit}");
+        println!("{output}");
     }
 
     #[test]

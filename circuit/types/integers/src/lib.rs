@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 mod helpers;
 
@@ -28,6 +29,7 @@ pub mod compare;
 pub mod div_checked;
 pub mod div_wrapped;
 pub mod equal;
+pub mod modulo;
 pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;
@@ -35,6 +37,8 @@ pub mod not;
 pub mod or;
 pub mod pow_checked;
 pub mod pow_wrapped;
+pub mod rem_checked;
+pub mod rem_wrapped;
 pub mod shl_checked;
 pub mod shl_wrapped;
 pub mod shr_checked;
@@ -66,7 +70,7 @@ use snarkvm_circuit_environment::{
     output_mode,
 };
 #[cfg(test)]
-use snarkvm_utilities::{test_rng, Uniform};
+use snarkvm_utilities::{TestRng, Uniform};
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
@@ -220,9 +224,10 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) {
         for _ in 0..ITERATIONS {
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(rng);
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Integer::<Circuit, I>::new(mode, expected);
@@ -242,9 +247,10 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
+        rng: &mut TestRng,
     ) {
         for _ in 0..ITERATIONS {
-            let value = Uniform::rand(&mut test_rng());
+            let value = Uniform::rand(rng);
             let expected = Integer::<Circuit, I>::new(mode, value);
 
             Circuit::scope(format!("Parse {mode}"), || {
@@ -260,31 +266,35 @@ mod tests {
     fn check_display<I: IntegerType>() {
         // Constant
         let candidate = Integer::<Circuit, I>::new(Mode::Constant, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.constant", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.constant", I::type_name()), format!("{candidate}"));
 
         // Public
         let candidate = Integer::<Circuit, I>::new(Mode::Public, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.public", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.public", I::type_name()), format!("{candidate}"));
 
         // Private
         let candidate = Integer::<Circuit, I>::new(Mode::Private, console::Integer::one() + console::Integer::one());
-        assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
+        assert_eq!(format!("2{}.private", I::type_name()), format!("{candidate}"));
     }
 
     // u8
 
     #[test]
     fn test_u8_new() {
-        check_new::<u8>(Mode::Constant, 8, 0, 0, 0);
-        check_new::<u8>(Mode::Public, 0, 8, 0, 8);
-        check_new::<u8>(Mode::Private, 0, 0, 8, 8);
+        let mut rng = TestRng::default();
+
+        check_new::<u8>(Mode::Constant, 8, 0, 0, 0, &mut rng);
+        check_new::<u8>(Mode::Public, 0, 8, 0, 8, &mut rng);
+        check_new::<u8>(Mode::Private, 0, 0, 8, 8, &mut rng);
     }
 
     #[test]
     fn test_u8_parse() {
-        check_parse::<u8>(Mode::Constant, 8, 0, 0, 0);
-        check_parse::<u8>(Mode::Public, 0, 8, 0, 8);
-        check_parse::<u8>(Mode::Private, 0, 0, 8, 8);
+        let mut rng = TestRng::default();
+
+        check_parse::<u8>(Mode::Constant, 8, 0, 0, 0, &mut rng);
+        check_parse::<u8>(Mode::Public, 0, 8, 0, 8, &mut rng);
+        check_parse::<u8>(Mode::Private, 0, 0, 8, 8, &mut rng);
     }
 
     #[test]
@@ -296,16 +306,20 @@ mod tests {
 
     #[test]
     fn test_i8_new() {
-        check_new::<i8>(Mode::Constant, 8, 0, 0, 0);
-        check_new::<i8>(Mode::Public, 0, 8, 0, 8);
-        check_new::<i8>(Mode::Private, 0, 0, 8, 8);
+        let mut rng = TestRng::default();
+
+        check_new::<i8>(Mode::Constant, 8, 0, 0, 0, &mut rng);
+        check_new::<i8>(Mode::Public, 0, 8, 0, 8, &mut rng);
+        check_new::<i8>(Mode::Private, 0, 0, 8, 8, &mut rng);
     }
 
     #[test]
     fn test_i8_parse() {
-        check_parse::<i8>(Mode::Constant, 8, 0, 0, 0);
-        check_parse::<i8>(Mode::Public, 0, 8, 0, 8);
-        check_parse::<i8>(Mode::Private, 0, 0, 8, 8);
+        let mut rng = TestRng::default();
+
+        check_parse::<i8>(Mode::Constant, 8, 0, 0, 0, &mut rng);
+        check_parse::<i8>(Mode::Public, 0, 8, 0, 8, &mut rng);
+        check_parse::<i8>(Mode::Private, 0, 0, 8, 8, &mut rng);
     }
 
     #[test]
@@ -317,16 +331,20 @@ mod tests {
 
     #[test]
     fn test_u16_new() {
-        check_new::<u16>(Mode::Constant, 16, 0, 0, 0);
-        check_new::<u16>(Mode::Public, 0, 16, 0, 16);
-        check_new::<u16>(Mode::Private, 0, 0, 16, 16);
+        let mut rng = TestRng::default();
+
+        check_new::<u16>(Mode::Constant, 16, 0, 0, 0, &mut rng);
+        check_new::<u16>(Mode::Public, 0, 16, 0, 16, &mut rng);
+        check_new::<u16>(Mode::Private, 0, 0, 16, 16, &mut rng);
     }
 
     #[test]
     fn test_u16_parse() {
-        check_parse::<u16>(Mode::Constant, 16, 0, 0, 0);
-        check_parse::<u16>(Mode::Public, 0, 16, 0, 16);
-        check_parse::<u16>(Mode::Private, 0, 0, 16, 16);
+        let mut rng = TestRng::default();
+
+        check_parse::<u16>(Mode::Constant, 16, 0, 0, 0, &mut rng);
+        check_parse::<u16>(Mode::Public, 0, 16, 0, 16, &mut rng);
+        check_parse::<u16>(Mode::Private, 0, 0, 16, 16, &mut rng);
     }
 
     #[test]
@@ -338,16 +356,20 @@ mod tests {
 
     #[test]
     fn test_i16_new() {
-        check_new::<i16>(Mode::Constant, 16, 0, 0, 0);
-        check_new::<i16>(Mode::Public, 0, 16, 0, 16);
-        check_new::<i16>(Mode::Private, 0, 0, 16, 16);
+        let mut rng = TestRng::default();
+
+        check_new::<i16>(Mode::Constant, 16, 0, 0, 0, &mut rng);
+        check_new::<i16>(Mode::Public, 0, 16, 0, 16, &mut rng);
+        check_new::<i16>(Mode::Private, 0, 0, 16, 16, &mut rng);
     }
 
     #[test]
     fn test_i16_parse() {
-        check_parse::<i16>(Mode::Constant, 16, 0, 0, 0);
-        check_parse::<i16>(Mode::Public, 0, 16, 0, 16);
-        check_parse::<i16>(Mode::Private, 0, 0, 16, 16);
+        let mut rng = TestRng::default();
+
+        check_parse::<i16>(Mode::Constant, 16, 0, 0, 0, &mut rng);
+        check_parse::<i16>(Mode::Public, 0, 16, 0, 16, &mut rng);
+        check_parse::<i16>(Mode::Private, 0, 0, 16, 16, &mut rng);
     }
 
     #[test]
@@ -359,16 +381,20 @@ mod tests {
 
     #[test]
     fn test_u32_new() {
-        check_new::<u32>(Mode::Constant, 32, 0, 0, 0);
-        check_new::<u32>(Mode::Public, 0, 32, 0, 32);
-        check_new::<u32>(Mode::Private, 0, 0, 32, 32);
+        let mut rng = TestRng::default();
+
+        check_new::<u32>(Mode::Constant, 32, 0, 0, 0, &mut rng);
+        check_new::<u32>(Mode::Public, 0, 32, 0, 32, &mut rng);
+        check_new::<u32>(Mode::Private, 0, 0, 32, 32, &mut rng);
     }
 
     #[test]
     fn test_u32_parse() {
-        check_parse::<u32>(Mode::Constant, 32, 0, 0, 0);
-        check_parse::<u32>(Mode::Public, 0, 32, 0, 32);
-        check_parse::<u32>(Mode::Private, 0, 0, 32, 32);
+        let mut rng = TestRng::default();
+
+        check_parse::<u32>(Mode::Constant, 32, 0, 0, 0, &mut rng);
+        check_parse::<u32>(Mode::Public, 0, 32, 0, 32, &mut rng);
+        check_parse::<u32>(Mode::Private, 0, 0, 32, 32, &mut rng);
     }
 
     #[test]
@@ -380,16 +406,20 @@ mod tests {
 
     #[test]
     fn test_i32_new() {
-        check_new::<i32>(Mode::Constant, 32, 0, 0, 0);
-        check_new::<i32>(Mode::Public, 0, 32, 0, 32);
-        check_new::<i32>(Mode::Private, 0, 0, 32, 32);
+        let mut rng = TestRng::default();
+
+        check_new::<i32>(Mode::Constant, 32, 0, 0, 0, &mut rng);
+        check_new::<i32>(Mode::Public, 0, 32, 0, 32, &mut rng);
+        check_new::<i32>(Mode::Private, 0, 0, 32, 32, &mut rng);
     }
 
     #[test]
     fn test_i32_parse() {
-        check_parse::<i32>(Mode::Constant, 32, 0, 0, 0);
-        check_parse::<i32>(Mode::Public, 0, 32, 0, 32);
-        check_parse::<i32>(Mode::Private, 0, 0, 32, 32);
+        let mut rng = TestRng::default();
+
+        check_parse::<i32>(Mode::Constant, 32, 0, 0, 0, &mut rng);
+        check_parse::<i32>(Mode::Public, 0, 32, 0, 32, &mut rng);
+        check_parse::<i32>(Mode::Private, 0, 0, 32, 32, &mut rng);
     }
 
     #[test]
@@ -401,16 +431,20 @@ mod tests {
 
     #[test]
     fn test_u64_new() {
-        check_new::<u64>(Mode::Constant, 64, 0, 0, 0);
-        check_new::<u64>(Mode::Public, 0, 64, 0, 64);
-        check_new::<u64>(Mode::Private, 0, 0, 64, 64);
+        let mut rng = TestRng::default();
+
+        check_new::<u64>(Mode::Constant, 64, 0, 0, 0, &mut rng);
+        check_new::<u64>(Mode::Public, 0, 64, 0, 64, &mut rng);
+        check_new::<u64>(Mode::Private, 0, 0, 64, 64, &mut rng);
     }
 
     #[test]
     fn test_u64_parse() {
-        check_parse::<u64>(Mode::Constant, 64, 0, 0, 0);
-        check_parse::<u64>(Mode::Public, 0, 64, 0, 64);
-        check_parse::<u64>(Mode::Private, 0, 0, 64, 64);
+        let mut rng = TestRng::default();
+
+        check_parse::<u64>(Mode::Constant, 64, 0, 0, 0, &mut rng);
+        check_parse::<u64>(Mode::Public, 0, 64, 0, 64, &mut rng);
+        check_parse::<u64>(Mode::Private, 0, 0, 64, 64, &mut rng);
     }
 
     #[test]
@@ -422,16 +456,20 @@ mod tests {
 
     #[test]
     fn test_i64_new() {
-        check_new::<i64>(Mode::Constant, 64, 0, 0, 0);
-        check_new::<i64>(Mode::Public, 0, 64, 0, 64);
-        check_new::<i64>(Mode::Private, 0, 0, 64, 64);
+        let mut rng = TestRng::default();
+
+        check_new::<i64>(Mode::Constant, 64, 0, 0, 0, &mut rng);
+        check_new::<i64>(Mode::Public, 0, 64, 0, 64, &mut rng);
+        check_new::<i64>(Mode::Private, 0, 0, 64, 64, &mut rng);
     }
 
     #[test]
     fn test_i64_parse() {
-        check_parse::<i64>(Mode::Constant, 64, 0, 0, 0);
-        check_parse::<i64>(Mode::Public, 0, 64, 0, 64);
-        check_parse::<i64>(Mode::Private, 0, 0, 64, 64);
+        let mut rng = TestRng::default();
+
+        check_parse::<i64>(Mode::Constant, 64, 0, 0, 0, &mut rng);
+        check_parse::<i64>(Mode::Public, 0, 64, 0, 64, &mut rng);
+        check_parse::<i64>(Mode::Private, 0, 0, 64, 64, &mut rng);
     }
 
     #[test]
@@ -443,16 +481,20 @@ mod tests {
 
     #[test]
     fn test_u128_new() {
-        check_new::<u128>(Mode::Constant, 128, 0, 0, 0);
-        check_new::<u128>(Mode::Public, 0, 128, 0, 128);
-        check_new::<u128>(Mode::Private, 0, 0, 128, 128);
+        let mut rng = TestRng::default();
+
+        check_new::<u128>(Mode::Constant, 128, 0, 0, 0, &mut rng);
+        check_new::<u128>(Mode::Public, 0, 128, 0, 128, &mut rng);
+        check_new::<u128>(Mode::Private, 0, 0, 128, 128, &mut rng);
     }
 
     #[test]
     fn test_u128_parse() {
-        check_parse::<u128>(Mode::Constant, 128, 0, 0, 0);
-        check_parse::<u128>(Mode::Public, 0, 128, 0, 128);
-        check_parse::<u128>(Mode::Private, 0, 0, 128, 128);
+        let mut rng = TestRng::default();
+
+        check_parse::<u128>(Mode::Constant, 128, 0, 0, 0, &mut rng);
+        check_parse::<u128>(Mode::Public, 0, 128, 0, 128, &mut rng);
+        check_parse::<u128>(Mode::Private, 0, 0, 128, 128, &mut rng);
     }
 
     #[test]
@@ -464,16 +506,20 @@ mod tests {
 
     #[test]
     fn test_i128_new() {
-        check_new::<i128>(Mode::Constant, 128, 0, 0, 0);
-        check_new::<i128>(Mode::Public, 0, 128, 0, 128);
-        check_new::<i128>(Mode::Private, 0, 0, 128, 128);
+        let mut rng = TestRng::default();
+
+        check_new::<i128>(Mode::Constant, 128, 0, 0, 0, &mut rng);
+        check_new::<i128>(Mode::Public, 0, 128, 0, 128, &mut rng);
+        check_new::<i128>(Mode::Private, 0, 0, 128, 128, &mut rng);
     }
 
     #[test]
     fn test_i128_parse() {
-        check_parse::<i128>(Mode::Constant, 128, 0, 0, 0);
-        check_parse::<i128>(Mode::Public, 0, 128, 0, 128);
-        check_parse::<i128>(Mode::Private, 0, 0, 128, 128);
+        let mut rng = TestRng::default();
+
+        check_parse::<i128>(Mode::Constant, 128, 0, 0, 0, &mut rng);
+        check_parse::<i128>(Mode::Public, 0, 128, 0, 128, &mut rng);
+        check_parse::<i128>(Mode::Private, 0, 0, 128, 128, &mut rng);
     }
 
     #[test]

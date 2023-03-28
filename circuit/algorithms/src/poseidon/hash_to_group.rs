@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -54,9 +54,11 @@ mod tests {
             let native = console::$poseidon::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $poseidon::<Circuit>::constant(native.clone());
 
+            let rng = &mut TestRng::default();
+
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_fields).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_fields).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
                 // Compute the expected hash.
                 let expected = console::HashToGroup::hash_to_group(&native, &input)?;
                 // Prepare the circuit input.
@@ -91,12 +93,12 @@ mod tests {
 
     #[test]
     fn test_poseidon2_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Public, 2, (529, 0, 1018, 1036))
+        check_hash_to_group!(Poseidon2, Public, 2, (529, 0, 1016, 1022))
     }
 
     #[test]
     fn test_poseidon2_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Private, 2, (529, 0, 1018, 1036))
+        check_hash_to_group!(Poseidon2, Private, 2, (529, 0, 1016, 1022))
     }
 
     #[test]
@@ -106,12 +108,12 @@ mod tests {
 
     #[test]
     fn test_poseidon4_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Public, 2, (529, 0, 1088, 1106))
+        check_hash_to_group!(Poseidon4, Public, 2, (529, 0, 1086, 1092))
     }
 
     #[test]
     fn test_poseidon4_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Private, 2, (529, 0, 1088, 1106))
+        check_hash_to_group!(Poseidon4, Private, 2, (529, 0, 1086, 1092))
     }
 
     #[test]
@@ -121,11 +123,11 @@ mod tests {
 
     #[test]
     fn test_poseidon8_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Public, 2, (529, 0, 1228, 1246))
+        check_hash_to_group!(Poseidon8, Public, 2, (529, 0, 1226, 1232))
     }
 
     #[test]
     fn test_poseidon8_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Private, 2, (529, 0, 1228, 1246))
+        check_hash_to_group!(Poseidon8, Private, 2, (529, 0, 1226, 1232))
     }
 }

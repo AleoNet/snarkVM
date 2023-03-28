@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes};
-use snarkvm_compiler::{Program, ProvingKey};
+use crate::{
+    prelude::{FromBytes, Identifier, IoResult, Network, Read, ToBytes},
+    synthesizer::{Program, ProvingKey},
+};
 
 use anyhow::{anyhow, bail, ensure, Result};
 use std::{
@@ -45,9 +47,9 @@ impl<N: Network> ProverFile<N> {
         let prover_file = Self { function_name: *function_name, proving_key };
 
         // Create the file name.
-        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{PROVER_FILE_EXTENSION}");
         // Construct the file path.
-        let path = directory.join(&file_name);
+        let path = directory.join(file_name);
         // Write the file (overwriting if it already exists).
         File::create(&path)?.write_all(&prover_file.to_bytes_le()?)?;
 
@@ -61,7 +63,7 @@ impl<N: Network> ProverFile<N> {
         ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
         // Create the file name.
-        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{PROVER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
@@ -85,7 +87,7 @@ impl<N: Network> ProverFile<N> {
     /// Returns `true` if the prover file for the given function name exists at the given directory.
     pub fn exists_at(directory: &Path, function_name: &Identifier<N>) -> bool {
         // Create the file name.
-        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        let file_name = format!("{function_name}.{PROVER_FILE_EXTENSION}");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the path is well-formed.
@@ -111,7 +113,7 @@ impl<N: Network> ProverFile<N> {
             // Ensure the path is well-formed.
             Self::check_path(path)?;
             // Remove the file.
-            Ok(fs::remove_file(&path)?)
+            Ok(fs::remove_file(path)?)
         }
     }
 }
@@ -137,7 +139,7 @@ impl<N: Network> ProverFile<N> {
         // Ensure the path is well-formed.
         Self::check_path(file)?;
         // Parse the prover file bytes.
-        let prover = Self::from_bytes_le(&fs::read(&file)?)?;
+        let prover = Self::from_bytes_le(&fs::read(file)?)?;
 
         // Retrieve the file stem.
         let file_stem = file
@@ -169,7 +171,7 @@ impl<N: Network> ProverFile<N> {
         ensure!(self.function_name.to_string() == file_stem, "Function name does not match file stem.");
 
         // Write to the file (overwriting if it already exists).
-        Ok(File::create(&path)?.write_all(&self.to_bytes_le()?)?)
+        Ok(File::create(path)?.write_all(&self.to_bytes_le()?)?)
     }
 }
 
@@ -193,8 +195,10 @@ impl<N: Network> ToBytes for ProverFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{FromStr, Parser};
-    use snarkvm_compiler::Process;
+    use crate::{
+        prelude::{FromStr, Parser, TestRng},
+        synthesizer::Process,
+    };
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::AleoV0;
@@ -213,7 +217,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -226,11 +230,18 @@ function compute:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::load().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+
+        // Prepare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
 
-        // Sample the proving and verifying key.
-        let (proving_key, _verifying_key) = process.circuit_key(program.id(), &function_name).unwrap();
+        // Sample the proving key.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
+
+        // Retrieve the proving key.
+        let proving_key = process.get_proving_key(program.id(), function_name).unwrap();
 
         // Create the prover file at the path.
         let expected = ProverFile::create(&directory, &function_name, proving_key).unwrap();

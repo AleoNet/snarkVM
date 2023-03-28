@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -44,7 +44,7 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> State<E, RATE, CA
 
 impl<E: Environment, const RATE: usize, const CAPACITY: usize> State<E, RATE, CAPACITY> {
     /// Returns an immutable iterator over the state.
-    pub fn iter(&self) -> impl Iterator<Item = &Field<E>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Field<E>> + Clone {
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,6 +23,9 @@ use snarkvm_circuit_network::AleoV0 as Circuit;
 pub mod compute_key;
 pub use compute_key::*;
 
+pub mod graph_key;
+pub use graph_key::*;
+
 pub mod private_key;
 pub use private_key::*;
 
@@ -36,7 +39,7 @@ pub use view_key::*;
 pub(crate) mod helpers {
     use snarkvm_circuit_network::AleoV0;
     use snarkvm_circuit_types::environment::Environment;
-    use snarkvm_utilities::test_crypto_rng;
+    use snarkvm_utilities::TestRng;
 
     use anyhow::Result;
 
@@ -50,7 +53,7 @@ pub(crate) mod helpers {
         console::Address<CurrentNetwork>,
     )> {
         // Sample a random private key.
-        let private_key = console::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+        let private_key = console::PrivateKey::<CurrentNetwork>::new(&mut TestRng::default())?;
 
         // Derive the compute key, view key, and address.
         let compute_key = console::ComputeKey::try_from(&private_key)?;

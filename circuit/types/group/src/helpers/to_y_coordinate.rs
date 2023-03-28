@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,12 +31,14 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_to_y_coordinate(mode: Mode) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Group::<Circuit>::new(mode, expected);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = candidate.to_y_coordinate();
                 assert_eq!(expected.to_y_coordinate(), candidate.eject_value());
                 assert_scope!(0, 0, 0, 0);

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -54,9 +54,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_le() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
@@ -69,9 +71,11 @@ mod tests {
 
     #[test]
     fn test_to_bits_be() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 

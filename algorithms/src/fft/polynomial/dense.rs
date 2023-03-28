@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,11 +46,11 @@ impl<F: Field> fmt::Debug for DensePolynomial<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (i, coeff) in self.coeffs.iter().enumerate().filter(|(_, c)| !c.is_zero()) {
             if i == 0 {
-                write!(f, "\n{:?}", coeff)?;
+                write!(f, "\n{coeff:?}",)?;
             } else if i == 1 {
-                write!(f, " + \n{:?} * x", coeff)?;
+                write!(f, " + \n{coeff:?} * x")?;
             } else {
-                write!(f, " + \n{:?} * x^{}", coeff, i)?;
+                write!(f, " + \n{coeff:?} * x^{i}")?;
             }
         }
         Ok(())
@@ -237,7 +237,7 @@ impl<'a, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
 impl<'a, F: Field> AddAssign<&'a Polynomial<'a, F>> for DensePolynomial<F> {
     fn add_assign(&mut self, other: &'a Polynomial<F>) {
         match other {
-            Polynomial::Sparse(p) => *self += &Self::from(p.to_owned().into_owned()),
+            Polynomial::Sparse(p) => *self += &Self::from(p.clone().into_owned()),
             Polynomial::Dense(p) => *self += p.as_ref(),
         }
     }
@@ -246,7 +246,7 @@ impl<'a, F: Field> AddAssign<&'a Polynomial<'a, F>> for DensePolynomial<F> {
 impl<'a, F: Field> AddAssign<(F, &'a Polynomial<'a, F>)> for DensePolynomial<F> {
     fn add_assign(&mut self, (f, other): (F, &'a Polynomial<F>)) {
         match other {
-            Polynomial::Sparse(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
+            Polynomial::Sparse(p) => *self += (f, &Self::from(p.clone().into_owned())),
             Polynomial::Dense(p) => *self += (f, p.as_ref()),
         }
     }
@@ -476,13 +476,13 @@ mod tests {
     use crate::fft::polynomial::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::{Field, One, Zero};
-    use snarkvm_utilities::rand::Uniform;
+    use snarkvm_utilities::rand::{TestRng, Uniform};
 
-    use rand::thread_rng;
+    use rand::RngCore;
 
     #[test]
     fn double_polynomials_random() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         for degree in 0..70 {
             let p = DensePolynomial::<Fr>::rand(degree, rng);
             let p_double = &p + &p;
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn add_polynomials() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         for a_degree in 0..70 {
             for b_degree in 0..70 {
                 let p1 = DensePolynomial::<Fr>::rand(a_degree, rng);
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn add_polynomials_with_mul() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         for a_degree in 0..70 {
             for b_degree in 0..70 {
                 let mut p1 = DensePolynomial::rand(a_degree, rng);
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn sub_polynomials() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         let p1 = DensePolynomial::<Fr>::rand(5, rng);
         let p2 = DensePolynomial::<Fr>::rand(3, rng);
         let res1 = &p1 - &p2;
@@ -554,7 +554,7 @@ mod tests {
     #[test]
     #[allow(clippy::needless_borrow)]
     fn divide_polynomials_random() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
 
         for a_degree in 0..70 {
             for b_degree in 0..70 {
@@ -571,13 +571,13 @@ mod tests {
 
     #[test]
     fn evaluate_polynomials() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         for a_degree in 0..70 {
             let p = DensePolynomial::rand(a_degree, rng);
             let point: Fr = Fr::from(10u64);
             let mut total = Fr::zero();
             for (i, coeff) in p.coeffs.iter().enumerate() {
-                total += point.pow(&[i as u64]) * coeff;
+                total += point.pow([i as u64]) * coeff;
             }
             assert_eq!(p.evaluate(point), total);
         }
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn mul_polynomials_random() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         for a_degree in 0..70 {
             for b_degree in 0..70 {
                 dbg!(a_degree);
@@ -598,8 +598,73 @@ mod tests {
     }
 
     #[test]
+    fn mul_polynomials_n_random() {
+        let rng = &mut TestRng::default();
+
+        let max_degree = 1 << 8;
+
+        for _ in 0..10 {
+            let mut multiplier = PolyMultiplier::new();
+            let a = DensePolynomial::<Fr>::rand(max_degree / 2, rng);
+            let mut mul_degree = a.degree() + 1;
+            multiplier.add_polynomial(a.clone(), "a");
+            let mut naive = a.clone();
+
+            // Include polynomials and evaluations
+            let num_polys = (rng.next_u32() as usize) % 8;
+            let num_evals = (rng.next_u32() as usize) % 4;
+            println!("\nnum_polys {num_polys}, num_evals {num_evals}");
+
+            for _ in 1..num_polys {
+                let degree = (rng.next_u32() as usize) % max_degree;
+                mul_degree += degree + 1;
+                println!("poly degree {degree}");
+                let a = DensePolynomial::<Fr>::rand(degree, rng);
+                naive = naive.naive_mul(&a);
+                multiplier.add_polynomial(a.clone(), "a");
+            }
+
+            // Add evaluations but don't overflow the domain
+            let mut eval_degree = mul_degree;
+            let domain = EvaluationDomain::new(mul_degree).unwrap();
+            println!("mul_degree {}, domain {}", mul_degree, domain.size());
+            for _ in 0..num_evals {
+                let a = DensePolynomial::<Fr>::rand(mul_degree / 8, rng);
+                eval_degree += a.len() + 1;
+                if eval_degree < domain.size() {
+                    println!("eval degree {eval_degree}");
+                    let mut a_evals = a.clone().coeffs;
+                    domain.fft_in_place(&mut a_evals);
+                    let a_evals = Evaluations::from_vec_and_domain(a_evals, domain);
+
+                    naive = naive.naive_mul(&a);
+                    multiplier.add_evaluation(a_evals, "a");
+                }
+            }
+
+            assert_eq!(multiplier.multiply().unwrap(), naive);
+        }
+    }
+
+    #[test]
+    fn mul_polynomials_corner_cases() {
+        let rng = &mut TestRng::default();
+
+        let a_degree = 70;
+
+        // Single polynomial
+        println!("Test single polynomial");
+        let a = DensePolynomial::<Fr>::rand(a_degree, rng);
+        let mut multiplier = PolyMultiplier::new();
+        multiplier.add_polynomial(a.clone(), "a");
+        assert_eq!(multiplier.multiply().unwrap(), a);
+
+        // Note PolyMultiplier doesn't support a evluations with no polynomials
+    }
+
+    #[test]
     fn mul_by_vanishing_poly() {
-        let rng = &mut thread_rng();
+        let rng = &mut TestRng::default();
         for size in 1..10 {
             let domain = EvaluationDomain::new(1 << size).unwrap();
             for degree in 0..70 {

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -32,17 +32,19 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: usize = 100;
 
     #[test]
     fn test_random() {
         // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS as usize);
+        let mut set = HashSet::with_capacity(ITERATIONS);
+
+        let mut rng = TestRng::default();
 
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut rng);
             assert!(!set.contains(&scalar));
 
             // Add the new random value to the set.

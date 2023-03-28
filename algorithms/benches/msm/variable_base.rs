@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,17 +17,21 @@
 use snarkvm_algorithms::msm::*;
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
+use snarkvm_utilities::TestRng;
 
 use criterion::Criterion;
-use rand::thread_rng;
-use rayon::prelude::*;
 
 #[macro_use]
 extern crate criterion;
 
 fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(size: usize) -> (Vec<G>, Vec<F::BigInteger>) {
-    let bases = (0..size).into_par_iter().map(|_| G::rand(&mut thread_rng())).collect::<Vec<_>>();
-    let scalars = (0..size).into_par_iter().map(|_| F::rand(&mut thread_rng()).to_repr()).collect::<Vec<_>>();
+    let mut rng = TestRng::default();
+
+    let bases = std::iter::repeat((0..(size / 1000)).into_iter().map(|_| G::rand(&mut rng)).collect::<Vec<_>>())
+        .take(1000)
+        .flatten()
+        .collect::<Vec<_>>();
+    let scalars = (0..size).into_iter().map(|_| F::rand(&mut rng).to_bigint()).collect::<Vec<_>>();
     (bases, scalars)
 }
 
@@ -36,7 +40,7 @@ fn variable_base_bls12_377(c: &mut Criterion) {
     let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(2000000);
 
     for size in [10_000, 100_000, 200_000, 300_000, 400_000, 500_000, 1_000_000, 2_000_000] {
-        c.bench_function(&format!("VariableBase MSM on BLS12-377 ({})", size), |b| {
+        c.bench_function(&format!("VariableBase MSM on BLS12-377 ({size})"), |b| {
             b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
         });
     }
@@ -47,7 +51,7 @@ fn variable_base_edwards_bls12(c: &mut Criterion) {
     let (bases, scalars) = create_scalar_bases::<EdwardsAffine, Fr>(1_000_000);
 
     for size in [10_000, 100_000, 1_000_000] {
-        c.bench_function(&format!("Variable MSM on Edwards-BLS12 ({})", size), |b| {
+        c.bench_function(&format!("Variable MSM on Edwards-BLS12 ({size})"), |b| {
             b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
         });
     }

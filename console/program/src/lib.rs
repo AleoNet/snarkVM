@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,6 +16,8 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![warn(clippy::cast_possible_truncation)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 #[macro_use]
 extern crate enum_index_derive;
@@ -40,3 +42,6 @@ pub use request::*;
 
 mod response;
 pub use response::*;
+
+pub mod state_path;
+pub use state_path::*;

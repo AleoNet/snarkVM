@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,6 +46,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             false => E::halt(format!("Inputs to this BHP cannot exceed {} bits", Self::MAX_BITS)),
         }
 
+        // Declare the 1 constant field element.
+        let one = Field::one();
         // Declare the 1/2 constant field element.
         let one_half = Field::constant(console::Field::<E::Network>::half());
 
@@ -155,8 +157,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                 match &sum {
                     Some((sum_x, sum_y)) => {
                         // Convert the accumulated sum into a point on the twisted Edwards curve.
-                        let edwards_x = sum_x / sum_y; // 1 constraint
-                        Group::from_x_coordinate(edwards_x) // 3 constraints
+                        let edwards_x = sum_x.div_unchecked(sum_y); // 1 constraint (`sum_y` is never 0)
+                        let edwards_y = (sum_x - &one).div_unchecked(&(sum_x + &one)); // 1 constraint (numerator & denominator are never both 0)
+                        Group::from_xy_coordinates_unchecked(edwards_x, edwards_y) // 0 constraints (this is safe)
                     }
                     None => E::halt("Invalid iteration of BHP detected, a window was not evaluated"),
                 }
@@ -169,7 +172,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_curves::ProjectiveCurve;
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -197,9 +201,11 @@ mod tests {
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..num_input_bits).map(|_| bool::rand(&mut rng)).collect::<Vec<bool>>();
             // Compute the expected hash.
             let expected = native.hash_uncompressed(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
@@ -210,6 +216,8 @@ mod tests {
                 let candidate = circuit.hash_uncompressed(&circuit_input);
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
                 assert_eq!(expected, candidate.eject_value());
+                assert!(candidate.eject_value().to_affine().is_on_curve());
+                assert!(candidate.eject_value().to_affine().is_in_correct_subgroup_assuming_on_curve());
             });
         }
         Ok(())
@@ -217,16 +225,16 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_constant() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Constant, 6303, 0, 0, 0)
+        check_hash_uncompressed::<32, 48>(Mode::Constant, 6239, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_uncompressed_public() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 129, 0, 7898, 7898)
+        check_hash_uncompressed::<32, 48>(Mode::Public, 65, 0, 7834, 7834)
     }
 
     #[test]
     fn test_hash_uncompressed_private() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7898, 7898)
+        check_hash_uncompressed::<32, 48>(Mode::Private, 65, 0, 7834, 7834)
     }
 }

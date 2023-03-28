@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -20,8 +20,6 @@ impl<N: Network> Parser for RegisterType<N> {
     /// Parses a string into a register type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the mode from the string (ordering matters).
         alt((
             map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
@@ -84,7 +82,7 @@ mod tests {
             RegisterType::<CurrentNetwork>::parse("field")
         );
 
-        // Interface type.
+        // Struct type.
         assert_eq!(
             Ok(("", RegisterType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("signature")?))),
             RegisterType::<CurrentNetwork>::parse("signature")
@@ -131,10 +129,10 @@ mod tests {
         assert!(RegisterType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface = RegisterType::<CurrentNetwork>::parse(
+        let struct_ = RegisterType::<CurrentNetwork>::parse(
             "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy.private",
         );
-        assert!(interface.is_err());
+        assert!(struct_.is_err());
 
         Ok(())
     }

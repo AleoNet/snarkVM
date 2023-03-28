@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -65,7 +65,7 @@ impl<F: PrimeField> ToConstraintField<F> for [bool] {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.chunks(F::size_in_data_bits())
             .map(|chunk| {
-                F::from_repr(F::BigInteger::from_bits_le(chunk)?)
+                F::from_bigint(F::BigInteger::from_bits_le(chunk)?)
                     .ok_or(ConstraintFieldError::Message("Invalid data bits for constraint field"))
             })
             .collect::<Result<Vec<F>, _>>()
@@ -83,14 +83,17 @@ impl<F: PrimeField> ToConstraintField<F> for [u8] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // Derive the field size in bytes, floored to be conservative.
-        let floored_field_size_in_bytes = (F::size_in_data_bits() / 8) as usize;
+        let floored_field_size_in_bytes = F::size_in_data_bits() / 8;
+        let next_power_of_two = floored_field_size_in_bytes
+            .checked_next_power_of_two()
+            .ok_or(ConstraintFieldError::Message("Field size is too large"))?;
 
         // Pack the bytes into field elements.
         Ok(self
             .chunks(floored_field_size_in_bytes)
             .map(|chunk| {
                 // Before packing, pad the chunk to the next power of two.
-                let mut chunk_vec = vec![0u8; floored_field_size_in_bytes.next_power_of_two()];
+                let mut chunk_vec = vec![0u8; next_power_of_two];
                 chunk_vec[..chunk.len()].copy_from_slice(chunk);
                 F::read_le(&*chunk_vec)
             })

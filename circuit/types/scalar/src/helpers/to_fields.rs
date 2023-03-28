@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -61,21 +61,21 @@ mod tests {
 
     #[test]
     fn test_to_fields_constant() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_fields("Constant", &expected.to_bits_le(), &candidate);
     }
 
     #[test]
     fn test_to_fields_public() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_fields("Public", &expected.to_bits_le(), &candidate);
     }
 
     #[test]
     fn test_to_fields_private() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_fields("Private", &expected.to_bits_le(), &candidate);
     }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -36,8 +36,8 @@ pub struct RecordType<N: Network> {
     name: Identifier<N>,
     /// The visibility for the owner of the program record.
     owner: PublicOrPrivate,
-    /// The visibility for the balance of the program record.
-    balance: PublicOrPrivate,
+    /// The visibility for the gates of the program record.
+    gates: PublicOrPrivate,
     /// The name and value type for the entries in data.
     entries: IndexMap<Identifier<N>, EntryType<N>>,
 }
@@ -48,14 +48,14 @@ impl<N: Network> RecordType<N> {
         &self.name
     }
 
-    /// Returns the visibility of the record owner.
+    /// Returns the visibility for the owner of the program record.
     pub const fn owner(&self) -> PublicOrPrivate {
         self.owner
     }
 
-    /// Returns the visibility of the record balance.
-    pub const fn balance(&self) -> PublicOrPrivate {
-        self.balance
+    /// Returns the visibility for the gates of the program record.
+    pub const fn gates(&self) -> PublicOrPrivate {
+        self.gates
     }
 
     /// Returns the entries of the record type.

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -21,10 +21,10 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the owner.
         let owner = Owner::read_le(&mut reader)?;
-        // Read the balance.
-        let balance = Balance::read_le(&mut reader)?;
+        // Read the gates.
+        let gates = Balance::read_le(&mut reader)?;
         // Read the number of entries in the record data.
-        let num_entries = u16::read_le(&mut reader)?;
+        let num_entries = u8::read_le(&mut reader)?;
         // Read the record data.
         let mut data = IndexMap::with_capacity(num_entries as usize);
         for _ in 0..num_entries {
@@ -39,8 +39,24 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
             // Add the entry.
             data.insert(identifier, entry);
         }
+        // Read the nonce.
+        let nonce = Group::read_le(&mut reader)?;
 
-        Ok(Self { owner, balance, data })
+        // Prepare the reserved entry names.
+        let reserved = [
+            Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
+            Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
+        ];
+        // Ensure the entries has no duplicate names.
+        if has_duplicates(data.keys().chain(reserved.iter())) {
+            return Err(error("Duplicate entry type found in record"));
+        }
+        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        if data.len() > N::MAX_DATA_ENTRIES {
+            return Err(error("Failed to parse record: too many entries"));
+        }
+
+        Ok(Self { owner, gates, data, nonce })
     }
 }
 
@@ -49,10 +65,10 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the owner.
         self.owner.write_le(&mut writer)?;
-        // Write the balance.
-        self.balance.write_le(&mut writer)?;
+        // Write the gates.
+        self.gates.write_le(&mut writer)?;
         // Write the number of entries in the record data.
-        (self.data.len() as u16).write_le(&mut writer)?;
+        u8::try_from(self.data.len()).or_halt_with::<N>("Record length exceeds u8::MAX").write_le(&mut writer)?;
         // Write each entry.
         for (entry_name, entry_value) in &self.data {
             // Write the entry name.
@@ -60,11 +76,14 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
             // Write the entry value (performed in 2 steps to prevent infinite recursion).
             let bytes = entry_value.to_bytes_le().map_err(|e| error(e.to_string()))?;
             // Write the number of bytes.
-            (bytes.len() as u16).write_le(&mut writer)?;
+            u16::try_from(bytes.len())
+                .or_halt_with::<N>("Record entry exceeds u16::MAX bytes")
+                .write_le(&mut writer)?;
             // Write the bytes.
             bytes.write_le(&mut writer)?;
         }
-        Ok(())
+        // Write the nonce.
+        self.nonce.write_le(&mut writer)
     }
 }
 
@@ -79,7 +98,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         // Construct a new record.
         let expected = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }",
         )?;
 
         // Check the byte representation.

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -229,11 +229,13 @@ mod tests {
     fn test_constant_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
 
-        for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+        let mut rng = TestRng::default();
 
-            let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
+        for i in 0..ITERATIONS {
+            let base = Uniform::rand(&mut rng);
+            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+
+            let num_nonzero_bits = (*scalar).to_bigint().to_biguint().bits();
             let num_constant =
                 (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1) + 251; // Typically around 760.
 
@@ -241,43 +243,47 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, num_constant, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, num_constant, 0, 0, 0);
         }
     }
 
     #[test]
     fn test_constant_times_scalar_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 2751, 2752);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
         }
     }
 
     #[test]
     fn test_constant_times_scalar_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 2751, 2752);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
         }
     }
@@ -287,11 +293,13 @@ mod tests {
     fn test_public_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
 
-        for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+        let mut rng = TestRng::default();
 
-            let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
+        for i in 0..ITERATIONS {
+            let base = Uniform::rand(&mut rng);
+            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+
+            let num_nonzero_bits = (*scalar).to_bigint().to_biguint().bits();
             let num_constant =
                 (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1) + 251; // Typically around 760.
             let num_private =
@@ -303,9 +311,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
         }
     }
@@ -315,11 +323,13 @@ mod tests {
     fn test_private_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
 
-        for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+        let mut rng = TestRng::default();
 
-            let num_nonzero_bits = (*scalar).to_repr().to_biguint().bits();
+        for i in 0..ITERATIONS {
+            let base = Uniform::rand(&mut rng);
+            let scalar: console::Scalar<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
+
+            let num_nonzero_bits = (*scalar).to_bigint().to_biguint().bits();
             let num_constant =
                 (1 /* DOUBLE private */ + 2/* private ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1) + 251; // Typically around 760.
             let num_private =
@@ -331,86 +341,96 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
         }
     }
 
     #[test]
     fn test_public_times_scalar_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
 
     #[test]
     fn test_public_times_scalar_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
 
     #[test]
     fn test_private_times_scalar_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
 
     #[test]
     fn test_private_times_scalar_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let base = Uniform::rand(&mut test_rng());
-            let scalar = Uniform::rand(&mut test_rng());
+            let base = Uniform::rand(&mut rng);
+            let scalar = Uniform::rand(&mut rng);
 
             let expected = base * scalar;
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {}", i);
+            let name = format!("Mul: a * b {i}");
             check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {}", i);
+            let name = format!("MulAssign: a * b {i}");
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
 
     #[test]
     fn test_mul_matches() {
+        let mut rng = TestRng::default();
+
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
-        let b = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut rng);
+        let b = Uniform::rand(&mut rng);
         let expected = a * b;
 
         // Constant

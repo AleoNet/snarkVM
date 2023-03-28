@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -152,43 +152,45 @@ mod tests {
     }
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first * second;
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
 
-            let name = format!("Mul: a + b {}", i);
+            let name = format!("Mul: a + b {i}");
             check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a + b {}", i);
+            let name = format!("MulAssign: a + b {i}");
             check_mul_assign(&name, &expected, &a, &b);
 
             // Test identity.
-            let name = format!("Mul: a * 1 {}", i);
+            let name = format!("Mul: a * 1 {i}");
             let one = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::one());
             check_mul(&name, &first, &a, &one);
-            let name = format!("MulAssign: a * 1 {}", i);
+            let name = format!("MulAssign: a * 1 {i}");
             check_mul_assign(&name, &first, &a, &one);
 
-            let name = format!("Mul: 1 * b {}", i);
+            let name = format!("Mul: 1 * b {i}");
             let one = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::one());
             check_mul(&name, &second, &one, &b);
-            let name = format!("MulAssign: 1 * b {}", i);
+            let name = format!("MulAssign: 1 * b {i}");
             check_mul_assign(&name, &second, &one, &b);
 
             // Test zero.
-            let name = format!("Mul: a * 0 {}", i);
+            let name = format!("Mul: a * 0 {i}");
             let zero = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::zero());
             check_mul(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &a, &zero);
-            let name = format!("MulAssign: a * 0 {}", i);
+            let name = format!("MulAssign: a * 0 {i}");
             check_mul_assign(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &a, &zero);
 
-            let name = format!("Mul: 0 * b {}", i);
+            let name = format!("Mul: 0 * b {i}");
             let zero = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::zero());
             check_mul(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &zero, &b);
-            let name = format!("MulAssign: 0 * b {}", i);
+            let name = format!("MulAssign: 0 * b {i}");
             check_mul_assign(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &zero, &b);
         }
     }
@@ -240,9 +242,11 @@ mod tests {
 
     #[test]
     fn test_mul_matches() {
+        let mut rng = TestRng::default();
+
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
-        let b = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut rng);
+        let b = Uniform::rand(&mut rng);
         let expected = a * b;
 
         // Constant

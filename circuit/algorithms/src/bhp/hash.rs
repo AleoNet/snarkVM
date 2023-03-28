@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -52,9 +52,11 @@ mod tests {
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..num_input_bits).map(|_| bool::rand(&mut rng)).collect::<Vec<bool>>();
             // Compute the expected hash.
             let expected = native.hash(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
@@ -73,16 +75,16 @@ mod tests {
 
     #[test]
     fn test_hash_constant() -> Result<()> {
-        check_hash::<32, 48>(Mode::Constant, 7311, 0, 0, 0)
+        check_hash::<32, 48>(Mode::Constant, 7239, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_public() -> Result<()> {
-        check_hash::<32, 48>(Mode::Public, 542, 0, 8592, 8593)
+        check_hash::<32, 48>(Mode::Public, 470, 0, 8522, 8523)
     }
 
     #[test]
     fn test_hash_private() -> Result<()> {
-        check_hash::<32, 48>(Mode::Private, 542, 0, 8592, 8593)
+        check_hash::<32, 48>(Mode::Private, 470, 0, 8522, 8523)
     }
 }

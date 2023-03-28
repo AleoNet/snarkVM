@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crypto_hash::sha256::sha256,
-    fft::EvaluationDomain,
-    polycommit::kzg10,
-    snark::marlin::{FiatShamirError, FiatShamirRng},
-    Prepare,
-};
+use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
 use hashbrown::HashMap;
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
@@ -39,13 +33,13 @@ use super::{LabeledPolynomial, PolynomialInfo};
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
 
 /// `Randomness` is the randomness for the KZG10 scheme.
-pub type Randomness<E> = kzg10::Randomness<E>;
+pub type Randomness<E> = kzg10::KZGRandomness<E>;
 
 /// `Commitment` is the commitment for the KZG10 scheme.
-pub type Commitment<E> = kzg10::Commitment<E>;
+pub type Commitment<E> = kzg10::KZGCommitment<E>;
 
 /// `PreparedCommitment` is the prepared commitment for the KZG10 scheme.
-pub type PreparedCommitment<E> = kzg10::PreparedCommitment<E>;
+pub type PreparedCommitment<E> = kzg10::PreparedKZGCommitment<E>;
 
 impl<E: PairingEngine> Prepare for Commitment<E> {
     type Prepared = PreparedCommitment<E>;
@@ -59,17 +53,17 @@ impl<E: PairingEngine> Prepare for Commitment<E> {
             cur.double_in_place();
         }
 
-        kzg10::PreparedCommitment::<E>(prepared_comm)
+        kzg10::PreparedKZGCommitment::<E>(prepared_comm)
     }
 }
 
 /// `CommitterKey` is used to commit to, and create evaluation proofs for, a given polynomial.
-#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
 
-    /// The key used to commit to polynomials.
+    /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
 
     /// The key used to commit to hiding polynomials.
@@ -372,7 +366,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -391,6 +385,68 @@ pub struct VerifierKey<E: PairingEngine> {
     /// The maximum degree supported by the `UniversalParams` `self` was derived
     /// from.
     pub max_degree: usize,
+}
+
+impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.vk.serialize_with_mode(&mut writer, compress)?;
+        self.degree_bounds_and_neg_powers_of_h.serialize_with_mode(&mut writer, compress)?;
+        self.supported_degree.serialize_with_mode(&mut writer, compress)?;
+        self.max_degree.serialize_with_mode(&mut writer, compress)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self, compress: Compress) -> usize {
+        self.vk.serialized_size(compress)
+            + self.degree_bounds_and_neg_powers_of_h.serialized_size(compress)
+            + self.supported_degree.serialized_size(compress)
+            + self.max_degree.serialized_size(compress)
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            degree_bounds_and_neg_powers_of_h.as_ref().map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
+        Ok(VerifierKey {
+            vk,
+            degree_bounds_and_neg_powers_of_h,
+            degree_bounds_and_prepared_neg_powers_of_h,
+            supported_degree,
+            max_degree,
+        })
+    }
+}
+
+impl<E: PairingEngine> Valid for VerifierKey<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        Valid::check(&self.vk)?;
+        Valid::check(&self.degree_bounds_and_neg_powers_of_h)?;
+        Valid::check(&self.supported_degree)?;
+        Valid::check(&self.max_degree)?;
+        Ok(())
+    }
+
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        let batch: Vec<_> = batch.collect();
+        Valid::batch_check(batch.iter().map(|v| &v.vk))?;
+        Valid::batch_check(batch.iter().map(|v| &v.degree_bounds_and_neg_powers_of_h))?;
+        Valid::batch_check(batch.iter().map(|v| &v.supported_degree))?;
+        Valid::batch_check(batch.iter().map(|v| &v.max_degree))?;
+        Ok(())
+    }
 }
 
 impl<E: PairingEngine> FromBytes for VerifierKey<E> {
@@ -493,23 +549,11 @@ impl<E: PairingEngine> Prepare for VerifierKey<E> {
 
 /// Evaluation proof at a query set.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
-pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::Proof<E>>);
+pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::KZGProof<E>>);
 
 impl<E: PairingEngine> BatchProof<E> {
     pub fn is_hiding(&self) -> bool {
         self.0.iter().any(|c| c.is_hiding())
-    }
-}
-
-impl<E: PairingEngine> BatchProof<E> {
-    pub(crate) fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(
-        &self,
-        fs_rng: &mut S,
-    ) -> Result<(), FiatShamirError> {
-        for proof in self.0.iter() {
-            proof.absorb_into_sponge(fs_rng)?;
-        }
-        Ok(())
     }
 }
 

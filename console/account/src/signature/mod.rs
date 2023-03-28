@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,6 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod bytes;
+mod parse;
+mod serialize;
+mod verify;
+
+#[cfg(feature = "private_key")]
 mod sign;
 
 #[cfg(feature = "compute_key")]
@@ -26,7 +31,7 @@ use crate::address::Address;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
     /// The verifier challenge to check against.
     challenge: Scalar<N>,
@@ -67,33 +72,45 @@ impl<N: Network> Signature<N> {
     }
 
     /// Returns the signer address.
-    pub fn signer(&self) -> Result<Address<N>> {
-        Address::try_from(self.compute_key)
+    pub fn to_address(&self) -> Address<N> {
+        self.compute_key.to_address()
+    }
+}
+
+#[cfg(test)]
+mod test_helpers {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    /// Samples a random signature.
+    pub(super) fn sample_signature(num_fields: u64, rng: &mut TestRng) -> Signature<CurrentNetwork> {
+        // Sample an address and a private key.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let address = Address::try_from(&private_key).unwrap();
+
+        // Generate a signature.
+        let message: Vec<_> = (0..num_fields).map(|_| Uniform::rand(rng)).collect();
+        let signature = Signature::sign(&private_key, &message, rng).unwrap();
+        assert!(signature.verify(&address, &message));
+        signature
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_from() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let mut rng = TestRng::default();
 
         for i in 0..ITERATIONS {
-            // Sample an address and a private key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
-            let address = Address::try_from(&private_key)?;
-
-            // Generate a signature.
-            let message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
-            let signature = Signature::sign(&private_key, &message, rng)?;
-            assert!(signature.verify(&address, &message));
+            // Sample a new signature.
+            let signature = test_helpers::sample_signature(i, &mut rng);
 
             // Check that the signature can be reconstructed from its parts.
             let candidate = Signature::from((signature.challenge(), signature.response(), signature.compute_key()));

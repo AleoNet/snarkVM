@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -76,37 +76,43 @@ mod tests {
 
     #[test]
     fn test_neg_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let point: console::Group<_> = Uniform::rand(&mut rng);
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
-            check_neg(&format!("NEG Constant {}", i), expected, candidate_input);
+            check_neg(&format!("NEG Constant {i}"), expected, candidate_input);
         }
     }
 
     #[test]
     fn test_neg_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let point: console::Group<_> = Uniform::rand(&mut rng);
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Public, point);
-            check_neg(&format!("NEG Public {}", i), expected, candidate_input);
+            check_neg(&format!("NEG Public {i}"), expected, candidate_input);
         }
     }
 
     #[test]
     fn test_neg_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let point: console::Group<_> = Uniform::rand(&mut rng);
             let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Private, point);
-            check_neg(&format!("NEG Private {}", i), expected, candidate_input);
+            check_neg(&format!("NEG Private {i}"), expected, candidate_input);
         }
     }
 

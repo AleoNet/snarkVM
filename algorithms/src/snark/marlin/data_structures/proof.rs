@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{polycommit::sonic_pc, snark::marlin::ahp};
+use crate::{polycommit::sonic_pc, snark::marlin::ahp, SNARKError};
 
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
@@ -289,7 +289,7 @@ impl<F: PrimeField> Evaluations<F> {
 
 impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
-        let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then(|| *v)).collect::<Vec<_>>();
+        let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then_some(*v)).collect::<Vec<_>>();
         let f_evals = map.iter().filter_map(|(k, v)| k.starts_with("f_").then(|| *v)).collect::<Vec<_>>();
         let s_1_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_1_").then(|| *v)).collect::<Vec<_>>();
         let s_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_2_").then(|| *v)).collect::<Vec<_>>();
@@ -418,8 +418,24 @@ impl<E: PairingEngine> Proof<E> {
         evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::FifthMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
-    ) -> Self {
-        Self { batch_size, commitments, evaluations, msg, pc_proof }
+    ) -> Result<Self, SNARKError> {
+        if commitments.witness_commitments.len() != batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        if evaluations.z_b_evals.len() != batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        Ok(Self { batch_size, commitments, evaluations, msg, pc_proof })
+    }
+
+    pub fn batch_size(&self) -> Result<usize, SNARKError> {
+        if self.commitments.witness_commitments.len() != self.batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        if self.evaluations.z_b_evals.len() != self.batch_size {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        Ok(self.batch_size)
     }
 }
 

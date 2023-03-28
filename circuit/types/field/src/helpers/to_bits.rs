@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -96,12 +96,14 @@ mod tests {
     fn check_to_bits_le(mode: Mode) {
         let expected_number_of_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Field::<Circuit>::new(mode, expected);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate_bits = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate_bits.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(&candidate_bits) {
@@ -122,12 +124,14 @@ mod tests {
     fn check_to_bits_be(mode: Mode) {
         let expected_number_of_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
 
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let candidate = Field::<Circuit>::new(mode, expected);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate_bits = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate_bits.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(&candidate_bits) {

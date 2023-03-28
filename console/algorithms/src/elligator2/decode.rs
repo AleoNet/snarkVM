@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@ impl<E: Environment> Elligator2<E> {
             Err(_) => bail!("Montgomery B must be invertible in order to use Elligator2"),
         };
 
-        let (x, y) = group.to_xy_coordinate();
+        let (x, y) = group.to_xy_coordinates();
 
         // Ensure that x != -A.
         ensure!(x != -a, "Elligator2 failed: x == -A");
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_encode_and_decode() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         let mut high_ctr = 0usize;
         let mut low_ctr = 0usize;
@@ -131,7 +131,7 @@ mod tests {
             }
         }
 
-        println!("Sign high: {}, sign low: {}", high_ctr, low_ctr);
+        println!("Sign high: {high_ctr}, sign low: {low_ctr}");
         Ok(())
     }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -431,13 +431,6 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
             result += bit_value << i as u8;
         }
 
-        // Pad the bits if their number doesn't correspond to full bytes
-        if bits.len() < 8 {
-            for i in bits.len()..8 {
-                let bit_value = false as u8;
-                result += bit_value << i as u8;
-            }
-        }
         bytes.push(result);
     }
 
@@ -447,9 +440,9 @@ pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::TestRng;
 
-    use rand::{Rng, SeedableRng};
-    use rand_xorshift::XorShiftRng;
+    use rand::Rng;
 
     const ITERATIONS: usize = 1000;
 
@@ -499,7 +492,7 @@ mod test {
 
     #[test]
     fn test_from_bits_le_to_bytes_le_roundtrip() {
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = TestRng::default();
 
         for _ in 0..ITERATIONS {
             let given_bytes: [u8; 32] = rng.gen();

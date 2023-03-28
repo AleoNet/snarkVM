@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -124,16 +124,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_compute_key_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 262, 0, 0, 0)
+        check_new(Mode::Constant, 274, 0, 0, 0)
     }
 
     #[test]
     fn test_compute_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 5, 4, 597, 600)
+        check_new(Mode::Public, 9, 4, 621, 622)
     }
 
     #[test]
     fn test_compute_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 5, 0, 601, 600)
+        check_new(Mode::Private, 9, 0, 621, 620)
     }
 }

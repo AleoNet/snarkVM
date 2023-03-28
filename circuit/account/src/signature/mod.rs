@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -82,7 +82,7 @@ impl<A: Aleo> Eject for Signature<A> {
 mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -95,7 +95,7 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         // Generate a private key, compute key, view key, and address.
         let (private_key, _compute_key, _view_key, _address) = generate_account()?;
@@ -120,16 +120,16 @@ mod tests {
 
     #[test]
     fn test_signature_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 264, 0, 0, 0)
+        check_new(Mode::Constant, 276, 0, 0, 0)
     }
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 5, 6, 597, 600)
+        check_new(Mode::Public, 9, 6, 621, 622)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 5, 0, 603, 600)
+        check_new(Mode::Private, 9, 0, 623, 620)
     }
 }

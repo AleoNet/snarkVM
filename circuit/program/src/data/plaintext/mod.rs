@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(test)]
+use snarkvm_circuit_types::environment::assert_scope;
+
 mod encrypt;
+mod equal;
 mod find;
 mod from_bits;
 mod from_fields;
@@ -31,8 +35,8 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Sc
 pub enum Plaintext<A: Aleo> {
     /// A plaintext literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
-    /// A plaintext interface.
-    Interface(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
+    /// A plaintext struct.
+    Struct(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
 }
 
 #[cfg(console)]
@@ -43,9 +47,7 @@ impl<A: Aleo> Inject for Plaintext<A> {
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
-            Self::Primitive::Interface(interface, _) => {
-                Self::Interface(Inject::new(mode, interface), Default::default())
-            }
+            Self::Primitive::Struct(struct_, _) => Self::Struct(Inject::new(mode, struct_), Default::default()),
         }
     }
 }
@@ -58,7 +60,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_mode(&self) -> Mode {
         match self {
             Self::Literal(literal, _) => literal.eject_mode(),
-            Self::Interface(interface, _) => interface
+            Self::Struct(struct_, _) => struct_
                 .iter()
                 .map(|(identifier, value)| (identifier, value).eject_mode())
                 .collect::<Vec<_>>()
@@ -70,10 +72,9 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_value(&self) -> Self::Primitive {
         match self {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
-            Self::Interface(interface, _) => console::Plaintext::Interface(
-                interface.iter().map(|pair| pair.eject_value()).collect(),
-                Default::default(),
-            ),
+            Self::Struct(struct_, _) => {
+                console::Plaintext::Struct(struct_.iter().map(|pair| pair.eject_value()).collect(), Default::default())
+            }
         }
     }
 }
@@ -96,12 +97,14 @@ impl<A: Aleo> From<&Literal<A>> for Plaintext<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
     #[test]
     fn test_plaintext() -> Result<()> {
+        let mut rng = TestRng::default();
+
         let value = Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new());
         assert_eq!(
             value.to_bits_le().eject(),
@@ -109,7 +112,7 @@ mod tests {
         );
 
         let value = Plaintext::<Circuit>::Literal(
-            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
             OnceCell::new(),
         );
         assert_eq!(
@@ -117,7 +120,7 @@ mod tests {
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Plaintext::<Circuit>::Interface(
+        let value = Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![
                     (
@@ -130,7 +133,7 @@ mod tests {
                     (
                         Identifier::new(Mode::Private, "b".try_into()?),
                         Plaintext::<Circuit>::Literal(
-                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
                             OnceCell::new(),
                         ),
                     ),
@@ -144,7 +147,7 @@ mod tests {
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Plaintext::<Circuit>::Interface(
+        let value = Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![
                     (
@@ -156,7 +159,7 @@ mod tests {
                     ),
                     (
                         Identifier::new(Mode::Private, "b".try_into()?),
-                        Plaintext::<Circuit>::Interface(
+                        Plaintext::<Circuit>::Struct(
                             IndexMap::from_iter(
                                 vec![
                                     (
@@ -168,7 +171,7 @@ mod tests {
                                     ),
                                     (
                                         Identifier::new(Mode::Private, "d".try_into()?),
-                                        Plaintext::<Circuit>::Interface(
+                                        Plaintext::<Circuit>::Struct(
                                             IndexMap::from_iter(
                                                 vec![
                                                     (
@@ -183,7 +186,7 @@ mod tests {
                                                         Plaintext::<Circuit>::Literal(
                                                             Literal::Field(Field::new(
                                                                 Mode::Private,
-                                                                Uniform::rand(&mut test_rng()),
+                                                                Uniform::rand(&mut rng),
                                                             )),
                                                             OnceCell::new(),
                                                         ),
@@ -197,7 +200,7 @@ mod tests {
                                     (
                                         Identifier::new(Mode::Private, "g".try_into()?),
                                         Plaintext::<Circuit>::Literal(
-                                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+                                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
                                             OnceCell::new(),
                                         ),
                                     ),
@@ -210,7 +213,7 @@ mod tests {
                     (
                         Identifier::new(Mode::Private, "h".try_into()?),
                         Plaintext::<Circuit>::Literal(
-                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
                             OnceCell::new(),
                         ),
                     ),

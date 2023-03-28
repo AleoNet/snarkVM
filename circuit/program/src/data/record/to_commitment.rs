@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,18 +18,19 @@ use super::*;
 
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Returns the record commitment.
-    pub fn to_commitment(&self, program_id: &ProgramID<A>, randomizer: &Scalar<A>) -> Field<A> {
-        // Construct the commitment input as `(program_id || record)`.
+    pub fn to_commitment(&self, program_id: &ProgramID<A>, record_name: &Identifier<A>) -> Field<A> {
+        // Construct the input as `(program_id || record_name || record)`.
         let mut input = program_id.to_bits_le();
+        input.extend(record_name.to_bits_le());
         input.extend(self.to_bits_le());
-        // Compute the BHP commitment of the program record.
-        A::commit_bhp1024(&input, randomizer)
+        // Compute the BHP hash of the program record.
+        A::hash_bhp1024(&input)
     }
 }
 
 impl<A: Aleo> Record<A, Ciphertext<A>> {
     /// Returns the record commitment.
-    pub fn to_commitment(&self) -> Field<A> {
+    pub fn to_commitment(&self, _program_id: &ProgramID<A>, _record_name: &Identifier<A>) -> Field<A> {
         A::halt("Illegal operation: Record::to_commitment() cannot be invoked on the `Ciphertext` variant.")
     }
 }

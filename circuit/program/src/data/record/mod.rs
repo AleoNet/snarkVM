@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// #[cfg(test)]
-// use snarkvm_circuit_types::environment::assert_scope;
+#[cfg(test)]
+use snarkvm_circuit_types::environment::assert_scope;
 
 mod entry;
 pub use entry::Entry;
@@ -25,14 +25,17 @@ pub use helpers::{Balance, Owner};
 
 mod decrypt;
 mod encrypt;
+mod equal;
 mod find;
 mod num_randomizers;
+mod serial_number;
+mod tag;
 mod to_bits;
 mod to_commitment;
 mod to_fields;
 
 use crate::{Ciphertext, Identifier, Plaintext, ProgramID, Visibility};
-use snarkvm_circuit_account::ViewKey;
+use snarkvm_circuit_account::{PrivateKey, ViewKey};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, Group, Scalar, U32};
 
@@ -40,10 +43,12 @@ use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, Group, Scal
 pub struct Record<A: Aleo, Private: Visibility<A>> {
     /// The owner of the program record.
     owner: Owner<A, Private>,
-    /// The balance of the program record.
-    balance: Balance<A, Private>,
+    /// The gates of the program record.
+    gates: Balance<A, Private>,
     /// The program data.
     data: IndexMap<Identifier<A>, Entry<A, Private>>,
+    /// The nonce of the program record.
+    nonce: Group<A>,
 }
 
 #[cfg(console)]
@@ -54,8 +59,9 @@ impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
     fn new(_: Mode, record: Self::Primitive) -> Self {
         Self {
             owner: Owner::new(Mode::Private, record.owner().clone()),
-            balance: Balance::new(Mode::Private, record.balance().clone()),
+            gates: Balance::new(Mode::Private, record.gates().clone()),
             data: Inject::new(Mode::Private, record.data().clone()),
+            nonce: Group::new(Mode::Private, *record.nonce()),
         }
     }
 }
@@ -68,51 +74,51 @@ impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
     fn new(_: Mode, record: Self::Primitive) -> Self {
         Self {
             owner: Owner::new(Mode::Private, record.owner().clone()),
-            balance: Balance::new(Mode::Private, record.balance().clone()),
+            gates: Balance::new(Mode::Private, record.gates().clone()),
             data: Inject::new(Mode::Private, record.data().clone()),
+            nonce: Group::new(Mode::Private, *record.nonce()),
         }
     }
 }
 
 #[cfg(console)]
-impl<A: Aleo> Record<A, Plaintext<A>> {
-    /// Initializes a new record.
+impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
+    /// Initializes a new record plaintext.
     pub fn from_plaintext(
         owner: Owner<A, Plaintext<A>>,
-        balance: Balance<A, Plaintext<A>>,
+        gates: Balance<A, Plaintext<A>>,
         data: IndexMap<Identifier<A>, Entry<A, Plaintext<A>>>,
-    ) -> Result<Self> {
+        nonce: Group<A>,
+    ) -> Result<Record<A, Plaintext<A>>> {
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
-        // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
+        // Ensure the number of structs is within `A::Network::MAX_DATA_ENTRIES`.
         ensure!(
             data.len() <= <A::Network as console::Network>::MAX_DATA_ENTRIES,
             "Found a record that exceeds size ({})",
             data.len()
         );
         // Return the record.
-        Ok(Self { owner, balance, data })
+        Ok(Record { owner, gates, data, nonce })
     }
-}
 
-#[cfg(console)]
-impl<A: Aleo> Record<A, Ciphertext<A>> {
-    /// Initializes a new record.
+    /// Initializes a new record ciphertext.
     pub fn from_ciphertext(
         owner: Owner<A, Ciphertext<A>>,
-        balance: Balance<A, Ciphertext<A>>,
+        gates: Balance<A, Ciphertext<A>>,
         data: IndexMap<Identifier<A>, Entry<A, Ciphertext<A>>>,
-    ) -> Result<Self> {
+        nonce: Group<A>,
+    ) -> Result<Record<A, Ciphertext<A>>> {
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
-        // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
+        // Ensure the number of structs is within `A::Network::MAX_DATA_ENTRIES`.
         ensure!(
             data.len() <= <A::Network as console::Network>::MAX_DATA_ENTRIES,
             "Found a record that exceeds size ({})",
             data.len()
         );
         // Return the record.
-        Ok(Self { owner, balance, data })
+        Ok(Record { owner, gates, data, nonce })
     }
 }
 
@@ -122,14 +128,19 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
         &self.owner
     }
 
-    /// Returns the balance of the program record.
-    pub const fn balance(&self) -> &Balance<A, Private> {
-        &self.balance
+    /// Returns the gates of the program record.
+    pub const fn gates(&self) -> &Balance<A, Private> {
+        &self.gates
     }
 
     /// Returns the program data.
     pub const fn data(&self) -> &IndexMap<Identifier<A>, Entry<A, Private>> {
         &self.data
+    }
+
+    /// Returns the nonce of the program record.
+    pub const fn nonce(&self) -> &Group<A> {
+        &self.nonce
     }
 }
 
@@ -142,28 +153,29 @@ impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
         let owner = match &self.owner {
             Owner::Public(owner) => match owner.eject_mode() == Mode::Public {
                 true => Mode::Public,
-                false => A::halt("Record::<Plaintext>::eject_mode: public owner is not public."),
+                false => A::halt("Record::<Plaintext>::eject_mode: 'owner' is not public."),
             },
             Owner::Private(plaintext) => match plaintext.eject_mode() == Mode::Private {
                 true => Mode::Private,
-                false => A::halt("Record::<Plaintext>::eject_mode: private owner is not private."),
+                false => A::halt("Record::<Plaintext>::eject_mode: 'owner' is not private."),
             },
         };
 
-        let balance = match &self.balance {
-            Balance::Public(balance) => match balance.eject_mode() == Mode::Public {
+        let gates = match &self.gates {
+            Balance::Public(gates) => match gates.eject_mode() == Mode::Public {
                 true => Mode::Public,
-                false => A::halt("Record::<Plaintext>::eject_mode: public balance is not public."),
+                false => A::halt("Record::<Plaintext>::eject_mode: 'gates' is not public."),
             },
             Balance::Private(plaintext) => match plaintext.eject_mode() == Mode::Private {
                 true => Mode::Private,
-                false => A::halt("Record::<Plaintext>::eject_mode: private balance is not private."),
+                false => A::halt("Record::<Plaintext>::eject_mode: 'gates' is not private."),
             },
         };
 
         let data = self.data.iter().map(|(_, entry)| entry.eject_mode()).collect::<Vec<_>>().eject_mode();
+        let nonce = self.nonce.eject_mode();
 
-        Mode::combine(owner, [balance, data])
+        Mode::combine(owner, [gates, data, nonce])
     }
 
     /// Ejects the record.
@@ -173,18 +185,19 @@ impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
             Owner::Private(plaintext) => console::Owner::Private(plaintext.eject_value()),
         };
 
-        let balance = match &self.balance {
-            Balance::Public(balance) => console::Balance::Public(balance.eject_value()),
+        let gates = match &self.gates {
+            Balance::Public(gates) => console::Balance::Public(gates.eject_value()),
             Balance::Private(plaintext) => console::Balance::Private(plaintext.eject_value()),
         };
 
         match Self::Primitive::from_plaintext(
             owner,
-            balance,
+            gates,
             self.data.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<IndexMap<_, _>>(),
+            self.nonce.eject_value(),
         ) {
             Ok(record) => record,
-            Err(error) => A::halt(format!("Record::<Plaintext>::eject_value: {}", error)),
+            Err(error) => A::halt(format!("Record::<Plaintext>::eject_value: {error}")),
         }
     }
 }
@@ -198,28 +211,29 @@ impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
         let owner = match &self.owner {
             Owner::Public(owner) => match owner.eject_mode() == Mode::Public {
                 true => Mode::Public,
-                false => A::halt("Record::<Ciphertext>::eject_mode: public owner is not public."),
+                false => A::halt("Record::<Ciphertext>::eject_mode: 'owner' is not public."),
             },
             Owner::Private(plaintext) => match plaintext.eject_mode() == Mode::Private {
                 true => Mode::Private,
-                false => A::halt("Record::<Ciphertext>::eject_mode: private owner is not private."),
+                false => A::halt("Record::<Ciphertext>::eject_mode: 'owner' is not private."),
             },
         };
 
-        let balance = match &self.balance {
-            Balance::Public(balance) => match balance.eject_mode() == Mode::Public {
+        let gates = match &self.gates {
+            Balance::Public(gates) => match gates.eject_mode() == Mode::Public {
                 true => Mode::Public,
-                false => A::halt("Record::<Ciphertext>::eject_mode: public balance is not public."),
+                false => A::halt("Record::<Ciphertext>::eject_mode: 'gates' is not public."),
             },
             Balance::Private(plaintext) => match plaintext.eject_mode() == Mode::Private {
                 true => Mode::Private,
-                false => A::halt("Record::<Ciphertext>::eject_mode: private balance is not private."),
+                false => A::halt("Record::<Ciphertext>::eject_mode: 'gates' is not private."),
             },
         };
 
         let data = self.data.iter().map(|(_, entry)| entry.eject_mode()).collect::<Vec<_>>().eject_mode();
+        let nonce = self.nonce.eject_mode();
 
-        Mode::combine(owner, [balance, data])
+        Mode::combine(owner, [gates, data, nonce])
     }
 
     /// Ejects the record.
@@ -229,18 +243,19 @@ impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
             Owner::Private(plaintext) => console::Owner::Private(plaintext.eject_value()),
         };
 
-        let balance = match &self.balance {
-            Balance::Public(balance) => console::Balance::Public(balance.eject_value()),
+        let gates = match &self.gates {
+            Balance::Public(gates) => console::Balance::Public(gates.eject_value()),
             Balance::Private(plaintext) => console::Balance::Private(plaintext.eject_value()),
         };
 
         match Self::Primitive::from_ciphertext(
             owner,
-            balance,
+            gates,
             self.data.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<IndexMap<_, _>>(),
+            self.nonce.eject_value(),
         ) {
             Ok(record) => record,
-            Err(error) => A::halt(format!("Record::<Ciphertext>::eject_value: {}", error)),
+            Err(error) => A::halt(format!("Record::<Ciphertext>::eject_value: {error}")),
         }
     }
 }

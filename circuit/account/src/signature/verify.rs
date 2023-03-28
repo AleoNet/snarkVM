@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
     use snarkvm_circuit_types::Group;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -61,7 +61,7 @@ pub(crate) mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
@@ -75,7 +75,7 @@ pub(crate) mod tests {
             let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, address);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = signature.verify(&address, &message);
                 assert!(candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
@@ -95,7 +95,7 @@ pub(crate) mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
@@ -115,7 +115,7 @@ pub(crate) mod tests {
             let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, address);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = signature.verify(&address, &message);
                 assert!(candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.

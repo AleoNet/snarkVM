@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.7.5"
+version = "0.9.14"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,22 +12,30 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
+version = "0.9.14"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.9.14"
 
 [dependencies.aleo-std]
-version = "0.1.14"
+version = "0.1.15"
 default-features = false
+features = [ "storage" ]
 
 [dependencies.anyhow]
 version = "1"
@@ -38,12 +46,15 @@ version = "1"
 [dependencies.cfg-if]
 version = "1.0"
 
-[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
-version = "0.4.43"
+[dependencies.colored]
+version = "2"
 optional = true
 
 [dependencies.hex]
 version = "0.4.3"
+
+[dependencies.indexmap]
+version = "1.9"
 
 [dependencies.itertools]
 version = "0.10.3"
@@ -51,18 +62,11 @@ version = "0.10.3"
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.parking_lot]
+version = "0.12"
+
 [dependencies.paste]
 version = "1"
-
-[dependencies.serde_json]
-version = "1"
-
-[dependencies.sha2]
-version = "0.10"
-default-features = false
-
-[dependencies.thiserror]
-version = "1.0"
 
 [dependencies.rand]
 version = "0.8"
@@ -71,22 +75,37 @@ version = "0.8"
 version = "0.11"
 optional = true
 
+[dependencies.serde_json]
+version = "1"
+features = [ "preserve_order" ]
+
+[dependencies.sha2]
+version = "0.10"
+default-features = false
+
+[dependencies.thiserror]
+version = "1.0"
+
 [dependencies.wasm-bindgen-futures]
 version = "0.4"
 optional = true
 
-[dependencies.parking_lot]
-version = "0.11"
-features = [ "wasm-bindgen" ]
+[target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
+version = "0.4.43"
 optional = true
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.7.5"
 default-features = false
 
-[dev-dependencies.snarkvm-dpc]
-path = "../dpc"
+[dev-dependencies.snarkvm-circuit]
+path = "../circuit"
+
+[dev-dependencies.snarkvm-console]
+path = "../console"
+
+[dev-dependencies.snarkvm-synthesizer]
+path = "../synthesizer"
 
 [dev-dependencies.curl]
 version = "0.4.34"
@@ -98,7 +117,7 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "remote", "snarkvm-algorithms/default" ]
-no_std_out = []
+default = [ "colored", "remote" ]
+no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [ "snarkvm-algorithms/wasm", "reqwest", "wasm-bindgen-futures", "parking_lot" ]
+wasm = [ "reqwest", "wasm-bindgen-futures" ]

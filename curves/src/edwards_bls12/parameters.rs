@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ use std::str::FromStr;
 pub type EdwardsAffine = Affine<EdwardsParameters>;
 pub type EdwardsProjective = Projective<EdwardsParameters>;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EdwardsParameters;
 
 impl ModelParameters for EdwardsParameters {
@@ -41,20 +41,19 @@ impl TwistedEdwardsParameters for EdwardsParameters {
 
     /// Generated randomly
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (GENERATOR_X, GENERATOR_Y);
-    /// COEFF_A = -1
-    const COEFF_A: Fq =
-        field!(Fq, BigInteger256([0x8cf500000000000e, 0xe75281ef6000000e, 0x49dc37a90b0ba012, 0x55f8b2c6e710ab9,]));
-    /// COEFF_D = 3021
-    const COEFF_D: Fq =
-        field!(Fq, BigInteger256([0xd047ffffffff5e30, 0xf0a91026ffff57d2, 0x9013f560d102582, 0x9fd242ca7be5700,]));
     /// COFACTOR = 4
     const COFACTOR: &'static [u64] = &[4];
-    /// COFACTOR_INV =
-    /// 527778859339273151515551558673846658209717731602102048798421311598680340096
+    /// COFACTOR_INV = 527778859339273151515551558673846658209717731602102048798421311598680340096
     const COFACTOR_INV: Fr = field!(
         Fr,
         BigInteger256([10836190823041854989, 14880086764632731920, 5023208332782666747, 239524813690824359,])
     );
+    /// EDWARDS_A = -1
+    const EDWARDS_A: Fq =
+        field!(Fq, BigInteger256([0x8cf500000000000e, 0xe75281ef6000000e, 0x49dc37a90b0ba012, 0x55f8b2c6e710ab9,]));
+    /// EDWARDS_D = 3021
+    const EDWARDS_D: Fq =
+        field!(Fq, BigInteger256([0xd047ffffffff5e30, 0xf0a91026ffff57d2, 0x9013f560d102582, 0x9fd242ca7be5700,]));
 
     /// Multiplication by `a` is just negation.
     /// Is `a` 1 or -1?
@@ -67,9 +66,9 @@ impl TwistedEdwardsParameters for EdwardsParameters {
 impl MontgomeryParameters for EdwardsParameters {
     type TwistedEdwardsParameters = EdwardsParameters;
 
-    /// COEFF_A = 3990301581132929505568273333084066329187552697088022219156688740916631500114
-    ///         = 0x8D26E3FADA9010A26949031ECE3971B93952AD84D4753DDEDB748DA37E8F552
-    const COEFF_A: Fq = field!(
+    /// MONTGOMERY_A = 3990301581132929505568273333084066329187552697088022219156688740916631500114
+    ///              = 0x8D26E3FADA9010A26949031ECE3971B93952AD84D4753DDEDB748DA37E8F552
+    const MONTGOMERY_A: Fq = field!(
         Fq,
         BigInteger256([
             13800168384327121454u64,
@@ -78,9 +77,9 @@ impl MontgomeryParameters for EdwardsParameters {
             853978956621483129u64,
         ])
     );
-    /// COEFF_B = 4454160168295440918680551605697480202188346638066041608778544715000777738925
-    ///         = 0x9D8F71EEC83A44C3A1FBCEC6F5418E5C6154C2682B8AC231C5A3725C8170AAD
-    const COEFF_B: Fq = field!(
+    /// MONTGOMERY_B = 4454160168295440918680551605697480202188346638066041608778544715000777738925
+    ///              = 0x9D8F71EEC83A44C3A1FBCEC6F5418E5C6154C2682B8AC231C5A3725C8170AAD
+    const MONTGOMERY_B: Fq = field!(
         Fq,
         BigInteger256([
             7239382437352637935u64,
@@ -114,18 +113,18 @@ impl FromStr for EdwardsAffine {
         if point.len() != 2 {
             return Err(GroupError::InvalidGroupElement);
         }
-        let point = EdwardsAffine::new(point[0], point[1]);
+        let point = EdwardsAffine::new(point[0], point[1], point[0] * point[1]);
 
         if !point.is_on_curve() { Err(GroupError::InvalidGroupElement) } else { Ok(point) }
     }
 }
 
 /// GENERATOR_X =
-/// 7810607721416582242904415504650443951498042435501746664987470571546413371306
+/// 1540945439182663264862696551825005342995406165131907382295858612069623286213
 const GENERATOR_X: Fq =
-    field!(Fq, BigInteger256([0x5bbc9878d817221d, 0xd2b03489424e720, 0x6b66f128c16bb3c9, 0xdd3bff78733576d,]));
+    field!(Fq, BigInteger256([15976313411695170452, 17230178952810798400, 11626259175167078036, 678729006091608048]));
 
 /// GENERATOR_Y =
-/// 1867362672570137759132108893390349941423731440336755218616442213142473202417
+/// 8003546896475222703853313610036801932325312921786952001586936882361378122196
 const GENERATOR_Y: Fq =
-    field!(Fq, BigInteger256([0x471517ae5e5e979e, 0xd9c97f6a73a7ff83, 0x85a95b45a5494402, 0xfad27c9b545b1f0,]));
+    field!(Fq, BigInteger256([926786653590077393, 18147000980977651608, 13077459464847727671, 1231472949076376191]));

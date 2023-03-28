@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -37,6 +37,13 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
+/// Binary operator for dividing two values, without checking specific conditions.
+pub trait DivUnchecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_unchecked(&self, rhs: &Rhs) -> Self::Output;
+}
+
 /// Binary operator for dividing two values, enforcing an overflow never occurs.
 pub trait DivChecked<Rhs: ?Sized = Self> {
     type Output;
@@ -56,6 +63,13 @@ pub trait DivWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn div_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for modding two values.
+pub trait Modulo<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn modulo(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for multiplying two values, enforcing an overflow never occurs.
@@ -91,6 +105,27 @@ pub trait PowWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn pow_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values and returning the remainder, enforcing an overflow never occurs.
+pub trait RemChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn rem_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, bounding the remainder to `MAX` or `MIN` if an overflow occurs.
+pub trait RemSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn rem_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, wrapping the remainder if an overflow occurs.
+pub trait RemWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn rem_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for left shifting a value, checking that the rhs is less than the number

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -57,13 +57,6 @@ impl<E: PairingEngine, MM: MarlinMode> Prepare for CircuitVerifyingKey<E, MM> {
 
     /// Prepare the circuit verifying key.
     fn prepare(&self) -> Self::Prepared {
-        let mut prepared_index_comms = Vec::<sonic_pc::PreparedCommitment<E>>::new();
-        for (_, comm) in self.circuit_commitments.iter().enumerate() {
-            prepared_index_comms.push(comm.prepare());
-        }
-
-        let prepared_verifier_key = self.verifier_key.prepare();
-
         let constraint_domain_size =
             EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u64;
         let non_zero_a_domain_size =
@@ -78,8 +71,6 @@ impl<E: PairingEngine, MM: MarlinMode> Prepare for CircuitVerifyingKey<E, MM> {
             non_zero_a_domain_size,
             non_zero_b_domain_size,
             non_zero_c_domain_size,
-            prepared_index_comms,
-            prepared_verifier_key,
             orig_vk: (*self).clone(),
         }
     }
@@ -220,7 +211,7 @@ impl<E: PairingEngine, MM: MarlinMode> fmt::Display for CircuitVerifyingKey<E, M
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let vk_hex = hex::encode(self.to_bytes_le().expect("Failed to convert verifying key to bytes"));
-        write!(f, "{}", vk_hex)
+        write!(f, "{vk_hex}")
     }
 }
 

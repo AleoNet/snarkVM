@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Projective,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{Field, One, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
@@ -41,15 +41,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    PartialEq(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -101,7 +93,19 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     type ScalarField = P::ScalarField;
 
     /// Initializes a new affine group element from the given coordinates.
-    fn from_coordinates(coordinates: Self::Coordinates) -> Self {
+    fn from_coordinates(coordinates: Self::Coordinates) -> Option<Self> {
+        let (x, y, infinity) = coordinates;
+        let point = Self { x, y, infinity };
+        // Check that the point is on the curve, and in the correct subgroup.
+        match point.is_on_curve() && point.is_in_correct_subgroup_assuming_on_curve() {
+            true => Some(point),
+            false => None,
+        }
+    }
+
+    /// Initializes a new affine group element from the given coordinates.
+    /// Note: The resulting point is **not** enforced to be on the curve or in the correct subgroup.
+    fn from_coordinates_unchecked(coordinates: Self::Coordinates) -> Self {
         let (x, y, infinity) = coordinates;
         Self { x, y, infinity }
     }
@@ -159,7 +163,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut output = Projective::zero();
-        for i in bits {
+        for i in bits.skip_while(|b| !b) {
             output.double_in_place();
             if i {
                 output.add_assign_mixed(self);
@@ -169,7 +173,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
-        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
+        self.mul_bits(BitIteratorBE::new_without_leading_zeros(P::COFACTOR))
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
@@ -182,7 +186,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
-        self.mul_bits(BitIteratorBE::new(P::ScalarField::characteristic())).is_zero()
+        P::is_in_correct_subgroup_assuming_on_curve(self)
     }
 
     fn to_x_coordinate(&self) -> Self::BaseField {
@@ -222,7 +226,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
                 let x_sq = b.x.square();
                 b.x -= &b.y; // x - y
                 a.x = b.y.double(); // denominator = 2y
-                a.y = x_sq.double() + x_sq + P::COEFF_A; // numerator = 3x^2 + a
+                a.y = x_sq.double() + x_sq + P::WEIERSTRASS_A; // numerator = 3x^2 + a
                 b.y -= &(a.y * half); // y - (3x^2 + a)/2
                 a.y *= *inversion_tmp; // (3x^2 + a) * tmp
                 *inversion_tmp *= &a.x; // update tmp
@@ -282,7 +286,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new(other.to_repr()))
+        self.to_projective().mul(other)
     }
 }
 

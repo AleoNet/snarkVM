@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -157,7 +157,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(q_1_time);
         lhs
     }
-
+    
     fn calculate_summed_z_m_and_t(
         state: &prover::State<F, MM>,
         alpha: F,
@@ -168,6 +168,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
 
+        let fft_precomputation = &state.index.fft_precomputation;
         let ifft_precomputation = &state.index.ifft_precomputation;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
         let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
@@ -186,6 +187,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         assert!(z_b.degree() < constraint_domain.size());
                     }
 
+                    // NOTE: upstream testnet3.3 optimized this calculation
                     let mut summed_z_m = {
                         cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_b);
                         cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= eta_c);
@@ -210,8 +212,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let t = Self::calculate_t(
                 &[&state.index.a, &state.index.b, &state.index.c],
                 [F::one(), eta_b, eta_c],
-                state.input_domain,
-                state.constraint_domain,
+                &state.input_domain,
+                &state.constraint_domain,
                 &r_alpha_x_evals,
                 ifft_precomputation,
             );
@@ -225,8 +227,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_t<'a>(
         matrices: &[&'a Matrix<F>],
         matrix_randomizers: [F; 3],
-        input_domain: EvaluationDomain<F>,
-        constraint_domain: EvaluationDomain<F>,
+        input_domain: &EvaluationDomain<F>,
+        constraint_domain: &EvaluationDomain<F>,
         r_alpha_x_on_h: &[F],
         ifft_precomputation: &IFFTPrecomputation<F>,
     ) -> DensePolynomial<F> {
@@ -239,6 +241,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 }
             }
         }
-        fft::Evaluations::from_vec_and_domain(t_evals_on_h, constraint_domain).interpolate_with_pc(ifft_precomputation)
+        fft::Evaluations::from_vec_and_domain(t_evals_on_h, *constraint_domain).interpolate_with_pc(ifft_precomputation)
     }
 }

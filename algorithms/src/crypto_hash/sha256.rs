@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,14 +17,14 @@
 use sha2::{Digest, Sha256};
 
 pub fn sha256(data: &[u8]) -> [u8; 32] {
-    let digest = Sha256::digest(&data);
+    let digest = Sha256::digest(data);
     let mut ret = [0u8; 32];
     ret.copy_from_slice(&digest);
     ret
 }
 
 pub fn double_sha256(data: &[u8]) -> [u8; 32] {
-    let digest = Sha256::digest(&Sha256::digest(&data));
+    let digest = Sha256::digest(Sha256::digest(data));
     let mut ret = [0u8; 32];
     ret.copy_from_slice(&digest);
     ret

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -59,7 +59,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon4, BHP1024};
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -72,9 +72,11 @@ mod tests {
             let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $hash::<Circuit>::constant(native.clone());
 
+            let mut rng = TestRng::default();
+
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>();
 
                 // Compute the expected hash.
                 let expected = console::merkle_tree::LeafHash::hash_leaf(&native, &input)?;
@@ -96,17 +98,17 @@ mod tests {
 
     #[test]
     fn test_hash_leaf_bhp1024_constant() -> Result<()> {
-        check_hash_leaf!(BHP1024, Constant, 1024, (1807, 0, 0, 0))
+        check_hash_leaf!(BHP1024, Constant, 1024, (1791, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_public() -> Result<()> {
-        check_hash_leaf!(BHP1024, Public, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Public, 1024, (413, 0, 1744, 1744))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_private() -> Result<()> {
-        check_hash_leaf!(BHP1024, Private, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Private, 1024, (413, 0, 1744, 1744))
     }
 
     #[test]

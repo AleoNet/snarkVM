@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -48,17 +48,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let rng = &mut test_crypto_rng();
+        let mut rng = TestRng::default();
 
         for i in 0..ITERATIONS {
-            // Sample an address and a private key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
-            let address = Address::try_from(&private_key)?;
-
-            // Generate a signature.
-            let message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
-            let signature = Signature::sign(&private_key, &message, rng)?;
-            assert!(signature.verify(&address, &message));
+            // Sample a new signature.
+            let signature = test_helpers::sample_signature(i, &mut rng);
 
             // Check the byte representation.
             let signature_bytes = signature.to_bytes_le()?;

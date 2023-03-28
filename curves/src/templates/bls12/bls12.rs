@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,13 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    templates::bls12::{
-        g1::{G1Affine, G1Prepared, G1Projective},
-        g2::{G2Affine, G2Prepared, G2Projective},
+    templates::{
+        bls12::{
+            g1::{G1Affine, G1Prepared, G1Projective},
+            g2::{G2Affine, G2Prepared, G2Projective},
+        },
+        short_weierstrass_jacobian,
     },
     traits::{ModelParameters, PairingCurve, PairingEngine, ShortWeierstrassParameters},
+    AffineCurve,
 };
-use serde::{Deserialize, Serialize};
 use snarkvm_fields::{
     fp6_3over2::Fp6Parameters,
     Field,
@@ -32,17 +35,19 @@ use snarkvm_fields::{
     One,
     PrimeField,
     SquareRootField,
+    Zero,
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::marker::PhantomData;
+use core::{fmt::Debug, hash::Hash, marker::PhantomData};
+use serde::{Deserialize, Serialize};
 
 pub enum TwistType {
     M,
     D,
 }
 
-pub trait Bls12Parameters: 'static {
+pub trait Bls12Parameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
     const X: &'static [u64];
     const X_IS_NEGATIVE: bool;
     const TWIST_TYPE: TwistType;
@@ -52,19 +57,26 @@ pub trait Bls12Parameters: 'static {
     type Fp12Params: Fp12Parameters<Fp6Params = Self::Fp6Params>;
     type G1Parameters: ShortWeierstrassParameters<BaseField = Self::Fp>;
     type G2Parameters: ShortWeierstrassParameters<
-        BaseField = Fp2<Self::Fp2Params>,
-        ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
-    >;
+            BaseField = Fp2<Self::Fp2Params>,
+            ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
+        >;
+
+    fn g1_is_in_correct_subgroup(p: &short_weierstrass_jacobian::Affine<Self::G1Parameters>) -> bool {
+        p.mul_bits(BitIteratorBE::new(<Self::G1Parameters as ModelParameters>::ScalarField::characteristic())).is_zero()
+    }
+
+    fn g2_is_in_correct_subgroup(p: &short_weierstrass_jacobian::Affine<Self::G1Parameters>) -> bool {
+        p.mul_bits(BitIteratorBE::new(<Self::G1Parameters as ModelParameters>::ScalarField::characteristic())).is_zero()
+    }
 }
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Bls12<P: Bls12Parameters>(PhantomData<fn() -> P>);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Bls12<P: Bls12Parameters>(PhantomData<P>);
 
 type CoeffTriplet<T> = (Fp2<T>, Fp2<T>, Fp2<T>);
 
 impl<P: Bls12Parameters> Bls12<P> {
-    // Evaluate the line function at point p.
+    /// Evaluate the line function at point p.
     fn ell(f: &mut Fp12<P::Fp12Params>, coeffs: &CoeffTriplet<P::Fp2Params>, p: &G1Affine<P>) {
         let mut c0 = coeffs.0;
         let mut c1 = coeffs.1;
@@ -96,21 +108,21 @@ impl<P: Bls12Parameters> Bls12<P> {
 impl<P: Bls12Parameters> PairingEngine for Bls12<P>
 where
     G1Affine<P>: PairingCurve<
-        BaseField = <P::G1Parameters as ModelParameters>::BaseField,
-        ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
-        Projective = G1Projective<P>,
-        PairWith = G2Affine<P>,
-        Prepared = G1Prepared<P>,
-        PairingResult = Fp12<P::Fp12Params>,
-    >,
+            BaseField = <P::G1Parameters as ModelParameters>::BaseField,
+            ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
+            Projective = G1Projective<P>,
+            PairWith = G2Affine<P>,
+            Prepared = G1Prepared<P>,
+            PairingResult = Fp12<P::Fp12Params>,
+        >,
     G2Affine<P>: PairingCurve<
-        BaseField = <P::G2Parameters as ModelParameters>::BaseField,
-        ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
-        Projective = G2Projective<P>,
-        PairWith = G1Affine<P>,
-        Prepared = G2Prepared<P>,
-        PairingResult = Fp12<P::Fp12Params>,
-    >,
+            BaseField = <P::G2Parameters as ModelParameters>::BaseField,
+            ScalarField = <P::G1Parameters as ModelParameters>::ScalarField,
+            Projective = G2Projective<P>,
+            PairWith = G1Affine<P>,
+            Prepared = G2Prepared<P>,
+            PairingResult = Fp12<P::Fp12Params>,
+        >,
 {
     type Fq = P::Fp;
     type Fqe = Fp2<P::Fp2Params>;

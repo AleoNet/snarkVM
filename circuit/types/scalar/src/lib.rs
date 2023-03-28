@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 mod helpers;
 
@@ -25,7 +26,7 @@ pub mod equal;
 pub mod ternary;
 
 #[cfg(test)]
-use console::{test_rng, Uniform};
+use console::{TestRng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
@@ -190,26 +191,28 @@ mod tests {
 
     #[test]
     fn test_new_constant() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         check_new("Constant", expected, Mode::Constant, 1, 0, 0, 0);
     }
 
     #[test]
     fn test_new_public() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         check_new("Public", expected, Mode::Public, 0, 1, 0, 0);
     }
 
     #[test]
     fn test_new_private() {
-        let expected = Uniform::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut TestRng::default());
         check_new("Private", expected, Mode::Private, 0, 0, 1, 0);
     }
 
     #[test]
     fn test_display() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
-            let element = Uniform::rand(&mut test_rng());
+            let element = Uniform::rand(&mut rng);
 
             // Constant
             check_display(Mode::Constant, element)?;
@@ -227,15 +230,15 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, zero);
-        assert_eq!("0scalar.constant", &format!("{}", candidate));
+        assert_eq!("0scalar.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, zero);
-        assert_eq!("0scalar.public", &format!("{}", candidate));
+        assert_eq!("0scalar.public", &format!("{candidate}"));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, zero);
-        assert_eq!("0scalar.private", &format!("{}", candidate));
+        assert_eq!("0scalar.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -244,15 +247,15 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, one);
-        assert_eq!("1scalar.constant", &format!("{}", candidate));
+        assert_eq!("1scalar.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, one);
-        assert_eq!("1scalar.public", &format!("{}", candidate));
+        assert_eq!("1scalar.public", &format!("{candidate}"));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, one);
-        assert_eq!("1scalar.private", &format!("{}", candidate));
+        assert_eq!("1scalar.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -262,15 +265,15 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2scalar.constant", &format!("{}", candidate));
+        assert_eq!("2scalar.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2scalar.public", &format!("{}", candidate));
+        assert_eq!("2scalar.public", &format!("{candidate}"));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2scalar.private", &format!("{}", candidate));
+        assert_eq!("2scalar.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -333,9 +336,11 @@ mod tests {
 
         // Random
 
+        let mut rng = TestRng::default();
+
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let value = Uniform::rand(&mut test_rng());
+                let value = Uniform::rand(&mut rng);
                 let expected = Scalar::<Circuit>::new(mode, value);
 
                 let (_, candidate) = Scalar::<Circuit>::parse(&format!("{expected}")).unwrap();

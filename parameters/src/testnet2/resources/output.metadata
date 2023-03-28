@@ -1,7 +1,0 @@
-{
-  "circuit_id": "af613c06f1115bee85d5ee0282cde1d37f45481743a58f86e9d671e8119005fa30c0916d86a662980c4cc6e62b390d00",
-  "proving_checksum": "e06cc463198065f396e43d75d4e8e848a667af5c7b7a30faed33ea7ab511e9b6",
-  "proving_size": 57258031,
-  "verifying_checksum": "c172d4ea1f3b5635944908e1c5d0c51052d81a04fc9d828cf77a1cb634f47410",
-  "verifying_size": 360604
-}

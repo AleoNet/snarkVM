@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ impl<N: Network> ToBytes for Identifier<N> {
         }
 
         // Write the identifier to a buffer.
-        (string.len() as u8).write_le(&mut writer)?;
+        u8::try_from(string.len()).or_halt_with::<N>("Invalid identifier length").write_le(&mut writer)?;
         string.as_bytes().write_le(&mut writer)
     }
 }
@@ -65,9 +65,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
-            let expected = sample_identifier::<CurrentNetwork>()?;
+            let expected = sample_identifier::<CurrentNetwork>(&mut rng)?;
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,8 +19,6 @@
 pub enum AHPError {
     /// An error occurred during constraint generation.
     ConstraintSystemError(snarkvm_r1cs::errors::SynthesisError),
-    /// An error occurred during Fiat-Shamir.
-    FiatShamirError(crate::snark::marlin::fiat_shamir::FiatShamirError),
     /// The instance generated during proving does not match that in the index.
     InstanceDoesNotMatchIndex,
     /// The number of public inputs is incorrect.
@@ -31,12 +29,6 @@ pub enum AHPError {
     NonSquareMatrix,
     /// During synthesis, our polynomials ended up being too high of degree
     PolynomialDegreeTooLarge,
-}
-
-impl From<crate::snark::marlin::fiat_shamir::FiatShamirError> for AHPError {
-    fn from(other: crate::snark::marlin::fiat_shamir::FiatShamirError) -> Self {
-        AHPError::FiatShamirError(other)
-    }
 }
 
 impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {

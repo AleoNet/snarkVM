@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::snark::marlin::FiatShamirError;
-
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]
 pub enum PCError {
-    FSError(FiatShamirError),
+    AnyhowError(anyhow::Error),
+
     /// The query set contains a label for a polynomial that was not provided as
     /// input to the `PC::open`.
     MissingPolynomial {
@@ -100,62 +99,58 @@ pub enum PCError {
 
 impl snarkvm_utilities::error::Error for PCError {}
 
-impl From<FiatShamirError> for PCError {
-    fn from(other: FiatShamirError) -> Self {
-        Self::FSError(other)
+impl From<anyhow::Error> for PCError {
+    fn from(other: anyhow::Error) -> Self {
+        Self::AnyhowError(other)
     }
 }
 
 impl core::fmt::Display for PCError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            PCError::FSError(e) => write!(f, "{e}"),
-            PCError::MissingPolynomial { label } => {
-                write!(f, "`QuerySet` refers to polynomial \"{}\", but it was not provided.", label)
+            Self::AnyhowError(error) => write!(f, "{error}"),
+            Self::MissingPolynomial { label } => {
+                write!(f, "`QuerySet` refers to polynomial \"{label}\", but it was not provided.")
             }
-            PCError::MissingEvaluation { label } => write!(
+            Self::MissingEvaluation { label } => write!(
                 f,
-                "`QuerySet` refers to polynomial \"{}\", but `Evaluations` does not contain an evaluation for it.",
-                label
+                "`QuerySet` refers to polynomial \"{label}\", but `Evaluations` does not contain an evaluation for it."
             ),
-            PCError::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
-            PCError::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
-            PCError::TooManyCoefficients { num_coefficients, num_powers } => write!(
+            Self::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
+            Self::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
+            Self::TooManyCoefficients { num_coefficients, num_powers } => write!(
                 f,
-                "the number of coefficients in the polynomial ({:?}) is greater than\
-                 the maximum number of powers in `Powers` ({:?})",
-                num_coefficients, num_powers
+                "the number of coefficients in the polynomial ({num_coefficients:?}) is greater than\
+                 the maximum number of powers in `Powers` ({num_powers:?})"
             ),
-            PCError::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
-            PCError::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
+            Self::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
+            Self::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
                 f,
-                "the degree of the hiding poly ({:?}) is not less than the maximum number of powers in `Powers` ({:?})",
-                hiding_poly_degree, num_powers
+                "the degree of the hiding poly ({hiding_poly_degree:?}) is not less than the maximum number of powers in `Powers` ({num_powers:?})"
             ),
-            PCError::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
-            PCError::EquationHasDegreeBounds(e) => {
-                write!(f, "the eqaution \"{}\" contained degree-bounded polynomials", e)
+            Self::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
+            Self::EquationHasDegreeBounds(e) => {
+                write!(f, "the eqaution \"{e}\" contained degree-bounded polynomials")
             }
-            PCError::UnsupportedDegreeBound(bound) => {
-                write!(f, "the degree bound ({:?}) is not supported by the parameters", bound)
+            Self::UnsupportedDegreeBound(bound) => {
+                write!(f, "the degree bound ({bound:?}) is not supported by the parameters")
             }
-            PCError::LagrangeBasisSizeIsNotPowerOfTwo => {
+            Self::LagrangeBasisSizeIsNotPowerOfTwo => {
                 write!(f, "the Lagrange Basis size is not a power of two")
             }
-            PCError::UnsupportedLagrangeBasisSize(size) => {
-                write!(f, "the Lagrange basis size ({:?}) is not supported by the parameters", size)
+            Self::UnsupportedLagrangeBasisSize(size) => {
+                write!(f, "the Lagrange basis size ({size:?}) is not supported by the parameters")
             }
-            PCError::LagrangeBasisSizeIsTooLarge => {
+            Self::LagrangeBasisSizeIsTooLarge => {
                 write!(f, "the Lagrange Basis size larger than max supported degree")
             }
-            PCError::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
+            Self::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
                 f,
-                "the degree bound ({:?}) for the polynomial {} \
-                 (having degree {:?}) is greater than the maximum \
-                 supported degree ({:?})",
-                degree_bound, label, poly_degree, supported_degree
+                "the degree bound ({degree_bound:?}) for the polynomial {label} \
+                 (having degree {poly_degree:?}) is greater than the maximum \
+                 supported degree ({supported_degree:?})"
             ),
-            PCError::Terminated => write!(f, "terminated"),
+            Self::Terminated => write!(f, "terminated"),
         }
     }
 }

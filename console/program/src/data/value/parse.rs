@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -71,7 +71,7 @@ mod tests {
         // Prepare the plaintext string.
         let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah,
-  balance: 5u64,
+  gates: 5u64,
   token_amount: 100u64
 }";
         // Construct a new plaintext value.
@@ -85,8 +85,9 @@ mod tests {
         // Prepare the record string.
         let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private,
-  balance: 5u64.private,
-  token_amount: 100u64.private
+  gates: 5u64.private,
+  token_amount: 100u64.private,
+  _nonce: 6122363155094913586073041054293642159180066699840940609722305038224296461351group.public
 }";
         // Construct a new record value.
         let expected = Value::<CurrentNetwork>::from_str(string).unwrap();

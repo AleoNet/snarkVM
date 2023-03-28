@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -13,6 +13,9 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
+#![warn(clippy::cast_possible_truncation)]
 
 mod arithmetic;
 mod bitwise;
@@ -102,5 +105,12 @@ impl<E: Environment> Deref for Field<E> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.field
+    }
+}
+
+impl<E: Environment> DerefMut for Field<E> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.field
     }
 }

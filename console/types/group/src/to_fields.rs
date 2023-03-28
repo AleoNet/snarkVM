@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -36,9 +36,11 @@ mod tests {
 
     #[test]
     fn test_to_fields() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut rng);
 
             let candidate = group.to_fields()?;
 

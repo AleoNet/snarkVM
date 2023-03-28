@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -292,6 +292,83 @@ impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I>
         match self.integer.checked_div(&other.integer) {
             Some(integer) => self.integer = integer,
             None => E::halt(format!("Integer division failed on: {self} and {other}")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> Modulo<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the result of taking the modulus of `self` with respect to `other`.
+    #[inline]
+    fn modulo(&self, other: &Integer<E, I>) -> Self {
+        match I::is_signed() {
+            true => E::halt("Taking the modulus of signed integers is not supported"),
+            false => match other.is_zero() {
+                true => E::halt(format!("Integer modulus by zero: {self} % {other}")),
+                false => Integer::new(self.integer.modulo(&other.integer)),
+            },
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> Rem<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem(self, other: Integer<E, I>) -> Self {
+        match self.integer.checked_rem(&other.integer) {
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> Rem<&Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem(self, other: &Integer<E, I>) -> Self {
+        match self.integer.checked_rem(&other.integer) {
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> RemWrapped<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
+        match other.is_zero() {
+            true => E::halt(format!("Integer remainder by zero: {self} % {other}")),
+            false => Integer::new(self.integer.wrapping_rem(&other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> RemAssign<Integer<E, I>> for Integer<E, I> {
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem_assign(&mut self, other: Integer<E, I>) {
+        match self.integer.checked_rem(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> RemAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem_assign(&mut self, other: &Integer<E, I>) {
+        match self.integer.checked_rem(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
         }
     }
 }

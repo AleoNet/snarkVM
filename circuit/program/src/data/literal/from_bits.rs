@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -70,7 +70,7 @@ impl<A: Aleo> Literal<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use console::{test_rng, Rng, Uniform};
+    use console::{TestRng, Uniform};
 
     const ITERATIONS: u32 = 1000;
 
@@ -93,7 +93,7 @@ mod tests {
     }
 
     fn run_serialization_test(mode: Mode) {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
             // Address
@@ -131,8 +131,7 @@ mod tests {
             check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let range = 0..rng.gen_range(0..Circuit::NUM_STRING_BYTES / 4);
-            let string: String = range.map(|_| rng.gen::<char>()).collect();
+            let string = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
             check_serialization(Literal::<Circuit>::String(StringType::new(mode, console::StringType::new(&string))));
         }
     }

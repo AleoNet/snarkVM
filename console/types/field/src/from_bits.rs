@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -45,14 +45,14 @@ impl<E: Environment> FromBits for Field<E> {
             ensure!(field < E::Field::modulus(), "The field is greater than or equal to the modulus.");
 
             // Return the field.
-            Ok(Field { field: E::Field::from_repr(field).ok_or_else(|| anyhow!("Invalid field from bits"))? })
+            Ok(Field { field: E::Field::from_bigint(field).ok_or_else(|| anyhow!("Invalid field from bits"))? })
         } else {
             // Construct the sanitized list of bits, resizing up if necessary.
             let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
             bits_le.resize(size_in_bits, false);
 
             // Recover the native field.
-            let field = E::Field::from_repr(E::BigInteger::from_bits_le(&bits_le)?)
+            let field = E::Field::from_bigint(E::BigInteger::from_bits_le(&bits_le)?)
                 .ok_or_else(|| anyhow!("Invalid field from bits"))?;
 
             // Return the field.
@@ -78,12 +78,14 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: usize = 100;
 
     fn check_from_bits_le() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
             let given_bits = expected.to_bits_le();
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
@@ -91,7 +93,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i as usize]].concat();
+            let candidate = vec![given_bits, vec![false; i]].concat();
 
             let candidate = Field::<CurrentEnvironment>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
@@ -101,9 +103,11 @@ mod tests {
     }
 
     fn check_from_bits_be() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let expected: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
             let given_bits = expected.to_bits_be();
             assert_eq!(Field::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
@@ -111,7 +115,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![vec![false; i as usize], given_bits].concat();
+            let candidate = vec![vec![false; i], given_bits].concat();
 
             let candidate = Field::<CurrentEnvironment>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);

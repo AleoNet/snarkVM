@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -32,16 +32,16 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: usize = 10;
 
-    fn check_random<I: IntegerType>() {
+    fn check_random<I: IntegerType>(rng: &mut TestRng) {
         // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS as usize);
+        let mut set = HashSet::with_capacity(ITERATIONS);
 
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
+            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(rng);
             assert!(!set.contains(&integer));
 
             // Add the new random value to the set.
@@ -51,12 +51,14 @@ mod tests {
 
     #[test]
     fn test_random() {
-        check_random::<u32>();
-        check_random::<u64>();
-        check_random::<u128>();
+        let mut rng = TestRng::default();
 
-        check_random::<i32>();
-        check_random::<i64>();
-        check_random::<i128>();
+        check_random::<u32>(&mut rng);
+        check_random::<u64>(&mut rng);
+        check_random::<u128>(&mut rng);
+
+        check_random::<i32>(&mut rng);
+        check_random::<i64>(&mut rng);
+        check_random::<i128>(&mut rng);
     }
 }

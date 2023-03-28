@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         // Ensure empty value fails.
         assert!(Field::<CurrentEnvironment>::parse(Field::<CurrentEnvironment>::type_name()).is_err());
@@ -108,8 +108,10 @@ mod tests {
             assert_eq!(candidate, candidate_recovered);
         }
 
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
-            let element = Uniform::rand(&mut test_rng());
+            let element = Uniform::rand(&mut rng);
 
             check_display::<CurrentEnvironment>(element);
         }
@@ -120,7 +122,7 @@ mod tests {
         let zero = <CurrentEnvironment as Environment>::Field::zero();
 
         let candidate = Field::<CurrentEnvironment>::new(zero);
-        assert_eq!("0field", &format!("{}", candidate));
+        assert_eq!("0field", &format!("{candidate}"));
     }
 
     #[test]
@@ -128,7 +130,7 @@ mod tests {
         let one = <CurrentEnvironment as Environment>::Field::one();
 
         let candidate = Field::<CurrentEnvironment>::new(one);
-        assert_eq!("1field", &format!("{}", candidate));
+        assert_eq!("1field", &format!("{candidate}"));
     }
 
     #[test]
@@ -137,6 +139,6 @@ mod tests {
         let two = one + one;
 
         let candidate = Field::<CurrentEnvironment>::new(two);
-        assert_eq!("2field", &format!("{}", candidate));
+        assert_eq!("2field", &format!("{candidate}"));
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -41,31 +41,24 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    PartialEq(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
+    pub t: P::BaseField,
 }
 
 impl<P: Parameters> Affine<P> {
     #[inline]
-    pub const fn new(x: P::BaseField, y: P::BaseField) -> Self {
-        Self { x, y }
+    pub fn new(x: P::BaseField, y: P::BaseField, t: P::BaseField) -> Self {
+        Self { x, y, t }
     }
 }
 
 impl<P: Parameters> Zero for Affine<P> {
     #[inline]
     fn zero() -> Self {
-        Self::new(P::BaseField::zero(), P::BaseField::one())
+        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero())
     }
 
     #[inline]
@@ -100,11 +93,21 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     type ScalarField = P::ScalarField;
 
     /// Initializes a new affine group element from the given coordinates.
-    fn from_coordinates(coordinates: Self::Coordinates) -> Self {
+    fn from_coordinates(coordinates: Self::Coordinates) -> Option<Self> {
         let (x, y) = coordinates;
-        let point = Self { x, y };
-        assert!(point.is_on_curve());
-        point
+        let point = Self { x, y, t: x * y };
+        // Check that the point is on the curve, and in the correct subgroup.
+        match point.is_on_curve() && point.is_in_correct_subgroup_assuming_on_curve() {
+            true => Some(point),
+            false => None,
+        }
+    }
+
+    /// Initializes a new affine group element from the given coordinates.
+    /// Note: The resulting point is **not** enforced to be on the curve or in the correct subgroup.
+    fn from_coordinates_unchecked(coordinates: Self::Coordinates) -> Self {
+        let (x, y) = coordinates;
+        Self { x, y, t: x * y }
     }
 
     #[inline]
@@ -114,7 +117,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
-        Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1)
+        Self::new(
+            P::AFFINE_GENERATOR_COEFFS.0,
+            P::AFFINE_GENERATOR_COEFFS.1,
+            P::AFFINE_GENERATOR_COEFFS.0 * P::AFFINE_GENERATOR_COEFFS.1,
+        )
     }
 
     #[inline]
@@ -136,12 +143,12 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let x2 = x.square();
         let one = Self::BaseField::one();
         let numerator = P::mul_by_a(&x2) - one;
-        let denominator = P::COEFF_D * x2 - one;
+        let denominator = P::EDWARDS_D * x2 - one;
         let y2 = denominator.inverse().map(|denom| denom * numerator);
         y2.and_then(|y2| y2.sqrt()).map(|y| {
             let negy = -y;
             let y = if (y < negy) ^ greatest { y } else { negy };
-            Self::new(x, y)
+            Self::new(x, y, x * y)
         })
     }
 
@@ -156,12 +163,12 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let y2 = y.square();
         let one = Self::BaseField::one();
         let numerator = one - y2;
-        let denominator = P::mul_by_a(&one) - (P::COEFF_D * y2);
+        let denominator = P::mul_by_a(&one) - (P::EDWARDS_D * y2);
         let x2 = denominator.inverse().map(|denom| denom * numerator);
         x2.and_then(|x2| x2.sqrt()).map(|x| {
             let negx = -x;
             let x = if (x < negx) ^ greatest { x } else { negx };
-            Self::new(x, y)
+            Self::new(x, y, x * y)
         })
     }
 
@@ -206,7 +213,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let y2 = self.y.square();
 
         let lhs = y2 + P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
+        let rhs = P::BaseField::one() + (P::EDWARDS_D * (x2 * y2));
 
         lhs == rhs
     }
@@ -219,11 +226,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
             a.x = (a.x + a.y) * (b.x + b.y) - y1y2 - x1x2;
             a.y = y1y2;
-            if !P::COEFF_A.is_zero() {
+            if !P::EDWARDS_A.is_zero() {
                 a.y -= &P::mul_by_a(&x1x2);
             }
 
-            let dx1x2y1y2 = P::COEFF_D * y1y2 * x1x2;
+            let dx1x2y1y2 = P::EDWARDS_D * y1y2 * x1x2;
 
             let inversion_mul_d = *inversion_tmp * dx1x2y1y2;
 
@@ -233,6 +240,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             b.x = Self::BaseField::one() - dx1x2y1y2.square();
 
             *inversion_tmp *= &b.x;
+            b.t = b.x * b.y;
         }
     }
 
@@ -244,6 +252,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             a.x *= *inversion_tmp;
             a.y *= *inversion_tmp;
             *inversion_tmp *= &b.x;
+            a.t = a.x * a.y;
         }
     }
 }
@@ -258,7 +267,7 @@ impl<P: Parameters> Neg for Affine<P> {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Self::new(-self.x, self.y)
+        Self::new(-self.x, self.y, -self.t)
     }
 }
 
@@ -266,7 +275,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new(other.to_repr()))
+        self.mul_bits(BitIteratorBE::new(other.to_bigint()))
     }
 }
 
@@ -283,7 +292,7 @@ impl<P: Parameters> FromBytes for Affine<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x = P::BaseField::read_le(&mut reader)?;
         let y = P::BaseField::read_le(&mut reader)?;
-        Ok(Self::new(x, y))
+        Ok(Self::new(x, y, x * y))
     }
 }
 
@@ -308,13 +317,14 @@ impl<P: Parameters> From<Projective<P>> for Affine<P> {
             Affine::zero()
         } else if p.z.is_one() {
             // If Z is one, the point is already normalized.
-            Affine::new(p.x, p.y)
+            Affine::new(p.x, p.y, p.t)
         } else {
             // Z is nonzero, so it must have an inverse in a field.
             let z_inv = p.z.inverse().unwrap();
             let x = p.x * z_inv;
             let y = p.y * z_inv;
-            Affine::new(x, y)
+            let t = p.t * z_inv;
+            Affine::new(x, y, t)
         }
     }
 }

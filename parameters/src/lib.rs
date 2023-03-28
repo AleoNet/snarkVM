@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,6 +22,8 @@
 extern crate alloc;
 
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate thiserror;
 
 #[macro_use]
@@ -30,15 +32,8 @@ pub mod macros;
 pub mod errors;
 pub use errors::*;
 
-pub mod testnet1;
-
-pub mod testnet2;
-
 pub mod testnet3;
 
-pub mod traits;
-pub use traits::*;
-
 pub mod prelude {
-    pub use crate::{errors::*, traits::*};
+    pub use crate::errors::*;
 }

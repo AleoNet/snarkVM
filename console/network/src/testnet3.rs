@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -32,12 +32,15 @@ lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
+    /// The Marlin sponge parameters.
+    pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
+
     /// The balance commitment domain as a constant field element.
     pub static ref BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
-    /// The MAC domain as a constant field element.
-    pub static ref MAC_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricKeyCommitment0");
+    /// The graph key domain as a constant field element.
+    pub static ref GRAPH_KEY_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoGraphKey0");
     /// The randomizer domain as a constant field element.
     pub static ref RANDOMIZER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoRandomizer0");
     /// The balance commitment randomizer domain as a constant field element.
@@ -65,6 +68,17 @@ lazy_static! {
     pub static ref POSEIDON_4: Poseidon4<Testnet3> = Poseidon4::<Testnet3>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+
+    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
+        map
+    };
+    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<MarlinVerifyingKey<Console>>> = {
+        let mut map = IndexMap::new();
+        snarkvm_parameters::insert_credit_keys!(map, MarlinVerifyingKey<Console>, Verifier);
+        map
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -89,24 +103,105 @@ impl Testnet3 {
 
 impl Environment for Testnet3 {
     type Affine = <Console as Environment>::Affine;
-    type AffineParameters = <Console as Environment>::AffineParameters;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
     type PairingCurve = <Console as Environment>::PairingCurve;
     type Projective = <Console as Environment>::Projective;
     type Scalar = <Console as Environment>::Scalar;
+
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::Field = Console::EDWARDS_A;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::Field = Console::EDWARDS_D;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::Field = Console::MONTGOMERY_A;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::Field = Console::MONTGOMERY_B;
 }
 
 impl Network for Testnet3 {
     /// The block hash type.
     type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
+    /// The state root type.
+    type StateRoot = AleoID<Field<Self>, { hrp2!("ar") }>;
     /// The transaction ID type.
     type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+    /// The transition ID type.
+    type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
 
+    /// The network edition.
+    const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
+    /// The function name for the inclusion circuit.
+    const INCLUSION_FUNCTION_NAME: &'static str = snarkvm_parameters::testnet3::TESTNET3_INCLUSION_FUNCTION_NAME;
     /// The network name.
-    const NAME: &'static str = "Aleo Testnet3";
+    const NAME: &'static str = "Aleo Testnet 3";
+
+    /// Returns the genesis block bytes.
+    fn genesis_bytes() -> &'static [u8] {
+        snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
+    }
+
+    /// Returns the proving key for the given function name in `credits.aleo`.
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>> {
+        CREDITS_PROVING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the verifying key for the given function name in `credits.aleo`.
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>> {
+        CREDITS_VERIFYING_KEYS
+            .get(&function_name)
+            .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
+    }
+
+    /// Returns the `proving key` for the inclusion circuit.
+    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first 2 bytes, which is the encoded version.
+            Arc::new(
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])
+                    .expect("Failed to load inclusion proving key."),
+            )
+        })
+    }
+
+    /// Returns the `verifying key` for the inclusion circuit.
+    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Skipping the first 2 bytes, which is the encoded version.
+            Arc::new(
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[2..])
+                    .expect("Failed to load inclusion verifying key."),
+            )
+        })
+    }
+
+    /// Returns the powers of `G`.
+    fn g_powers() -> &'static Vec<Group<Self>> {
+        &GENERATOR_G
+    }
+
+    /// Returns the scalar multiplication on the generator `G`.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
+        GENERATOR_G
+            .iter()
+            .zip_eq(&scalar.to_bits_le())
+            .filter_map(|(base, bit)| match bit {
+                true => Some(base),
+                false => None,
+            })
+            .sum()
+    }
+
+    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
+    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self> {
+        &MARLIN_FS_PARAMETERS
+    }
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self> {
@@ -118,9 +213,9 @@ impl Network for Testnet3 {
         *ENCRYPTION_DOMAIN
     }
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self> {
-        *MAC_DOMAIN
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self> {
+        *GRAPH_KEY_DOMAIN
     }
 
     /// Returns the randomizer domain as a constant field element.
@@ -136,23 +231,6 @@ impl Network for Testnet3 {
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self> {
         *SERIAL_NUMBER_DOMAIN
-    }
-
-    /// Returns the powers of G.
-    fn g_powers() -> &'static Vec<Group<Self>> {
-        &GENERATOR_G
-    }
-
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
-        GENERATOR_G
-            .iter()
-            .zip_eq(&scalar.to_bits_le())
-            .filter_map(|(base, bit)| match bit {
-                true => Some(base),
-                false => None,
-            })
-            .sum()
     }
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
@@ -276,17 +354,31 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp<const DEPTH: u8>(
-        leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self, BHP1024<Self>, BHP512<Self>, DEPTH>> {
+    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<BHPMerkleTree<Self, DEPTH>> {
         MerkleTree::new(&*BHP_1024, &*BHP_512, leaves)
     }
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd<const DEPTH: u8>(
-        leaves: &[Vec<Field<Self>>],
-    ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>> {
+    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Field<Self>>]) -> Result<PoseidonMerkleTree<Self, DEPTH>> {
         MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_bhp<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<bool>,
+    ) -> bool {
+        path.verify(&*BHP_1024, &*BHP_512, root, leaf)
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_psd<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Field<Self>>,
+    ) -> bool {
+        path.verify(&*POSEIDON_4, &*POSEIDON_2, root, leaf)
     }
 }
 
@@ -299,7 +391,7 @@ mod tests {
     #[test]
     fn test_g_scalar_multiply() {
         // Compute G^r.
-        let scalar = Scalar::rand(&mut test_rng());
+        let scalar = Scalar::rand(&mut TestRng::default());
         let group = CurrentNetwork::g_scalar_multiply(&scalar);
         assert_eq!(group, CurrentNetwork::g_powers()[0] * scalar);
     }

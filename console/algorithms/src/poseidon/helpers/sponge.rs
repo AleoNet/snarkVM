@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@ use snarkvm_console_types::{prelude::*, Field};
 use snarkvm_fields::PoseidonParameters;
 
 use smallvec::SmallVec;
-use std::sync::Arc;
+use std::{ops::DerefMut, sync::Arc};
 
 /// A duplex sponge based using the Poseidon permutation.
 ///
@@ -113,12 +113,14 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
             for elem in self.state.iter_mut() {
-                *elem = elem.pow(Field::from_u64(self.parameters.alpha));
+                let e = elem.deref_mut();
+                *e = e.pow([self.parameters.alpha]);
             }
         }
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
-            self.state[0] = self.state[0].pow(Field::from_u64(self.parameters.alpha));
+            let e = self.state[0].deref_mut();
+            *e = e.pow([self.parameters.alpha]);
         }
     }
 
@@ -126,8 +128,7 @@ impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E,
     fn apply_mds(&mut self) {
         let mut new_state = State::default();
         new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
-            *new_elem =
-                self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| Field::new(mds_elem) * state_elem).sum();
+            *new_elem = Field::new(E::Field::sum_of_products(self.state.iter().map(|e| e.deref()), mds_row.iter()));
         });
         self.state = new_state;
     }

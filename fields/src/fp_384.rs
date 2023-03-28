@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -65,11 +65,6 @@ pub struct Fp384<P: Fp384Parameters>(
 );
 
 impl<P: Fp384Parameters> Fp384<P> {
-    #[inline]
-    pub fn new(element: BigInteger) -> Self {
-        Fp384::<P>(element, PhantomData)
-    }
-
     #[inline]
     pub fn is_valid(&self) -> bool {
         self.0 < P::MODULUS
@@ -212,7 +207,70 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         let mut two_inv = P::MODULUS;
         two_inv.add_nocarry(&1u64.into());
         two_inv.div2();
-        Self::from_repr(two_inv).unwrap() // Guaranteed to be valid.
+        Self::from_bigint(two_inv).unwrap() // Guaranteed to be valid.
+    }
+
+    fn sum_of_products<'a>(
+        a: impl Iterator<Item = &'a Self> + Clone,
+        b: impl Iterator<Item = &'a Self> + Clone,
+    ) -> Self {
+        // For a single `a x b` multiplication, operand scanning (schoolbook) takes each
+        // limb of `a` in turn, and multiplies it by all of the limbs of `b` to compute
+        // the result as a double-width intermediate representation, which is then fully
+        // reduced at the end. Here however we have pairs of multiplications (a_i, b_i),
+        // the results of which are summed.
+        //
+        // The intuition for this algorithm is two-fold:
+        // - We can interleave the operand scanning for each pair, by processing the jth
+        //   limb of each `a_i` together. As these have the same offset within the overall
+        //   operand scanning flow, their results can be summed directly.
+        // - We can interleave the multiplication and reduction steps, resulting in a
+        //   single bitshift by the limb size after each iteration. This means we only
+        //   need to store a single extra limb overall, instead of keeping around all the
+        //   intermediate results and eventually having twice as many limbs.
+
+        // Algorithm 2, line 2
+        let (u0, u1, u2, u3, u4, u5) = (0..6).fold((0, 0, 0, 0, 0, 0), |(u0, u1, u2, u3, u4, u5), j| {
+            // Algorithm 2, line 3
+            // For each pair in the overall sum of products:
+            let (t0, t1, t2, t3, t4, t5, mut t6) = a.clone().zip(b.clone()).fold(
+                (u0, u1, u2, u3, u4, u5, 0),
+                |(t0, t1, t2, t3, t4, t5, mut t6), (a, b)| {
+                    // Compute digit_j x row and accumulate into `u`.
+                    let mut carry = 0;
+                    let t0 = fa::mac_with_carry(t0, a.0.0[j], b.0.0[0], &mut carry);
+                    let t1 = fa::mac_with_carry(t1, a.0.0[j], b.0.0[1], &mut carry);
+                    let t2 = fa::mac_with_carry(t2, a.0.0[j], b.0.0[2], &mut carry);
+                    let t3 = fa::mac_with_carry(t3, a.0.0[j], b.0.0[3], &mut carry);
+                    let t4 = fa::mac_with_carry(t4, a.0.0[j], b.0.0[4], &mut carry);
+                    let t5 = fa::mac_with_carry(t5, a.0.0[j], b.0.0[5], &mut carry);
+                    let _ = fa::adc(&mut t6, 0, carry);
+
+                    (t0, t1, t2, t3, t4, t5, t6)
+                },
+            );
+
+            // Algorithm 2, lines 4-5
+            // This is a single step of the usual Montgomery reduction process.
+            let k = t0.wrapping_mul(P::INV);
+            let mut carry = 0;
+            let _ = fa::mac_with_carry(t0, k, P::MODULUS.0[0], &mut carry);
+            let r1 = fa::mac_with_carry(t1, k, P::MODULUS.0[1], &mut carry);
+            let r2 = fa::mac_with_carry(t2, k, P::MODULUS.0[2], &mut carry);
+            let r3 = fa::mac_with_carry(t3, k, P::MODULUS.0[3], &mut carry);
+            let r4 = fa::mac_with_carry(t4, k, P::MODULUS.0[4], &mut carry);
+            let r5 = fa::mac_with_carry(t5, k, P::MODULUS.0[5], &mut carry);
+            let _ = fa::adc(&mut t6, 0, carry);
+            let r6 = t6;
+
+            (r1, r2, r3, r4, r5, r6)
+        });
+
+        // Because we represent F_p elements in non-redundant form, we need a final
+        // conditional subtraction to ensure the output is in range.
+        let mut result = Self(BigInteger([u0, u1, u2, u3, u4, u5]), PhantomData);
+        result.reduce();
+        result
     }
 
     #[inline]
@@ -372,7 +430,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     type Parameters = P;
 
     #[inline]
-    fn from_repr(r: BigInteger) -> Option<Self> {
+    fn from_bigint(r: BigInteger) -> Option<Self> {
         let mut r = Fp384(r, PhantomData);
         if r.is_zero() {
             Some(r)
@@ -385,7 +443,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn to_repr(&self) -> BigInteger {
+    fn to_bigint(&self) -> BigInteger {
         let mut tmp = self.0;
         let mut r = tmp.0;
         // Montgomery Reduction
@@ -455,8 +513,16 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn to_repr_unchecked(&self) -> BigInteger {
-        self.0
+    fn decompose(
+        &self,
+        _q1: &[u64; 4],
+        _q2: &[u64; 4],
+        _b1: Self,
+        _b2: Self,
+        _r128: Self,
+        _half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool) {
+        unimplemented!()
     }
 }
 
@@ -511,7 +577,7 @@ impl<P: Fp384Parameters> SquareRootField for Fp384<P> {
 impl<P: Fp384Parameters> Ord for Fp384<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_repr().cmp(&other.to_repr())
+        self.to_bigint().cmp(&other.to_bigint())
     }
 }
 
@@ -537,7 +603,7 @@ impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBits for Fp384<P> {
     fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_repr().to_bits_le();
+        let mut bits_vec = self.to_bigint().to_bits_le();
         bits_vec.truncate(P::MODULUS_BITS as usize);
         bits_vec
     }
@@ -552,14 +618,14 @@ impl<P: Fp384Parameters> ToBits for Fp384<P> {
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.to_repr().write_le(writer)
+        self.to_bigint().write_le(writer)
     }
 }
 
 impl<P: Fp384Parameters> FromBytes for Fp384<P> {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_bigint(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -582,7 +648,8 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten =
+            Self::from_bigint(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -599,13 +666,11 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_bigint(<Self as PrimeField>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }
-                None => {
-                    return Err(FieldError::ParsingNonDigitCharacter);
-                }
+                None => return Err(FieldError::ParsingNonDigitCharacter),
             }
         }
 
@@ -616,14 +681,14 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 impl<P: Fp384Parameters> Debug for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 
 impl<P: Fp384Parameters> Display for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 

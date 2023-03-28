@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,7 +23,6 @@ use std::borrow::Borrow;
 
 pub trait Bech32ID<F: FieldTrait>:
     From<F>
-    + Borrow<F>
     + Deref<Target = F>
     + Into<Vec<F>>
     + Uniform

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::PairingEngine;
+use crate::{templates::short_weierstrass_jacobian, PairingEngine};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
@@ -88,6 +88,13 @@ pub trait ProjectiveCurve:
     fn add_assign_mixed(&mut self, other: &Self::Affine);
 
     /// Adds an affine element to this element.
+    fn add_mixed(&self, other: &Self::Affine) -> Self {
+        let mut copy = *self;
+        copy.add_assign_mixed(other);
+        copy
+    }
+
+    /// Adds an affine element to this element.
     fn sub_assign_mixed(&mut self, other: &Self::Affine) {
         self.add_assign_mixed(&-*other);
     }
@@ -140,7 +147,11 @@ pub trait AffineCurve:
     type Coordinates;
 
     /// Initializes a new affine group element from the given coordinates.
-    fn from_coordinates(coordinates: Self::Coordinates) -> Self;
+    fn from_coordinates(coordinates: Self::Coordinates) -> Option<Self>;
+
+    /// Initializes a new affine group element from the given coordinates.
+    /// Note: The resulting point is **not** enforced to be on the curve or in the correct subgroup.
+    fn from_coordinates_unchecked(coordinates: Self::Coordinates) -> Self;
 
     /// Returns the cofactor of the curve.
     fn cofactor() -> &'static [u64];
@@ -245,38 +256,73 @@ pub trait PairingCurve: AffineCurve {
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult;
 }
 
-pub trait ModelParameters: Send + Sync + 'static {
+pub trait ModelParameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
     type BaseField: Field + SquareRootField;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
 
 pub trait ShortWeierstrassParameters: ModelParameters {
-    const COEFF_A: Self::BaseField;
-    const COEFF_B: Self::BaseField;
+    /// The coefficient `A` of the short Weierstrass curve.
+    const WEIERSTRASS_A: Self::BaseField;
+    /// The coefficient `B` of the short Weierstrass curve.
+    const WEIERSTRASS_B: Self::BaseField;
+    /// The cofactor of the short Weierstrass curve.
     const COFACTOR: &'static [u64];
+    /// The cofactor inverse of the short Weierstrass curve.
     const COFACTOR_INV: Self::ScalarField;
+    /// The affine generator of the short Weierstrass curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
+
+    const PHI: Self::BaseField;
+
+    // Decomposition parameters
+    /// Q1 = x^2 * R / q
+    const Q1: [u64; 4] = [9183663392111466540, 12968021215939883360, 3, 0];
+    /// Q2 = R / q = 13
+    const Q2: [u64; 4] = [13, 0, 0, 0];
+    /// B1 = x^2 - 1
+    const B1: Self::ScalarField;
+    /// B2 = x^2
+    const B2: Self::ScalarField;
+    /// R128 = 2^128 - 1
+    const R128: Self::ScalarField;
+    /// HALF_R = 2^256 / 2
+    const HALF_R: [u64; 8] = [0, 0, 0, 0x8000000000000000, 0, 0, 0, 0];
 
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
-        copy *= &Self::COEFF_A;
+        copy *= &Self::WEIERSTRASS_A;
         copy
     }
 
     #[inline(always)]
     fn add_b(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
-        copy += &Self::COEFF_B;
+        copy += &Self::WEIERSTRASS_B;
         copy
     }
+
+    fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
+
+    fn glv_endomorphism(p: short_weierstrass_jacobian::Affine<Self>) -> short_weierstrass_jacobian::Affine<Self>;
+
+    fn mul_projective(
+        p: short_weierstrass_jacobian::Projective<Self>,
+        by: Self::ScalarField,
+    ) -> short_weierstrass_jacobian::Projective<Self>;
 }
 
-pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
-    const COEFF_A: Self::BaseField;
-    const COEFF_D: Self::BaseField;
+pub trait TwistedEdwardsParameters: ModelParameters {
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::BaseField;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::BaseField;
+    /// The cofactor of the twisted Edwards curve.
     const COFACTOR: &'static [u64];
+    /// The cofactor inverse of the twisted Edwards curve.
     const COFACTOR_INV: Self::ScalarField;
+    /// The affine generator of the twisted Edwards curve.
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
 
     type MontgomeryParameters: MontgomeryParameters<BaseField = Self::BaseField>;
@@ -284,14 +330,16 @@ pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq +
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
         let mut copy = *elem;
-        copy *= &Self::COEFF_A;
+        copy *= &Self::EDWARDS_A;
         copy
     }
 }
 
 pub trait MontgomeryParameters: ModelParameters {
-    const COEFF_A: Self::BaseField;
-    const COEFF_B: Self::BaseField;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::BaseField;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::BaseField;
 
     type TwistedEdwardsParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
 }

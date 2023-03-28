@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ impl<E: Environment> Double for Group<E> {
         }
         // Otherwise, compute `self` + `self`.
         else {
-            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
+            let a = Field::constant(console::Field::new(E::EDWARDS_A));
             let two = Field::one().double();
 
             // Compute xy, xx, yy, axx.
@@ -71,15 +71,17 @@ mod tests {
 
     #[test]
     fn test_double() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
             let expected = point.double();
 
             // Constant variable
             let affine = Group::<Circuit>::new(Mode::Constant, point);
 
-            Circuit::scope(&format!("Constant {}", i), || {
+            Circuit::scope(&format!("Constant {i}"), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(3, 0, 0, 0);
@@ -89,7 +91,7 @@ mod tests {
             // Public variable
             let affine = Group::<Circuit>::new(Mode::Public, point);
 
-            Circuit::scope(&format!("Public {}", i), || {
+            Circuit::scope(&format!("Public {i}"), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(1, 0, 5, 5);
@@ -99,7 +101,7 @@ mod tests {
             // Private variable
             let affine = Group::<Circuit>::new(Mode::Private, point);
 
-            Circuit::scope(&format!("Private {}", i), || {
+            Circuit::scope(&format!("Private {i}"), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(1, 0, 5, 5);
@@ -111,7 +113,7 @@ mod tests {
     #[test]
     fn test_double_matches() {
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut TestRng::default());
         let expected = a + a;
 
         // Constant

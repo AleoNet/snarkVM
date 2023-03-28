@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,10 +19,15 @@ use super::*;
 impl<N: Network> Record<N, Plaintext<N>> {
     /// Encrypts `self` for the record owner under the given randomizer.
     pub fn encrypt(&self, randomizer: Scalar<N>) -> Result<Record<N, Ciphertext<N>>> {
-        // Compute the record view key.
-        let record_view_key = (**self.owner * randomizer).to_x_coordinate();
-        // Encrypt the record.
-        self.encrypt_symmetric(&record_view_key)
+        // Ensure the randomizer corresponds to the record nonce.
+        if self.nonce == N::g_scalar_multiply(&randomizer) {
+            // Compute the record view key.
+            let record_view_key = (**self.owner * randomizer).to_x_coordinate();
+            // Encrypt the record.
+            self.encrypt_symmetric(&record_view_key)
+        } else {
+            bail!("Illegal operation: Record::encrypt() randomizer does not correspond to the record nonce.")
+        }
     }
 
     /// Encrypts `self` under the given record view key.
@@ -42,8 +47,8 @@ impl<N: Network> Record<N, Plaintext<N>> {
 
         // Encrypt the owner.
         let owner = match self.owner.is_public() {
-            true => self.owner.encrypt(&[])?,
-            false => self.owner.encrypt(&[randomizers[index]])?,
+            true => self.owner.encrypt_with_randomizer(&[])?,
+            false => self.owner.encrypt_with_randomizer(&[randomizers[index]])?,
         };
 
         // Increment the index if the owner is private.
@@ -51,14 +56,14 @@ impl<N: Network> Record<N, Plaintext<N>> {
             index += 1;
         }
 
-        // Encrypt the balance.
-        let balance = match self.balance.is_public() {
-            true => self.balance.encrypt(&[])?,
-            false => self.balance.encrypt(&[randomizers[index]])?,
+        // Encrypt the gates.
+        let gates = match self.gates.is_public() {
+            true => self.gates.encrypt_with_randomizer(&[])?,
+            false => self.gates.encrypt_with_randomizer(&[randomizers[index]])?,
         };
 
-        // Increment the index if the balance is private.
-        if balance.is_private() {
+        // Increment the index if the gates is private.
+        if gates.is_private() {
             index += 1;
         }
 
@@ -94,6 +99,6 @@ impl<N: Network> Record<N, Plaintext<N>> {
         }
 
         // Return the encrypted record.
-        Ok(Record { owner, balance, data: encrypted_data })
+        Self::from_ciphertext(owner, gates, encrypted_data, self.nonce)
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -70,7 +70,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new record.
             let expected = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-                "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }",
+                "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }",
             )?;
             println!("{}", serde_json::to_string_pretty(&expected)?);
 
@@ -91,7 +91,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new record.
             let expected = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-                "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }",
+                "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }",
             )?;
 
             // Serialize

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,12 +18,11 @@ use super::*;
 
 impl<N: Network> Parser for ProgramID<N> {
     /// Parses a string into a program ID of the form `{name}.{network}`.
-    /// If no `network`-level domain is specified, the default network is used.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the name from the string.
         let (string, name) = Identifier::parse(string)?;
-        // Parse the optional "." and network-level domain (NLD) from the string.
+        // Parse the "." and network-level domain (NLD) from the string.
         let (string, (_, network)) = pair(tag("."), Identifier::parse)(string)?;
         // Return the program ID.
         Ok((string, Self { name, network }))

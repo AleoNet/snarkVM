@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,8 +17,8 @@
 use crate::{
     file::Manifest,
     prelude::{Network, ProgramID},
+    synthesizer::Program,
 };
-use snarkvm_compiler::Program;
 
 use anyhow::{anyhow, bail, ensure, Result};
 use core::str::FromStr;
@@ -71,7 +71,7 @@ impl<N: Network> AleoFile<N> {
             r#"// The '{program_id}' program.
 program {program_id};
 
-function hello_world:
+function hello:
     input r0 as u32.public;
     input r1 as u32.private;
     add r0 r1 into r2;
@@ -179,7 +179,7 @@ function hello_world:
         // Ensure the file name matches the expected file name.
         ensure!(file_name == self.file_name, "File name does not match.");
 
-        Ok(File::create(&path)?.write_all(self.program_string.as_bytes())?)
+        Ok(File::create(path)?.write_all(self.program_string.as_bytes())?)
     }
 
     /// Removes the file at the given path, if it exists.
@@ -193,7 +193,7 @@ function hello_world:
             // If the path exists, remove it.
             if path.exists() {
                 // Remove the file.
-                fs::remove_file(&path)?;
+                fs::remove_file(path)?;
             }
             Ok(())
         }
@@ -230,7 +230,7 @@ impl<N: Network> AleoFile<N> {
             .to_string();
 
         // Read the program string.
-        let program_string = fs::read_to_string(&file)?;
+        let program_string = fs::read_to_string(file)?;
         // Parse the program string.
         let program = Program::from_str(&program_string)?;
 
@@ -256,7 +256,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -285,7 +285,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:

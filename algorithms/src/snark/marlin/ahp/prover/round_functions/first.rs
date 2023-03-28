@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -107,7 +107,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
                 let (z_c_poly, z_c) = z_c.z_m().unwrap();
 
-                prover::FirstEntry { z_a, z_b, z_c, w_poly, z_a_poly, z_b_poly, z_c_poly }
+                prover::SingleEntry { z_a, z_b, z_c, w_poly, z_a_poly, z_b_poly, z_c_poly }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
@@ -117,7 +117,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let oracles = prover::FirstOracles { batches, mask_poly };
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_size)));
         state.first_round_oracles = Some(Arc::new(oracles));
-        state.mz_poly_randomizer = MM::ZK.then(|| r_b_s);
+        state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
         end_timer!(round_time);
 
         Ok(state)
@@ -154,12 +154,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None))
     }
 
-    fn calculate_w<'a>(
+    fn calculate_w(
         label: String,
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
-        state: &prover::State<'a, F, MM>,
-    ) -> PoolResult<'a, F> {
+        state: &prover::State<F, MM>,
+    ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let input_domain = state.input_domain;
 
@@ -191,13 +191,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         PoolResult::Witness(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
     }
 
-    fn calculate_z_m<'a>(
+    fn calculate_z_m(
         label: impl ToString,
         evaluations: &[F],
         will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
+        state: &prover::State<'_, F, MM>,
         r: Option<F>,
-    ) -> PoolResult<'a, F> {
+    ) -> PoolResult<F> {
         let constraint_domain = state.constraint_domain;
         let v_H = constraint_domain.vanishing_polynomial();
         let should_randomize = MM::ZK && will_be_evaluated;
@@ -245,12 +245,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 }
 
 #[derive(Debug)]
-pub enum PoolResult<'a, F: PrimeField> {
+pub enum PoolResult<F: PrimeField> {
     Witness(LabeledPolynomial<F>),
-    MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
+    MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'static, F>),
 }
 
-impl<'a, F: PrimeField> PoolResult<'a, F> {
+impl<F: PrimeField> PoolResult<F> {
     fn witness(self) -> Option<LabeledPolynomial<F>> {
         match self {
             Self::Witness(poly) => Some(poly),
@@ -258,7 +258,7 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
         }
     }
 
-    fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)> {
+    fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'static, F>)> {
         match self {
             Self::MatrixPoly(p1, p2) => Some((p1, p2)),
             _ => None,

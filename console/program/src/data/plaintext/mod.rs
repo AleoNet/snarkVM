@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 
 mod bytes;
 mod encrypt;
+mod equal;
 mod find;
 mod from_bits;
 mod from_fields;
@@ -37,8 +38,8 @@ use once_cell::sync::OnceCell;
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
-    /// A interface.
-    Interface(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// A struct.
+    Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
@@ -55,19 +56,6 @@ impl<N: Network> From<&Literal<N>> for Plaintext<N> {
     }
 }
 
-impl<N: Network> PartialEq for Plaintext<N> {
-    /// Returns `true` if `self` and `other` are equal.
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Literal(l1, _), Self::Literal(l2, _)) => l1 == l2,
-            (Self::Interface(i1, _), Self::Interface(i2, _)) => i1 == i2,
-            _ => false,
-        }
-    }
-}
-
-impl<N: Network> Eq for Plaintext<N> {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,23 +68,23 @@ mod tests {
 
     #[test]
     fn test_plaintext() -> Result<()> {
+        let mut rng = TestRng::default();
+
         let value = Plaintext::<CurrentNetwork>::from_str("true")?;
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        let value = Plaintext::<CurrentNetwork>::Literal(
-            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
-            OnceCell::new(),
-        );
+        let value =
+            Plaintext::<CurrentNetwork>::Literal(Literal::Field(Field::new(Uniform::rand(&mut rng))), OnceCell::new());
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        let value = Plaintext::<CurrentNetwork>::Interface(
+        let value = Plaintext::<CurrentNetwork>::Struct(
             IndexMap::from_iter(
                 vec![
                     (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
                     (
                         Identifier::from_str("b")?,
                         Plaintext::<CurrentNetwork>::Literal(
-                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                             OnceCell::new(),
                         ),
                     ),
@@ -107,19 +95,19 @@ mod tests {
         );
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        let value = Plaintext::<CurrentNetwork>::Interface(
+        let value = Plaintext::<CurrentNetwork>::Struct(
             IndexMap::from_iter(
                 vec![
                     (Identifier::from_str("a")?, Plaintext::<CurrentNetwork>::from_str("true")?),
                     (
                         Identifier::from_str("b")?,
-                        Plaintext::<CurrentNetwork>::Interface(
+                        Plaintext::<CurrentNetwork>::Struct(
                             IndexMap::from_iter(
                                 vec![
                                     (Identifier::from_str("c")?, Plaintext::<CurrentNetwork>::from_str("true")?),
                                     (
                                         Identifier::from_str("d")?,
-                                        Plaintext::<CurrentNetwork>::Interface(
+                                        Plaintext::<CurrentNetwork>::Struct(
                                             IndexMap::from_iter(
                                                 vec![
                                                     (
@@ -129,7 +117,7 @@ mod tests {
                                                     (
                                                         Identifier::from_str("f")?,
                                                         Plaintext::<CurrentNetwork>::Literal(
-                                                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                                                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                                                             OnceCell::new(),
                                                         ),
                                                     ),
@@ -142,7 +130,7 @@ mod tests {
                                     (
                                         Identifier::from_str("g")?,
                                         Plaintext::<CurrentNetwork>::Literal(
-                                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                                             OnceCell::new(),
                                         ),
                                     ),
@@ -155,7 +143,7 @@ mod tests {
                     (
                         Identifier::from_str("h")?,
                         Plaintext::<CurrentNetwork>::Literal(
-                            Literal::Field(Field::new(Uniform::rand(&mut test_rng()))),
+                            Literal::Field(Field::new(Uniform::rand(&mut rng))),
                             OnceCell::new(),
                         ),
                     ),

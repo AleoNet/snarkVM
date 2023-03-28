@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the comparison and return the new constant.
-            Self::Output::new(Mode::Constant, self.eject_value() < other.eject_value())
+            witness!(|self, other| self < other)
         } else if I::is_signed() {
             // Compute the less than operation via a sign and overflow check.
             // If sign(a) != sign(b), then a < b, if a is negative and b is positive.
@@ -36,6 +36,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
                     + Field::one();
             match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => Self::Output::ternary(&same_sign, &!bit, &self_is_negative_and_other_is_positive),
+                // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
                 None => E::halt("Malformed expression detected during signed integer comparison."),
             }
         } else {
@@ -46,6 +47,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
                     + Field::one();
             match max_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => !bit,
+                // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
                 None => E::halt("Malformed expression detected during unsigned integer comparison."),
             }
         }
@@ -157,11 +159,13 @@ mod tests {
     }
 
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
-        for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+        let mut rng = TestRng::default();
 
-            let name = format!("Compare: ({}, {}) - {}th iteration", mode_a, mode_b, i);
+        for i in 0..ITERATIONS {
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
+
+            let name = format!("Compare: ({mode_a}, {mode_b}) - {i}th iteration");
             check_compare::<I>(&name, first, second, mode_a, mode_b);
         }
     }
@@ -175,7 +179,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, I>::new(second);
 
-                let name = format!("Compare: ({}, {})", first, second);
+                let name = format!("Compare: ({first}, {second})");
                 check_compare::<I>(&name, first, second, mode_a, mode_b);
             }
         }

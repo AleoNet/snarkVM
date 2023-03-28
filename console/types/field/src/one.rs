@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -53,9 +53,11 @@ mod tests {
     fn test_is_one() {
         assert!(Field::<CurrentEnvironment>::one().is_one());
 
+        let mut rng = TestRng::default();
+
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let field: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
+            let field: Field<CurrentEnvironment> = Uniform::rand(&mut rng);
             assert!(!field.is_one());
         }
     }

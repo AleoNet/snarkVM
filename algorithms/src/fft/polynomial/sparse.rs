@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,11 +35,11 @@ impl<F: Field> fmt::Debug for SparsePolynomial<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (i, coeff) in self.coeffs.iter().filter(|(_, c)| !c.is_zero()) {
             if *i == 0 {
-                write!(f, "\n{:?}", coeff)?;
+                write!(f, "\n{coeff:?}")?;
             } else if *i == 1 {
-                write!(f, " + \n{:?} * x", coeff)?;
+                write!(f, " + \n{coeff:?} * x")?;
             } else {
-                write!(f, " + \n{:?} * x^{}", coeff, i)?;
+                write!(f, " + \n{coeff:?} * x^{i}")?;
             }
         }
         Ok(())
@@ -90,7 +90,7 @@ impl<F: Field> SparsePolynomial<F> {
         }
         let mut total = F::zero();
         for (i, c) in &self.coeffs {
-            total += *c * point.pow(&[*i as u64]);
+            total += *c * point.pow([*i as u64]);
         }
         total
     }

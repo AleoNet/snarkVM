@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    file::Manifest,
     prelude::{FromBytes, Network, ProgramID, ToBytes},
+    synthesizer::Program,
 };
-use snarkvm_compiler::Program;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use std::{
     fs::{self, File},
     io::Write,
@@ -61,7 +60,7 @@ impl<N: Network> AVMFile<N> {
     /// Opens the AVM program file, given the directory path, program ID, and `is_main` indicator.
     pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
         // Ensure the directory path exists.
-        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+        ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
         // Create the file.
         let file_name = if is_main { Self::main_file_name() } else { format!("{program_id}.{AVM_FILE_EXTENSION}") };
@@ -72,11 +71,6 @@ impl<N: Network> AVMFile<N> {
 
         // Load the AVM file.
         let avm_file = Self::from_filepath(&path)?;
-
-        // Ensure the program ID matches, if this is the main file.
-        if is_main && avm_file.program.id() != program_id {
-            bail!("The program ID from `{}` does not match in '{}'", Manifest::<N>::file_name(), path.display())
-        }
 
         Ok(avm_file)
     }
@@ -121,7 +115,7 @@ impl<N: Network> AVMFile<N> {
             // If the path exists, remove it.
             if path.exists() {
                 // Remove the file.
-                fs::remove_file(&path)?;
+                fs::remove_file(path)?;
             }
             Ok(())
         }
@@ -158,7 +152,7 @@ impl<N: Network> AVMFile<N> {
             .to_string();
 
         // Read the program bytes.
-        let program_bytes = fs::read(&file)?;
+        let program_bytes = fs::read(file)?;
         // Parse the program bytes.
         let program = Program::from_bytes_le(&program_bytes)?;
 
@@ -180,7 +174,7 @@ impl<N: Network> AVMFile<N> {
         // Ensure the file name matches the expected file name.
         ensure!(file_name == self.file_name, "File name does not match.");
 
-        Ok(File::create(&path)?.write_all(&self.program.to_bytes_le()?)?)
+        Ok(File::create(path)?.write_all(&self.program.to_bytes_le()?)?)
     }
 }
 
@@ -205,7 +199,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:

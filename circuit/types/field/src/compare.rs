@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -136,14 +136,16 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
             let expected = first < second;
-            let name = format!("{} {} {}", mode_a, mode_b, i);
+            let name = format!("{mode_a} {mode_b} {i}");
             check_is_less_than(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
 
             // Check `first` is not less than `first`.

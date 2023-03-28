@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -136,10 +136,10 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(rng)?;
 
             // Address
             check_bytes(Literal::<CurrentNetwork>::Address(Address::try_from(private_key)?))?;

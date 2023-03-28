@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,11 +23,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
     fn shl_wrapped(&self, rhs: &Integer<E, M>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && rhs.is_constant() {
-            // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
-            Integer::new(
-                Mode::Constant,
-                console::Integer::new(self.eject_value().wrapping_shl(rhs.eject_value().to_u32().unwrap())),
-            )
+            // Note: Casting `rhs` to a `u32` is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
+            witness!(|self, rhs| console::Integer::new(self.wrapping_shl(rhs.to_u32().unwrap())))
         } else {
             // Index of the first upper bit of rhs that we mask.
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
@@ -145,19 +142,21 @@ mod tests {
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
-        for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+        let mut rng = TestRng::default();
 
-            let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
+        for i in 0..ITERATIONS {
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
+
+            let name = format!("Shl: {mode_a} << {mode_b} {i}");
             check_shl::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift left by one is computed correctly.
-            let name = format!("Double: {} << {} {}", mode_a, mode_b, i);
+            let name = format!("Double: {mode_a} << {mode_b} {i}");
             check_shl::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
 
             // Check that shift left by two is computed correctly.
-            let name = format!("Quadruple: {} << {} {}", mode_a, mode_b, i);
+            let name = format!("Quadruple: {mode_a} << {mode_b} {i}");
             check_shl::<I, M>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
         }
     }
@@ -172,7 +171,7 @@ mod tests {
                 let first = console::Integer::<_, I>::new(first);
                 let second = console::Integer::<_, M>::new(second);
 
-                let name = format!("Shl: ({} << {})", first, second);
+                let name = format!("Shl: ({first} << {second})");
                 check_shl::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }

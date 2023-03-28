@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,7 +16,11 @@
 
 use crate::prelude::*;
 
-pub trait Visibility: ToBytes + FromBytes + ToBits + FromBits + ToFields + FromFields {
+pub trait Visibility:
+    Equal<Self, Output = Self::Boolean> + ToBytes + FromBytes + ToBits + FromBits + ToFields + FromFields
+{
+    type Boolean: BooleanTrait;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16>;
 }

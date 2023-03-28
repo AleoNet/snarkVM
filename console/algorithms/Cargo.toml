@@ -1,41 +1,48 @@
 [package]
 name = "snarkvm-console-algorithms"
-version = "0.7.5"
+version = "0.9.14"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Console algorithms for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[[bench]]
+name = "poseidon_sponge"
+path = "benches/poseidon.rs"
+harness = false
+
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "0.7.5"
+version = "0.9.14"
 default-features = false
-features = ["field", "group", "integers", "scalar"]
+features = [ "field", "group", "integers", "scalar" ]
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.7.5"
+version = "0.9.14"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "0.7.5"
+version = "0.9.14"
 
 [dependencies.blake2s_simd]
 version = "1.0"
 
 [dependencies.smallvec]
-version = "1.8"
+version = "1.10"
 default-features = false
 features = [ "const_generics", "const_new" ]
 
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
-version = "0.7.5"
 default-features = false
 
+[dev-dependencies.criterion]
+version = "0.4.0"
+
 [dev-dependencies.expect-test]
-version = "1.2"
+version = "1.4"
 
 [dev-dependencies.hex]
 version = "0.4"
@@ -45,3 +52,4 @@ version = "1.0"
 
 [dev-dependencies.serde_json]
 version = "1.0"
+features = [ "preserve_order" ]

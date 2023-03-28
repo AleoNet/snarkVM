@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,6 +19,8 @@ use super::*;
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Encrypts `self` for the record owner under the given randomizer.
     pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
+        // Ensure the randomizer corresponds to the record nonce.
+        A::assert_eq(&self.nonce, A::g_scalar_multiply(randomizer));
         // Compute the record view key.
         let record_view_key = ((*self.owner).to_group() * randomizer).to_x_coordinate();
         // Encrypt the record.
@@ -51,14 +53,14 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
             index += 1;
         }
 
-        // Encrypt the balance.
-        let balance = match self.balance.is_public().eject_value() {
-            true => self.balance.encrypt(&[]),
-            false => self.balance.encrypt(&[randomizers[index].clone()]),
+        // Encrypt the gates.
+        let gates = match self.gates.is_public().eject_value() {
+            true => self.gates.encrypt(&[]),
+            false => self.gates.encrypt(&[randomizers[index].clone()]),
         };
 
-        // Increment the index if the balance is private.
-        if balance.is_private().eject_value() {
+        // Increment the index if the gates is private.
+        if gates.is_private().eject_value() {
             index += 1;
         }
 
@@ -78,13 +80,13 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
             };
             // Insert the encrypted entry.
             if encrypted_data.insert(id.clone(), entry).is_some() {
-                A::halt(format!("Duplicate identifier in record: {}", id))
+                A::halt(format!("Duplicate identifier in record: {id}"))
             }
             // Increment the index.
             index += num_randomizers as usize;
         }
 
         // Return the encrypted record.
-        Record { owner, balance, data: encrypted_data }
+        Record { owner, gates, data: encrypted_data, nonce: self.nonce.clone() }
     }
 }

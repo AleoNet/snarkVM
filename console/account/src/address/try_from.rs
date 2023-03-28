@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -52,10 +52,7 @@ impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
 
     /// Derives the account address from an account compute key.
     fn try_from(compute_key: &ComputeKey<N>) -> Result<Self, Self::Error> {
-        // Compute pk_prf := G^sk_prf.
-        let pk_prf = N::g_scalar_multiply(&compute_key.sk_prf());
-        // Compute the address := pk_sig + pr_sig + pk_prf.
-        Ok(Self::new(compute_key.pk_sig() + compute_key.pr_sig() + pk_prf))
+        Ok(compute_key.to_address())
     }
 }
 
@@ -75,8 +72,7 @@ impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
 
     /// Derives the account address from an account view key.
     fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
-        // Compute G^view_key.
-        Ok(Self::new(N::g_scalar_multiply(view_key)))
+        Ok(view_key.to_address())
     }
 }
 
@@ -91,9 +87,11 @@ mod tests {
 
     #[test]
     fn test_try_from() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let expected = Address::try_from(private_key)?;
 
             // Check the address derived from the compute key.

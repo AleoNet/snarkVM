@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -68,7 +68,7 @@ impl<T> OptionalVec<T> {
     /// Iterates over all the `Some(T)` values in the list.
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.values.iter().filter(|v| v.is_some()).map(|v| v.as_ref().unwrap())
+        self.values.iter().filter_map(|v| v.as_ref())
     }
 
     /// Returns the number of `Some(T)` values.

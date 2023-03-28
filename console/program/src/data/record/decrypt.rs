@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,10 +17,10 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce.
-    pub fn decrypt(&self, view_key: ViewKey<N>, nonce: Group<N>) -> Result<Record<N, Plaintext<N>>> {
+    /// Decrypts `self` into plaintext using the given view key.
+    pub fn decrypt(&self, view_key: &ViewKey<N>) -> Result<Record<N, Plaintext<N>>> {
         // Compute the record view key.
-        let record_view_key = (nonce * *view_key).to_x_coordinate();
+        let record_view_key = (self.nonce * **view_key).to_x_coordinate();
         // Decrypt the record.
         self.decrypt_symmetric(&record_view_key)
     }
@@ -42,8 +42,8 @@ impl<N: Network> Record<N, Ciphertext<N>> {
 
         // Decrypt the owner.
         let owner = match self.owner.is_public() {
-            true => self.owner.decrypt(&[])?,
-            false => self.owner.decrypt(&[randomizers[index]])?,
+            true => self.owner.decrypt_with_randomizer(&[])?,
+            false => self.owner.decrypt_with_randomizer(&[randomizers[index]])?,
         };
 
         // Increment the index if the owner is private.
@@ -51,14 +51,14 @@ impl<N: Network> Record<N, Ciphertext<N>> {
             index += 1;
         }
 
-        // Decrypt the balance.
-        let balance = match self.balance.is_public() {
-            true => self.balance.decrypt(&[])?,
-            false => self.balance.decrypt(&[randomizers[index]])?,
+        // Decrypt the gates.
+        let gates = match self.gates.is_public() {
+            true => self.gates.decrypt_with_randomizer(&[])?,
+            false => self.gates.decrypt_with_randomizer(&[randomizers[index]])?,
         };
 
-        // Increment the index if the balance is private.
-        if balance.is_private() {
+        // Increment the index if the gates is private.
+        if gates.is_private() {
             index += 1;
         }
 
@@ -93,7 +93,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
         }
 
         // Return the decrypted record.
-        Ok(Record { owner, balance, data: decrypted_data })
+        Self::from_plaintext(owner, gates, decrypted_data, self.nonce)
     }
 }
 
@@ -112,62 +112,59 @@ mod tests {
     fn check_encrypt_and_decrypt<N: Network>(
         view_key: ViewKey<N>,
         owner: Owner<N, Plaintext<N>>,
-        balance: Balance<N, Plaintext<N>>,
+        gates: Balance<N, Plaintext<N>>,
+        rng: &mut TestRng,
     ) -> Result<()> {
         // Prepare the record.
+        let randomizer = Scalar::rand(rng);
         let record = Record {
             owner,
-            balance,
+            gates,
             data: IndexMap::from_iter(
                 vec![
-                    (
-                        Identifier::from_str("a")?,
-                        Entry::Private(Plaintext::from(Literal::Field(Field::rand(&mut test_rng())))),
-                    ),
-                    (
-                        Identifier::from_str("b")?,
-                        Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(&mut test_rng())))),
-                    ),
+                    (Identifier::from_str("a")?, Entry::Private(Plaintext::from(Literal::Field(Field::rand(rng))))),
+                    (Identifier::from_str("b")?, Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(rng))))),
                 ]
                 .into_iter(),
             ),
+            nonce: N::g_scalar_multiply(&randomizer),
         };
         // Encrypt the record.
-        let randomizer = Scalar::rand(&mut test_rng());
         let ciphertext = record.encrypt(randomizer)?;
         // Decrypt the record.
-        let nonce = N::g_scalar_multiply(&randomizer);
-        assert_eq!(record, ciphertext.decrypt(view_key, nonce)?);
+        assert_eq!(record, ciphertext.decrypt(&view_key)?);
         Ok(())
     }
 
     #[test]
     fn test_encrypt_and_decrypt() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a view key and address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
             let view_key = ViewKey::try_from(&private_key)?;
             let address = Address::try_from(&private_key)?;
 
-            // Public owner and public balance.
+            // Public owner and public gates.
             let owner = Owner::Public(address);
-            let balance = Balance::Public(U64::new(u64::rand(&mut test_rng()) >> 12));
-            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
+            let gates = Balance::Public(U64::new(u64::rand(&mut rng) >> 12));
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
 
-            // Private owner and public balance.
+            // Private owner and public gates.
             let owner = Owner::Private(Plaintext::from(Literal::Address(address)));
-            let balance = Balance::Public(U64::new(u64::rand(&mut test_rng()) >> 12));
-            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
+            let gates = Balance::Public(U64::new(u64::rand(&mut rng) >> 12));
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
 
-            // Public owner and private balance.
+            // Public owner and private gates.
             let owner = Owner::Public(address);
-            let balance = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut test_rng()) >> 12))));
-            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
+            let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut rng) >> 12))));
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
 
-            // Private owner and private balance.
+            // Private owner and private gates.
             let owner = Owner::Private(Plaintext::from(Literal::Address(address)));
-            let balance = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut test_rng()) >> 12))));
-            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
+            let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut rng) >> 12))));
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, gates, &mut rng)?;
         }
         Ok(())
     }

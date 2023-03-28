@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,12 +16,14 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 mod helpers;
 
 pub mod add;
 pub mod compare;
 pub mod div;
+pub mod div_unchecked;
 pub mod double;
 pub mod equal;
 pub mod inverse;
@@ -34,7 +36,7 @@ pub mod sub;
 pub mod ternary;
 
 #[cfg(test)]
-use console::{test_rng, Uniform};
+use console::{TestRng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
@@ -180,8 +182,10 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
-            let element = Uniform::rand(&mut test_rng());
+            let element = Uniform::rand(&mut rng);
 
             // Constant
             check_display(Mode::Constant, element)?;
@@ -199,15 +203,15 @@ mod tests {
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, zero);
-        assert_eq!("0field.constant", &format!("{}", candidate));
+        assert_eq!("0field.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, zero);
-        assert_eq!("0field.public", &format!("{}", candidate));
+        assert_eq!("0field.public", &format!("{candidate}"));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, zero);
-        assert_eq!("0field.private", &format!("{}", candidate));
+        assert_eq!("0field.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -216,15 +220,15 @@ mod tests {
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, one);
-        assert_eq!("1field.constant", &format!("{}", candidate));
+        assert_eq!("1field.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, one);
-        assert_eq!("1field.public", &format!("{}", candidate));
+        assert_eq!("1field.public", &format!("{candidate}"));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, one);
-        assert_eq!("1field.private", &format!("{}", candidate));
+        assert_eq!("1field.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -234,15 +238,15 @@ mod tests {
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2field.constant", &format!("{}", candidate));
+        assert_eq!("2field.constant", &format!("{candidate}"));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2field.public", &format!("{}", candidate));
+        assert_eq!("2field.public", &format!("{candidate}"));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2field.private", &format!("{}", candidate));
+        assert_eq!("2field.private", &format!("{candidate}"));
     }
 
     #[test]
@@ -305,9 +309,11 @@ mod tests {
 
         // Random
 
+        let mut rng = TestRng::default();
+
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let value = Uniform::rand(&mut test_rng());
+                let value = Uniform::rand(&mut rng);
                 let expected = Field::<Circuit>::new(mode, value);
 
                 let (_, candidate) = Field::<Circuit>::parse(&format!("{expected}")).unwrap();

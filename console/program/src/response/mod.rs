@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ProgramID, Value, ValueType};
+use crate::{Identifier, ProgramID, Register, Value, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -26,13 +26,13 @@ pub enum OutputID<N: Network> {
     Public(Field<N>),
     /// The ciphertext hash of the private output.
     Private(Field<N>),
-    /// The `(commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<N>, Field<N>, Field<N>),
-    /// The commitment of the external record output.
+    /// The `(commitment, checksum)` tuple of the record output.
+    Record(Field<N>, Field<N>),
+    /// The hash of the external record output.
     ExternalRecord(Field<N>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Response<N: Network> {
     /// The output ID for the transition.
     output_ids: Vec<OutputID<N>>,
@@ -50,34 +50,65 @@ impl<N: Network> From<(Vec<OutputID<N>>, Vec<Value<N>>)> for Response<N> {
 impl<N: Network> Response<N> {
     /// Initializes a new response.
     pub fn new(
+        network_id: &U16<N>,
         program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
         num_inputs: usize,
         tvk: &Field<N>,
+        tcm: &Field<N>,
         outputs: Vec<Value<N>>,
         output_types: &[ValueType<N>],
+        output_operands: &[Option<Register<N>>],
     ) -> Result<Self> {
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id =
+            N::hash_bhp1024(&(*network_id, program_id.name(), program_id.network(), function_name).to_bits_le())?;
+
         // Compute the output IDs.
         let output_ids = outputs
             .iter()
             .zip_eq(output_types)
+            .zip_eq(output_operands)
             .enumerate()
-            .map(|(index, (output, output_type))| {
+            .map(|(index, ((output, output_type), output_register))| {
                 match output_type {
-                    // For a constant output, compute the hash of the output.
+                    // For a constant output, compute the hash (using `tcm`) of the output.
                     ValueType::Constant(..) => {
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
+
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
+                        preimage.push(*tcm);
+                        preimage.push(index);
                         // Hash the output to a field element.
-                        let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
+                        let output_hash = N::hash_psd8(&preimage)?;
+
                         // Return the output ID.
                         Ok(OutputID::Constant(output_hash))
                     }
-                    // For a public output, compute the hash of the output.
+                    // For a public output, compute the hash (using `tcm`) of the output.
                     ValueType::Public(..) => {
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
+
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
+                        preimage.push(*tcm);
+                        preimage.push(index);
                         // Hash the output to a field element.
-                        let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
+                        let output_hash = N::hash_psd8(&preimage)?;
+
                         // Return the output ID.
                         Ok(OutputID::Public(output_hash))
                     }
@@ -86,9 +117,11 @@ impl<N: Network> Response<N> {
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the output view key as `Hash(tvk || index)`.
-                        let output_view_key = N::hash_psd2(&[*tvk, index])?;
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
+                        // Compute the output view key as `Hash(function ID || tvk || index)`.
+                        let output_view_key = N::hash_psd4(&[function_id, *tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &output {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
@@ -96,12 +129,12 @@ impl<N: Network> Response<N> {
                             Value::Record(..) => bail!("Expected a plaintext output, found a record output"),
                         };
                         // Hash the ciphertext to a field element.
-                        let output_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        let output_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Return the output ID.
                         Ok(OutputID::Private(output_hash))
                     }
                     // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
-                    ValueType::Record(..) => {
+                    ValueType::Record(record_name) => {
                         // Retrieve the record.
                         let record = match &output {
                             Value::Record(record) => record,
@@ -109,15 +142,19 @@ impl<N: Network> Response<N> {
                             Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
                         };
 
+                        // Retrieve the output register.
+                        let output_register = match output_register {
+                            Some(output_register) => output_register,
+                            None => bail!("Expected a register to be paired with a record output"),
+                        };
+
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(program_id, record_name)?;
+
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u64(output_register.locator());
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
-                        // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &randomizer)?;
-
-                        // Compute the record nonce.
-                        let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
 
                         // Encrypt the record, using the randomizer.
                         let encrypted_record = record.encrypt(randomizer)?;
@@ -125,20 +162,27 @@ impl<N: Network> Response<N> {
                         let checksum = N::hash_bhp1024(&encrypted_record.to_bits_le())?;
 
                         // Return the output ID.
-                        Ok(OutputID::Record(commitment, nonce, checksum))
+                        Ok(OutputID::Record(commitment, checksum))
                     }
-                    // For a locator output, compute the commitment (using `tvk`) of the output.
+                    // For a locator output, compute the hash (using `tvk`) of the output.
                     ValueType::ExternalRecord(..) => {
                         // Ensure the output is a record.
                         ensure!(matches!(output, Value::Record(..)), "Expected a record output");
+
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the output randomizer as `HashToScalar(tvk || index)`.
-                        let output_randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
-                        // Commit the output to a field element.
-                        let output_commitment = N::commit_bhp1024(&output.to_bits_le(), &output_randomizer)?;
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
+                        // Construct the preimage as `(function ID || output || tvk || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
+                        preimage.push(*tvk);
+                        preimage.push(index);
+                        // Hash the output to a field element.
+                        let output_hash = N::hash_psd8(&preimage)?;
+
                         // Return the output ID.
-                        Ok(OutputID::ExternalRecord(output_commitment))
+                        Ok(OutputID::ExternalRecord(output_hash))
                     }
                 }
             })

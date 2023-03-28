@@ -3,8 +3,11 @@
 **/target
 **/.DS_Store
 **storage_db
-**inner.proving*
-**outer.proving*
-**posw.proving*
-**universal.srs.*.*
-!**universal.srs.*.metadata
+**/*.prover.*
+**/*.verifier.*
+*.usrs
+!**/powers-of-beta-15.usrs*
+!**/shifted-powers-of-beta-15.usrs*
+!**/powers-of-beta-gamma.usrs
+!**/beta-h.usrs
+!**/neg-powers-of-beta.usrs

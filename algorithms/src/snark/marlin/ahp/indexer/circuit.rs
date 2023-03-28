@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,13 +22,13 @@ use crate::{
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
+    snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix, Evaluations},
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::LookupTable;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// The indexed version of the constraint system.
 /// This struct contains three kinds of objects:
 /// 1) `index_info` is information about the index, such as the size of the
@@ -82,19 +82,20 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        // Alphabetical order
         [
-            &self.a_arith.row,
             &self.a_arith.col,
-            &self.a_arith.val,
-            &self.a_arith.row_col,
-            &self.b_arith.row,
             &self.b_arith.col,
-            &self.b_arith.val,
-            &self.b_arith.row_col,
-            &self.c_arith.row,
             &self.c_arith.col,
-            &self.c_arith.val,
+            &self.a_arith.row,
+            &self.b_arith.row,
+            &self.c_arith.row,
+            &self.a_arith.row_col,
+            &self.b_arith.row_col,
             &self.c_arith.row_col,
+            &self.a_arith.val,
+            &self.b_arith.val,
+            &self.c_arith.val,
             &self.s_m,
             &self.s_l,
             &self.l_1,

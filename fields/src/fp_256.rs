@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -65,11 +65,6 @@ pub struct Fp256<P>(
 );
 
 impl<P: Fp256Parameters> Fp256<P> {
-    #[inline]
-    pub fn new(element: BigInteger) -> Self {
-        Fp256::<P>(element, PhantomData)
-    }
-
     #[inline]
     fn is_valid(&self) -> bool {
         self.0 < P::MODULUS
@@ -179,7 +174,64 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
         let mut two_inv = P::MODULUS;
         two_inv.add_nocarry(&1u64.into());
         two_inv.div2();
-        Self::from_repr(two_inv).unwrap() // Guaranteed to be valid.
+        Self::from_bigint(two_inv).unwrap() // Guaranteed to be valid.
+    }
+
+    fn sum_of_products<'a>(
+        a: impl Iterator<Item = &'a Self> + Clone,
+        b: impl Iterator<Item = &'a Self> + Clone,
+    ) -> Self {
+        // For a single `a x b` multiplication, operand scanning (schoolbook) takes each
+        // limb of `a` in turn, and multiplies it by all of the limbs of `b` to compute
+        // the result as a double-width intermediate representation, which is then fully
+        // reduced at the end. Here however we have pairs of multiplications (a_i, b_i),
+        // the results of which are summed.
+        //
+        // The intuition for this algorithm is two-fold:
+        // - We can interleave the operand scanning for each pair, by processing the jth
+        //   limb of each `a_i` together. As these have the same offset within the overall
+        //   operand scanning flow, their results can be summed directly.
+        // - We can interleave the multiplication and reduction steps, resulting in a
+        //   single bitshift by the limb size after each iteration. This means we only
+        //   need to store a single extra limb overall, instead of keeping around all the
+        //   intermediate results and eventually having twice as many limbs.
+
+        // Algorithm 2, line 2
+        let (u0, u1, u2, u3) = (0..4).fold((0, 0, 0, 0), |(u0, u1, u2, u3), j| {
+            // Algorithm 2, line 3
+            // For each pair in the overall sum of products:
+            let (t0, t1, t2, t3, mut t4) =
+                a.clone().zip(b.clone()).fold((u0, u1, u2, u3, 0), |(t0, t1, t2, t3, mut t4), (a, b)| {
+                    // Compute digit_j x row and accumulate into `u`.
+                    let mut carry = 0;
+                    let t0 = fa::mac_with_carry(t0, a.0.0[j], b.0.0[0], &mut carry);
+                    let t1 = fa::mac_with_carry(t1, a.0.0[j], b.0.0[1], &mut carry);
+                    let t2 = fa::mac_with_carry(t2, a.0.0[j], b.0.0[2], &mut carry);
+                    let t3 = fa::mac_with_carry(t3, a.0.0[j], b.0.0[3], &mut carry);
+                    let _ = fa::adc(&mut t4, 0, carry);
+
+                    (t0, t1, t2, t3, t4)
+                });
+
+            // Algorithm 2, lines 4-5
+            // This is a single step of the usual Montgomery reduction process.
+            let k = t0.wrapping_mul(P::INV);
+            let mut carry = 0;
+            let _ = fa::mac_with_carry(t0, k, P::MODULUS.0[0], &mut carry);
+            let r1 = fa::mac_with_carry(t1, k, P::MODULUS.0[1], &mut carry);
+            let r2 = fa::mac_with_carry(t2, k, P::MODULUS.0[2], &mut carry);
+            let r3 = fa::mac_with_carry(t3, k, P::MODULUS.0[3], &mut carry);
+            let _ = fa::adc(&mut t4, 0, carry);
+            let r4 = t4;
+
+            (r1, r2, r3, r4)
+        });
+
+        // Because we represent F_p elements in non-redundant form, we need a final
+        // conditional subtraction to ensure the output is in range.
+        let mut result = Self(BigInteger([u0, u1, u2, u3]), PhantomData);
+        result.reduce();
+        result
     }
 
     #[inline]
@@ -320,7 +372,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     type Parameters = P;
 
     #[inline]
-    fn from_repr(r: BigInteger) -> Option<Self> {
+    fn from_bigint(r: BigInteger) -> Option<Self> {
         let mut r = Fp256(r, PhantomData);
         if r.is_zero() {
             Some(r)
@@ -333,7 +385,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn to_repr(&self) -> BigInteger {
+    fn to_bigint(&self) -> BigInteger {
         let mut tmp = self.0;
         let mut r = tmp.0;
         // Montgomery Reduction
@@ -374,9 +426,84 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn to_repr_unchecked(&self) -> BigInteger {
-        let r = *self;
-        r.0
+    fn decompose(
+        &self,
+        q1: &[u64; 4],
+        q2: &[u64; 4],
+        b1: Self,
+        b2: Self,
+        r128: Self,
+        half_r: &[u64; 8],
+    ) -> (Self, Self, bool, bool) {
+        let mul_short = |a: &[u64; 4], b: &[u64; 4]| -> [u64; 8] {
+            // Schoolbook multiplication
+            let mut carry = 0;
+            let r0 = fa::mac_with_carry(0, a[0], b[0], &mut carry);
+            let r1 = fa::mac_with_carry(0, a[0], b[1], &mut carry);
+            let r2 = fa::mac_with_carry(0, a[0], b[2], &mut carry);
+            let r3 = carry;
+
+            let mut carry = 0;
+            let r1 = fa::mac_with_carry(r1, a[1], b[0], &mut carry);
+            let r2 = fa::mac_with_carry(r2, a[1], b[1], &mut carry);
+            let r3 = fa::mac_with_carry(r3, a[1], b[2], &mut carry);
+            let r4 = carry;
+
+            let mut carry = 0;
+            let r2 = fa::mac_with_carry(r2, a[2], b[0], &mut carry);
+            let r3 = fa::mac_with_carry(r3, a[2], b[1], &mut carry);
+            let r4 = fa::mac_with_carry(r4, a[2], b[2], &mut carry);
+            let r5 = carry;
+
+            let mut carry = 0;
+            let r3 = fa::mac_with_carry(r3, a[3], b[0], &mut carry);
+            let r4 = fa::mac_with_carry(r4, a[3], b[1], &mut carry);
+            let r5 = fa::mac_with_carry(r5, a[3], b[2], &mut carry);
+            let r6 = carry;
+
+            [r0, r1, r2, r3, r4, r5, r6, 0]
+        };
+
+        let round = |a: &mut [u64; 8]| -> Self {
+            let mut carry = 0;
+            // NOTE: can the first 4 be omitted?
+            carry = fa::adc(&mut a[0], half_r[0], carry);
+            carry = fa::adc(&mut a[1], half_r[1], carry);
+            carry = fa::adc(&mut a[2], half_r[2], carry);
+            carry = fa::adc(&mut a[3], half_r[3], carry);
+            carry = fa::adc(&mut a[4], half_r[4], carry);
+            carry = fa::adc(&mut a[5], half_r[5], carry);
+            carry = fa::adc(&mut a[6], half_r[6], carry);
+            _ = fa::adc(&mut a[7], half_r[7], carry);
+            Self::from_bigint(BigInteger([a[4], a[5], a[6], a[7]])).unwrap()
+        };
+
+        let alpha = |x: &Self, q: &[u64; 4]| -> Self {
+            let mut a = mul_short(&x.to_bigint().0, q);
+            round(&mut a)
+        };
+
+        let alpha1 = alpha(self, q1);
+        let alpha2 = alpha(self, q2);
+        let z1 = alpha1 * b1;
+        let z2 = alpha2 * b2;
+
+        let mut k1 = *self - z1 - alpha2;
+        let mut k2 = z2 - alpha1;
+        let mut k1_neg = false;
+        let mut k2_neg = false;
+
+        if k1 > r128 {
+            k1 = -k1;
+            k1_neg = true;
+        }
+
+        if k2 > r128 {
+            k2 = -k2;
+            k2_neg = true;
+        }
+
+        (k1, k2, k1_neg, k2_neg)
     }
 }
 
@@ -417,7 +544,6 @@ impl<P: Fp256Parameters> SquareRootField for Fp256<P> {
         }
     }
 
-    // Only works for p = 1 (mod 16).
     #[inline]
     fn sqrt(&self) -> Option<Self> {
         sqrt_impl!(Self, P, self)
@@ -448,7 +574,7 @@ impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBits for Fp256<P> {
     fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_repr().to_bits_le();
+        let mut bits_vec = self.to_bigint().to_bits_le();
         bits_vec.truncate(P::MODULUS_BITS as usize);
         bits_vec
     }
@@ -463,14 +589,14 @@ impl<P: Fp256Parameters> ToBits for Fp256<P> {
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.to_repr().write_le(writer)
+        self.to_bigint().write_le(writer)
     }
 }
 
 impl<P: Fp256Parameters> FromBytes for Fp256<P> {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_bigint(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -481,7 +607,7 @@ impl<P: Fp256Parameters> FromBytes for Fp256<P> {
 impl<P: Fp256Parameters> Ord for Fp256<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_repr().cmp(&other.to_repr())
+        self.to_bigint().cmp(&other.to_bigint())
     }
 }
 
@@ -508,7 +634,8 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten =
+            Self::from_bigint(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -525,13 +652,11 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_bigint(<Self as PrimeField>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }
-                None => {
-                    return Err(FieldError::ParsingNonDigitCharacter);
-                }
+                None => return Err(FieldError::ParsingNonDigitCharacter),
             }
         }
 
@@ -542,14 +667,14 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 impl<P: Fp256Parameters> Debug for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 
 impl<P: Fp256Parameters> Display for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.to_repr())
+        write!(f, "{}", self.to_bigint())
     }
 }
 

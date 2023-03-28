@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -45,18 +45,20 @@ mod tests {
     use super::*;
     use crate::{Circuit, Literal};
     use snarkvm_circuit_types::Field;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
     const ITERATIONS: u64 = 100;
 
     fn check_encrypt_and_decrypt<A: Aleo>() -> Result<()> {
+        let mut rng = TestRng::default();
+
         // Prepare the plaintext.
-        let plaintext = Plaintext::<A>::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))));
+        let plaintext = Plaintext::<A>::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))));
 
         // Encrypt the plaintext.
-        let plaintext_view_key = Field::new(Mode::Private, Uniform::rand(&mut test_rng()));
+        let plaintext_view_key = Field::new(Mode::Private, Uniform::rand(&mut rng));
         let ciphertext = plaintext.encrypt_symmetric(plaintext_view_key.clone());
         // Decrypt the plaintext.
         assert_eq!(plaintext.eject(), ciphertext.decrypt_symmetric(plaintext_view_key).eject());

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,9 +19,9 @@ extern crate criterion;
 use snarkvm_algorithms::fft::{DensePolynomial, EvaluationDomain};
 use snarkvm_curves::bls12_377::Fr as Bls12_377_Fr;
 use snarkvm_fields::PrimeField;
+use snarkvm_utilities::TestRng;
 
 use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion};
-use rand::{self, thread_rng};
 use std::cmp::min;
 
 /// Degree bounds to benchmark on
@@ -65,7 +65,7 @@ fn setup_bench(c: &mut Criterion, name: &str, bench_fn: fn(&mut Bencher, &usize)
 
 fn create_evaluation_domain<F: PrimeField>(degree: usize) -> (EvaluationDomain<F>, Vec<F>) {
     let domain = EvaluationDomain::new(degree).unwrap();
-    let a = DensePolynomial::<F>::rand(degree - 1, &mut thread_rng()).coeffs().to_vec();
+    let a = DensePolynomial::<F>::rand(degree - 1, &mut TestRng::default()).coeffs().to_vec();
     (domain, a)
 }
 
@@ -102,13 +102,13 @@ fn bench_coset_ifft_in_place<F: PrimeField>(b: &mut Bencher, degree: &usize) {
 }
 
 fn fft_benches<F: PrimeField>(c: &mut Criterion, name: &str) {
-    let description = format!("{:?} - subgroup_fft_in_place", name);
+    let description = format!("{name:?} - subgroup_fft_in_place");
     setup_bench(c, &description, bench_fft_in_place::<F>);
-    let description = format!("{:?} - subgroup_ifft_in_place", name);
+    let description = format!("{name:?} - subgroup_ifft_in_place");
     setup_bench(c, &description, bench_ifft_in_place::<F>);
-    let description = format!("{:?} - coset_fft_in_place", name);
+    let description = format!("{name:?} - coset_fft_in_place");
     setup_bench(c, &description, bench_coset_fft_in_place::<F>);
-    let description = format!("{:?} - coset_ifft_in_place", name);
+    let description = format!("{name:?} - coset_ifft_in_place");
     setup_bench(c, &description, bench_coset_ifft_in_place::<F>);
 }
 

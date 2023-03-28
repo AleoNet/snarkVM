@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,11 +17,9 @@
 use super::*;
 
 impl<N: Network> Parser for ValueType<N> {
-    /// Parses a string into a value type.
+    /// Parses the string into a value type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the mode from the string.
         alt((
             map(pair(PlaintextType::parse, tag(".constant")), |(plaintext_type, _)| Self::Constant(plaintext_type)),
@@ -36,7 +34,7 @@ impl<N: Network> Parser for ValueType<N> {
 impl<N: Network> FromStr for ValueType<N> {
     type Err = Error;
 
-    /// Returns a value type from a string literal.
+    /// Returns the value type from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -93,7 +91,7 @@ mod tests {
             ValueType::<CurrentNetwork>::parse("field.private")
         );
 
-        // Interface type.
+        // Struct type.
         assert_eq!(
             Ok(("", ValueType::<CurrentNetwork>::from_str("signature.constant")?)),
             ValueType::<CurrentNetwork>::parse("signature.constant")
@@ -112,11 +110,19 @@ mod tests {
             Ok(("", ValueType::<CurrentNetwork>::from_str("token.record")?)),
             ValueType::<CurrentNetwork>::parse("token.record")
         );
+        assert_eq!(
+            ValueType::<CurrentNetwork>::Record(Identifier::from_str("message")?),
+            ValueType::<CurrentNetwork>::parse("message.record")?.1
+        );
 
         // ExternalRecord type.
         assert_eq!(
             Ok(("", ValueType::<CurrentNetwork>::from_str("howard.aleo/message.record")?)),
             ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")
+        );
+        assert_eq!(
+            ValueType::<CurrentNetwork>::ExternalRecord(Locator::from_str("howard.aleo/message")?),
+            ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")?.1
         );
 
         Ok(())
@@ -126,7 +132,7 @@ mod tests {
     fn test_parse_fails() -> Result<()> {
         // Literal type must contain visibility.
         assert!(ValueType::<CurrentNetwork>::parse("field").is_err());
-        // Interface type must contain visibility.
+        // Struct type must contain visibility.
         assert!(ValueType::<CurrentNetwork>::parse("signature").is_err());
         // Record type must contain record keyword.
         assert!(ValueType::<CurrentNetwork>::parse("token").is_err());
@@ -155,10 +161,10 @@ mod tests {
         assert!(ValueType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface = ValueType::<CurrentNetwork>::parse(
+        let struct_ = ValueType::<CurrentNetwork>::parse(
             "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy.private",
         );
-        assert!(interface.is_err());
+        assert!(struct_.is_err());
 
         Ok(())
     }

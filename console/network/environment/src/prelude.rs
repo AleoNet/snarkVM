@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -25,11 +25,10 @@ pub use snarkvm_utilities::{
     error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},
-    test_crypto_rng,
-    test_rng,
     FromBits as _,
     FromBytes,
     FromBytesDeserializer,
+    TestRng,
     ToBits as _,
     ToBytes,
     ToBytesSerializer,
@@ -51,12 +50,15 @@ pub use core::{
         BitXor,
         BitXorAssign,
         Deref,
+        DerefMut,
         Div,
         DivAssign,
         Mul,
         MulAssign,
         Neg,
         Not,
+        Rem,
+        RemAssign,
         Shl,
         ShlAssign,
         Shr,
@@ -74,7 +76,7 @@ pub use nom::{
     branch::alt,
     bytes::{complete::tag, streaming::take},
     character::complete::{alpha1, alphanumeric1, char, one_of},
-    combinator::{map, map_res, opt, recognize},
+    combinator::{complete, fail, map, map_res, opt, recognize},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::{pair, terminated},
 };
@@ -87,7 +89,7 @@ pub use rand::{
 pub use serde::{
     de,
     de::DeserializeOwned,
-    ser::{self, SerializeStruct},
+    ser::{self, SerializeSeq, SerializeStruct},
     Deserialize,
     Deserializer,
     Serialize,

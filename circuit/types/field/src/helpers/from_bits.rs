@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,9 +31,9 @@ impl<E: Environment> FromBits for Field<E> {
         let num_bits = bits_le.len();
         if num_bits > size_in_bits {
             // Check if all excess bits are zero.
-            let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
-            // Ensure `should_be_zero` is zero.
-            E::assert_eq(E::zero(), should_be_zero);
+            for bit in bits_le[size_in_bits..].iter() {
+                E::assert_eq(E::zero(), bit);
+            }
         }
 
         // If `num_bits` is greater than `size_in_data_bits`, check it is less than `BaseField::MODULUS`.
@@ -117,9 +117,11 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
@@ -138,7 +140,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+            Circuit::scope(&format!("Excess {mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
@@ -147,7 +149,7 @@ mod tests {
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
                     }
                 };
             });
@@ -155,9 +157,11 @@ mod tests {
     }
 
     fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut rng);
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 
@@ -176,7 +180,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = vec![vec![Boolean::new(mode, false); i as usize], given_bits].concat();
 
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+            Circuit::scope(&format!("Excess {mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
@@ -185,7 +189,7 @@ mod tests {
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
                     }
                 };
             });

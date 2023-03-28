@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,9 +35,11 @@ mod tests {
     const ITERATIONS: u64 = 250;
 
     fn check_mul_by_cofactor(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.div_by_cofactor();
@@ -46,7 +48,7 @@ mod tests {
             // Initialize the input.
             let affine = Group::<Circuit>::new(mode, input);
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
+            Circuit::scope(&format!("{mode} {i}"), || {
                 let candidate = affine.mul_by_cofactor();
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -73,9 +75,11 @@ mod tests {
     /// This test shows that computing `mul_by_cofactor` using doubling is more cost-effective for our specific cofactor.
     #[test]
     fn test_mul_by_cofactor_matches() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut rng);
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.div_by_cofactor();
@@ -84,7 +88,7 @@ mod tests {
             // Initialize the input.
             let affine = Group::<Circuit>::new(Mode::Private, input);
 
-            Circuit::scope(&format!("Constant {}", i), || {
+            Circuit::scope(&format!("Constant {i}"), || {
                 let candidate =
                     affine * Scalar::constant(console::Scalar::new(<Circuit as Environment>::ScalarField::from(4u128)));
                 assert_eq!(expected, candidate.eject_value());

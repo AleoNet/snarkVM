@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,11 +18,11 @@
 use snarkvm_circuit_types::environment::assert_scope;
 
 mod from_outputs;
-mod verify;
+mod process_outputs_from_callback;
 
-use crate::{ProgramID, Value};
+use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field};
+use snarkvm_circuit_types::{environment::prelude::*, Field, U16};
 
 pub enum OutputID<A: Aleo> {
     /// The hash of the constant output.
@@ -31,9 +31,9 @@ pub enum OutputID<A: Aleo> {
     Public(Field<A>),
     /// The ciphertext hash of the private output.
     Private(Field<A>),
-    /// The `(commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<A>, Field<A>, Field<A>),
-    /// The commitment of the external record output.
+    /// The `(commitment, checksum)` tuple of the record output.
+    Record(Field<A>, Field<A>),
+    /// The hash of the external record output.
     ExternalRecord(Field<A>),
 }
 
@@ -44,20 +44,18 @@ impl<A: Aleo> Inject for OutputID<A> {
     /// Initializes the output ID from the given mode and console output ID.
     fn new(_: Mode, output: Self::Primitive) -> Self {
         match output {
-            // Inject the expected hash as `Mode::Constant`.
-            console::OutputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
+            // Inject the expected hash as `Mode::Public`.
+            console::OutputID::Constant(field) => Self::Constant(Field::new(Mode::Public, field)),
             // Inject the expected hash as `Mode::Public`.
             console::OutputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the ciphertext hash as `Mode::Public`.
             console::OutputID::Private(field) => Self::Private(Field::new(Mode::Public, field)),
-            // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
-            console::OutputID::Record(commitment, nonce, checksum) => Self::Record(
-                Field::new(Mode::Public, commitment),
-                Field::new(Mode::Public, nonce),
-                Field::new(Mode::Public, checksum),
-            ),
-            // Inject the expected commitment as `Mode::Public`.
-            console::OutputID::ExternalRecord(commitment) => Self::ExternalRecord(Field::new(Mode::Public, commitment)),
+            // Inject the expected commitment and checksum as `Mode::Public`.
+            console::OutputID::Record(commitment, checksum) => {
+                Self::Record(Field::new(Mode::Public, commitment), Field::new(Mode::Public, checksum))
+            }
+            // Inject the expected hash as `Mode::Public`.
+            console::OutputID::ExternalRecord(hash) => Self::ExternalRecord(Field::new(Mode::Public, hash)),
         }
     }
 }
@@ -65,8 +63,8 @@ impl<A: Aleo> Inject for OutputID<A> {
 impl<A: Aleo> OutputID<A> {
     /// Initializes a constant output ID.
     fn constant(expected_hash: Field<A>) -> Self {
-        // Inject the expected hash as `Mode::Constant`.
-        let output_hash = Field::new(Mode::Constant, expected_hash.eject_value());
+        // Inject the expected hash as `Mode::Public`.
+        let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
         // Ensure the injected hash matches the given hash.
         A::assert_eq(&output_hash, expected_hash);
         // Return the output ID.
@@ -94,27 +92,25 @@ impl<A: Aleo> OutputID<A> {
     }
 
     /// Initializes a record output ID.
-    fn record(expected_commitment: Field<A>, expected_nonce: Field<A>, expected_checksum: Field<A>) -> Self {
-        // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
+    fn record(expected_commitment: Field<A>, expected_checksum: Field<A>) -> Self {
+        // Inject the expected commitment and checksum as `Mode::Public`.
         let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
-        let output_nonce = Field::new(Mode::Public, expected_nonce.eject_value());
         let output_checksum = Field::new(Mode::Public, expected_checksum.eject_value());
-        // Ensure the injected commitment, nonce, and checksum match the given commitment, nonce, and checksum.
+        // Ensure the injected commitment and checksum match the given commitment and checksum.
         A::assert_eq(&output_commitment, expected_commitment);
-        A::assert_eq(&output_nonce, expected_nonce);
         A::assert_eq(&output_checksum, expected_checksum);
         // Return the output ID.
-        Self::Record(output_commitment, output_nonce, output_checksum)
+        Self::Record(output_commitment, output_checksum)
     }
 
     /// Initializes an external record output ID.
-    fn external_record(expected_commitment: Field<A>) -> Self {
-        // Inject the expected commitment as `Mode::Public`.
-        let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
-        // Ensure the injected commitment matches the given commitment.
-        A::assert_eq(&output_commitment, expected_commitment);
+    fn external_record(expected_hash: Field<A>) -> Self {
+        // Inject the expected hash as `Mode::Public`.
+        let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
+        // Ensure the injected hash matches the given commitment.
+        A::assert_eq(&output_hash, expected_hash);
         // Return the output ID.
-        Self::ExternalRecord(output_commitment)
+        Self::ExternalRecord(output_hash)
     }
 }
 
@@ -128,10 +124,8 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
             Self::Private(field) => field.eject_mode(),
-            Self::Record(commitment, nonce, checksum) => {
-                Mode::combine(commitment.eject_mode(), [nonce.eject_mode(), checksum.eject_mode()])
-            }
-            Self::ExternalRecord(commitment) => commitment.eject_mode(),
+            Self::Record(commitment, checksum) => Mode::combine(commitment.eject_mode(), [checksum.eject_mode()]),
+            Self::ExternalRecord(hash) => hash.eject_mode(),
         }
     }
 
@@ -141,10 +135,10 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Constant(field) => console::OutputID::Constant(field.eject_value()),
             Self::Public(field) => console::OutputID::Public(field.eject_value()),
             Self::Private(field) => console::OutputID::Private(field.eject_value()),
-            Self::Record(commitment, nonce, checksum) => {
-                console::OutputID::Record(commitment.eject_value(), nonce.eject_value(), checksum.eject_value())
+            Self::Record(commitment, checksum) => {
+                console::OutputID::Record(commitment.eject_value(), checksum.eject_value())
             }
-            Self::ExternalRecord(commitment) => console::OutputID::ExternalRecord(commitment.eject_value()),
+            Self::ExternalRecord(hash) => console::OutputID::ExternalRecord(hash.eject_value()),
         }
     }
 }
@@ -154,83 +148,6 @@ pub struct Response<A: Aleo> {
     output_ids: Vec<OutputID<A>>,
     /// The function outputs.
     outputs: Vec<Value<A>>,
-}
-
-#[cfg(console)]
-impl<A: Aleo> Inject for Response<A> {
-    type Primitive = console::Response<A::Network>;
-
-    /// Initializes the response from the given mode and console response.
-    fn new(_: Mode, response: Self::Primitive) -> Self {
-        // Inject the outputs.
-        let outputs = match response
-            .output_ids()
-            .iter()
-            .zip_eq(response.outputs())
-            .map(|(output_id, output)| {
-                match output_id {
-                    // A constant output is injected as `Mode::Constant`.
-                    console::OutputID::Constant(..) => {
-                        // Inject the output as `Mode::Constant`.
-                        let output = Value::new(Mode::Constant, output.clone());
-                        // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // A public output is injected as `Mode::Private`.
-                    console::OutputID::Public(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // A private output is injected as `Mode::Private`.
-                    console::OutputID::Private(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // A record output is injected as `Mode::Private`.
-                    console::OutputID::Record(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a record.
-                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // An external record output is injected as `Mode::Private`.
-                    console::OutputID::ExternalRecord(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a record.
-                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()
-        {
-            Ok(outputs) => outputs,
-            Err(error) => A::halt(format!("{error}")),
-        };
-
-        Self {
-            output_ids: response
-                .output_ids()
-                .iter()
-                .map(|output_id| OutputID::new(Mode::Public, output_id.clone()))
-                .collect(),
-            outputs,
-        }
-    }
 }
 
 impl<A: Aleo> Response<A> {

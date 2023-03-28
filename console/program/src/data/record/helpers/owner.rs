@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,15 +16,28 @@
 
 use crate::{Ciphertext, Entry, Literal, Plaintext};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Address, Field};
+use snarkvm_console_types::{Address, Boolean, Field};
 
 /// A value stored in program data.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum Owner<N: Network, Private: Visibility> {
     /// A publicly-visible value.
     Public(Address<N>),
     /// A private value is encrypted under the account owner's address.
     Private(Private),
+}
+
+impl<N: Network> Deref for Owner<N, Plaintext<N>> {
+    type Target = Address<N>;
+
+    /// Returns the address of the owner.
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Public(public) => public,
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address,
+            _ => N::halt("Internal error: plaintext deref corrupted in record owner"),
+        }
+    }
 }
 
 impl<N: Network, Private: Visibility> Owner<N, Private> {
@@ -49,22 +62,40 @@ impl<N: Network> Owner<N, Plaintext<N>> {
     }
 }
 
-impl<N: Network> Deref for Owner<N, Plaintext<N>> {
-    type Target = Address<N>;
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Eq for Owner<N, Private> {}
 
-    /// Returns the address of the owner.
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Public(public) => public,
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address,
-            _ => N::halt("Internal error: plaintext deref corrupted in record owner"),
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> PartialEq for Owner<N, Private> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        *self.is_equal(other)
+    }
+}
+
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Owner<N, Private> {
+    type Output = Boolean<N>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::new(false),
+        }
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::new(true),
         }
     }
 }
 
 impl<N: Network> Owner<N, Plaintext<N>> {
     /// Encrypts `self` under the given randomizer.
-    pub fn encrypt(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Ciphertext<N>>> {
+    pub fn encrypt_with_randomizer(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Ciphertext<N>>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.
@@ -87,7 +118,7 @@ impl<N: Network> Owner<N, Plaintext<N>> {
 
 impl<N: Network> Owner<N, Ciphertext<N>> {
     /// Decrypts the owner under the given randomizer.
-    pub fn decrypt(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Plaintext<N>>> {
+    pub fn decrypt_with_randomizer(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Plaintext<N>>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.

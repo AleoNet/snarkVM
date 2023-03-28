@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,9 +35,11 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     fn check_from_field() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
             let candidate = Address::<CurrentEnvironment>::from_field(&expected.to_field()?)?;
             assert_eq!(expected, candidate);
         }

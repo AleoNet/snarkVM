@@ -20,7 +20,7 @@ use snarkvm_utilities::serialize::*;
 
 const DEFAULT_KEY_SIZE: usize = 2;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LookupTable<F: Field> {
     pub table: IndexMap<[F; DEFAULT_KEY_SIZE], F>,
 }

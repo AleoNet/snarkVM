@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -29,13 +29,7 @@ use std::io::{Read, Result as IoResult, Write};
 pub type G1Affine<P> = Affine<<P as Bls12Parameters>::G1Parameters>;
 pub type G1Projective<P> = Projective<<P as Bls12Parameters>::G1Parameters>;
 
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Clone(bound = "P: Bls12Parameters"),
-    Debug(bound = "P: Bls12Parameters"),
-    PartialEq(bound = "P: Bls12Parameters"),
-    Eq(bound = "P: Bls12Parameters")
-)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct G1Prepared<P: Bls12Parameters>(pub G1Affine<P>);
 
 impl<P: Bls12Parameters> G1Prepared<P> {

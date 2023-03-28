@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,10 +17,8 @@
 #![allow(clippy::module_inception)]
 // #![cfg_attr(nightly, feature(doc_cfg, external_doc))]
 // #![cfg_attr(nightly, warn(missing_docs))]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 #![doc = include_str!("../documentation/the_aleo_curves/00_overview.md")]
-
-#[macro_use]
-extern crate derivative;
 
 #[macro_use]
 extern crate thiserror;
@@ -28,8 +26,6 @@ extern crate thiserror;
 pub mod bls12_377;
 
 pub mod edwards_bls12;
-
-pub mod edwards_bw6;
 
 pub mod errors;
 pub use errors::*;

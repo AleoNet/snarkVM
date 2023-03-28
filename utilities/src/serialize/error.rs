@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -16,6 +16,8 @@
 
 #[derive(Error, Debug)]
 pub enum SerializationError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
     /// During serialization with bincode, we encountered a serialization issue
     #[error(transparent)]
     BincodeError(#[from] bincode::Error),
@@ -36,6 +38,6 @@ pub enum SerializationError {
 
 impl From<SerializationError> for crate::io::Error {
     fn from(error: SerializationError) -> Self {
-        crate::io::Error::new(crate::io::ErrorKind::Other, format!("{}", error))
+        crate::io::Error::new(crate::io::ErrorKind::Other, format!("{error}"))
     }
 }

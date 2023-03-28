@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon2, BHP512};
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -76,10 +76,12 @@ mod tests {
             let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $hash::<Circuit>::constant(native.clone());
 
+            let mut rng = TestRng::default();
+
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let left = Uniform::rand(&mut test_rng());
-                let right = Uniform::rand(&mut test_rng());
+                let left = Uniform::rand(&mut rng);
+                let right = Uniform::rand(&mut rng);
 
                 // Compute the expected hash.
                 let expected = console::merkle_tree::PathHash::hash_children(&native, &left, &right)?;
@@ -102,17 +104,17 @@ mod tests {
 
     #[test]
     fn test_hash_children_bhp512_constant() -> Result<()> {
-        check_hash_children!(BHP512, Constant, (1611, 0, 0, 0))
+        check_hash_children!(BHP512, Constant, (1599, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_children_bhp512_public() -> Result<()> {
-        check_hash_children!(BHP512, Public, (421, 0, 1385, 1387))
+        check_hash_children!(BHP512, Public, (409, 0, 1375, 1377))
     }
 
     #[test]
     fn test_hash_children_bhp512_private() -> Result<()> {
-        check_hash_children!(BHP512, Private, (421, 0, 1385, 1387))
+        check_hash_children!(BHP512, Private, (409, 0, 1375, 1377))
     }
 
     #[test]

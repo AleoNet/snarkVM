@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -113,162 +113,182 @@ mod tests {
 
     #[test]
     fn test_constant_minus_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_constant_minus_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_public_minus_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_constant_minus_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_private_minus_constant() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_public_minus_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_public_minus_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_private_minus_public() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_private_minus_private() {
+        let mut rng = TestRng::default();
+
         for i in 0..ITERATIONS {
-            let first = Uniform::rand(&mut test_rng());
-            let second = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut rng);
+            let second = Uniform::rand(&mut rng);
 
             let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
-            let name = format!("Sub: a - b {}", i);
+            let name = format!("Sub: a - b {i}");
             check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
+            let name = format!("SubAssign: a - b {i}");
             check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
     #[test]
     fn test_sub_matches() {
+        let mut rng = TestRng::default();
+
         // Sample two random elements.
-        let a = Uniform::rand(&mut test_rng());
-        let b = Uniform::rand(&mut test_rng());
+        let a = Uniform::rand(&mut rng);
+        let b = Uniform::rand(&mut rng);
         let expected = a - b;
 
         // Constant

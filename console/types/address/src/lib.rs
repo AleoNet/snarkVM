@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -13,6 +13,9 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
+#![warn(clippy::cast_possible_truncation)]
 
 mod bitwise;
 mod bytes;
@@ -41,6 +44,8 @@ pub struct Address<E: Environment> {
 impl<E: Environment> AddressTrait for Address<E> {}
 
 impl<E: Environment> Visibility for Address<E> {
+    type Boolean = Boolean<E>;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         Ok(1)
@@ -95,9 +100,11 @@ mod tests {
 
     #[test]
     fn test_deref() -> Result<()> {
+        let mut rng = TestRng::default();
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
 
             // Check the group representation.
             let candidate = *expected;

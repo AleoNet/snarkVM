@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -27,8 +27,8 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
             num_randomizers += 1;
         }
 
-        // If the balance is private, increment the number of randomizers by 1.
-        if self.balance.is_private() {
+        // If the gates is private, increment the number of randomizers by 1.
+        if self.gates.is_private() {
             num_randomizers += 1;
         }
 

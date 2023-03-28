@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -28,47 +28,61 @@ use crate::{
     },
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
-use snarkvm_utilities::{rand::Uniform, to_bytes_le, ToBytes};
+use snarkvm_utilities::{
+    rand::{TestRng, Uniform},
+    to_bytes_le,
+    ToBytes,
+};
 
-use rand::thread_rng;
+use rand::Rng;
 
 #[test]
 fn test_edwards_bls12_fr() {
-    let a: Fr = rand::random();
-    let b: Fr = rand::random();
-    field_test(a, b);
-    primefield_test::<Fr>();
-    field_serialization_test::<Fr>();
+    let mut rng = TestRng::default();
+
+    let a: Fr = rng.gen();
+    let b: Fr = rng.gen();
+    field_test(a, b, &mut rng);
+    primefield_test::<Fr>(&mut rng);
+    field_serialization_test::<Fr>(&mut rng);
 }
 
 #[test]
 fn test_edwards_bls12_fq() {
-    let a: Fq = rand::random();
-    let b: Fq = rand::random();
-    field_test(a, b);
-    primefield_test::<Fq>();
-    field_serialization_test::<Fq>();
+    let mut rng = TestRng::default();
+
+    let a: Fq = rng.gen();
+    let b: Fq = rng.gen();
+    field_test(a, b, &mut rng);
+    primefield_test::<Fq>(&mut rng);
+    field_serialization_test::<Fq>(&mut rng);
 }
 
 #[test]
 fn test_projective_curve() {
-    curve_tests::<EdwardsProjective>();
-    edwards_test::<EdwardsParameters>();
+    let mut rng = TestRng::default();
+
+    curve_tests::<EdwardsProjective>(&mut rng);
+    edwards_test::<EdwardsParameters>(&mut rng);
 }
 
 #[test]
 fn test_projective_group() {
+    let mut rng = TestRng::default();
+
     for _i in 0..10 {
-        let a = rand::random();
-        let b = rand::random();
-        projective_test::<EdwardsProjective>(a, b);
+        let a = rng.gen();
+        let b = rng.gen();
+        projective_test::<EdwardsProjective>(a, b, &mut rng);
     }
 }
 
 #[test]
 fn test_affine_group() {
+    let mut rng = TestRng::default();
+
     for _i in 0..10 {
-        let a: EdwardsAffine = rand::random();
+        let a: EdwardsAffine = rng.gen();
         affine_test::<EdwardsAffine>(a);
     }
 }
@@ -82,8 +96,10 @@ fn test_generator() {
 
 #[test]
 fn test_conversion() {
-    let a: EdwardsAffine = rand::random();
-    let b: EdwardsAffine = rand::random();
+    let mut rng = TestRng::default();
+
+    let a: EdwardsAffine = rng.gen();
+    let b: EdwardsAffine = rng.gen();
     assert_eq!(a.to_projective().to_affine(), a);
     assert_eq!(b.to_projective().to_affine(), b);
 }
@@ -96,7 +112,9 @@ fn test_montgomery_conversion() {
 #[test]
 #[allow(clippy::many_single_char_names)]
 fn test_edwards_to_montgomery_point() {
-    let a: EdwardsAffine = rand::random();
+    let mut rng = TestRng::default();
+
+    let a: EdwardsAffine = rng.gen();
     let (x, y) = (a.x, a.y);
 
     // Montgomery element (u, v)
@@ -111,8 +129,8 @@ fn test_edwards_to_montgomery_point() {
 
     // Ensure (u, v) is a valid Montgomery element
     {
-        const A: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_A;
-        const B: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_B;
+        const A: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_A;
+        const B: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_B;
 
         // Enforce B * v^2 == u^3 + A * u^2 + u
         let v2 = v.square();
@@ -139,8 +157,8 @@ fn test_edwards_to_montgomery_point() {
 #[ignore]
 #[test]
 fn print_montgomery_to_weierstrass_parameters() {
-    const A: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_A;
-    const B: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_B;
+    const A: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_A;
+    const B: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_B;
 
     let two = Fq::one() + Fq::one();
     let three = Fq::one() + two;
@@ -162,18 +180,18 @@ fn print_montgomery_to_weierstrass_parameters() {
     let denominator = twenty_seven * b3;
     let b = numerator * denominator.inverse().unwrap();
 
-    println!("A - {}\nB - {}", a, b);
+    println!("A - {a}\nB - {b}");
 }
 
 #[test]
 #[allow(clippy::many_single_char_names)]
 fn test_isomorphism() {
-    let rng = &mut thread_rng();
+    let mut rng = TestRng::default();
 
     // Sample a random Fr element.
-    let fr_element: Fr = Fr::rand(rng);
+    let fr_element: Fr = Fr::rand(&mut rng);
 
-    println!("Starting Fr element is - {:?}", fr_element);
+    println!("Starting Fr element is - {fr_element:?}");
 
     // Map it to its corresponding Fq element.
     let fq_element = {
@@ -182,11 +200,11 @@ fn test_isomorphism() {
         output.unwrap()
     };
 
-    println!("Starting Fq element is {:?}", fq_element);
+    println!("Starting Fq element is {fq_element:?}");
 
     // Declare the parameters for the Montgomery equation: B * v^2 == u^3 + A * u^2 + u.
-    const A: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_A;
-    const B: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_B;
+    const A: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_A;
+    const B: Fq = <EdwardsParameters as MontgomeryParameters>::MONTGOMERY_B;
 
     // Compute the parameters for the alternate Montgomery form: v^2 == u^3 + A * u^2 + B * u.
     let (a, b) = {
@@ -202,7 +220,7 @@ fn test_isomorphism() {
 
         // Let u = D.
         // TODO (howardwu): change to 5.
-        let u = <EdwardsParameters as TwistedEdwardsParameters>::COEFF_D;
+        let u = <EdwardsParameters as TwistedEdwardsParameters>::EDWARDS_D;
 
         // Let ur2 = u * r^2;
         let ur2 = r.square() * u;
@@ -292,9 +310,9 @@ fn test_isomorphism() {
         (x, y)
     };
 
-    let group = EdwardsAffine::new(x, y);
+    let group = EdwardsAffine::new(x, y, x * y);
 
-    println!("{:?}", group);
+    println!("{group:?}");
 
     // Convert the twisted Edwards element (x, y) to the alternate Montgomery element (u, v)
     let (u_reconstructed, v_reconstructed) = {
@@ -336,7 +354,7 @@ fn test_isomorphism() {
 
         // TODO (howardwu): change to 5.
         // Let u = D.
-        let u = <EdwardsParameters as TwistedEdwardsParameters>::COEFF_D;
+        let u = <EdwardsParameters as TwistedEdwardsParameters>::EDWARDS_D;
 
         {
             // Verify u is a quadratic nonresidue.

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -59,8 +59,8 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-impl_field_into_biginteger!(Fp256, BigInteger256, Fp256Parameters);
-impl_field_into_biginteger!(Fp384, BigInteger384, Fp384Parameters);
+impl_field_to_biginteger!(Fp256, BigInteger256, Fp256Parameters);
+impl_field_to_biginteger!(Fp384, BigInteger384, Fp384Parameters);
 
 impl_primefield_serializer!(Fp256, Fp256Parameters, 32);
 impl_primefield_serializer!(Fp384, Fp384Parameters, 48);
