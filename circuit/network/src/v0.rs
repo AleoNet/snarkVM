@@ -284,6 +284,11 @@ impl Environment for AleoV0 {
         E::one()
     }
 
+    /// Adds a lookup table to the environment.
+    fn add_lookup_table(&mut self, table: LookupTable<F>) {
+        E::add_lookup_table(self, table);
+    }
+
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
         E::new_variable(mode, value)
@@ -311,6 +316,24 @@ impl Environment for AleoV0 {
         C: Into<LinearCombination<Self::BaseField>>,
     {
         E::enforce(constraint)
+    }
+
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        E::enforce_lookup(self, annotation, a, b, c, table_index)
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.

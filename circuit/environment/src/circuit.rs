@@ -16,6 +16,8 @@
 
 use crate::{helpers::Constraint, Mode, *};
 
+use snarkvm_r1cs::{LookupTable, SynthesisError};
+
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
 
@@ -45,6 +47,17 @@ impl Environment for Circuit {
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField> {
         ONE.with(|one| one.clone())
+    }
+
+    fn add_lookup_table(table: LookupTable<Self::BaseField>) {
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| {
+                    (**circuit).borrow_mut().add_lookup_table(table);
+                });
+            }
+        });
     }
 
     /// Returns a new variable of the given mode and value.
@@ -177,6 +190,31 @@ impl Environment for Circuit {
                 });
             }
         })
+    }
+
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+        LB: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+        LC: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+    {
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| {
+                    (**circuit).borrow_mut().enforce_lookup(annotation, a, b, c, table_index);
+                });
+            }
+        });
+        Ok(())
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.

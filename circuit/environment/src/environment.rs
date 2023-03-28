@@ -17,6 +17,7 @@
 use crate::{witness_mode, Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
+use snarkvm_r1cs::{LookupTable, SynthesisError};
 
 use core::{fmt, hash};
 
@@ -50,6 +51,10 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField>;
 
+    /// Add a lookup table to the constraint system. This allows for calls to `lookup`,
+    /// adding lookup constraints to the circuit.
+    fn add_lookup_table(table: LookupTable<Self::BaseField>);
+
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
@@ -68,6 +73,21 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
         A: Into<LinearCombination<Self::BaseField>>,
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>;
+
+    /// Lookup a value given an input.
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+        LB: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+        LC: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>;
 
     /// Adds one constraint enforcing that the given boolean is `true`.
     fn assert<Boolean: Into<LinearCombination<Self::BaseField>>>(boolean: Boolean) {

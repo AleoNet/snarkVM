@@ -67,7 +67,20 @@ impl<N: Network> Lookup<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        todo!()
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 3 {
+            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
+        }
+        // Load the operands.
+        let input1 = registers.load(stack, &self.operands[0])?;
+        let input2 = registers.load(stack, &self.operands[1])?;
+        let input3 = registers.load(stack, &self.operands[2])?;
+
+        // in order to evaluate, I guess besides `add_lookup_table` and `enforce_lookup` we should be adding a `get_lookup` function all the way through the stack. 
+        // Or do we have the table already accessible in the current environment?
+        // N::enforce_lookup(&input1, &input2, &input3);
+        todo!();
+        Ok(())
     }
 
     /// Executes the instruction.
@@ -77,7 +90,21 @@ impl<N: Network> Lookup<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        todo!()
+        use circuit::{ToBits, ToFields};
+
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 3 {
+            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
+        }
+
+        // Load the operand.
+        let input1 = registers.load_circuit(stack, &self.operands[0])?;
+        let input2 = registers.load_circuit(stack, &self.operands[1])?;
+        let input3 = registers.load_circuit(stack, &self.operands[2])?;
+        
+        A::enforce_lookup(&input1, &input2, &input3);
+
+        Ok(())
     }
 
     /// Returns the output type from the given program and input types.
