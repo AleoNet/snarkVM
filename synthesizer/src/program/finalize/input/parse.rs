@@ -85,7 +85,7 @@ impl<N: Network> Display for Input<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {register} as {plaintext_type};",
+            "{type_} {register} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             register = self.register,
             plaintext_type = self.plaintext_type
@@ -105,17 +105,17 @@ mod tests {
         // Literal
         let input = Input::<CurrentNetwork>::parse("input r0 as field.public;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(0));
-        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         // Struct
         let input = Input::<CurrentNetwork>::parse("input r1 as signature.public;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(1));
-        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("signature.public")?);
+        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("signature")?);
 
         // Record
-        let input = Input::<CurrentNetwork>::parse("input r2 as token.record;").unwrap().1;
+        let input = Input::<CurrentNetwork>::parse("input r2 as token.public;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(2));
-        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("token.record")?);
+        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("token")?);
 
         Ok(())
     }
@@ -131,8 +131,8 @@ mod tests {
         assert_eq!("input r1 as signature.public;", input.to_string());
 
         // Record
-        let input = Input::<CurrentNetwork>::parse("input r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{input}"), "input r2 as token.record;");
+        let input = Input::<CurrentNetwork>::parse("input r2 as token.public;").unwrap().1;
+        assert_eq!(format!("{input}"), "input r2 as token.public;");
 
         Ok(())
     }

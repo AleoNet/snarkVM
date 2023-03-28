@@ -30,7 +30,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
             // Check the input register type.
-            finalize_types.check_input(stack, input.register(), &RegisterType::Plaintext(*input.plaintext_type()))?;
+            finalize_types.check_input(stack, input.register(), input.plaintext_type())?;
         }
 
         println!("initialize_finalize_types: L36");
@@ -46,7 +46,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 3. Check the outputs are well-formed.
         for output in finalize.outputs() {
             // Check the output operand type.
-            finalize_types.check_output(stack, output.operand(), &RegisterType::Plaintext(*output.plaintext_type()))?;
+            finalize_types.check_output(stack, output.operand(), output.plaintext_type())?;
         }
 
         println!("initialize_finalize_types: L50");
@@ -58,7 +58,7 @@ impl<N: Network> FinalizeTypes<N> {
 impl<N: Network> FinalizeTypes<N> {
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
-    fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+    fn add_input(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
         // Ensure there are no destination registers set yet.
         ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
 
@@ -83,7 +83,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
-    fn add_destination(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+    fn add_destination(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
         println!("adding destination: {:?} and type: {:?}", register, register_type);
         // Check the destination register.
         match register {
@@ -109,26 +109,19 @@ impl<N: Network> FinalizeTypes<N> {
 impl<N: Network> FinalizeTypes<N> {
     /// Ensure the given input register is well-formed.
     #[inline]
-    fn check_input(&mut self, stack: &Stack<N>, register: &Register<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_input(
+        &mut self,
+        stack: &Stack<N>,
+        register: &Register<N>,
+        register_type: &PlaintextType<N>,
+    ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+            PlaintextType::Literal(..) => (),
+            PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::Record(identifier) => {
-                // Ensure the record type is defined in the program.
-                if !stack.program().contains_record(identifier) {
-                    bail!("Record '{identifier}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::ExternalRecord(locator) => {
-                // Ensure the external record type is defined in the program.
-                if !stack.contains_external_record(locator) {
-                    bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
         };
@@ -145,7 +138,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensure the given output operand is well-formed.
     #[inline]
-    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &PlaintextType<N>) -> Result<()> {
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
@@ -161,23 +154,11 @@ impl<N: Network> FinalizeTypes<N> {
 
         // Ensure the operand type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+            PlaintextType::Literal(..) => (),
+            PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::Record(identifier) => {
-                // Ensure the record type is defined in the program.
-                if !stack.program().contains_record(identifier) {
-                    bail!("Record '{identifier}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::ExternalRecord(locator) => {
-                // Ensure the external record type is defined in the program.
-                if !stack.contains_external_record(locator) {
-                    bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
         };
@@ -224,7 +205,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the key.
         let decrement_key_type = self.get_type_from_operand(stack, decrement.key())?;
         // Check that the key type in the mapping matches the key type in the decrement.
-        if RegisterType::Plaintext(*mapping_key_type) != decrement_key_type {
+        if *mapping_key_type != decrement_key_type {
             bail!(
                 "Key type in decrement '{decrement_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
@@ -233,7 +214,7 @@ impl<N: Network> FinalizeTypes<N> {
         let value_type = self.get_type_from_operand(stack, decrement.value())?;
         // Ensure the decrement value type is a literal that implements the `Add` operation.
         match value_type {
-            RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => {
+            PlaintextType::Literal(literal_type) => {
                 match literal_type {
                     LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
                         bail!("Decrement cannot decrement by a(n) '{literal_type}' (found at '{decrement}')")
@@ -262,12 +243,8 @@ impl<N: Network> FinalizeTypes<N> {
                     }
                 }
             }
-            RegisterType::Plaintext(PlaintextType::Struct(..)) => {
+            PlaintextType::Struct(..) => {
                 bail!("Decrement cannot decrement by an 'struct' (found at '{decrement}')")
-            }
-            RegisterType::Record(..) => bail!("Decrement cannot decrement by a 'record' (found at '{decrement}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Decrement cannot decrement by an 'external record' (found at '{decrement}')")
             }
         }
 
@@ -291,7 +268,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the key.
         let increment_key_type = self.get_type_from_operand(stack, increment.key())?;
         // Check that the key type in the mapping matches the key type in the increment.
-        if RegisterType::Plaintext(*mapping_key_type) != increment_key_type {
+        if *mapping_key_type != increment_key_type {
             bail!(
                 "Key type in increment '{increment_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
@@ -300,7 +277,7 @@ impl<N: Network> FinalizeTypes<N> {
         let value_type = self.get_type_from_operand(stack, increment.value())?;
         // Ensure the increment value type is a literal that implements the `Add` operation.
         match value_type {
-            RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => {
+            PlaintextType::Literal(literal_type) => {
                 match literal_type {
                     LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
                         bail!("Increment cannot increment by a(n) '{literal_type}' (found at '{increment}')")
@@ -329,12 +306,8 @@ impl<N: Network> FinalizeTypes<N> {
                     }
                 }
             }
-            RegisterType::Plaintext(PlaintextType::Struct(..)) => {
+            PlaintextType::Struct(..) => {
                 bail!("Increment cannot increment by an 'struct' (found at '{increment}')")
-            }
-            RegisterType::Record(..) => bail!("Increment cannot increment by a 'record' (found at '{increment}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Increment cannot increment by an 'external record' (found at '{increment}')")
             }
         }
         Ok(())
@@ -358,7 +331,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the key.
         let load_key_type = self.get_type_from_operand(stack, load.key())?;
         // Check that the key type in the mapping matches the key type in the load.
-        if RegisterType::Plaintext(*mapping_key_type) != load_key_type {
+        if *mapping_key_type != load_key_type {
             bail!("Key type in load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Get the destination register.
@@ -366,7 +339,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference a member).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, RegisterType::Plaintext(*mapping_value_type))?;
+        self.add_destination(destination, *mapping_value_type)?;
         Ok(())
     }
 
@@ -392,7 +365,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the key.
         let load_key_type = self.get_type_from_operand(stack, load.key())?;
         // Check that the key type in the mapping matches the key type in the load.
-        if RegisterType::Plaintext(*mapping_key_type) != load_key_type {
+        if *mapping_key_type != load_key_type {
             bail!(
                 "Key type in default load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
@@ -400,7 +373,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the default value.
         let default_value_type = self.get_type_from_operand(stack, load.default())?;
         // Check that the value type in the mapping matches the default value type in the load.
-        if RegisterType::Plaintext(*mapping_value_type) != default_value_type {
+        if *mapping_value_type != default_value_type {
             bail!(
                 "Default value type in default load '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
@@ -410,7 +383,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference a member).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, RegisterType::Plaintext(*mapping_value_type))?;
+        self.add_destination(destination, *mapping_value_type)?;
         Ok(())
     }
 
@@ -431,7 +404,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the key.
         let store_key_type = self.get_type_from_operand(stack, store.key())?;
         // Check that the key type in the mapping matches the key type in the store.
-        if RegisterType::Plaintext(*mapping_key_type) != store_key_type {
+        if *mapping_key_type != store_key_type {
             bail!(
                 "Key type in store '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
@@ -439,7 +412,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the type of the value.
         let store_value_type = self.get_type_from_operand(stack, store.value())?;
         // Check that the value type in the mapping matches the type of the value.
-        if RegisterType::Plaintext(*mapping_value_type) != store_value_type {
+        if *mapping_value_type != store_value_type {
             bail!(
                 "Value type in store '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
@@ -463,7 +436,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Iterate over the operands, and retrieve the register type of each operand.
         for operand in instruction.operands() {
             // Retrieve and append the register type.
-            operand_types.push(self.get_type_from_operand(stack, operand)?);
+            operand_types.push(RegisterType::Plaintext(self.get_type_from_operand(stack, operand)?));
         }
 
         // Compute the destination register types.
@@ -475,6 +448,11 @@ impl<N: Network> FinalizeTypes<N> {
         {
             // Ensure the destination register is a locator (and does not reference a member).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+            // Ensure that the destination type is a plaintext type.
+            let destination_type = match destination_type {
+                RegisterType::Plaintext(destination_type) => destination_type,
+                _ => bail!("Destination type '{destination_type}' must be a plaintext type."),
+            };
             // Insert the destination register.
             self.add_destination(destination, destination_type)?;
         }

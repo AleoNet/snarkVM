@@ -76,7 +76,7 @@ impl<N: Network> Display for Output<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {operand} as {plaintext_type};",
+            "{type_} {operand} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             operand = self.operand,
             plaintext_type = self.plaintext_type
@@ -99,22 +99,22 @@ mod tests {
         // Register
         let output = Output::<CurrentNetwork>::parse("output r0 as field.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(0)));
-        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         // Literal
         let output = Output::<CurrentNetwork>::parse("output 0u8 as u8.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Literal(Literal::<CurrentNetwork>::U8(U8::new(0))));
-        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("u8.public")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("u8")?);
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(1)));
-        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("signature.public")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("signature")?);
 
         // Record
-        let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
+        let output = Output::<CurrentNetwork>::parse("output r2 as token.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(2)));
-        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("token.record")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("token")?);
 
         Ok(())
     }
@@ -134,7 +134,7 @@ mod tests {
         assert_eq!(format!("{output}"), "output r1 as signature.public;");
 
         // Record
-        let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{output}"), "output r2 as token.record;");
+        let output = Output::<CurrentNetwork>::parse("output r2 as token.public;").unwrap().1;
+        assert_eq!(format!("{output}"), "output r2 as token.public;");
     }
 }
