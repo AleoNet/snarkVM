@@ -116,7 +116,7 @@ impl<N: Network> Parser for Lookup<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the operands from the string.
-        let (string, operands) = map_res(many0(complete(parse_operand)), |operands: Vec<Operand<N>>| {
+        let (string, operands) = map_res(many1(complete(parse_operand)), |operands: Vec<Operand<N>>| {
             // Ensure the number of operands is within the bounds.
             match operands.len() <= N::MAX_OPERANDS {
                 true => Ok(operands),

@@ -92,8 +92,7 @@ mod tests {
     #[test]
     fn test_mapping_parse() {
         let mapping = Table::<CurrentNetwork>::parse(
-            r"
-table foo:
+            r"table foo:
     input field;
     output u8;",
         )
@@ -106,8 +105,7 @@ table foo:
 
     #[test]
     fn test_mapping_display() {
-        let expected = r"
-table foo:
+        let expected = r"table foo:
     input field;
     output u8;";
         let mapping = Table::<CurrentNetwork>::parse(expected).unwrap().1;

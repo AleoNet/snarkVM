@@ -601,6 +601,14 @@ impl<N: Network> Program<N> {
                 }
             }
         }
+        // Add the table name to the identifiers.
+        if self.identifiers.insert(table_name, ProgramDefinition::Table).is_some() {
+            bail!("'{table_name}' already exists in the program.")
+        }
+        // Add the record to the program.
+        if self.tables.insert(table_name, table).is_some() {
+            bail!("'{table_name}' already exists in the program.")
+        }
         Ok(())
     }
 }
@@ -1283,6 +1291,68 @@ function compute:
             "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
         ))
         .unwrap();
+
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
+
+        // Compute the output value.
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+
+        // Re-run to ensure state continues to work.
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+    }
+
+    #[test]
+    fn test_program_evaluate_lookup() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program example.aleo;
+
+table field_to_u8:
+    input field;
+    output u8;
+
+function compute:
+    input r0 as field.private;
+    lookup field_to_u8 r0 into r1;
+    output r1 as u8.private;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+        // Declare the input value.
+        let input = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("1field").unwrap());
+        // Declare the expected output value.
+        let expected = Value::Plaintext(Plaintext::from_str("5u8").unwrap());
+
+        // Construct the process.
+        let process = crate::process::test_helpers::sample_process(&program);
+
+        // Compute the authorization.
+        let authorization = {
+            // Initialize an RNG.
+            let rng = &mut TestRng::default();
+
+            // Initialize caller private key.
+            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+            // Authorize the function call.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+            authorization
+        };
 
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
