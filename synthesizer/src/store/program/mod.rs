@@ -21,7 +21,7 @@ use crate::{
     store::helpers::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{
-    network::prelude::*,
+    network::{prelude::*, BHPMerkleTree},
     program::{Identifier, Plaintext, ProgramID, Value},
     types::Field,
 };
@@ -29,7 +29,29 @@ use console::{
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
+};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
+/// The depth of the Merkle tree for the programs.
+pub const PROGRAMS_DEPTH: u8 = 32;
+/// The depth of the Merkle tree for each program.
+pub const PROGRAM_DEPTH: u8 = 4;
+// TODO (raychu86): Handle different Merkle tree depths for different keys types.
+//  i.e. `u8` and `address` keys should have different depths.
+/// The depth of the Merkle tree for each mapping.
+pub const MAPPING_DEPTH: u8 = 30;
+
+/// The Merkle tree for the program state.
+pub type StorageTree<N> = BHPMerkleTree<N, PROGRAMS_DEPTH>;
+/// The merkle tree for each program.
+pub type ProgramTree<N> = BHPMerkleTree<N, PROGRAM_DEPTH>;
+/// The merkle tree for the mapping state.
+pub type MappingTree<N> = BHPMerkleTree<N, MAPPING_DEPTH>;
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///
@@ -498,6 +520,70 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // Compute the checksum as `Hash( all mapping checksums )`.
         N::hash_bhp1024(&preimage.into_values().flatten().collect::<Vec<_>>())
     }
+
+    // TODO (raychu86): This depends on the `Map`s being deterministically ordered.
+    /// Merkle tree of program state.
+    fn to_storage_tree(&self) -> Result<StorageTree<N>> {
+        // Initialize a list of program trees.
+        let mut program_trees = IndexMap::new();
+
+        // TODO (raychu86): Parallelize this.
+        // Iterate through all the programs and construct the program trees.
+        for program_id in self.program_id_map().keys() {
+            // Construct the program tree.
+            let program_tree = self.to_program_tree(&program_id)?;
+
+            // Insert the program tree to the list of program trees.
+            program_trees.insert(program_id, program_tree);
+        }
+
+        // Construct the storage tree.
+        N::merkle_tree_bhp(&cfg_iter!(program_trees).map(|(_, tree)| tree.root().to_bits_le()).collect::<Vec<_>>())
+    }
+
+    /// Merkle tree of a program's mappings.
+    fn to_program_tree(&self, program_id: &ProgramID<N>) -> Result<ProgramTree<N>> {
+        // Retrieve the mapping names for the given program ID.
+        let mapping_names =
+            &*self.program_id_map().get(program_id)?.ok_or_else(|| anyhow!("Missing programID {program_id}"))?;
+
+        // Construct a mapping trees.
+        let mapping_trees = cfg_iter!(mapping_names)
+            .map(|mapping_name| self.to_mapping_tree(program_id, mapping_name))
+            .collect::<Result<Vec<_>>>()?;
+
+        // Construct the program tree with the mapping_trees.
+        let mapping_roots = cfg_iter!(mapping_trees).map(|(_, tree)| tree.root().to_bits_le()).collect::<Vec<_>>();
+
+        // Construct the program tree.
+        N::merkle_tree_bhp(&mapping_roots)
+    }
+
+    /// Returns the `mapping_id` and the merkle tree of a program's mapping state.
+    fn to_mapping_tree(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<(Field<N>, MappingTree<N>)> {
+        // Get the mapping ID.
+        let mapping_id = self
+            .get_mapping_id(program_id, mapping_name)?
+            .ok_or_else(|| anyhow!("Missing mapping ID for {program_id}/{mapping_name}"))?;
+
+        // Get the key_values for the mapping id.
+        let key_values = self
+            .key_value_id_map()
+            .get(&mapping_id)?
+            .ok_or_else(|| anyhow!("Missing key values for mapping id {mapping_id}"))?;
+
+        // Construct the leaves for the mapping tree.
+        let key_value_leaves = cfg_iter!(key_values).map(|(_, value)| value.to_bits_le()).collect::<Vec<_>>();
+
+        // Construct the mapping tree.
+        let mapping_tree = N::merkle_tree_bhp(&key_value_leaves)?;
+
+        Ok((mapping_id, mapping_tree))
+    }
 }
 
 /// An in-memory program state storage.
@@ -568,11 +654,20 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     }
 }
 
+// TODO (raychu86): Update the program tree on each operation:
+//  - `insert_key_value`
+//  - `update_key_value`
+//  - `remove_key_value`
+//  - `remove_mapping`
+//  - `remove_program`
+
 /// The program store.
 #[derive(Clone)]
 pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
     /// The program storage.
     storage: P,
+    /// The program storage tree.
+    tree: Arc<RwLock<StorageTree<N>>>,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
@@ -580,12 +675,21 @@ pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
 impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Initializes the program store.
     pub fn open(dev: Option<u16>) -> Result<Self> {
-        Ok(Self { storage: P::open(dev)?, _phantom: PhantomData })
+        // Initialize the program storage.
+        let storage = P::open(dev)?;
+
+        // Compute the storage tree.
+        let tree = Arc::new(RwLock::new(storage.to_storage_tree()?));
+
+        Ok(Self { storage, tree, _phantom: PhantomData })
     }
 
     /// Initializes a program store from storage.
-    pub fn from(storage: P) -> Self {
-        Self { storage, _phantom: PhantomData }
+    pub fn from(storage: P) -> Result<Self> {
+        // Compute the storage tree.
+        let tree = Arc::new(RwLock::new(storage.to_storage_tree()?));
+
+        Ok(Self { storage, tree, _phantom: PhantomData })
     }
 
     /// Initializes the given `program ID` and `mapping name` in storage.
