@@ -127,6 +127,8 @@ pub enum Instruction<N: Network> {
     LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
     LessThanOrEqual(LessThanOrEqual<N>),
+    /// Performs a `lookup` on the operands, storing the results in the specified destinations.
+    Lookup(Lookup<N>),
     /// Computes `first` mod `second`, storing the outcome in `destination`.
     Modulo(Modulo<N>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
@@ -200,6 +202,7 @@ macro_rules! instruction {
     ($object:expr, |$input:ident| $operation:expr) => {{ $crate::instruction!(instruction, $object, |$input| { $operation }) }};
     // A variant **with** curly braces:
     // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
+    // IMPORTANT: New instructions must be added to the end of the sequence to preserve (de)serialization order.
     ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
         $macro_!{$object, |$input| $operation, {
             Abs,
@@ -258,6 +261,7 @@ macro_rules! instruction {
             SubWrapped,
             Ternary,
             Xor,
+            Lookup,
         }}
     };
     // A variant **without** curly braces:
@@ -404,7 +408,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            56,
+            57,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

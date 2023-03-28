@@ -551,6 +551,9 @@ impl<N: Network> FinalizeTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Lookup => {
+                bail!("Forbidden operation: Cannot invoke 'lookup' in a `finalize` scope.");
+            }
         }
         Ok(())
     }

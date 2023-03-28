@@ -565,6 +565,19 @@ impl<N: Network> RegisterTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Lookup => {
+                // Retrieve the lookup operation.
+                let lookup = match instruction {
+                    Instruction::Lookup(lookup) => lookup,
+                    _ => bail!("Instruction '{instruction}' is not a call operation."),
+                };
+
+                // Check that the table exists.
+                if !stack.program().contains_table(lookup.table_name()) {
+                    bail!("Table '{}' does not exist in program '{}'.", lookup.table_name(), stack.program_id());
+                }
+                // TODO: Are more checks needed on initalization?
+            }
         }
         Ok(())
     }

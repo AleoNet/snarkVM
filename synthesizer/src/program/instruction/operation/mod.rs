@@ -35,6 +35,9 @@ pub use is::*;
 mod literals;
 pub use literals::*;
 
+mod lookup;
+pub use lookup::*;
+
 mod macros;
 
 use crate::Opcode;
