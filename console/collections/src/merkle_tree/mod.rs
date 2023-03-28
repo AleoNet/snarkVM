@@ -213,8 +213,25 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     pub fn update(&mut self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<()> {
         let timer = timer!("MerkleTree::update");
 
-        // Ensure the leaf index is valid.
-        ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
+        // Compute the updated Merkle tree with the new leaves.
+        let updated_tree = self.prepare_update(leaf_index, new_leaf)?;
+        // Update the tree at the very end, so the original tree is not altered in case of failure.
+        *self = updated_tree;
+
+        finish!(timer);
+        Ok(())
+    }
+
+    #[inline]
+    /// Returns a new Merkle tree with updates at the location of the given leaf index with the new leaf.
+    pub fn prepare_update(&self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<Self> {
+        let timer = timer!("MerkleTree::prepare_update");
+
+        // Check that the leaf index is within the bounds of the Merkle tree.
+        ensure!(
+            leaf_index < self.number_of_leaves,
+            "Leaf index must be less than the number of leaves in the Merkle tree"
+        );
 
         // Allocate a vector to store the path hashes.
         let mut path_hashes = Vec::with_capacity(DEPTH as usize);
@@ -257,18 +274,28 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         }
         lap!(timer, "Hashed {} padding levels", padding_depth);
 
-        // Update the root hash.
-        self.root = root_hash;
+        // Initialize the Merkle tree.
+        let mut tree = Vec::with_capacity(self.tree.len());
+        // Extend the new Merkle tree with the existing leaf hashes.
+        tree.extend(&self.tree);
 
         // Update the rest of the tree with the new path hashes.
         let mut index = Some(start + leaf_index);
         for path_hash in path_hashes {
-            self.tree[index.unwrap()] = path_hash;
+            tree[index.unwrap()] = path_hash;
             index = parent(index.unwrap());
         }
 
         finish!(timer);
-        Ok(())
+
+        Ok(Self {
+            leaf_hasher: self.leaf_hasher.clone(),
+            path_hasher: self.path_hasher.clone(),
+            root: root_hash,
+            tree,
+            empty_hash: self.empty_hash,
+            number_of_leaves: self.number_of_leaves,
+        })
     }
 
     #[inline]
@@ -764,5 +791,9 @@ const fn is_left_child(index: usize) -> bool {
 /// Returns the index of the parent, given the index of a child.
 #[inline]
 const fn parent(index: usize) -> Option<usize> {
-    if index > 0 { Some((index - 1) >> 1) } else { None }
+    if index > 0 {
+        Some((index - 1) >> 1)
+    } else {
+        None
+    }
 }
