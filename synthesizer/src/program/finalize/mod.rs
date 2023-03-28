@@ -32,6 +32,7 @@ use console::{
     program::{Identifier, PlaintextType, Register},
 };
 
+use console::program::RegisterType;
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -126,12 +127,15 @@ impl<N: Network> Finalize<N> {
         // If the command is an instruction, perform additional checks.
         match &command {
             Command::Instruction(instruction) => {
-                // Ensure the instruction is not a `call`.
-                ensure!(
-                    !matches!(instruction, Instruction::Call(..)),
-                    "Forbidden operation: Finalize cannot invoke a 'call'"
-                );
-
+                match instruction {
+                    // Ensure the instruction is not a `call`.
+                    Instruction::Call(_) => bail!("Forbidden operation: Finalize cannot invoke a 'call'"),
+                    // Ensure the instruction is not a `cast` to a record.
+                    Instruction::Cast(cast) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)) => {
+                        bail!("Forbidden operation: Finalize cannot cast to a record")
+                    }
+                    _ => {}
+                }
                 // Ensure the destination register is a locator.
                 for register in instruction.destinations() {
                     ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
