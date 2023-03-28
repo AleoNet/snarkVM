@@ -57,18 +57,6 @@ impl<N: Network, B: BlockStorage<N>> From<&BlockStore<N, B>> for Query<N, B> {
     }
 }
 
-impl<N: Network, B: BlockStorage<N>> From<reqwest::Url> for Query<N, B> {
-    fn from(url: reqwest::Url) -> Self {
-        Self::REST(url.to_string())
-    }
-}
-
-impl<N: Network, B: BlockStorage<N>> From<&reqwest::Url> for Query<N, B> {
-    fn from(url: &reqwest::Url) -> Self {
-        Self::REST(url.to_string())
-    }
-}
-
 impl<N: Network, B: BlockStorage<N>> From<String> for Query<N, B> {
     fn from(url: String) -> Self {
         Self::REST(url)
@@ -96,7 +84,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             }
             #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
@@ -110,7 +98,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
             #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
@@ -124,7 +112,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
             #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
@@ -134,9 +122,9 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
 
     /// Performs a GET request to the given URL.
     #[cfg(not(feature = "wasm"))]
-    fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
-        let response = reqwest::blocking::get(url)?;
-        if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }
+    fn get_request(url: &str) -> Result<ureq::Response> {
+        let response = ureq::get(url).call()?;
+        if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {}", url) }
     }
 }
 

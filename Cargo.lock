@@ -2521,7 +2521,6 @@ dependencies = [
  "paste",
  "rand",
  "rayon",
- "reqwest",
  "serde",
  "serde_json",
  "snarkvm-algorithms",
@@ -2531,6 +2530,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-utilities",
  "tracing",
+ "ureq",
 ]
 
 [[package]]
