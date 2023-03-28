@@ -16,7 +16,6 @@
 
 use super::*;
 use crate::finalize::{Load, LoadDefault, Store};
-use console::program::FinalizeType;
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -31,7 +30,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
             // Check the input register type.
-            finalize_types.check_input(stack, input.register(), &RegisterType::from(*input.finalize_type()))?;
+            finalize_types.check_input(stack, input.register(), &RegisterType::Plaintext(*input.plaintext_type()))?;
         }
 
         println!("initialize_finalize_types: L36");
@@ -47,7 +46,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 3. Check the outputs are well-formed.
         for output in finalize.outputs() {
             // Check the output operand type.
-            finalize_types.check_output(stack, output.operand(), &RegisterType::from(*output.finalize_type()))?;
+            finalize_types.check_output(stack, output.operand(), &RegisterType::Plaintext(*output.plaintext_type()))?;
         }
 
         println!("initialize_finalize_types: L50");
@@ -215,41 +214,21 @@ impl<N: Network> FinalizeTypes<N> {
         if !stack.program().contains_mapping(decrement.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", decrement.mapping_name(), stack.program_id())
         }
-
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
         let mapping = stack.program().get_mapping(decrement.mapping_name()).unwrap();
-        // Get the mapping key type, checking that it is not a record or external record.
-        let mapping_key_type = match mapping.key().finalize_type() {
-            FinalizeType::Public(key_type) => key_type,
-            FinalizeType::Record(_) => bail!("A mapping key cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping key cannot be an external record."),
-        };
-        // Get the mapping value type, checking that it is not a record or external record.
-        let mapping_value_type = match mapping.value().finalize_type() {
-            FinalizeType::Public(value_type) => value_type,
-            FinalizeType::Record(_) => bail!("A mapping value cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping value cannot be an external record."),
-        };
-
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, decrement.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            // Check that the key type in the mapping matches the key type in the decrement.
-            RegisterType::Plaintext(decrement_key_type) => {
-                if *mapping_key_type != decrement_key_type {
-                    bail!(
-                        "Key type in decrement '{decrement_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Decrement cannot use a 'record' as a key (found at '{decrement}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Decrement cannot use an 'external record' as a key (found at '{decrement}')")
-            }
+        let decrement_key_type = self.get_type_from_operand(stack, decrement.key())?;
+        // Check that the key type in the mapping matches the key type in the decrement.
+        if RegisterType::Plaintext(*mapping_key_type) != decrement_key_type {
+            bail!(
+                "Key type in decrement '{decrement_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
-
         // Retrieve the register type of the value.
         let value_type = self.get_type_from_operand(stack, decrement.value())?;
         // Ensure the decrement value type is a literal that implements the `Add` operation.
@@ -302,41 +281,21 @@ impl<N: Network> FinalizeTypes<N> {
         if !stack.program().contains_mapping(increment.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", increment.mapping_name(), stack.program_id())
         }
-
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
         let mapping = stack.program().get_mapping(increment.mapping_name()).unwrap();
-        // Get the mapping key type, checking that it is not a record or external record.
-        let mapping_key_type = match mapping.key().finalize_type() {
-            FinalizeType::Public(key_type) => key_type,
-            FinalizeType::Record(_) => bail!("A mapping key cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping key cannot be an external record."),
-        };
-        // Get the mapping value type, checking that it is not a record or external record.
-        let mapping_value_type = match mapping.value().finalize_type() {
-            FinalizeType::Public(value_type) => value_type,
-            FinalizeType::Record(_) => bail!("A mapping value cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping value cannot be an external record."),
-        };
-
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, increment.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            // Check that the key type in the mapping matches the key type in the increment.
-            RegisterType::Plaintext(increment_key_type) => {
-                if *mapping_key_type != increment_key_type {
-                    bail!(
-                        "Key type in increment '{increment_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Increment cannot use a 'record' as a key (found at '{increment}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Increment cannot use an 'external record' as a key (found at '{increment}')")
-            }
+        let increment_key_type = self.get_type_from_operand(stack, increment.key())?;
+        // Check that the key type in the mapping matches the key type in the increment.
+        if RegisterType::Plaintext(*mapping_key_type) != increment_key_type {
+            bail!(
+                "Key type in increment '{increment_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
-
         // Retrieve the register type of the value.
         let value_type = self.get_type_from_operand(stack, increment.value())?;
         // Ensure the increment value type is a literal that implements the `Add` operation.
@@ -378,7 +337,6 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Increment cannot increment by an 'external record' (found at '{increment}')")
             }
         }
-
         Ok(())
     }
 
@@ -390,39 +348,18 @@ impl<N: Network> FinalizeTypes<N> {
         if !stack.program().contains_mapping(load.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
         }
-
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
         let mapping = stack.program().get_mapping(load.mapping_name()).unwrap();
-        // Get the mapping key type, checking that it is not a record or external record.
-        let mapping_key_type = match mapping.key().finalize_type() {
-            FinalizeType::Public(key_type) => key_type,
-            FinalizeType::Record(_) => bail!("A mapping key cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping key cannot be an external record."),
-        };
-        // Get the mapping value type, checking that it is not a record or external record.
-        let mapping_value_type = match mapping.value().finalize_type() {
-            FinalizeType::Public(value_type) => value_type,
-            FinalizeType::Record(_) => bail!("A mapping value cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping value cannot be an external record."),
-        };
-
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, load.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            // Check that the key type in the mapping matches the key type in the load.
-            RegisterType::Plaintext(load_key_type) => {
-                if *mapping_key_type != load_key_type {
-                    bail!(
-                        "Key type in load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Load cannot use a 'record' as a key (found at '{load}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Load cannot use an 'external record' as a key (found at '{load}')")
-            }
+        let load_key_type = self.get_type_from_operand(stack, load.key())?;
+        // Check that the key type in the mapping matches the key type in the load.
+        if RegisterType::Plaintext(*mapping_key_type) != load_key_type {
+            bail!("Key type in load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Get the destination register.
         let destination = load.destination().clone();
@@ -445,59 +382,28 @@ impl<N: Network> FinalizeTypes<N> {
         if !stack.program().contains_mapping(load.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
         }
-
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
         let mapping = stack.program().get_mapping(load.mapping_name()).unwrap();
-        // Get the mapping key type, checking that it is not a record or external record.
-        let mapping_key_type = match mapping.key().finalize_type() {
-            FinalizeType::Public(key_type) => key_type,
-            FinalizeType::Record(_) => bail!("A mapping key cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping key cannot be an external record."),
-        };
-        // Get the mapping value type, checking that it is not a record or external record.
-        let mapping_value_type = match mapping.value().finalize_type() {
-            FinalizeType::Public(value_type) => value_type,
-            FinalizeType::Record(_) => bail!("A mapping value cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping value cannot be an external record."),
-        };
-
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, load.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            // Check that the key type in the mapping matches the key type in the load.
-            RegisterType::Plaintext(load_key_type) => {
-                if *mapping_key_type != load_key_type {
-                    bail!(
-                        "Key type in default load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Default load cannot use a 'record' as a key (found at '{load}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Default load cannot use an 'external record' as a key (found at '{load}')")
-            }
+        let load_key_type = self.get_type_from_operand(stack, load.key())?;
+        // Check that the key type in the mapping matches the key type in the load.
+        if RegisterType::Plaintext(*mapping_key_type) != load_key_type {
+            bail!(
+                "Key type in default load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
-
         // Retrieve the register type of the default value.
         let default_value_type = self.get_type_from_operand(stack, load.default())?;
-        // Ensure the default value is not a record or external record.
-        match default_value_type {
-            // Check that the default value type in the mapping matches the default value type in the load.
-            RegisterType::Plaintext(load_default_value_type) => {
-                if *mapping_value_type != load_default_value_type {
-                    bail!(
-                        "Default value type in default load '{load_default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => {
-                bail!("Default load cannot use a 'record' as a default value (found at '{load}')")
-            }
-            RegisterType::ExternalRecord(..) => {
-                bail!("Default load cannot use an 'external record' as a default value (found at '{load}')")
-            }
+        // Check that the value type in the mapping matches the default value type in the load.
+        if RegisterType::Plaintext(*mapping_value_type) != default_value_type {
+            bail!(
+                "Default value type in default load '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+            )
         }
         // Get the destination register.
         let destination = load.destination().clone();
@@ -515,57 +421,28 @@ impl<N: Network> FinalizeTypes<N> {
         if !stack.program().contains_mapping(store.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", store.mapping_name(), stack.program_id())
         }
-
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
         let mapping = stack.program().get_mapping(store.mapping_name()).unwrap();
-        // Get the mapping key type, checking that it is not a record or external record.
-        let mapping_key_type = match mapping.key().finalize_type() {
-            FinalizeType::Public(key_type) => key_type,
-            FinalizeType::Record(_) => bail!("A mapping key cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping key cannot be an external record."),
-        };
-        // Get the mapping value type, checking that it is not a record or external record.
-        let mapping_value_type = match mapping.value().finalize_type() {
-            FinalizeType::Public(value_type) => value_type,
-            FinalizeType::Record(_) => bail!("A mapping value cannot be a record."),
-            FinalizeType::ExternalRecord(_) => bail!("A mapping value cannot be an external record."),
-        };
-
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, store.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            // Check that the key type in the mapping matches the key type in the store.
-            RegisterType::Plaintext(store_key_type) => {
-                if *mapping_key_type != store_key_type {
-                    bail!(
-                        "Key type in store '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Store cannot use a 'record' as a key (found at '{store}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Store cannot use an 'external record' as a key (found at '{store}')")
-            }
+        let store_key_type = self.get_type_from_operand(stack, store.key())?;
+        // Check that the key type in the mapping matches the key type in the store.
+        if RegisterType::Plaintext(*mapping_key_type) != store_key_type {
+            bail!(
+                "Key type in store '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
-
         // Retrieve the type of the value.
-        let value_type = self.get_type_from_operand(stack, store.value())?;
-        // Ensure the value is a plaintext type.
-        match value_type {
-            // Check that the value type in the mapping matches the type of the value.
-            RegisterType::Plaintext(store_value_type) => {
-                if *mapping_value_type != store_value_type {
-                    bail!(
-                        "Value type in store '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
-                    )
-                }
-            }
-            RegisterType::Record(..) => bail!("Cannot store a 'record' (found at '{store}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Cannot store an 'external record' (found at '{store}')")
-            }
+        let store_value_type = self.get_type_from_operand(stack, store.value())?;
+        // Check that the value type in the mapping matches the type of the value.
+        if RegisterType::Plaintext(*mapping_value_type) != store_value_type {
+            bail!(
+                "Value type in store '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+            )
         }
         Ok(())
     }

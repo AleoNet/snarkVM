@@ -29,7 +29,7 @@ mod parse;
 use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{FinalizeType, Identifier, Register},
+    program::{Identifier, PlaintextType, Register},
 };
 
 use indexmap::IndexSet;
@@ -64,8 +64,8 @@ impl<N: Network> Finalize<N> {
     }
 
     /// Returns the finalize input types.
-    pub fn input_types(&self) -> Vec<FinalizeType<N>> {
-        self.inputs.iter().map(|input| *input.finalize_type()).collect()
+    pub fn input_types(&self) -> Vec<PlaintextType<N>> {
+        self.inputs.iter().map(|input| *input.plaintext_type()).collect()
     }
 
     /// Returns the finalize commands.
@@ -78,9 +78,9 @@ impl<N: Network> Finalize<N> {
         &self.outputs
     }
 
-    /// Returns the finalize output types.
-    pub fn output_types(&self) -> Vec<FinalizeType<N>> {
-        self.outputs.iter().map(|output| *output.finalize_type()).collect()
+    /// Returns the plaintext output types.
+    pub fn output_types(&self) -> Vec<PlaintextType<N>> {
+        self.outputs.iter().map(|output| *output.plaintext_type()).collect()
     }
 }
 

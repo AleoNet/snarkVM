@@ -19,7 +19,7 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{FinalizeType, Identifier},
+    program::{Identifier, PlaintextType},
 };
 
 /// A key statement is of the form `key {name} as {register_type}`.
@@ -27,8 +27,8 @@ use console::{
 pub struct MapKey<N: Network> {
     /// The key name.
     name: Identifier<N>,
-    /// The key finalize type.
-    finalize_type: FinalizeType<N>,
+    /// The key plaintext type.
+    plaintext_type: PlaintextType<N>,
 }
 
 impl<N: Network> MapKey<N> {
@@ -38,10 +38,10 @@ impl<N: Network> MapKey<N> {
         &self.name
     }
 
-    /// Returns the key finalize type.
+    /// Returns the key plaintext type.
     #[inline]
-    pub const fn finalize_type(&self) -> &FinalizeType<N> {
-        &self.finalize_type
+    pub const fn plaintext_type(&self) -> &PlaintextType<N> {
+        &self.plaintext_type
     }
 }
 

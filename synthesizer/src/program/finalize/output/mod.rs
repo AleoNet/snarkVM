@@ -19,16 +19,16 @@ mod parse;
 
 use crate::Operand;
 
-use console::{network::prelude::*, program::FinalizeType};
+use console::{network::prelude::*, program::PlaintextType};
 
 /// An output statement defines an output of finalize.
-/// An output statement is of the form `output {operand} as {finalize_type};`.
+/// An output statement is of the form `output {operand} as {plaintext_type}.public;`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output operand.
     operand: Operand<N>,
-    /// The output finalize type.
-    finalize_type: FinalizeType<N>,
+    /// The output plaintext type.
+    plaintext_type: PlaintextType<N>,
 }
 
 impl<N: Network> Output<N> {
@@ -40,8 +40,8 @@ impl<N: Network> Output<N> {
 
     /// Returns the output finalize type.
     #[inline]
-    pub const fn finalize_type(&self) -> &FinalizeType<N> {
-        &self.finalize_type
+    pub const fn plaintext_type(&self) -> &PlaintextType<N> {
+        &self.plaintext_type
     }
 }
 
