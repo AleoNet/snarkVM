@@ -211,19 +211,10 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
 
         // Accumulate the prover polynomial.
-        let zero = DensePolynomial::zero;
-        #[cfg(feature = "serial")]
-        let zero = zero();
-        let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials).zip_eq(challenges).fold(
-            zero,
-            |mut accumulator, (mut prover_polynomial, challenge)| {
-                prover_polynomial *= challenge;
-                accumulator += &prover_polynomial;
-                accumulator
-            },
-        );
-        #[cfg(not(feature = "serial"))]
-        let accumulated_prover_polynomial = accumulated_prover_polynomial.sum::<DensePolynomial<_>>();
+        let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials)
+            .zip_eq(challenges)
+            .map(|(prover_polynomial, challenge)| prover_polynomial * challenge)
+            .sum::<DensePolynomial<_>>();
         let product_eval_at_challenge_point = accumulated_prover_polynomial.evaluate(accumulator_point)
             * epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
 
@@ -317,18 +308,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
 
         // Compute the accumulator evaluation.
-        let zero = <N::PairingCurve as PairingEngine>::Fr::zero;
-        #[cfg(feature = "serial")]
-        let zero = zero();
-        let evaluation = cfg_iter!(prover_polynomials).zip_eq(&challenge_points).fold(
-            zero,
-            |accumulator, (prover_polynomial, challenge_point)| {
-                accumulator + (prover_polynomial.evaluate(accumulator_point) * challenge_point)
-            },
-        );
-        #[cfg(not(feature = "serial"))]
-        let evaluation = evaluation.sum::<<<N as console::prelude::Environment>::PairingCurve as PairingEngine>::Fr>();
-        let accumulator_evaluation = evaluation * epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
+        let mut accumulator_evaluation = cfg_iter!(prover_polynomials)
+            .zip_eq(&challenge_points)
+            .map(|(prover_polynomial, challenge_point)| prover_polynomial.evaluate(accumulator_point) * challenge_point)
+            .sum::<<<N as console::prelude::Environment>::PairingCurve as PairingEngine>::Fr>();
+        accumulator_evaluation *= &epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
 
         // Compute the accumulator commitment.
         let commitments: Vec<_> =
