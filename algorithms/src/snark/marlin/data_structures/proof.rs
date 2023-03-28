@@ -31,6 +31,12 @@ pub struct Commitments<E: PairingEngine> {
     pub witness_commitments: Vec<WitnessCommitments<E>>,
     /// Commitment to the masking polynomial.
     pub mask_poly: Option<sonic_pc::Commitment<E>>,
+    /// Commitments to plookup-related polynomials.
+    pub lookup_commitments: Vec<LookupCommitments<E>>,
+    /// Commitment to the lookup table polynomial.
+    pub table: sonic_pc::Commitment<E>,
+    /// Commitment to the shifted lookup table polynomial, multiplied by delta.
+    pub delta_table_omega: sonic_pc::Commitment<E>,
     /// Commitment to the `g_1` polynomial.
     pub g_1: sonic_pc::Commitment<E>,
     /// Commitment to the `h_1` polynomial.
@@ -54,7 +60,12 @@ impl<E: PairingEngine> Commitments<E> {
         for comm in &self.witness_commitments {
             comm.serialize_with_mode(&mut writer, compress)?;
         }
+        for comm in &self.lookup_commitments {
+            comm.serialize_with_mode(&mut writer, compress)?;
+        }
         CanonicalSerialize::serialize_with_mode(&self.mask_poly, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.table, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.delta_table_omega, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_a, &mut writer, compress)?;
@@ -68,7 +79,11 @@ impl<E: PairingEngine> Commitments<E> {
         let mut size = 0;
         size += self.witness_commitments.len()
             * CanonicalSerialize::serialized_size(&self.witness_commitments[0], compress);
+        size +=
+            self.lookup_commitments.len() * CanonicalSerialize::serialized_size(&self.lookup_commitments[0], compress);
         size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
+        size += CanonicalSerialize::serialized_size(&self.table, compress);
+        size += CanonicalSerialize::serialized_size(&self.delta_table_omega, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1, compress);
         size += CanonicalSerialize::serialized_size(&self.h_1, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a, compress);
@@ -88,9 +103,16 @@ impl<E: PairingEngine> Commitments<E> {
         for _ in 0..batch_size {
             witness_commitments.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
+        let mut lookup_commitments = Vec::new();
+        for _ in 0..batch_size {
+            lookup_commitments.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
         Ok(Commitments {
             witness_commitments,
             mask_poly: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            lookup_commitments,
+            table: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta_table_omega: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             h_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -100,7 +122,7 @@ impl<E: PairingEngine> Commitments<E> {
         })
     }
 }
-/// Commitments to the `w`, `z_a`, and `z_b` polynomials.
+/// Commitments to the `w`, `z_a`, `z_b` and `z_c` polynomials.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct WitnessCommitments<E: PairingEngine> {
     /// Commitment to the `w` polynomial.
@@ -109,12 +131,49 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_a: sonic_pc::Commitment<E>,
     /// Commitment to the `z_b` polynomial.
     pub z_b: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_c` polynomial.
+    pub z_c: sonic_pc::Commitment<E>,
+}
+
+/// Commitments to the `f`, `s_1`, `s_2`, `z_2`, `delta_s_1_omega` and `z_2_omega` polynomials.
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct LookupCommitments<E: PairingEngine> {
+    /// Commitment to the `f` polynomial.
+    pub f: sonic_pc::Commitment<E>,
+    /// Commitment to the `s_1` polynomial.
+    pub s_1: sonic_pc::Commitment<E>,
+    /// Commitment to the `s_2` polynomial.
+    pub s_2: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_2` polynomial.
+    pub z_2: sonic_pc::Commitment<E>,
+    /// Commitment to the `delta_s_1_omega` polynomial.
+    pub delta_s_1_omega: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_2_omega` polynomial.
+    pub z_2_omega: sonic_pc::Commitment<E>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evaluations<F: PrimeField> {
     /// Evaluation of `z_b_i`'s at `beta`.
     pub z_b_evals: Vec<F>,
+    /// Evaluation of `f_i`'s at `beta`.
+    pub f_evals: Vec<F>,
+    /// Evaluation of `s_1_i`'s at `beta`.
+    pub s_1_evals: Vec<F>,
+    /// Evaluation of `s_2_i`'s at `beta`.
+    pub s_2_evals: Vec<F>,
+    /// Evaluation of `z_2_i`'s at `beta`.
+    pub z_2_evals: Vec<F>,
+    /// Evaluation of `delta_s_1_omega_i`'s at `beta`.
+    pub delta_s_1_omega_evals: Vec<F>,
+    /// Evaluation of `s_m` at `beta`.
+    pub s_m_eval: F,
+    /// Evaluation of `s_l` at `beta`.
+    pub s_l_eval: F,
+    /// Evaluation of `table` at `beta`.
+    pub table_eval: F,
+    /// Evaluation of `delta_table_omega` at `beta`.
+    pub delta_table_omega_eval: F,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a` at `beta`.
@@ -134,6 +193,25 @@ impl<F: PrimeField> Evaluations<F> {
         for z_b_eval in &self.z_b_evals {
             CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?;
         }
+        for f_eval in &self.f_evals {
+            CanonicalSerialize::serialize_with_mode(f_eval, &mut writer, compress)?;
+        }
+        for s_1_eval in &self.s_1_evals {
+            CanonicalSerialize::serialize_with_mode(s_1_eval, &mut writer, compress)?;
+        }
+        for s_2_eval in &self.s_2_evals {
+            CanonicalSerialize::serialize_with_mode(s_2_eval, &mut writer, compress)?;
+        }
+        for z_2_eval in &self.z_2_evals {
+            CanonicalSerialize::serialize_with_mode(z_2_eval, &mut writer, compress)?;
+        }
+        for delta_s_1_omega_eval in &self.delta_s_1_omega_evals {
+            CanonicalSerialize::serialize_with_mode(delta_s_1_omega_eval, &mut writer, compress)?;
+        }
+        CanonicalSerialize::serialize_with_mode(&self.s_m_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.s_l_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.table_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.delta_table_omega_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_a_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_b_eval, &mut writer, compress)?;
@@ -144,6 +222,15 @@ impl<F: PrimeField> Evaluations<F> {
     fn serialized_size(&self, compress: Compress) -> usize {
         let mut size = 0;
         size += self.z_b_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.f_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_1_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.z_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.delta_s_1_omega_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += CanonicalSerialize::serialized_size(&self.s_m_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.s_l_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.table_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.delta_table_omega_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_b_eval, compress);
@@ -161,8 +248,37 @@ impl<F: PrimeField> Evaluations<F> {
         for _ in 0..batch_size {
             z_b_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
+        let mut f_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            f_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut s_1_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_1_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut s_2_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_2_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut z_2_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            z_2_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut delta_s_1_omega_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            delta_s_1_omega_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
         Ok(Evaluations {
             z_b_evals,
+            f_evals,
+            s_1_evals,
+            s_2_evals,
+            z_2_evals,
+            delta_s_1_omega_evals,
+            s_m_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            s_l_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            table_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta_table_omega_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_b_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -174,15 +290,56 @@ impl<F: PrimeField> Evaluations<F> {
 impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
         let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then_some(*v)).collect::<Vec<_>>();
+        let f_evals = map.iter().filter_map(|(k, v)| k.starts_with("f_").then(|| *v)).collect::<Vec<_>>();
+        let s_1_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_1_").then(|| *v)).collect::<Vec<_>>();
+        let s_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_2_").then(|| *v)).collect::<Vec<_>>();
+        let z_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_2_").then(|| *v)).collect::<Vec<_>>();
+        let delta_s_1_omega_evals =
+            map.iter().filter_map(|(k, v)| k.starts_with("delta_omega_s_1_").then(|| *v)).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_size);
-        Self { z_b_evals, g_1_eval: map["g_1"], g_a_eval: map["g_a"], g_b_eval: map["g_b"], g_c_eval: map["g_c"] }
+        Self {
+            z_b_evals,
+            f_evals,
+            s_1_evals,
+            s_2_evals,
+            z_2_evals,
+            delta_s_1_omega_evals,
+            s_m_eval: map["s_m"],
+            s_l_eval: map["s_l"],
+            table_eval: map["table"],
+            delta_table_omega_eval: map["delta_table_omega"],
+            g_1_eval: map["g_1"],
+            g_a_eval: map["g_a"],
+            g_b_eval: map["g_b"],
+            g_c_eval: map["g_c"],
+        }
     }
 
     pub(crate) fn get(&self, label: &str) -> Option<F> {
-        if let Some(index) = label.strip_prefix("z_b_") {
+        if label.starts_with("z_b_") {
+            let index = label.strip_prefix("z_b_").expect("should be able to strip identified prefix");
             self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("f_") {
+            let index = label.strip_prefix("f_").expect("should be able to strip identified prefix");
+            self.f_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("s_1_") {
+            let index = label.strip_prefix("s_1_").expect("should be able to strip identified prefix");
+            self.s_1_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("s_2_") {
+            let index = label.strip_prefix("s_2_").expect("should be able to strip identified prefix");
+            self.s_2_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("z_2_") {
+            let index = label.strip_prefix("z_2_").expect("should be able to strip identified prefix");
+            self.z_2_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("delta_omega_s_1_") {
+            let index = label.strip_prefix("delta_omega_s_1_").expect("should be able to strip identified prefix");
+            self.delta_s_1_omega_evals.get(index.parse::<usize>().unwrap()).copied()
         } else {
             match label {
+                "s_m" => Some(self.s_m_eval),
+                "s_l" => Some(self.s_l_eval),
+                "table" => Some(self.table_eval),
+                "delta_table_omega" => Some(self.delta_table_omega_eval),
                 "g_1" => Some(self.g_1_eval),
                 "g_a" => Some(self.g_a_eval),
                 "g_b" => Some(self.g_b_eval),
@@ -196,6 +353,15 @@ impl<F: PrimeField> Evaluations<F> {
 impl<F: PrimeField> Valid for Evaluations<F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
+        self.f_evals.check()?;
+        self.s_1_evals.check()?;
+        self.s_2_evals.check()?;
+        self.z_2_evals.check()?;
+        self.delta_s_1_omega_evals.check()?;
+        self.s_m_eval.check()?;
+        self.s_l_eval.check()?;
+        self.table_eval.check()?;
+        self.delta_table_omega_eval.check()?;
         self.g_1_eval.check()?;
         self.g_a_eval.check()?;
         self.g_b_eval.check()?;
@@ -206,7 +372,21 @@ impl<F: PrimeField> Valid for Evaluations<F> {
 impl<F: PrimeField> Evaluations<F> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
-        result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
+        result.extend(self.f_evals.iter());
+        result.extend(self.s_1_evals.iter());
+        result.extend(self.s_2_evals.iter());
+        result.extend(self.z_2_evals.iter());
+        result.extend(self.delta_s_1_omega_evals.iter());
+        result.extend([
+            self.s_m_eval,
+            self.s_l_eval,
+            self.table_eval,
+            self.delta_table_omega_eval,
+            self.g_1_eval,
+            self.g_a_eval,
+            self.g_b_eval,
+            self.g_c_eval,
+        ]);
         result
     }
 }
@@ -224,7 +404,7 @@ pub struct Proof<E: PairingEngine> {
     pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c
-    pub msg: ahp::prover::ThirdMessage<E::Fr>,
+    pub msg: ahp::prover::FifthMessage<E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
@@ -236,7 +416,7 @@ impl<E: PairingEngine> Proof<E> {
         batch_size: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
-        msg: ahp::prover::ThirdMessage<E::Fr>,
+        msg: ahp::prover::FifthMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         if commitments.witness_commitments.len() != batch_size {

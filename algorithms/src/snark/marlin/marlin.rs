@@ -170,7 +170,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
     fn absorb_labeled_with_msg(
         comms: &[LabeledCommitment<Commitment<E>>],
-        message: &prover::ThirdMessage<E::Fr>,
+        message: &prover::FifthMessage<E::Fr>,
         sponge: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
@@ -188,7 +188,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         end_timer!(sponge_time);
     }
 
-    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
+    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::FifthMessage<E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
         sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c]);
@@ -384,17 +384,19 @@ where
         // Second round
 
         Self::terminate(terminator)?;
-        let (second_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_message, prover_state, zk_rng);
+        let mut prover_state = AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_message, prover_state)?;
         Self::terminate(terminator)?;
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
-        let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &circuit_proving_key.committer_key,
-            second_oracles.iter().map(Into::into),
-            terminator,
-            Some(zk_rng),
-        )?;
+        let (second_commitments, second_commitment_randomnesses) = {
+            let second_round_oracles = Arc::get_mut(prover_state.second_round_oracles.as_mut().unwrap()).unwrap();
+            SonicKZG10::<E, FS>::commit_with_terminator(
+                &circuit_proving_key.committer_key,
+                second_round_oracles.iter().map(Into::into),
+                terminator,
+                Some(zk_rng),
+            )?
+        };
         end_timer!(second_round_comm_time);
 
         Self::absorb_labeled(&second_commitments, &mut sponge);
@@ -408,9 +410,8 @@ where
         // Third round
 
         Self::terminate(terminator)?;
-
-        let (prover_third_message, third_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
+        let (third_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_third_round(&verifier_second_msg, prover_state, zk_rng);
         Self::terminate(terminator)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
@@ -422,7 +423,8 @@ where
         )?;
         end_timer!(third_round_comm_time);
 
-        Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
+        Self::absorb_labeled(&third_commitments, &mut sponge);
+        Self::terminate(terminator)?;
 
         let (verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
@@ -433,8 +435,8 @@ where
 
         Self::terminate(terminator)?;
 
-        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
+        let (fourth_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng);
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
@@ -448,7 +450,56 @@ where
 
         Self::absorb_labeled(&fourth_commitments, &mut sponge);
 
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        let (verifier_fourth_msg, verifier_state) =
+            AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Fifth round
+
+        Self::terminate(terminator)?;
+
+        let (prover_fifth_message, fifth_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_fifth_round(&verifier_fourth_msg, prover_state, zk_rng)?;
+        Self::terminate(terminator)?;
+
+        let fifth_round_comm_time = start_timer!(|| "Committing to fifth round polys");
+        let (fifth_commitments, fifth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
+            &circuit_proving_key.committer_key,
+            fifth_oracles.iter().map(Into::into),
+            terminator,
+            Some(zk_rng),
+        )?;
+        end_timer!(fifth_round_comm_time);
+
+        Self::absorb_labeled_with_msg(&fifth_commitments, &prover_fifth_message, &mut sponge);
+
+        let (verifier_fifth_msg, verifier_state) =
+            AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Sixth round
+
+        Self::terminate(terminator)?;
+
+        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
+        let second_round_oracles = Arc::clone(prover_state.second_round_oracles.as_ref().unwrap());
+        let sixth_oracles = AHPForR1CS::<_, MM>::prover_sixth_round(&verifier_fifth_msg, prover_state, zk_rng)?;
+        Self::terminate(terminator)?;
+
+        let sixth_round_comm_time = start_timer!(|| "Committing to sixth round polys");
+        let (sixth_commitments, sixth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
+            &circuit_proving_key.committer_key,
+            sixth_oracles.iter().map(Into::into),
+            terminator,
+            Some(zk_rng),
+        )?;
+        end_timer!(sixth_round_comm_time);
+
+        Self::absorb_labeled(&sixth_commitments, &mut sponge);
+
+        let verifier_state = AHPForR1CS::<_, MM>::verifier_sixth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         Self::terminate(terminator)?;
@@ -456,39 +507,62 @@ where
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
-            .iter() // 12 items
-            .chain(first_round_oracles.iter_for_open()) // 3 * batch_size + (MM::ZK as usize) items
-            .chain(second_oracles.iter())// 2 items
-            .chain(third_oracles.iter())// 3 items
-            .chain(fourth_oracles.iter())// 1 item
+            .iter() // 15 items
+            .chain(first_round_oracles.iter_for_open()) // 4 * batch_size + (MM::ZK as usize) items
+            .chain(second_round_oracles.iter()) // 6 * batch_size + 2 items
+            .chain(third_oracles.iter()) // 1 item
+            .chain(fourth_oracles.iter()) // 1 item
+            .chain(fifth_oracles.iter()) // 3 items
+            .chain(sixth_oracles.iter()) // 1 item
             .collect();
 
         Self::terminate(terminator)?;
 
         // Gather commitments in one vector.
-        let witness_commitments = first_commitments.chunks_exact(3);
+        let witness_commitments = first_commitments.chunks_exact(4);
         let mask_poly = MM::ZK.then(|| *witness_commitments.remainder()[0].commitment());
         let witness_commitments = witness_commitments
             .map(|c| proof::WitnessCommitments {
                 w: *c[0].commitment(),
                 z_a: *c[1].commitment(),
                 z_b: *c[2].commitment(),
+                z_c: *c[3].commitment(),
             })
             .collect();
+
+        let lookup_commitments = second_commitments.chunks_exact(6);
+        let (table, delta_table_omega) =
+            (*lookup_commitments.remainder()[0].commitment(), *lookup_commitments.remainder()[1].commitment());
+        let lookup_commitments = lookup_commitments
+            .map(|c| proof::LookupCommitments {
+                f: *c[0].commitment(),
+                s_1: *c[1].commitment(),
+                s_2: *c[2].commitment(),
+                z_2: *c[3].commitment(),
+                delta_s_1_omega: *c[4].commitment(),
+                z_2_omega: *c[5].commitment(),
+            })
+            .collect();
+
         #[rustfmt::skip]
         let commitments = proof::Commitments {
             witness_commitments,
             mask_poly,
 
-            g_1: *second_commitments[0].commitment(),
-            h_1: *second_commitments[1].commitment(),
+            lookup_commitments,
+            table,
+            delta_table_omega,
+
+            g_1: *third_commitments[0].commitment(),
+
+            h_1: *fourth_commitments[0].commitment(),
 
 
-            g_a: *third_commitments[0].commitment(),
-            g_b: *third_commitments[1].commitment(),
-            g_c: *third_commitments[2].commitment(),
+            g_a: *fifth_commitments[0].commitment(),
+            g_b: *fifth_commitments[1].commitment(),
+            g_c: *fifth_commitments[2].commitment(),
 
-            h_2: *fourth_commitments[0].commitment(),
+            h_2: *sixth_commitments[0].commitment(),
         };
 
         let labeled_commitments: Vec<_> = circuit_proving_key
@@ -501,6 +575,8 @@ where
             .chain(second_commitments.into_iter())
             .chain(third_commitments.into_iter())
             .chain(fourth_commitments.into_iter())
+            .chain(fifth_commitments.into_iter())
+            .chain(sixth_commitments.into_iter())
             .collect();
 
         // Gather commitment randomness together.
@@ -512,6 +588,8 @@ where
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
             .chain(fourth_commitment_randomnesses)
+            .chain(fifth_commitment_randomnesses)
+            .chain(sixth_commitment_randomnesses)
             .collect();
 
         if !MM::ZK {
@@ -524,7 +602,7 @@ where
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &polynomials,
-            &prover_third_message,
+            &prover_fifth_message,
             &verifier_state,
         )?;
 
@@ -559,7 +637,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof)?;
+        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_fifth_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
 
         #[cfg(debug_assertions)]
@@ -613,6 +691,7 @@ where
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("w", i)], c.w),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_a", i)], c.z_a),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_b", i)], c.z_b),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_c", i)], c.z_c),
                 ]
             })
             .collect::<Vec<_>>();
@@ -623,23 +702,55 @@ where
             ));
         }
 
-        let second_round_info =
-            AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(&circuit_verifying_key.circuit_info);
-        let second_commitments = [
-            LabeledCommitment::new_with_info(&second_round_info["g_1"], comms.g_1),
-            LabeledCommitment::new_with_info(&second_round_info["h_1"], comms.h_1),
-        ];
+        // TODO: AMEND
+        let second_round_info = AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(batch_size);
+        let mut second_commitments = comms
+            .lookup_commitments
+            .iter()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                [
+                    LabeledCommitment::new_with_info(&second_round_info[&witness_label("f", i)], c.f),
+                    LabeledCommitment::new_with_info(&second_round_info[&witness_label("s_1", i)], c.s_1),
+                    LabeledCommitment::new_with_info(&second_round_info[&witness_label("s_2", i)], c.s_2),
+                    LabeledCommitment::new_with_info(&second_round_info[&witness_label("z_2", i)], c.z_2),
+                    LabeledCommitment::new_with_info(
+                        &second_round_info[&witness_label("delta_omega_s_1", i)],
+                        c.delta_s_1_omega,
+                    ),
+                    LabeledCommitment::new_with_info(&second_round_info[&witness_label("omega_z_2", i)], c.z_2_omega),
+                ]
+            })
+            .collect::<Vec<_>>();
+        second_commitments.push(LabeledCommitment::new_with_info(second_round_info.get("table").unwrap(), comms.table));
+        second_commitments.push(LabeledCommitment::new_with_info(
+            second_round_info.get("delta_table_omega").unwrap(),
+            comms.delta_table_omega,
+        ));
+        
+        // testnet3.3.
+        // let second_round_info =
+        //     AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(&circuit_verifying_key.circuit_info);
+        // let second_commitments = [
+        //     LabeledCommitment::new_with_info(&second_round_info["g_1"], comms.g_1),
+        //     LabeledCommitment::new_with_info(&second_round_info["h_1"], comms.h_1),
+        // ];
 
         let third_round_info =
             AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(&circuit_verifying_key.circuit_info);
-        let third_commitments = [
-            LabeledCommitment::new_with_info(&third_round_info["g_a"], comms.g_a),
-            LabeledCommitment::new_with_info(&third_round_info["g_b"], comms.g_b),
-            LabeledCommitment::new_with_info(&third_round_info["g_c"], comms.g_c),
+        let third_commitments = [LabeledCommitment::new_with_info(&third_round_info["g_1"], comms.g_1)];
+        let fourth_round_info =
+            AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info(&circuit_verifying_key.circuit_info);
+        let fourth_commitments = [LabeledCommitment::new_with_info(&fourth_round_info["h_1"], comms.h_1)];
+        let fifth_round_info =
+            AHPForR1CS::<E::Fr, MM>::fifth_round_polynomial_info(&circuit_verifying_key.circuit_info);
+        let fifth_commitments = [
+            LabeledCommitment::new_with_info(&fifth_round_info["g_a"], comms.g_a),
+            LabeledCommitment::new_with_info(&fifth_round_info["g_b"], comms.g_b),
+            LabeledCommitment::new_with_info(&fifth_round_info["g_c"], comms.g_c),
         ];
-
-        let fourth_round_info = AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info();
-        let fourth_commitments = [LabeledCommitment::new_with_info(&fourth_round_info["h_2"], comms.h_2)];
+        let sixth_round_info = AHPForR1CS::<E::Fr, MM>::sixth_round_polynomial_info();
+        let sixth_commitments = [LabeledCommitment::new_with_info(&sixth_round_info["h_2"], comms.h_2)];
 
         let input_domain =
             EvaluationDomain::<E::Fr>::new(circuit_verifying_key.circuit_info.num_public_inputs).unwrap();
@@ -687,9 +798,11 @@ where
 
         // --------------------------------------------------------------------
         // Third round
-        let third_round_time = start_timer!(|| "Third round");
+        Self::absorb_labeled(&third_commitments, &mut sponge);
 
-        Self::absorb_labeled_with_msg(&third_commitments, &proof.msg, &mut sponge);
+        // This is from testnet3.3
+        // Self::absorb_labeled_with_msg(&third_commitments, &proof.msg, &mut sponge);
+        let third_round_time = start_timer!(|| "Third round");
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
         end_timer!(third_round_time);
         // --------------------------------------------------------------------
@@ -699,8 +812,20 @@ where
         let fourth_round_time = start_timer!(|| "Fourth round");
 
         Self::absorb_labeled(&fourth_commitments, &mut sponge);
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         end_timer!(fourth_round_time);
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Fifth round
+        Self::absorb_labeled_with_msg(&fifth_commitments, &proof.msg, &mut sponge);
+        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Sixth round
+        Self::absorb_labeled(&sixth_commitments, &mut sponge);
+        let verifier_state = AHPForR1CS::<_, MM>::verifier_sixth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // Collect degree bounds for commitments. Indexed polynomials have *no*
@@ -717,6 +842,8 @@ where
             .chain(second_commitments)
             .chain(third_commitments)
             .chain(fourth_commitments)
+            .chain(fifth_commitments)
+            .chain(sixth_commitments)
             .collect();
 
         let query_set_time = start_timer!(|| "Constructing query set");
@@ -796,7 +923,7 @@ pub mod test {
     }
 
     impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+        fn generate_constraints<C: ConstraintSystem<ConstraintF>>(&self, cs: &mut C) -> Result<(), SynthesisError> {
             let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
             let c = cs.alloc_input(
@@ -838,6 +965,106 @@ pub mod test {
             c.mul_assign(&b);
 
             let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25 };
+
+            // Generate the circuit parameters.
+
+            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific).unwrap();
+
+            // Test native proof and verification.
+            let fs_parameters = FS::sample_parameters();
+
+            let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
+
+            assert!(
+                TestSNARK::verify(&fs_parameters, &vk.clone(), [c].as_ref(), &proof).unwrap(),
+                "The native verification check fails."
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod lookup_test {
+    use super::*;
+    use crate::{
+        crypto_hash::PoseidonSponge,
+        snark::marlin::{MarlinHidingMode, MarlinSNARK},
+        AlgebraicSponge,
+        SRS,
+    };
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use snarkvm_fields::Field;
+    use snarkvm_r1cs::{ConstraintSystem, LinearCombination, LookupTable, SynthesisError};
+    use snarkvm_utilities::{TestRng, Uniform};
+
+    use core::ops::MulAssign;
+
+    const ITERATIONS: usize = 10;
+
+    #[derive(Clone)]
+    pub struct Circuit<F: Field> {
+        pub a: Option<F>,
+        pub b: Option<F>,
+        pub num_constraints: usize,
+        pub num_variables: usize,
+        pub table: LookupTable<F>,
+    }
+
+    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
+        fn generate_constraints<C: ConstraintSystem<ConstraintF>>(&self, cs: &mut C) -> Result<(), SynthesisError> {
+            cs.add_lookup_table(self.table.clone());
+            let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+            let c = cs.alloc_input(
+                || "c",
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
+            cs.enforce_lookup(
+                || "c_lookup",
+                |lc| lc + LinearCombination::from(a),
+                |lc| lc + LinearCombination::from(b),
+                |lc| lc + LinearCombination::from(c),
+                0,
+            )?;
+
+            for i in 0..(self.num_variables - 3) {
+                let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            }
+
+            for i in 0..(self.num_constraints - 2) {
+                cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+            }
+
+            Ok(())
+        }
+    }
+
+    type FS = PoseidonSponge<Fq, 2, 1>;
+    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
+
+    #[test]
+    fn marlin_snark_lookup_test() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Construct the circuit.
+
+            let a = Fr::rand(&mut rng);
+            let b = Fr::rand(&mut rng);
+            let mut c = a;
+            c.mul_assign(&b);
+
+            let mut table = LookupTable::default();
+            let lookup_value = [a, b];
+            table.fill(lookup_value, c);
+
+            let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25, table };
 
             // Generate the circuit parameters.
 

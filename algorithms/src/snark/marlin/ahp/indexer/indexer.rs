@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
-    polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
+    fft::{EvaluationDomain, Evaluations},
+    polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
@@ -30,7 +30,7 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, LookupTable};
 use snarkvm_utilities::cfg_into_iter;
 
 use core::marker::PhantomData;
@@ -62,6 +62,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_evals,
 
             index_info,
+
+            s_l_evals,
+            s_l_evals_original,
+            s_m_evals,
+            l_1_evals,
+            lookup_tables,
         } = Self::index_helper(c)?;
         let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
 
@@ -85,6 +91,26 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
+        let s_m = LabeledPolynomial::new(
+            "s_m".to_string(),
+            s_m_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+        let s_l = LabeledPolynomial::new(
+            "s_l".to_string(),
+            s_l_evals_original.interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+        let l_1 = LabeledPolynomial::new(
+            "l_1".to_string(),
+            Evaluations::from_vec_and_domain(l_1_evals, constraint_domain)
+                .interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+
         Ok(Circuit {
             index_info,
             a,
@@ -93,21 +119,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             a_arith,
             b_arith,
             c_arith,
+            s_m,
+            s_l,
+            s_l_evals,
+            l_1,
+            lookup_tables,
             fft_precomputation,
             ifft_precomputation,
             mode: PhantomData,
         })
-    }
-
-    pub fn index_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let mut map = BTreeMap::new();
-        for matrix in ["a", "b", "c"] {
-            map.insert(format!("row_{matrix}"), PolynomialInfo::new(format!("row_{matrix}"), None, None));
-            map.insert(format!("col_{matrix}"), PolynomialInfo::new(format!("col_{matrix}"), None, None));
-            map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
-            map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
-        }
-        map
     }
 
     pub fn index_polynomial_labels() -> impl Iterator<Item = PolynomialLabel> {
@@ -205,7 +225,23 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .try_into()
                 .unwrap();
 
-        let result = Ok(IndexerState {
+        let mut mul_constraint_evals = vec![F::zero(); num_constraints];
+        ics.mul_constraints.iter().for_each(|index| mul_constraint_evals[*index] = F::one());
+        let s_m_evals = Evaluations::from_vec_and_domain(mul_constraint_evals, constraint_domain);
+
+        let mut lookup_constraint_evals = vec![F::zero(); num_constraints];
+        let mut lookup_tables = vec![];
+        ics.lookup_constraints.iter().for_each(|entry| {
+            lookup_tables.push(entry.table.clone());
+            entry.indices.iter().for_each(|index| lookup_constraint_evals[*index] = F::one());
+        });
+        let s_l_evals = Evaluations::from_vec_and_domain(lookup_constraint_evals.clone(), constraint_domain);
+
+        let mut l_1_evals = vec![F::zero(); constraint_domain.size()];
+        l_1_evals[0] = F::one();
+
+        end_timer!(index_time);
+        Ok(IndexerState {
             constraint_domain,
 
             a,
@@ -221,9 +257,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_evals,
 
             index_info,
-        });
-        end_timer!(index_time);
-        result
+
+            s_l_evals: lookup_constraint_evals,
+            s_l_evals_original: s_l_evals,
+            s_m_evals,
+            l_1_evals, 
+            lookup_tables,
+        })
+    }
+
+    pub fn index_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let mut map = BTreeMap::new();
+        for matrix in ["a", "b", "c"] {
+            map.insert(format!("row_{matrix}"), PolynomialInfo::new(format!("row_{matrix}"), None, None));
+            map.insert(format!("col_{matrix}"), PolynomialInfo::new(format!("col_{matrix}"), None, None));
+            map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
+            map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
+        }
+        map.insert("s_m".to_string(), PolynomialInfo::new("s_m".to_string(), None, None));
+        map.insert("s_l".to_string(), PolynomialInfo::new("s_l".to_string(), None, None));
+        map.insert("l_1".to_string(), PolynomialInfo::new("l_1".to_string(), None, None));
+        map
     }
 
     pub fn evaluate_index_polynomials<C: ConstraintSynthesizer<F>>(
@@ -269,4 +323,10 @@ struct IndexerState<F: PrimeField> {
     c_evals: MatrixEvals<F>,
 
     index_info: CircuitInfo<F>,
+
+    s_l_evals: Vec<F>,
+    s_l_evals_original: Evaluations<F>,
+    s_m_evals: Evaluations<F>,
+    l_1_evals: Vec<F>,
+    lookup_tables: Vec<LookupTable<F>>,
 }

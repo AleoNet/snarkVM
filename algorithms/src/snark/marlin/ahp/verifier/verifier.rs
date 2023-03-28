@@ -21,7 +21,7 @@ use crate::{
     snark::marlin::{
         ahp::{
             indexer::CircuitInfo,
-            verifier::{FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
+            verifier::{FifthMessage, FirstMessage, FourthMessage, QuerySet, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
         },
@@ -63,24 +63,20 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             EvaluationDomain::new(index_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
         end_timer!(non_zero_c_time);
 
+        let elems = fs_rng.squeeze_nonnative_field_elements(3);
+        let zeta: TargetField = elems[0];
+        let delta = elems[1];
+        let epsilon = elems[2];
+        assert!(!constraint_domain.evaluate_vanishing_polynomial(zeta).is_zero());
+        assert!(!constraint_domain.evaluate_vanishing_polynomial(delta).is_zero());
+        assert!(!constraint_domain.evaluate_vanishing_polynomial(epsilon).is_zero());
+
         let input_domain_time = start_timer!(|| "Constructing input domain");
         let input_domain =
             EvaluationDomain::new(index_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
         end_timer!(input_domain_time);
 
-        let squeeze_time = start_timer!(|| "Squeezing challenges");
-        let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1);
-        let (first, rest) = elems.split_at(3);
-        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
-        let mut batch_combiners = vec![TargetField::one()];
-        batch_combiners.extend_from_slice(rest);
-        end_timer!(squeeze_time);
-
-        let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
-        assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
-        end_timer!(check_vanish_poly_time);
-
-        let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners };
+        let message = FirstMessage { zeta, delta, epsilon };
 
         let new_state = State {
             batch_size,
@@ -92,6 +88,8 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             first_round_message: Some(message.clone()),
             second_round_message: None,
             third_round_message: None,
+            fourth_round_message: None,
+            fifth_round_message: None,
             gamma: None,
             mode: PhantomData,
         };
@@ -104,13 +102,15 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(1);
-        let beta = elems[0];
-        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        let elems = fs_rng.squeeze_nonnative_field_elements(3 + state.batch_size - 1);
+        let (first, rest) = elems.split_at(3);
+        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
+        let mut batch_combiners = vec![TargetField::one()];
+        batch_combiners.extend_from_slice(rest);
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
 
-        let message = SecondMessage { beta };
-        state.second_round_message = Some(message);
-
+        let message = SecondMessage { alpha, eta_b, eta_c, batch_combiners };
+        state.second_round_message = Some(message.clone());
         Ok((message, state))
     }
 
@@ -119,17 +119,45 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(2);
-        let r_b = elems[0];
-        let r_c = elems[1];
-        let message = ThirdMessage { r_b, r_c };
+        let elems = fs_rng.squeeze_nonnative_field_elements(1);
+        let theta = elems[0];
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(theta).is_zero());
 
+        let message = ThirdMessage { theta };
         state.third_round_message = Some(message);
         Ok((message, state))
     }
 
     /// Output the third message and next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        mut state: State<TargetField, MM>,
+        fs_rng: &mut R,
+    ) -> Result<(FourthMessage<TargetField>, State<TargetField, MM>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1);
+        let beta = elems[0];
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+
+        let message = FourthMessage { beta };
+        state.fourth_round_message = Some(message);
+        Ok((message, state))
+    }
+
+    /// Output the fifth message and next round state.
+    pub fn verifier_fifth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        mut state: State<TargetField, MM>,
+        fs_rng: &mut R,
+    ) -> Result<(FifthMessage<TargetField>, State<TargetField, MM>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(2);
+        let r_b = elems[0];
+        let r_c = elems[1];
+        let message = FifthMessage { r_b, r_c };
+
+        state.fifth_round_message = Some(message);
+        Ok((message, state))
+    }
+
+    /// Output the sixth message and next round state.
+    pub fn verifier_sixth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<State<TargetField, MM>, AHPError> {

@@ -21,6 +21,17 @@ use crate::snark::marlin::{witness_label, MarlinMode};
 /// First message of the verifier.
 #[derive(Clone, Debug)]
 pub struct FirstMessage<F> {
+    /// Compression factor for the table and query vector polynomials.
+    pub zeta: F,
+    /// Randomizer for `z_2`.
+    pub delta: F,
+    /// Randomizer for `z_2`.
+    pub epsilon: F,
+}
+
+/// Second message of the verifier.
+#[derive(Clone, Debug)]
+pub struct SecondMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `B`.
@@ -31,16 +42,23 @@ pub struct FirstMessage<F> {
     pub batch_combiners: Vec<F>,
 }
 
-/// Second verifier message.
-#[derive(Copy, Clone, Debug)]
-pub struct SecondMessage<F> {
-    /// Query for the second round of polynomials.
-    pub beta: F,
-}
-
 /// Third message of the verifier.
 #[derive(Copy, Clone, Debug)]
 pub struct ThirdMessage<F> {
+    /// Query for the third round of polynomials.
+    pub theta: F,
+}
+
+/// Fourth verifier message.
+#[derive(Copy, Clone, Debug)]
+pub struct FourthMessage<F> {
+    /// Query for the fourth round of polynomials.
+    pub beta: F,
+}
+
+/// Fifth message of the verifier.
+#[derive(Copy, Clone, Debug)]
+pub struct FifthMessage<F> {
     /// Randomizer for the h-polynomial for `B`.
     pub r_b: F,
     /// Randomizer for the h-polynomial for `C`.
@@ -53,6 +71,15 @@ pub struct QuerySet<F> {
     pub batch_size: usize,
     pub g_1_query: (String, F),
     pub z_b_query: (String, F),
+    pub f_query: (String, F),
+    pub s_1_query: (String, F),
+    pub s_2_query: (String, F),
+    pub z_2_query: (String, F),
+    pub delta_s_1_omega_query: (String, F),
+    pub table_query: (String, F),
+    pub delta_table_omega_query: (String, F),
+    pub s_m_query: (String, F),
+    pub s_l_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
 
     pub g_a_query: (String, F),
@@ -63,7 +90,7 @@ pub struct QuerySet<F> {
 
 impl<F: PrimeField> QuerySet<F> {
     pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
-        let beta = state.second_round_message.unwrap().beta;
+        let beta = state.fourth_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
         // Lincheck sumcheck test:
@@ -77,6 +104,15 @@ impl<F: PrimeField> QuerySet<F> {
             batch_size: state.batch_size,
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
+            f_query: ("beta".into(), beta),
+            s_1_query: ("beta".into(), beta),
+            s_2_query: ("beta".into(), beta),
+            z_2_query: ("beta".into(), beta),
+            delta_s_1_omega_query: ("beta".into(), beta),
+            table_query: ("beta".into(), beta),
+            delta_table_omega_query: ("beta".into(), beta),
+            s_m_query: ("beta".into(), beta),
+            s_l_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
 
             g_a_query: ("gamma".into(), gamma),
@@ -93,7 +129,26 @@ impl<F: PrimeField> QuerySet<F> {
         for i in 0..self.batch_size {
             query_set.insert((witness_label("z_b", i), self.z_b_query.clone()));
         }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("f", i), self.f_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("s_1", i), self.s_1_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("s_2", i), self.s_2_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("z_2", i), self.z_2_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("delta_omega_s_1", i), self.delta_s_1_omega_query.clone()));
+        }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
+        query_set.insert(("table".into(), self.table_query.clone()));
+        query_set.insert(("delta_table_omega".into(), self.delta_table_omega_query.clone()));
+        query_set.insert(("s_m".into(), self.s_m_query.clone()));
+        query_set.insert(("s_l".into(), self.s_l_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
 
         query_set.insert(("g_a".into(), self.g_a_query.clone()));

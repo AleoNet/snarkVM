@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SynthesisError, Index, LinearCombination, Namespace, Variable};
+use crate::{errors::SynthesisError, Index, LinearCombination, LookupTable, Namespace, Variable};
 use snarkvm_fields::Field;
 
 use std::marker::PhantomData;
@@ -39,6 +39,10 @@ pub trait ConstraintSystem<F: Field>: Sized {
         Variable::new_unchecked(Index::Public(0))
     }
 
+    /// Add a lookup table to the constraint system. This allows for calls to `lookup`,
+    /// adding lookup constraints to the circuit.
+    fn add_lookup_table(&mut self, table: LookupTable<F>);
+
     /// Allocate a private variable in the constraint system. The provided
     /// function is used to determine the assignment of the variable. The
     /// given `annotation` function is invoked in testing contexts in order
@@ -61,6 +65,22 @@ pub trait ConstraintSystem<F: Field>: Sized {
     /// testing contexts in order to derive a unique name for the constraint
     /// in the current namespace.
     fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>;
+
+    /// Lookup a value given an input.
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
@@ -118,6 +138,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
     }
 
     #[inline]
+    fn add_lookup_table(&mut self, table: LookupTable<F>) {
+        (**self).add_lookup_table(table);
+    }
+
+    #[inline]
     fn alloc<FN, A, AR>(&mut self, annotation: A, f: FN) -> Result<Variable, SynthesisError>
     where
         FN: FnOnce() -> Result<F, SynthesisError>,
@@ -147,6 +172,25 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         (**self).enforce(annotation, a, b, c)
+    }
+
+    #[inline]
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        (**self).enforce_lookup(annotation, a, b, c, table_index)
     }
 
     #[inline]
