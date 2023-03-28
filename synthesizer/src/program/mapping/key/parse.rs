@@ -75,7 +75,7 @@ impl<N: Network> Display for MapKey<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {name} as {plaintext_type};",
+            "{type_} {name} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             name = self.name,
             plaintext_type = self.plaintext_type
@@ -95,7 +95,7 @@ mod tests {
         // Literal
         let key = MapKey::<CurrentNetwork>::parse("key hello as field.public;").unwrap().1;
         assert_eq!(key.name(), &Identifier::<CurrentNetwork>::from_str("hello")?);
-        assert_eq!(key.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(key.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         Ok(())
     }

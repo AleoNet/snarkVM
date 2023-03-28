@@ -75,7 +75,7 @@ impl<N: Network> Display for MapValue<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {name} as {plaintext_type};",
+            "{type_} {name} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             name = self.name,
             plaintext_type = self.plaintext_type
@@ -95,7 +95,7 @@ mod tests {
         // Literal
         let value = MapValue::<CurrentNetwork>::parse("value abcd as field.public;").unwrap().1;
         assert_eq!(value.name(), &Identifier::<CurrentNetwork>::from_str("abcd")?);
-        assert_eq!(value.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(value.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         Ok(())
     }

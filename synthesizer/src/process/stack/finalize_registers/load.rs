@@ -47,28 +47,17 @@ impl<N: Network> Load<N> for FinalizeRegisters<N> {
             // If the register is a locator, then return the stack value.
             Register::Locator(..) => stack_value.clone(),
             // If the register is a register member, then load the specific stack value.
-            Register::Member(_, ref path) => {
-                match stack_value {
-                    // Retrieve the plaintext member from the path.
-                    Value::Plaintext(plaintext) => Value::Plaintext(plaintext.find(path)?),
-                    // Retrieve the record entry from the path.
-                    Value::Record(record) => match record.find(path)? {
-                        Entry::Constant(plaintext) | Entry::Public(plaintext) | Entry::Private(plaintext) => {
-                            Value::Plaintext(plaintext)
-                        }
-                    },
-                }
-            }
+            Register::Member(_, ref path) => stack_value.find(path)?,
         };
 
         // Retrieve the register type.
         match self.finalize_types.get_type(stack, register) {
             // Ensure the stack value matches the register type.
-            Ok(register_type) => stack.matches_register_type(&stack_value, &register_type)?,
+            Ok(register_type) => stack.matches_plaintext(&stack_value, &register_type)?,
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
         };
 
-        Ok(stack_value)
+        Ok(Value::Plaintext(stack_value))
     }
 }

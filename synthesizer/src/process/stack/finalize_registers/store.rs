@@ -25,6 +25,12 @@ impl<N: Network> Store<N> for FinalizeRegisters<N> {
     /// This method will halt if the register is already used.
     #[inline]
     fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
+        // Ensure that the stack value is a plaintext value.
+        let stack_value = match stack_value {
+            Value::Plaintext(plaintext) => plaintext,
+            Value::Record(_) => bail!("Cannot store a record to a finalize register"),
+        };
+        // Store the value to the register.
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
@@ -36,7 +42,7 @@ impl<N: Network> Store<N> for FinalizeRegisters<N> {
                 // Ensure the register type is valid.
                 match self.finalize_types.get_type(stack, register) {
                     // Ensure the stack value matches the register type.
-                    Ok(register_type) => stack.matches_register_type(&stack_value, &register_type)?,
+                    Ok(register_type) => stack.matches_plaintext(&stack_value, &register_type)?,
                     // Ensure the register is defined.
                     Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
