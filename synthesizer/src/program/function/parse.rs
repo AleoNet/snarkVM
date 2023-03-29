@@ -215,10 +215,12 @@ finalize mint_public:
     // Input the token amount.
     input r1 as u64.public;
 
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, it will be created.
-    // If `account[r0] + r1` overflows, `mint_public` is reverted.
-    increment account[r0] by r1;
+    // Load `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
+    load.d account[r0] 0u64 into r2;
+    // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
+    add r2 r1 into r3;
+    // Store `r3` into `account[r0]`.
+    store r3 into account[r0];
 ",
         )
         .unwrap()
