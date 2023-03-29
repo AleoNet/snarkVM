@@ -29,10 +29,8 @@ use console::{
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, RwLock},
-};
+use parking_lot::RwLock;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -52,6 +50,39 @@ pub type StorageTree<N> = BHPMerkleTree<N, PROGRAMS_DEPTH>;
 pub type ProgramTree<N> = BHPMerkleTree<N, PROGRAM_DEPTH>;
 /// The merkle tree for the mapping state.
 pub type MappingTree<N> = BHPMerkleTree<N, MAPPING_DEPTH>;
+
+/// Enum to represent the update to the merkle trees.
+#[derive(Clone, Copy, Debug)]
+pub enum MerkleTreeUpdate<N: Network> {
+    /// Insert a leaf to the merkle tree.
+    /// (`mapping ID`, `value ID`)
+    InsertValue(Field<N>, Field<N>),
+    /// Update the merkle tree leaf at the given index.
+    /// (`mapping ID`, `index`, `value ID`)
+    UpdateValue(Field<N>, usize, Field<N>),
+    /// Remove the merkle tree leaf at the given index.
+    /// (`mapping ID`, `index`)
+    RemoveValue(Field<N>, usize),
+    /// Add the mapping to the merkle tree.
+    /// (`mapping ID`)
+    InsertMapping(Field<N>),
+    /// Remove the mapping from the merkle tree.
+    /// (`mapping ID`)
+    RemoveMapping(Field<N>),
+}
+
+impl<N: Network> MerkleTreeUpdate<N> {
+    /// Returns the mapping ID.
+    pub fn mapping_id(&self) -> Field<N> {
+        match self {
+            MerkleTreeUpdate::InsertValue(mapping_id, _) => *mapping_id,
+            MerkleTreeUpdate::UpdateValue(mapping_id, _, _) => *mapping_id,
+            MerkleTreeUpdate::RemoveValue(mapping_id, _) => *mapping_id,
+            MerkleTreeUpdate::InsertMapping(mapping_id) => *mapping_id,
+            MerkleTreeUpdate::RemoveMapping(mapping_id) => *mapping_id,
+        }
+    }
+}
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///
@@ -566,7 +597,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // Iterate through all the programs and construct the program trees.
         for program_id in self.program_id_map().keys() {
             // Construct the program tree.
-            let program_tree = self.to_program_tree(&program_id)?;
+            let program_tree = self.to_program_tree(&program_id, None)?;
 
             // Insert the program tree to the list of program trees.
             program_trees.insert(program_id, program_tree);
@@ -577,15 +608,36 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Merkle tree of a program's mappings.
-    fn to_program_tree(&self, program_id: &ProgramID<N>) -> Result<ProgramTree<N>> {
+    fn to_program_tree(
+        &self,
+        program_id: &ProgramID<N>,
+        optional_mapping_updates: Option<&[MerkleTreeUpdate<N>]>,
+    ) -> Result<ProgramTree<N>> {
         // Retrieve the mapping names for the given program ID.
-        let mapping_names =
-            &*self.program_id_map().get(program_id)?.ok_or_else(|| anyhow!("Missing programID {program_id}"))?;
+        let mapping_names = &*self.program_id_map().get_speculative(program_id)?.unwrap_or_default();
 
         // Construct a mapping trees.
-        let mapping_trees = cfg_iter!(mapping_names)
-            .map(|mapping_name| self.to_mapping_tree(program_id, mapping_name))
-            .collect::<Result<Vec<_>>>()?;
+        let mut mapping_trees = cfg_iter!(mapping_names)
+            .map(|mapping_name| self.to_mapping_tree(program_id, mapping_name, optional_mapping_updates))
+            .collect::<Result<IndexMap<_, _>>>()?;
+
+        // Check if any mappings need to be removed.
+        if let Some(mapping_updates) = optional_mapping_updates {
+            // Iterate through all the mapping updates.
+            for mapping_update in mapping_updates {
+                match mapping_update {
+                    MerkleTreeUpdate::InsertMapping(mapping_id) => {
+                        // Insert a new mapping tree.
+                        mapping_trees.insert(*mapping_id, N::merkle_tree_bhp(&[])?);
+                    }
+                    MerkleTreeUpdate::RemoveMapping(mapping_id) => {
+                        // Remove the mapping tree.
+                        mapping_trees.shift_remove_entry(mapping_id);
+                    }
+                    _ => {}
+                }
+            }
+        }
 
         // Construct the program tree with the mapping_trees.
         let mapping_roots = cfg_iter!(mapping_trees).map(|(_, tree)| tree.root().to_bits_le()).collect::<Vec<_>>();
@@ -599,6 +651,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
+        optional_updates: Option<&[MerkleTreeUpdate<N>]>,
     ) -> Result<(Field<N>, MappingTree<N>)> {
         // Get the mapping ID.
         let mapping_id = self
@@ -612,7 +665,37 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
             .ok_or_else(|| anyhow!("Missing key values for mapping id {mapping_id}"))?;
 
         // Construct the leaves for the mapping tree.
-        let key_value_leaves = cfg_iter!(key_values).map(|(_, value)| value.to_bits_le()).collect::<Vec<_>>();
+        let mut key_value_leaves = cfg_iter!(key_values).map(|(_, value)| value.to_bits_le()).collect::<Vec<_>>();
+
+        // Perform the merkle tree updates if they exist.
+        if let Some(optional_updates) = optional_updates {
+            for update in optional_updates {
+                // Skip the update if it isn't relevant to this mapping.
+                if update.mapping_id() != mapping_id {
+                    continue;
+                }
+
+                // Perform the update.
+                match update {
+                    MerkleTreeUpdate::InsertValue(_, leaf) => {
+                        // Insert the new leaf.
+                        key_value_leaves.push(leaf.to_bits_le());
+                    }
+                    MerkleTreeUpdate::UpdateValue(_, index, leaf) => {
+                        let elem = key_value_leaves
+                            .get_mut(*index)
+                            .ok_or_else(|| anyhow!("Missing key value leaf at index {index}"))?;
+                        *elem = leaf.to_bits_le();
+                    }
+                    MerkleTreeUpdate::RemoveValue(_, index) => {
+                        // Remove the leaf.
+                        key_value_leaves.remove(*index);
+                    }
+                    MerkleTreeUpdate::RemoveMapping(_) => continue,
+                    _ => unreachable!("{update:?} should be handled by the caller"),
+                }
+            }
+        }
 
         // Construct the mapping tree.
         let mapping_tree = N::merkle_tree_bhp(&key_value_leaves)?;
@@ -698,13 +781,6 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     }
 }
 
-// TODO (raychu86): Update the program tree on each operation:
-//  - `insert_key_value`
-//  - `update_key_value`
-//  - `remove_key_value`
-//  - `remove_mapping`
-//  - `remove_program`
-
 /// The program store.
 #[derive(Clone)]
 pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
@@ -738,7 +814,37 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
 
     /// Initializes the given `program ID` and `mapping name` in storage.
     pub fn initialize_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
-        self.storage.initialize_mapping(program_id, mapping_name)
+        // Acquire the write lock on the storage tree.
+        let mut tree = self.tree.write();
+
+        // Construct the updated storage tree.
+        let updated_tree = {
+            // Compute the mapping ID.
+            let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
+
+            // Construct the updated program tree.
+            let program_tree =
+                self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertMapping(mapping_id)]))?;
+
+            match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                Some(program_id_index) => {
+                    // Construct the updated storage tree.
+                    tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                }
+                None => {
+                    // Add the program tree root to the tree if the program ID does not exist yet.
+                    tree.prepare_append(&[program_tree.root().to_bits_le()])?
+                }
+            }
+        };
+
+        // Initialize the mapping
+        self.storage.initialize_mapping(program_id, mapping_name)?;
+
+        // Update the storage tree.
+        *tree = updated_tree;
+
+        Ok(())
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -750,7 +856,46 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<()> {
-        self.storage.insert_key_value(program_id, mapping_name, key, value)
+        // Acquire the write lock on the storage tree.
+        let mut tree = self.tree.write();
+
+        // Construct the updated storage tree.
+        let updated_tree = {
+            // Retrieve the mapping ID.
+            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                Some(mapping_id) => mapping_id,
+                None => {
+                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
+                }
+            };
+
+            // Compute the key ID.
+            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+            // Compute the value ID.
+            let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
+
+            // Construct the updated program tree.
+            let program_tree = self
+                .storage
+                .to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertValue(mapping_id, value_id)]))?;
+
+            // Fetch the index of the program ID.
+            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                Some(program_id_index) => program_id_index,
+                None => bail!("Missing program ID '{program_id}' in program id map"),
+            };
+
+            // Construct the updated storage tree.
+            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+        };
+
+        // Insert the key-value pair.
+        self.storage.insert_key_value(program_id, mapping_name, key, value)?;
+
+        // Update the storage tree.
+        *tree = updated_tree;
+
+        Ok(())
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -763,7 +908,59 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<()> {
-        self.storage.update_key_value(program_id, mapping_name, key, value)
+        // Acquire the write lock on the storage tree.
+        let mut tree = self.tree.write();
+
+        // Construct the updated storage tree.
+        let updated_tree = {
+            // Retrieve the mapping ID.
+            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                Some(mapping_id) => mapping_id,
+                None => {
+                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
+                }
+            };
+
+            // Compute the key ID.
+            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+            // Compute the value ID.
+            let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
+
+            // Fetch the index of the key ID.
+            let key_value_map = self
+                .storage
+                .key_value_id_map()
+                .get(&mapping_id)?
+                .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
+
+            // Construct the update operation. If the key ID does not exist, insert it.
+            let update = match key_value_map.get_index_of(&key_id) {
+                Some(key_id_index) => MerkleTreeUpdate::UpdateValue(mapping_id, key_id_index, value_id),
+                None => MerkleTreeUpdate::InsertValue(mapping_id, value_id),
+            };
+
+            // Construct the updated program tree.
+            let program_tree = self.storage.to_program_tree(program_id, Some(&[update]))?;
+
+            // Fetch the index of the program ID.
+            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                Some(program_id_index) => program_id_index,
+                None => {
+                    bail!("Missing program ID '{program_id}' in program id map")
+                }
+            };
+
+            // Construct the updated storage tree.
+            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+        };
+
+        // Update the key-value pair.
+        self.storage.update_key_value(program_id, mapping_name, key, value)?;
+
+        // Update the storage tree.
+        *tree = updated_tree;
+
+        Ok(())
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -773,19 +970,116 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<()> {
-        self.storage.remove_key_value(program_id, mapping_name, key)
+        // Acquire the write lock on the storage tree.
+        let mut tree = self.tree.write();
+
+        // Construct the updated storage tree.
+        let updated_tree = {
+            // Retrieve the mapping ID.
+            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                Some(mapping_id) => mapping_id,
+                None => {
+                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
+                }
+            };
+
+            // Compute the key ID.
+            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+
+            // Fetch the index of the key ID.
+            let key_value_map = self
+                .storage
+                .key_value_id_map()
+                .get(&mapping_id)?
+                .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
+            let key_id_index = key_value_map
+                .get_index_of(&key_id)
+                .ok_or_else(|| anyhow!("Missing key ID '{key_id}' in key id map"))?;
+
+            // Construct the updated program tree.
+            let program_tree = self
+                .storage
+                .to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveValue(mapping_id, key_id_index)]))?;
+
+            // Fetch the index of the program ID.
+            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                Some(program_id_index) => program_id_index,
+                None => {
+                    bail!("Missing program ID '{program_id}' in program id map")
+                }
+            };
+
+            // Construct the updated storage tree.
+            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+        };
+
+        // Remove the key-value pair.
+        self.storage.remove_key_value(program_id, mapping_name, key)?;
+
+        // Update the storage tree.
+        *tree = updated_tree;
+
+        Ok(())
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
     /// along with all associated key-value pairs in storage.
     pub fn remove_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
-        self.storage.remove_mapping(program_id, mapping_name)
+        // Acquire the write lock on the storage tree.
+        let mut tree = self.tree.write();
+
+        // Construct the updated storage tree.
+        let updated_tree = {
+            // Retrieve the mapping ID.
+            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                Some(mapping_id) => mapping_id,
+                None => {
+                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
+                }
+            };
+
+            // Construct the updated program tree.
+            let program_tree =
+                self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveMapping(mapping_id)]))?;
+
+            // Fetch the index of the program ID.
+            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                Some(program_id_index) => program_id_index,
+                None => {
+                    bail!("Missing program ID '{program_id}' in program id map")
+                }
+            };
+
+            // Construct the updated storage tree.
+            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+        };
+
+        // Remove the mapping.
+        self.storage.remove_mapping(program_id, mapping_name)?;
+
+        // Update the storage tree.
+        *tree = updated_tree;
+
+        Ok(())
     }
 
     /// Removes the program for the given `program ID` from storage,
     /// along with all associated mappings and key-value pairs in storage.
     pub fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
-        self.storage.remove_program(program_id)
+        // Acquire the write lock on the storage tree.
+        let mut tree = self.tree.write();
+
+        // Remove the program..
+        self.storage.remove_program(program_id)?;
+
+        // TODO (raychu86): Have a "shift_update" method that shifts the leaves.
+        // Construct the updated storage tree.
+        let updated_tree = self.storage.to_storage_tree()?;
+
+        // TODO (raychu86) Make sure the operations are atomic.
+        *tree = updated_tree;
+
+        Ok(())
     }
 
     /// Starts an atomic batch write operation.
@@ -837,6 +1131,11 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
 }
 
 impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
+    /// Returns the current storage root.
+    pub fn current_storage_root(&self) -> Field<N> {
+        *self.tree.read().root()
+    }
+
     /// Returns the mapping names for the given `program ID`.
     pub fn get_mapping_names(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
         self.storage.get_mapping_names(program_id)
@@ -862,7 +1161,7 @@ mod tests {
 
     /// Checks `initialize_mapping`, `insert_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_insert_remove<N: Network>(
-        program_store: &ProgramMemory<N>,
+        program_store: &ProgramStore<N, ProgramMemory<N>>,
         program_id: ProgramID<N>,
         mapping_name: Identifier<N>,
     ) {
@@ -887,6 +1186,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Insert a (key, value) pair.
         program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -898,6 +1199,8 @@ mod tests {
         assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns Some(value).
         assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure removing the key succeeds.
         program_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
@@ -909,6 +1212,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure removing the mapping succeeds.
         program_store.remove_mapping(&program_id, &mapping_name).unwrap();
@@ -920,6 +1225,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure removing the program succeeds.
         program_store.remove_program(&program_id).unwrap();
@@ -931,11 +1238,13 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
     }
 
     /// Checks `initialize_mapping`, `update_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_update_remove<N: Network>(
-        program_store: &ProgramMemory<N>,
+        program_store: &ProgramStore<N, ProgramMemory<N>>,
         program_id: ProgramID<N>,
         mapping_name: Identifier<N>,
     ) {
@@ -960,6 +1269,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Update a (key, value) pair.
         program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -971,6 +1282,8 @@ mod tests {
         assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns Some(value).
         assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure calling `insert_key_value` with the same key and value fails.
         assert!(program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
@@ -978,6 +1291,8 @@ mod tests {
         assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns Some(value).
         assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure calling `update_key_value` with the same key and value succeeds.
         program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1005,6 +1320,8 @@ mod tests {
             assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(new_value).
             assert_eq!(new_value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            // Ensure that the storage tree is updated correctly.
+            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
             // Ensure calling `update_key_value` with the same key and original value succeeds.
             program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1012,6 +1329,8 @@ mod tests {
             assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            // Ensure that the storage tree is updated correctly.
+            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
         }
 
         // Ensure removing the key succeeds.
@@ -1024,6 +1343,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure removing the mapping succeeds.
         program_store.remove_mapping(&program_id, &mapping_name).unwrap();
@@ -1035,6 +1356,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Ensure removing the program succeeds.
         program_store.remove_program(&program_id).unwrap();
@@ -1046,6 +1369,8 @@ mod tests {
         assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
     }
 
     #[test]
@@ -1055,7 +1380,8 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open(None).unwrap();
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
         // Check the operations.
         check_initialize_insert_remove(&program_store, program_id, mapping_name);
     }
@@ -1067,7 +1393,8 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open(None).unwrap();
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
         // Check the operations.
         check_initialize_update_remove(&program_store, program_id, mapping_name);
     }
@@ -1079,7 +1406,8 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open(None).unwrap();
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -1115,6 +1443,8 @@ mod tests {
             // Ensure the value returns Some(value).
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Remove the list of keys and values.
         for item in 0..1000 {
@@ -1137,6 +1467,8 @@ mod tests {
             // Ensure the value returns None.
             assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         }
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
     }
 
     #[test]
@@ -1146,7 +1478,8 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open(None).unwrap();
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -1182,6 +1515,8 @@ mod tests {
             // Ensure the value returns Some(value).
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Remove the mapping.
         program_store.remove_mapping(&program_id, &mapping_name).unwrap();
@@ -1189,6 +1524,8 @@ mod tests {
         assert!(program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
         assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Check the list of keys and values.
         for item in 0..1000 {
@@ -1209,7 +1546,8 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open(None).unwrap();
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -1245,6 +1583,8 @@ mod tests {
             // Ensure the value returns Some(value).
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Remove the program.
         program_store.remove_program(&program_id).unwrap();
@@ -1252,6 +1592,8 @@ mod tests {
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
         assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        // Ensure that the storage tree is updated correctly.
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
 
         // Check the list of keys and values.
         for item in 0..1000 {
@@ -1272,7 +1614,8 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new program store.
-        let program_store = ProgramMemory::open(None).unwrap();
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
@@ -1298,6 +1641,8 @@ mod tests {
             assert!(program_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
             assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+            // Ensure that the storage tree is updated correctly.
+            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
         }
         {
             // Ensure updating a (key, value) before initializing the mapping fails.
