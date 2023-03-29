@@ -230,7 +230,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Check that the leaf index is within the bounds of the Merkle tree.
         ensure!(
             leaf_index < self.number_of_leaves,
-            "Leaf index must be less than the number of leaves in the Merkle tree"
+            "Leaf index must be less than the number of leaves in the Merkle tree {leaf_index} , {}",
+            self.number_of_leaves
         );
 
         // Allocate a vector to store the path hashes.
