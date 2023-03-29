@@ -18,7 +18,7 @@ mod initialize;
 mod matches;
 
 use crate::{
-    finalize::{Command, Decrement, Finalize, Increment},
+    finalize::{Command, Finalize},
     Instruction,
     Opcode,
     Operand,
