@@ -20,6 +20,7 @@ use console::{
     network::prelude::*,
     program::{Identifier, Register, RegisterType},
 };
+use circuit::LinearCombination;
 
 /// Given the operands, looks up the operands in the table.
 /// i.e. `lookup add_table 1u8 2u8 into r1;`
@@ -68,8 +69,8 @@ impl<N: Network> Lookup<N> {
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
+        if self.operands.len() != 4 {
+            bail!("Instruction '{}' expects 4 operands, found {} operands", Self::opcode(), self.operands.len())
         }
         // Load the operands.
         let input1 = registers.load(stack, &self.operands[0])?;
@@ -79,7 +80,7 @@ impl<N: Network> Lookup<N> {
         // in order to evaluate, I guess besides `add_lookup_table` and `enforce_lookup` we should be adding a `get_lookup` function all the way through the stack. 
         // Or do we have the table already accessible in the current environment?
         // N::enforce_lookup(&input1, &input2, &input3);
-        todo!();
+        // todo!();
         Ok(())
     }
 
@@ -90,19 +91,30 @@ impl<N: Network> Lookup<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        use circuit::{ToBits, ToFields};
-
         // Ensure the number of operands is correct.
-        if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
+        if self.operands.len() != 4 {
+            bail!("Instruction '{}' expects 4 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
         // Load the operand.
-        let input1 = registers.load_circuit(stack, &self.operands[0])?;
-        let input2 = registers.load_circuit(stack, &self.operands[1])?;
-        let input3 = registers.load_circuit(stack, &self.operands[2])?;
+        let tableid = registers.load_circuit(stack, &self.operands[0])?;
+        let input1 = registers.load_circuit(stack, &self.operands[1])?;
+        let input2 = registers.load_circuit(stack, &self.operands[2])?;
+        let input3 = registers.load_circuit(stack, &self.operands[3])?;
         
-        A::enforce_lookup(&input1, &input2, &input3);
+        // A::enforce_lookup(&input1, &input2, &input3);
+        let lookup_operation = format!("{}{}{}{}", self.operands[0], self.operands[1], self.operands[2], self.operands[3]);
+        // TODO: can we determine the table_index based on the first operand?
+        let table_index = 0;
+        use circuit::ToFields;
+        use circuit::ToBits;
+        A::enforce_lookup(
+            || format!("lookup {lookup_operation}"),
+            |lc| lc + LinearCombination::from(input1.to_fields()[0].clone()), //circuit::Literal::Field(input1.to_type())), // also doesn't work
+            |lc| lc + LinearCombination::from(input2.to_fields()[0].clone()), // TODO: can we implement to_field?
+            |lc| lc + LinearCombination::from(input3.to_bits_le()[0].clone()), // TODO: can we implement to_field?
+            table_index,
+        )?;
 
         Ok(())
     }

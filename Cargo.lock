@@ -2121,6 +2121,7 @@ dependencies = [
  "snarkvm-circuit-types",
  "snarkvm-console-network",
  "snarkvm-console-types",
+ "snarkvm-r1cs",
 ]
 
 [[package]]

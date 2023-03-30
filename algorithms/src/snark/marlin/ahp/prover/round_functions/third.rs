@@ -168,7 +168,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
 
-        let fft_precomputation = &state.index.fft_precomputation;
         let ifft_precomputation = &state.index.ifft_precomputation;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
         let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);

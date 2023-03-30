@@ -19,6 +19,7 @@ use crate::{
     prelude::*,
 };
 use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{LookupTable, SynthesisError};
 
 use std::rc::Rc;
 
@@ -45,6 +46,10 @@ impl<F: PrimeField> R1CS<F> {
             counter: Default::default(),
             gates: 0,
         }
+    }
+
+    pub(crate) fn add_lookup_table(&mut self, table: LookupTable<F>) {
+        self.add_lookup_table(table);
     }
 
     /// Appends the given scope to the current environment.
@@ -86,6 +91,24 @@ impl<F: PrimeField> R1CS<F> {
         self.gates += constraint.num_gates();
         self.constraints.push(constraint.clone());
         self.counter.add_constraint(constraint);
+    }
+
+    pub(crate) fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        self.enforce_lookup(annotation, a, b, c, table_index)
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.

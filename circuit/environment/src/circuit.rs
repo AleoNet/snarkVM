@@ -210,7 +210,7 @@ impl Environment for Circuit {
             // Ensure we are not in witness mode.
             if !(*(**in_witness).borrow()) {
                 CIRCUIT.with(|circuit| {
-                    (**circuit).borrow_mut().enforce_lookup(annotation, a, b, c, table_index);
+                    (**circuit).borrow_mut().enforce_lookup(annotation, a, b, c, table_index).unwrap();
                 });
             }
         });

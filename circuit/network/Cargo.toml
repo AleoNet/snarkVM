@@ -27,6 +27,11 @@ version = "0.9.14"
 [dev-dependencies.snarkvm-console-types]
 path = "../../console/types"
 
+[dependencies.snarkvm-r1cs]
+path = "../../r1cs"
+version = "0.9.14"
+default-features = false
+
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]

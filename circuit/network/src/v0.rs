@@ -40,6 +40,7 @@ use snarkvm_circuit_types::{
     Group,
     Scalar,
 };
+use snarkvm_r1cs::{LookupTable, SynthesisError};
 
 use core::fmt;
 
@@ -285,8 +286,8 @@ impl Environment for AleoV0 {
     }
 
     /// Adds a lookup table to the environment.
-    fn add_lookup_table(&mut self, table: LookupTable<F>) {
-        E::add_lookup_table(self, table);
+    fn add_lookup_table(table: LookupTable<Self::BaseField>) {
+        E::add_lookup_table(table);
     }
 
     /// Returns a new variable of the given mode and value.
@@ -319,7 +320,6 @@ impl Environment for AleoV0 {
     }
 
     fn enforce_lookup<A, AR, LA, LB, LC>(
-        &mut self,
         annotation: A,
         a: LA,
         b: LB,
@@ -329,11 +329,11 @@ impl Environment for AleoV0 {
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
-        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LA: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+        LB: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
+        LC: FnOnce(LinearCombination<Self::BaseField>) -> LinearCombination<Self::BaseField>,
     {
-        E::enforce_lookup(self, annotation, a, b, c, table_index)
+        E::enforce_lookup(annotation, a, b, c, table_index)
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.

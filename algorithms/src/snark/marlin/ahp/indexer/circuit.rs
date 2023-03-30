@@ -22,7 +22,7 @@ use crate::{
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix, Evaluations},
+    snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::LookupTable;
