@@ -552,11 +552,11 @@ impl<E: PairingEngine> VerifierKey<E> {
         };
 
         if bounds_and_neg_powers.len() > 0 {
-            bounds_and_neg_powers.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            bounds_and_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
         }
         if bounds_and_prepared_neg_powers.len() > 0 {
-            bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
        union 
