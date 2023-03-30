@@ -53,7 +53,7 @@ impl<E: Environment> ToBits for &Scalar<E> {
                     let modulus_minus_one = -E::ScalarField::one();
 
                     // Check that`bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to checking that `bits_le < ScalarField::MODULUS`.
-                    Boolean::check_bits_le_less_than_or_equal(&bits_le, &modulus_minus_one.to_bits_le());
+                    Boolean::assert_less_than_or_equal(&bits_le, &modulus_minus_one.to_bits_le());
                 }
                 bits_le
             })

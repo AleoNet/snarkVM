@@ -46,7 +46,7 @@ impl<E: Environment> ToBits for &Field<E> {
                     let modulus_minus_one = -E::BaseField::one();
 
                     // Check that`bits_le <= (BaseField::MODULUS - 1)`, which is equivalent to checking that `bits_le < BaseField::MODULUS`.
-                    Boolean::check_bits_le_less_than_or_equal(&bits_le, &modulus_minus_one.to_bits_le())
+                    Boolean::assert_less_than_or_equal(&bits_le, &modulus_minus_one.to_bits_le())
                 }
 
                 bits_le
