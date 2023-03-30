@@ -23,6 +23,9 @@ pub use circuit_type::*;
 pub(crate) mod constraint;
 pub(crate) use constraint::*;
 
+pub(crate) mod lookup_constraint;
+pub(crate) use lookup_constraint::*;
+
 pub(super) mod converter;
 
 pub mod count;
@@ -30,6 +33,9 @@ pub use count::*;
 
 pub(super) mod counter;
 pub(super) use counter::*;
+
+pub(super) mod lookup_counter;
+pub(super) use lookup_counter::*;
 
 pub mod linear_combination;
 pub use linear_combination::*;
