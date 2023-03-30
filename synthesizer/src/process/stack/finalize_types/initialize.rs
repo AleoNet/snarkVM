@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::finalize::{Load, LoadOr, Store};
+
+use crate::finalize::{Get, GetOr, Set};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -170,37 +171,36 @@ impl<N: Network> FinalizeTypes<N> {
     fn check_command(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, command: &Command<N>) -> Result<()> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
-            Command::Load(load) => self.check_load(stack, finalize_name, load)?,
-            Command::LoadDefault(load_or) => self.check_load_or(stack, finalize_name, load_or)?,
-            Command::Store(store) => self.check_store(stack, finalize_name, store)?,
+            Command::Get(get) => self.check_get(stack, finalize_name, get)?,
+            Command::GetOr(get_or) => self.check_get_or(stack, finalize_name, get_or)?,
+            Command::Set(set) => self.check_set(stack, finalize_name, set)?,
         }
         Ok(())
     }
 
-    /// Ensures the given `load` command is well-formed.
+    /// Ensures the given `get` command is well-formed.
     #[inline]
-    fn check_load(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &Load<N>) -> Result<()> {
-        // Ensure the declared mapping in `load` is defined in the program.
-        if !stack.program().contains_mapping(load.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
+    fn check_get(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, get: &Get<N>) -> Result<()> {
+        println!("Checking get command: {:#?}", get);
+        // Ensure the declared mapping in `get` is defined in the program.
+        if !stack.program().contains_mapping(get.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get.mapping_name(), stack.program_id())
         }
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(load.mapping_name()).unwrap();
+        let mapping = stack.program().get_mapping(get.mapping_name()).unwrap();
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let load_key_type = self.get_type_from_operand(stack, load.key())?;
-        // Check that the key type in the mapping matches the key type in the load.
-        if *mapping_key_type != load_key_type {
-            bail!(
-                "Key type in `load` '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-            )
+        let key_type = self.get_type_from_operand(stack, get.key())?;
+        // Check that the key type in the mapping matches the key type in the instruction.
+        if *mapping_key_type != key_type {
+            bail!("Key type in `get` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Get the destination register.
-        let destination = load.destination().clone();
+        let destination = get.destination().clone();
         // Ensure the destination register is a locator (and does not reference a member).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
@@ -208,38 +208,36 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensures the given `load_or` command is well-formed.
+    /// Ensures the given `get_or` command is well-formed.
     #[inline]
-    fn check_load_or(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load_or: &LoadOr<N>) -> Result<()> {
-        // Ensure the declared mapping in `load_or` is defined in the program.
-        if !stack.program().contains_mapping(load_or.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load_or.mapping_name(), stack.program_id())
+    fn check_get_or(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, get_or: &GetOr<N>) -> Result<()> {
+        // Ensure the declared mapping in `get_or` is defined in the program.
+        if !stack.program().contains_mapping(get_or.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get_or.mapping_name(), stack.program_id())
         }
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(load_or.mapping_name()).unwrap();
+        let mapping = stack.program().get_mapping(get_or.mapping_name()).unwrap();
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let load_key_type = self.get_type_from_operand(stack, load_or.key())?;
-        // Check that the key type in the mapping matches the key type in the load.
-        if *mapping_key_type != load_key_type {
-            bail!(
-                "Key type in `load_or` '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-            )
+        let key_type = self.get_type_from_operand(stack, get_or.key())?;
+        // Check that the key type in the mapping matches the key type.
+        if *mapping_key_type != key_type {
+            bail!("Key type in `get_or` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Retrieve the register type of the default value.
-        let default_value_type = self.get_type_from_operand(stack, load_or.default())?;
-        // Check that the value type in the mapping matches the default value type in the load.
+        let default_value_type = self.get_type_from_operand(stack, get_or.default())?;
+        // Check that the value type in the mapping matches the default value type.
         if *mapping_value_type != default_value_type {
             bail!(
-                "Default value type in `load_or` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                "Default value type in `get_or` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         // Get the destination register.
-        let destination = load_or.destination().clone();
+        let destination = get_or.destination().clone();
         // Ensure the destination register is a locator (and does not reference a member).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
@@ -247,34 +245,32 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensures the given `store` command is well-formed.
+    /// Ensures the given `set` command is well-formed.
     #[inline]
-    fn check_store(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, store: &Store<N>) -> Result<()> {
-        // Ensure the declared mapping in `store` is defined in the program.
-        if !stack.program().contains_mapping(store.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", store.mapping_name(), stack.program_id())
+    fn check_set(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, set: &Set<N>) -> Result<()> {
+        // Ensure the declared mapping in `set` is defined in the program.
+        if !stack.program().contains_mapping(set.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", set.mapping_name(), stack.program_id())
         }
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(store.mapping_name()).unwrap();
+        let mapping = stack.program().get_mapping(set.mapping_name()).unwrap();
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let store_key_type = self.get_type_from_operand(stack, store.key())?;
-        // Check that the key type in the mapping matches the key type in the store.
-        if *mapping_key_type != store_key_type {
-            bail!(
-                "Key type in `store` '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
-            )
+        let key_type = self.get_type_from_operand(stack, set.key())?;
+        // Check that the key type in the mapping matches the key type.
+        if *mapping_key_type != key_type {
+            bail!("Key type in `set` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Retrieve the type of the value.
-        let store_value_type = self.get_type_from_operand(stack, store.value())?;
+        let value_type = self.get_type_from_operand(stack, set.value())?;
         // Check that the value type in the mapping matches the type of the value.
-        if *mapping_value_type != store_value_type {
+        if *mapping_value_type != value_type {
             bail!(
-                "Value type in `store` '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                "Value type in `set` '{value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         Ok(())
