@@ -321,7 +321,7 @@ impl Environment for AleoV0 {
 
     fn enforce_lookup<A, AR, LA, LB, LC>(
         annotation: A,
-        a: LA,
+        a: LA, // TODO: change interface to look like enforce
         b: LB,
         c: LC,
         table_index: usize,

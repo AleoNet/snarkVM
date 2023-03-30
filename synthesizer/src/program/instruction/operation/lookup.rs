@@ -92,29 +92,29 @@ impl<N: Network> Lookup<N> {
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 4 {
-            bail!("Instruction '{}' expects 4 operands, found {} operands", Self::opcode(), self.operands.len())
+        if self.operands.len() != 3 {
+            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
         // Load the operand.
-        let tableid = registers.load_circuit(stack, &self.operands[0])?;
-        let input1 = registers.load_circuit(stack, &self.operands[1])?;
-        let input2 = registers.load_circuit(stack, &self.operands[2])?;
-        let input3 = registers.load_circuit(stack, &self.operands[3])?;
+        let table_index = 0;// TODO(Pranav); Read the tablename and translate to index
+        let input1 = registers.load_literal_circuit(stack, &self.operands[0])?;
+        let input2 = registers.load_literal_circuit(stack, &self.operands[1])?;
+        let input3 = registers.load_literal_circuit(stack, &self.operands[2])?;
         
-        // A::enforce_lookup(&input1, &input2, &input3);
-        let lookup_operation = format!("{}{}{}{}", self.operands[0], self.operands[1], self.operands[2], self.operands[3]);
-        // TODO: can we determine the table_index based on the first operand?
-        let table_index = 0;
-        use circuit::ToFields;
-        use circuit::ToBits;
-        A::enforce_lookup(
-            || format!("lookup {lookup_operation}"),
-            |lc| lc + LinearCombination::from(input1.to_fields()[0].clone()), //circuit::Literal::Field(input1.to_type())), // also doesn't work
-            |lc| lc + LinearCombination::from(input2.to_fields()[0].clone()), // TODO: can we implement to_field?
-            |lc| lc + LinearCombination::from(input3.to_bits_le()[0].clone()), // TODO: can we implement to_field?
-            table_index,
-        )?;
+        let lookup_operation = format!("{}{}{}{}", table_index, self.operands[0], self.operands[1], self.operands[2]);
+        match (input1, input2, input3) {
+            (circuit::Literal::Field(in1), circuit::Literal::Field(in2), circuit::Literal::Field(in3)) => {
+                A::enforce_lookup(
+                    || format!("lookup {lookup_operation}"),
+                    |lc| lc + LinearCombination::from(in1),
+                    |lc| lc + LinearCombination::from(in2),
+                    |lc| lc + LinearCombination::from(in3),
+                    table_index,
+                )?;
+            },
+            _ => bail!("Lookups only support field elements"),
+        }
 
         Ok(())
     }
@@ -140,8 +140,8 @@ impl<N: Network> Lookup<N> {
         // TODO: could add a check for the table input
 
         // Ensure the number of operands is correct.
-        if self.operands.len() != 4 {
-            bail!("Instruction '{}' expects 4 operands, found {} operands", Self::opcode(), self.operands.len())
+        if self.operands.len() != 3 {
+            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
         Ok(vec![])

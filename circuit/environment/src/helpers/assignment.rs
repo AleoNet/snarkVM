@@ -157,52 +157,62 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
             assert!(result.is_none(), "Overwrote an existing private variable in the converter");
         }
 
-        // Enforce all of the constraints.
-        for (i, (a, b, c)) in self.constraints.iter().enumerate() {
-            // Converts terms from one linear combination in the first system to the second system.
-            let convert_linear_combination = |lc: &AssignmentLC<F>| -> snarkvm_r1cs::LinearCombination<F> {
-                // Initialize a linear combination for the second system.
-                let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
+        // Converts terms from one linear combination in the first system to the second system.
+        let convert_linear_combination = |lc: &AssignmentLC<F>| -> snarkvm_r1cs::LinearCombination<F> {
+            // Initialize a linear combination for the second system.
+            let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
 
-                // Keep an accumulator for constant values in the linear combination.
-                let mut constant_accumulator = lc.constant;
-                // Process every term in the linear combination.
-                for (variable, coefficient) in lc.terms.iter() {
-                    match variable {
-                        AssignmentVariable::Constant(value) => {
-                            constant_accumulator += *value;
-                        }
-                        AssignmentVariable::Public(index) => {
-                            let gadget = converter.public.get(index).unwrap();
-                            assert_eq!(
-                                snarkvm_r1cs::Index::Public((index + 1) as usize),
-                                gadget.get_unchecked(),
-                                "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
-                            );
-                            linear_combination += (*coefficient, *gadget);
-                        }
-                        AssignmentVariable::Private(index) => {
-                            let gadget = converter.private.get(index).unwrap();
-                            assert_eq!(
-                                snarkvm_r1cs::Index::Private(*index as usize),
-                                gadget.get_unchecked(),
-                                "Failed during constraint translation. The private variable in the second system must match the first system"
-                            );
-                            linear_combination += (*coefficient, *gadget);
-                        }
+            // Keep an accumulator for constant values in the linear combination.
+            let mut constant_accumulator = lc.constant;
+            // Process every term in the linear combination.
+            for (variable, coefficient) in lc.terms.iter() {
+                match variable {
+                    AssignmentVariable::Constant(value) => {
+                        constant_accumulator += *value;
+                    }
+                    AssignmentVariable::Public(index) => {
+                        let gadget = converter.public.get(index).unwrap();
+                        assert_eq!(
+                            snarkvm_r1cs::Index::Public((index + 1) as usize),
+                            gadget.get_unchecked(),
+                            "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
+                        );
+                        linear_combination += (*coefficient, *gadget);
+                    }
+                    AssignmentVariable::Private(index) => {
+                        let gadget = converter.private.get(index).unwrap();
+                        assert_eq!(
+                            snarkvm_r1cs::Index::Private(*index as usize),
+                            gadget.get_unchecked(),
+                            "Failed during constraint translation. The private variable in the second system must match the first system"
+                        );
+                        linear_combination += (*coefficient, *gadget);
                     }
                 }
+            }
 
-                // Finally, add the accumulated constant value to the linear combination.
-                linear_combination +=
-                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+            // Finally, add the accumulated constant value to the linear combination.
+            linear_combination +=
+                (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
 
-                // Return the linear combination of the second system.
-                linear_combination
-            };
+            // Return the linear combination of the second system.
+            linear_combination
+        };
 
+        // Enforce all of the constraints.
+        for (i, (a, b, c)) in self.constraints.iter().enumerate() {
             cs.enforce(
                 || format!("Constraint {i}"),
+                |lc| lc + convert_linear_combination(a),
+                |lc| lc + convert_linear_combination(b),
+                |lc| lc + convert_linear_combination(c),
+            );
+        }
+
+        // Enforce all of the lookup constraints.
+        for (i, (a, b, c)) in self.lookup_constraints.iter().enumerate() {
+            cs.enforce_lookup(
+                || format!("Lookup Constraint {i}"),
                 |lc| lc + convert_linear_combination(a),
                 |lc| lc + convert_linear_combination(b),
                 |lc| lc + convert_linear_combination(c),
