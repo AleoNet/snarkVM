@@ -52,7 +52,7 @@ impl<E: Environment> FromBits for Scalar<E> {
             let bits_le = &bits_le[..size_in_bits];
 
             // Check that`bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to checking that `bits_le < ScalarField::MODULUS`.
-            Boolean::assert_less_than_or_equal(bits_le, &modulus_minus_one.to_bits_le());
+            Boolean::assert_less_than_or_equal_constant(bits_le, &modulus_minus_one.to_bits_le());
         }
 
         // Reconstruct the bits as a linear combination representing the original scalar as a field.
