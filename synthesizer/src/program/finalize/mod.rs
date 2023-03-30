@@ -141,14 +141,14 @@ impl<N: Network> Finalize<N> {
                     ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
                 }
             }
-            Command::Load(load) => {
+            Command::Get(get) => {
                 // Ensure the destination register is a locator.
-                ensure!(matches!(load.destination(), Register::Locator(..)), "Destination register must be a locator");
+                ensure!(matches!(get.destination(), Register::Locator(..)), "Destination register must be a locator");
             }
-            Command::LoadDefault(load_or) => {
+            Command::GetOr(get_or) => {
                 // Ensure the destination register is a locator.
                 ensure!(
-                    matches!(load_or.destination(), Register::Locator(..)),
+                    matches!(get_or.destination(), Register::Locator(..)),
                     "Destination register must be a locator"
                 );
             }
