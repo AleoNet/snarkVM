@@ -119,7 +119,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         alpha: &F,
     ) -> DensePolynomial<F> {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
-        let max_constraint_domain_inverse = state.max_constraint_domain.size_as_field_element.inverse().unwrap();
+        let max_constraint_domain_inverse = state.max_constraint_domain.size_inv;
 
         for (i, ((circuit, circuit_specific_state), oracles)) in state.circuit_specific_states.iter_mut()
                                         .zip(state.first_round_oracles.as_ref().unwrap().batches.values())
