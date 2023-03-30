@@ -19,14 +19,14 @@ extern crate criterion;
 
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
-    snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode, MarlinSNARK},
+    snark::marlin::{ahp::AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK},
     AlgebraicSponge,
     SNARK,
 };
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::{ops::MulAssign, TestRng, Uniform};
+use snarkvm_utilities::{ops::MulAssign, CanonicalDeserialize, CanonicalSerialize, TestRng, Uniform};
 
 use criterion::Criterion;
 
@@ -144,6 +144,82 @@ fn snark_verify(c: &mut Criterion) {
     });
 }
 
+fn snark_vk_serialize(c: &mut Criterion) {
+    use snarkvm_utilities::serialize::Compress;
+    let mut group = c.benchmark_group("snark_vk_serialize");
+    for mode in [Compress::Yes, Compress::No] {
+        let name = match mode {
+            Compress::No => "uncompressed",
+            Compress::Yes => "compressed",
+        };
+        let num_constraints = 100;
+        let num_variables = 25;
+        let rng = &mut TestRng::default();
+
+        let x = Fr::rand(rng);
+        let y = Fr::rand(rng);
+        let mut z = x;
+        z.mul_assign(&y);
+
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+
+        let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        let mut bytes = Vec::with_capacity(10000);
+        group.bench_function(name, |b| {
+            b.iter(|| {
+                vk.serialize_with_mode(&mut bytes, mode).unwrap();
+                bytes.clear()
+            })
+        });
+    }
+    group.finish();
+}
+
+fn snark_vk_deserialize(c: &mut Criterion) {
+    use snarkvm_utilities::serialize::{Compress, Validate};
+    let mut group = c.benchmark_group("snark_vk_deserialize");
+    for compress in [Compress::Yes, Compress::No] {
+        let compress_name = match compress {
+            Compress::No => "uncompressed",
+            Compress::Yes => "compressed",
+        };
+        for validate in [Validate::Yes, Validate::No] {
+            let validate_name = match validate {
+                Validate::No => "unchecked",
+                Validate::Yes => "checked",
+            };
+            let name = format!("{compress_name}_{validate_name}");
+            let num_constraints = 100;
+            let num_variables = 25;
+            let rng = &mut TestRng::default();
+
+            let x = Fr::rand(rng);
+            let y = Fr::rand(rng);
+            let mut z = x;
+            z.mul_assign(&y);
+
+            let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
+            let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+
+            let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+            let mut bytes = Vec::with_capacity(10000);
+            vk.serialize_with_mode(&mut bytes, compress).unwrap();
+            group.bench_function(name, |b| {
+                b.iter(|| {
+                    let _vk = CircuitVerifyingKey::<Bls12_377, MarlinHidingMode>::deserialize_with_mode(
+                        &*bytes, compress, validate,
+                    )
+                    .unwrap();
+                })
+            });
+        }
+    }
+    group.finish();
+}
+
 fn snark_certificate_prove(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
@@ -194,7 +270,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_certificate_prove, snark_certificate_verify,
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_vk_serialize, snark_vk_deserialize, snark_certificate_prove, snark_certificate_verify,
 }
 
 criterion_main!(marlin_snark);
