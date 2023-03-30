@@ -17,31 +17,7 @@
 use super::*;
 
 pub mod adder;
+pub mod comparator;
 pub mod from_bits;
 pub mod subtractor;
 pub mod to_bits;
-
-impl<E: Environment> Boolean<E> {
-    /// Returns `true` if `circuit_bits_le <= console_bits_le`.
-    /// This function assumes the inputs are in **little-endian** representation.
-    pub fn is_less_than_or_equal(circuit_bits_le: &[Boolean<E>], console_bits_le: &[bool]) -> Boolean<E> {
-        // Ensure the length matches.
-        if circuit_bits_le.len() != console_bits_le.len() {
-            E::halt(format!("Mismatching length of bits ({} != {})", circuit_bits_le.len(), console_bits_le.len()))
-        }
-
-        // Compute `!(console_bits_le < circuit_bits_le)`, equivalent to `console_bits_le >= circuit_bits_le`.
-        !console_bits_le.iter().zip_eq(circuit_bits_le).fold(Boolean::constant(false), |rest_is_less, (this, that)| {
-            if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
-        })
-    }
-
-    /// Asserts that `circuit_bits_le <= console_bits_le`.
-    /// This function assumes the inputs are in **little-endian** representation.
-    pub fn assert_less_than_or_equal(circuit_bits_le: &[Boolean<E>], console_bits_le: &[bool]) {
-        // Compute `!(console_bits_le < circuit_bits_le)`, equivalent to `console_bits_le >= circuit_bits_le`.
-        let is_less_than_or_equal = Boolean::is_less_than_or_equal(circuit_bits_le, console_bits_le);
-        // Assert that `circuit_bits_le <= console_bits_le`.
-        E::assert(is_less_than_or_equal);
-    }
-}
