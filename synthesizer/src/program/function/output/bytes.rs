@@ -19,16 +19,16 @@ use super::*;
 impl<N: Network> FromBytes for Output<N> {
     /// Reads the output from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let register = FromBytes::read_le(&mut reader)?;
+        let operand = FromBytes::read_le(&mut reader)?;
         let value_type = FromBytes::read_le(&mut reader)?;
-        Ok(Self { register, value_type })
+        Ok(Self { operand, value_type })
     }
 }
 
 impl<N: Network> ToBytes for Output<N> {
     /// Writes the output to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.register.write_le(&mut writer)?;
+        self.operand.write_le(&mut writer)?;
         self.value_type.write_le(&mut writer)
     }
 }

@@ -390,9 +390,6 @@ impl<N: Network> Program<N> {
     /// This method will halt if any records in the record's members are not already defined.
     #[inline]
     fn add_record(&mut self, record: RecordType<N>) -> Result<()> {
-        // For now, ensure only one record type exists in the program.
-        ensure!(self.records.len() <= 1, "Only one record type is allowed in the program (for now).");
-
         // Retrieve the record name.
         let record_name = *record.name();
 

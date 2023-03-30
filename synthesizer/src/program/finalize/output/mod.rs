@@ -17,27 +17,25 @@
 mod bytes;
 mod parse;
 
-use console::{
-    network::prelude::*,
-    program::{FinalizeType, Register},
-};
+use crate::Operand;
 
-/// An output statement defines an output of finalize, and may refer to the value
-/// in either a register or a register member. An output statement is of the form
-/// `output {register} as {finalize_type};`.
+use console::{network::prelude::*, program::FinalizeType};
+
+/// An output statement defines an output of finalize.
+/// An output statement is of the form `output {operand} as {finalize_type};`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
-    /// The output register.
-    register: Register<N>,
+    /// The output operand.
+    operand: Operand<N>,
     /// The output finalize type.
     finalize_type: FinalizeType<N>,
 }
 
 impl<N: Network> Output<N> {
-    /// Returns the output register.
+    /// Returns the output operand.
     #[inline]
-    pub const fn register(&self) -> &Register<N> {
-        &self.register
+    pub const fn operand(&self) -> &Operand<N> {
+        &self.operand
     }
 
     /// Returns the output finalize type.
