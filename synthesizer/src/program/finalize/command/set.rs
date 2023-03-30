@@ -14,37 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load as LoadTrait, Opcode, Operand, ProgramStorage, ProgramStore, Stack, Store};
+use crate::{Load, Opcode, Operand, ProgramStorage, ProgramStore, Stack};
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, Value},
+    program::{Identifier, Value},
 };
 
-/// A load command with a default value in case of failure, e.g. `load_or accounts[r0] r1 into r2;`.
-/// Loads the value stored at `operand` in `mapping` into `destination`, using `default` if the entry does not exist.
+/// A set command, e.g. `set r1 into mapping[r0];`
+/// Sets the `key` entry as `value` in `mapping`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct LoadOr<N: Network> {
+pub struct Set<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
     key: Operand<N>,
-    /// The default value.
-    default: Operand<N>,
-    /// The destination register.
-    destination: Register<N>,
+    /// The value to be set.
+    value: Operand<N>,
 }
 
-impl<N: Network> LoadOr<N> {
+impl<N: Network> Set<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("load_or")
+        Opcode::Command("set")
     }
 
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> Vec<Operand<N>> {
-        vec![self.key.clone(), self.default.clone()]
+        vec![self.value.clone(), self.key.clone()]
     }
 
     /// Returns the mapping name.
@@ -59,52 +57,40 @@ impl<N: Network> LoadOr<N> {
         &self.key
     }
 
-    /// Returns the default value.
+    /// Returns the operand containing the value.
     #[inline]
-    pub const fn default(&self) -> &Operand<N> {
-        &self.default
-    }
-
-    /// Returns the destination register.
-    #[inline]
-    pub const fn destination(&self) -> &Register<N> {
-        &self.destination
+    pub const fn value(&self) -> &Operand<N> {
+        &self.value
     }
 }
 
-impl<N: Network> LoadOr<N> {
+impl<N: Network> Set<N> {
     /// Evaluates the command.
     #[inline]
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
         &self,
         stack: &Stack<N>,
         store: &ProgramStore<N, P>,
-        registers: &mut (impl LoadTrait<N> + Store<N>),
+        registers: &mut impl Load<N>,
     ) -> Result<()> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
-        // Load the operand as a plaintext.
+        // Load the key operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.key)?;
+        // Load the value operand as a plaintext.
+        let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
 
-        // Retrieve the value from storage as a literal.
-        let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
-            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'load_or' a 'record'"),
-            // If a key does not exist, then use the default value.
-            None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
-        };
-
-        // Assign the value to the destination register.
-        registers.store(stack, &self.destination, value)?;
+        // Update the value in storage.
+        store.update_key_value(stack.program_id(), &self.mapping, key, value)?;
 
         Ok(())
     }
 }
 
-impl<N: Network> Parser for LoadOr<N> {
+impl<N: Network> Parser for Set<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -112,6 +98,16 @@ impl<N: Network> Parser for LoadOr<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
+        // Parse the value operand from the string.
+        let (string, value) = Operand::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
+        // Parse the "into" keyword from the string.
+        let (string, _) = tag("into")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
@@ -129,28 +125,14 @@ impl<N: Network> Parser for LoadOr<N> {
         let (string, _) = tag("]")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the default value from the string.
-        let (string, default) = Operand::parse(string)?;
-
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the "into" keyword from the string.
-        let (string, _) = tag("into")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the destination register from the string.
-        let (string, destination) = Register::parse(string)?;
-
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { mapping, key, default, destination }))
+        Ok((string, Self { mapping, key, value }))
     }
 }
 
-impl<N: Network> FromStr for LoadOr<N> {
+impl<N: Network> FromStr for Set<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -168,52 +150,48 @@ impl<N: Network> FromStr for LoadOr<N> {
     }
 }
 
-impl<N: Network> Debug for LoadOr<N> {
+impl<N: Network> Debug for Set<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for LoadOr<N> {
+impl<N: Network> Display for Set<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
         write!(f, "{} ", Self::opcode())?;
+        // Print the value operand.
+        write!(f, "{} into ", self.value)?;
         // Print the mapping and key operand.
-        write!(f, "{}[{}] {} into ", self.mapping, self.key, self.default)?;
-        // Print the destination register.
-        write!(f, "{};", self.destination)
+        write!(f, "{}[{}];", self.mapping, self.key)
     }
 }
 
-impl<N: Network> FromBytes for LoadOr<N> {
+impl<N: Network> FromBytes for Set<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
         let mapping = Identifier::read_le(&mut reader)?;
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
-        // Read the default value.
-        let default = Operand::read_le(&mut reader)?;
-        // Read the destination register.
-        let destination = Register::read_le(&mut reader)?;
+        // Read the value operand.
+        let value = Operand::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { mapping, key, default, destination })
+        Ok(Self { mapping, key, value })
     }
 }
 
-impl<N: Network> ToBytes for LoadOr<N> {
+impl<N: Network> ToBytes for Set<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
         self.mapping.write_le(&mut writer)?;
         // Write the key operand.
         self.key.write_le(&mut writer)?;
-        // Write the default value.
-        self.default.write_le(&mut writer)?;
-        // Write the destination register.
-        self.destination.write_le(&mut writer)
+        // Write the value operand.
+        self.value.write_le(&mut writer)
     }
 }
 
@@ -226,12 +204,11 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, load_or) = LoadOr::<CurrentNetwork>::parse("load_or account[r0] r1 into r2;").unwrap();
+        let (string, set) = Set::<CurrentNetwork>::parse("set r0 into account[r1];").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(load_or.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(load_or.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(load_or.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(load_or.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(load_or.destination, Register::Locator(2), "The second operand is incorrect");
+        assert_eq!(set.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(set.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(set.value, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(set.key, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
     }
 }

@@ -17,14 +17,14 @@
 mod finalize;
 pub use finalize::*;
 
-mod load;
-pub use load::*;
+mod get;
+pub use get::*;
 
-mod load_or;
-pub use load_or::*;
+mod get_or;
+pub use get_or::*;
 
-mod store;
-pub use store::*;
+mod set;
+pub use set::*;
 
 use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Stack};
 use console::network::prelude::*;
@@ -33,12 +33,12 @@ use console::network::prelude::*;
 pub enum Command<N: Network> {
     /// Evaluates the instruction.
     Instruction(Instruction<N>),
-    /// Loads the value stored at the `key` operand in `mapping` into `destination`.
-    Load(Load<N>),
-    /// Loads the value stored at the `key` operand in `mapping` into `destination`, using `default` if the key is not present.
-    LoadDefault(LoadOr<N>),
-    /// Stores the `value` operand into the `key` entry in `mapping`.
-    Store(Store<N>),
+    /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
+    Get(Get<N>),
+    /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`. The instruction uses `default` if the key is not present.
+    GetOr(GetOr<N>),
+    /// Sets the value stored at the `key` operand in the `mapping` to `value`.
+    Set(Set<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -47,14 +47,14 @@ impl<N: Network> Command<N> {
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
         &self,
         stack: &Stack<N>,
-        program_store: &ProgramStore<N, P>,
+        store: &ProgramStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
         match self {
             Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
-            Command::Load(load) => load.evaluate_finalize(stack, program_store, registers),
-            Command::LoadDefault(load_or) => load_or.evaluate_finalize(stack, program_store, registers),
-            Command::Store(store) => store.evaluate_finalize(stack, program_store, registers),
+            Command::Get(get) => get.evaluate_finalize(stack, store, registers),
+            Command::GetOr(get_or) => get_or.evaluate_finalize(stack, store, registers),
+            Command::Set(set) => set.evaluate_finalize(stack, store, registers),
         }
     }
 }
@@ -67,12 +67,12 @@ impl<N: Network> FromBytes for Command<N> {
         match variant {
             // Read the instruction.
             0 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
-            // Read the load.
-            1 => Ok(Self::Load(Load::read_le(&mut reader)?)),
-            // Read the default load.
-            2 => Ok(Self::LoadDefault(LoadOr::read_le(&mut reader)?)),
-            // Read the store.
-            3 => Ok(Self::Store(Store::read_le(&mut reader)?)),
+            // Read the `get` operation.
+            1 => Ok(Self::Get(Get::read_le(&mut reader)?)),
+            // Read the `get_or` operation.
+            2 => Ok(Self::GetOr(GetOr::read_le(&mut reader)?)),
+            // Read the `set` operation.
+            3 => Ok(Self::Set(Set::read_le(&mut reader)?)),
             // Invalid variant.
             4.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
@@ -89,23 +89,23 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the instruction.
                 instruction.write_le(&mut writer)
             }
-            Self::Load(load) => {
+            Self::Get(get) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
-                // Write the load.
-                load.write_le(&mut writer)
+                // Write the `get` operation.
+                get.write_le(&mut writer)
             }
-            Self::LoadDefault(load_or) => {
+            Self::GetOr(get_or) => {
                 // Write the variant.
                 2u8.write_le(&mut writer)?;
-                // Write the defaulting load.
-                load_or.write_le(&mut writer)
+                // Write the defaulting `get` operation.
+                get_or.write_le(&mut writer)
             }
-            Self::Store(store) => {
+            Self::Set(set) => {
                 // Write the variant.
                 3u8.write_le(&mut writer)?;
-                // Write the store.
-                store.write_le(&mut writer)
+                // Write the set.
+                set.write_le(&mut writer)
             }
         }
     }
@@ -118,9 +118,9 @@ impl<N: Network> Parser for Command<N> {
         // Parse the command.
         // Note that the order of the parsers is important.
         alt((
-            map(LoadOr::parse, |load_or| Self::LoadDefault(load_or)),
-            map(Load::parse, |load| Self::Load(load)),
-            map(Store::parse, |store| Self::Store(store)),
+            map(GetOr::parse, |get_or| Self::GetOr(get_or)),
+            map(Get::parse, |get| Self::Get(get)),
+            map(Set::parse, |set| Self::Set(set)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -156,9 +156,9 @@ impl<N: Network> Display for Command<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
-            Self::Load(load) => Display::fmt(load, f),
-            Self::LoadDefault(load_or) => Display::fmt(load_or, f),
-            Self::Store(store) => Display::fmt(store, f),
+            Self::Get(get) => Display::fmt(get, f),
+            Self::GetOr(get_or) => Display::fmt(get_or, f),
+            Self::Set(set) => Display::fmt(set, f),
         }
     }
 }
@@ -186,20 +186,20 @@ mod tests {
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
 
-        // Load
-        let expected = "load object[r0] into r1;";
+        // Get
+        let expected = "get object[r0] into r1;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
-        // Load default
-        let expected = "load_or object[r0] r1 into r2;";
+        // GetOr
+        let expected = "get_or object[r0] r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
-        // Store
-        let expected = "store r0 into object[r1];";
+        // Set
+        let expected = "set r0 into object[r1];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -221,22 +221,22 @@ mod tests {
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
 
-        // Load
-        let expected = "load object[r0] into r1;";
+        // Get
+        let expected = "get object[r0] into r1;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::Load(Load::from_str(expected).unwrap()), command);
+        assert_eq!(Command::Get(Get::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
-        // Load default
-        let expected = "load_or object[r0] r1 into r2;";
+        // GetOr
+        let expected = "get_or object[r0] r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::LoadDefault(LoadOr::from_str(expected).unwrap()), command);
+        assert_eq!(Command::GetOr(GetOr::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
-        // Store
-        let expected = "store r0 into object[r1];";
+        // Set
+        let expected = "set r0 into object[r1];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::Store(Store::from_str(expected).unwrap()), command);
+        assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }

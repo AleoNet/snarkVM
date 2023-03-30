@@ -1172,7 +1172,7 @@ function transfer:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_load_add_store() {
+    fn test_process_execute_and_finalize_get_add_set() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1192,9 +1192,9 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load_or account[r0] 0u64 into r2;
+    get_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
-    store r3 into account[r0];
+    set r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1271,7 +1271,7 @@ finalize compute:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_increment_decrement_via_load_store() {
+    fn test_process_execute_and_finalize_increment_decrement_via_get_set() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1291,10 +1291,10 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load_or account[r0] 0u64 into r2;
+    get_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
     sub r3 r1 into r4;
-    store r4 into account[r0];
+    set r4 into account[r0];
 ",
         )
         .unwrap();
@@ -1403,12 +1403,12 @@ finalize mint_public:
     // Input the token amount.
     input r1 as u64.public;
 
-    // Load `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    load_or account[r0] 0u64 into r2;
+    // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
+    get_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
-    // Store `r3` into `account[r0]`.
-    store r3 into account[r0];
+    // Set `r3` into `account[r0]`.
+    set r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1521,12 +1521,12 @@ finalize mint_public:
     // Input the token amount.
     input r1 as u64.public;
 
-    // Load `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    load_or account[r0] 0u64 into r2;
+    // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
+    get_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
-    // Store `r3` into `account[r0]`.
-    store r3 into account[r0];
+    // Set `r3` into `account[r0]`.
+    set r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1628,7 +1628,7 @@ function mint:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_load_store() {
+    fn test_process_execute_and_finalize_get_set() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1648,12 +1648,12 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load_or account[r0] 0u64 into r2;
+    get_or account[r0] 0u64 into r2;
     add r1 r2 into r3;
-    store r3 into account[r0];
-    load account[r0] into r4;
+    set r3 into account[r0];
+    get account[r0] into r4;
     add r1 r4 into r5;
-    store r5 into account[r0];
+    set r5 into account[r0];
 ",
         )
         .unwrap();

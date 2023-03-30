@@ -31,7 +31,7 @@ enum Variant {
     IsNeq,
 }
 
-/// Computes an equality operation on two operands, and stored the outcome in `destination`.
+/// Computes an equality operation on two operands, and stores the outcome in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct IsInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
