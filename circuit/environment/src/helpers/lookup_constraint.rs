@@ -52,8 +52,8 @@ impl<F: PrimeField> LookupConstraint<F> {
     }
 
     /// Returns a reference to the terms `(a, b, c)`.
-    pub(crate) fn to_terms(&self) -> (&LinearCombination<F>, &LinearCombination<F>, &LinearCombination<F>) {
-        (&self.1, &self.2, &self.3)
+    pub(crate) fn to_terms(&self) -> (&LinearCombination<F>, &LinearCombination<F>, &LinearCombination<F>, usize) {
+        (&self.1, &self.2, &self.3, self.4)
     }
 }
 

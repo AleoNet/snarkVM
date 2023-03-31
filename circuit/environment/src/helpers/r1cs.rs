@@ -203,12 +203,20 @@ impl<F: PrimeField> R1CS<F> {
     pub(crate) fn to_constraints(&self) -> &Vec<Constraint<F>> {
         &self.constraints
     }
+
+    /// Returns the lookup constraints in the constraint system.
+    pub(crate) fn to_lookup_constraints(&self) -> &Vec<LookupConstraint<F>> {
+        &self.lookup_constraints
+    }
 }
 
 impl<F: PrimeField> Display for R1CS<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::default();
         for constraint in self.to_constraints() {
+            output += &constraint.to_string();
+        }
+        for constraint in self.to_lookup_constraints() {
             output += &constraint.to_string();
         }
         output += "\n";

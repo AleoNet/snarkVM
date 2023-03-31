@@ -62,6 +62,7 @@ pub struct Assignment<F: PrimeField> {
     public: IndexMap<Index, F>,
     private: IndexMap<Index, F>,
     constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)>,
+    lookup_constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>, usize)>,
 }
 
 impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
@@ -77,6 +78,10 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
             constraints: FromIterator::from_iter(r1cs.to_constraints().iter().map(|constraint| {
                 let (a, b, c) = constraint.to_terms();
                 (a.into(), b.into(), c.into())
+            })),
+            lookup_constraints: FromIterator::from_iter(r1cs.to_lookup_constraints().iter().map(|constraint| {
+                let (a, b, c, table_index) = constraint.to_terms();
+                (a.into(), b.into(), c.into(), table_index)
             })),
         }
     }
@@ -210,13 +215,14 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
         }
 
         // Enforce all of the lookup constraints.
-        for (i, (a, b, c)) in self.lookup_constraints.iter().enumerate() {
+        for (i, (a, b, c, table_index)) in self.lookup_constraints.iter().enumerate() {
             cs.enforce_lookup(
                 || format!("Lookup Constraint {i}"),
                 |lc| lc + convert_linear_combination(a),
                 |lc| lc + convert_linear_combination(b),
                 |lc| lc + convert_linear_combination(c),
-            );
+                *table_index,
+            )?;
         }
 
         // Ensure the given `cs` matches in size with the first system.
