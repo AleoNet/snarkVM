@@ -84,7 +84,6 @@ impl<N: Network> Stack<N> {
             return Ok(());
         }
 
-        println!("syntthesize::84");
         // Synthesize the proving and verifying key.
         let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
         println!("syntthesize::86");

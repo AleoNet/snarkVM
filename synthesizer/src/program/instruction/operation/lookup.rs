@@ -91,7 +91,7 @@ impl<N: Network> Lookup<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        // TODO: Relax this restruction.
+        // TODO: Relax this restriction.
         // Temporarily restrict the lookup operation to exactly 3 operands.
         if self.operands.len() != 3 {
             bail!("Lookups are temporarily restricted to 3 operands.")

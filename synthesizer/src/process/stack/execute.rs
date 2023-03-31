@@ -484,11 +484,8 @@ impl<N: Network> Stack<N> {
             );
         }
 
-        println!("1");
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
-
-        println!("2");
 
         // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
         if matches!(registers.call_stack(), CallStack::Synthesize(..))
@@ -497,13 +494,10 @@ impl<N: Network> Stack<N> {
             // If the proving key does not exist, then synthesize it.
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
-                println!("2.5");
                 self.synthesize_from_assignment(function.name(), &assignment)?;
                 lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
-
-        println!("3");
 
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
         if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {

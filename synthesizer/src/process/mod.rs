@@ -392,12 +392,9 @@ function compute:
     /// Initializes a new process with the given program.
     pub(crate) fn sample_process(program: &Program<CurrentNetwork>) -> Process<CurrentNetwork> {
         // Construct a new process.
-        println!("sample_process::395");
         let mut process = Process::load().unwrap();
-        println!("sample_process::397");
         // Add the program to the process.
         process.add_program(program).unwrap();
-        println!("sample_process::399");
         // Return the process.
         process
     }
