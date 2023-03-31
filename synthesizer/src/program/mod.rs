@@ -1320,6 +1320,8 @@ table triple:
     input field;
     input field;
     input field;
+    entry 1field 1field 1field;
+    entry 2field 2field 2field;
 
 function compute:
     input r0 as field.private;

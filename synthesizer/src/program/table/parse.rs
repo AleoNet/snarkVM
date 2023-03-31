@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use circuit::Assignment;
 
 impl<N: Network> Parser for Table<N> {
     /// Parses a string into a table.
@@ -22,11 +23,11 @@ impl<N: Network> Parser for Table<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
-        // Parse the 'mapping' keyword from the string.
+        // Parse the 'table' keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the mapping name from the string.
+        // Parse the table name from the string.
         let (string, name) = Identifier::<N>::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
@@ -37,16 +38,18 @@ impl<N: Network> Parser for Table<N> {
         let (string, inputs) = many1(TableInput::parse)(string)?;
         // Parse the output statements from the string.
         let (string, outputs) = many0(TableOutput::parse)(string)?;
+        // Parse the entries from the string.
+        let (string, entries) = many1(Entry::parse)(string)?;
 
-        // Return the mapping.
-        Ok((string, Self::new(name, inputs, outputs)))
+        // Return the table.
+        Ok((string, Self::new(name, inputs, outputs, entries)))
     }
 }
 
 impl<N: Network> FromStr for Table<N> {
     type Err = Error;
 
-    /// Returns a mapping from a string literal.
+    /// Returns a table from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -61,22 +64,25 @@ impl<N: Network> FromStr for Table<N> {
 }
 
 impl<N: Network> Debug for Table<N> {
-    /// Prints the mapping as a string.
+    /// Prints the table as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 impl<N: Network> Display for Table<N> {
-    /// Prints the mapping as a string.
+    /// Prints the table as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Write the mapping to a string.
+        // Write the table to a string.
         write!(f, "{} {}:", Self::type_name(), self.name)?;
         for input in &self.inputs {
             write!(f, "\n    {}", input)?;
         }
         for output in &self.outputs {
             write!(f, "\n    {}", output)?;
+        }
+        for entry in &self.entries {
+            write!(f, "\n    {}", entry)?;
         }
         Ok(())
     }
@@ -90,25 +96,31 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_mapping_parse() {
-        let mapping = Table::<CurrentNetwork>::parse(
+    fn test_table_parse() {
+        let table = Table::<CurrentNetwork>::parse(
             r"table foo:
     input field;
-    output u8;",
+    output u8;
+    entry 0field to 0u8;
+    entry 1field to 1u8;",
         )
         .unwrap()
         .1;
-        assert_eq!("foo", mapping.name().to_string());
-        assert_eq!("field", mapping.inputs[0].type_().to_string());
-        assert_eq!("u8", mapping.outputs[0].type_().to_string());
+        assert_eq!("foo", table.name().to_string());
+        assert_eq!("field", table.inputs[0].type_().to_string());
+        assert_eq!("u8", table.outputs[0].type_().to_string());
+        assert_eq!("entry 0field to 0u8", table.entries[0].to_string());
+        assert_eq!("entry 1field to 1u8", table.entries[1].to_string());
     }
 
     #[test]
-    fn test_mapping_display() {
+    fn test_table_display() {
         let expected = r"table foo:
     input field;
-    output u8;";
-        let mapping = Table::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(expected, format!("{mapping}"),);
+    output u8;
+    entry 0field to 0u8;
+    entry 1field to 1u8;";
+        let table = Table::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(expected, format!("{table}"),);
     }
 }

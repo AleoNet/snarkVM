@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod entry;
+use entry::*;
+
 mod input;
 use input::*;
 
@@ -33,12 +36,19 @@ pub struct Table<N: Network> {
     inputs: Vec<TableInput<N>>,
     /// The output columns of the table.
     outputs: Vec<TableOutput<N>>,
+    /// The entries of the table.
+    entries: Vec<Entry<N>>,
 }
 
 impl<N: Network> Table<N> {
     /// Initializes a new mapping with the given name, key statement, and value statement.
-    pub fn new(name: Identifier<N>, inputs: Vec<TableInput<N>>, outputs: Vec<TableOutput<N>>) -> Self {
-        Self { name, inputs, outputs }
+    pub fn new(
+        name: Identifier<N>,
+        inputs: Vec<TableInput<N>>,
+        outputs: Vec<TableOutput<N>>,
+        entries: Vec<Entry<N>>,
+    ) -> Self {
+        Self { name, inputs, outputs, entries }
     }
 
     /// Returns the name of the table.
@@ -54,6 +64,11 @@ impl<N: Network> Table<N> {
     /// Returns the output columns of the table.
     pub fn outputs(&self) -> &[TableOutput<N>] {
         &self.outputs
+    }
+
+    /// Returns the entries of the table.
+    pub fn entries(&self) -> &[Entry<N>] {
+        &self.entries
     }
 }
 

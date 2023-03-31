@@ -37,8 +37,15 @@ impl<N: Network> FromBytes for Table<N> {
             outputs.push(TableOutput::read_le(&mut reader)?);
         }
 
+        // Read the entries.
+        let num_entries = u32::read_le(&mut reader)?;
+        let mut entries = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
+            entries.push(Entry::read_le(&mut reader)?);
+        }
+
         // Return the new mapping.
-        Ok(Self::new(name, inputs, outputs))
+        Ok(Self::new(name, inputs, outputs, entries))
     }
 }
 
@@ -60,6 +67,12 @@ impl<N: Network> ToBytes for Table<N> {
         for output in self.outputs.iter() {
             output.write_le(&mut writer)?;
         }
+        // Write the number of entries.
+        (self.entries.len() as u32).write_le(&mut writer)?;
+        // Write the entries.
+        for entry in self.entries.iter() {
+            entry.write_le(&mut writer)?;
+        }
         Ok(())
     }
 }
@@ -76,7 +89,9 @@ mod tests {
         let mapping_string = r"
 table adder:
     input field;
-    output field;";
+    output field;
+    entry 1field to 1field;
+    entry 2field to 2field;";
 
         let expected = Table::<CurrentNetwork>::from_str(mapping_string)?;
         let expected_bytes = expected.to_bytes_le()?;
