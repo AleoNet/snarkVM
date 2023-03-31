@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_fields::Fp256;
+use snarkvm_r1cs::LookupTable;
 
 impl<N: Network> Stack<N> {
     /// Synthesizes the proving key and verifying key for the given function name.
@@ -59,6 +61,7 @@ impl<N: Network> Stack<N> {
         let authorization = Authorization::new(&[request.clone()]);
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
+
         // Synthesize the circuit.
         let _response = self.execute_function::<A, R>(call_stack, rng)?;
 
@@ -81,8 +84,10 @@ impl<N: Network> Stack<N> {
             return Ok(());
         }
 
+        println!("syntthesize::84");
         // Synthesize the proving and verifying key.
         let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
+        println!("syntthesize::86");
         // Insert the proving key.
         self.insert_proving_key(function_name, proving_key)?;
         // Insert the verifying key.

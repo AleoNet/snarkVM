@@ -37,7 +37,9 @@ impl<N: Network> UniversalSRS<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        println!("universal_srs::40");
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
+        println!("universal_srs::42");
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());

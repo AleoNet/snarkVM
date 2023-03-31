@@ -69,8 +69,8 @@ impl<N: Network> Lookup<N> {
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 4 {
-            bail!("Instruction '{}' expects 4 operands, found {} operands", Self::opcode(), self.operands.len())
+        if self.operands.len() != 3 {
+            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
         }
         // Load the operands.
         let input1 = registers.load(stack, &self.operands[0])?;
@@ -123,17 +123,17 @@ impl<N: Network> Lookup<N> {
     #[inline]
     pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
-        if input_types.len() != 4 {
-            bail!("Instruction '{}' expects 4 inputs, found {} inputs", Self::opcode(), input_types.len())
+        if input_types.len() != 3 {
+            bail!("Instruction '{}' expects 3 inputs, found {} inputs", Self::opcode(), input_types.len())
         }
         // Ensure the operands are of the same type.
-        if input_types[1] != input_types[2] || input_types[2] != input_types[3] {
+        if input_types[0] != input_types[1] || input_types[1] != input_types[2] {
             bail!(
                 "Instruction '{}' expects inputs of the same type. Found inputs of type '{}', '{}' and '{}'",
                 Self::opcode(),
+                input_types[0],
                 input_types[1],
-                input_types[2],
-                input_types[3]
+                input_types[2]
             )
         }
 
