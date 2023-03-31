@@ -22,6 +22,7 @@ use console::{
     program::{Literal, PlaintextType},
 };
 
+// TODO (d0cd): Consider allowing PlaintextTypes.
 /// A table entry statement, e.g `entry 1field 2field to 3field;`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Entry<N: Network> {

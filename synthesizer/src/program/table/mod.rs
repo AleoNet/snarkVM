@@ -26,7 +26,10 @@ use output::*;
 mod bytes;
 mod parse;
 
-use console::{network::prelude::*, program::Identifier};
+use console::{
+    network::prelude::*,
+    program::{Identifier, PlaintextType},
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Table<N: Network> {
@@ -47,8 +50,34 @@ impl<N: Network> Table<N> {
         inputs: Vec<TableInput<N>>,
         outputs: Vec<TableOutput<N>>,
         entries: Vec<Entry<N>>,
-    ) -> Self {
-        Self { name, inputs, outputs, entries }
+    ) -> Result<Self> {
+        // TODO (d0cd): Consider moving validation logic elsewhere.
+        let input_types = inputs.iter().map(|input| input.type_()).collect::<Vec<_>>();
+        let output_types = outputs.iter().map(|output| output.type_()).collect::<Vec<_>>();
+        // For each entry, check that the input and output types match the table.
+        for entry in entries.iter() {
+            if entry.input_types() != input_types.as_slice() {
+                bail!("A table entry must have {} inputs, but found {}.", input_types.len(), entry.input_types().len());
+            }
+            if entry.output_types() != output_types.as_slice() {
+                bail!(
+                    "A table entry must have {} outputs, but found {}.",
+                    output_types.len(),
+                    entry.output_types().len()
+                );
+            }
+            for (input, input_type) in entry.inputs().iter().zip_eq(input_types.iter()) {
+                if !matches(PlaintextType::from(input.to_type()), input_type) {
+                    bail!("Expected input with type {}, but found {}.", input_type, input.to_type());
+                }
+            }
+            for (output, output_type) in entry.outputs().iter().zip_eq(output_types.iter()) {
+                if !matches(PlaintextType::from(output.to_type()), output_type) {
+                    bail!("Expected output with type {}, but found {}.", output_type, output.to_type());
+                }
+            }
+        }
+        Ok(Self { name, inputs, outputs, entries })
     }
 
     /// Returns the name of the table.
