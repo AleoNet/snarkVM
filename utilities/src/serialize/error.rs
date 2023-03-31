@@ -35,7 +35,7 @@ pub enum SerializationError {
     #[error("the call expects empty flags")]
     UnexpectedFlags,
     /// During serialization, the target was found to be incompatible
-    #[error("the file was serialized with a 64bit target and cannot be deserialized on a 32bit target")]
+    #[error("the value was serialized on a target that is incompatible with the current target")]
     IncompatibleTarget,
 }
 

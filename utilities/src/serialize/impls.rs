@@ -152,7 +152,7 @@ impl_canonical_serialization_uint!(u64);
 impl CanonicalSerialize for usize {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, _compress: Compress) -> Result<(), SerializationError> {
-        let u64_value = *self as u64;
+        let u64_value = u64::try_from(*self).map_err(|_| SerializationError::IncompatibleTarget)?;
         Ok(writer.write_all(&u64_value.to_le_bytes())?)
     }
 
