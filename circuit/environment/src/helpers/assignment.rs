@@ -107,6 +107,11 @@ impl<F: PrimeField> Assignment<F> {
     pub fn num_constraints(&self) -> u64 {
         self.constraints.len() as u64
     }
+
+    /// Returns the number of lookup constraints in the assignment.
+    pub fn num_lookup_constraints(&self) -> u64 {
+        self.lookup_constraints.len() as u64
+    }
 }
 
 impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
@@ -228,7 +233,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
         // Ensure the given `cs` matches in size with the first system.
         assert_eq!(self.num_public() + 1, cs.num_public_variables() as u64);
         assert_eq!(self.num_private(), cs.num_private_variables() as u64);
-        assert_eq!(self.num_constraints(), cs.num_constraints() as u64);
+        assert_eq!(self.num_constraints() + self.num_lookup_constraints(), cs.num_constraints() as u64);
 
         Ok(())
     }

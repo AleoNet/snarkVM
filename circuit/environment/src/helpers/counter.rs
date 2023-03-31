@@ -110,7 +110,9 @@ impl<F: PrimeField> Counter<F> {
 
     /// Returns `true` if all constraints in the scope are satisfied.
     pub(crate) fn is_satisfied_in_scope(&self) -> bool {
-        self.constraints.iter().all(|constraint| constraint.is_satisfied())
+        let constraints_satisfied = self.constraints.iter().all(|constraint| constraint.is_satisfied());
+        let lookups_satisfied = self.lookup_constraints.iter().all(|constraint| constraint.is_satisfied());
+        constraints_satisfied && lookups_satisfied
     }
 
     /// Returns the current scope.

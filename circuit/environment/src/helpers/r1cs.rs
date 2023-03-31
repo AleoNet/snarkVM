@@ -19,7 +19,7 @@ use crate::{
     prelude::*,
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{LookupTable, SynthesisError};
+use snarkvm_r1cs::{LookupTable};
 
 use std::rc::Rc;
 
