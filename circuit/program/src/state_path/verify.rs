@@ -232,14 +232,14 @@ mod tests {
 
     #[test]
     fn test_state_path_verify_global_public() -> Result<()> {
-        check_verify_global(Mode::Public, true, 26595, 453, 86212, 86732)?;
-        check_verify_global(Mode::Public, false, 26595, 453, 86212, 86732)
+        check_verify_global(Mode::Public, true, 26595, 453, 117712, 118357)?;
+        check_verify_global(Mode::Public, false, 26595, 453, 117712, 118357)
     }
 
     #[test]
     fn test_state_path_verify_global_private() -> Result<()> {
-        check_verify_global(Mode::Private, true, 26595, 1, 86664, 86732)?;
-        check_verify_global(Mode::Private, false, 26595, 1, 86664, 86732)
+        check_verify_global(Mode::Private, true, 26595, 1, 118164, 118357)?;
+        check_verify_global(Mode::Private, false, 26595, 1, 118164, 118357)
     }
 
     #[test]
@@ -252,17 +252,17 @@ mod tests {
 
     #[test]
     fn test_state_path_verify_local_public() -> Result<()> {
-        check_verify_local(Mode::Public, false, true, 26595, 453, 86212, 86732)?;
-        check_verify_local(Mode::Public, false, false, 26595, 453, 86212, 86732)?;
-        check_verify_local(Mode::Public, true, true, 26595, 453, 86212, 86732)?;
-        check_verify_local(Mode::Public, true, false, 26595, 453, 86212, 86732)
+        check_verify_local(Mode::Public, false, true, 26595, 453, 117712, 118357)?;
+        check_verify_local(Mode::Public, false, false, 26595, 453, 117712, 118357)?;
+        check_verify_local(Mode::Public, true, true, 26595, 453, 117712, 118357)?;
+        check_verify_local(Mode::Public, true, false, 26595, 453, 117712, 118357)
     }
 
     #[test]
     fn test_state_path_verify_local_private() -> Result<()> {
-        check_verify_local(Mode::Private, false, true, 26595, 1, 86664, 86732)?;
-        check_verify_local(Mode::Private, false, false, 26595, 1, 86664, 86732)?;
-        check_verify_local(Mode::Private, true, true, 26595, 1, 86664, 86732)?;
-        check_verify_local(Mode::Private, true, false, 26595, 1, 86664, 86732)
+        check_verify_local(Mode::Private, false, true, 26595, 1, 118164, 118357)?;
+        check_verify_local(Mode::Private, false, false, 26595, 1, 118164, 118357)?;
+        check_verify_local(Mode::Private, true, true, 26595, 1, 118164, 118357)?;
+        check_verify_local(Mode::Private, true, false, 26595, 1, 118164, 118357)
     }
 }
