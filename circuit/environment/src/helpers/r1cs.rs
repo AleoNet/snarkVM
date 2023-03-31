@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    helpers::{Constraint, LookupConstraint, Counter, LookupCounter},
+    helpers::{Constraint, LookupConstraint, Counter},
     prelude::*,
 };
 use snarkvm_fields::PrimeField;
@@ -33,7 +33,6 @@ pub struct R1CS<F: PrimeField> {
     constraints: Vec<Constraint<F>>,
     lookup_constraints: Vec<LookupConstraint<F>>,
     counter: Counter<F>,
-    lookup_counter: LookupCounter<F>,
     tables: Vec<LookupTable<F>>,
     gates: u64,
 }
@@ -48,7 +47,6 @@ impl<F: PrimeField> R1CS<F> {
             constraints: Default::default(),
             lookup_constraints: Default::default(),
             counter: Default::default(),
-            lookup_counter: Default::default(),
             tables: Default::default(),
             gates: 0,
         }
@@ -103,26 +101,8 @@ impl<F: PrimeField> R1CS<F> {
     pub(crate) fn enforce_lookup(&mut self, constraint: LookupConstraint<F>) {
         self.gates += constraint.num_gates();
         self.lookup_constraints.push(constraint.clone());
-        self.lookup_counter.add_constraint(constraint);
+        self.counter.add_lookup_constraint(constraint);
     }
-
-    // pub(crate) fn enforce_lookup<A, AR, LA, LB, LC>(
-    //     &mut self,
-    //     annotation: A,
-    //     a: LA,
-    //     b: LB,
-    //     c: LC,
-    //     table_index: usize,
-    // ) -> Result<(), SynthesisError>
-    // where
-    //     A: FnOnce() -> AR,
-    //     AR: AsRef<str>,
-    //     LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-    //     LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-    //     LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-    // {
-    //     self.enforce_lookup(annotation, a, b, c, table_index)
-    // }
 
     /// Returns `true` if all constraints in the environment are satisfied.
     pub(crate) fn is_satisfied(&self) -> bool {

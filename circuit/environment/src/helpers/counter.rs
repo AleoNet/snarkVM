@@ -21,11 +21,12 @@ use snarkvm_fields::PrimeField;
 pub(crate) struct Counter<F: PrimeField> {
     scope: Scope,
     constraints: Vec<Constraint<F>>,
+    lookup_constraints: Vec<LookupConstraint<F>>,
     constants: u64,
     public: u64,
     private: u64,
     gates: u64,
-    parents: Vec<(Scope, Vec<Constraint<F>>, u64, u64, u64, u64)>,
+    parents: Vec<(Scope, Vec<Constraint<F>>, Vec<LookupConstraint<F>>, u64, u64, u64, u64)>,
 }
 
 impl<F: PrimeField> Counter<F> {
@@ -45,6 +46,7 @@ impl<F: PrimeField> Counter<F> {
                 self.parents.push((
                     self.scope.clone(),
                     self.constraints.clone(),
+                    self.lookup_constraints.clone(),
                     self.constants,
                     self.public,
                     self.private,
@@ -54,6 +56,7 @@ impl<F: PrimeField> Counter<F> {
                 // Initialize the new scope members.
                 self.scope = scope;
                 self.constraints = Default::default();
+                self.lookup_constraints = Default::default();
                 self.constants = 0;
                 self.public = 0;
                 self.private = 0;
@@ -75,9 +78,10 @@ impl<F: PrimeField> Counter<F> {
         // Ensure the current scope is the last pushed scope.
         match current_scope == name.into() {
             true => {
-                if let Some((scope, constraints, constants, public, private, gates)) = self.parents.pop() {
+                if let Some((scope, constraints, lookup_constraints, constants, public, private, gates)) = self.parents.pop() {
                     self.scope = scope;
                     self.constraints = constraints;
+                    self.lookup_constraints = lookup_constraints;
                     self.constants = constants;
                     self.public = public;
                     self.private = private;
@@ -96,6 +100,12 @@ impl<F: PrimeField> Counter<F> {
     pub(crate) fn add_constraint(&mut self, constraint: Constraint<F>) {
         self.gates += constraint.num_gates();
         self.constraints.push(constraint);
+    }
+
+    /// Increments the number of lookup constraints by 1.
+    pub(crate) fn add_lookup_constraint(&mut self, constraint: LookupConstraint<F>) {
+        self.gates += constraint.num_gates();
+        self.lookup_constraints.push(constraint);
     }
 
     /// Returns `true` if all constraints in the scope are satisfied.
