@@ -404,15 +404,13 @@ function compute:
 mod tests {
     use super::*;
     use crate::ProgramMemory;
-    use circuit::{network::AleoV0, Environment};
+    use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
         program::{Identifier, Literal, Value},
         types::Field,
     };
-    use snarkvm_fields::Fp256;
-    use snarkvm_r1cs::LookupTable;
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
 
@@ -1659,8 +1657,6 @@ function compute:
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-        let caller = Address::try_from(&caller_private_key).unwrap();
 
         // Declare the input values.
         let r0 = Value::<CurrentNetwork>::from_str("1field").unwrap();

@@ -17,10 +17,7 @@
 mod bytes;
 mod parse;
 
-use console::{
-    network::prelude::*,
-    program::{Literal, PlaintextType},
-};
+use console::{network::prelude::*, program::Literal};
 
 // TODO (d0cd): Consider allowing PlaintextTypes.
 /// A table entry statement, e.g `entry 1field 2field to 3field;`.

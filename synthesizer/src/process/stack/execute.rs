@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_r1cs::LookupTable;
 
 impl<N: Network> Stack<N> {
     /// Executes a program closure on the given inputs.

@@ -15,8 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_fields::Fp256;
-use snarkvm_r1cs::LookupTable;
 
 impl<N: Network> Stack<N> {
     /// Synthesizes the proving key and verifying key for the given function name.

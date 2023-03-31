@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use circuit::Assignment;
 
 impl<N: Network> Parser for Table<N> {
     /// Parses a string into a table.

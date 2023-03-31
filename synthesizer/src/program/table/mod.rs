@@ -30,7 +30,7 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{Field, Identifier, Literal, LiteralType, PlaintextType},
+    program::{Identifier, Literal, LiteralType, PlaintextType},
 };
 use snarkvm_r1cs::LookupTable;
 
