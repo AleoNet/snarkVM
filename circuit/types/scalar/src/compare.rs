@@ -20,7 +20,6 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     type Output = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
-    // TODO: If the bitwise representation of the scalar field exists, then a bitwise comparison may be cheaper.
     fn is_less_than(&self, other: &Self) -> Self::Output {
         // Case 1: Constant < Constant
         if self.is_constant() && other.is_constant() {
