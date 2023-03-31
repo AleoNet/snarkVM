@@ -86,7 +86,6 @@ impl<N: Network> Stack<N> {
 
         // Synthesize the proving and verifying key.
         let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
-        println!("syntthesize::86");
         // Insert the proving key.
         self.insert_proving_key(function_name, proving_key)?;
         // Insert the verifying key.

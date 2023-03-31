@@ -15,7 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod entry;
+
 use entry::*;
+use indexmap::IndexMap;
 
 mod input;
 use input::*;
@@ -41,7 +43,10 @@ pub struct Table<N: Network> {
     /// The output columns of the table.
     outputs: Vec<TableOutput<N>>,
     /// The entries of the table.
+    // TODO (d0cd): We are storing this for reproducibility, however, this doubles the memory usage.
     entries: Vec<Entry<N>>,
+    /// A mapping between entry inputs and outputs.
+    entry_map: IndexMap<Vec<Literal<N>>, Vec<Literal<N>>>,
 }
 
 impl<N: Network> Table<N> {
@@ -63,6 +68,9 @@ impl<N: Network> Table<N> {
         if !output_types.is_empty() {
             bail!("Tables are temporarily restricted to have exactly 0 outputs.")
         }
+
+        // Initialize storage for the entries.
+        let mut entry_map = IndexMap::with_capacity(entries.len());
 
         // For each entry, check that the input and output types match the table.
         for entry in entries.iter() {
@@ -90,8 +98,12 @@ impl<N: Network> Table<N> {
                     bail!("Expected output with type {}, but found {}.", output_type, output.to_type());
                 }
             }
+            // Add the entry to the table.
+            if entry_map.insert(entry.inputs.clone(), entry.outputs.clone()).is_some() {
+                bail!("Duplicate entry found in table.")
+            }
         }
-        Ok(Self { name, inputs, outputs, entries })
+        Ok(Self { name, inputs, outputs, entries, entry_map })
     }
 
     /// Returns the name of the table.
@@ -113,15 +125,20 @@ impl<N: Network> Table<N> {
     pub fn entries(&self) -> &[Entry<N>] {
         &self.entries
     }
+
+    /// Returns the entries of the table, loaded into an `IndexMap`.
+    pub fn entry_map(&self) -> &IndexMap<Vec<Literal<N>>, Vec<Literal<N>>> {
+        &self.entry_map
+    }
 }
 
 impl<N: Network> Table<N> {
     pub fn into_lookup_table<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
     ) -> LookupTable<<A as circuit::Environment>::BaseField> {
+        // TODO (@d0cd): Update encoding when restricts on lookup tables are lifted.
         let mut lookup_table = LookupTable::default();
-        for entry in self.entries() {
-            let inputs = entry.inputs();
+        for (inputs, _) in self.entry_map() {
             let in1 = match inputs[0] {
                 Literal::Field(ref value) => value,
                 _ => unreachable!(),

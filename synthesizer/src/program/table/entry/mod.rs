@@ -26,8 +26,8 @@ use console::{
 /// A table entry statement, e.g `entry 1field 2field to 3field;`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Entry<N: Network> {
-    inputs: Vec<Literal<N>>,
-    outputs: Vec<Literal<N>>,
+    pub inputs: Vec<Literal<N>>,
+    pub outputs: Vec<Literal<N>>,
 }
 
 impl<N: Network> Entry<N> {

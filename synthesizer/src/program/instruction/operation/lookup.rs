@@ -68,19 +68,32 @@ impl<N: Network> Lookup<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        // Ensure the number of operands is correct.
+        // TODO: Relax this restriction.
+        // Temporarily restrict the lookup operation to exactly 3 operands.
         if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
+            bail!("Lookups are temporarily restricted to 3 operands.")
         }
-        // Load the operands.
-        let input1 = registers.load(stack, &self.operands[0])?;
-        let input2 = registers.load(stack, &self.operands[1])?;
-        let input3 = registers.load(stack, &self.operands[2])?;
+        // Temporarily restrict the lookup operation to exactly 0 destinations.
+        if !self.destinations.is_empty() {
+            bail!("Lookups are temporarily restricted to 0 destinations.")
+        }
 
-        // in order to evaluate, I guess besides `add_lookup_table` and `enforce_lookup` we should be adding a `get_lookup` function all the way through the stack.
-        // Or do we have the table already accessible in the current environment?
-        // N::enforce_lookup(&input1, &input2, &input3);
-        // todo!();
+        // Get the table from the program.
+        let table = match stack.program().get_table(self.table_name()) {
+            Ok(table) => table,
+            Err(_) => bail!("Table '{}' not found", self.table_name()),
+        };
+
+        // Load the operand values.
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_literal(stack, operand)).try_collect()?;
+
+        // Evaluate the lookup.
+        // TODO (d0cd): Currently we only need to check for membership. Support a more robust lookup.
+        if !table.entry_map().contains_key(&inputs) {
+            bail!("Lookup failed: table '{}' does not contain the entry {:?}", self.table_name(), inputs)
+        }
+
         Ok(())
     }
 
