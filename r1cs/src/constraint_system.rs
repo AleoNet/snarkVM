@@ -27,6 +27,7 @@ pub trait ConstraintSynthesizer<F: Field>: Sync {
     fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError>;
 }
 
+// TODO: Should ConstraintSystem have a separate counter for lookup constraints?
 /// Represents a constraint system which can have new variables
 /// allocated and constrains between them formed.
 pub trait ConstraintSystem<F: Field>: Sized {

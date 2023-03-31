@@ -18,6 +18,7 @@ use crate::Index;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
+use snarkvm_r1cs::{ConstraintSystem, LookupTable};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum AssignmentVariable<F: PrimeField> {
@@ -63,6 +64,7 @@ pub struct Assignment<F: PrimeField> {
     private: IndexMap<Index, F>,
     constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)>,
     lookup_constraints: Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>, usize)>,
+    tables: Vec<LookupTable<F>>,
 }
 
 impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
@@ -83,6 +85,7 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
                 let (a, b, c, table_index) = constraint.to_terms();
                 (a.into(), b.into(), c.into(), table_index)
             })),
+            tables: r1cs.tables,
         }
     }
 }
@@ -217,6 +220,12 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                 |lc| lc + convert_linear_combination(b),
                 |lc| lc + convert_linear_combination(c),
             );
+        }
+
+        // Add the lookup tables to the constraint system.
+        // TODO: @pranav - Get rid of clone.
+        for table in &self.tables {
+            cs.add_lookup_table(table.clone())
         }
 
         // Enforce all of the lookup constraints.

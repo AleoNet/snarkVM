@@ -19,6 +19,7 @@ use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
+use snarkvm_r1cs::ConstraintSystem;
 
 /// A struct for tracking the mapping of variables from the virtual machine (first) to the gadget constraint system (second).
 struct Converter {
@@ -99,52 +100,51 @@ impl<F: PrimeField> R1CS<F> {
             }
         }
 
-        // Enforce all of the constraints.
-        for (i, constraint) in self.to_constraints().iter().enumerate() {
-            // Converts terms from one linear combination in the first system to the second system.
-            let convert_linear_combination = |lc: &LinearCombination<F>| -> snarkvm_r1cs::LinearCombination<F> {
-                // Initialize a linear combination for the second system.
-                let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
+        // Converts terms from one linear combination in the first system to the second system.
+        let convert_linear_combination = |lc: &LinearCombination<F>| -> snarkvm_r1cs::LinearCombination<F> {
+            // Initialize a linear combination for the second system.
+            let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
 
-                // Keep an accumulator for constant values in the linear combination.
-                let mut constant_accumulator = lc.to_constant();
-                // Process every term in the linear combination.
-                for (variable, coefficient) in lc.to_terms() {
-                    match variable {
-                        Variable::Constant(value) => {
-                            constant_accumulator += **value;
-                        }
-                        Variable::Public(index, _) => {
-                            let gadget = converter.public.get(index).unwrap();
-                            assert_eq!(
-                                snarkvm_r1cs::Index::Public((index + 1) as usize),
-                                gadget.get_unchecked(),
-                                "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
-                            );
-                            linear_combination += (*coefficient, *gadget);
-                        }
-                        Variable::Private(index, _) => {
-                            let gadget = converter.private.get(index).unwrap();
-                            assert_eq!(
-                                snarkvm_r1cs::Index::Private(*index as usize),
-                                gadget.get_unchecked(),
-                                "Failed during constraint translation. The private variable in the second system must match the first system"
-                            );
-                            linear_combination += (*coefficient, *gadget);
-                        }
+            // Keep an accumulator for constant values in the linear combination.
+            let mut constant_accumulator = lc.to_constant();
+            // Process every term in the linear combination.
+            for (variable, coefficient) in lc.to_terms() {
+                match variable {
+                    Variable::Constant(value) => {
+                        constant_accumulator += **value;
+                    }
+                    Variable::Public(index, _) => {
+                        let gadget = converter.public.get(index).unwrap();
+                        assert_eq!(
+                            snarkvm_r1cs::Index::Public((index + 1) as usize),
+                            gadget.get_unchecked(),
+                            "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
+                        );
+                        linear_combination += (*coefficient, *gadget);
+                    }
+                    Variable::Private(index, _) => {
+                        let gadget = converter.private.get(index).unwrap();
+                        assert_eq!(
+                            snarkvm_r1cs::Index::Private(*index as usize),
+                            gadget.get_unchecked(),
+                            "Failed during constraint translation. The private variable in the second system must match the first system"
+                        );
+                        linear_combination += (*coefficient, *gadget);
                     }
                 }
+            }
 
-                // Finally, add the accumulated constant value to the linear combination.
-                linear_combination +=
-                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+            // Finally, add the accumulated constant value to the linear combination.
+            linear_combination +=
+                (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
 
-                // Return the linear combination of the second system.
-                linear_combination
-            };
+            // Return the linear combination of the second system.
+            linear_combination
+        };
 
+        // Enforce all of the constraints.
+        for (i, constraint) in self.to_constraints().iter().enumerate() {
             let (a, b, c) = constraint.to_terms();
-
             cs.enforce(
                 || format!("Constraint {i}"),
                 |lc| lc + convert_linear_combination(a),
@@ -153,10 +153,27 @@ impl<F: PrimeField> R1CS<F> {
             );
         }
 
+        // Add the lookup tables.
+        for table in &self.tables {
+            cs.add_lookup_table(table.clone())
+        }
+
+        // Enforce all of the lookup constraints.
+        for (i, constraint) in self.to_lookup_constraints().iter().enumerate() {
+            let (a, b, c, table_index) = constraint.to_terms();
+            cs.enforce_lookup(
+                || format!("Lookup Constraint {i}"),
+                |lc| lc + convert_linear_combination(a),
+                |lc| lc + convert_linear_combination(b),
+                |lc| lc + convert_linear_combination(c),
+                table_index,
+            );
+        }
+
         // Ensure the given `cs` matches in size with the first system.
         assert_eq!(self.num_public() + 1, cs.num_public_variables() as u64);
         assert_eq!(self.num_private(), cs.num_private_variables() as u64);
-        assert_eq!(self.num_constraints(), cs.num_constraints() as u64);
+        assert_eq!(self.num_constraints() + self.num_lookup_constraints(), cs.num_constraints() as u64);
 
         Ok(())
     }

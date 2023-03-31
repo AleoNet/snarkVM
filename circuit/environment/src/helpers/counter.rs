@@ -157,6 +157,11 @@ impl<F: PrimeField> Counter<F> {
         self.constraints.len() as u64
     }
 
+    /// Returns the number of lookup constraints in scope.
+    pub(crate) fn num_lookup_constraints_in_scope(&self) -> u64 {
+        self.lookup_constraints.len() as u64
+    }
+
     /// Returns the number of gates in scope.
     pub(crate) fn num_gates_in_scope(&self) -> u64 {
         self.gates

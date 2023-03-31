@@ -33,7 +33,7 @@ pub struct R1CS<F: PrimeField> {
     constraints: Vec<Constraint<F>>,
     lookup_constraints: Vec<LookupConstraint<F>>,
     counter: Counter<F>,
-    tables: Vec<LookupTable<F>>,
+    pub(crate) tables: Vec<LookupTable<F>>,
     gates: u64,
 }
 
@@ -139,6 +139,11 @@ impl<F: PrimeField> R1CS<F> {
         self.constraints.len() as u64
     }
 
+    /// Returns the number of lookup constraints in the constraint system.
+    pub(crate) fn num_lookup_constraints(&self) -> u64 {
+        self.lookup_constraints.len() as u64
+    }
+
     /// Returns the number of gates in the constraint system.
     pub(crate) fn num_gates(&self) -> u64 {
         self.gates
@@ -162,6 +167,11 @@ impl<F: PrimeField> R1CS<F> {
     /// Returns the number of constraints for the current scope.
     pub(crate) fn num_constraints_in_scope(&self) -> u64 {
         self.counter.num_constraints_in_scope()
+    }
+
+    /// Returns the number of lookup constraints for the current scope.
+    pub(crate) fn num_lookup_constraints_in_scope(&self) -> u64 {
+        self.counter.num_lookup_constraints_in_scope()
     }
 
     /// Returns the number of gates for the current scope.
