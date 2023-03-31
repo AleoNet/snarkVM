@@ -91,29 +91,37 @@ impl<N: Network> Lookup<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        // Ensure the number of operands is correct.
+        // TODO: Relax this restruction.
+        // Temporarily restrict the lookup operation to exactly 3 operands.
         if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
+            bail!("Lookups are temporarily restricted to 3 operands.")
+        }
+        // Temporarily restrict the lookup operation to exactly 0 destinations.
+        if !self.destinations.is_empty() {
+            bail!("Lookups are temporarily restricted to 0 destinations.")
         }
 
-        // Load the operand.
-        let table_index = 0; // TODO(Pranav); Read the tablename and translate to index
-        let input1 = registers.load_literal_circuit(stack, &self.operands[0])?;
-        let input2 = registers.load_literal_circuit(stack, &self.operands[1])?;
-        let input3 = registers.load_literal_circuit(stack, &self.operands[2])?;
+        // Get the table index from the program.
+        let table_index = match stack.program().tables.get_index_of(self.table_name()) {
+            Some(index) => index,
+            None => bail!("Table '{}' not found", self.table_name()),
+        };
 
-        let lookup_operation = format!("{}{}{}{}", table_index, self.operands[0], self.operands[1], self.operands[2]);
-        match (input1, input2, input3) {
+        // Load the operand values.
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_literal_circuit(stack, operand)).try_collect()?;
+
+        match (&inputs[0], &inputs[1], &inputs[2]) {
             (circuit::Literal::Field(in1), circuit::Literal::Field(in2), circuit::Literal::Field(in3)) => {
                 A::enforce_lookup(
-                    || format!("lookup {lookup_operation}"),
+                    || format!("lookup {table_index}{}{}{}", &self.operands[0], &self.operands[1], &self.operands[2]),
                     |lc| lc + LinearCombination::from(in1),
                     |lc| lc + LinearCombination::from(in2),
                     |lc| lc + LinearCombination::from(in3),
                     table_index,
                 )?;
             }
-            _ => bail!("Lookups only support field elements"),
+            _ => bail!("A lookup's execution is temporarily restricted to exactly three input field elements"),
         }
 
         Ok(())
