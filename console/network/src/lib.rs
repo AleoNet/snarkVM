@@ -109,9 +109,9 @@ pub trait Network:
 
     /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.
-    const MAX_DATA_DEPTH: usize = 32;
+    const MAX_DATA_DEPTH: usize = 128;
     /// The maximum number of values and/or entries in data.
-    const MAX_DATA_ENTRIES: usize = 32;
+    const MAX_DATA_ENTRIES: usize = 128;
     /// The maximum number of fields in data (must not exceed u16::MAX).
     #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
