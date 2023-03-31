@@ -518,7 +518,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/mint' is not satisfied on the given inputs (26610 constraints).")
+            format!("'token.aleo/mint' is not satisfied on the given inputs (29387 constraints).")
         );
     }
 
