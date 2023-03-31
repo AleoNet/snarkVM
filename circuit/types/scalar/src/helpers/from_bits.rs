@@ -41,34 +41,47 @@ impl<E: Environment> FromBits for Scalar<E> {
             E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // If `num_bits` is greater than `size_in_data_bits`, check it is less than `ScalarField::MODULUS`.
         if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
-            // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = -E::ScalarField::one();
-
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
             let bits_le = &bits_le[..size_in_bits];
 
-            // Check that`bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to checking that `bits_le < ScalarField::MODULUS`.
+            // Reconstruct the bits as a linear combination representing the original scalar as a field.
+            let mut accumulator = Field::zero();
+            let mut coefficient = Field::one();
+            for bit in bits_le {
+                accumulator += Field::from_boolean(bit) * &coefficient;
+                coefficient = coefficient.double();
+            }
+
+            // Construct the scalar.
+            let scalar = Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le.to_vec()) };
+
+            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+            // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
+            let modulus_minus_one = -E::ScalarField::one();
+
+            // Assert `bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
             Boolean::assert_less_than_or_equal_constant(bits_le, &modulus_minus_one.to_bits_le());
+
+            // Return the scalar.
+            scalar
+        } else {
+            // Construct the sanitized list of bits, resizing up if necessary.
+            let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
+            bits_le.resize(size_in_bits, Boolean::constant(false));
+
+            // Reconstruct the bits as a linear combination representing the original scalar as a field.
+            let mut accumulator = Field::zero();
+            let mut coefficient = Field::one();
+            for bit in &bits_le {
+                accumulator += Field::from_boolean(bit) * &coefficient;
+                coefficient = coefficient.double();
+            }
+
+            // Return the scalar.
+            Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le) }
         }
-
-        // Reconstruct the bits as a linear combination representing the original scalar as a field.
-        let mut accumulator = Field::zero();
-        let mut coefficient = Field::one();
-        for bit in bits_le {
-            accumulator += Field::from_boolean(bit) * &coefficient;
-            coefficient = coefficient.double();
-        }
-
-        // Construct the sanitized list of bits, resizing up if necessary.
-        let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
-        bits_le.resize(size_in_bits, Boolean::constant(false));
-
-        // Return the scalar.
-        Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le) }
     }
 
     /// Initializes a new scalar field element from a list of big-endian bits *without* leading zeros.
