@@ -46,15 +46,16 @@ impl<E: Environment> ToBits for &Scalar<E> {
 
                 // Construct a vector of `Boolean`s comprising the bits of the scalar value.
                 let bits_le = self.field.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits());
-                // Check that the non-unique bit representation is less than the scalar field modulus.
+
+                // Ensure the bit representation is unique.
                 {
                     // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
                     // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
                     let modulus_minus_one = -E::ScalarField::one();
-
-                    // Check that`bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to checking that `bits_le < ScalarField::MODULUS`.
+                    // Assert `bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
                     Boolean::assert_less_than_or_equal_constant(&bits_le, &modulus_minus_one.to_bits_le());
                 }
+
                 bits_le
             })
             .clone()
