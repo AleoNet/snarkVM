@@ -39,13 +39,13 @@ impl<E: Environment> ToBits for &Field<E> {
             .get_or_init(|| {
                 // Extract a non-unique little-endian bit representation of `self`.
                 let bits_le = self.to_non_unique_bits_le();
-                // Check that the non-unique bit representation is less than the field modulus.
+
+                // Ensure the bit representation is unique.
                 {
                     // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
                     // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
                     let modulus_minus_one = -E::BaseField::one();
-
-                    // Check that`bits_le <= (BaseField::MODULUS - 1)`, which is equivalent to checking that `bits_le < BaseField::MODULUS`.
+                    // Assert `bits_le <= (BaseField::MODULUS - 1)`, which is equivalent to `bits_le < BaseField::MODULUS`.
                     Boolean::assert_less_than_or_equal_constant(&bits_le, &modulus_minus_one.to_bits_le())
                 }
 
@@ -64,6 +64,7 @@ impl<E: Environment> ToBits for &Field<E> {
 
 impl<E: Environment> Field<E> {
     /// Outputs a non-unique little-endian bit representation of `self` *without* trailing zeros.
+    #[doc(hidden)]
     fn to_non_unique_bits_le(&self) -> Vec<Boolean<E>> {
         // Construct a vector of `Boolean`s comprising the bits of the field value.
         let bits_le = witness!(|self| self.to_bits_le());
