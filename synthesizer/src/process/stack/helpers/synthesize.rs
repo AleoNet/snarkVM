@@ -21,7 +21,7 @@ use snarkvm_r1cs::LookupTable;
 impl<N: Network> Stack<N> {
     /// Synthesizes the proving key and verifying key for the given function name.
     #[inline]
-    pub fn synthesize_key<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn synthesize_key<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         function_name: &Identifier<N>,
         rng: &mut R,

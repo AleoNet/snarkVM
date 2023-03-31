@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Process<N> {
     /// Executes the fee given the credits record and the fee amount (in gates).
     #[inline]
-    pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn execute_fee<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,

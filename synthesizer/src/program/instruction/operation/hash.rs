@@ -99,7 +99,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
@@ -129,7 +129,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,

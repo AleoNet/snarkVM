@@ -19,7 +19,10 @@ use super::*;
 impl<N: Network> Process<N> {
     /// Evaluates a program function on the given request.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, authorization: Authorization<N>) -> Result<Response<N>> {
+    pub fn evaluate<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
+        authorization: Authorization<N>,
+    ) -> Result<Response<N>> {
         let timer = timer!("Process::evaluate");
 
         // Retrieve the main request (without popping it).

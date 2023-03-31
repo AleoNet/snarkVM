@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Process<N> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
-    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn deploy<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         program: &Program<N>,
         rng: &mut R,
@@ -41,7 +41,7 @@ impl<N: Network> Process<N> {
 
     /// Verifies the given deployment is ordered.
     #[inline]
-    pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn verify_deployment<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         deployment: &Deployment<N>,
         rng: &mut R,

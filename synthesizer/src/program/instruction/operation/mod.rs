@@ -51,7 +51,7 @@ pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const
     fn evaluate(inputs: &[Value; NUM_OPERANDS]) -> Result<Value>;
 
     /// Returns the result of executing the operation on the given circuit inputs.
-    fn execute<A: circuit::Aleo<Network = N>>(
+    fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         inputs: &[circuit::Literal<A>; NUM_OPERANDS],
     ) -> Result<circuit::Literal<A>>;
 

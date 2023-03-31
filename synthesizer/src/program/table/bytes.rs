@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_utilities::SerializationError::IoError;
 
 impl<N: Network> FromBytes for Table<N> {
     /// Reads the table from a buffer.
@@ -44,8 +45,12 @@ impl<N: Network> FromBytes for Table<N> {
             entries.push(Entry::read_le(&mut reader)?);
         }
 
-        // Return the new mapping.
-        Ok(Self::new(name, inputs, outputs, entries))
+        // Return the new table.
+        let table = match Self::new(name, inputs, outputs, entries) {
+            Ok(table) => table,
+            Err(_) => return Err(error(format!("Failed to deserialize a table: invalid format"))),
+        };
+        Ok(table)
     }
 }
 

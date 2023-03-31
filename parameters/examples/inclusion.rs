@@ -71,7 +71,8 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
 
 /// Returns the assignment for verifying the state path.
 #[allow(clippy::type_complexity)]
-pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignment<N::Field>, StatePath<N>, Field<N>)> {
+pub fn sample_assignment<N: Network, A: Aleo<Network = N, BaseField = N::Field>>()
+-> Result<(Assignment<N::Field>, StatePath<N>, Field<N>)> {
     println!("- 1");
     // Initialize the consensus store.
     let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
@@ -122,7 +123,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
 }
 
 /// Synthesizes the circuit keys for the inclusion circuit. (cargo run --release --example inclusion [network])
-pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
+pub fn inclusion<N: Network, A: Aleo<Network = N, BaseField = N::Field>>() -> Result<()> {
     // Load the universal SRS.
     let universal_srs = UniversalSRS::<N>::load()?;
 

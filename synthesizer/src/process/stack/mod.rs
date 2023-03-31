@@ -57,6 +57,7 @@ use crate::{
     Process,
     Program,
     ProvingKey,
+    Table,
     Transition,
     UniversalSRS,
     VerifyingKey,
@@ -295,6 +296,15 @@ impl<N: Network> Stack<N> {
         match self.program.contains_function(function_name) {
             true => self.program.get_function(function_name),
             false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
+        }
+    }
+
+    /// Returns the table with the given table name.
+    pub fn get_table(&self, table_name: &Identifier<N>) -> Result<Table<N>> {
+        // Ensure the table exists.
+        match self.program.contains_table(table_name) {
+            true => self.program.get_table(table_name),
+            false => bail!("Table '{table_name}' does not exist in program '{}'.", self.program.id()),
         }
     }
 

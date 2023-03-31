@@ -19,7 +19,10 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
-    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Deployment<N>> {
+    pub fn deploy<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
+        &self,
+        rng: &mut R,
+    ) -> Result<Deployment<N>> {
         let timer = timer!("Stack::deploy");
 
         // Ensure the program contains functions.
@@ -55,7 +58,7 @@ impl<N: Network> Stack<N> {
 
     /// Checks each function in the program on the given verifying key and certificate.
     #[inline]
-    pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn verify_deployment<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         deployment: &Deployment<N>,
         rng: &mut R,

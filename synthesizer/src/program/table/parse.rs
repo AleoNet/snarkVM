@@ -41,8 +41,11 @@ impl<N: Network> Parser for Table<N> {
         // Parse the entries from the string.
         let (string, entries) = many1(Entry::parse)(string)?;
 
-        // Return the table.
-        Ok((string, Self::new(name, inputs, outputs, entries)))
+        // Construct the table.
+        map_res(take(0usize), move |_| {
+            // Initialize a new table.
+            Self::new(name, inputs.clone(), outputs.clone(), entries.clone())
+        })(string)
     }
 }
 

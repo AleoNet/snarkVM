@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
-    pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn authorize<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         function_name: impl TryInto<Identifier<N>>,

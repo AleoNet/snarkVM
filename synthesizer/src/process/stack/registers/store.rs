@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Registers<N, A> {
     /// Assigns the given literal to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -69,7 +69,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Registers<N, A> {
     /// Assigns the given literal to the given register, assuming the register is not already assigned.
     ///
     /// # Errors

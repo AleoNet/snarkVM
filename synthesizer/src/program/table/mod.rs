@@ -28,8 +28,9 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{Identifier, PlaintextType},
+    program::{Field, Identifier, Literal, LiteralType, PlaintextType},
 };
+use snarkvm_r1cs::LookupTable;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Table<N: Network> {
@@ -54,25 +55,38 @@ impl<N: Network> Table<N> {
         // TODO (d0cd): Consider moving validation logic elsewhere.
         let input_types = inputs.iter().map(|input| input.type_()).collect::<Vec<_>>();
         let output_types = outputs.iter().map(|output| output.type_()).collect::<Vec<_>>();
+
+        // Temporarily restrict tables to 3 inputs and 0 outputs.
+        if input_types.len() != 3 {
+            bail!("Tables are temporarily restricted to have exactly 3 inputs.")
+        }
+        if !output_types.is_empty() {
+            bail!("Tables are temporarily restricted to have exactly 0 outputs.")
+        }
+
         // For each entry, check that the input and output types match the table.
         for entry in entries.iter() {
-            if entry.input_types() != input_types.as_slice() {
-                bail!("A table entry must have {} inputs, but found {}.", input_types.len(), entry.input_types().len());
+            if entry.inputs().len() != input_types.len() {
+                bail!("A table entry must have {} inputs, but found {}.", input_types.len(), entry.inputs().len());
             }
-            if entry.output_types() != output_types.as_slice() {
-                bail!(
-                    "A table entry must have {} outputs, but found {}.",
-                    output_types.len(),
-                    entry.output_types().len()
-                );
+            if entry.outputs().len() != output_types.len() {
+                bail!("A table entry must have {} outputs, but found {}.", output_types.len(), entry.outputs().len());
             }
             for (input, input_type) in entry.inputs().iter().zip_eq(input_types.iter()) {
-                if !matches(PlaintextType::from(input.to_type()), input_type) {
+                // Temporarily requires that input types are field elements.
+                if !matches!(input_type, PlaintextType::Literal(LiteralType::Field)) {
+                    bail!("Input types are temporarily restricted to field elements.")
+                }
+                if !matches!(PlaintextType::<N>::from(input.to_type()), input_type) {
                     bail!("Expected input with type {}, but found {}.", input_type, input.to_type());
                 }
             }
             for (output, output_type) in entry.outputs().iter().zip_eq(output_types.iter()) {
-                if !matches(PlaintextType::from(output.to_type()), output_type) {
+                // Temporarily requires that output types are field elements.
+                if !matches!(output_type, PlaintextType::Literal(LiteralType::Field)) {
+                    bail!("Output types are temporarily restricted to field elements.")
+                }
+                if !matches!(PlaintextType::<N>::from(output.to_type()), output_type) {
                     bail!("Expected output with type {}, but found {}.", output_type, output.to_type());
                 }
             }
@@ -98,6 +112,31 @@ impl<N: Network> Table<N> {
     /// Returns the entries of the table.
     pub fn entries(&self) -> &[Entry<N>] {
         &self.entries
+    }
+}
+
+impl<N: Network> Table<N> {
+    pub fn into_lookup_table<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
+    ) -> LookupTable<<A as circuit::Environment>::BaseField> {
+        let mut lookup_table = LookupTable::default();
+        for entry in self.entries() {
+            let inputs = entry.inputs();
+            let in1 = match inputs[0] {
+                Literal::Field(ref value) => value,
+                _ => unreachable!(),
+            };
+            let in2 = match inputs[1] {
+                Literal::Field(ref value) => value,
+                _ => unreachable!(),
+            };
+            let in3 = match inputs[2] {
+                Literal::Field(ref value) => value,
+                _ => unreachable!(),
+            };
+            lookup_table.fill([**in1, **in2], **in3);
+        }
+        lookup_table
     }
 }
 

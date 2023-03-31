@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Registers<N, A> {
     /// Loads the literal of a given operand from the registers.
     ///
     /// # Errors
@@ -88,7 +88,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Registers<N, A> {
     /// Loads the literal circuit of a given operand from the registers.
     ///
     /// # Errors

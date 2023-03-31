@@ -23,7 +23,7 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_closure<A: circuit::Aleo<Network = N>>(
+    pub fn execute_closure<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
@@ -123,7 +123,7 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn execute_function<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         mut call_stack: CallStack<N>,
         rng: &mut R,
@@ -136,10 +136,11 @@ impl<N: Network> Stack<N> {
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // Add the table.
-        let mut table = LookupTable::default();
-        table.fill([A::BaseField::one(), A::BaseField::one()], A::BaseField::one());
-        A::add_lookup_table(table);
+        // Add the lookup tables associated with this program.
+        self.program.tables().values().for_each(|table| {
+            //A::add_lookup_table(LookupTable::from(table));
+            A::add_lookup_table(table.into_lookup_table::<A>());
+        });
 
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
@@ -551,7 +552,7 @@ impl<N: Network> Stack<N> {
 
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
-    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
+    pub(crate) fn log_circuit<A: circuit::Aleo<Network = N, BaseField = N::Field>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 
         // Determine if the circuit is satisfied.

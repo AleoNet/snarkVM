@@ -87,7 +87,7 @@ pub fn usrs() -> Result<()> {
 }
 
 /// Synthesizes the circuit keys for the credits program. (cargo run --release --example setup credits)
-pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
+pub fn credits_program<N: Network, A: Aleo<Network = N, BaseField = N::Field>>() -> Result<()> {
     // Initialize an RNG.
     let rng = &mut snarkvm_utilities::TestRng::fixed(1245897092);
     // Initialize the process.

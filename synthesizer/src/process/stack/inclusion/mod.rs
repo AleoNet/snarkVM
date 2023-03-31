@@ -298,7 +298,7 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns a new execution with an inclusion proof, for the given execution.
-    pub fn prove_execution<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn prove_execution<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         execution: Execution<N>,
         assignments: &[InclusionAssignment<N>],
@@ -401,7 +401,7 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns a new fee with an inclusion proof, for the given transition.
-    pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn prove_fee<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         fee_transition: Transition<N>,
         assignments: &[InclusionAssignment<N>],
@@ -551,7 +551,7 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the global state root and inclusion proof for the given assignments.
-    fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    fn prove_batch<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         proving_key: &ProvingKey<N>,
         assignments: &[InclusionAssignment<N>],
         rng: &mut R,
@@ -620,7 +620,9 @@ impl<N: Network> InclusionAssignment<N> {
     ///                                    |
     /// [[ serial_number ]] := Commit( commitment || Hash( COFACTOR * gamma ) )
     /// ```
-    pub fn to_circuit_assignment<A: circuit::Aleo<Network = N>>(&self) -> Result<circuit::Assignment<N::Field>> {
+    pub fn to_circuit_assignment<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
+    ) -> Result<circuit::Assignment<N::Field>> {
         use circuit::Inject;
 
         // Ensure the circuit environment is clean.

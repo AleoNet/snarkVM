@@ -63,7 +63,7 @@ impl<N: Network> Lookup<N> {
 impl<N: Network> Lookup<N> {
     /// Evaluates the lookup.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
@@ -86,7 +86,7 @@ impl<N: Network> Lookup<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,

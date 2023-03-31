@@ -27,7 +27,7 @@ use console::{
 use indexmap::IndexMap;
 
 #[derive(Clone)]
-pub struct Registers<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Registers<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> {
     /// The current call stack.
     call_stack: CallStack<N>,
     /// The mapping of all registers to their defined types.
@@ -46,7 +46,7 @@ pub struct Registers<N: Network, A: circuit::Aleo<Network = N>> {
     tvk_circuit: Option<circuit::Field<A>>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Registers<N, A> {
     /// Initializes a new set of registers, given the call stack.
     #[inline]
     pub fn new(call_stack: CallStack<N>, register_types: RegisterTypes<N>) -> Self {

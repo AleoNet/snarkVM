@@ -58,7 +58,7 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+    pub fn setup<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         let timer = timer!("Process:setup");
 
         // Initialize the process.
@@ -265,7 +265,7 @@ impl<N: Network> Process<N> {
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.
     #[inline]
-    pub fn synthesize_key<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn synthesize_key<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
@@ -1634,6 +1634,7 @@ table triple:
     input field;
     input field;
     input field;
+    entry 1field 1field 1field;
 
 function compute:
     input r0 as field.private;
@@ -1650,54 +1651,30 @@ function compute:
         // Initialize the RNG.
         let rng = &mut TestRng::default();
 
-        // Manually add a lookup table.
-        // TODO (@d0cd) Implement and use the correct interface
-        let mut table = LookupTable::default();
-        table.fill([Fp256::one(), Fp256::one()], Fp256::one());
-        CurrentAleo::add_lookup_table(table);
-
-        println!("-1");
-
         // Construct the process.
         let process = super::test_helpers::sample_process(&program);
-
-        println!("0");
-
-        let mut table = LookupTable::default();
-        table.fill([Fp256::one(), Fp256::one()], Fp256::one());
-        CurrentAleo::add_lookup_table(table);
 
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
-        println!("0.1");
-
         // Reset the process.
         let process = super::test_helpers::sample_process(&program);
-
-        println!("0.2");
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
         let caller = Address::try_from(&caller_private_key).unwrap();
 
-        println!("0.3");
-
         // Declare the input values.
         let r0 = Value::<CurrentNetwork>::from_str("1field").unwrap();
         let r1 = Value::<CurrentNetwork>::from_str("1field").unwrap();
         let r2 = Value::<CurrentNetwork>::from_str("1field").unwrap();
-
-        println!("1");
 
         // Authorize the function call.
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
-
-        println!("2");
 
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
@@ -1707,19 +1684,13 @@ function compute:
         // Check again to make sure we didn't modify the authorization after calling `evaluate`.
         assert_eq!(authorization.len(), 1);
 
-        println!("3");
-
         // Execute the request.
         let (response, execution, _inclusion, _metrics) =
             process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(0, candidate.len());
 
-        println!("4");
-
         process.verify_execution::<false>(&execution).unwrap();
-
-        println!("5");
 
         // use circuit::Environment;
         //

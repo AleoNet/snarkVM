@@ -20,7 +20,7 @@ use console::program::Literal;
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
