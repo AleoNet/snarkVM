@@ -261,7 +261,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             s_l_evals: lookup_constraint_evals,
             s_l_evals_original: s_l_evals,
             s_m_evals,
-            l_1_evals, 
+            l_1_evals,
             lookup_tables,
         })
     }

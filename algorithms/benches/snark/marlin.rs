@@ -103,17 +103,17 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkXOR<Con
     //      sym_3 = sym_2*y
     //      z = sym_1 - sym_3
     // variables:1 x y z sym_1 sym_2 sym_3
-    // Gate 1 A:   1 1                  
-    // Gate 1 B: 1                      
-    // Gate 1 C:         1              
-    // Gate 2 A: 2                      
-    // Gate 2 B:   1                    
-    // Gate 2 C:               1          
-    // Gate 3 A:               1        
-    // Gate 3 B:     1                  
+    // Gate 1 A:   1 1
+    // Gate 1 B: 1
+    // Gate 1 C:         1
+    // Gate 2 A: 2
+    // Gate 2 B:   1
+    // Gate 2 C:               1
+    // Gate 3 A:               1
+    // Gate 3 B:     1
     // Gate 3 C:                    1
-    // Gate 4 A:         1          
-    // Gate 4 B: 1                     
+    // Gate 4 A:         1
+    // Gate 4 B: 1
     // Gate 4 C:       1            1
     fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         let x = cs.alloc_input(|| "x", || self.x.ok_or(SynthesisError::AssignmentMissing))?;
@@ -150,7 +150,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkWithLoo
         for i in 0..self.num_xors {
             let mut table_index = 0;
             // this is a very silly test and assumes we have two equal tables
-            if i % 2 == 0 { 
+            if i % 2 == 0 {
                 table_index = 0;
             }
             cs.enforce_lookup(
@@ -169,7 +169,6 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for BenchmarkWithLoo
         Ok(())
     }
 }
-
 
 fn snark_universal_setup(c: &mut Criterion) {
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
@@ -251,23 +250,22 @@ fn snark_xor_prove(c: &mut Criterion) {
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let circuit = BenchmarkXOR::<Fr> { 
-            x: Some(x), 
+        let circuit = BenchmarkXOR::<Fr> {
+            x: Some(x),
             y: Some(y),
             z: Some(z),
             one: Some(one),
-            sym_1: Some(sym_1), 
-            sym_2: Some(sym_2), 
-            sym_3: Some(sym_3), 
-            num_xors, 
-            num_variables 
+            sym_1: Some(sym_1),
+            sym_2: Some(sym_2),
+            sym_3: Some(sym_3),
+            num_xors,
+            num_variables,
         };
 
         let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
         b.iter(|| MarlinInst::prove(&fs_parameters, &params.0, &circuit, rng).unwrap())
     });
-
 }
 
 fn snark_lookup_prove(c: &mut Criterion) {
@@ -295,7 +293,7 @@ fn snark_lookup_prove(c: &mut Criterion) {
         sym_3.mul_assign(&y);
         let mut z = sym_1;
         z.sub_assign(&sym_3);
-        
+
         let mut tables = vec![];
         let num_tables = 2;
         for _ in 0..num_tables {

@@ -78,7 +78,9 @@ impl<F: PrimeField> Counter<F> {
         // Ensure the current scope is the last pushed scope.
         match current_scope == name.into() {
             true => {
-                if let Some((scope, constraints, lookup_constraints, constants, public, private, gates)) = self.parents.pop() {
+                if let Some((scope, constraints, lookup_constraints, constants, public, private, gates)) =
+                    self.parents.pop()
+                {
                     self.scope = scope;
                     self.constraints = constraints;
                     self.lookup_constraints = lookup_constraints;

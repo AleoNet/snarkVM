@@ -157,7 +157,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(q_1_time);
         lhs
     }
-    
+
     fn calculate_summed_z_m_and_t(
         state: &prover::State<F, MM>,
         alpha: F,

@@ -16,11 +16,11 @@
 
 use crate::{Opcode, Operand, Registers, Stack};
 
+use circuit::LinearCombination;
 use console::{
     network::prelude::*,
     program::{Identifier, Register, RegisterType},
 };
-use circuit::LinearCombination;
 
 /// Given the operands, looks up the operands in the table.
 /// i.e. `lookup add_table 1u8 2u8 into r1;`
@@ -77,7 +77,7 @@ impl<N: Network> Lookup<N> {
         let input2 = registers.load(stack, &self.operands[1])?;
         let input3 = registers.load(stack, &self.operands[2])?;
 
-        // in order to evaluate, I guess besides `add_lookup_table` and `enforce_lookup` we should be adding a `get_lookup` function all the way through the stack. 
+        // in order to evaluate, I guess besides `add_lookup_table` and `enforce_lookup` we should be adding a `get_lookup` function all the way through the stack.
         // Or do we have the table already accessible in the current environment?
         // N::enforce_lookup(&input1, &input2, &input3);
         // todo!();
@@ -97,11 +97,11 @@ impl<N: Network> Lookup<N> {
         }
 
         // Load the operand.
-        let table_index = 0;// TODO(Pranav); Read the tablename and translate to index
+        let table_index = 0; // TODO(Pranav); Read the tablename and translate to index
         let input1 = registers.load_literal_circuit(stack, &self.operands[0])?;
         let input2 = registers.load_literal_circuit(stack, &self.operands[1])?;
         let input3 = registers.load_literal_circuit(stack, &self.operands[2])?;
-        
+
         let lookup_operation = format!("{}{}{}{}", table_index, self.operands[0], self.operands[1], self.operands[2]);
         match (input1, input2, input3) {
             (circuit::Literal::Field(in1), circuit::Literal::Field(in2), circuit::Literal::Field(in3)) => {
@@ -112,7 +112,7 @@ impl<N: Network> Lookup<N> {
                     |lc| lc + LinearCombination::from(in3),
                     table_index,
                 )?;
-            },
+            }
             _ => bail!("Lookups only support field elements"),
         }
 

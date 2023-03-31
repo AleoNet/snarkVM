@@ -727,7 +727,7 @@ where
             second_round_info.get("delta_table_omega").unwrap(),
             comms.delta_table_omega,
         ));
-        
+
         // testnet3.3.
         // let second_round_info =
         //     AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(&circuit_verifying_key.circuit_info);

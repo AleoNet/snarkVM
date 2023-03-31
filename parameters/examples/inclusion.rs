@@ -72,10 +72,14 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
 /// Returns the assignment for verifying the state path.
 #[allow(clippy::type_complexity)]
 pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignment<N::Field>, StatePath<N>, Field<N>)> {
+    println!("- 1");
     // Initialize the consensus store.
     let store = ConsensusStore::<N, ConsensusMemory<N>>::open(None)?;
+    println!("- 1.1");
     // Initialize a new VM.
     let vm = VM::from(store)?;
+
+    println!("- 2");
 
     // Initialize an RNG.
     let rng = &mut thread_rng();
@@ -84,13 +88,19 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Return the block.
     let genesis_block = Block::genesis(&vm, &caller_private_key, rng)?;
 
+    println!("- 3");
+
     // Update the VM.
     vm.add_next_block(&genesis_block)?;
+
+    println!("- 4");
 
     // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;
     // Compute the state path for the commitment.
     let state_path = vm.block_store().get_state_path_for_commitment(commitment)?;
+
+    println!("- 5");
 
     // Compute the generator `H` as `HashToGroup(commitment)`.
     let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
@@ -99,10 +109,14 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Compute the serial number.
     let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, *commitment)?;
 
+    println!("- 6");
+
     // Construct the assignment for the inclusion circuit.
     let assignment =
         InclusionAssignment::new(state_path.clone(), *commitment, gamma, serial_number, Default::default(), true)
             .to_circuit_assignment::<A>()?;
+
+    println!("- 7");
 
     Ok((assignment, state_path, serial_number))
 }
@@ -112,12 +126,18 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Load the universal SRS.
     let universal_srs = UniversalSRS::<N>::load()?;
 
+    println!("1");
+
     // Sample the assignment for the inclusion circuit.
     let (assignment, state_path, serial_number) = sample_assignment::<N, A>()?;
+
+    println!("2");
 
     // Synthesize the proving and verifying key.
     let inclusion_function_name = Identifier::from_str(N::INCLUSION_FUNCTION_NAME)?;
     let (proving_key, verifying_key) = universal_srs.to_circuit_key(&inclusion_function_name, &assignment)?;
+
+    println!("3");
 
     // Ensure the proving key and verifying keys are valid.
     let proof = proving_key.prove(&inclusion_function_name, &assignment, &mut thread_rng())?;
@@ -127,14 +147,22 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         &proof
     ));
 
+    println!("4");
+
     // Initialize a vector for the commands.
     let mut commands = vec![];
+
+    println!("5");
 
     let proving_key_bytes = proving_key.to_bytes_le()?;
     let proving_key_checksum = checksum(&proving_key_bytes);
 
+    println!("6");
+
     let verifying_key_bytes = verifying_key.to_bytes_le()?;
     let verifying_key_checksum = checksum(&verifying_key_bytes);
+
+    println!("7");
 
     let metadata = json!({
         "prover_checksum": proving_key_checksum,
@@ -143,19 +171,27 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         "verifier_size": verifying_key_bytes.len(),
     });
 
+    println!("8");
+
     println!("{}", serde_json::to_string_pretty(&metadata)?);
     write_metadata(&format!("{inclusion_function_name}.metadata"), &metadata)?;
     write_remote(&format!("{inclusion_function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
     write_remote(&format!("{inclusion_function_name}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
 
+    println!("9");
+
     commands.push(format!(
         "snarkup upload \"{}\"",
         versioned_filename(&format!("{inclusion_function_name}.prover"), &proving_key_checksum)
     ));
+
+    println!("10");
     commands.push(format!(
         "snarkup upload \"{}\"",
         versioned_filename(&format!("{inclusion_function_name}.verifier"), &verifying_key_checksum)
     ));
+
+    println!("11");
 
     // Print the commands.
     println!("\nNow, run the following commands:\n");
@@ -165,6 +201,8 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         println!("{command}");
     }
     println!();
+
+    println!("12");
 
     Ok(())
 }

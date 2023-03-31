@@ -404,14 +404,15 @@ function compute:
 mod tests {
     use super::*;
     use crate::ProgramMemory;
-    use circuit::network::AleoV0;
+    use circuit::{network::AleoV0, Environment};
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
         program::{Identifier, Literal, Value},
         types::Field,
     };
-
+    use snarkvm_fields::Fp256;
+    use snarkvm_r1cs::LookupTable;
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
 
@@ -1617,5 +1618,88 @@ function mint:
         let candidate =
             store.get_value(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
         assert_eq!(candidate, Value::from_str("100u64").unwrap());
+    }
+
+    #[test]
+    fn test_process_execute_lookup() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program example.aleo;
+
+table triple:
+    input field;
+    input field;
+    input field;
+
+function compute:
+    input r0 as field.private;
+    input r1 as field.private;
+    input r2 as field.private;
+    lookup triple r0 r1 r2;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Manually add a lookup table.
+        // TODO (@d0cd) Implement and use the correct interface
+        let mut table = LookupTable::default();
+        table.fill([Fp256::one(), Fp256::one()], Fp256::one());
+        CurrentAleo::add_lookup_table(table);
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let process = super::test_helpers::sample_process(&program);
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input values.
+        let r0 = Value::<CurrentNetwork>::from_str("1field").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1field").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("1field").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        process.verify_execution::<false>(&execution).unwrap();
+
+        // use circuit::Environment;
+        //
+        // assert_eq!(37080, CurrentAleo::num_constants());
+        // assert_eq!(12, CurrentAleo::num_public());
+        // assert_eq!(41630, CurrentAleo::num_private());
+        // assert_eq!(41685, CurrentAleo::num_constraints());
+        // assert_eq!(159387, CurrentAleo::num_gates());
     }
 }

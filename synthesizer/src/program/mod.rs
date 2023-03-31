@@ -1316,25 +1316,27 @@ function compute:
             r"
 program example.aleo;
 
-table field_to_u8:
+table triple:
     input field;
-    output u8;
+    input field;
+    input field;
 
 function compute:
     input r0 as field.private;
-    lookup field_to_u8 r0 into r1;
-    output r1 as u8.private;",
+    input r1 as field.private;
+    input r2 as field.private;
+    lookup triple r0 r1 r2;",
         )
         .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
-        // Declare the input value.
-        let input = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("1field").unwrap());
-        // Declare the expected output value.
-        let expected = Value::Plaintext(Plaintext::from_str("5u8").unwrap());
-
+        // Declare the input values.
+        // Declare the function inputs.
+        let r0 = Value::Plaintext(Plaintext::from_str("1field").unwrap());
+        let r1 = Value::Plaintext(Plaintext::from_str("1field").unwrap());
+        let r2 = Value::Plaintext(Plaintext::from_str("1field").unwrap());
         // Construct the process.
         let process = crate::process::test_helpers::sample_process(&program);
 
@@ -1348,7 +1350,7 @@ function compute:
 
             // Authorize the function call.
             let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
                 .unwrap();
             assert_eq!(authorization.len(), 1);
             authorization
@@ -1361,13 +1363,11 @@ function compute:
         let response =
             stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
         let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
+        assert_eq!(0, candidate.len());
 
         // Re-run to ensure state continues to work.
         let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
         let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
+        assert_eq!(0, candidate.len());
     }
 }

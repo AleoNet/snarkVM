@@ -15,11 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    helpers::{Constraint, LookupConstraint, Counter},
+    helpers::{Constraint, Counter, LookupConstraint},
     prelude::*,
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{LookupTable};
+use snarkvm_r1cs::LookupTable;
 
 use std::rc::Rc;
 

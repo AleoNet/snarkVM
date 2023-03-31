@@ -161,6 +161,8 @@ impl Network for Testnet3 {
     fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
         static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
+            println!("Loading inclusion proving key...");
+            println!("INCLUSION_PROVING_KEY_LENGTH: {:?}", &snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY.len());
             // Skipping the first 2 bytes, which is the encoded version.
             Arc::new(
                 CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])

@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Constraint, helpers::LookupConstraint, Mode, *};
+use crate::{
+    helpers::{Constraint, LookupConstraint},
+    Mode,
+    *,
+};
 
 use snarkvm_r1cs::{LookupTable, SynthesisError};
 
@@ -212,7 +216,8 @@ impl Environment for Circuit {
                 CIRCUIT.with(|circuit| {
                     // (**circuit).borrow_mut().enforce_lookup(annotation, a, b, c, table_index).unwrap();
                     let z = LinearCombination::zero();
-                    let constraint = LookupConstraint((**circuit).borrow().scope(), a(z.clone()), b(z.clone()), c(z), table_index);
+                    let constraint =
+                        LookupConstraint((**circuit).borrow().scope(), a(z.clone()), b(z.clone()), c(z), table_index);
                     // Append the constraint.
                     (**circuit).borrow_mut().enforce_lookup(constraint);
                 });
