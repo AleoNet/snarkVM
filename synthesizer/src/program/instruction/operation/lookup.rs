@@ -122,29 +122,32 @@ impl<N: Network> Lookup<N> {
     /// Returns the output type from the given program and input types.
     #[inline]
     pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
-        // Ensure the number of input types is correct.
-        if input_types.len() != 3 {
-            bail!("Instruction '{}' expects 3 inputs, found {} inputs", Self::opcode(), input_types.len())
+        // Get the table declaration from the program.
+        match stack.program().get_table(self.table_name()) {
+            Ok(table) => {
+                // Ensure the number of operands matches the number of input statements.
+                if table.inputs().len() != self.operands.len() {
+                    bail!("Expected {} inputs, found {}", table.inputs().len(), self.operands.len())
+                }
+                // Ensure the number of inputs matches the number of input statements.
+                if table.inputs().len() != input_types.len() {
+                    bail!("Expected {} input types, found {}", table.inputs().len(), input_types.len())
+                }
+                // Check that the input types match the input statements.
+                for (input, input_type) in table.inputs().iter().zip(input_types.iter()) {
+                    if !matches!(RegisterType::Plaintext(*input.type_()), input_type) {
+                        bail!("Expected input type {}, found {}", input.type_(), input_type)
+                    }
+                }
+                // Ensure the number of destinations matches the number of output statements.
+                if table.outputs().len() != self.destinations.len() {
+                    bail!("Expected {} outputs, found {}", table.outputs().len(), self.destinations.len())
+                }
+                // Return the output register types.
+                Ok(table.outputs().iter().map(|output| RegisterType::Plaintext(*output.type_())).collect())
+            }
+            Err(_) => bail!("Table '{}' not found", self.table_name()),
         }
-        // Ensure the operands are of the same type.
-        if input_types[0] != input_types[1] || input_types[1] != input_types[2] {
-            bail!(
-                "Instruction '{}' expects inputs of the same type. Found inputs of type '{}', '{}' and '{}'",
-                Self::opcode(),
-                input_types[0],
-                input_types[1],
-                input_types[2]
-            )
-        }
-
-        // TODO: could add a check for the table input
-
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
-        Ok(vec![])
     }
 }
 
