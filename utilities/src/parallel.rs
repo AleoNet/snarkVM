@@ -17,10 +17,7 @@
 use crate::{boxed::Box, vec::Vec};
 
 pub struct ExecutionPool<'a, T> {
-    #[cfg(not(feature = "serial"))]
     jobs: Vec<Box<dyn 'a + FnOnce() -> T + Send>>,
-    #[cfg(feature = "serial")]
-    jobs: Vec<Box<dyn 'a + FnOnce() -> T>>,
 }
 
 impl<'a, T> ExecutionPool<'a, T> {
@@ -32,12 +29,6 @@ impl<'a, T> ExecutionPool<'a, T> {
         Self { jobs: Vec::with_capacity(cap) }
     }
 
-    #[cfg(not(feature = "serial"))]
-    pub fn add_job<F: 'a + FnOnce() -> T + Send>(&mut self, f: F) {
-        self.jobs.push(Box::new(f));
-    }
-
-    #[cfg(feature = "serial")]
     pub fn add_job<F: 'a + FnOnce() -> T + Send>(&mut self, f: F) {
         self.jobs.push(Box::new(f));
     }
@@ -230,6 +221,21 @@ macro_rules! cfg_find_map {
 
         #[cfg(feature = "serial")]
         let result = $self.values().find_map(|tx| tx.$func($object));
+
+        result
+    }};
+}
+
+/// Applies fold to the iterator
+#[macro_export]
+macro_rules! cfg_zip_fold {
+    ($self: expr, $other: expr, $init: expr, $op: expr, $type: ty) => {{
+        let default = $init;
+        #[cfg(feature = "serial")]
+        let default = $init();
+        let result = $self.zip_eq($other).fold(default, $op);
+        #[cfg(not(feature = "serial"))]
+        let result = result.sum::<$type>();
 
         result
     }};
