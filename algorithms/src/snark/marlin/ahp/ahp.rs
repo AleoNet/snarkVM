@@ -395,7 +395,7 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     ) -> Vec<F> {
         use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         use rayon::prelude::*;
 
         let vanish_x = self.evaluate_vanishing_polynomial(x);

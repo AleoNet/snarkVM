@@ -27,7 +27,6 @@ default-features = false
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dev-dependencies.snarkvm-console-network]
 path = "../network"
@@ -36,6 +35,5 @@ path = "../network"
 version = "0.4.0"
 
 [features]
-default = [ "parallel" ]
-parallel = [ "rayon" ]
+serial = [ ]
 timer = [ "aleo-std/timer" ]

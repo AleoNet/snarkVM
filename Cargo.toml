@@ -82,8 +82,8 @@ default = [
   "console",
   "synthesizer",
   "cli",
-  "parallel",
-  "parameters"
+  "parameters",
+  "utilities"
 ]
 full = [
   "algorithms",
@@ -108,13 +108,6 @@ cli = [
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
 cuda = [ "snarkvm-algorithms/cuda", "snarkvm-synthesizer/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
-parallel = [
-  "rayon",
-  "snarkvm-algorithms/parallel",
-  "snarkvm-fields/parallel",
-  "snarkvm-synthesizer/parallel",
-  "snarkvm-utilities/parallel"
-]
 noconfig = [ ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
@@ -131,7 +124,6 @@ wasm = [ "snarkvm-wasm" ]
 path = "./algorithms"
 version = "0.9.15"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
@@ -208,7 +200,6 @@ optional = true
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dependencies.self_update]
 version = "0.36"

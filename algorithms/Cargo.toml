@@ -57,7 +57,6 @@ default-features = false
 path = "../parameters"
 version = "0.9.15"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
@@ -73,7 +72,6 @@ default-features = false
 path = "./cuda"
 version = "0.9.15"
 optional = true
-default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.15"
@@ -116,7 +114,6 @@ default-features = false
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dependencies.rust-gpu-tools]
 version = "0.6.0"
@@ -162,10 +159,8 @@ version = "2.0"
 [features]
 default = [
   "full",
-  "parallel",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
-  "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
 full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
@@ -178,11 +173,6 @@ wasm = [
   "wasm-bindgen-futures"
 ]
 cuda = [ "snarkvm-algorithms-cuda" ]
-parallel = [
-  "rayon",
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
-]
 profiler = [ "aleo-std/profiler" ]
 crypto_hash = [ ]
 fft = [ ]
@@ -190,4 +180,5 @@ msm = [ ]
 polycommit = [ "crypto_hash", "fft", "msm", "rand_core" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
+serial = [ "snarkvm-curves/serial", "snarkvm-fields/serial", "snarkvm-utilities/serial" ]
 snark = [ "crypto_hash", "fft", "msm", "polycommit" ]

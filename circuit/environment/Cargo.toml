@@ -58,7 +58,6 @@ version = "1.17.1"
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-default-features = false
 features = [ "polycommit_full", "snark" ]
 
 [dev-dependencies.snarkvm-circuit]
@@ -71,4 +70,4 @@ path = "../../console/types"
 version = "0.4"
 
 [features]
-default = [ "snarkvm-curves/default", "snarkvm-r1cs/default" ]
+default = [ "snarkvm-curves/default" ]

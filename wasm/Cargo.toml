@@ -36,13 +36,11 @@ optional = true
 path = "../curves"
 version = "0.9.15"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
 version = "0.9.15"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
@@ -55,7 +53,6 @@ default-features = false
 path = "../utilities"
 version = "0.9.15"
 optional = true
-default-features = false
 
 [dependencies.rand]
 version = "0.8"
@@ -78,14 +75,8 @@ features = [ "js" ]
 version = "0.3.34"
 
 [features]
-default = [ "full", "parallel" ]
+default = [ "full" ]
 full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
-parallel = [
-  "snarkvm-console/parallel",
-  "snarkvm-fields/parallel",
-  "snarkvm-synthesizer/parallel",
-  "snarkvm-utilities/parallel"
-]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]

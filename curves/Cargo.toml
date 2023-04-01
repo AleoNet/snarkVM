@@ -48,6 +48,9 @@ default-features = false
 version = "0.8"
 default-features = false
 
+[dependencies.rayon]
+version = "1"
+
 [dependencies.serde]
 version = "1.0.159"
 default-features = false
@@ -70,3 +73,4 @@ rustc_version = "0.4"
 
 [features]
 default = [ "snarkvm-fields/default", "snarkvm-utilities/default" ]
+serial = [ "snarkvm-fields/serial" ]

@@ -24,7 +24,7 @@ use std::{borrow::Cow, convert::TryInto};
 
 use Polynomial::*;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 mod dense;

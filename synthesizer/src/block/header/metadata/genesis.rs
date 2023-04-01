@@ -72,7 +72,7 @@ mod tests {
 
     /// Returns the expected metadata size by summing its subcomponent sizes.
     /// Update this method if the contents of the metadata have changed.
-    fn get_expected_size<N: Network>() -> usize {
+    fn get_expected_size() -> usize {
         // Metadata size.
         2 + 4 + 8 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
@@ -84,7 +84,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the expected size.
-        let expected_size = get_expected_size::<CurrentNetwork>();
+        let expected_size = get_expected_size();
         // Prepare the genesis metadata.
         let genesis_metadata = *crate::vm::test_helpers::sample_genesis_block(&mut rng).metadata();
         // Ensure the size of the genesis metadata is correct.
