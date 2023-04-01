@@ -22,9 +22,9 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalS
 use hashbrown::HashMap;
 use std::borrow::Cow;
 
-#[cfg(not(feature = "parallel"))]
+#[cfg(feature = "serial")]
 use itertools::Itertools;
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, Eq, PartialEq)]

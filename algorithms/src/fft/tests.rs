@@ -169,7 +169,7 @@ fn test_roots_of_unity() {
 }
 
 #[test]
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 fn parallel_fft_consistency() {
     // This implements the Cooley-Turkey FFT, derived from libfqfft
     // The libfqfft implementation uses pseudocode from [CLRS 2n Ed, pp. 864].
