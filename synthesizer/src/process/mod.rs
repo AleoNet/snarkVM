@@ -1172,7 +1172,7 @@ function transfer:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_get_add_set() {
+    fn test_process_execute_and_finalize_get_add_put() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1194,7 +1194,7 @@ finalize compute:
     input r1 as u64.public;
     get_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
-    set r3 into account[r0];
+    put r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1271,7 +1271,7 @@ finalize compute:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_increment_decrement_via_get_set() {
+    fn test_process_execute_and_finalize_increment_decrement_via_get_put() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1294,7 +1294,7 @@ finalize compute:
     get_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
     sub r3 r1 into r4;
-    set r4 into account[r0];
+    put r4 into account[r0];
 ",
         )
         .unwrap();
@@ -1407,8 +1407,8 @@ finalize mint_public:
     get_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
-    // Set `r3` into `account[r0]`.
-    set r3 into account[r0];
+    // Put `r3` into `account[r0]`.
+    put r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1525,8 +1525,8 @@ finalize mint_public:
     get_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
-    // Set `r3` into `account[r0]`.
-    set r3 into account[r0];
+    // Put `r3` into `account[r0]`.
+    put r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1628,7 +1628,7 @@ function mint:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_get_set() {
+    fn test_process_execute_and_finalize_get_put() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1650,10 +1650,10 @@ finalize compute:
     input r1 as u64.public;
     get_or account[r0] 0u64 into r2;
     add r1 r2 into r3;
-    set r3 into account[r0];
+    put r3 into account[r0];
     get account[r0] into r4;
     add r1 r4 into r5;
-    set r5 into account[r0];
+    put r5 into account[r0];
 ",
         )
         .unwrap();

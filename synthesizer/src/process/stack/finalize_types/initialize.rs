@@ -171,7 +171,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Get(get) => self.check_get(stack, finalize_name, get)?,
             Command::GetOr(get_or) => self.check_get_or(stack, finalize_name, get_or)?,
-            Command::Set(set) => self.check_set(stack, finalize_name, set)?,
+            Command::Put(put) => self.check_put(stack, finalize_name, put)?,
         }
         Ok(())
     }
@@ -242,32 +242,32 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensures the given `set` command is well-formed.
+    /// Ensures the given `put` command is well-formed.
     #[inline]
-    fn check_set(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, set: &Set<N>) -> Result<()> {
-        // Ensure the declared mapping in `set` is defined in the program.
-        if !stack.program().contains_mapping(set.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", set.mapping_name(), stack.program_id())
+    fn check_put(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, put: &Put<N>) -> Result<()> {
+        // Ensure the declared mapping in `put` is defined in the program.
+        if !stack.program().contains_mapping(put.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", put.mapping_name(), stack.program_id())
         }
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(set.mapping_name()).unwrap();
+        let mapping = stack.program().get_mapping(put.mapping_name()).unwrap();
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, set.key())?;
+        let key_type = self.get_type_from_operand(stack, put.key())?;
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
-            bail!("Key type in `set` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
+            bail!("Key type in `put` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Retrieve the type of the value.
-        let value_type = self.get_type_from_operand(stack, set.value())?;
+        let value_type = self.get_type_from_operand(stack, put.value())?;
         // Check that the value type in the mapping matches the type of the value.
         if *mapping_value_type != value_type {
             bail!(
-                "Value type in `set` '{value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                "Value type in `put` '{value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         Ok(())

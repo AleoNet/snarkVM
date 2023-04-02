@@ -219,8 +219,8 @@ finalize mint_public:
     get_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
-    // Set `r3` into `account[r0]`.
-    set r3 into account[r0];
+    // Put `r3` into `account[r0]`.
+    put r3 into account[r0];
 ",
         )
         .unwrap()

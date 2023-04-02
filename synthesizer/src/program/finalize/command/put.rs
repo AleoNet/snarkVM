@@ -20,23 +20,23 @@ use console::{
     program::{Identifier, Value},
 };
 
-/// A set command, e.g. `set r1 into mapping[r0];`
-/// Sets the `key` entry as `value` in `mapping`.
+/// A put command, e.g. `put r1 into mapping[r0];`
+/// Puts the `key` entry as `value` in `mapping`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Set<N: Network> {
+pub struct Put<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
     key: Operand<N>,
-    /// The value to be set.
+    /// The value to be put.
     value: Operand<N>,
 }
 
-impl<N: Network> Set<N> {
+impl<N: Network> Put<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("set")
+        Opcode::Command("put")
     }
 
     /// Returns the operands in the operation.
@@ -64,7 +64,7 @@ impl<N: Network> Set<N> {
     }
 }
 
-impl<N: Network> Set<N> {
+impl<N: Network> Put<N> {
     /// Evaluates the command.
     #[inline]
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
@@ -90,7 +90,7 @@ impl<N: Network> Set<N> {
     }
 }
 
-impl<N: Network> Parser for Set<N> {
+impl<N: Network> Parser for Put<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -132,7 +132,7 @@ impl<N: Network> Parser for Set<N> {
     }
 }
 
-impl<N: Network> FromStr for Set<N> {
+impl<N: Network> FromStr for Put<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -150,14 +150,14 @@ impl<N: Network> FromStr for Set<N> {
     }
 }
 
-impl<N: Network> Debug for Set<N> {
+impl<N: Network> Debug for Put<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Set<N> {
+impl<N: Network> Display for Put<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
@@ -169,7 +169,7 @@ impl<N: Network> Display for Set<N> {
     }
 }
 
-impl<N: Network> FromBytes for Set<N> {
+impl<N: Network> FromBytes for Put<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
@@ -183,7 +183,7 @@ impl<N: Network> FromBytes for Set<N> {
     }
 }
 
-impl<N: Network> ToBytes for Set<N> {
+impl<N: Network> ToBytes for Put<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
@@ -204,11 +204,11 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, set) = Set::<CurrentNetwork>::parse("set r0 into account[r1];").unwrap();
+        let (string, put) = Put::<CurrentNetwork>::parse("put r0 into account[r1];").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(set.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(set.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(set.value, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(set.key, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(put.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(put.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(put.value, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(put.key, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
     }
 }
