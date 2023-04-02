@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2022 Aleo Systems Inc.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,9 +22,9 @@ impl<E: Environment> DivFlagged<Field<E>> for Field<E> {
     /// Performs flagged division of two field elements.
     #[doc(hidden)]
     fn div_flagged(&self, other: &Field<E>) -> Self::Output {
-        match (self.is_constant(), other.is_constant()) {
+        match other.is_constant() {
             // If `other` is a constant and zero, return the zero element and set the flag.
-            (_, true) if other.eject_value().is_zero() => (Field::zero(), Boolean::constant(true)),
+            true if other.eject_value().is_zero() => (Field::zero(), Boolean::constant(true)),
             // If `other` is a constant and non-zero, we can perform multiplication and inversion for 0 constraints.
             // If `self` is a constant, we can perform multiplication and inversion for 1 constraint.
             // Otherwise, we can perform multiplication and inversion for 2 constraints.

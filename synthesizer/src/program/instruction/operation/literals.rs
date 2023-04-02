@@ -107,10 +107,7 @@ impl<
         // Compute the operation.
         let outputs = O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
         // Compute the output type.
-        let output_types = outputs
-            .iter()
-            .map(|output| RegisterType::Plaintext(PlaintextType::from(output.to_type())))
-            .collect::<Vec<_>>();
+        let output_types = outputs.iter().map(|output| RegisterType::Plaintext(PlaintextType::from(output.to_type())));
 
         // Retrieve the expected output type.
         let expected_types = self.output_types(stack, &input_types)?;
@@ -122,8 +119,8 @@ impl<
             expected_types.len()
         );
         // Ensure the output types are correct.
-        for (expected_type, output_type) in expected_types.iter().zip_eq(output_types.iter()) {
-            ensure!(expected_type == output_type, "Expected output type {}, found {}", expected_type, output_type);
+        for (expected_type, output_type) in expected_types.iter().zip_eq(output_types) {
+            ensure!(*expected_type == output_type, "Expected output type {}, found {}", expected_type, output_type);
         }
 
         // Evaluate the operation and store the outputs.
@@ -163,10 +160,7 @@ impl<
         // Compute the operation.
         let outputs = O::execute(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
         // Compute the output type.
-        let output_types = outputs
-            .iter()
-            .map(|output| RegisterType::Plaintext(PlaintextType::from(output.to_type())))
-            .collect::<Vec<_>>();
+        let output_types = outputs.iter().map(|output| RegisterType::Plaintext(PlaintextType::from(output.to_type())));
 
         // Retrieve the expected output type.
         let expected_types = self.output_types(stack, &input_types)?;
@@ -178,8 +172,8 @@ impl<
             expected_types.len()
         );
         // Ensure the output types are correct.
-        for (expected_type, output_type) in expected_types.iter().zip_eq(output_types.iter()) {
-            ensure!(expected_type == output_type, "Expected output type '{}', found {output_type}", expected_type);
+        for (expected_type, output_type) in expected_types.iter().zip_eq(output_types) {
+            ensure!(*expected_type == output_type, "Expected output type '{}', found {output_type}", expected_type);
         }
 
         // Evaluate the operation and store the output.

@@ -1114,8 +1114,8 @@ mod tests {
                         for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                             for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                 // Initialize the operands.
-                                let a = console::program::Literal::from_str(&format!("{a}"))?;
-                                let b = console::program::Literal::from_str(&format!("{b}"))?;
+                                let a = console::program::Literal::from_str(&"{a}".to_string())?;
+                                let b = console::program::Literal::from_str(&"{b}".to_string())?;
 
                                 // Initialize the operands.
                                 let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;
