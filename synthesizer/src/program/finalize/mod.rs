@@ -145,10 +145,10 @@ impl<N: Network> Finalize<N> {
                 // Ensure the destination register is a locator.
                 ensure!(matches!(load.destination(), Register::Locator(..)), "Destination register must be a locator");
             }
-            Command::LoadDefault(load_default) => {
+            Command::LoadDefault(load_or) => {
                 // Ensure the destination register is a locator.
                 ensure!(
-                    matches!(load_default.destination(), Register::Locator(..)),
+                    matches!(load_or.destination(), Register::Locator(..)),
                     "Destination register must be a locator"
                 );
             }

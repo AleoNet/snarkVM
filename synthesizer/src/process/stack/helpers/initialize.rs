@@ -42,19 +42,16 @@ impl<N: Network> Stack<N> {
             // Add the external stack to the stack.
             stack.insert_external_stack(external_stack.clone())?;
         }
-        println!("initialize::L45");
         // Add the program closures to the stack.
         for closure in program.closures().values() {
             // Add the closure to the stack.
             stack.insert_closure(closure)?;
         }
-        println!("initialize::L50");
         // Add the program functions to the stack.
         for function in program.functions().values() {
             // Add the function to the stack.
             stack.insert_function(function)?;
         }
-        println!("initialize::L55");
         // Return the stack.
         Ok(stack)
     }
@@ -107,16 +104,10 @@ impl<N: Network> Stack<N> {
         // Add the function name and register types to the stack.
         self.register_types.insert(*name, register_types);
 
-        println!("Function name: {}", name);
-
-        println!("insert_function::L110");
-
         // If the function contains a finalize, insert it.
         if let Some((_, finalize)) = function.finalize() {
             // Compute the finalize types.
-            println!("insert_function::L115");
             let finalize_types = FinalizeTypes::from_finalize(self, finalize)?;
-            println!("insert_function::L117");
             // Add the finalize name and finalize types to the stack.
             self.finalize_types.insert(*name, finalize_types);
         }
