@@ -116,6 +116,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrWrapped<Intege
 {
     type Case = (Mode, Mode);
 
+    #[rustfmt::skip]
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
         let index = |num_bits: u64| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
@@ -123,31 +124,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrWrapped<Intege
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match I::is_signed() {
-            // Signed case
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) => Count::is(
-                    4 * I::BITS,
-                    0,
-                    (6 * I::BITS) + (2 * index(I::BITS)) + 9,
-                    (6 * I::BITS) + (2 * index(I::BITS)) + 14,
-                ),
-                (_, _) => Count::is(
-                    3 * I::BITS,
-                    0,
-                    (9 * I::BITS) + (2 * index(I::BITS)) + 10,
-                    (9 * I::BITS) + (2 * index(I::BITS)) + 16,
-                ),
-            },
-            // Unsigned case
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) | (_, _) => {
-                    Count::is(0, 0, (3 * I::BITS) + (2 * index(I::BITS)) + 5, (3 * I::BITS) + (2 * index(I::BITS)) + 7)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (Mode::Constant, _) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(5 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 19),
+                    (true, false) => Count::less_than(5 * I::BITS, 0, (137 * I::BITS) + 17, (138 * I::BITS) + 22),
+                    (false, true) => Count::less_than(2 * I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 7, (4 * I::BITS) + (2 * index(I::BITS)) + 11),
+                    (false, false) => Count::less_than(2 * I::BITS, 0, (131 * I::BITS) + 13, (132 * I::BITS) + 14),
                 }
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(4 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 19),
+                (true, false) => Count::is(4 * I::BITS, 0, (137 * I::BITS) + 17, (138 * I::BITS) + 22),
+                (false, true) => Count::is(2 * I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 7, (4 * I::BITS) + (2 * index(I::BITS)) + 11),
+                (false, false) => Count::is(2 * I::BITS, 0, (131 * I::BITS) + 13, (132 * I::BITS) + 14),
             },
         }
     }
@@ -190,9 +182,8 @@ mod tests {
             let candidate = a.shr_wrapped(&b);
             assert_eq!(expected, *candidate.eject_value());
             assert_eq!(console::Integer::new(expected), candidate.eject_value());
-            // assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-            // assert_output_mode!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+            assert_output_mode!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
         Circuit::reset();
     }
