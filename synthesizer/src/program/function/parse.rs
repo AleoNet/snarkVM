@@ -268,7 +268,7 @@ finalize compute:
     input r1 as u64.public;
     get_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
-    set r3 into account[r0];
+    put r3 into account[r0];
     ",
         )
         .unwrap()
