@@ -216,7 +216,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Load `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    load.d account[r0] 0u64 into r2;
+    load_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Store `r3` into `account[r0]`.

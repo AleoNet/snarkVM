@@ -20,8 +20,8 @@ pub use finalize::*;
 mod load;
 pub use load::*;
 
-mod load_default;
-pub use load_default::*;
+mod load_or;
+pub use load_or::*;
 
 mod store;
 pub use store::*;
@@ -36,7 +36,7 @@ pub enum Command<N: Network> {
     /// Loads the value stored at the `key` operand in `mapping` into `destination`.
     Load(Load<N>),
     /// Loads the value stored at the `key` operand in `mapping` into `destination`, using `default` if the key is not present.
-    LoadDefault(LoadDefault<N>),
+    LoadDefault(LoadOr<N>),
     /// Stores the `value` operand into the `key` entry in `mapping`.
     Store(Store<N>),
 }
@@ -47,14 +47,14 @@ impl<N: Network> Command<N> {
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        program_store: &ProgramStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
         match self {
             Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
-            Command::Load(load) => load.evaluate_finalize(stack, store, registers),
-            Command::LoadDefault(load_default) => load_default.evaluate_finalize(stack, store, registers),
-            Command::Store(store_instruction) => store_instruction.evaluate_finalize(stack, store, registers),
+            Command::Load(load) => load.evaluate_finalize(stack, program_store, registers),
+            Command::LoadDefault(load_or) => load_or.evaluate_finalize(stack, program_store, registers),
+            Command::Store(store) => store.evaluate_finalize(stack, program_store, registers),
         }
     }
 }
@@ -70,7 +70,7 @@ impl<N: Network> FromBytes for Command<N> {
             // Read the load.
             1 => Ok(Self::Load(Load::read_le(&mut reader)?)),
             // Read the default load.
-            2 => Ok(Self::LoadDefault(LoadDefault::read_le(&mut reader)?)),
+            2 => Ok(Self::LoadDefault(LoadOr::read_le(&mut reader)?)),
             // Read the store.
             3 => Ok(Self::Store(Store::read_le(&mut reader)?)),
             // Invalid variant.
@@ -95,11 +95,11 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the load.
                 load.write_le(&mut writer)
             }
-            Self::LoadDefault(load_default) => {
+            Self::LoadDefault(load_or) => {
                 // Write the variant.
                 2u8.write_le(&mut writer)?;
-                // Write the load default.
-                load_default.write_le(&mut writer)
+                // Write the defaulting load.
+                load_or.write_le(&mut writer)
             }
             Self::Store(store) => {
                 // Write the variant.
@@ -118,7 +118,7 @@ impl<N: Network> Parser for Command<N> {
         // Parse the command.
         // Note that the order of the parsers is important.
         alt((
-            map(LoadDefault::parse, |load_default| Self::LoadDefault(load_default)),
+            map(LoadOr::parse, |load_or| Self::LoadDefault(load_or)),
             map(Load::parse, |load| Self::Load(load)),
             map(Store::parse, |store| Self::Store(store)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
@@ -157,7 +157,7 @@ impl<N: Network> Display for Command<N> {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
             Self::Load(load) => Display::fmt(load, f),
-            Self::LoadDefault(load_default) => Display::fmt(load_default, f),
+            Self::LoadDefault(load_or) => Display::fmt(load_or, f),
             Self::Store(store) => Display::fmt(store, f),
         }
     }
@@ -193,7 +193,7 @@ mod tests {
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
         // Load default
-        let expected = "load.d object[r0] r1 into r2;";
+        let expected = "load_or object[r0] r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -228,9 +228,9 @@ mod tests {
         assert_eq!(expected, command.to_string());
 
         // Load default
-        let expected = "load.d object[r0] r1 into r2;";
+        let expected = "load_or object[r0] r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::LoadDefault(LoadDefault::from_str(expected).unwrap()), command);
+        assert_eq!(Command::LoadDefault(LoadOr::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
         // Store

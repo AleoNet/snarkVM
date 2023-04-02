@@ -236,8 +236,6 @@ impl<N: Network> Stack<N> {
         // Ensure the program deserializes from a string correctly.
         ensure!(program == &Program::from_str(&program_string)?, "Program string serialization failed");
 
-        println!("HERE: L240");
-
         // Return the stack.
         Stack::initialize(process, program)
     }

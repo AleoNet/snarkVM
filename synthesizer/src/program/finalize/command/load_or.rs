@@ -20,10 +20,10 @@ use console::{
     program::{Identifier, Register, Value},
 };
 
-/// A load command with a default value in case of failure, e.g. `load.d accounts[r0] r1 into r2;`.
-/// Loads the value stored at `operand` in `mapping` into `destination`.
+/// A load command with a default value in case of failure, e.g. `load_or accounts[r0] r1 into r2;`.
+/// Loads the value stored at `operand` in `mapping` into `destination`, using `default` if the entry does not exist.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct LoadDefault<N: Network> {
+pub struct LoadOr<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
@@ -34,11 +34,11 @@ pub struct LoadDefault<N: Network> {
     destination: Register<N>,
 }
 
-impl<N: Network> LoadDefault<N> {
+impl<N: Network> LoadOr<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("load.d")
+        Opcode::Command("load_or")
     }
 
     /// Returns the operands in the operation.
@@ -72,7 +72,7 @@ impl<N: Network> LoadDefault<N> {
     }
 }
 
-impl<N: Network> LoadDefault<N> {
+impl<N: Network> LoadOr<N> {
     /// Evaluates the command.
     #[inline]
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
@@ -92,7 +92,7 @@ impl<N: Network> LoadDefault<N> {
         // Retrieve the value from storage as a literal.
         let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'load' a 'record'"),
+            Some(Value::Record(..)) => bail!("Cannot 'load_or' a 'record'"),
             // If a key does not exist, then use the default value.
             None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
         };
@@ -104,7 +104,7 @@ impl<N: Network> LoadDefault<N> {
     }
 }
 
-impl<N: Network> Parser for LoadDefault<N> {
+impl<N: Network> Parser for LoadOr<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -150,7 +150,7 @@ impl<N: Network> Parser for LoadDefault<N> {
     }
 }
 
-impl<N: Network> FromStr for LoadDefault<N> {
+impl<N: Network> FromStr for LoadOr<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -168,14 +168,14 @@ impl<N: Network> FromStr for LoadDefault<N> {
     }
 }
 
-impl<N: Network> Debug for LoadDefault<N> {
+impl<N: Network> Debug for LoadOr<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for LoadDefault<N> {
+impl<N: Network> Display for LoadOr<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
@@ -187,7 +187,7 @@ impl<N: Network> Display for LoadDefault<N> {
     }
 }
 
-impl<N: Network> FromBytes for LoadDefault<N> {
+impl<N: Network> FromBytes for LoadOr<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
@@ -203,7 +203,7 @@ impl<N: Network> FromBytes for LoadDefault<N> {
     }
 }
 
-impl<N: Network> ToBytes for LoadDefault<N> {
+impl<N: Network> ToBytes for LoadOr<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
@@ -226,12 +226,12 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, load) = LoadDefault::<CurrentNetwork>::parse("load.d account[r0] r1 into r2;").unwrap();
+        let (string, load_or) = LoadOr::<CurrentNetwork>::parse("load_or account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(load.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(load.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(load.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(load.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(load.destination, Register::Locator(2), "The second operand is incorrect");
+        assert_eq!(load_or.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(load_or.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(load_or.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(load_or.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(load_or.destination, Register::Locator(2), "The second operand is incorrect");
     }
 }

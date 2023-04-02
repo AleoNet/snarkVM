@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::finalize::{Load, LoadDefault, Store};
+use crate::finalize::{Load, LoadOr, Store};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -25,15 +25,11 @@ impl<N: Network> FinalizeTypes<N> {
         // Initialize a map of registers to their types.
         let mut finalize_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
-        println!("initialize_finalize_types: L29");
-
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
             // Check the input register type.
             finalize_types.check_input(stack, input.register(), input.plaintext_type())?;
         }
-
-        println!("initialize_finalize_types: L36");
 
         // Step 2. Check the commands are well-formed.
         for command in finalize.commands() {
@@ -41,15 +37,11 @@ impl<N: Network> FinalizeTypes<N> {
             finalize_types.check_command(stack, finalize.name(), command)?;
         }
 
-        println!("initialize_finalize_types: L43");
-
         // Step 3. Check the outputs are well-formed.
         for output in finalize.outputs() {
             // Check the output operand type.
             finalize_types.check_output(stack, output.operand(), output.plaintext_type())?;
         }
-
-        println!("initialize_finalize_types: L50");
 
         Ok(finalize_types)
     }
@@ -84,7 +76,6 @@ impl<N: Network> FinalizeTypes<N> {
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
     fn add_destination(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
-        println!("adding destination: {:?} and type: {:?}", register, register_type);
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
@@ -180,51 +171,16 @@ impl<N: Network> FinalizeTypes<N> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Load(load) => self.check_load(stack, finalize_name, load)?,
-            Command::LoadDefault(load_default) => self.check_load_default(stack, finalize_name, load_default)?,
+            Command::LoadDefault(load_or) => self.check_load_or(stack, finalize_name, load_or)?,
             Command::Store(store) => self.check_store(stack, finalize_name, store)?,
         }
         Ok(())
     }
 
-    /// Ensures the given load command is well-formed.
+    /// Ensures the given `load` command is well-formed.
     #[inline]
     fn check_load(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &Load<N>) -> Result<()> {
-        println!("Checking load command: {:#?}", load);
-        // Ensure the declared mapping in load is defined in the program.
-        if !stack.program().contains_mapping(load.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
-        }
-        // Retrieve the mapping from the program.
-        // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(load.mapping_name()).unwrap();
-        // Get the mapping key type.
-        let mapping_key_type = mapping.key().plaintext_type();
-        // Get the mapping value type.
-        let mapping_value_type = mapping.value().plaintext_type();
-        // Retrieve the register type of the key.
-        let load_key_type = self.get_type_from_operand(stack, load.key())?;
-        // Check that the key type in the mapping matches the key type in the load.
-        if *mapping_key_type != load_key_type {
-            bail!("Key type in load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
-        }
-        // Get the destination register.
-        let destination = load.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
-        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
-        // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
-        Ok(())
-    }
-
-    /// Ensures the given default load command is well-formed.
-    #[inline]
-    fn check_load_default(
-        &mut self,
-        stack: &Stack<N>,
-        finalize_name: &Identifier<N>,
-        load: &LoadDefault<N>,
-    ) -> Result<()> {
-        // Ensure the declared mapping in default load is defined in the program.
+        // Ensure the declared mapping in `load` is defined in the program.
         if !stack.program().contains_mapping(load.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
         }
@@ -240,19 +196,50 @@ impl<N: Network> FinalizeTypes<N> {
         // Check that the key type in the mapping matches the key type in the load.
         if *mapping_key_type != load_key_type {
             bail!(
-                "Key type in default load '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+                "Key type in `load` '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
+        }
+        // Get the destination register.
+        let destination = load.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, *mapping_value_type)?;
+        Ok(())
+    }
+
+    /// Ensures the given `load_or` command is well-formed.
+    #[inline]
+    fn check_load_or(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load_or: &LoadOr<N>) -> Result<()> {
+        // Ensure the declared mapping in `load_or` is defined in the program.
+        if !stack.program().contains_mapping(load_or.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load_or.mapping_name(), stack.program_id())
+        }
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(load_or.mapping_name()).unwrap();
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
+        // Retrieve the register type of the key.
+        let load_key_type = self.get_type_from_operand(stack, load_or.key())?;
+        // Check that the key type in the mapping matches the key type in the load.
+        if *mapping_key_type != load_key_type {
+            bail!(
+                "Key type in `load_or` '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
         }
         // Retrieve the register type of the default value.
-        let default_value_type = self.get_type_from_operand(stack, load.default())?;
+        let default_value_type = self.get_type_from_operand(stack, load_or.default())?;
         // Check that the value type in the mapping matches the default value type in the load.
         if *mapping_value_type != default_value_type {
             bail!(
-                "Default value type in default load '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                "Default value type in `load_or` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         // Get the destination register.
-        let destination = load.destination().clone();
+        let destination = load_or.destination().clone();
         // Ensure the destination register is a locator (and does not reference a member).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
@@ -260,10 +247,10 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensures the given store command is well-formed.
+    /// Ensures the given `store` command is well-formed.
     #[inline]
     fn check_store(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, store: &Store<N>) -> Result<()> {
-        // Ensure the declared mapping in store is defined in the program.
+        // Ensure the declared mapping in `store` is defined in the program.
         if !stack.program().contains_mapping(store.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", store.mapping_name(), stack.program_id())
         }
@@ -279,7 +266,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Check that the key type in the mapping matches the key type in the store.
         if *mapping_key_type != store_key_type {
             bail!(
-                "Key type in store '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+                "Key type in `store` '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
         }
         // Retrieve the type of the value.
@@ -287,7 +274,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Check that the value type in the mapping matches the type of the value.
         if *mapping_value_type != store_value_type {
             bail!(
-                "Value type in store '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                "Value type in `store` '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         Ok(())

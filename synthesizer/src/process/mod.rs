@@ -1169,7 +1169,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load.d account[r0] 0u64 into r2;
+    load_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
     store r3 into account[r0];
 ",
@@ -1268,7 +1268,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load.d account[r0] 0u64 into r2;
+    load_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
     sub r3 r1 into r4;
     store r4 into account[r0];
@@ -1381,7 +1381,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Load `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    load.d account[r0] 0u64 into r2;
+    load_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Store `r3` into `account[r0]`.
@@ -1499,7 +1499,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Load `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    load.d account[r0] 0u64 into r2;
+    load_or account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Store `r3` into `account[r0]`.
@@ -1625,7 +1625,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load.d account[r0] 0u64 into r2;
+    load_or account[r0] 0u64 into r2;
     add r1 r2 into r3;
     store r3 into account[r0];
     load account[r0] into r4;
