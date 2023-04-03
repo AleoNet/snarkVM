@@ -182,6 +182,19 @@ impl<E: Environment> DivAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> DivFlagged<Scalar<E>> for Scalar<E> {
+    type Output = (Scalar<E>, Boolean<E>);
+
+    /// Divides `self` by `other` and returns the `result` and a `flag` indicating whether `other` is zero.
+    #[inline]
+    fn div_flagged(&self, other: &Scalar<E>) -> Self::Output {
+        match other.is_zero() {
+            true => (Scalar::zero(), Boolean::new(true)),
+            false => (Scalar::new(self.scalar / other.scalar), Boolean::new(false)),
+        }
+    }
+}
+
 impl<E: Environment> Pow<Scalar<E>> for Scalar<E> {
     type Output = Scalar<E>;
 
@@ -213,11 +226,11 @@ impl<E: Environment> Double for Scalar<E> {
 }
 
 impl<E: Environment> Inverse for Scalar<E> {
-    type Output = Scalar<E>;
+    type Output = Result<Scalar<E>>;
 
     /// Returns the `inverse` of `self`.
     #[inline]
-    fn inverse(&self) -> Result<Self::Output> {
+    fn inverse(&self) -> Self::Output {
         match self.scalar.inverse() {
             Some(inverse) => Ok(Scalar::new(inverse)),
             None => bail!("Failed to invert a scalar element: {self}"),

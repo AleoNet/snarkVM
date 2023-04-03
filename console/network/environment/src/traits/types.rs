@@ -87,7 +87,7 @@ pub trait FieldTrait:
     + Equal
     + FromBytes
     + core::hash::Hash
-    + Inverse<Output = Self>
+    + Inverse<Output = Result<Self>>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>
@@ -106,7 +106,7 @@ pub trait FieldTrait:
     + SizeInBytes
     + Sync
     + Square<Output = Self>
-    + SquareRoot<Output = Self>
+    + SquareRoot<Output = Result<Self>>
     + Sub<Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
     + SubAssign<Self>
@@ -175,7 +175,7 @@ pub trait ScalarTrait:
     + Double<Output = Self>
     + Eq
     + Equal
-    + Inverse<Output = Self>
+    + Inverse<Output = Result<Self>>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>
@@ -349,6 +349,7 @@ pub(super) mod integer_type {
         + Modulo
         + NumZero
         + NumOne
+        + OverflowingDiv
         + PartialOrd
         + Send
         + Sync
@@ -452,6 +453,31 @@ pub(super) mod integer_type {
     binary_impl!(Modulo, i64, modulo, self, _v, Self, i64, panic!("modulo is not implemented for i64"));
     #[rustfmt::skip]
     binary_impl!(Modulo, i128, modulo, self, _v, Self, i128, panic!("modulo is not implemented for i128"));
+
+    pub trait OverflowingDiv: Sized + Div<Self, Output = Self> {
+        fn overflowing_div(&self, v: &Self) -> (Self, bool);
+    }
+
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u8, overflowing_div, self, v, Self, (u8, bool), if *v == 0 { (0, true) } else { u8::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u16, overflowing_div, self, v, Self, (u16, bool), if *v == 0 { (0, true) } else { u16::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u32, overflowing_div, self, v, Self, (u32, bool), if *v == 0 { (0, true) } else { u32::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u64, overflowing_div, self, v, Self, (u64, bool), if *v == 0 { (0, true) } else { u64::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, u128, overflowing_div, self, v, Self, (u128, bool), if *v == 0 { (0, true) } else { u128::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i8, overflowing_div, self, v, Self, (i8, bool), if *v == 0 { (0, true) } else { i8::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i16, overflowing_div, self, v, Self, (i16, bool), if *v == 0 { (0, true) } else { i16::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i32, overflowing_div, self, v, Self, (i32, bool), if *v == 0 { (0, true) } else { i32::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i64, overflowing_div, self, v, Self, (i64, bool), if *v == 0 { (0, true) } else { i64::overflowing_div(*self, *v) });
+    #[rustfmt::skip]
+    binary_impl!(OverflowingDiv, i128, overflowing_div, self, v, Self, (i128, bool), if *v == 0 { (0, true) } else { i128::overflowing_div(*self, *v) });
 
     pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
         fn wrapping_div(&self, v: &Self) -> Self;

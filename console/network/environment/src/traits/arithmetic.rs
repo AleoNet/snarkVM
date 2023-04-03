@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::Result;
-
 /// Binary operator for adding two values, enforcing an overflow never occurs.
 pub trait AddChecked<Rhs: ?Sized = Self> {
     type Output;
@@ -49,6 +47,13 @@ pub trait DivChecked<Rhs: ?Sized = Self> {
     type Output;
 
     fn div_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, indicating than an overflow or division by zero error occurred via a flag.
+pub trait DivFlagged<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_flagged(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for dividing two values, bounding the quotient to `MAX` or `MIN` if an overflow occurs.
@@ -211,7 +216,14 @@ pub trait Double {
 pub trait Inverse {
     type Output;
 
-    fn inverse(&self) -> Result<Self::Output>;
+    fn inverse(&self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the inverse value, indicating that an inversion of zero error occurred via a flag.
+pub trait InverseFlagged {
+    type Output;
+
+    fn inverse_flagged(&self) -> Self::Output;
 }
 
 /// Unary operator for retrieving the squared value.
@@ -225,5 +237,5 @@ pub trait Square {
 pub trait SquareRoot {
     type Output;
 
-    fn square_root(&self) -> Result<Self::Output>;
+    fn square_root(&self) -> Self::Output;
 }

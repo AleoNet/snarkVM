@@ -22,20 +22,6 @@ pub use console::traits::{
 
 use crate::BooleanTrait;
 
-/// Unary operator for retrieving the inverse value.
-pub trait Inverse {
-    type Output;
-
-    fn inverse(&self) -> Self::Output;
-}
-
-/// Unary operator for retrieving the square root of the value.
-pub trait SquareRoot {
-    type Output;
-
-    fn square_root(&self) -> Self::Output;
-}
-
 ///
 /// A single-bit binary adder with a carry bit.
 ///

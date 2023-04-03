@@ -48,7 +48,7 @@ impl<E: Environment, I: IntegerType> RemWrapped<Self> for Integer<E, I> {
 
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
-                        self.unsigned_division_via_witness(other).1
+                        self.unsigned_division_via_witness(other, Integer::enforce_wrapped_division).1
                     } else {
                         Self {
                             bits_le: self.unsigned_binary_long_division(other).1.to_lower_bits_le(I::BITS as usize),
