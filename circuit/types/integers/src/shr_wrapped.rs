@@ -80,7 +80,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                     let divisor_unsigned = shift_as_divisor.cast_as_dual();
 
                     // Compute the quotient and remainder using wrapped, unsigned division.
-                    // Note that do not invoke `div_wrapped` since we need the quotient AND the remainder.
+                    // Note that we do not invoke `div_wrapped` since we need the quotient AND the remainder.
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     let (quotient_unsigned, remainder_field) = if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64
                     {
