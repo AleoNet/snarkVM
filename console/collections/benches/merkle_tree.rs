@@ -147,8 +147,8 @@ fn update_many(c: &mut Criterion) {
     }
 }
 
-fn compare_single_leaf_update(c: &mut Criterion) {
-    let mut group = c.benchmark_group("SingleLeafUpdate");
+fn update_vs_update_many(c: &mut Criterion) {
+    let mut group = c.benchmark_group("UpdateVSUpdateMany");
     let mut rng = TestRng::default();
     // Accumulate leaves in a vector to avoid recomputing across iterations.
     let max_leaves = 2usize.saturating_pow(MAX_INSTANTIATED_DEPTH as u32);
@@ -178,6 +178,6 @@ fn compare_single_leaf_update(c: &mut Criterion) {
 criterion_group! {
     name = merkle_tree;
     config = Criterion::default().sample_size(10);
-    targets = new, append, update, update_many, compare_single_leaf_update
+    targets = new, append, update, update_many, update_vs_update_many
 }
 criterion_main!(merkle_tree);
