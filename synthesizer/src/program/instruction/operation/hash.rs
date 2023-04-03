@@ -67,15 +67,15 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     #[inline]
     pub const fn opcode() -> Opcode {
         match VARIANT {
-            0 => Opcode::Hash("hash.bhp256"),
-            1 => Opcode::Hash("hash.bhp512"),
-            2 => Opcode::Hash("hash.bhp768"),
-            3 => Opcode::Hash("hash.bhp1024"),
-            4 => Opcode::Hash("hash.ped64"),
-            5 => Opcode::Hash("hash.ped128"),
-            6 => Opcode::Hash("hash.psd2"),
-            7 => Opcode::Hash("hash.psd4"),
-            8 => Opcode::Hash("hash.psd8"),
+            0 => Opcode::Hash("hash_bhp256"),
+            1 => Opcode::Hash("hash_bhp512"),
+            2 => Opcode::Hash("hash_bhp768"),
+            3 => Opcode::Hash("hash_bhp1024"),
+            4 => Opcode::Hash("hash_ped64"),
+            5 => Opcode::Hash("hash_ped128"),
+            6 => Opcode::Hash("hash_psd2"),
+            7 => Opcode::Hash("hash_psd4"),
+            8 => Opcode::Hash("hash_psd8"),
             _ => panic!("Invalid 'hash' instruction opcode"),
         }
     }
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, hash) = HashBHP512::<CurrentNetwork>::parse("hash.bhp512 r0 into r1").unwrap();
+        let (string, hash) = HashBHP512::<CurrentNetwork>::parse("hash_bhp512 r0 into r1").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(hash.operands.len(), 1, "The number of operands is incorrect");
         assert_eq!(hash.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");

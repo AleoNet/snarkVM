@@ -42,8 +42,8 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     #[inline]
     pub const fn opcode() -> Opcode {
         match VARIANT {
-            0 => Opcode::Assert("assert.eq"),
-            1 => Opcode::Assert("assert.neq"),
+            0 => Opcode::Assert("assert_eq"),
+            1 => Opcode::Assert("assert_neq"),
             _ => panic!("Invalid 'assert' instruction opcode"),
         }
     }
@@ -605,13 +605,13 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, assert) = AssertEq::<CurrentNetwork>::parse("assert.eq r0 r1").unwrap();
+        let (string, assert) = AssertEq::<CurrentNetwork>::parse("assert_eq r0 r1").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(assert.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(assert.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(assert.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
 
-        let (string, assert) = AssertNeq::<CurrentNetwork>::parse("assert.neq r0 r1").unwrap();
+        let (string, assert) = AssertNeq::<CurrentNetwork>::parse("assert_neq r0 r1").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(assert.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(assert.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");

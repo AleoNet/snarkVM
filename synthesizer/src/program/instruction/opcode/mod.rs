@@ -27,13 +27,13 @@ pub enum Opcode {
     Cast,
     /// The opcode is for a finalize command (i.e. `increment`).
     Command(&'static str),
-    /// The opcode is for a commit operation (i.e. `commit.psd4`).
+    /// The opcode is for a commit operation (i.e. `commit_psd4`).
     Commit(&'static str),
     /// The opcode is for a finalize operation (i.e. `finalize`).
     Finalize(&'static str),
-    /// The opcode is for a hash operation (i.e. `hash.psd4`).
+    /// The opcode is for a hash operation (i.e. `hash_psd4`).
     Hash(&'static str),
-    /// The opcode for an 'is' operation (i.e. `is.eq`).
+    /// The opcode for an 'is' operation (i.e. `is_eq`).
     Is(&'static str),
     /// The opcode is for a literal operation (i.e. `add`).
     Literal(&'static str),

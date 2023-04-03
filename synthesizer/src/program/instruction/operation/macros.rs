@@ -704,7 +704,7 @@ mod tests {
 
                     // Determine the number of iterations to run, based on the opcode.
                     let num_iterations: u64 = match *<$operation as $crate::Operation<_, _, _, 2>>::OPCODE {
-                        "pow" | "pow.w" => 10,
+                        "pow" | "pow_w" => 10,
                         _ => 100
                     };
 

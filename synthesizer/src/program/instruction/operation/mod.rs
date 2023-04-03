@@ -73,7 +73,7 @@ crate::operation!(
 pub type AbsWrapped<N> = UnaryLiteral<N, AbsWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct AbsWrappedOperation<console::prelude::AbsWrapped, circuit::prelude::AbsWrapped, abs_wrapped, "abs.w"> {
+    pub struct AbsWrappedOperation<console::prelude::AbsWrapped, circuit::prelude::AbsWrapped, abs_wrapped, "abs_w"> {
         I8 => I8,
         I16 => I16,
         I32 => I32,
@@ -107,7 +107,7 @@ crate::operation!(
 pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct AddWrappedOperation<console::prelude::AddWrapped, circuit::prelude::AddWrapped, add_wrapped, "add.w"> {
+    pub struct AddWrappedOperation<console::prelude::AddWrapped, circuit::prelude::AddWrapped, add_wrapped, "add_w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -164,7 +164,7 @@ crate::operation!(
 pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div.w"> {
+    pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div_w"> {
         (I8, I8) => I8 ("ensure divide by zero halts"),
         (I16, I16) => I16 ("ensure divide by zero halts"),
         (I32, I32) => I32 ("ensure divide by zero halts"),
@@ -320,7 +320,7 @@ crate::operation!(
 pub type MulWrapped<N> = BinaryLiteral<N, MulWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct MulWrappedOperation<console::prelude::MulWrapped, circuit::prelude::MulWrapped, mul_wrapped, "mul.w"> {
+    pub struct MulWrappedOperation<console::prelude::MulWrapped, circuit::prelude::MulWrapped, mul_wrapped, "mul_w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -448,7 +448,7 @@ crate::operation!(
 pub type PowWrapped<N> = BinaryLiteral<N, PowWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct PowWrappedOperation<console::prelude::PowWrapped, circuit::prelude::PowWrapped, pow_wrapped, "pow.w"> {
+    pub struct PowWrappedOperation<console::prelude::PowWrapped, circuit::prelude::PowWrapped, pow_wrapped, "pow_w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -504,7 +504,7 @@ crate::operation!(
 pub type RemWrapped<N> = BinaryLiteral<N, RemWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct RemWrappedOperation<console::prelude::RemWrapped, circuit::prelude::RemWrapped, rem_wrapped, "rem.w"> {
+    pub struct RemWrappedOperation<console::prelude::RemWrapped, circuit::prelude::RemWrapped, rem_wrapped, "rem_w"> {
         (I8, I8) => I8 ("ensure divide by zero halts"),
         (I16, I16) => I16 ("ensure divide by zero halts"),
         (I32, I32) => I32 ("ensure divide by zero halts"),
@@ -560,7 +560,7 @@ crate::operation!(
 pub type ShlWrapped<N> = BinaryLiteral<N, ShlWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct ShlWrappedOperation<console::prelude::ShlWrapped, circuit::prelude::ShlWrapped, shl_wrapped, "shl.w"> {
+    pub struct ShlWrappedOperation<console::prelude::ShlWrapped, circuit::prelude::ShlWrapped, shl_wrapped, "shl_w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -636,7 +636,7 @@ crate::operation!(
 pub type ShrWrapped<N> = BinaryLiteral<N, ShrWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct ShrWrappedOperation<console::prelude::ShrWrapped, circuit::prelude::ShrWrapped, shr_wrapped, "shr.w"> {
+    pub struct ShrWrappedOperation<console::prelude::ShrWrapped, circuit::prelude::ShrWrapped, shr_wrapped, "shr_w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -713,7 +713,7 @@ crate::operation!(
 pub type SubWrapped<N> = BinaryLiteral<N, SubWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct SubWrappedOperation<console::prelude::SubWrapped, circuit::prelude::SubWrapped, sub_wrapped, "sub.w"> {
+    pub struct SubWrappedOperation<console::prelude::SubWrapped, circuit::prelude::SubWrapped, sub_wrapped, "sub_w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,

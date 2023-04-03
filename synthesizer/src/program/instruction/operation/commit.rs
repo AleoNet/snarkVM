@@ -57,12 +57,12 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     #[inline]
     pub const fn opcode() -> Opcode {
         match VARIANT {
-            0 => Opcode::Commit("commit.bhp256"),
-            1 => Opcode::Commit("commit.bhp512"),
-            2 => Opcode::Commit("commit.bhp768"),
-            3 => Opcode::Commit("commit.bhp1024"),
-            4 => Opcode::Commit("commit.ped64"),
-            5 => Opcode::Commit("commit.ped128"),
+            0 => Opcode::Commit("commit_bhp256"),
+            1 => Opcode::Commit("commit_bhp512"),
+            2 => Opcode::Commit("commit_bhp768"),
+            3 => Opcode::Commit("commit_bhp1024"),
+            4 => Opcode::Commit("commit_ped64"),
+            5 => Opcode::Commit("commit_ped128"),
             _ => panic!("Invalid 'commit' instruction opcode"),
         }
     }
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, commit) = CommitBHP512::<CurrentNetwork>::parse("commit.bhp512 r0 r1 into r2").unwrap();
+        let (string, commit) = CommitBHP512::<CurrentNetwork>::parse("commit_bhp512 r0 r1 into r2").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(commit.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(commit.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");

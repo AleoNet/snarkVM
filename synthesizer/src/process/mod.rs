@@ -930,7 +930,7 @@ closure execute:
 closure check_not_equal:
     input r0 as field;
     input r1 as field;
-    assert.neq r0 r1;
+    assert_neq r0 r1;
 
 function compute:
     input r0 as field.private;
@@ -1056,7 +1056,7 @@ function produce_magic_number:
 
 function check_magic_number:
     input r0 as u64.private;
-    assert.eq r0 1234u64;
+    assert_eq r0 1234u64;
 
 function noop:
 

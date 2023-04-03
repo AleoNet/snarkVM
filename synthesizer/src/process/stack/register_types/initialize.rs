@@ -324,16 +324,16 @@ impl<N: Network> RegisterTypes<N> {
             }
             Opcode::Assert(opcode) => {
                 // Ensure the instruction belongs to the defined set.
-                if !["assert.eq", "assert.neq"].contains(&opcode) {
+                if !["assert_eq", "assert_neq"].contains(&opcode) {
                     bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
                 }
                 // Ensure the instruction is the correct one.
                 match opcode {
-                    "assert.eq" => ensure!(
+                    "assert_eq" => ensure!(
                         matches!(instruction, Instruction::AssertEq(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "assert.neq" => ensure!(
+                    "assert_neq" => ensure!(
                         matches!(instruction, Instruction::AssertNeq(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
@@ -442,12 +442,12 @@ impl<N: Network> RegisterTypes<N> {
             Opcode::Commit(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if ![
-                    "commit.bhp256",
-                    "commit.bhp512",
-                    "commit.bhp768",
-                    "commit.bhp1024",
-                    "commit.ped64",
-                    "commit.ped128",
+                    "commit_bhp256",
+                    "commit_bhp512",
+                    "commit_bhp768",
+                    "commit_bhp1024",
+                    "commit_ped64",
+                    "commit_ped128",
                 ]
                 .contains(&opcode)
                 {
@@ -455,27 +455,27 @@ impl<N: Network> RegisterTypes<N> {
                 }
                 // Ensure the instruction is the correct one.
                 match opcode {
-                    "commit.bhp256" => ensure!(
+                    "commit_bhp256" => ensure!(
                         matches!(instruction, Instruction::CommitBHP256(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.bhp512" => ensure!(
+                    "commit_bhp512" => ensure!(
                         matches!(instruction, Instruction::CommitBHP512(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.bhp768" => ensure!(
+                    "commit_bhp768" => ensure!(
                         matches!(instruction, Instruction::CommitBHP768(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.bhp1024" => ensure!(
+                    "commit_bhp1024" => ensure!(
                         matches!(instruction, Instruction::CommitBHP1024(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.ped64" => ensure!(
+                    "commit_ped64" => ensure!(
                         matches!(instruction, Instruction::CommitPED64(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.ped128" => ensure!(
+                    "commit_ped128" => ensure!(
                         matches!(instruction, Instruction::CommitPED128(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
@@ -492,15 +492,15 @@ impl<N: Network> RegisterTypes<N> {
             Opcode::Hash(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if ![
-                    "hash.bhp256",
-                    "hash.bhp512",
-                    "hash.bhp768",
-                    "hash.bhp1024",
-                    "hash.ped64",
-                    "hash.ped128",
-                    "hash.psd2",
-                    "hash.psd4",
-                    "hash.psd8",
+                    "hash_bhp256",
+                    "hash_bhp512",
+                    "hash_bhp768",
+                    "hash_bhp1024",
+                    "hash_ped64",
+                    "hash_ped128",
+                    "hash_psd2",
+                    "hash_psd4",
+                    "hash_psd8",
                 ]
                 .contains(&opcode)
                 {
@@ -508,39 +508,39 @@ impl<N: Network> RegisterTypes<N> {
                 }
                 // Ensure the instruction is the correct one.
                 match opcode {
-                    "hash.bhp256" => ensure!(
+                    "hash_bhp256" => ensure!(
                         matches!(instruction, Instruction::HashBHP256(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.bhp512" => ensure!(
+                    "hash_bhp512" => ensure!(
                         matches!(instruction, Instruction::HashBHP512(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.bhp768" => ensure!(
+                    "hash_bhp768" => ensure!(
                         matches!(instruction, Instruction::HashBHP768(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.bhp1024" => ensure!(
+                    "hash_bhp1024" => ensure!(
                         matches!(instruction, Instruction::HashBHP1024(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.ped64" => ensure!(
+                    "hash_ped64" => ensure!(
                         matches!(instruction, Instruction::HashPED64(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.ped128" => ensure!(
+                    "hash_ped128" => ensure!(
                         matches!(instruction, Instruction::HashPED128(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.psd2" => ensure!(
+                    "hash_psd2" => ensure!(
                         matches!(instruction, Instruction::HashPSD2(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.psd4" => ensure!(
+                    "hash_psd4" => ensure!(
                         matches!(instruction, Instruction::HashPSD4(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "hash.psd8" => ensure!(
+                    "hash_psd8" => ensure!(
                         matches!(instruction, Instruction::HashPSD8(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
@@ -549,16 +549,16 @@ impl<N: Network> RegisterTypes<N> {
             }
             Opcode::Is(opcode) => {
                 // Ensure the instruction belongs to the defined set.
-                if !["is.eq", "is.neq"].contains(&opcode) {
+                if !["is_eq", "is_neq"].contains(&opcode) {
                     bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
                 }
                 // Ensure the instruction is the correct one.
                 match opcode {
-                    "is.eq" => ensure!(
+                    "is_eq" => ensure!(
                         matches!(instruction, Instruction::IsEq(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "is.neq" => ensure!(
+                    "is_neq" => ensure!(
                         matches!(instruction, Instruction::IsNeq(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
