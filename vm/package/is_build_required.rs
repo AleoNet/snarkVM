@@ -115,7 +115,7 @@ record token:
 
 function compute:
     input r0 as token.record;
-    add.w r0.token_amount r0.token_amount into r1;
+    add_w r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;"
         )
     }
