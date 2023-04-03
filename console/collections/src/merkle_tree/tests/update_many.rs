@@ -56,7 +56,7 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
     if !updates.is_empty() {
         // Update the leaves of the Merkle tree.
-        merkle_tree.batch_update(updates)?;
+        merkle_tree.update_many(updates)?;
         // Check each additional leaf in the Merkle tree.
         for (leaf_index, leaf) in updates {
             // Compute a Merkle proof for the leaf.
@@ -96,7 +96,7 @@ fn check_updated_merkle_tree_is_consistent<
     let mut leaf_map: IndexMap<usize, LH::Leaf> = leaves.into_iter().enumerate().collect::<IndexMap<usize, LH::Leaf>>();
 
     // Apply the updates to the Merkle tree.
-    merkle_tree.batch_update(&updates)?;
+    merkle_tree.update_many(&updates)?;
 
     // Add the updated leaves to the index map.
     for (index, leaf) in updates {
@@ -168,7 +168,7 @@ fn check_merkle_tree_depth_3_single_update<
 
     // Update the Merkle tree.
     let (leaf_index, leaf) = &updates[0];
-    merkle_tree.batch_update(updates)?;
+    merkle_tree.update_many(updates)?;
     assert_eq!(7, merkle_tree.tree.len());
     assert_eq!(4, merkle_tree.number_of_leaves);
 
@@ -293,7 +293,7 @@ fn test_merkle_tree_poseidon() -> Result<()> {
 }
 
 #[test]
-fn test_merkle_tree_bhp_batch_update_is_consistent() -> Result<()> {
+fn test_merkle_tree_bhp_update_many_is_consistent() -> Result<()> {
     fn run_test<const DEPTH: u8>(rng: &mut TestRng) -> Result<()> {
         type LH = BHP1024<CurrentEnvironment>;
         type PH = BHP512<CurrentEnvironment>;
@@ -339,7 +339,7 @@ fn test_merkle_tree_bhp_batch_update_is_consistent() -> Result<()> {
 }
 
 #[test]
-fn test_merkle_tree_poseidon_batch_update_is_consistent() -> Result<()> {
+fn test_merkle_tree_poseidon_update_many_is_consistent() -> Result<()> {
     fn run_test<const DEPTH: u8>(rng: &mut TestRng) -> Result<()> {
         type LH = Poseidon<CurrentEnvironment, 4>;
         type PH = Poseidon<CurrentEnvironment, 2>;
@@ -383,7 +383,7 @@ fn test_merkle_tree_poseidon_batch_update_is_consistent() -> Result<()> {
 }
 
 #[test]
-fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
+fn test_merkle_tree_bhp_update_and_update_many_match() -> Result<()> {
     fn run_test<const DEPTH: u8>(rng: &mut TestRng) -> Result<()> {
         type LH = BHP1024<CurrentEnvironment>;
         type PH = BHP512<CurrentEnvironment>;
@@ -426,7 +426,7 @@ fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
             let mut batch_merkle_tree =
                 MerkleTree::<CurrentEnvironment, LH, PH, DEPTH>::new(&leaf_hasher, &path_hasher, &leaves)?;
             // Update the Merkle tree with the batch updates.
-            batch_merkle_tree.batch_update(&batch_updates)?;
+            batch_merkle_tree.update_many(&batch_updates)?;
 
             // Check that the roots of the two Merkle trees match.
             assert_eq!(single_merkle_tree.root(), batch_merkle_tree.root());
@@ -444,7 +444,7 @@ fn test_merkle_tree_bhp_single_and_batch_updates_match() -> Result<()> {
 }
 
 #[test]
-fn test_merkle_tree_poseidon_single_and_batch_updates_match() -> Result<()> {
+fn test_merkle_tree_poseidon_update_and_update_many_match() -> Result<()> {
     fn run_test<const DEPTH: u8>(rng: &mut TestRng) -> Result<()> {
         type LH = Poseidon<CurrentEnvironment, 4>;
         type PH = Poseidon<CurrentEnvironment, 2>;
@@ -485,7 +485,7 @@ fn test_merkle_tree_poseidon_single_and_batch_updates_match() -> Result<()> {
             let mut batch_merkle_tree =
                 MerkleTree::<CurrentEnvironment, LH, PH, DEPTH>::new(&leaf_hasher, &path_hasher, &leaves)?;
             // Update the Merkle tree with the batch updates.
-            batch_merkle_tree.batch_update(&batch_updates)?;
+            batch_merkle_tree.update_many(&batch_updates)?;
 
             // Check that the roots of the two Merkle trees match.
             assert_eq!(single_merkle_tree.root(), batch_merkle_tree.root());
@@ -574,7 +574,7 @@ fn test_profiler() -> Result<()> {
                 (index % num_leaves, leaf)
             })
             .for_each(|(index, leaf)| {
-                merkle_tree.batch_update(&[(index, leaf)]).unwrap();
+                merkle_tree.update_many(&[(index, leaf)]).unwrap();
             });
     }
 

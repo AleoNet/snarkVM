@@ -17,9 +17,9 @@
 use super::*;
 
 mod append;
-mod batch;
 mod remove;
 mod update;
+mod update_many;
 
 macro_rules! run_tests {
     ($rng:expr, [$($i:expr),*]) => {

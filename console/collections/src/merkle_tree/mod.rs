@@ -279,8 +279,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     #[inline]
     /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
     /// The leaf indices must be sorted in descending order and must be unique.
-    pub fn batch_update(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
-        let timer = timer!("MerkleTree::batch_update");
+    pub fn update_many(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
+        let timer = timer!("MerkleTree::update_many");
 
         // Check that there are updates to perform.
         ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
