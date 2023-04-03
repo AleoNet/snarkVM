@@ -41,26 +41,28 @@ impl<E: Environment> FromBits for Scalar<E> {
             E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // If `num_bits` is greater than `size_in_data_bits`, check it is less than `ScalarField::MODULUS`.
         if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
-            // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = Scalar::constant(-console::Scalar::one());
+            // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
+            // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
+            let bits_le = &bits_le[..size_in_bits];
 
             // Reconstruct the bits as a linear combination representing the original scalar as a field.
             let mut accumulator = Field::zero();
             let mut coefficient = Field::one();
-            for bit in &bits_le[..size_in_bits] {
+            for bit in bits_le {
                 accumulator += Field::from_boolean(bit) * &coefficient;
                 coefficient = coefficient.double();
             }
 
-            // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
-            // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
-            let scalar = Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le[..size_in_bits].to_vec()) };
+            // Construct the scalar.
+            let scalar = Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le.to_vec()) };
 
-            // Ensure the scalar is less than `ScalarField::MODULUS`.
-            E::assert(scalar.is_less_than_or_equal(&modulus_minus_one));
+            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+            // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
+            let modulus_minus_one = -E::ScalarField::one();
+
+            // Assert `bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
+            Boolean::assert_less_than_or_equal_constant(bits_le, &modulus_minus_one.to_bits_le());
 
             // Return the scalar.
             scalar
@@ -174,31 +176,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 2, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 1, 0, 253, 255);
+        check_from_bits_le(Mode::Public, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 1, 0, 253, 255);
+        check_from_bits_le(Mode::Private, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 2, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 1, 0, 253, 255);
+        check_from_bits_be(Mode::Public, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 1, 0, 253, 255);
+        check_from_bits_be(Mode::Private, 0, 0, 250, 251);
     }
 }

@@ -27,7 +27,7 @@ use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 #[derive(Clone)]

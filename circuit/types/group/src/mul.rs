@@ -219,6 +219,8 @@ mod tests {
             let mut candidate = a.clone();
             candidate *= b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
+            // Note that these define an upper bound. Furthermore, since `check_mul_assign` is called after `check_mul`, it does not incur
+            // the overhead of converting to a bitwise representation.
             assert_scope!(<=num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
@@ -262,9 +264,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {i}");
-            check_mul(&name, &expected, &a, &b, 750, 0, 2751, 2752);
-            let name = format!("MulAssign: a * b {i}");
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 750, 0, 3001, 3003);
+            let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
         }
     }
@@ -281,9 +283,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Constant, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {i}");
-            check_mul(&name, &expected, &a, &b, 750, 0, 2751, 2752);
-            let name = format!("MulAssign: a * b {i}");
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 750, 0, 3001, 3003);
+            let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
         }
     }
@@ -360,9 +362,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {i}");
-            check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {i}");
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 750, 0, 3753, 3755);
+            let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
@@ -379,9 +381,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {i}");
-            check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {i}");
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 750, 0, 3753, 3755);
+            let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
@@ -398,9 +400,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
-            let name = format!("Mul: a * b {i}");
-            check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {i}");
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 750, 0, 3753, 3755);
+            let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }
@@ -417,9 +419,9 @@ mod tests {
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
-            let name = format!("Mul: a * b {i}");
-            check_mul(&name, &expected, &a, &b, 750, 0, 3503, 3504);
-            let name = format!("MulAssign: a * b {i}");
+            let name = format!("Mul: a * b {}", i);
+            check_mul(&name, &expected, &a, &b, 750, 0, 3753, 3755);
+            let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
         }
     }

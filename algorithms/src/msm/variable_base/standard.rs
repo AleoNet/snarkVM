@@ -18,7 +18,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_into_iter, BigInteger};
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 fn update_buckets<G: AffineCurve>(
