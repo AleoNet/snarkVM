@@ -18,3 +18,12 @@ use super::*;
 
 mod append;
 mod remove;
+mod update;
+mod update_many;
+
+macro_rules! run_tests {
+    ($rng:expr, [$($i:expr),*]) => {
+        $( assert!(run_test::<$i>($rng).is_ok()); )*
+    };
+}
+use run_tests;
