@@ -39,10 +39,31 @@ use std::collections::HashMap;
 
 #[derive(Clone)]
 pub enum Query<N: Network, B: BlockStorage<N>> {
-    /// The block store from the VM.
+    /// Block store from the VM to search for inclusion proof data
     VM(BlockStore<N, B>),
-    /// The base URL of the node.
+    /// Base URL of the node to fetch inclusion proof data
     REST(String),
+    /// Inclusion proof data fetched from an outside environment
+    External(N::StateRoot, HashMap<Field<N>, StatePath<N>>),
+}
+
+impl<N: Network, B: BlockStorage<N>> TryFrom<(&str, &str)> for Query<N, B> {
+    type Error = anyhow::Error;
+
+    fn try_from(inclusion_data: (&str, &str)) -> std::result::Result<Self, Self::Error> {
+        let (state_root, commitments) = inclusion_data;
+        Ok(Self::External(
+            N::StateRoot::from_str(state_root).map_err(|_| anyhow!("Invalid state root"))?,
+            serde_json::from_str(commitments).map_err(|_| anyhow!("Invalid state path"))?,
+        ))
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> From<(N::StateRoot, HashMap<Field<N>, StatePath<N>>)> for Query<N, B> {
+    fn from(inclusion_data: (N::StateRoot, HashMap<Field<N>, StatePath<N>>)) -> Self {
+        let (state_root, commitments) = inclusion_data;
+        Self::External(state_root, commitments)
+    }
 }
 
 impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for Query<N, B> {
@@ -87,8 +108,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
-            #[cfg(feature = "wasm")]
-            _ => bail!("External API calls not supported from WASM"),
+            _ => bail!("Program queries not supported in offline environments"),
         }
     }
 
@@ -101,8 +121,9 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::External(state_root, _) => Ok(*state_root),
             #[cfg(feature = "wasm")]
-            _ => bail!("External API calls not supported from WASM"),
+            _ => bail!("REST queries not supported in wasm environments"),
         }
     }
 
@@ -115,8 +136,13 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            Self::External(_, commitments) => {
+                let state_path =
+                    commitments.get(commitment).ok_or_else(|| anyhow!("Commitment not found in inclusion query"))?;
+                Ok(state_path.clone())
+            }
             #[cfg(feature = "wasm")]
-            _ => bail!("External API calls not supported from WASM"),
+            _ => bail!("REST queries not supported in wasm environments"),
         }
     }
 
@@ -291,6 +317,7 @@ impl<N: Network> Inclusion<N> {
         execution: Execution<N>,
         assignments: &[InclusionAssignment<N>],
         global_state_root: N::StateRoot,
+        proving_key: Option<ProvingKey<N>>,
         rng: &mut R,
     ) -> Result<Execution<N>> {
         match assignments.is_empty() {
@@ -309,8 +336,8 @@ impl<N: Network> Inclusion<N> {
             }
             false => {
                 // Fetch the inclusion proving key.
-                let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
-
+                let proving_key =
+                    proving_key.unwrap_or_else(|| ProvingKey::<N>::new(N::inclusion_proving_key().clone()));
                 // Compute the inclusion batch proof.
                 let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
                 // Return the execution.
@@ -393,6 +420,7 @@ impl<N: Network> Inclusion<N> {
         &self,
         fee_transition: Transition<N>,
         assignments: &[InclusionAssignment<N>],
+        proving_key: Option<ProvingKey<N>>,
         rng: &mut R,
     ) -> Result<Fee<N>> {
         // Ensure the fee has the correct program ID.
@@ -409,7 +437,7 @@ impl<N: Network> Inclusion<N> {
         }
 
         // Fetch the inclusion proving key.
-        let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+        let proving_key = proving_key.unwrap_or_else(|| ProvingKey::<N>::new(N::inclusion_proving_key().clone()));
 
         // Compute the inclusion batch proof.
         let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
@@ -419,7 +447,7 @@ impl<N: Network> Inclusion<N> {
 
     /// Checks the inclusion proof for the execution.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_execution(execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution(execution: &Execution<N>, verifying_key: Option<VerifyingKey<N>>) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
 
@@ -473,7 +501,8 @@ impl<N: Network> Inclusion<N> {
             }
 
             // Fetch the inclusion verifying key.
-            let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
+            let verifying_key =
+                verifying_key.unwrap_or_else(|| VerifyingKey::<N>::new(N::inclusion_verifying_key().clone()));
             // Verify the inclusion proof.
             ensure!(
                 verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
@@ -486,7 +515,7 @@ impl<N: Network> Inclusion<N> {
 
     /// Checks the inclusion proof for the fee.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_fee(fee: &Fee<N>) -> Result<()> {
+    pub fn verify_fee(fee: &Fee<N>, verifying_key: Option<VerifyingKey<N>>) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = fee.global_state_root();
         // Ensure the global state root is not zero.
@@ -528,7 +557,8 @@ impl<N: Network> Inclusion<N> {
         }
 
         // Fetch the inclusion verifying key.
-        let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
+        let verifying_key =
+            verifying_key.unwrap_or_else(|| VerifyingKey::<N>::new(N::inclusion_verifying_key().clone()));
         // Verify the inclusion proof.
         ensure!(
             verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
@@ -661,7 +691,7 @@ mod tests {
 
         match execution_transaction {
             Transaction::Execute(_, execution, _) => {
-                assert!(Inclusion::verify_execution(&execution).is_ok());
+                assert!(Inclusion::verify_execution(&execution, None).is_ok());
             }
             _ => panic!("Expected an execution transaction"),
         }
@@ -675,7 +705,7 @@ mod tests {
 
         match deployment_transaction {
             Transaction::Deploy(_, _, fee) => {
-                assert!(Inclusion::verify_fee(&fee).is_ok());
+                assert!(Inclusion::verify_fee(&fee, None).is_ok());
             }
             _ => panic!("Expected a deployment transaction"),
         }

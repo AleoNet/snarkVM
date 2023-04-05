@@ -58,8 +58,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the inclusion proof and update the execution.
-                let execution =
-                    inclusion.prove_execution::<$aleo, _>(execution, assignments, global_state_root.into(), rng)?;
+                let execution = inclusion.prove_execution::<$aleo, _>(
+                    execution,
+                    assignments,
+                    global_state_root.into(),
+                    None,
+                    rng,
+                )?;
                 lap!(timer, "Compute the inclusion proof");
 
                 // Prepare the return.
@@ -122,7 +127,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the inclusion proof and construct the fee.
-                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, rng)?;
+                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, None, rng)?;
                 lap!(timer, "Compute the inclusion proof and construct the fee");
 
                 // Prepare the return.

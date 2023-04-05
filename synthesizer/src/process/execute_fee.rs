@@ -137,7 +137,7 @@ impl<N: Network> Process<N> {
         ensure!(fee.fee() >= &0, "The fee must be zero or positive");
 
         // Ensure the inclusion proof is valid.
-        Inclusion::verify_fee(fee)?;
+        Inclusion::verify_fee(fee, None)?;
         lap!(timer, "Verify the inclusion proof");
 
         // Compute the x- and y-coordinate of `tpk`.

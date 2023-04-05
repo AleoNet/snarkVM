@@ -280,7 +280,7 @@ mod tests {
                 // Ensure the inclusion proof exists.
                 assert!(execution.inclusion_proof().is_some());
                 // Verify the inclusion.
-                assert!(Inclusion::verify_execution(&execution).is_ok());
+                assert!(Inclusion::verify_execution(&execution, None).is_ok());
                 // Verify the execution.
                 assert!(vm.check_execution(&execution).is_ok());
                 assert!(vm.verify_execution(&execution));

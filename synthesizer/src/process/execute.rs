@@ -85,7 +85,7 @@ impl<N: Network> Process<N> {
 
         // Ensure the inclusion proof is valid.
         if VERIFY_INCLUSION {
-            Inclusion::verify_execution(execution)?;
+            Inclusion::verify_execution(execution, None)?;
             lap!(timer, "Verify the inclusion proof");
         }
 

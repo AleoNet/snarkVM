@@ -421,7 +421,7 @@ function compute:
                 let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee));
-                assert!(Inclusion::verify_fee(&fee).is_ok());
+                assert!(Inclusion::verify_fee(&fee, None).is_ok());
                 // Return the fee.
                 fee
             })

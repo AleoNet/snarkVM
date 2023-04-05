@@ -149,6 +149,25 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
+    /// Initializes a new process without downloading the credits.aleo proving keys
+    #[inline]
+    pub fn load_offline() -> Result<Self> {
+        // Initialize the process.
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+
+        // Initialize the 'credits.aleo' program so that a conflicting program named `credits.aleo` can't be added
+        let program = Program::credits()?;
+
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+
+        // Add the stack to the process.
+        process.stacks.insert(*program.id(), stack);
+
+        // Return the process.
+        Ok(process)
+    }
+
     /// Initializes a new process with a cache of previously used keys. This version is suitable for tests
     /// (which often use nested loops that keep reusing those), as their deserialization is slow.
     #[cfg(test)]
