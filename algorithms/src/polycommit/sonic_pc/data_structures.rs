@@ -374,6 +374,7 @@ impl<E: PairingEngine> CommitterKey<E> {
         };
         let mut enforced_degree_bounds = vec![];
         let mut biggest_ck = None;
+        let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
         for ck in committer_keys {
             if biggest_ck.is_none() {
                 biggest_ck = Some(ck);
@@ -381,6 +382,7 @@ impl<E: PairingEngine> CommitterKey<E> {
                 biggest_ck = Some(ck);
             }
             union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
+            shifted_powers_of_beta_times_gamma_g.append(&mut ck.shifted_powers_of_beta_times_gamma_g.clone().unwrap());
             enforced_degree_bounds.append(&mut ck.enforced_degree_bounds.clone().unwrap());
         }
 
@@ -388,12 +390,12 @@ impl<E: PairingEngine> CommitterKey<E> {
         union.powers_of_beta_g = biggest_ck.powers_of_beta_g.clone();
         union.powers_of_beta_times_gamma_g = biggest_ck.powers_of_beta_times_gamma_g.clone();
         union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.clone();
-        union.shifted_powers_of_beta_times_gamma_g = biggest_ck.shifted_powers_of_beta_times_gamma_g.clone();
         union.max_degree = biggest_ck.max_degree;
 
         if enforced_degree_bounds.len() > 0 {
             enforced_degree_bounds.sort();
             union.enforced_degree_bounds = Some(enforced_degree_bounds);
+            union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
         }
 
        union 
