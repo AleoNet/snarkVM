@@ -15,7 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch, cow_to_cloned, cow_to_copied,
+    atomic_write_batch,
+    cow_to_cloned,
+    cow_to_copied,
     store::helpers::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{
@@ -1260,9 +1262,9 @@ mod tests {
             let new_value = Value::from_str("123456789u128").unwrap();
 
             // Ensure calling `insert_key_value` with a different key and value fails.
-            assert!(program_store
-                .insert_key_value(&program_id, &mapping_name, key.clone(), new_value.clone())
-                .is_err());
+            assert!(
+                program_store.insert_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).is_err()
+            );
             // Ensure the key is still initialized.
             assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value still returns Some(value).
