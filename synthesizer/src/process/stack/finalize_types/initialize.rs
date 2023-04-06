@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::finalize::{Load, LoadOr, Store};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -27,7 +28,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
             // Check the input register type.
-            finalize_types.check_input(stack, input.register(), &RegisterType::from(*input.finalize_type()))?;
+            finalize_types.check_input(stack, input.register(), input.plaintext_type())?;
         }
 
         // Step 2. Check the commands are well-formed.
@@ -39,7 +40,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 3. Check the outputs are well-formed.
         for output in finalize.outputs() {
             // Check the output operand type.
-            finalize_types.check_output(stack, output.operand(), &RegisterType::from(*output.finalize_type()))?;
+            finalize_types.check_output(stack, output.operand(), output.plaintext_type())?;
         }
 
         Ok(finalize_types)
@@ -49,7 +50,7 @@ impl<N: Network> FinalizeTypes<N> {
 impl<N: Network> FinalizeTypes<N> {
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
-    fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+    fn add_input(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
         // Ensure there are no destination registers set yet.
         ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
 
@@ -74,7 +75,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
-    fn add_destination(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+    fn add_destination(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
@@ -99,26 +100,19 @@ impl<N: Network> FinalizeTypes<N> {
 impl<N: Network> FinalizeTypes<N> {
     /// Ensure the given input register is well-formed.
     #[inline]
-    fn check_input(&mut self, stack: &Stack<N>, register: &Register<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_input(
+        &mut self,
+        stack: &Stack<N>,
+        register: &Register<N>,
+        register_type: &PlaintextType<N>,
+    ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+            PlaintextType::Literal(..) => (),
+            PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::Record(identifier) => {
-                // Ensure the record type is defined in the program.
-                if !stack.program().contains_record(identifier) {
-                    bail!("Record '{identifier}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::ExternalRecord(locator) => {
-                // Ensure the external record type is defined in the program.
-                if !stack.contains_external_record(locator) {
-                    bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
         };
@@ -135,7 +129,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensure the given output operand is well-formed.
     #[inline]
-    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &PlaintextType<N>) -> Result<()> {
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
@@ -151,23 +145,11 @@ impl<N: Network> FinalizeTypes<N> {
 
         // Ensure the operand type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+            PlaintextType::Literal(..) => (),
+            PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::Record(identifier) => {
-                // Ensure the record type is defined in the program.
-                if !stack.program().contains_record(identifier) {
-                    bail!("Record '{identifier}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-            RegisterType::ExternalRecord(locator) => {
-                // Ensure the external record type is defined in the program.
-                if !stack.contains_external_record(locator) {
-                    bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
         };
@@ -187,122 +169,114 @@ impl<N: Network> FinalizeTypes<N> {
     #[inline]
     fn check_command(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, command: &Command<N>) -> Result<()> {
         match command {
-            Command::Decrement(decrement) => self.check_decrement(stack, finalize_name, decrement)?,
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
-            Command::Increment(increment) => self.check_increment(stack, finalize_name, increment)?,
+            Command::Load(load) => self.check_load(stack, finalize_name, load)?,
+            Command::LoadDefault(load_or) => self.check_load_or(stack, finalize_name, load_or)?,
+            Command::Store(store) => self.check_store(stack, finalize_name, store)?,
         }
         Ok(())
     }
 
-    /// Ensures the given decrement command is well-formed.
+    /// Ensures the given `load` command is well-formed.
     #[inline]
-    fn check_decrement(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, decrement: &Decrement<N>) -> Result<()> {
-        // Ensure the declared mapping in decrement is defined in the program.
-        if !stack.program().contains_mapping(decrement.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", decrement.mapping_name(), stack.program_id())
+    fn check_load(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load: &Load<N>) -> Result<()> {
+        // Ensure the declared mapping in `load` is defined in the program.
+        if !stack.program().contains_mapping(load.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load.mapping_name(), stack.program_id())
         }
-
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(load.mapping_name()).unwrap();
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, decrement.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            RegisterType::Plaintext(..) => (),
-            RegisterType::Record(..) => bail!("Decrement cannot use a 'record' as a key (found at '{decrement}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Decrement cannot use an 'external record' as a key (found at '{decrement}')")
-            }
+        let load_key_type = self.get_type_from_operand(stack, load.key())?;
+        // Check that the key type in the mapping matches the key type in the load.
+        if *mapping_key_type != load_key_type {
+            bail!(
+                "Key type in `load` '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
-
-        // Retrieve the register type of the value.
-        let value_type = self.get_type_from_operand(stack, decrement.value())?;
-        // Ensure the decrement value type is a literal that implements the `Add` operation.
-        match value_type {
-            RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => {
-                match literal_type {
-                    LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
-                        bail!("Decrement cannot decrement by a(n) '{literal_type}' (found at '{decrement}')")
-                    }
-                    // These literal types are valid for the 'decrement' command.
-                    LiteralType::Field
-                    | LiteralType::Group
-                    | LiteralType::Scalar
-                    | LiteralType::I8
-                    | LiteralType::I16
-                    | LiteralType::I32
-                    | LiteralType::I64
-                    | LiteralType::I128
-                    | LiteralType::U8
-                    | LiteralType::U16
-                    | LiteralType::U32
-                    | LiteralType::U64
-                    | LiteralType::U128 => {}
-                }
-            }
-            RegisterType::Plaintext(PlaintextType::Struct(..)) => {
-                bail!("Decrement cannot decrement by an 'struct' (found at '{decrement}')")
-            }
-            RegisterType::Record(..) => bail!("Decrement cannot decrement by a 'record' (found at '{decrement}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Decrement cannot decrement by an 'external record' (found at '{decrement}')")
-            }
-        }
-
+        // Get the destination register.
+        let destination = load.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, *mapping_value_type)?;
         Ok(())
     }
 
-    /// Ensures the given increment command is well-formed.
+    /// Ensures the given `load_or` command is well-formed.
     #[inline]
-    fn check_increment(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, increment: &Increment<N>) -> Result<()> {
-        // Ensure the declared mapping in increment is defined in the program.
-        if !stack.program().contains_mapping(increment.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", increment.mapping_name(), stack.program_id())
+    fn check_load_or(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, load_or: &LoadOr<N>) -> Result<()> {
+        // Ensure the declared mapping in `load_or` is defined in the program.
+        if !stack.program().contains_mapping(load_or.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", load_or.mapping_name(), stack.program_id())
         }
-
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(load_or.mapping_name()).unwrap();
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, increment.key())?;
-        // Ensure the key is not a record or external record.
-        match key_type {
-            RegisterType::Plaintext(..) => (),
-            RegisterType::Record(..) => bail!("Increment cannot use a 'record' as a key (found at '{increment}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Increment cannot use an 'external record' as a key (found at '{increment}')")
-            }
+        let load_key_type = self.get_type_from_operand(stack, load_or.key())?;
+        // Check that the key type in the mapping matches the key type in the load.
+        if *mapping_key_type != load_key_type {
+            bail!(
+                "Key type in `load_or` '{load_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
-
-        // Retrieve the register type of the value.
-        let value_type = self.get_type_from_operand(stack, increment.value())?;
-        // Ensure the increment value type is a literal that implements the `Add` operation.
-        match value_type {
-            RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => {
-                match literal_type {
-                    LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
-                        bail!("Increment cannot increment by a(n) '{literal_type}' (found at '{increment}')")
-                    }
-                    // These literal types are valid for the 'increment' command.
-                    LiteralType::Field
-                    | LiteralType::Group
-                    | LiteralType::Scalar
-                    | LiteralType::I8
-                    | LiteralType::I16
-                    | LiteralType::I32
-                    | LiteralType::I64
-                    | LiteralType::I128
-                    | LiteralType::U8
-                    | LiteralType::U16
-                    | LiteralType::U32
-                    | LiteralType::U64
-                    | LiteralType::U128 => {}
-                }
-            }
-            RegisterType::Plaintext(PlaintextType::Struct(..)) => {
-                bail!("Increment cannot increment by an 'struct' (found at '{increment}')")
-            }
-            RegisterType::Record(..) => bail!("Increment cannot increment by a 'record' (found at '{increment}')"),
-            RegisterType::ExternalRecord(..) => {
-                bail!("Increment cannot increment by an 'external record' (found at '{increment}')")
-            }
+        // Retrieve the register type of the default value.
+        let default_value_type = self.get_type_from_operand(stack, load_or.default())?;
+        // Check that the value type in the mapping matches the default value type in the load.
+        if *mapping_value_type != default_value_type {
+            bail!(
+                "Default value type in `load_or` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+            )
         }
+        // Get the destination register.
+        let destination = load_or.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, *mapping_value_type)?;
+        Ok(())
+    }
 
+    /// Ensures the given `store` command is well-formed.
+    #[inline]
+    fn check_store(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, store: &Store<N>) -> Result<()> {
+        // Ensure the declared mapping in `store` is defined in the program.
+        if !stack.program().contains_mapping(store.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", store.mapping_name(), stack.program_id())
+        }
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(store.mapping_name()).unwrap();
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Get the mapping value type.
+        let mapping_value_type = mapping.value().plaintext_type();
+        // Retrieve the register type of the key.
+        let store_key_type = self.get_type_from_operand(stack, store.key())?;
+        // Check that the key type in the mapping matches the key type in the store.
+        if *mapping_key_type != store_key_type {
+            bail!(
+                "Key type in `store` '{store_key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
+        }
+        // Retrieve the type of the value.
+        let store_value_type = self.get_type_from_operand(stack, store.value())?;
+        // Check that the value type in the mapping matches the type of the value.
+        if *mapping_value_type != store_value_type {
+            bail!(
+                "Value type in `store` '{store_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+            )
+        }
         Ok(())
     }
 
@@ -322,7 +296,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Iterate over the operands, and retrieve the register type of each operand.
         for operand in instruction.operands() {
             // Retrieve and append the register type.
-            operand_types.push(self.get_type_from_operand(stack, operand)?);
+            operand_types.push(RegisterType::Plaintext(self.get_type_from_operand(stack, operand)?));
         }
 
         // Compute the destination register types.
@@ -334,6 +308,11 @@ impl<N: Network> FinalizeTypes<N> {
         {
             // Ensure the destination register is a locator (and does not reference a member).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+            // Ensure that the destination type is a plaintext type.
+            let destination_type = match destination_type {
+                RegisterType::Plaintext(destination_type) => destination_type,
+                _ => bail!("Destination type '{destination_type}' must be a plaintext type."),
+            };
             // Insert the destination register.
             self.add_destination(destination, destination_type)?;
         }

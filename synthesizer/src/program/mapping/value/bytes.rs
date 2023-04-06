@@ -22,8 +22,8 @@ impl<N: Network> FromBytes for MapValue<N> {
         // Read the value name.
         let name = FromBytes::read_le(&mut reader)?;
         // Read the value type.
-        let finalize_type = FromBytes::read_le(&mut reader)?;
-        Ok(Self { name, finalize_type })
+        let plaintext_type = FromBytes::read_le(&mut reader)?;
+        Ok(Self { name, plaintext_type })
     }
 }
 
@@ -33,6 +33,6 @@ impl<N: Network> ToBytes for MapValue<N> {
         // Write the value name.
         self.name.write_le(&mut writer)?;
         // Write the value type.
-        self.finalize_type.write_le(&mut writer)
+        self.plaintext_type.write_le(&mut writer)
     }
 }

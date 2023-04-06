@@ -29,9 +29,10 @@ mod parse;
 use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{FinalizeType, Identifier, Register},
+    program::{Identifier, PlaintextType, Register},
 };
 
+use console::program::RegisterType;
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -64,8 +65,8 @@ impl<N: Network> Finalize<N> {
     }
 
     /// Returns the finalize input types.
-    pub fn input_types(&self) -> Vec<FinalizeType<N>> {
-        self.inputs.iter().map(|input| *input.finalize_type()).collect()
+    pub fn input_types(&self) -> Vec<PlaintextType<N>> {
+        self.inputs.iter().map(|input| *input.plaintext_type()).collect()
     }
 
     /// Returns the finalize commands.
@@ -78,9 +79,9 @@ impl<N: Network> Finalize<N> {
         &self.outputs
     }
 
-    /// Returns the finalize output types.
-    pub fn output_types(&self) -> Vec<FinalizeType<N>> {
-        self.outputs.iter().map(|output| *output.finalize_type()).collect()
+    /// Returns the plaintext output types.
+    pub fn output_types(&self) -> Vec<PlaintextType<N>> {
+        self.outputs.iter().map(|output| *output.plaintext_type()).collect()
     }
 }
 
@@ -124,17 +125,34 @@ impl<N: Network> Finalize<N> {
         ensure!(self.commands.len() <= N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
 
         // If the command is an instruction, perform additional checks.
-        if let Command::Instruction(instruction) = &command {
-            // Ensure the instruction is not a `call`.
-            ensure!(
-                !matches!(instruction, Instruction::Call(..)),
-                "Forbidden operation: Finalize cannot invoke a 'call'"
-            );
-
-            // Ensure the destination register is a locator.
-            for register in instruction.destinations() {
-                ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+        match &command {
+            Command::Instruction(instruction) => {
+                match instruction {
+                    // Ensure the instruction is not a `call`.
+                    Instruction::Call(_) => bail!("Forbidden operation: Finalize cannot invoke a 'call'"),
+                    // Ensure the instruction is not a `cast` to a record.
+                    Instruction::Cast(cast) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)) => {
+                        bail!("Forbidden operation: Finalize cannot cast to a record")
+                    }
+                    _ => {}
+                }
+                // Ensure the destination register is a locator.
+                for register in instruction.destinations() {
+                    ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+                }
             }
+            Command::Load(load) => {
+                // Ensure the destination register is a locator.
+                ensure!(matches!(load.destination(), Register::Locator(..)), "Destination register must be a locator");
+            }
+            Command::LoadDefault(load_or) => {
+                // Ensure the destination register is a locator.
+                ensure!(
+                    matches!(load_or.destination(), Register::Locator(..)),
+                    "Destination register must be a locator"
+                );
+            }
+            _ => {}
         }
 
         // Insert the command.
