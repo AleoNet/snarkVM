@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod speculate;
+pub use speculate::*;
+
 use crate::{
     atomic_write_batch,
     cow_to_cloned,
@@ -38,11 +41,11 @@ use rayon::prelude::*;
 /// The depth of the Merkle tree for the programs.
 pub const PROGRAMS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for each program.
-pub const PROGRAM_DEPTH: u8 = 10;
+pub const PROGRAM_DEPTH: u8 = 4;
 // TODO (raychu86): Handle different Merkle tree depths for different keys types.
 //  i.e. `u8` and `address` keys should have different depths.
 /// The depth of the Merkle tree for each mapping.
-pub const MAPPING_DEPTH: u8 = 32;
+pub const MAPPING_DEPTH: u8 = 30;
 
 /// The Merkle tree for the program state.
 pub type StorageTree<N> = BHPMerkleTree<N, PROGRAMS_DEPTH>;
@@ -55,11 +58,11 @@ pub type MappingTree<N> = BHPMerkleTree<N, MAPPING_DEPTH>;
 #[derive(Clone, Copy, Debug)]
 pub enum MerkleTreeUpdate<N: Network> {
     /// Insert a leaf to the merkle tree.
-    /// (`mapping ID`, `value ID`)
-    InsertValue(Field<N>, Field<N>),
+    /// (`mapping ID`, `key ID`, `value ID`)
+    InsertValue(Field<N>, Field<N>, Field<N>),
     /// Update the merkle tree leaf at the given index.
-    /// (`mapping ID`, `index`, `value ID`)
-    UpdateValue(Field<N>, usize, Field<N>),
+    /// (`mapping ID`, `index`, `key ID`, `value ID`)
+    UpdateValue(Field<N>, usize, Field<N>, Field<N>),
     /// Remove the merkle tree leaf at the given index.
     /// (`mapping ID`, `index`)
     RemoveValue(Field<N>, usize),
@@ -75,11 +78,22 @@ impl<N: Network> MerkleTreeUpdate<N> {
     /// Returns the mapping ID.
     pub fn mapping_id(&self) -> Field<N> {
         match self {
-            MerkleTreeUpdate::InsertValue(mapping_id, _) => *mapping_id,
-            MerkleTreeUpdate::UpdateValue(mapping_id, _, _) => *mapping_id,
+            MerkleTreeUpdate::InsertValue(mapping_id, _, _) => *mapping_id,
+            MerkleTreeUpdate::UpdateValue(mapping_id, _, _, _) => *mapping_id,
             MerkleTreeUpdate::RemoveValue(mapping_id, _) => *mapping_id,
             MerkleTreeUpdate::InsertMapping(mapping_id) => *mapping_id,
             MerkleTreeUpdate::RemoveMapping(mapping_id) => *mapping_id,
+        }
+    }
+
+    /// Returns the key ID if it exists.
+    pub fn key_id(&self) -> Option<Field<N>> {
+        match self {
+            MerkleTreeUpdate::InsertValue(_, key_id, _) => Some(*key_id),
+            MerkleTreeUpdate::UpdateValue(_, _, key_id, _) => Some(*key_id),
+            MerkleTreeUpdate::RemoveValue(_, _) => None,
+            MerkleTreeUpdate::InsertMapping(_) => None,
+            MerkleTreeUpdate::RemoveMapping(_) => None,
         }
     }
 }
@@ -677,11 +691,11 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
                 // Perform the update.
                 match update {
-                    MerkleTreeUpdate::InsertValue(_, leaf) => {
+                    MerkleTreeUpdate::InsertValue(_, _, leaf) => {
                         // Insert the new leaf.
                         key_value_leaves.push(leaf.to_bits_le());
                     }
-                    MerkleTreeUpdate::UpdateValue(_, index, leaf) => {
+                    MerkleTreeUpdate::UpdateValue(_, index, _, leaf) => {
                         let elem = key_value_leaves
                             .get_mut(*index)
                             .ok_or_else(|| anyhow!("Missing key value leaf at index {index}"))?;
@@ -877,7 +891,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
             // Construct the updated program tree.
             let program_tree = self
                 .storage
-                .to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertValue(mapping_id, value_id)]))?;
+                .to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id)]))?;
 
             // Fetch the index of the program ID.
             let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
@@ -935,8 +949,8 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
 
             // Construct the update operation. If the key ID does not exist, insert it.
             let update = match key_value_map.get_index_of(&key_id) {
-                Some(key_id_index) => MerkleTreeUpdate::UpdateValue(mapping_id, key_id_index, value_id),
-                None => MerkleTreeUpdate::InsertValue(mapping_id, value_id),
+                Some(key_id_index) => MerkleTreeUpdate::UpdateValue(mapping_id, key_id_index, key_id, value_id),
+                None => MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id),
             };
 
             // Construct the updated program tree.
@@ -1139,6 +1153,27 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Returns the mapping names for the given `program ID`.
     pub fn get_mapping_names(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
         self.storage.get_mapping_names(program_id)
+    }
+
+    /// Returns the index for the given `program ID`, `mapping name`, and `key` if it exists.
+    pub fn get_key_index(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<Option<u32>> {
+        match self.storage.get_mapping_id(program_id, mapping_name)? {
+            Some(mapping_id) => match self.storage.key_value_id_map().get(&mapping_id)? {
+                Some(key_value_map) => {
+                    // Compute the key ID.
+                    let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+
+                    Ok(key_value_map.get_index_of(&key_id).map(|index| index as u32))
+                }
+                None => Ok(None),
+            },
+            None => Ok(None),
+        }
     }
 
     /// Returns the value for the given `program ID`, `mapping name`, and `key`.
