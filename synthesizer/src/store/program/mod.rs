@@ -32,7 +32,7 @@ use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use std::{collections::BTreeMap, sync::Arc};
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// The depth of the Merkle tree for the programs.
