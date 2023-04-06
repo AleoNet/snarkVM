@@ -16,29 +16,38 @@
 
 use super::*;
 
-/// Create a new Aleo package.
+/// Compiles an Aleo program.
 #[derive(Debug, Parser)]
-pub struct New {
-    /// The program name.
-    name: String,
+pub struct Build {
+    /// Uses the specified endpoint.
+    #[clap(long)]
+    endpoint: Option<String>,
+    /// Toggles offline mode.
+    #[clap(long)]
+    offline: bool,
 }
 
-impl New {
-    /// Creates an Aleo package with the specified name.
+impl Build {
+    /// Compiles an Aleo program with the specified name.
     pub fn parse(self) -> Result<String> {
         // Derive the program directory path.
-        let mut path = std::env::current_dir()?;
-        path.push(&self.name);
+        let path = std::env::current_dir()?;
 
-        // Create the program ID from the name.
-        let id = ProgramID::<CurrentNetwork>::from_str(&format!("{}.aleo", self.name))?;
+        // Load the package.
+        let package = Package::open(&path)?;
 
-        // Create the package.
-        Package::create(&path, &id)?;
+        // Build the package, if the package requires building.
+        package.build::<Aleo>(self.endpoint)?;
+
+        // package.build::<Aleo>(match self.offline {
+        //     true => None,
+        //     false => Some(endpoint.unwrap_or("https://vm.aleo.org/testnet3/build".to_string())),
+        // })?;
 
         // Prepare the path string.
         let path_string = format!("(in \"{}\")", path.display());
 
-        Ok(format!("✅ Created an Aleo program '{}' {}", self.name.bold(), path_string.dimmed()))
+        // Log the build as successful.
+        Ok(format!("✅ Built '{}' {}", package.program_id().to_string().bold(), path_string.dimmed()))
     }
 }

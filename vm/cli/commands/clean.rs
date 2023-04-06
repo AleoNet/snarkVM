@@ -16,29 +16,22 @@
 
 use super::*;
 
-/// Create a new Aleo package.
+/// Cleans the Aleo package build directory.
 #[derive(Debug, Parser)]
-pub struct New {
-    /// The program name.
-    name: String,
-}
+pub struct Clean;
 
-impl New {
-    /// Creates an Aleo package with the specified name.
+impl Clean {
+    /// Cleans an Aleo package build directory.
     pub fn parse(self) -> Result<String> {
         // Derive the program directory path.
-        let mut path = std::env::current_dir()?;
-        path.push(&self.name);
+        let path = std::env::current_dir()?;
 
-        // Create the program ID from the name.
-        let id = ProgramID::<CurrentNetwork>::from_str(&format!("{}.aleo", self.name))?;
-
-        // Create the package.
-        Package::create(&path, &id)?;
+        // Clean the build directory.
+        Package::<CurrentNetwork>::clean(&path)?;
 
         // Prepare the path string.
-        let path_string = format!("(in \"{}\")", path.display());
+        let path_string = format!("(in \"{}\")", path.join("build").display());
 
-        Ok(format!("✅ Created an Aleo program '{}' {}", self.name.bold(), path_string.dimmed()))
+        Ok(format!("✅ Cleaned the build directory {}", path_string.dimmed()))
     }
 }
