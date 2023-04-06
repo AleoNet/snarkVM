@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load, Opcode, Operand, ProgramStorage, ProgramStore, Stack};
+use crate::{Load, Opcode, Operand, ProgramStorage, ProgramStore, Speculate, Stack};
 use console::{
     network::prelude::*,
     program::{Identifier, Value},
@@ -85,6 +85,31 @@ impl<N: Network> Store<N> {
 
         // Update the value in storage.
         store.update_key_value(stack.program_id(), &self.mapping, key, value)?;
+
+        Ok(())
+    }
+
+    /// Speculatively evaluate the command.
+    #[inline]
+    pub fn speculate_finalize<P: ProgramStorage<N>>(
+        &self,
+        stack: &Stack<N>,
+        store: &ProgramStore<N, P>,
+        registers: &mut impl Load<N>,
+        speculate: &mut Speculate<N>,
+    ) -> Result<()> {
+        // Ensure the mapping exists in storage.
+        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
+            bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
+        }
+
+        // Load the key operand as a plaintext.
+        let key = registers.load_plaintext(stack, &self.key)?;
+        // Load the value operand as a plaintext.
+        let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
+
+        // Update the value in storage.
+        speculate.update_key_value(stack.program_id(), &self.mapping, key, value)?;
 
         Ok(())
     }

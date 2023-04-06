@@ -26,7 +26,7 @@ pub use load_or::*;
 mod store;
 pub use store::*;
 
-use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Stack};
+use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Speculate, Stack};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -55,6 +55,23 @@ impl<N: Network> Command<N> {
             Command::Load(load) => load.evaluate_finalize(stack, program_store, registers),
             Command::LoadDefault(load_or) => load_or.evaluate_finalize(stack, program_store, registers),
             Command::Store(store) => store.evaluate_finalize(stack, program_store, registers),
+        }
+    }
+
+    /// Speculatively evaluate the command.
+    #[inline]
+    pub fn speculate_finalize<P: ProgramStorage<N>>(
+        &self,
+        stack: &Stack<N>,
+        program_store: &ProgramStore<N, P>,
+        registers: &mut FinalizeRegisters<N>,
+        speculate: &mut Speculate<N>,
+    ) -> Result<()> {
+        match self {
+            Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
+            Command::Load(load) => load.speculate_finalize(stack, program_store, registers, speculate),
+            Command::LoadDefault(load_or) => load_or.speculate_finalize(stack, program_store, registers, speculate),
+            Command::Store(store) => store.speculate_finalize(stack, program_store, registers, speculate),
         }
     }
 }
