@@ -43,10 +43,6 @@ pub struct Speculate<N: Network> {
     /// The list of accepted transactions that have been processed.
     pub accepted_transactions: Vec<N::TransactionID>,
 
-    /// The transactions and the mapping ids that they update.
-    /// (`transaction ID`, `mapping IDs`)
-    pub updated_mappings: IndexMap<N::TransactionID, IndexSet<Field<N>>>,
-
     /// The values updated in the speculate state. (`program ID`, (`mapping name`, (`key`, `value`)))
     pub speculate_state: IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Vec<u8>, Value<N>>>>,
 
@@ -65,7 +61,6 @@ impl<N: Network> Speculate<N> {
             latest_storage_root,
             processed_transactions: Default::default(),
             accepted_transactions: Default::default(),
-            updated_mappings: Default::default(),
             speculate_state: Default::default(),
             operations: Default::default(),
             updated_program_trees: None,
@@ -76,7 +71,6 @@ impl<N: Network> Speculate<N> {
     pub fn contains_transaction(&self, transaction_id: &N::TransactionID) -> bool {
         self.processed_transactions.contains(transaction_id)
             || self.accepted_transactions.contains(transaction_id)
-            || self.updated_mappings.contains_key(transaction_id)
             || self.operations.contains_key(transaction_id)
     }
 
@@ -164,9 +158,6 @@ impl<N: Network> Speculate<N> {
 
         // Update the log of operations.
         self.operations.insert(transaction_id, operations);
-
-        // Update the transaction mapping IDs.
-        self.updated_mappings.insert(transaction_id, mapping_ids);
 
         Ok(())
     }
@@ -259,9 +250,6 @@ impl<N: Network> Speculate<N> {
 
         // Update the log of operations.
         self.operations.insert(transaction_id, operations);
-
-        // Update the transaction mapping IDs.
-        self.updated_mappings.insert(transaction_id, updated_mapping_ids);
 
         Ok(())
     }
