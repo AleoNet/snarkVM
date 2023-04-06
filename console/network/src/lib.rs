@@ -89,21 +89,21 @@ pub trait Network:
     const INCLUSION_FUNCTION_NAME: &'static str;
 
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1663718400; // 2022-09-21 00:00:00 UTC
+    const GENESIS_TIMESTAMP: i64 = 1680307200; // 2023-04-01 00:00:00 UTC
     /// The genesis block coinbase target.
-    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 10).saturating_sub(1); // 11 1111 1111
+    const GENESIS_COINBASE_TARGET: u64 = (1u64 << 12).saturating_sub(1); // 1111 1111 1111
     /// The genesis block proof target.
-    const GENESIS_PROOF_TARGET: u64 = 8; // 00 0000 1000
+    const GENESIS_PROOF_TARGET: u64 = 32; // 0000 0010 0000
 
     /// The starting supply of Aleo credits.
-    const STARTING_SUPPLY: u64 = 1_100_000_000_000_000; // 1.1B credits
+    const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
 
     /// The anchor time per block in seconds, which must be greater than the round time per block.
     const ANCHOR_TIME: u16 = 25;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.
-    const MAX_PROVER_SOLUTIONS: usize = 1 << 20; // 1,048,576 prover solutions
+    const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
     /// The number of blocks per epoch (1 hour).
     const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
 

@@ -44,7 +44,7 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 use itertools::Itertools;
 use rand_core::RngCore;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {

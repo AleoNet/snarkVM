@@ -26,10 +26,10 @@ use std::{
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-#[cfg(not(feature = "parallel"))]
+#[cfg(feature = "serial")]
 use itertools::Itertools;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 use super::PolyMultiplier;

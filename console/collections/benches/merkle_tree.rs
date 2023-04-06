@@ -111,7 +111,7 @@ fn update(c: &mut Criterion) {
     }
 }
 
-fn batch_update(c: &mut Criterion) {
+fn update_many(c: &mut Criterion) {
     let mut rng = TestRng::default();
     // Accumulate leaves in a vector to avoid recomputing across iterations.
     let leaves = generate_leaves!(*NUM_LEAVES.last().unwrap(), &mut rng);
@@ -134,11 +134,11 @@ fn batch_update(c: &mut Criterion) {
             // Construct a Merkle tree with the specified number of leaves.
             let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves[..*num_leaves]).unwrap();
             let num_new_leaves = std::cmp::min(*num_new_leaves, updates.len());
-            c.bench_function(&format!("MerkleTree/batch_update/{num_leaves}/{num_new_leaves}",), |b| {
+            c.bench_function(&format!("MerkleTree/update_many/{num_leaves}/{num_new_leaves}",), |b| {
                 b.iter_batched(
                     || merkle_tree.clone(),
                     |mut merkle_tree| {
-                        merkle_tree.batch_update(&updates[..num_new_leaves]).unwrap();
+                        merkle_tree.update_many(&updates[..num_new_leaves]).unwrap();
                     },
                     BatchSize::SmallInput,
                 )
@@ -147,8 +147,8 @@ fn batch_update(c: &mut Criterion) {
     }
 }
 
-fn compare_single_leaf_update(c: &mut Criterion) {
-    let mut group = c.benchmark_group("SingleLeafUpdate");
+fn update_vs_update_many(c: &mut Criterion) {
+    let mut group = c.benchmark_group("UpdateVSUpdateMany");
     let mut rng = TestRng::default();
     // Accumulate leaves in a vector to avoid recomputing across iterations.
     let max_leaves = 2usize.saturating_pow(MAX_INSTANTIATED_DEPTH as u32);
@@ -163,14 +163,14 @@ fn compare_single_leaf_update(c: &mut Criterion) {
         let index = index % num_leaves;
         let new_leaf = generate_leaves!(1, &mut rng).pop().unwrap();
         // Benchmark the standard update operation.
-        group.bench_with_input(BenchmarkId::new("Standard", &format!("{depth}")), &new_leaf, |b, new_leaf| {
+        group.bench_with_input(BenchmarkId::new("Single", &format!("{depth}")), &new_leaf, |b, new_leaf| {
             b.iter_batched(|| tree.clone(), |mut tree| tree.update(index, new_leaf), BatchSize::SmallInput)
         });
-        // Benchmark the batch update operation.
+        // Benchmark the `update_many` operation.
         group.bench_with_input(
             BenchmarkId::new("Batch", &format!("{depth}")),
             &vec![(index, new_leaf)],
-            |b, updates| b.iter_batched(|| tree.clone(), |mut tree| tree.batch_update(updates), BatchSize::SmallInput),
+            |b, updates| b.iter_batched(|| tree.clone(), |mut tree| tree.update_many(updates), BatchSize::SmallInput),
         );
     }
 }
@@ -178,6 +178,6 @@ fn compare_single_leaf_update(c: &mut Criterion) {
 criterion_group! {
     name = merkle_tree;
     config = Criterion::default().sample_size(10);
-    targets = new, append, update, batch_update, compare_single_leaf_update
+    targets = new, append, update, update_many, update_vs_update_many
 }
 criterion_main!(merkle_tree);

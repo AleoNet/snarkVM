@@ -125,11 +125,11 @@ mod tests {
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 6, 621, 622)
+        check_new(Mode::Public, 9, 6, 873, 875)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 9, 0, 623, 620)
+        check_new(Mode::Private, 9, 0, 875, 873)
     }
 }
