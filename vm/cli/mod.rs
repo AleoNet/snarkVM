@@ -20,5 +20,11 @@ pub use cli::*;
 mod errors;
 pub use errors::*;
 
+mod new;
+pub use new::*;
+
 mod updater;
 pub use updater::*;
+
+pub(crate) type CurrentNetwork = crate::prelude::Testnet3;
+pub(crate) type Aleo = crate::circuit::AleoV0;
