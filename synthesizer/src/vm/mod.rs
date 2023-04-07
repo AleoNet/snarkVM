@@ -226,6 +226,10 @@ program testing.aleo;
 struct message:
     amount as u128;
 
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
+
 record token:
     owner as address.private;
     gates as u64.private;
@@ -245,7 +249,40 @@ function compute:
     add r0.amount r1.amount into r4;
     cast r3.owner r3.gates r3.amount into r5 as token.record;
     output r4 as u128.public;
-    output r5 as token.record;",
+    output r5 as token.record;
+
+function mint_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    finalize r0 r1;
+
+finalize mint_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+
+    load_or account[r0] 0u64 into r2;
+    add r2 r1 into r3;
+    store r3 into account[r0];
+
+function transfer_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+
+    finalize self.caller r0 r1;
+
+finalize transfer_public:
+    input r0 as address.public;
+    input r1 as address.public;
+    input r2 as u64.public;
+
+    load_or account[r0] 0u64 into r3;
+    load_or account[r1] 0u64 into r4;
+
+    sub r3 r2 into r5;
+    add r4 r2 into r6;
+
+    store r5 into account[r0];
+    store r6 into account[r1];",
                 )
                 .unwrap()
             })
@@ -437,5 +474,75 @@ function compute:
                 fee
             })
             .clone()
+    }
+
+    pub(crate) fn sample_public_mint(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        recipient: Address<CurrentNetwork>,
+        amount: u64,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
+        assert!(vm.contains_program(&ProgramID::from_str("testing.aleo").unwrap()));
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+
+        // Authorize.
+        let authorization = vm
+            .authorize(
+                &caller_private_key,
+                "testing.aleo",
+                "mint_public",
+                [
+                    Value::<CurrentNetwork>::from_str(&recipient.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
+                ]
+                .into_iter(),
+                rng,
+            )
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Execute.
+        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+        // Verify.
+        assert!(vm.verify_transaction(&transaction));
+
+        // Return the transaction.
+        transaction
+    }
+
+    pub(crate) fn sample_public_transfer(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        caller_private_key: PrivateKey<CurrentNetwork>,
+        recipient: Address<CurrentNetwork>,
+        amount: u64,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
+        assert!(vm.contains_program(&ProgramID::from_str("testing.aleo").unwrap()));
+
+        // Authorize.
+        let authorization = vm
+            .authorize(
+                &caller_private_key,
+                "testing.aleo",
+                "transfer_public",
+                [
+                    Value::<CurrentNetwork>::from_str(&recipient.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
+                ]
+                .into_iter(),
+                rng,
+            )
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Execute.
+        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+        // Verify.
+        assert!(vm.verify_transaction(&transaction));
+
+        // Return the transaction.
+        transaction
     }
 }

@@ -242,6 +242,7 @@ impl<N: Network> Speculate<N> {
                         operations.push((*program_id, operation));
                     }
 
+                    // TODO (raychu86): Catch the panics here.
                     // Perform the speculative execution on the command.
                     command.speculate_finalize(stack, vm.program_store(), &mut registers, self)?;
                 }
@@ -308,6 +309,24 @@ impl<N: Network> Speculate<N> {
         self.accepted_transactions.push(transaction.id());
 
         Ok(true)
+    }
+
+    /// Speculatively execute the given transactions. Returns the transactions that were accepted.
+    pub fn speculate_transactions<C: ConsensusStorage<N>>(
+        &mut self,
+        vm: &VM<N, C>,
+        transactions: &[Transaction<N>],
+    ) -> Result<Vec<N::TransactionID>> {
+        let mut accepted_transactions = Vec::new();
+
+        // Perform `speculate` on each transaction.
+        for transaction in transactions {
+            if self.speculate_transaction(vm, transaction)? {
+                accepted_transactions.push(transaction.id());
+            }
+        }
+
+        Ok(accepted_transactions)
     }
 
     /// Finalize the speculate and build the merkle trees.
@@ -387,20 +406,81 @@ impl<N: Network> Speculate<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Transactions;
+    use crate::{vm::test_helpers, Block, ConsensusMemory, Header, Metadata, Transaction, Transactions};
+    use console::{
+        account::{Address, PrivateKey},
+        types::Field,
+    };
+
+    type CurrentNetwork = test_helpers::CurrentNetwork;
+
+    /// Construct a new block based on the given transactions.
+    fn sample_next_block<R: Rng + CryptoRng>(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        private_key: &PrivateKey<CurrentNetwork>,
+        transactions: &[Transaction<CurrentNetwork>],
+        previous_block: &Block<CurrentNetwork>,
+        rng: &mut R,
+    ) -> Result<Block<CurrentNetwork>> {
+        // Construct the new block header.
+        let transactions = Transactions::from(transactions);
+        // Construct the metadata associated with the block.
+        let metadata = Metadata::new(
+            CurrentNetwork::ID,
+            previous_block.round() + 1,
+            previous_block.height() + 1,
+            CurrentNetwork::GENESIS_COINBASE_TARGET,
+            CurrentNetwork::GENESIS_PROOF_TARGET,
+            previous_block.last_coinbase_target(),
+            previous_block.last_coinbase_timestamp(),
+            CurrentNetwork::GENESIS_TIMESTAMP + 1,
+        )?;
+
+        let header = Header::from(
+            *vm.block_store().current_state_root(),
+            transactions.to_root().unwrap(),
+            Field::zero(),
+            metadata,
+        )?;
+
+        Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
+    }
+
+    #[test]
+    fn test_speculate_duplicate() {
+        let rng = &mut TestRng::default();
+
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
+
+        // Initialize the state speculator.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
+
+        // Check that `speculate_transaction` will fail if you try with the same transaction.
+        assert!(speculate.speculate_transaction(&vm, &deployment_transaction).is_err());
+
+        // Check that `speculate_transactions` will fail if you try with duplicate transactions.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        assert!(
+            speculate.speculate_transactions(&vm, &[deployment_transaction.clone(), deployment_transaction]).is_err()
+        );
+    }
 
     #[test]
     fn test_speculate_deployment() {
         let rng = &mut TestRng::default();
 
-        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
-        let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+        let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
 
         // Initialize the state speculator.
         let mut speculate = Speculate::new(vm.program_store().current_storage_root());
-        speculate.speculate_transaction(&vm, &deployment_transaction).unwrap();
+        assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
 
         // Construct the new storage tree.
         let new_storage_tree = speculate.commit(&vm).unwrap();
@@ -415,4 +495,159 @@ mod tests {
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
     }
+
+    #[test]
+    fn test_speculate_execution() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key and address for the caller.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Sample a private key and address for the recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
+
+        // Construct the next block.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+        let deployment_block =
+            sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, rng).unwrap();
+
+        // Add the block to the vm.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Construct a mint and a transfer.
+        let mint_transaction = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);
+        let transfer_transaction =
+            crate::vm::test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 10, rng);
+
+        // Initialize the state speculator.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        assert!(speculate.speculate_transaction(&vm, &mint_transaction).unwrap());
+        assert!(speculate.speculate_transaction(&vm, &transfer_transaction).unwrap());
+
+        // Construct the new storage tree.
+        let new_storage_tree = speculate.commit(&vm).unwrap();
+
+        // Construct the next block
+        let next_block =
+            sample_next_block(&vm, &caller_private_key, &[mint_transaction, transfer_transaction], &genesis, rng)
+                .unwrap();
+
+        // Add the block to the vm.
+        vm.add_next_block(&next_block).unwrap();
+
+        // Fetch the expected storage tree.
+        let expected_storage_tree = vm.program_store().tree.read();
+
+        // Ensure that the storage trees are the same.
+        assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
+    }
+
+    #[test]
+    fn test_speculate_many() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key and address for the caller.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Sample a private key and address for the recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
+
+        // Construct the next block.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+        let deployment_block =
+            sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, rng).unwrap();
+
+        // Add the block to the vm.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Construct the initial mint.
+        let intial_mint = test_helpers::sample_public_mint(&vm, caller_address, 20, rng);
+        let initial_mint_block =
+            sample_next_block(&vm, &caller_private_key, &[intial_mint], &deployment_block, rng).unwrap();
+
+        // Add the block to the vm.
+        vm.add_next_block(&initial_mint_block).unwrap();
+
+        // Construct a mint and a transfer.
+        let mint_10 = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);
+        let mint_20 = test_helpers::sample_public_mint(&vm, caller_address, 20, rng);
+        let transfer_10 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 10, rng);
+        let transfer_20 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 20, rng);
+        let transfer_30 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 30, rng);
+
+        // Mint_10 -> Balance = 20 + 10  = 30
+        // Transfer_10 -> Balance = 30 - 10 = 20
+        // Transfer_20 -> Balance = 20 - 20
+        {
+            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+
+            let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
+
+            // Assert that all transactions are valid.
+            assert_eq!(
+                vec![mint_10.id(), transfer_10.id(), transfer_20.id()],
+                speculate.speculate_transactions(&vm, &transactions).unwrap()
+            );
+        }
+
+        // Transfer_20 -> Balance = 20 - 20 = 0
+        // Mint_10 -> Balance = 0 + 10 = 10
+        // Mint_20 -> Balance = 10 + 20 = 30
+        // Transfer_30 -> Balance = 30 - 30 = 0
+        {
+            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+
+            let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
+
+            // Assert that all transactions are valid.
+            assert_eq!(
+                vec![transfer_20.id(), mint_10.id(), mint_20.id(), transfer_30.id()],
+                speculate.speculate_transactions(&vm, &transactions).unwrap()
+            );
+        }
+
+        // Transfer_20 -> Balance = 20 - 20 = 0
+        // Transfer_10 -> Balance = 0 - 10 should fail
+        {
+            let transactions = [transfer_20.clone(), transfer_10.clone()];
+
+            // Assert that the first transaction is valid.
+            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            assert_eq!(vec![transfer_20.id()], speculate.speculate_transactions(&vm, &transactions).unwrap());
+        }
+
+        // Mint_20 -> Balance = 20 + 20
+        // Transfer_30 -> Balance = 40 - 30 = 10
+        // Transfer_20 -> Balance = 10 - 20 = -10 should fail
+        {
+            let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone()];
+
+            // Assert that the first transaction is valid.
+            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            assert_eq!(
+                vec![mint_20.id(), transfer_30.id(), transfer_20.id()],
+                speculate.speculate_transactions(&vm, &transactions).unwrap()
+            );
+        }
+    }
+
+    // TODO (raychu86): Add tests for additional programs.
 }
