@@ -311,7 +311,7 @@ impl<N: Network> Speculate<N> {
     }
 
     /// Finalize the speculate and build the merkle trees.
-    pub fn commit<C: ConsensusStorage<N>>(&mut self, vm: &VM<N, C>) -> Result<()> {
+    pub fn commit<C: ConsensusStorage<N>>(&mut self, vm: &VM<N, C>) -> Result<StorageTree<N>> {
         // Ensure that the speculate has not already been completed.
         if self.is_complete() {
             bail!("Speculate has already been completed ");
@@ -339,17 +339,80 @@ impl<N: Network> Speculate<N> {
         }
 
         // Construct the updated program trees.
-        let mut program_trees = IndexMap::with_capacity(final_operations.len());
+        let mut updated_program_trees = IndexMap::with_capacity(final_operations.len());
         for (program_id, operations) in final_operations {
             // Construct the program tree.
             let program_tree = vm.program_store().storage.to_program_tree(&program_id, Some(&operations))?;
 
-            program_trees.insert(program_id, program_tree);
+            updated_program_trees.insert(program_id, program_tree);
+        }
+
+        // Iterate through all the programs and construct the program trees.
+        let mut program_id_map = vm.program_store().storage.program_id_map().keys();
+        let mut updates = Vec::new();
+        let mut appends = Vec::new();
+        for (program_id, program_tree) in updated_program_trees.iter() {
+            // Construct the leaf for the storage tree.
+            let leaf = program_tree.root().to_bits_le();
+
+            // Specify the update or append operation.
+            match program_id_map.position(|id| *id == *program_id) {
+                Some(program_id_index) => updates.push((program_id_index, leaf)),
+                None => appends.push(leaf),
+            };
+        }
+
+        // Fetch the current storage tree.
+        let storage_tree = vm.program_store().tree.read();
+
+        // Add new programs to the storage tree.
+        let mut updated_storage_tree = storage_tree.prepare_append(&appends)?;
+
+        // Apply updates to the storage tree.
+        if !updates.is_empty() {
+            updated_storage_tree.update_many(&updates)?;
         }
 
         // Update the program trees.
-        self.updated_program_trees = Some(program_trees);
+        self.updated_program_trees = Some(updated_program_trees);
 
-        Ok(())
+        // Return the storage tree.
+        Ok(updated_storage_tree)
+    }
+}
+
+// TODO (raychu86): What if commit just stores directly to the VM storage instead of returning the tree.
+//   Where should commit be called?
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Transactions;
+
+    #[test]
+    fn test_speculate_deployment() {
+        let rng = &mut TestRng::default();
+
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+
+        // Initialize the state speculator.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        speculate.speculate_transaction(&vm, &deployment_transaction).unwrap();
+
+        // Construct the new storage tree.
+        let new_storage_tree = speculate.commit(&vm).unwrap();
+
+        // Perform the naive vm finalize.
+        let transactions = Transactions::from(&[deployment_transaction]);
+        vm.finalize(&transactions).unwrap();
+
+        // Fetch the expected storage tree.
+        let expected_storage_tree = vm.program_store().tree.read();
+
+        // Ensure that the storage trees are the same.
+        assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
     }
 }
