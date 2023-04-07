@@ -36,8 +36,6 @@ pub struct RecordType<N: Network> {
     name: Identifier<N>,
     /// The visibility for the owner of the program record.
     owner: PublicOrPrivate,
-    /// The visibility for the gates of the program record.
-    gates: PublicOrPrivate,
     /// The name and value type for the entries in data.
     entries: IndexMap<Identifier<N>, EntryType<N>>,
 }
@@ -51,11 +49,6 @@ impl<N: Network> RecordType<N> {
     /// Returns the visibility for the owner of the program record.
     pub const fn owner(&self) -> PublicOrPrivate {
         self.owner
-    }
-
-    /// Returns the visibility for the gates of the program record.
-    pub const fn gates(&self) -> PublicOrPrivate {
-        self.gates
     }
 
     /// Returns the entries of the record type.

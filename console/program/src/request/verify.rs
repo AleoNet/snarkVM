@@ -244,7 +244,7 @@ mod tests {
 
             // Prepare a record belonging to the address.
             let record_string = format!(
-                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}"
+                "{{ owner: {address}.private, token_amount: 100u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}"
             );
 
             // Construct four inputs.

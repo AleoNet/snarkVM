@@ -23,8 +23,6 @@ impl<N: Network> FromBytes for RecordType<N> {
         let name = Identifier::read_le(&mut reader)?;
         // Read the visibility for the owner.
         let owner = PublicOrPrivate::read_le(&mut reader)?;
-        // Read the visibility for the gates.
-        let gates = PublicOrPrivate::read_le(&mut reader)?;
 
         // Read the number of entries.
         let num_entries = u16::read_le(&mut reader)?;
@@ -49,10 +47,7 @@ impl<N: Network> FromBytes for RecordType<N> {
         }
 
         // Prepare the reserved entry names.
-        let reserved = [
-            Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
-            Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
-        ];
+        let reserved = [Identifier::from_str("owner").map_err(|e| error(e.to_string()))?];
         // Ensure the entries has no duplicate names.
         if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
             return Err(error(format!("Duplicate entry type found in record '{name}'")));
@@ -62,7 +57,7 @@ impl<N: Network> FromBytes for RecordType<N> {
             return Err(error("Failed to parse record: too many entries"));
         }
 
-        Ok(Self { name, owner, gates, entries })
+        Ok(Self { name, owner, entries })
     }
 }
 
@@ -78,8 +73,6 @@ impl<N: Network> ToBytes for RecordType<N> {
         self.name.write_le(&mut writer)?;
         // Write the visibility for the owner.
         self.owner.write_le(&mut writer)?;
-        // Write the visibility for the gates.
-        self.gates.write_le(&mut writer)?;
 
         // Write the number of entries.
         u16::try_from(self.entries.len()).or_halt_with::<N>("Record length exceeds u16").write_le(&mut writer)?;
@@ -104,7 +97,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let expected = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    owner as address.public;\n    gates as u64.private;\n    first as field.constant;\n    second as field.public;",
+            "record message:\n    owner as address.public;\n    first as field.constant;\n    second as field.public;",
         )?;
         let candidate = RecordType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
