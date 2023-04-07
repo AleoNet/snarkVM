@@ -19,12 +19,10 @@ use super::*;
 impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the entry from the given path.
     pub fn find(&self, path: &[Identifier<N>]) -> Result<Entry<N, Plaintext<N>>> {
-        // If the path is of length one, check if the path is requesting the `owner` or `gates`.
+        // If the path is of length one, check if the path is requesting the `owner`.
         if path.len() == 1 {
             if path[0] == Identifier::from_str("owner")? {
                 return Ok(self.owner.to_entry());
-            } else if path[0] == Identifier::from_str("gates")? {
-                return Ok(self.gates.to_entry());
             }
         }
 

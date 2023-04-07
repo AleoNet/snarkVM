@@ -159,16 +159,13 @@ impl<N: Network> Request<N> {
                             // Ensure the input type is a record.
                             _ => bail!("Expected a record type at input {index}"),
                         };
+                        // Ensure the record belongs to the caller.
+                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
+
                         // Compute the record commitment.
                         let candidate_cm = record.to_commitment(&self.program_id, record_name)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "Expected a record input with the same commitment");
-                        // Ensure the record belongs to the caller.
-                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
-                        // Ensure the record gates is less than or equal to 2^52.
-                        if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
-                            bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
-                        }
 
                         // Compute the `candidate_sn` from `gamma`.
                         let candidate_sn = Record::<N, Plaintext<N>>::serial_number_from_gamma(gamma, *commitment)?;
