@@ -31,7 +31,6 @@ impl<A: Aleo> ToBits for Record<A, Plaintext<A>> {
 
         // Construct the record bits.
         let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(self.gates.to_bits_le());
         bits_le.extend(U32::constant(console::U32::new(data_bits_le.len() as u32)).to_bits_le());
         bits_le.extend(data_bits_le);
         bits_le.extend(self.nonce.to_bits_le());
@@ -50,7 +49,6 @@ impl<A: Aleo> ToBits for Record<A, Plaintext<A>> {
 
         // Construct the record bits.
         let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(self.gates.to_bits_be());
         bits_be.extend(U32::constant(console::U32::new(data_bits_be.len() as u32)).to_bits_le());
         bits_be.extend(data_bits_be);
         bits_be.extend(self.nonce.to_bits_be());
@@ -73,7 +71,6 @@ impl<A: Aleo> ToBits for Record<A, Ciphertext<A>> {
 
         // Construct the record bits.
         let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(self.gates.to_bits_le());
         bits_le.extend(U32::constant(console::U32::new(data_bits_le.len() as u32)).to_bits_le());
         bits_le.extend(data_bits_le);
         bits_le.extend(self.nonce.to_bits_le());
@@ -92,7 +89,6 @@ impl<A: Aleo> ToBits for Record<A, Ciphertext<A>> {
 
         // Construct the record bits.
         let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(self.gates.to_bits_be());
         bits_be.extend(U32::constant(console::U32::new(data_bits_be.len() as u32)).to_bits_le());
         bits_be.extend(data_bits_be);
         bits_be.extend(self.nonce.to_bits_be());
