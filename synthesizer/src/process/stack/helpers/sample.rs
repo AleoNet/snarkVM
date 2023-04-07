@@ -89,13 +89,6 @@ impl<N: Network> Stack<N> {
             false => Owner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
         };
 
-        // Initialize the gates based on the visibility.
-        let amount = U64::new(rng.gen_range(0..(1 << 52)));
-        let gates = match record_type.gates().is_public() {
-            true => Balance::Public(amount),
-            false => Balance::Private(Plaintext::Literal(Literal::U64(amount), Default::default())),
-        };
-
         // Initialize the record data according to the defined type.
         let data = record_type
             .entries()
@@ -112,7 +105,7 @@ impl<N: Network> Stack<N> {
         let nonce = Group::rand(rng);
 
         // Return the record.
-        Record::<N, Plaintext<N>>::from_plaintext(owner, gates, data, nonce)
+        Record::<N, Plaintext<N>>::from_plaintext(owner, data, nonce)
     }
 
     /// Samples an entry according to the given entry type.

@@ -559,7 +559,7 @@ impl<N: Network> Program<N> {
         "into",
         // Record
         "record",
-        "gates",
+        "owner",
         // Program
         "function",
         "struct",
@@ -699,7 +699,6 @@ struct message:
             r"
 record foo:
     owner as address.private;
-    gates as u64.private;
     first as field.private;
     second as field.public;",
         )?;
@@ -941,7 +940,6 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -964,7 +962,7 @@ function compute:
 
         // Declare the input value.
         let input_record = Record::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record);
@@ -1131,12 +1129,11 @@ program token_with_cast.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
     input r0 as token.record;
-    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
+    cast r0.owner r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
         .unwrap();
@@ -1154,7 +1151,7 @@ function compute:
 
         // Declare the input value.
         let input_record = Record::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record);
@@ -1175,7 +1172,7 @@ function compute:
 
         // Declare the expected output value.
         let expected = Value::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
         ))
         .unwrap();
 

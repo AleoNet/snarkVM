@@ -123,16 +123,6 @@ impl<N: Network> Stack<N> {
             "Visibility of record entry 'owner' does not match"
         );
 
-        // Ensure the visibility of the record gates matches the visibility in the record type.
-        ensure!(
-            record.gates().is_public() == record_type.gates().is_public(),
-            "Visibility of record entry 'gates' does not match"
-        );
-        ensure!(
-            record.gates().is_private() == record_type.gates().is_private(),
-            "Visibility of record entry 'gates' does not match"
-        );
-
         // Ensure the number of record entries does not exceed the maximum.
         let num_entries = record.data().len();
         ensure!(num_entries <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);

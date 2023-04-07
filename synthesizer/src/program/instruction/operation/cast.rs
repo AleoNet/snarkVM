@@ -18,7 +18,6 @@ use crate::{Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{
-        Balance,
         Entry,
         EntryType,
         Literal,
@@ -120,8 +119,8 @@ impl<N: Network> Cast<N> {
                 registers.store(stack, &self.destination, Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
-                // Ensure the operands length is at least 2.
-                ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
+                // Ensure the operands length is at least 1.
+                ensure!(inputs.len() >= 1, "Casting to a record requires at least 1 operand");
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
@@ -136,24 +135,6 @@ impl<N: Network> Cast<N> {
                         }
                     }
                     _ => bail!("Invalid record 'owner'"),
-                };
-
-                // Initialize the record gates.
-                let gates: Balance<N, Plaintext<N>> = match &inputs[1] {
-                    // Ensure the entry is a u64.
-                    Value::Plaintext(Plaintext::Literal(Literal::U64(gates), ..)) => {
-                        // Ensure the gates is less than or equal to 2^52.
-                        ensure!(
-                            gates.to_bits_le()[52..].iter().all(|bit| !bit),
-                            "Attempted to initialize an invalid Aleo balance (in gates)"
-                        );
-                        // Construct the record gates.
-                        match record_type.gates().is_public() {
-                            true => Balance::Public(*gates),
-                            false => Balance::Private(Plaintext::Literal(Literal::U64(*gates), Default::default())),
-                        }
-                    }
-                    _ => bail!("Invalid record 'gates'"),
                 };
 
                 // Initialize the record entries.
@@ -188,7 +169,7 @@ impl<N: Network> Cast<N> {
                 let nonce = N::g_scalar_multiply(&randomizer);
 
                 // Construct the record.
-                let record = Record::<N, Plaintext<N>>::from_plaintext(owner, gates, entries, nonce)?;
+                let record = Record::<N, Plaintext<N>>::from_plaintext(owner, entries, nonce)?;
                 // Store the record.
                 registers.store(stack, &self.destination, Value::Record(record))
             }
@@ -205,7 +186,7 @@ impl<N: Network> Cast<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        use circuit::{Eject, Inject, ToBits};
+        use circuit::{Eject, Inject};
 
         // Load the operands values.
         let inputs: Vec<_> =
@@ -251,8 +232,8 @@ impl<N: Network> Cast<N> {
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
-                // Ensure the operands length is at least 2.
-                ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
+                // Ensure the operands length is at least 1.
+                ensure!(inputs.len() >= 1, "Casting to a record requires at least 1 operand");
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
@@ -270,28 +251,6 @@ impl<N: Network> Cast<N> {
                         }
                     }
                     _ => bail!("Invalid record 'owner'"),
-                };
-
-                // Initialize the record gates.
-                let gates: circuit::Balance<A, circuit::Plaintext<A>> = match &inputs[1] {
-                    // Ensure the entry is a u64.
-                    circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::U64(gates), ..)) => {
-                        // Ensure the gates is less than or equal to 2^52.
-                        A::assert(
-                            !gates.to_bits_le()[52..]
-                                .iter()
-                                .fold(circuit::Boolean::constant(false), |acc, bit| acc | bit),
-                        );
-                        // Construct the record gates.
-                        match record_type.gates().is_public() {
-                            true => circuit::Balance::Public(gates.clone()),
-                            false => circuit::Balance::Private(circuit::Plaintext::Literal(
-                                circuit::Literal::U64(gates.clone()),
-                                Default::default(),
-                            )),
-                        }
-                    }
-                    _ => bail!("Invalid record 'gates'"),
                 };
 
                 // Initialize the record entries.
@@ -331,7 +290,7 @@ impl<N: Network> Cast<N> {
                 let nonce = A::g_scalar_multiply(&randomizer);
 
                 // Construct the record.
-                let record = circuit::Record::<A, circuit::Plaintext<A>>::from_plaintext(owner, gates, entries, nonce)?;
+                let record = circuit::Record::<A, circuit::Plaintext<A>>::from_plaintext(owner, entries, nonce)?;
                 // Store the record.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
             }
@@ -466,8 +425,8 @@ impl<N: Network> Parser for Cast<N> {
         // Check that the number of operands does not exceed the maximum number of data entries.
         let max_operands = match register_type {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            // Note that if the register type is a record, then we must account for `owner` which is not a data entry.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 1,
         };
         match operands.len() <= max_operands {
             true => Ok((string, Self { operands, destination, register_type })),
@@ -511,8 +470,8 @@ impl<N: Network> Display for Cast<N> {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            // Note that if the register type is a record, then we must account for `owner` which is not a data entry.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 1,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
             eprintln!("The number of operands must be nonzero and <= {max_operands}");
@@ -533,8 +492,8 @@ impl<N: Network> FromBytes for Cast<N> {
 
         // Ensure that the number of operands does not exceed the upper bound.
         // Note: although a similar check is performed later, this check is performed to ensure that an exceedingly large number of operands is not allocated.
-        if num_operands.is_zero() || num_operands > N::MAX_DATA_ENTRIES + 2 {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_DATA_ENTRIES + 2)));
+        if num_operands.is_zero() || num_operands > N::MAX_DATA_ENTRIES + 1 {
+            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_DATA_ENTRIES + 1)));
         }
 
         // Initialize the vector for the operands.
@@ -553,8 +512,8 @@ impl<N: Network> FromBytes for Cast<N> {
         // Ensure the number of operands is within the bounds for the register type.
         let max_operands = match register_type {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            // Note that if the register type is a record, then we must account for `owner`, which is not a data entry.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 1,
         };
         if num_operands.is_zero() || num_operands > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -571,8 +530,8 @@ impl<N: Network> ToBytes for Cast<N> {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
             RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            // Note that if the register type is a record, then we must account for `owner`, which is not a data entry.
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 1,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -599,9 +558,9 @@ mod tests {
     #[test]
     fn test_parse() {
         let (string, cast) =
-            Cast::<CurrentNetwork>::parse("cast r0.owner r0.gates r0.token_amount into r1 as token.record").unwrap();
+            Cast::<CurrentNetwork>::parse("cast r0.owner r0.token_amount into r1 as token.record").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(cast.operands.len(), 3, "The number of operands is incorrect");
+        assert_eq!(cast.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(
             cast.operands[0],
             Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
@@ -609,13 +568,8 @@ mod tests {
         );
         assert_eq!(
             cast.operands[1],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("gates").unwrap()])),
-            "The second operand is incorrect"
-        );
-        assert_eq!(
-            cast.operands[2],
             Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
-            "The third operand is incorrect"
+            "The second operand is incorrect"
         );
         assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");
         assert_eq!(
@@ -653,19 +607,19 @@ mod tests {
     #[test]
     fn test_parse_cast_into_record_max_operands() {
         let mut string = "cast ".to_string();
-        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES + 2);
-        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES + 2 {
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES + 1);
+        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES + 1 {
             string.push_str(&format!("r{i} "));
             operands.push(Operand::Register(Register::Locator(i as u64)));
         }
-        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 2));
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 1));
         let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES + 2, "The number of operands is incorrect");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES + 1, "The number of operands is incorrect");
         assert_eq!(cast.operands, operands, "The operands are incorrect");
         assert_eq!(
             cast.destination,
-            Register::Locator((CurrentNetwork::MAX_DATA_ENTRIES + 2) as u64),
+            Register::Locator((CurrentNetwork::MAX_DATA_ENTRIES + 1) as u64),
             "The destination register is incorrect"
         );
         assert_eq!(
@@ -678,10 +632,10 @@ mod tests {
     #[test]
     fn test_parse_cast_into_record_too_many_operands() {
         let mut string = "cast ".to_string();
-        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES + 2 {
+        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES + 1 {
             string.push_str(&format!("r{i} "));
         }
-        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 3));
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 2));
         assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
     }
 

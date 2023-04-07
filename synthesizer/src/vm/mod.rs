@@ -217,7 +217,6 @@ struct message:
 
 record token:
     owner as address.private;
-    gates as u64.private;
     amount as u64.private;
 
 function mint:
@@ -232,7 +231,7 @@ function compute:
     input r2 as message.private;
     input r3 as token.record;
     add r0.amount r1.amount into r4;
-    cast r3.owner r3.gates r3.amount into r5 as token.record;
+    cast r3.owner r3.amount into r5 as token.record;
     output r4 as u128.public;
     output r5 as token.record;",
                 )

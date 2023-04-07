@@ -77,11 +77,9 @@ impl<N: Network> FromBytes for Transition<N> {
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
-        // Read the transition fee.
-        let fee = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition = Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee)
+        let transition = Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm)
             .map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
@@ -136,9 +134,7 @@ impl<N: Network> ToBytes for Transition<N> {
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;
         // Write the transition commitment.
-        self.tcm.write_le(&mut writer)?;
-        // Write the transition fee.
-        self.fee.write_le(&mut writer)
+        self.tcm.write_le(&mut writer)
     }
 }
 
