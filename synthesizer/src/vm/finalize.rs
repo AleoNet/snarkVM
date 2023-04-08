@@ -20,25 +20,81 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Finalizes the given transactions into the VM.
     /// This method assumes the given transactions **are valid**.
     #[inline]
-    pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
+    pub fn finalize(&self, transactions: &Transactions<N>, speculate: Option<Speculate<N>>) -> Result<()> {
         let timer = timer!("VM::finalize");
+
+        // Initialize a new speculate struct if one was not provided.
+        let speculate = match speculate {
+            Some(speculate) => speculate,
+            None => {
+                // Perform the transaction speculation.
+                let mut speculate = Speculate::new(self.program_store().current_storage_root());
+                speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
+
+                speculate
+            }
+        };
+
+        // Ensure the transactions match the speculate transactions.
+        if &transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.accepted_transactions() {
+            return Err(anyhow!("Speculate transactions do not match block transactions transactions"));
+        }
+
+        // Finalize the transactions.
         atomic_write_batch!(self, {
             // Acquire the write lock on the process.
             let mut process = self.process.write();
 
+            // Acquire the write lock on the tree.
+            let mut storage_tree = self.program_store().tree.write();
+
+            // Update the `is_speculate` flag.
+            self.program_store().is_speculate.store(true, Ordering::SeqCst);
+
             for transaction in transactions.values() {
                 // Finalize the transaction.
                 match transaction {
-                    Transaction::Deploy(_, _, deployment, _) => {
-                        process.finalize_deployment(self.program_store(), deployment)?;
+                    Transaction::Deploy(_, deployment, _) => {
+                        if let Err(err) = process.finalize_deployment(self.program_store(), deployment) {
+                            // If the deployment failed, revert the speculate flag.
+                            self.program_store().is_speculate.store(false, Ordering::SeqCst);
+
+                            bail!("Failed to finalize deployment: {err}")
+                        }
                         lap!(timer, "Finalize deployment");
                     }
                     Transaction::Execute(_, execution, _) => {
-                        process.finalize_execution(self.program_store(), execution)?;
+                        if let Err(err) = process.finalize_execution(self.program_store(), execution) {
+                            // If the execution failed, revert the speculate flag.
+                            self.program_store().is_speculate.store(false, Ordering::SeqCst);
+
+                            bail!("Failed to finalize execution: {err}")
+                        }
                         lap!(timer, "Finalize execution");
                     }
                 }
             }
+
+            // Update the storage tree.
+            if !speculate.operations.is_empty() {
+                // Construct the new storage tree.
+                let new_storage_tree = match speculate.commit(self) {
+                    Ok(new_storage_tree) => new_storage_tree,
+                    Err(err) => {
+                        // If the commit failed, revert the speculate flag.
+                        self.program_store().is_speculate.store(false, Ordering::SeqCst);
+
+                        bail!("Failed to commit speculate: {err}")
+                    }
+                };
+
+                // Update the storage tree.
+                *storage_tree = new_storage_tree;
+            }
+
+            // Set the speculate flag to false.
+            self.program_store().is_speculate.store(true, Ordering::SeqCst);
+
             Ok(())
         });
 
@@ -63,9 +119,9 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         // Finalize the transaction.
-        vm.finalize(&Transactions::from(&[deployment_transaction.clone()])).unwrap();
+        vm.finalize(&Transactions::from(&[deployment_transaction.clone()]), None).unwrap();
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(&Transactions::from(&[deployment_transaction])).is_err());
+        assert!(vm.finalize(&Transactions::from(&[deployment_transaction]), None).is_err());
     }
 }

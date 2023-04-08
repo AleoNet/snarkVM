@@ -85,7 +85,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     let genesis_block = Block::genesis(&vm, &caller_private_key, rng)?;
 
     // Update the VM.
-    vm.add_next_block(&genesis_block)?;
+    vm.add_next_block(&genesis_block, None)?;
 
     // Fetch the first commitment.
     let commitment = genesis_block.commitments().next().ok_or_else(|| anyhow!("No commitments found"))?;

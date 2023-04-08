@@ -48,10 +48,6 @@ pub struct Speculate<N: Network> {
 
     /// The operations being performed.
     pub operations: IndexMap<N::TransactionID, Vec<(ProgramID<N>, MerkleTreeUpdate<N>)>>,
-
-    // The following values will be updated in the `Self::commit` function.
-    /// The updated program trees.
-    pub updated_program_trees: Option<IndexMap<ProgramID<N>, ProgramTree<N>>>,
 }
 
 impl<N: Network> Speculate<N> {
@@ -63,7 +59,6 @@ impl<N: Network> Speculate<N> {
             accepted_transactions: Default::default(),
             speculate_state: Default::default(),
             operations: Default::default(),
-            updated_program_trees: None,
         }
     }
 
@@ -75,8 +70,12 @@ impl<N: Network> Speculate<N> {
     }
 
     /// Returns `true` if the speculate state is complete.
-    pub fn is_complete(&self) -> bool {
-        self.updated_program_trees.is_some()
+    pub fn accepted_transactions(&self) -> &[N::TransactionID] {
+        &self.accepted_transactions
+    }
+
+    pub fn operations(&self) -> &IndexMap<N::TransactionID, Vec<(ProgramID<N>, MerkleTreeUpdate<N>)>> {
+        &self.operations
     }
 
     /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
@@ -157,7 +156,9 @@ impl<N: Network> Speculate<N> {
         }
 
         // Update the log of operations.
-        self.operations.insert(transaction_id, operations);
+        if !operations.is_empty() {
+            self.operations.insert(transaction_id, operations);
+        }
 
         Ok(())
     }
@@ -250,7 +251,9 @@ impl<N: Network> Speculate<N> {
         }
 
         // Update the log of operations.
-        self.operations.insert(transaction_id, operations);
+        if !operations.is_empty() {
+            self.operations.insert(transaction_id, operations);
+        }
 
         Ok(())
     }
@@ -261,11 +264,6 @@ impl<N: Network> Speculate<N> {
         vm: &VM<N, C>,
         transaction: &Transaction<N>,
     ) -> Result<bool> {
-        // Ensure that the speculate has not already been completed.
-        if self.is_complete() {
-            bail!("Speculate has already been completed ");
-        }
-
         // Check that the `VM` state is correct.
         if vm.program_store().current_storage_root() != self.latest_storage_root {
             bail!("The latest storage root does not match the VM storage root");
@@ -274,12 +272,6 @@ impl<N: Network> Speculate<N> {
         // Check that the transaction has not been processed.
         if self.contains_transaction(&transaction.id()) {
             bail!("The transaction has already been processed");
-        }
-
-        // Check that the transaction is valid.
-        // TODO (raychu86): Add finalize checks in VM::verify_execution and VM::verify_deployment.
-        if !vm.verify_transaction(transaction) {
-            bail!("The transaction is invalid");
         }
 
         // Add the transaction to the list of transactions.
@@ -330,19 +322,22 @@ impl<N: Network> Speculate<N> {
     }
 
     /// Finalize the speculate and build the merkle trees.
-    pub fn commit<C: ConsensusStorage<N>>(&mut self, vm: &VM<N, C>) -> Result<StorageTree<N>> {
-        // Ensure that the speculate has not already been completed.
-        if self.is_complete() {
-            bail!("Speculate has already been completed ");
-        }
-
+    pub fn commit<C: ConsensusStorage<N>>(&self, vm: &VM<N, C>) -> Result<StorageTree<N>> {
         // Check that the `VM` state is correct.
         if vm.program_store().current_storage_root() != self.latest_storage_root {
             bail!("The latest storage root does not match the VM storage root");
         }
 
+        // Fetch the current storage tree.
+        let storage_tree = vm.program_store().tree.read();
+
         // Collect the operations.
         let all_operations = self.operations.values().flatten().collect::<Vec<_>>();
+
+        // If there are no operations, return the current storage tree.
+        if all_operations.is_empty() {
+            return Ok(storage_tree.clone());
+        }
 
         // Filter the operations to see if there is any overlap that we can discard.
         let mut final_operations: IndexMap<ProgramID<N>, Vec<MerkleTreeUpdate<N>>> =
@@ -381,9 +376,6 @@ impl<N: Network> Speculate<N> {
             };
         }
 
-        // Fetch the current storage tree.
-        let storage_tree = vm.program_store().tree.read();
-
         // Add new programs to the storage tree.
         let mut updated_storage_tree = storage_tree.prepare_append(&appends)?;
 
@@ -392,16 +384,10 @@ impl<N: Network> Speculate<N> {
             updated_storage_tree.update_many(&updates)?;
         }
 
-        // Update the program trees.
-        self.updated_program_trees = Some(updated_program_trees);
-
         // Return the storage tree.
         Ok(updated_storage_tree)
     }
 }
-
-// TODO (raychu86): What if commit just stores directly to the VM storage instead of returning the tree.
-//   Where should commit be called?
 
 #[cfg(test)]
 mod tests {
@@ -474,6 +460,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let vm = test_helpers::sample_vm_with_genesis_block(rng);
+        let duplicate_vm = test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
@@ -487,13 +474,16 @@ mod tests {
 
         // Perform the naive vm finalize.
         let transactions = Transactions::from(&[deployment_transaction]);
-        vm.finalize(&transactions).unwrap();
+        vm.finalize(&transactions, None).unwrap();
+        duplicate_vm.finalize(&transactions, Some(speculate)).unwrap();
 
         // Fetch the expected storage tree.
         let expected_storage_tree = vm.program_store().tree.read();
+        let duplicate_storage_tree = duplicate_vm.program_store().tree.read();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
+        assert_eq!(expected_storage_tree.root(), duplicate_storage_tree.root());
     }
 
     #[test]
@@ -521,7 +511,7 @@ mod tests {
             sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, rng).unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&deployment_block).unwrap();
+        vm.add_next_block(&deployment_block, None).unwrap();
 
         // Construct a mint and a transfer.
         let mint_transaction = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);
@@ -542,7 +532,7 @@ mod tests {
                 .unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&next_block).unwrap();
+        vm.add_next_block(&next_block, None).unwrap();
 
         // Fetch the expected storage tree.
         let expected_storage_tree = vm.program_store().tree.read();
@@ -576,7 +566,7 @@ mod tests {
             sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, rng).unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&deployment_block).unwrap();
+        vm.add_next_block(&deployment_block, None).unwrap();
 
         // Construct the initial mint.
         let intial_mint = test_helpers::sample_public_mint(&vm, caller_address, 20, rng);
@@ -584,7 +574,7 @@ mod tests {
             sample_next_block(&vm, &caller_private_key, &[intial_mint], &deployment_block, rng).unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&initial_mint_block).unwrap();
+        vm.add_next_block(&initial_mint_block, None).unwrap();
 
         // Construct a mint and a transfer.
         let mint_10 = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);

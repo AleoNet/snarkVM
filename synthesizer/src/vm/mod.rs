@@ -31,6 +31,7 @@ use crate::{
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
     CallMetrics,
+    Speculate,
 };
 use console::{
     account::PrivateKey,
@@ -41,7 +42,7 @@ use console::{
 
 use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::sync::{atomic::Ordering, Arc};
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -93,11 +94,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Adds the given block into the VM.
     #[inline]
-    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+    pub fn add_next_block(&self, block: &Block<N>, speculate: Option<Speculate<N>>) -> Result<()> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions()) {
+        match self.finalize(block.transactions(), speculate) {
             Ok(_) => Ok(()),
             Err(error) => {
                 // Rollback the block.
@@ -209,7 +210,7 @@ pub(crate) mod test_helpers {
         // Initialize the genesis block.
         let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
         // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
+        vm.add_next_block(&genesis, None).unwrap();
         // Return the VM.
         vm
     }
@@ -314,7 +315,7 @@ finalize transfer_public:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis).unwrap();
+                vm.add_next_block(&genesis, None).unwrap();
 
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
@@ -349,7 +350,7 @@ finalize transfer_public:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis).unwrap();
+                vm.add_next_block(&genesis, None).unwrap();
 
                 // Prepare the inputs.
                 let inputs = [
@@ -396,7 +397,7 @@ finalize transfer_public:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis).unwrap();
+                vm.add_next_block(&genesis, None).unwrap();
 
                 // Prepare the inputs.
                 let inputs = [
@@ -446,7 +447,7 @@ finalize transfer_public:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis).unwrap();
+                vm.add_next_block(&genesis, None).unwrap();
 
                 // Execute.
                 let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();

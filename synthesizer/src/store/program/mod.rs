@@ -33,7 +33,13 @@ use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -801,7 +807,12 @@ pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
     /// The program storage.
     storage: P,
     /// The program storage tree.
-    tree: Arc<RwLock<StorageTree<N>>>,
+    pub(crate) tree: Arc<RwLock<StorageTree<N>>>,
+
+    /// The speculate lock. This is used to prevent individual merkle tree operations in favor of
+    ///  a batched update via `Speculate`.
+    pub(crate) is_speculate: Arc<AtomicBool>,
+
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
@@ -815,7 +826,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         // Compute the storage tree.
         let tree = Arc::new(RwLock::new(storage.to_storage_tree()?));
 
-        Ok(Self { storage, tree, _phantom: PhantomData })
+        Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
 
     /// Initializes a program store from storage.
@@ -823,40 +834,46 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         // Compute the storage tree.
         let tree = Arc::new(RwLock::new(storage.to_storage_tree()?));
 
-        Ok(Self { storage, tree, _phantom: PhantomData })
+        Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
 
     /// Initializes the given `program ID` and `mapping name` in storage.
     pub fn initialize_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
-        // Acquire the write lock on the storage tree.
-        let mut tree = self.tree.write();
+        // If we are in speculate mode, then we do not need to update the storage tree.
+        if self.is_speculate.load(Ordering::SeqCst) {
+            // Initialize the mapping
+            self.storage.initialize_mapping(program_id, mapping_name)?;
+        } else {
+            // Acquire the write lock on the storage tree.
+            let mut tree = self.tree.write();
 
-        // Construct the updated storage tree.
-        let updated_tree = {
-            // Compute the mapping ID.
-            let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
+            // Construct the updated storage tree.
+            let updated_tree = {
+                // Compute the mapping ID.
+                let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
 
-            // Construct the updated program tree.
-            let program_tree =
-                self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertMapping(mapping_id)]))?;
+                // Construct the updated program tree.
+                let program_tree =
+                    self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertMapping(mapping_id)]))?;
 
-            match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                Some(program_id_index) => {
-                    // Construct the updated storage tree.
-                    tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                    Some(program_id_index) => {
+                        // Construct the updated storage tree.
+                        tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                    }
+                    None => {
+                        // Add the program tree root to the tree if the program ID does not exist yet.
+                        tree.prepare_append(&[program_tree.root().to_bits_le()])?
+                    }
                 }
-                None => {
-                    // Add the program tree root to the tree if the program ID does not exist yet.
-                    tree.prepare_append(&[program_tree.root().to_bits_le()])?
-                }
-            }
-        };
+            };
 
-        // Initialize the mapping
-        self.storage.initialize_mapping(program_id, mapping_name)?;
+            // Initialize the mapping
+            self.storage.initialize_mapping(program_id, mapping_name)?;
 
-        // Update the storage tree.
-        *tree = updated_tree;
+            // Update the storage tree.
+            *tree = updated_tree;
+        }
 
         Ok(())
     }
@@ -870,44 +887,53 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<()> {
-        // Acquire the write lock on the storage tree.
-        let mut tree = self.tree.write();
-
-        // Construct the updated storage tree.
-        let updated_tree = {
-            // Retrieve the mapping ID.
-            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
-                Some(mapping_id) => mapping_id,
-                None => {
-                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
-                }
-            };
-
-            // Compute the key ID.
-            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
-            // Compute the value ID.
-            let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
-
-            // Construct the updated program tree.
-            let program_tree = self
-                .storage
-                .to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id)]))?;
-
-            // Fetch the index of the program ID.
-            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                Some(program_id_index) => program_id_index,
-                None => bail!("Missing program ID '{program_id}' in program id map"),
-            };
+        // If we are in speculate mode, then we do not need to update the storage tree.
+        if self.is_speculate.load(Ordering::SeqCst) {
+            // Insert the key-value.
+            self.storage.insert_key_value(program_id, mapping_name, key, value)?;
+        } else {
+            // Acquire the write lock on the storage tree.
+            let mut tree = self.tree.write();
 
             // Construct the updated storage tree.
-            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
-        };
+            let updated_tree = {
+                // Retrieve the mapping ID.
+                let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                    Some(mapping_id) => mapping_id,
+                    None => {
+                        bail!(
+                            "Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value."
+                        )
+                    }
+                };
 
-        // Insert the key-value pair.
-        self.storage.insert_key_value(program_id, mapping_name, key, value)?;
+                // Compute the key ID.
+                let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+                // Compute the value ID.
+                let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
-        // Update the storage tree.
-        *tree = updated_tree;
+                // Construct the updated program tree.
+                let program_tree = self.storage.to_program_tree(
+                    program_id,
+                    Some(&[MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id)]),
+                )?;
+
+                // Fetch the index of the program ID.
+                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                    Some(program_id_index) => program_id_index,
+                    None => bail!("Missing program ID '{program_id}' in program id map"),
+                };
+
+                // Construct the updated storage tree.
+                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+            };
+
+            // Insert the key-value pair.
+            self.storage.insert_key_value(program_id, mapping_name, key, value)?;
+
+            // Update the storage tree.
+            *tree = updated_tree;
+        }
 
         Ok(())
     }
@@ -922,57 +948,65 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<()> {
-        // Acquire the write lock on the storage tree.
-        let mut tree = self.tree.write();
-
-        // Construct the updated storage tree.
-        let updated_tree = {
-            // Retrieve the mapping ID.
-            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
-                Some(mapping_id) => mapping_id,
-                None => {
-                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
-                }
-            };
-
-            // Compute the key ID.
-            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
-            // Compute the value ID.
-            let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
-
-            // Fetch the index of the key ID.
-            let key_value_map = self
-                .storage
-                .key_value_id_map()
-                .get(&mapping_id)?
-                .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
-
-            // Construct the update operation. If the key ID does not exist, insert it.
-            let update = match key_value_map.get_index_of(&key_id) {
-                Some(key_id_index) => MerkleTreeUpdate::UpdateValue(mapping_id, key_id_index, key_id, value_id),
-                None => MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id),
-            };
-
-            // Construct the updated program tree.
-            let program_tree = self.storage.to_program_tree(program_id, Some(&[update]))?;
-
-            // Fetch the index of the program ID.
-            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                Some(program_id_index) => program_id_index,
-                None => {
-                    bail!("Missing program ID '{program_id}' in program id map")
-                }
-            };
+        // If we are in speculate mode, then we do not need to update the storage tree.
+        if self.is_speculate.load(Ordering::SeqCst) {
+            // Update the key-value pair.
+            self.storage.update_key_value(program_id, mapping_name, key, value)?;
+        } else {
+            // Acquire the write lock on the storage tree.
+            let mut tree = self.tree.write();
 
             // Construct the updated storage tree.
-            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
-        };
+            let updated_tree = {
+                // Retrieve the mapping ID.
+                let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                    Some(mapping_id) => mapping_id,
+                    None => {
+                        bail!(
+                            "Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value."
+                        )
+                    }
+                };
 
-        // Update the key-value pair.
-        self.storage.update_key_value(program_id, mapping_name, key, value)?;
+                // Compute the key ID.
+                let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+                // Compute the value ID.
+                let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
-        // Update the storage tree.
-        *tree = updated_tree;
+                // Fetch the index of the key ID.
+                let key_value_map = self
+                    .storage
+                    .key_value_id_map()
+                    .get(&mapping_id)?
+                    .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
+
+                // Construct the update operation. If the key ID does not exist, insert it.
+                let update = match key_value_map.get_index_of(&key_id) {
+                    Some(key_id_index) => MerkleTreeUpdate::UpdateValue(mapping_id, key_id_index, key_id, value_id),
+                    None => MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id),
+                };
+
+                // Construct the updated program tree.
+                let program_tree = self.storage.to_program_tree(program_id, Some(&[update]))?;
+
+                // Fetch the index of the program ID.
+                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                    Some(program_id_index) => program_id_index,
+                    None => {
+                        bail!("Missing program ID '{program_id}' in program id map")
+                    }
+                };
+
+                // Construct the updated storage tree.
+                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+            };
+
+            // Update the key-value pair.
+            self.storage.update_key_value(program_id, mapping_name, key, value)?;
+
+            // Update the storage tree.
+            *tree = updated_tree;
+        }
 
         Ok(())
     }
@@ -984,54 +1018,62 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<()> {
-        // Acquire the write lock on the storage tree.
-        let mut tree = self.tree.write();
-
-        // Construct the updated storage tree.
-        let updated_tree = {
-            // Retrieve the mapping ID.
-            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
-                Some(mapping_id) => mapping_id,
-                None => {
-                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
-                }
-            };
-
-            // Compute the key ID.
-            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
-
-            // Fetch the index of the key ID.
-            let key_value_map = self
-                .storage
-                .key_value_id_map()
-                .get(&mapping_id)?
-                .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
-            let key_id_index = key_value_map
-                .get_index_of(&key_id)
-                .ok_or_else(|| anyhow!("Missing key ID '{key_id}' in key id map"))?;
-
-            // Construct the updated program tree.
-            let program_tree = self
-                .storage
-                .to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveValue(mapping_id, key_id_index)]))?;
-
-            // Fetch the index of the program ID.
-            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                Some(program_id_index) => program_id_index,
-                None => {
-                    bail!("Missing program ID '{program_id}' in program id map")
-                }
-            };
+        // If we are in speculate mode, then we do not need to update the storage tree.
+        if self.is_speculate.load(Ordering::SeqCst) {
+            // Remove the key-value pair.
+            self.storage.remove_key_value(program_id, mapping_name, key)?;
+        } else {
+            // Acquire the write lock on the storage tree.
+            let mut tree = self.tree.write();
 
             // Construct the updated storage tree.
-            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
-        };
+            let updated_tree = {
+                // Retrieve the mapping ID.
+                let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                    Some(mapping_id) => mapping_id,
+                    None => {
+                        bail!(
+                            "Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value."
+                        )
+                    }
+                };
 
-        // Remove the key-value pair.
-        self.storage.remove_key_value(program_id, mapping_name, key)?;
+                // Compute the key ID.
+                let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
 
-        // Update the storage tree.
-        *tree = updated_tree;
+                // Fetch the index of the key ID.
+                let key_value_map = self
+                    .storage
+                    .key_value_id_map()
+                    .get(&mapping_id)?
+                    .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
+                let key_id_index = key_value_map
+                    .get_index_of(&key_id)
+                    .ok_or_else(|| anyhow!("Missing key ID '{key_id}' in key id map"))?;
+
+                // Construct the updated program tree.
+                let program_tree = self
+                    .storage
+                    .to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveValue(mapping_id, key_id_index)]))?;
+
+                // Fetch the index of the program ID.
+                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                    Some(program_id_index) => program_id_index,
+                    None => {
+                        bail!("Missing program ID '{program_id}' in program id map")
+                    }
+                };
+
+                // Construct the updated storage tree.
+                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+            };
+
+            // Remove the key-value pair.
+            self.storage.remove_key_value(program_id, mapping_name, key)?;
+
+            // Update the storage tree.
+            *tree = updated_tree;
+        }
 
         Ok(())
     }
@@ -1039,40 +1081,48 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
     /// along with all associated key-value pairs in storage.
     pub fn remove_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
-        // Acquire the write lock on the storage tree.
-        let mut tree = self.tree.write();
-
-        // Construct the updated storage tree.
-        let updated_tree = {
-            // Retrieve the mapping ID.
-            let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
-                Some(mapping_id) => mapping_id,
-                None => {
-                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
-                }
-            };
-
-            // Construct the updated program tree.
-            let program_tree =
-                self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveMapping(mapping_id)]))?;
-
-            // Fetch the index of the program ID.
-            let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                Some(program_id_index) => program_id_index,
-                None => {
-                    bail!("Missing program ID '{program_id}' in program id map")
-                }
-            };
+        // If we are in speculate mode, then we do not need to update the storage tree.
+        if self.is_speculate.load(Ordering::SeqCst) {
+            // Remove the mapping.
+            self.storage.remove_mapping(program_id, mapping_name)?;
+        } else {
+            // Acquire the write lock on the storage tree.
+            let mut tree = self.tree.write();
 
             // Construct the updated storage tree.
-            tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
-        };
+            let updated_tree = {
+                // Retrieve the mapping ID.
+                let mapping_id = match self.storage.get_mapping_id(program_id, mapping_name)? {
+                    Some(mapping_id) => mapping_id,
+                    None => {
+                        bail!(
+                            "Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value."
+                        )
+                    }
+                };
 
-        // Remove the mapping.
-        self.storage.remove_mapping(program_id, mapping_name)?;
+                // Construct the updated program tree.
+                let program_tree =
+                    self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveMapping(mapping_id)]))?;
 
-        // Update the storage tree.
-        *tree = updated_tree;
+                // Fetch the index of the program ID.
+                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                    Some(program_id_index) => program_id_index,
+                    None => {
+                        bail!("Missing program ID '{program_id}' in program id map")
+                    }
+                };
+
+                // Construct the updated storage tree.
+                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+            };
+
+            // Remove the mapping.
+            self.storage.remove_mapping(program_id, mapping_name)?;
+
+            // Update the storage tree.
+            *tree = updated_tree;
+        }
 
         Ok(())
     }
@@ -1080,18 +1130,24 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// Removes the program for the given `program ID` from storage,
     /// along with all associated mappings and key-value pairs in storage.
     pub fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
-        // Acquire the write lock on the storage tree.
-        let mut tree = self.tree.write();
+        // If we are in speculate mode, then we do not need to update the storage tree.
+        if self.is_speculate.load(Ordering::SeqCst) {
+            // Remove the program..
+            self.storage.remove_program(program_id)?;
+        } else {
+            // Acquire the write lock on the storage tree.
+            let mut tree = self.tree.write();
 
-        // Remove the program..
-        self.storage.remove_program(program_id)?;
+            // Remove the program..
+            self.storage.remove_program(program_id)?;
 
-        // TODO (raychu86): Have a "shift_update" method that shifts the leaves.
-        // Construct the updated storage tree.
-        let updated_tree = self.storage.to_storage_tree()?;
+            // TODO (raychu86): Have a "shift_update" method that shifts the leaves.
+            // Construct the updated storage tree.
+            let updated_tree = self.storage.to_storage_tree()?;
 
-        // TODO (raychu86) Make sure the operations are atomic.
-        *tree = updated_tree;
+            // TODO (raychu86) Make sure the operations are atomic.
+            *tree = updated_tree;
+        }
 
         Ok(())
     }
