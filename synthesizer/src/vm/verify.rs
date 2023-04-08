@@ -61,6 +61,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
+    // TODO (raychu86): Add verification of the transaction `finalize` state.
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
@@ -319,7 +320,7 @@ mod tests {
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
+        vm.add_next_block(&genesis, None).unwrap();
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
@@ -354,7 +355,7 @@ mod tests {
             Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, None, rng).unwrap();
 
         // Add the deployment block.
-        vm.add_next_block(&deployment_block).unwrap();
+        vm.add_next_block(&deployment_block, None).unwrap();
 
         // Fetch the unspent records.
         let records = deployment_block.records().collect::<indexmap::IndexMap<_, _>>();
