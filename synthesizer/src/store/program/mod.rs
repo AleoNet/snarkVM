@@ -102,6 +102,31 @@ impl<N: Network> MerkleTreeUpdate<N> {
             MerkleTreeUpdate::RemoveMapping(_) => None,
         }
     }
+
+    /// Returns `true` if the update is an `InsertValue`
+    pub fn is_insert_value(&self) -> bool {
+        matches!(self, MerkleTreeUpdate::InsertValue(_, _, _))
+    }
+
+    /// Returns `true` if the update is an `UpdateValue`
+    pub fn is_update_value(&self) -> bool {
+        matches!(self, MerkleTreeUpdate::UpdateValue(_, _, _, _))
+    }
+
+    /// Returns `true` if the update is a `RemoveValue`
+    pub fn is_remove_value(&self) -> bool {
+        matches!(self, MerkleTreeUpdate::RemoveValue(_, _))
+    }
+
+    /// Returns `true` if the update is an `InsertMapping`
+    pub fn is_insert_mapping(&self) -> bool {
+        matches!(self, MerkleTreeUpdate::InsertMapping(_))
+    }
+
+    /// Returns `true` if the update is a `RemoveMapping`
+    pub fn is_remove_mapping(&self) -> bool {
+        matches!(self, MerkleTreeUpdate::RemoveMapping(_))
+    }
 }
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
@@ -314,7 +339,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
             }
         };
         // If the key ID does not exist, insert it in the key-value ID map.
-        if !self.key_map().contains_key(&key_id)? {
+        if self.key_map().get_speculative(&key_id)?.is_none() {
             // Ensure the key ID does not already exist.
             // If this fails, then there is inconsistent state, and likely data corruption.
             if key_value_ids.contains_key(&key_id) {
@@ -573,7 +598,19 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.get_key_id(program_id, mapping_name, key)? {
             // Retrieve the value.
             Some(key_id) => self.get_value_from_key_id(&key_id),
-            None => Ok(None),
+            None => {
+                // TODO (raychu86): Confirm this is the correct behavior in accordance to #1251.
+                // Construct the `mapping ID`.
+                let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
+                // Construct the `key ID`.
+                let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+
+                // Check if the key ID exists.
+                match self.key_map().get_speculative(&key_id)? {
+                    Some(_) => self.get_value_from_key_id(&key_id),
+                    None => Ok(None),
+                }
+            }
         }
     }
 
@@ -631,21 +668,21 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     fn to_program_tree(
         &self,
         program_id: &ProgramID<N>,
-        optional_mapping_updates: Option<&[MerkleTreeUpdate<N>]>,
+        optional_updates: Option<&[MerkleTreeUpdate<N>]>,
     ) -> Result<ProgramTree<N>> {
         // Retrieve the mapping names for the given program ID.
         let mapping_names = &*self.program_id_map().get_speculative(program_id)?.unwrap_or_default();
 
         // Construct a mapping trees.
         let mut mapping_trees = cfg_iter!(mapping_names)
-            .map(|mapping_name| self.to_mapping_tree(program_id, mapping_name, optional_mapping_updates))
+            .map(|mapping_name| self.to_mapping_tree(program_id, mapping_name, optional_updates))
             .collect::<Result<IndexMap<_, _>>>()?;
 
         // Check if any mappings need to be removed.
-        if let Some(mapping_updates) = optional_mapping_updates {
+        if let Some(updates) = optional_updates {
             // Iterate through all the mapping updates.
-            for mapping_update in mapping_updates {
-                match mapping_update {
+            for update in updates {
+                match update {
                     MerkleTreeUpdate::InsertMapping(mapping_id) => {
                         // Insert a new mapping tree.
                         mapping_trees.insert(*mapping_id, N::merkle_tree_bhp(&[])?);
@@ -681,11 +718,11 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // Get the key_values for the mapping id.
         let key_values = self
             .key_value_id_map()
-            .get(&mapping_id)?
+            .get_speculative(&mapping_id)?
             .ok_or_else(|| anyhow!("Missing key values for mapping id {mapping_id}"))?;
 
         // Construct the leaves for the mapping tree.
-        let mut key_value_leaves = cfg_iter!(key_values).map(|(_, value)| value.to_bits_le()).collect::<Vec<_>>();
+        let mut key_value_leaves = cfg_iter!(key_values).map(|(_, value_id)| value_id.to_bits_le()).collect::<Vec<_>>();
 
         // Perform the merkle tree updates if they exist.
         if let Some(optional_updates) = optional_updates {
@@ -711,8 +748,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
                         // Remove the leaf.
                         key_value_leaves.remove(*index);
                     }
-                    MerkleTreeUpdate::RemoveMapping(_) => continue,
-                    _ => unreachable!("{update:?} should be handled by the caller"),
+                    _ => continue,
                 }
             }
         }
