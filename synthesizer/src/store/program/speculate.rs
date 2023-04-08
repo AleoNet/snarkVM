@@ -345,11 +345,23 @@ impl<N: Network> Speculate<N> {
         for (program_id, operation) in all_operations {
             let operations = final_operations.entry(*program_id).or_insert(Vec::new());
 
+            // If you are updating a value that was inserted in this block, then you can just insert the final value.
+            let operation_to_add =
+                match operations.iter().any(|op| op.is_insert_value() && op.key_id() == operation.key_id()) {
+                    true => match operation {
+                        MerkleTreeUpdate::UpdateValue(mapping_id, _, key_id, value_id) => {
+                            MerkleTreeUpdate::InsertValue(*mapping_id, *key_id, *value_id)
+                        }
+                        _ => *operation,
+                    },
+                    false => *operation,
+                };
+
             // Remove the operations that have the same key ID, because they are now outdated.
-            operations.retain(|op| op.key_id() != op.key_id());
+            operations.retain(|op| op.key_id() != operation.key_id());
 
             // Add the operation to the list.
-            operations.push(*operation);
+            operations.push(operation_to_add);
         }
 
         // Construct the updated program trees.
@@ -459,6 +471,7 @@ mod tests {
     fn test_speculate_deployment() {
         let rng = &mut TestRng::default();
 
+        // Initialize the VM.
         let vm = test_helpers::sample_vm_with_genesis_block(rng);
         let duplicate_vm = test_helpers::sample_vm_with_genesis_block(rng);
 
@@ -498,8 +511,9 @@ mod tests {
         let recipient_private_key = PrivateKey::new(rng).unwrap();
         let recipient_address = Address::try_from(&recipient_private_key).unwrap();
 
-        // Initialize the vm.
+        // Initialize the VM.
         let vm = test_helpers::sample_vm_with_genesis_block(rng);
+        let duplicate_vm = test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
@@ -512,11 +526,12 @@ mod tests {
 
         // Add the block to the vm.
         vm.add_next_block(&deployment_block, None).unwrap();
+        duplicate_vm.add_next_block(&deployment_block, None).unwrap();
 
         // Construct a mint and a transfer.
         let mint_transaction = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);
         let transfer_transaction =
-            crate::vm::test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 10, rng);
+            test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 10, rng);
 
         // Initialize the state speculator.
         let mut speculate = Speculate::new(vm.program_store().current_storage_root());
@@ -527,18 +542,26 @@ mod tests {
         let new_storage_tree = speculate.commit(&vm).unwrap();
 
         // Construct the next block
-        let next_block =
-            sample_next_block(&vm, &caller_private_key, &[mint_transaction, transfer_transaction], &genesis, rng)
-                .unwrap();
+        let next_block = sample_next_block(
+            &vm,
+            &caller_private_key,
+            &[mint_transaction, transfer_transaction],
+            &deployment_block,
+            rng,
+        )
+        .unwrap();
 
         // Add the block to the vm.
         vm.add_next_block(&next_block, None).unwrap();
+        duplicate_vm.add_next_block(&next_block, Some(speculate)).unwrap();
 
         // Fetch the expected storage tree.
         let expected_storage_tree = vm.program_store().tree.read();
+        let duplicate_storage_tree = duplicate_vm.program_store().tree.read();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
+        assert_eq!(expected_storage_tree.root(), duplicate_storage_tree.root());
     }
 
     #[test]
