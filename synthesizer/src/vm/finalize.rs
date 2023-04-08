@@ -36,7 +36,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         };
 
         // Ensure the transactions match the speculate transactions.
-        if &transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.accepted_transactions() {
+        if transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.accepted_transactions() {
             return Err(anyhow!("Speculate transactions do not match block transactions transactions"));
         }
 
