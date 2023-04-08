@@ -614,10 +614,11 @@ mod tests {
             );
         }
 
+        // TODO (raychu86): Handle the instructions panics that happen here.
         // Transfer_20 -> Balance = 20 - 20 = 0
         // Transfer_10 -> Balance = 0 - 10 should fail
         {
-            let transactions = [transfer_20.clone(), transfer_10.clone()];
+            let transactions = [transfer_20.clone(), transfer_10];
 
             // Assert that the first transaction is valid.
             let mut speculate = Speculate::new(vm.program_store().current_storage_root());
@@ -628,12 +629,12 @@ mod tests {
         // Transfer_30 -> Balance = 40 - 30 = 10
         // Transfer_20 -> Balance = 10 - 20 = -10 should fail
         {
-            let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone()];
+            let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20];
 
             // Assert that the first transaction is valid.
             let mut speculate = Speculate::new(vm.program_store().current_storage_root());
             assert_eq!(
-                vec![mint_20.id(), transfer_30.id(), transfer_20.id()],
+                vec![mint_20.id(), transfer_30.id()],
                 speculate.speculate_transactions(&vm, &transactions).unwrap()
             );
         }

@@ -488,7 +488,7 @@ finalize transfer_public:
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+        let transaction = Transaction::execute_authorization(vm, authorization, None, rng).unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction));
 
@@ -522,7 +522,7 @@ finalize transfer_public:
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+        let transaction = Transaction::execute_authorization(vm, authorization, None, rng).unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction));
 
