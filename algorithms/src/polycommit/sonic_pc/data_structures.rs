@@ -366,7 +366,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -375,9 +375,6 @@ pub struct VerifierKey<E: PairingEngine> {
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
     pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>>,
 
-    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
-
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
     pub supported_degree: usize,
@@ -385,6 +382,75 @@ pub struct VerifierKey<E: PairingEngine> {
     /// The maximum degree supported by the `UniversalParams` `self` was derived
     /// from.
     pub max_degree: usize,
+}
+
+impl<E: PairingEngine> Valid for VerifierKey<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        self.vk.check()?;
+        self.degree_bounds_and_neg_powers_of_h.check()?;
+        self.supported_degree.check()?;
+        self.max_degree.check()?;
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let vk = kzg10::VerifierKey::<E>::deserialize_with_mode(&mut reader, compress, validate)?;
+        let degree_bounds_and_neg_powers_of_h =
+            Option::<Vec<(usize, E::G2Affine)>>::deserialize_with_mode(&mut reader, compress, validate)?;
+        let _degree_bounds_and_prepared_neg_powers_of_h = Option::<
+            Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>,
+        >::deserialize_with_mode(
+            &mut reader, compress, validate
+        )?;
+        let supported_degree = usize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let max_degree = usize::deserialize_with_mode(&mut reader, compress, validate)?;
+
+        Ok(Self { vk, degree_bounds_and_neg_powers_of_h, supported_degree, max_degree })
+    }
+}
+
+impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.vk.serialize_with_mode(&mut writer, compress)?;
+        self.degree_bounds_and_neg_powers_of_h.serialize_with_mode(&mut writer, compress)?;
+
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            self.degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
+                degree_bounds_and_neg_powers_of_h
+                    .iter()
+                    .map(|(d, affine)| (*d, affine.prepare()))
+                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
+            });
+        degree_bounds_and_prepared_neg_powers_of_h.serialize_with_mode(&mut writer, compress)?;
+
+        self.supported_degree.serialize_with_mode(&mut writer, compress)?;
+        self.max_degree.serialize_with_mode(&mut writer, compress)?;
+
+        Ok(())
+    }
+
+    fn serialized_size(&self, compress: Compress) -> usize {
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            self.degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
+                degree_bounds_and_neg_powers_of_h
+                    .iter()
+                    .map(|(d, affine)| (*d, affine.prepare()))
+                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
+            });
+
+        self.vk.serialized_size(compress)
+            + self.degree_bounds_and_neg_powers_of_h.serialized_size(compress)
+            + degree_bounds_and_prepared_neg_powers_of_h.serialized_size(compress)
+            + self.supported_degree.serialized_size(compress)
+            + self.max_degree.serialized_size(compress)
+    }
 }
 
 impl<E: PairingEngine> FromBytes for VerifierKey<E> {
@@ -410,7 +476,15 @@ impl<E: PairingEngine> VerifierKey<E> {
     }
 
     pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
-        self.degree_bounds_and_prepared_neg_powers_of_h
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            self.degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
+                degree_bounds_and_neg_powers_of_h
+                    .iter()
+                    .map(|(d, affine)| (*d, affine.prepare()))
+                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
+            });
+
+        degree_bounds_and_prepared_neg_powers_of_h
             .as_ref()
             .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1.clone()))
     }
@@ -476,9 +550,17 @@ impl<E: PairingEngine> Prepare for VerifierKey<E> {
     fn prepare(&self) -> PreparedVerifierKey<E> {
         let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&self.vk);
 
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            self.degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
+                degree_bounds_and_neg_powers_of_h
+                    .iter()
+                    .map(|(d, affine)| (*d, affine.prepare()))
+                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
+            });
+
         PreparedVerifierKey::<E> {
             prepared_vk,
-            degree_bounds_and_prepared_neg_powers_of_h: self.degree_bounds_and_prepared_neg_powers_of_h.clone(),
+            degree_bounds_and_prepared_neg_powers_of_h,
             max_degree: self.max_degree,
             supported_degree: self.supported_degree,
         }
