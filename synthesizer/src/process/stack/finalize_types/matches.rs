@@ -19,9 +19,9 @@ use super::*;
 impl<N: Network> FinalizeTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
     pub fn matches_struct(&self, stack: &Stack<N>, operands: &[Operand<N>], struct_: &Struct<N>) -> Result<()> {
-        // Ensure the operands is not empty.
-        if operands.is_empty() {
-            bail!("Casting to a struct requires at least one operand")
+        // Ensure the operands length is at least the minimum required.
+        if operands.len() < N::MIN_STRUCT_ENTRIES {
+            bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
         }
 
         // Retrieve the struct name.
@@ -93,15 +93,26 @@ impl<N: Network> FinalizeTypes<N> {
     /// Note: Ordering for `owner` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(&self, stack: &Stack<N>, operands: &[Operand<N>], record_type: &RecordType<N>) -> Result<()> {
-        // Ensure the operands length is at least 2.
-        if operands.len() < 2 {
-            bail!("Casting to a record requires at least two operands")
-        }
-
         // Retrieve the record name.
         let record_name = record_type.name();
         // Ensure the record name is valid.
         ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
+
+        // Ensure the operands length is at least the minimum required.
+        if operands.len() < N::MIN_RECORD_ENTRIES {
+            bail!("'{record_name}' must have at least {} operand(s)", N::MIN_RECORD_ENTRIES)
+        }
+        // Ensure the operands length is within the maximum limit.
+        if operands.len() > N::MAX_RECORD_ENTRIES {
+            bail!("'{record_name}' cannot exceed {} entries", N::MAX_RECORD_ENTRIES)
+        }
+
+        // Ensure the number of record entries match.
+        let num_entries = operands.len().saturating_sub(N::MIN_RECORD_ENTRIES);
+        let expected_num_entries = record_type.entries().len();
+        if expected_num_entries != num_entries {
+            bail!("'{record_name}' expected {expected_num_entries} entries, found {num_entries} entries")
+        }
 
         // Ensure the first input type is an address.
         match &operands[0] {
@@ -129,41 +140,8 @@ impl<N: Network> FinalizeTypes<N> {
             Operand::Caller => {}
         }
 
-        // Ensure the second input type is a u64.
-        match &operands[1] {
-            Operand::Literal(literal) => {
-                ensure!(
-                    literal.to_type() == LiteralType::U64,
-                    "Casting to a record requires the second operand to be a u64"
-                )
-            }
-            Operand::Register(register) => {
-                // Retrieve the register type.
-                let register_type = self.get_type(stack, register)?;
-                // Ensure the register type is a u64.
-                ensure!(
-                    register_type == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
-                    "Casting to a record requires the second operand to be a u64"
-                )
-            }
-            // These operand types are never a `u64` type.
-            Operand::ProgramID(..) | Operand::Caller => {
-                bail!("Casting to a record requires the second operand to be a u64")
-            }
-        }
-
-        // Ensure the number of record entries does not exceed the maximum.
-        let num_entries = operands.len() - 1; // Minus 2 to factor for `record.owner`.
-        ensure!(num_entries <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
-
-        // Ensure the number of record entries match.
-        let expected_num_entries = record_type.entries().len();
-        if expected_num_entries != num_entries {
-            bail!("'{record_name}' expected {expected_num_entries} entries, found {num_entries} entries")
-        }
-
         // Ensure the operand types match the record entry types.
-        for (operand, (entry_name, entry_type)) in operands.iter().skip(2).zip_eq(record_type.entries()) {
+        for (operand, (entry_name, entry_type)) in operands.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries()) {
             match entry_type {
                 EntryType::Constant(plaintext_type)
                 | EntryType::Public(plaintext_type)
