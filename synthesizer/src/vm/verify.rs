@@ -112,23 +112,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     bail!("Invalid transaction size (deployment): {error}");
                 }
-                // Verify the deployment.
-                self.check_deployment(deployment)?;
-
                 // Verify the fee.
                 self.check_fee(fee)?;
+                // Verify the deployment.
+                self.check_deployment(deployment)?;
             }
-            Transaction::Execute(_, execution, additional_fee) => {
+            Transaction::Execute(_, execution, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_execution_size(execution) {
                     bail!("Invalid transaction size (execution): {error}");
                 }
-
-                // Verify the additional fee, if it exists.
-                if let Some(additional_fee) = additional_fee {
-                    self.check_fee(additional_fee)?
-                }
-
+                // Verify the fee.
+                self.check_fee(fee)?;
                 // Verify the execution.
                 self.check_execution(execution)?;
             }
@@ -312,9 +307,9 @@ mod tests {
         // Fetch the unspent records.
         let records = genesis.records().collect::<indexmap::IndexMap<_, _>>();
 
-        // Prepare the additional fee.
+        // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let additional_fee = (credits, 10);
+        let fee = (credits, 10);
 
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
@@ -323,8 +318,7 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction =
-            Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+        let deployment_transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
         let transactions = Transactions::from(&[deployment_transaction]);
@@ -359,9 +353,9 @@ mod tests {
         // Fetch the unspent records.
         let records = deployment_block.records().collect::<indexmap::IndexMap<_, _>>();
 
-        // Prepare the additional fee.
+        // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let additional_fee = (credits, 10);
+        let fee = (credits, 10);
 
         // Authorize.
         let authorization = vm
@@ -380,15 +374,9 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization_with_additional_fee(
-            &vm,
-            &caller_private_key,
-            authorization,
-            Some(additional_fee),
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction =
+            Transaction::execute_authorization_with_fee(&vm, &caller_private_key, authorization, fee, None, rng)
+                .unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());

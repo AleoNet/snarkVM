@@ -250,7 +250,7 @@ pub(crate) mod test_helpers {
         let randomizer = Uniform::rand(rng);
         let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
         let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-            &format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"),
+            &format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"),
         ).unwrap();
         let record_ciphertext = record.encrypt(randomizer).unwrap();
         let record_checksum = CurrentNetwork::hash_bhp1024(&record_ciphertext.to_bits_le()).unwrap();

@@ -36,8 +36,8 @@ use std::borrow::Cow;
 
 /// A trait for execution storage.
 pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
-    /// The mapping of `transaction ID` to `([transition ID], (optional) transition ID)`.
-    type IDMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    /// The mapping of `transaction ID` to `([transition ID], fee transition ID)`.
+    type IDMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, N::TransitionID)>;
     /// The mapping of `transition ID` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
     /// The transition storage.
@@ -105,13 +105,11 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// Stores the given `execution transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a execution.
-        let (transaction_id, execution, optional_additional_fee) = match transaction {
+        let (transaction_id, execution, fee) = match transaction {
             Transaction::Deploy(..) => {
                 bail!("Attempted to insert non-execution transaction into execution storage.")
             }
-            Transaction::Execute(transaction_id, execution, optional_additional_fee) => {
-                (transaction_id, execution, optional_additional_fee)
-            }
+            Transaction::Execute(transaction_id, execution, fee) => (transaction_id, execution, fee),
         };
 
         // Retrieve the transitions.
@@ -123,12 +121,9 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the inclusion proof.
         let inclusion_proof = execution.inclusion_proof().cloned();
 
-        // Retrieve the optional additional fee ID.
-        let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
-
         atomic_write_batch!(self, {
             // Store the transition IDs.
-            self.id_map().insert(*transaction_id, (transition_ids, optional_additional_fee_id))?;
+            self.id_map().insert(*transaction_id, (transition_ids, *fee.id()))?;
 
             // Store the execution.
             for transition in transitions {
@@ -141,18 +136,12 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             // Store the global state root and inclusion proof.
             self.inclusion_map().insert(*transaction_id, (global_state_root, inclusion_proof))?;
 
-            // Store the additional fee, if one exists.
-            if let Some(additional_fee) = optional_additional_fee {
-                // Store the additional fee ID.
-                self.reverse_id_map().insert(*additional_fee.transition_id(), *transaction_id)?;
-                // Store the additional fee transition.
-                self.transition_store().insert(additional_fee)?;
-                // Store the additional fee.
-                self.fee_map().insert(
-                    *transaction_id,
-                    (additional_fee.global_state_root(), additional_fee.inclusion_proof().cloned()),
-                )?;
-            }
+            // Store the fee transition ID.
+            self.reverse_id_map().insert(*fee.transition_id(), *transaction_id)?;
+            // Store the fee transition.
+            self.transition_store().insert(fee)?;
+            // Store the fee.
+            self.fee_map().insert(*transaction_id, (fee.global_state_root(), fee.inclusion_proof().cloned()))?;
 
             Ok(())
         });
@@ -162,8 +151,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 
     /// Removes the execution transaction for the given `transaction ID`.
     fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
-        // Retrieve the transition IDs and optional additional fee ID.
-        let (transition_ids, optional_additional_fee_id) = match self.id_map().get(transaction_id)? {
+        // Retrieve the transition IDs and fee transition ID.
+        let (transition_ids, fee_transition_id) = match self.id_map().get(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
             None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
         };
@@ -183,15 +172,12 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             // Remove the global state root and inclusion proof.
             self.inclusion_map().remove(transaction_id)?;
 
-            // Remove the additional fee ID, if one exists.
-            if let Some(additional_fee_id) = optional_additional_fee_id {
-                // Remove the additional fee ID.
-                self.reverse_id_map().remove(&additional_fee_id)?;
-                // Remove the additional fee transition.
-                self.transition_store().remove(&additional_fee_id)?;
-                // Remove the additional fee.
-                self.fee_map().remove(transaction_id)?;
-            }
+            // Remove the fee transition ID.
+            self.reverse_id_map().remove(&fee_transition_id)?;
+            // Remove the fee transition.
+            self.transition_store().remove(&fee_transition_id)?;
+            // Remove the fee.
+            self.fee_map().remove(transaction_id)?;
 
             Ok(())
         });
@@ -212,7 +198,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the execution for the given `transaction ID`.
     fn get_execution(&self, transaction_id: &N::TransactionID) -> Result<Option<Execution<N>>> {
-        // Retrieve the transition IDs and optional additional fee ID.
+        // Retrieve the transition IDs.
         let (transition_ids, _) = match self.id_map().get(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
             None => return Ok(None),
@@ -241,8 +227,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the transaction for the given `transaction ID`.
     fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
-        // Retrieve the transition IDs and optional additional fee ID.
-        let (transition_ids, optional_additional_fee_id) = match self.id_map().get(transaction_id)? {
+        // Retrieve the transition IDs and fee transition ID.
+        let (transition_ids, fee_transition_id) = match self.id_map().get(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
             None => return Ok(None),
         };
@@ -267,27 +253,19 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Construct the execution.
         let execution = Execution::from(transitions.into_iter(), global_state_root, inclusion_proof)?;
 
-        // Construct the transaction.
-        let transaction = match optional_additional_fee_id {
-            Some(additional_fee_id) => {
-                // Retrieve the additional fee transition.
-                let additional_fee_transition = match self.transition_store().get_transition(&additional_fee_id)? {
-                    Some(additional_fee_transition) => additional_fee_transition,
-                    None => bail!("Failed to get the additional fee transition for transaction '{transaction_id}'"),
-                };
-                // Retrieve the additional fee.
-                let (global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
-                    Some(fee) => cow_to_cloned!(fee),
-                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
-                };
-                // Construct the transaction.
-                Transaction::from_execution(
-                    execution,
-                    Some(Fee::from(additional_fee_transition, global_state_root, inclusion_proof)),
-                )?
-            }
-            None => Transaction::from_execution(execution, None)?,
+        // Retrieve the fee transition.
+        let fee_transition = match self.transition_store().get_transition(&fee_transition_id)? {
+            Some(fee_transition) => fee_transition,
+            None => bail!("Failed to get the fee transition for transaction '{transaction_id}'"),
         };
+        // Retrieve the fee.
+        let (global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
+            Some(fee) => cow_to_cloned!(fee),
+            None => bail!("Failed to get the fee for transaction '{transaction_id}'"),
+        };
+        // Construct the transaction.
+        let transaction =
+            Transaction::from_execution(execution, Fee::from(fee_transition, global_state_root, inclusion_proof))?;
 
         // Ensure the transaction ID matches.
         match *transaction_id == transaction.id() {
@@ -302,7 +280,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 #[allow(clippy::type_complexity)]
 pub struct ExecutionMemory<N: Network> {
     /// The ID map.
-    id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
+    id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, N::TransitionID)>,
     /// The reverse ID map.
     reverse_id_map: MemoryMap<N::TransitionID, N::TransactionID>,
     /// The transition store.
@@ -315,7 +293,7 @@ pub struct ExecutionMemory<N: Network> {
 
 #[rustfmt::skip]
 impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, N::TransitionID)>;
     type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
     type TransitionStorage = TransitionMemory<N>;
     type InclusionMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;

@@ -90,7 +90,7 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
+    /// Note: Ordering for `owner` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(&self, stack: &Stack<N>, operands: &[Operand<N>], record_type: &RecordType<N>) -> Result<()> {
         // Ensure the operands length is at least 2.
@@ -153,7 +153,7 @@ impl<N: Network> RegisterTypes<N> {
         }
 
         // Ensure the number of record entries does not exceed the maximum.
-        let num_entries = operands.len() - 2; // Minus 2 to factor for `record.owner` and `record.gates`.
+        let num_entries = operands.len() - 1; // Minus 1 to factor for `record.owner`.
         ensure!(num_entries <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
 
         // Ensure the number of record entries match.

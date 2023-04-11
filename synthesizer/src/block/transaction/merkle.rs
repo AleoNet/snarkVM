@@ -46,16 +46,14 @@ impl<N: Network> Transaction<N> {
                 // Error if the function hash was not found.
                 bail!("Function hash not found in deployment transaction");
             }
-            Self::Execute(_, execution, additional_fee) => {
-                // Check if the ID is the transition ID for the additional fee, if it is present.
-                if let Some(additional_fee) = additional_fee {
-                    if *id == **additional_fee.id() {
-                        // Return the transaction leaf.
-                        return Ok(TransactionLeaf::new_execution(
-                            execution.len() as u16, // The last index.
-                            *id,
-                        ));
-                    }
+            Self::Execute(_, execution, fee) => {
+                // Check if the ID is the transition ID for the fee.
+                if *id == **fee.id() {
+                    // Return the transaction leaf.
+                    return Ok(TransactionLeaf::new_execution(
+                        execution.len() as u16, // The last index.
+                        *id,
+                    ));
                 }
 
                 // Iterate through the transitions in the execution.
@@ -82,9 +80,9 @@ impl<N: Network> Transaction<N> {
     pub fn to_tree(&self) -> Result<TransactionTree<N>> {
         match self {
             // Compute the deployment tree.
-            Transaction::Deploy(_, deployment, additional_fee) => Self::deployment_tree(deployment, additional_fee),
+            Transaction::Deploy(_, deployment, fee) => Self::deployment_tree(deployment, fee),
             // Compute the execution tree.
-            Transaction::Execute(_, execution, additional_fee) => Self::execution_tree(execution, additional_fee),
+            Transaction::Execute(_, execution, fee) => Self::execution_tree(execution, fee),
         }
     }
 }
@@ -110,6 +108,7 @@ impl<N: Network> Transaction<N> {
                 .to_bits_le())
             })
             .chain(
+                // Add the transaction fee to the leaves.
                 [Ok(TransactionLeaf::new_deployment_fee(
                     program.functions().len() as u16, // The last index.
                     **fee.transition_id(),
@@ -122,31 +121,27 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the Merkle tree for the given execution.
-    pub fn execution_tree(execution: &Execution<N>, additional_fee: &Option<Fee<N>>) -> Result<TransactionTree<N>> {
+    pub fn execution_tree(execution: &Execution<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_execution_size(execution)?;
         // Prepare the leaves.
-        let leaves = execution.transitions().enumerate().map(|(index, transition)| {
-            // Construct the transaction leaf.
-            TransactionLeaf::new_execution(index as u16, **transition.id()).to_bits_le()
-        });
-        // If the additional fee is present, add it to the leaves.
-        let leaves = match additional_fee {
-            Some(additional_fee) => {
+        let leaves = execution
+            .transitions()
+            .enumerate()
+            .map(|(index, transition)| {
                 // Construct the transaction leaf.
-                let leaf = TransactionLeaf::new_execution(
+                TransactionLeaf::new_execution(index as u16, **transition.id()).to_bits_le()
+            })
+            .chain(
+                // Add the transaction fee to the leaves.
+                [TransactionLeaf::new_execution(
                     execution.len() as u16, // The last index.
-                    **additional_fee.transition_id(),
+                    **fee.transition_id(),
                 )
-                .to_bits_le();
-                // Add the leaf to the leaves.
-                leaves.chain([leaf].into_iter()).collect::<Vec<_>>()
-            }
-            None => leaves.collect::<Vec<_>>(),
-        };
-
+                .to_bits_le()],
+            );
         // Compute the execution tree.
-        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves)
+        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())
     }
 
     /// Returns `true` if the deployment is within the size bounds.
@@ -167,7 +162,7 @@ impl<N: Network> Transaction<N> {
         );
         // Ensure the number of functions is within the allowed range.
         ensure!(
-            functions.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the additional fee.
+            functions.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the fee.
             "Deployment must contain less than {} functions, found {}",
             Self::MAX_TRANSITIONS,
             functions.len()
@@ -179,7 +174,7 @@ impl<N: Network> Transaction<N> {
     pub fn check_execution_size(execution: &Execution<N>) -> Result<()> {
         // Ensure the number of functions is within the allowed range.
         ensure!(
-            execution.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the additional fee.
+            execution.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the fee.
             "Execution must contain less than {} transitions, found {}",
             Self::MAX_TRANSITIONS,
             execution.len()

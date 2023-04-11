@@ -17,13 +17,13 @@
 use super::*;
 
 impl<N: Network> Process<N> {
-    /// Executes the fee given the credits record and the fee amount (in gates).
+    /// Executes the fee given the credits record and the fee amount (in microcredits).
     #[inline]
     pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        fee_in_gates: u64,
+        fee_in_microcredits: u64,
         rng: &mut R,
     ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute_fee");
@@ -36,7 +36,7 @@ impl<N: Network> Process<N> {
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
-        let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
+        let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_microcredits)))?];
         lap!(timer, "Construct the inputs");
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;

@@ -38,6 +38,7 @@ impl<N: Network> FromBytes for Transaction<N> {
                 let deployment = Deployment::read_le(&mut reader)?;
                 // Read the fee.
                 let fee = Fee::read_le(&mut reader)?;
+
                 // Initialize the transaction.
                 let transaction = Self::from_deployment(deployment, fee).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
@@ -48,18 +49,11 @@ impl<N: Network> FromBytes for Transaction<N> {
                 let id = N::TransactionID::read_le(&mut reader)?;
                 // Read the execution.
                 let execution = Execution::read_le(&mut reader)?;
-
-                // Read the additional fee variant.
-                let additional_fee_variant = u8::read_le(&mut reader)?;
-                // Read the additional fee.
-                let additional_fee = match additional_fee_variant {
-                    0u8 => None,
-                    1u8 => Some(Fee::read_le(&mut reader)?),
-                    _ => return Err(error("Invalid additional fee variant")),
-                };
+                // Read the fee.
+                let fee = Fee::read_le(&mut reader)?;
 
                 // Initialize the transaction.
-                let transaction = Self::from_execution(execution, additional_fee).map_err(|e| error(e.to_string()))?;
+                let transaction = Self::from_execution(execution, fee).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
                 (id, transaction)
             }
@@ -94,21 +88,15 @@ impl<N: Network> ToBytes for Transaction<N> {
                 // Write the fee.
                 fee.write_le(&mut writer)
             }
-            Self::Execute(id, execution, additional_fee) => {
+            Self::Execute(id, execution, fee) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
                 // Write the ID.
                 id.write_le(&mut writer)?;
                 // Write the execution.
                 execution.write_le(&mut writer)?;
-                // Write the additional fee.
-                match additional_fee {
-                    None => 0u8.write_le(&mut writer),
-                    Some(additional_fee) => {
-                        1u8.write_le(&mut writer)?;
-                        additional_fee.write_le(&mut writer)
-                    }
-                }
+                // Write the fee.
+                fee.write_le(&mut writer)
             }
         }
     }

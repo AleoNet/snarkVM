@@ -222,7 +222,7 @@ record token:
 function mint:
     input r0 as address.private;
     input r1 as u64.private;
-    cast r0 0u64 r1 into r2 as token.record;
+    cast r0 r1 into r2 as token.record;
     output r2 as token.record;
 
 function compute:
@@ -259,9 +259,9 @@ function compute:
                     genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
 
-                // Prepare the additional fee.
+                // Prepare the fee.
                 let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-                let additional_fee = (credits, 10);
+                let fee = (credits, 10);
 
                 // Initialize the VM.
                 let vm = sample_vm();
@@ -269,8 +269,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
-                let transaction =
-                    Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
@@ -373,11 +372,11 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization_with_additional_fee(
+                let transaction = Transaction::execute_authorization_with_fee(
                     &vm,
                     &caller_private_key,
                     authorization,
-                    Some((record, 100)),
+                    (record, 100),
                     None,
                     rng,
                 )
