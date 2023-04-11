@@ -16,8 +16,10 @@
 
 use crate::traits::{FftParameters, PoseidonDefaultParameters};
 
+use core::panic::{RefUnwindSafe, UnwindSafe};
+
 /// A trait that defines parameters for a prime field.
-pub trait FieldParameters: 'static + FftParameters + PoseidonDefaultParameters {
+pub trait FieldParameters: 'static + FftParameters + PoseidonDefaultParameters + UnwindSafe + RefUnwindSafe {
     /// The modulus of the field.
     const MODULUS: Self::BigInteger;
 

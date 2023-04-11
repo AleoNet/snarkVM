@@ -21,6 +21,7 @@ use console::{
 };
 
 use core::marker::PhantomData;
+use std::panic;
 
 /// A unary literal operation.
 pub type UnaryLiteral<N, O> = Literals<N, O, 1>;
@@ -80,7 +81,10 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
             inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
 
         // Compute the operation.
-        let output = O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
+        let inputs = inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?;
+        let output: Literal<N> = catch_unwind_silent(|| O::evaluate(&inputs))
+            .map_err(|_| anyhow!("Failed to evaluate operation: {} {inputs:?}", O::OPCODE))??;
+
         // Compute the output type.
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
@@ -308,4 +312,18 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         // Write the destination register.
         self.destination.write_le(&mut writer)
     }
+}
+
+/// Run a function and catch any panics quietly.
+fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
+    // Get the current hook.
+    let current_hook = panic::take_hook();
+    // Set the hook to silent.
+    panic::set_hook(Box::new(|_| {}));
+    // Run the function.
+    let result = panic::catch_unwind(f);
+    // Reset the hook.
+    panic::set_hook(current_hook);
+    // Return the function result.
+    result
 }

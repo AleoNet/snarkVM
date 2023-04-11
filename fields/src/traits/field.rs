@@ -31,10 +31,11 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use std::{
+use core::{
     fmt::{Debug, Display},
     hash::Hash,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    panic::{RefUnwindSafe, UnwindSafe},
 };
 
 use serde::{Deserialize, Serialize};
@@ -91,6 +92,8 @@ pub trait Field:
     + CanonicalDeserializeWithFlags
     + Serialize
     + for<'a> Deserialize<'a>
+    + UnwindSafe
+    + RefUnwindSafe
 {
     type BasePrimeField: PrimeField;
 

@@ -47,7 +47,10 @@ use snarkvm_curves::PairingEngine;
 
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
+use std::{
+    panic::{RefUnwindSafe, UnwindSafe},
+    sync::Arc,
+};
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
@@ -77,6 +80,8 @@ pub trait Network:
     + for<'a> Deserialize<'a>
     + Send
     + Sync
+    + UnwindSafe
+    + RefUnwindSafe
 {
     /// The network ID.
     const ID: u16;

@@ -23,6 +23,7 @@ use core::{
     hash::Hash,
     iter,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    panic::{RefUnwindSafe, UnwindSafe},
 };
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -59,6 +60,8 @@ pub trait ProjectiveCurve:
     + ToBytes
     + iter::Sum
     + From<<Self as ProjectiveCurve>::Affine>
+    + UnwindSafe
+    + RefUnwindSafe
 {
     type Affine: AffineCurve<Projective = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
     type BaseField: Field;
