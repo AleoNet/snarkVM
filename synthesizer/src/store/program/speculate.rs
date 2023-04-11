@@ -606,6 +606,7 @@ mod tests {
         let transfer_20 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 20, rng);
         let transfer_30 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 30, rng);
 
+        // Starting Balance = 20
         // Mint_10 -> Balance = 20 + 10  = 30
         // Transfer_10 -> Balance = 30 - 10 = 20
         // Transfer_20 -> Balance = 20 - 20
@@ -621,6 +622,7 @@ mod tests {
             );
         }
 
+        // Starting Balance = 20
         // Transfer_20 -> Balance = 20 - 20 = 0
         // Mint_10 -> Balance = 0 + 10 = 10
         // Mint_20 -> Balance = 10 + 20 = 30
@@ -637,27 +639,29 @@ mod tests {
             );
         }
 
-        // TODO (raychu86): Handle the instructions panics that happen here.
+        // Starting Balance = 20
         // Transfer_20 -> Balance = 20 - 20 = 0
-        // Transfer_10 -> Balance = 0 - 10 should fail
+        // Transfer_10 -> Balance = 0 - 10 = -10 (should fail)
         {
-            let transactions = [transfer_20.clone(), transfer_10];
+            let transactions = [transfer_20.clone(), transfer_10.clone()];
 
             // Assert that the first transaction is valid.
             let mut speculate = Speculate::new(vm.program_store().current_storage_root());
             assert_eq!(vec![transfer_20.id()], speculate.speculate_transactions(&vm, &transactions).unwrap());
         }
 
+        // Starting Balance = 20
         // Mint_20 -> Balance = 20 + 20
         // Transfer_30 -> Balance = 40 - 30 = 10
-        // Transfer_20 -> Balance = 10 - 20 = -10 should fail
+        // Transfer_20 -> Balance = 10 - 20 = -10 (should fail)
+        // Transfer_10 -> Balance = 10 - 10 = 0
         {
-            let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20];
+            let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20, transfer_10.clone()];
 
             // Assert that the first transaction is valid.
             let mut speculate = Speculate::new(vm.program_store().current_storage_root());
             assert_eq!(
-                vec![mint_20.id(), transfer_30.id()],
+                vec![mint_20.id(), transfer_30.id(), transfer_10.id()],
                 speculate.speculate_transactions(&vm, &transactions).unwrap()
             );
         }
