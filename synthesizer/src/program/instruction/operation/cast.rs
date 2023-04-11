@@ -141,7 +141,9 @@ impl<N: Network> Cast<N> {
 
                 // Initialize the record entries.
                 let mut entries = IndexMap::new();
-                for (entry, (entry_name, entry_type)) in inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries()) {
+                for (entry, (entry_name, entry_type)) in
+                    inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
+                {
                     // Compute the register type.
                     let register_type = RegisterType::from(ValueType::from(*entry_type));
                     // Retrieve the plaintext value from the entry.
@@ -234,8 +236,12 @@ impl<N: Network> Cast<N> {
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
-                // Ensure the operands length is at least 1.
-                ensure!(inputs.len() >= 1, "Casting to a record requires at least 1 operand");
+                // Ensure the operands length is at least the minimum.
+                ensure!(
+                    inputs.len() >= N::MIN_RECORD_ENTRIES,
+                    "Casting to a record requires at least {} operand",
+                    N::MIN_RECORD_ENTRIES
+                );
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
@@ -257,7 +263,9 @@ impl<N: Network> Cast<N> {
 
                 // Initialize the record entries.
                 let mut entries = IndexMap::new();
-                for (entry, (entry_name, entry_type)) in inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries()) {
+                for (entry, (entry_name, entry_type)) in
+                    inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
+                {
                     // Compute the register type.
                     let register_type = RegisterType::from(ValueType::from(*entry_type));
                     // Retrieve the plaintext value from the entry.
@@ -346,20 +354,21 @@ impl<N: Network> Cast<N> {
                 let record = stack.program().get_record(&record_name)?;
 
                 // Ensure the input types length is at least the minimum.
-                ensure!(input_types.len() >= 2, "Casting to a record requires at least two operands");
+                ensure!(
+                    input_types.len() >= N::MIN_RECORD_ENTRIES,
+                    "Casting to a record requires at least {} operands",
+                    N::MIN_RECORD_ENTRIES
+                );
                 // Ensure the first input type is an address.
                 ensure!(
                     input_types[0] == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
                     "Casting to a record requires the first operand to be an address"
                 );
-                // Ensure the second input type is a u64.
-                ensure!(
-                    input_types[1] == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
-                    "Casting to a record requires the second operand to be a u64"
-                );
 
                 // Ensure the input types match the record.
-                for (input_type, (_, entry_type)) in input_types.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record.entries()) {
+                for (input_type, (_, entry_type)) in
+                    input_types.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record.entries())
+                {
                     match input_type {
                         // Ensure the plaintext type matches the entry type.
                         RegisterType::Plaintext(plaintext_type) => match entry_type {

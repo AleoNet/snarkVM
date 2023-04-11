@@ -107,7 +107,6 @@ pub trait Network:
     /// The number of blocks per epoch (1 hour).
     const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
 
-
     /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.
     const MAX_DATA_DEPTH: usize = 32;

@@ -141,7 +141,9 @@ impl<N: Network> FinalizeTypes<N> {
         }
 
         // Ensure the operand types match the record entry types.
-        for (operand, (entry_name, entry_type)) in operands.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries()) {
+        for (operand, (entry_name, entry_type)) in
+            operands.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
+        {
             match entry_type {
                 EntryType::Constant(plaintext_type)
                 | EntryType::Public(plaintext_type)
