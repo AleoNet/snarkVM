@@ -22,6 +22,27 @@ use console::{
 
 use core::marker::PhantomData;
 
+/// Execute the operation in a separate thread, and catch any panics.
+#[macro_export]
+macro_rules! catch_panic_silent {
+    ($operation:expr, $inputs:expr, $operation_type:expr) => {{
+        // Capture the original panic hook.
+        let original_hook = std::panic::take_hook();
+        let output = std::thread::spawn(move || {
+            // Establish a silent panic hook.
+            std::panic::set_hook(Box::new(|_| {}));
+            $operation($inputs)
+        })
+        .join()
+        .map_err(|_| anyhow!("Failed to evaluate operation: {}", $operation_type))??;
+
+        // Restore the original panic hook.
+        std::panic::set_hook(original_hook);
+
+        output
+    }};
+}
+
 /// A unary literal operation.
 pub type UnaryLiteral<N, O> = Literals<N, O, 1>;
 /// A binary literal operation.
@@ -79,8 +100,14 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let input_types: Vec<_> =
             inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
 
-        // Compute the operation.
-        let output = O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
+        // Prepare the inputs.
+        let inputs: [Literal<N>; NUM_OPERANDS] =
+            inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?;
+        let operation_type = format!("{} {inputs:?}", O::OPCODE);
+
+        // Evaluate the operation.
+        let output = catch_panic_silent!(O::evaluate, &inputs, operation_type);
+
         // Compute the output type.
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
