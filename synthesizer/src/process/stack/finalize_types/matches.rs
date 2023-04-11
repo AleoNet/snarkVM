@@ -19,21 +19,22 @@ use super::*;
 impl<N: Network> FinalizeTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
     pub fn matches_struct(&self, stack: &Stack<N>, operands: &[Operand<N>], struct_: &Struct<N>) -> Result<()> {
-        // Ensure the operands length is at least the minimum required.
-        if operands.len() < N::MIN_STRUCT_ENTRIES {
-            bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
-        }
-
         // Retrieve the struct name.
         let struct_name = struct_.name();
         // Ensure the struct name is valid.
         ensure!(!Program::is_reserved_keyword(struct_name), "Struct name '{struct_name}' is reserved");
 
+        // Ensure the operands length is at least the minimum required.
+        if operands.len() < N::MIN_STRUCT_ENTRIES {
+            bail!("'{struct_name}' must have at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
+        }
         // Ensure the number of struct members does not exceed the maximum.
-        let num_members = operands.len();
-        ensure!(num_members <= N::MAX_DATA_ENTRIES, "'{struct_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
+        if operands.len() > N::MAX_STRUCT_ENTRIES {
+            bail!("'{struct_name}' cannot exceed {} entries", N::MAX_STRUCT_ENTRIES)
+        }
 
         // Ensure the number of struct members match.
+        let num_members = operands.len();
         let expected_num_members = struct_.members().len();
         if expected_num_members != num_members {
             bail!("'{struct_name}' expected {expected_num_members} members, found {num_members} members")

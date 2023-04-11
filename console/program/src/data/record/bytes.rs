@@ -46,7 +46,7 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
         if has_duplicates(data.keys().chain(reserved.iter())) {
             return Err(error("Duplicate entry type found in record"));
         }
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         if data.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to parse record: too many entries"));
         }

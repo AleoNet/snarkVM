@@ -69,7 +69,6 @@ impl<N: Network> Stack<N> {
 
 impl<N: Network> Stack<N> {
     /// Returns a record for the given record name.
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,
@@ -109,8 +108,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Samples an entry according to the given entry type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_entry_internal<R: Rng + CryptoRng>(
         &self,
         entry_type: &EntryType<N>,
@@ -137,8 +134,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Samples a plaintext value according to the given plaintext type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_plaintext_internal<R: Rng + CryptoRng>(
         &self,
         plaintext_type: &PlaintextType<N>,

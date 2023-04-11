@@ -26,7 +26,7 @@ impl<N: Network> FromBytes for RecordType<N> {
 
         // Read the number of entries.
         let num_entries = u16::read_le(&mut reader)?;
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         if num_entries as usize > N::MAX_DATA_ENTRIES {
             return Err(error(format!(
                 "RecordType exceeds size: expected <= {}, found {num_entries}",
@@ -52,7 +52,7 @@ impl<N: Network> FromBytes for RecordType<N> {
         if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
             return Err(error(format!("Duplicate entry type found in record '{name}'")));
         }
-        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of members is within the maximum limit.
         if entries.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to parse record: too many entries"));
         }
@@ -64,7 +64,7 @@ impl<N: Network> FromBytes for RecordType<N> {
 impl<N: Network> ToBytes for RecordType<N> {
     /// Writes the record type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         if self.entries.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to serialize record: too many entries"));
         }

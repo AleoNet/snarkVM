@@ -64,7 +64,7 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
         let reserved = [Identifier::from_str("owner")?];
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
-        // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
         Ok(Record { owner, data, nonce })
@@ -79,7 +79,7 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
         let reserved = [Identifier::from_str("owner")?];
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
-        // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
         Ok(Record { owner, data, nonce })

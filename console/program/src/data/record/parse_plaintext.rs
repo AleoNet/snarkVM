@@ -72,7 +72,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
                 return Err(error("Duplicate entry type found in record"));
             }
-            // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+            // Ensure the number of entries is within the maximum limit.
             match entries.len() <= N::MAX_DATA_ENTRIES {
                 true => Ok(entries),
                 false => Err(error(format!("Found a record that exceeds size ({})", entries.len()))),

@@ -81,8 +81,8 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
                     true => *mode[0],
                     false => return Err(error("Members of struct in entry have different visibilities")),
                 };
-                // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
-                match members.len() <= N::MAX_DATA_ENTRIES {
+                // Ensure the number of structs is within the maximum limit.
+                match members.len() <= N::MAX_STRUCT_ENTRIES {
                     // Return the members and the visibility.
                     true => Ok((members.into_iter().map(|(i, p, _)| (i, p)).collect::<Vec<_>>(), mode)),
                     false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),

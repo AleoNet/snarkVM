@@ -88,7 +88,7 @@ impl<N: Network> Parser for RecordType<N> {
             if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
                 return Err(error(format!("Duplicate entry type found in record '{name}'")));
             }
-            // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+            // Ensure the number of members is within the maximum limit.
             if entries.len() > N::MAX_DATA_ENTRIES {
                 return Err(error("Failed to parse record: too many entries"));
             }

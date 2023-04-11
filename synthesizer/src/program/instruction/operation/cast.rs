@@ -87,8 +87,10 @@ impl<N: Network> Cast<N> {
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_name)?;
@@ -199,8 +201,10 @@ impl<N: Network> Cast<N> {
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_)) => {
-                // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_)?;
@@ -237,11 +241,9 @@ impl<N: Network> Cast<N> {
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least the minimum.
-                ensure!(
-                    inputs.len() >= N::MIN_RECORD_ENTRIES,
-                    "Casting to a record requires at least {} operand",
-                    N::MIN_RECORD_ENTRIES
-                );
+                if inputs.len() < N::MIN_RECORD_ENTRIES {
+                    bail!("Casting to a record requires at least {} operand", N::MIN_RECORD_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
@@ -435,7 +437,7 @@ impl<N: Network> Parser for Cast<N> {
         let (string, register_type) = RegisterType::parse(string)?;
         // Check that the number of operands does not exceed the maximum number of data entries.
         let max_operands = match register_type {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         match operands.len() <= max_operands {
@@ -479,7 +481,7 @@ impl<N: Network> Display for Cast<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
@@ -521,7 +523,7 @@ impl<N: Network> FromBytes for Cast<N> {
 
         // Ensure the number of operands is within the bounds for the register type.
         let max_operands = match register_type {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if num_operands.is_zero() || num_operands > max_operands {
@@ -538,7 +540,7 @@ impl<N: Network> ToBytes for Cast<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
             RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
@@ -590,19 +592,19 @@ mod tests {
     #[test]
     fn test_parse_cast_into_plaintext_max_operands() {
         let mut string = "cast ".to_string();
-        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES);
-        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_STRUCT_ENTRIES);
+        for i in 0..CurrentNetwork::MAX_STRUCT_ENTRIES {
             string.push_str(&format!("r{i} "));
             operands.push(Operand::Register(Register::Locator(i as u64)));
         }
-        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES));
+        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_STRUCT_ENTRIES));
         let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES, "The number of operands is incorrect");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_STRUCT_ENTRIES, "The number of operands is incorrect");
         assert_eq!(cast.operands, operands, "The operands are incorrect");
         assert_eq!(
             cast.destination,
-            Register::Locator(CurrentNetwork::MAX_DATA_ENTRIES as u64),
+            Register::Locator(CurrentNetwork::MAX_STRUCT_ENTRIES as u64),
             "The destination register is incorrect"
         );
         assert_eq!(
@@ -650,10 +652,10 @@ mod tests {
     #[test]
     fn test_parse_cast_into_plaintext_too_many_operands() {
         let mut string = "cast ".to_string();
-        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+        for i in 0..=CurrentNetwork::MAX_STRUCT_ENTRIES {
             string.push_str(&format!("r{i} "));
         }
-        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES + 1));
+        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_STRUCT_ENTRIES + 1));
         assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
     }
 }
