@@ -25,6 +25,7 @@ use crate::{
     }, fft::DensePolynomial,
 };
 
+use itertools::Itertools;
 use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 
@@ -41,8 +42,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
         let mut lhs_sum = DensePolynomial::zero();
-        for (&mut r, lhs) in verifier_message.iter().zip(state.iter_lhs_polys()) {
-            lhs_sum += &(std::mem::take(lhs)* r);
+        for (&r, lhs) in verifier_message.iter().zip_eq(state.lhs_polys_iter_mut()) {
+            lhs_sum += &(std::mem::take(lhs) * r);
         }
         let h_2 = LabeledPolynomial::new("h_2".into(), lhs_sum, None, None);
         let oracles = prover::FourthOracles { h_2 };

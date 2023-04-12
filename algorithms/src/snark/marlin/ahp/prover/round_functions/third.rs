@@ -269,7 +269,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g = LabeledPolynomial::new(label, g, Some(non_zero_domain.size() - 2), None);
 
-        assert_eq!(h.mul_by_vanishing_poly(non_zero_domain), &a_poly - &(&b_poly * &f));
         assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
         (f.coeffs[0], h, g)

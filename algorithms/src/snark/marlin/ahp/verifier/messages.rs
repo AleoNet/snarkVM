@@ -57,13 +57,13 @@ pub struct ThirdMessage<F> {
 }
 
 impl<F: PrimeField> ThirdMessage<F> {
-    pub fn iter(&mut self) -> impl Iterator<Item = &mut F> {
-        self.r_a.iter_mut()
-            .zip_eq(self.r_b.iter_mut())
-            .zip_eq(self.r_c.iter_mut())
+    pub fn iter(&self) -> impl Iterator<Item = &F> {
+        self.r_a.iter()
+            .zip_eq(&self.r_b)
+            .zip_eq(&self.r_c)
             .flat_map(|((r_a, r_b), r_c)|{
                 [r_a, r_b, r_c]
-            }).collect_vec().into_iter()
+            })
     }
 }
 
