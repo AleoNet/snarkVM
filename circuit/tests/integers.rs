@@ -456,6 +456,24 @@ mod integers {
         println!("{}", output);
     }
 
+    // for ops see circuit/types/integers/{rem_checked,rem_wrapped}.rs
+    // However, unsigned rem (checked) and unsigned rem.w (wrapped) are identical.
+    // So we don't bother getting samples of rem_wrapped.
+
+    // var % var
+    #[test]
+    fn rem_checked_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a % &b; // '%' on integers turns into a.rem_checked(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// rem (checked) u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
     // If you want to try a signed op to take a look at it:
     /*
     #[test]
