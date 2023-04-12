@@ -128,7 +128,7 @@ mod tests {
 
         for expected in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::vm::test_helpers::sample_execution_transaction(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
         ]
         .into_iter()
         {

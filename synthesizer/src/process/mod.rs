@@ -431,7 +431,7 @@ mod tests {
         let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
 
         // Construct the process.
-        let mut process = Process::load().unwrap();
+        let process = Process::load().unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -483,43 +483,6 @@ mod tests {
         // assert_eq!(20561, CurrentAleo::num_private());
         // assert_eq!(20579, CurrentAleo::num_constraints());
         // assert_eq!(79386, CurrentAleo::num_gates());
-
-        /******************************************/
-
-        // Ensure a non-coinbase program function fails.
-
-        // Initialize a new program.
-        let program = Program::<CurrentNetwork>::from_str(
-            r"program token.aleo;
-
-  record token:
-    owner as address.private;
-    item as u64.private;
-
-  function mint:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as token.record;
-    output r2 as token.record;",
-        )
-        .unwrap();
-        process.add_program(&program).unwrap();
-
-        let authorization = process
-            .authorize::<CurrentAleo, _>(
-                &caller_private_key,
-                program.id(),
-                Identifier::from_str("mint").unwrap(),
-                [r0, r1].iter(),
-                rng,
-            )
-            .unwrap();
-        let result = process.execute::<CurrentAleo, _>(authorization, rng);
-        assert!(result.is_err());
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            format!("'token.aleo/mint' is not satisfied on the given inputs (29387 constraints).")
-        );
     }
 
     #[test]

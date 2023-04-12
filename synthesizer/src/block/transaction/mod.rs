@@ -148,6 +148,30 @@ impl<N: Network> Transaction<N> {
     }
 }
 
+impl<N: Network> Transaction<N> {
+    /// Returns `true` if this is a coinbase transaction.
+    #[inline]
+    pub fn is_coinbase(&self) -> bool {
+        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/mint'.
+        if let Self::Execute(_, execution, _) = self {
+            // Ensure there is 1 transition.
+            if execution.len() == 1 {
+                // Retrieve the transition.
+                if let Ok(transition) = execution.get(0) {
+                    // Check if it calls 'credits.aleo/mint'.
+                    if transition.program_id().to_string() == "credits.aleo"
+                        && transition.function_name().to_string() == "mint"
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Otherwise, return 'false'.
+        return false;
+    }
+}
+
 /// A helper enum for iterators and consuming iterators over a transaction.
 enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
     Deploy(I1),

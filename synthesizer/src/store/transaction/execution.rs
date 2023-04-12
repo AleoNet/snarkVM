@@ -526,7 +526,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         insert_get_remove(transaction).unwrap();
     }
@@ -546,7 +546,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         find_transaction_id(transaction).unwrap();
     }

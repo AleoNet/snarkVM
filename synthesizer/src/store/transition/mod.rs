@@ -768,7 +768,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the transitions.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         let transitions = transaction
             .transitions()
             .chain([crate::process::test_helpers::sample_transition()].iter())

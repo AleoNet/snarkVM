@@ -118,9 +118,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 self.check_deployment(deployment)?;
             }
             Transaction::Execute(_, execution, fee) => {
-                // Check the deployment size.
+                // Check the execution size.
                 if let Err(error) = Transaction::check_execution_size(execution) {
                     bail!("Invalid transaction size (execution): {error}");
+                }
+                // Ensure the fee is present, if the transaction is not a coinbase.
+                if !transaction.is_coinbase() && fee.is_none() {
+                    bail!("Transaction is missing a fee (execution)");
                 }
                 // Verify the fee.
                 if let Some(fee) = fee {
@@ -236,7 +240,7 @@ mod tests {
         assert!(vm.verify_transaction(&deployment_transaction));
 
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         // Ensure the transaction verifies.
         assert!(vm.check_transaction(&execution_transaction).is_ok());
         assert!(vm.verify_transaction(&execution_transaction));
@@ -270,12 +274,12 @@ mod tests {
         let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         match transaction {
             Transaction::Execute(_, execution, _) => {
-                // Ensure the inclusion proof exists.
-                assert!(execution.inclusion_proof().is_some());
+                // Ensure the inclusion proof *does not* exist.
+                assert!(execution.inclusion_proof().is_none()); // This is 'None', because this execution called 'credits.aleo/mint'.
                 // Verify the inclusion.
                 assert!(Inclusion::verify_execution(&execution).is_ok());
                 // Verify the execution.
@@ -284,13 +288,65 @@ mod tests {
 
                 // Ensure that deserialization doesn't break the transaction verification.
                 let serialized_execution = execution.to_string();
-                let execution_transaction: Execution<CurrentNetwork> =
+                let recovered_execution: Execution<CurrentNetwork> =
                     serde_json::from_str(&serialized_execution).unwrap();
-                assert!(vm.check_execution(&execution_transaction).is_ok());
-                assert!(vm.verify_execution(&execution_transaction));
+                assert!(vm.check_execution(&recovered_execution).is_ok());
+                assert!(vm.verify_execution(&recovered_execution));
             }
             _ => panic!("Expected an execution transaction"),
         }
+    }
+
+    #[test]
+    fn test_verify_fee() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+
+        match transaction {
+            Transaction::Execute(_, _, Some(fee)) => {
+                // Ensure the inclusion proof exists.
+                assert!(fee.inclusion_proof().is_some());
+                // Verify the inclusion.
+                assert!(Inclusion::verify_fee(&fee).is_ok());
+                // Verify the fee.
+                assert!(vm.check_fee(&fee).is_ok());
+                assert!(vm.verify_fee(&fee));
+
+                // Ensure that deserialization doesn't break the transaction verification.
+                let serialized_fee = fee.to_string();
+                let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
+                assert!(vm.check_fee(&recovered_fee).is_ok());
+                assert!(vm.verify_fee(&recovered_fee));
+            }
+            _ => panic!("Expected an execution with a fee"),
+        }
+    }
+
+    #[test]
+    fn test_check_transaction_execution() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Fetch a valid execution transaction.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction));
+
+        // Fetch an invalid execution transaction.
+        let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
+        assert!(vm.check_transaction(&invalid_transaction).is_err());
+        assert!(!vm.verify_transaction(&invalid_transaction));
+
+        Ok(())
     }
 
     #[test]

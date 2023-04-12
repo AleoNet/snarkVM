@@ -278,7 +278,7 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_execution_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    pub(crate) fn sample_execution_transaction_without_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
@@ -318,7 +318,7 @@ function compute:
                 // Execute.
                 let transaction = Transaction::execute_authorization(&vm, authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction));
+                assert!(!vm.verify_transaction(&transaction));
                 // Return the transaction.
                 transaction
             })

@@ -657,7 +657,7 @@ mod tests {
     fn test_inclusion_verify_execution() {
         let rng = &mut TestRng::default();
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         match execution_transaction {
             Transaction::Execute(_, execution, _) => {

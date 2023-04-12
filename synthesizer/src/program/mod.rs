@@ -613,12 +613,6 @@ impl<N: Network> Program<N> {
         // Check if the name is a keyword.
         Self::KEYWORDS.iter().any(|keyword| *keyword == name)
     }
-
-    /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
-    #[inline]
-    pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint"
-    }
 }
 
 impl<N: Network> TypeName for Program<N> {
