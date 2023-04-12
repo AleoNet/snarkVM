@@ -404,13 +404,99 @@ impl<N: Network> Speculate<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{vm::test_helpers, Block, ConsensusMemory, Header, Metadata, Transaction, Transactions};
+    use crate::{
+        vm::test_helpers,
+        Block,
+        ConsensusMemory,
+        Header,
+        Metadata,
+        Program,
+        Transaction,
+        Transactions,
+        Transition,
+    };
     use console::{
-        account::{Address, PrivateKey},
+        account::{Address, PrivateKey, ViewKey},
         types::Field,
     };
 
+    use rand::{distributions::DistString, seq::SliceRandom};
+
     type CurrentNetwork = test_helpers::CurrentNetwork;
+
+    pub const ITERATIONS: u32 = 10;
+
+    /// Sample a new program and deploy it to the VM. Returns the program name.
+    fn new_program_deployment<R: Rng + CryptoRng>(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        private_key: &PrivateKey<CurrentNetwork>,
+        previous_block: &Block<CurrentNetwork>,
+        rng: &mut R,
+    ) -> Result<(String, Block<CurrentNetwork>)> {
+        let program_name = format!("a{}.aleo", Alphanumeric.sample_string(rng, 8));
+
+        let program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+program {program_name};
+
+mapping account:
+    // The token owner.
+    key owner as address.public;
+    // The token amount.
+    value amount as u64.public;
+
+function mint_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+    finalize r0 r1;
+
+finalize mint_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+
+    load_or account[r0] 0u64 into r2;
+    add r2 r1 into r3;
+    store r3 into account[r0];
+
+function transfer_public:
+    input r0 as address.public;
+    input r1 as u64.public;
+
+    finalize self.caller r0 r1;
+
+finalize transfer_public:
+    input r0 as address.public;
+    input r1 as address.public;
+    input r2 as u64.public;
+
+    load_or account[r0] 0u64 into r3;
+    load_or account[r1] 0u64 into r4;
+
+    sub r3 r2 into r5;
+    add r4 r2 into r6;
+
+    store r5 into account[r0];
+    store r6 into account[r1];"
+        ))?;
+
+        // Fetch the unspent records.
+        let records =
+            previous_block.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Prepare the additional fee.
+        let view_key = ViewKey::<CurrentNetwork>::try_from(private_key)?;
+        let credits = records.values().next().unwrap().decrypt(&view_key)?;
+        let additional_fee = (credits, 10);
+
+        // Deploy.
+        let transaction = Transaction::deploy(&vm, &private_key, &program, additional_fee, None, rng)?;
+
+        // Construct the new block.
+        let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, rng)?;
+
+        Ok((program_name, next_block))
+    }
 
     /// Construct a new block based on the given transactions.
     fn sample_next_block<R: Rng + CryptoRng>(
@@ -442,6 +528,64 @@ mod tests {
         )?;
 
         Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
+    }
+
+    /// Create an execution transaction.
+    fn create_execution(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        caller_private_key: PrivateKey<CurrentNetwork>,
+        program_id: &str,
+        function_name: &str,
+        inputs: Vec<Value<CurrentNetwork>>,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
+        assert!(vm.contains_program(&ProgramID::from_str(program_id).unwrap()));
+
+        // Authorize.
+        let authorization =
+            vm.authorize(&caller_private_key, program_id, function_name, inputs.into_iter(), rng).unwrap();
+
+        // Execute.
+        let transaction = Transaction::execute_authorization(vm, authorization, None, rng).unwrap();
+        // Verify.
+        assert!(vm.verify_transaction(&transaction));
+
+        // Return the transaction.
+        transaction
+    }
+
+    /// Sample a public mint transaction.
+    fn sample_mint_public(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        caller_private_key: PrivateKey<CurrentNetwork>,
+        program_id: &str,
+        recipient: Address<CurrentNetwork>,
+        amount: u64,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
+        let inputs = vec![
+            Value::<CurrentNetwork>::from_str(&recipient.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
+        ];
+
+        create_execution(vm, caller_private_key, program_id, "mint_public", inputs, rng)
+    }
+
+    /// Sample a public transfer transaction.
+    fn sample_transfer_public(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        caller_private_key: PrivateKey<CurrentNetwork>,
+        program_id: &str,
+        recipient: Address<CurrentNetwork>,
+        amount: u64,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
+        let inputs = vec![
+            Value::<CurrentNetwork>::from_str(&recipient.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
+        ];
+
+        create_execution(vm, caller_private_key, program_id, "transfer_public", inputs, rng)
     }
 
     #[test]
@@ -513,25 +657,19 @@ mod tests {
 
         // Initialize the VM.
         let vm = test_helpers::sample_vm_with_genesis_block(rng);
-        let duplicate_vm = test_helpers::sample_vm_with_genesis_block(rng);
 
-        // Fetch a deployment transaction.
-        let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
-
-        // Construct the next block.
+        // Deploy a new program.
         let genesis =
             vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
-        let deployment_block =
-            sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, rng).unwrap();
+        let (program_id, deployment_block) = new_program_deployment(&vm, &caller_private_key, &genesis, rng).unwrap();
 
-        // Add the block to the vm.
+        // Add the deployment block to the VM.
         vm.add_next_block(&deployment_block, None).unwrap();
-        duplicate_vm.add_next_block(&deployment_block, None).unwrap();
 
         // Construct a mint and a transfer.
-        let mint_transaction = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);
+        let mint_transaction = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, rng);
         let transfer_transaction =
-            test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 10, rng);
+            sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 10, rng);
 
         // Initialize the state speculator.
         let mut speculate = Speculate::new(vm.program_store().current_storage_root());
@@ -553,15 +691,14 @@ mod tests {
 
         // Add the block to the vm.
         vm.add_next_block(&next_block, None).unwrap();
-        duplicate_vm.add_next_block(&next_block, Some(speculate)).unwrap();
 
         // Fetch the expected storage tree.
         let expected_storage_tree = vm.program_store().tree.read();
-        let duplicate_storage_tree = duplicate_vm.program_store().tree.read();
+        let storage_tree_from_scratch = vm.program_store().storage.to_storage_tree().unwrap();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
-        assert_eq!(expected_storage_tree.root(), duplicate_storage_tree.root());
+        assert_eq!(expected_storage_tree.root(), storage_tree_from_scratch.root());
     }
 
     #[test]
@@ -579,32 +716,28 @@ mod tests {
         // Initialize the vm.
         let vm = test_helpers::sample_vm_with_genesis_block(rng);
 
-        // Fetch a deployment transaction.
-        let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
-
-        // Construct the next block.
+        // Deploy a new program.
         let genesis =
             vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
-        let deployment_block =
-            sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, rng).unwrap();
+        let (program_id, deployment_block) = new_program_deployment(&vm, &caller_private_key, &genesis, rng).unwrap();
 
-        // Add the block to the vm.
+        // Add the deployment block to the VM.
         vm.add_next_block(&deployment_block, None).unwrap();
 
         // Construct the initial mint.
-        let intial_mint = test_helpers::sample_public_mint(&vm, caller_address, 20, rng);
+        let initial_mint = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, rng);
         let initial_mint_block =
-            sample_next_block(&vm, &caller_private_key, &[intial_mint], &deployment_block, rng).unwrap();
+            sample_next_block(&vm, &caller_private_key, &[initial_mint], &deployment_block, rng).unwrap();
 
         // Add the block to the vm.
         vm.add_next_block(&initial_mint_block, None).unwrap();
 
         // Construct a mint and a transfer.
-        let mint_10 = test_helpers::sample_public_mint(&vm, caller_address, 10, rng);
-        let mint_20 = test_helpers::sample_public_mint(&vm, caller_address, 20, rng);
-        let transfer_10 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 10, rng);
-        let transfer_20 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 20, rng);
-        let transfer_30 = test_helpers::sample_public_transfer(&vm, caller_private_key, recipient_address, 30, rng);
+        let mint_10 = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, rng);
+        let mint_20 = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, rng);
+        let transfer_10 = sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 10, rng);
+        let transfer_20 = sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 20, rng);
+        let transfer_30 = sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 30, rng);
 
         // Starting Balance = 20
         // Mint_10 -> Balance = 20 + 10  = 30
@@ -667,5 +800,63 @@ mod tests {
         }
     }
 
-    // TODO (raychu86): Add tests for additional programs.
+    #[test]
+    fn test_speculate_multiple_programs() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key and address for the caller.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Construct the next block.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+
+        // Sample program 1.
+        let (program_1, block_1) = new_program_deployment(&vm, &caller_private_key, &genesis, rng).unwrap();
+        vm.add_next_block(&block_1, None).unwrap();
+
+        // Sample program 2.
+        let (program_2, block_2) = new_program_deployment(&vm, &caller_private_key, &block_1, rng).unwrap();
+        vm.add_next_block(&block_2, None).unwrap();
+
+        // Sample program 3.
+        let (program_3, block_3) = new_program_deployment(&vm, &caller_private_key, &block_2, rng).unwrap();
+        vm.add_next_block(&block_3, None).unwrap();
+
+        // Ensure that the storage trees are the same.
+        assert_eq!(vm.program_store().tree.read().root(), vm.program_store().storage.to_storage_tree().unwrap().root());
+
+        // Generate many transactions.
+        let programs = [program_1, program_2, program_3];
+
+        let mut transactions = Vec::with_capacity(ITERATIONS as usize);
+
+        for i in 0..ITERATIONS {
+            // Pick the program to create a transaction for.
+            let program = programs.choose(rng).unwrap();
+            let amount = rng.gen_range(1..100);
+
+            // Generate a transaction
+            let transaction = sample_mint_public(&vm, caller_private_key, program, caller_address, amount, rng);
+
+            transactions.push(transaction);
+        }
+
+        // Initialize the state speculator.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        speculate.speculate_transactions(&vm, &transactions).unwrap();
+
+        // Sample the next block with the transactions.
+        let next_block = sample_next_block(&vm, &caller_private_key, &transactions, &block_3, rng).unwrap();
+
+        // Add the block to the vm.
+        vm.add_next_block(&next_block, Some(speculate)).unwrap();
+
+        // Ensure that the storage trees are the same.
+        assert_eq!(vm.program_store().tree.read().root(), vm.program_store().storage.to_storage_tree().unwrap().root());
+    }
 }
