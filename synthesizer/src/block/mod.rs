@@ -405,12 +405,11 @@ pub(crate) mod test_helpers {
                 // Initialize the VM.
                 let vm = crate::vm::test_helpers::sample_vm();
                 // Prepare the function inputs.
-                let inputs = [address.to_string(), "1_u64".to_string()];
-                // Authorize the call to start.
-                let authorization = vm.authorize(&private_key, "credits.aleo", "mint", inputs, rng).unwrap();
+                let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
 
                 // Construct the transaction.
-                let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+                let transaction =
+                    Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
                 let transactions = Transactions::from(&[transaction.clone()]);
                 // Construct the block.

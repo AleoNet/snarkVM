@@ -357,27 +357,24 @@ mod tests {
 
         // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee = Some((credits, 10));
+        let fee_in_microcredits = 10;
+
+        // Execute the fee.
+        let fee = Transaction::execute_fee(&vm, &caller_private_key, credits, fee_in_microcredits, None, rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("10u64").unwrap(),
+        ]
+        .into_iter();
 
         // Authorize.
-        let authorization = vm
-            .authorize(
-                &caller_private_key,
-                "testing.aleo",
-                "mint",
-                [
-                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                    Value::<CurrentNetwork>::from_str("10u64").unwrap(),
-                ]
-                .into_iter(),
-                rng,
-            )
-            .unwrap();
+        let authorization = vm.authorize(&caller_private_key, "testing.aleo", "mint", inputs, rng).unwrap();
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction =
-            Transaction::execute_authorization(&vm, &caller_private_key, authorization, fee, None, rng).unwrap();
+        let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());

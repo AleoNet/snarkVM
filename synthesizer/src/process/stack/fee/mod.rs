@@ -68,7 +68,7 @@ impl<N: Network> Fee<N> {
     }
 
     /// Returns the amount (in microcredits).
-    pub const fn amount(&self) -> Result<U64<N>> {
+    pub fn amount(&self) -> Result<U64<N>> {
         // Retrieve the amount (in microcredits) as a plaintext value.
         match self.transition.inputs().get(1) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),

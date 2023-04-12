@@ -108,28 +108,41 @@ impl<N: Network> Transaction<N> {
     ) -> Result<Self> {
         // Compute the authorization.
         let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
+        // Compute the execution.
+        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
+        // Compute the fee.
+        let fee = match fee {
+            None => None,
+            Some((credits, fee_in_microcredits)) => {
+                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
+            }
+        };
         // Initialize the transaction.
-        Self::execute_authorization(vm, private_key, authorization, fee, query, rng)
+        Self::from_execution(execution, fee)
+    }
+
+    /// Initializes a new fee.
+    pub fn execute_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
+        fee_in_microcredits: u64,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Fee<N>> {
+        Ok(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
     }
 
     /// Initializes a new execution transaction from an authorization.
     pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
-        fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        fee: Option<Fee<N>>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
         let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
-        // Compute the fee.
-        let fee = match fee {
-            Some((credits, fee_in_microcredits)) => {
-                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-            }
-            None => None,
-        };
         // Initialize the transaction.
         Self::from_execution(execution, fee)
     }

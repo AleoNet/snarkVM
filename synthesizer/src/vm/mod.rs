@@ -303,25 +303,20 @@ function compute:
                 // Update the VM.
                 vm.add_next_block(&genesis).unwrap();
 
+                // Prepare the inputs.
+                let inputs = [
+                    Value::<CurrentNetwork>::Record(record),
+                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                ]
+                .into_iter();
+
                 // Authorize.
-                let authorization = vm
-                    .authorize(
-                        &caller_private_key,
-                        "credits.aleo",
-                        "transfer",
-                        [
-                            Value::<CurrentNetwork>::Record(record),
-                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                        ]
-                        .into_iter(),
-                        rng,
-                    )
-                    .unwrap();
+                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, None, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
@@ -355,32 +350,22 @@ function compute:
                 // Update the VM.
                 vm.add_next_block(&genesis).unwrap();
 
+                // Prepare the inputs.
+                let inputs = [
+                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                ]
+                .into_iter();
+
                 // Authorize.
-                let authorization = vm
-                    .authorize(
-                        &caller_private_key,
-                        "credits.aleo",
-                        "mint",
-                        [
-                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                        ]
-                        .into_iter(),
-                        rng,
-                    )
-                    .unwrap();
+                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "mint", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
+                // Execute the fee.
+                let fee = Transaction::execute_fee(&vm, &caller_private_key, record, 100, None, rng).unwrap();
+
                 // Execute.
-                let transaction = Transaction::execute_authorization(
-                    &vm,
-                    &caller_private_key,
-                    authorization,
-                    Some((record, 100)),
-                    None,
-                    rng,
-                )
-                .unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
