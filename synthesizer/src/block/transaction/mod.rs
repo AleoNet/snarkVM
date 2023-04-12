@@ -96,21 +96,24 @@ impl<N: Network> Transaction<N> {
         Self::from_deployment(deployment, fee)
     }
 
-    /// Initializes a new execution transaction from an authorization, and an optional fee.
-    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+    /// Initializes a new execution transaction.
+    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
-        authorization: Authorization<N>,
+        private_key: &PrivateKey<N>,
+        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
+        fee: (Record<N, Plaintext<N>>, u64),
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
+        // Compute the authorization.
+        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Initialize the transaction.
-        Self::from_execution(execution, None)
+        Self::execute_authorization(vm, private_key, authorization, fee, query, rng)
     }
 
     /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization_with_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
@@ -124,24 +127,6 @@ impl<N: Network> Transaction<N> {
         let fee = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1;
         // Initialize the transaction.
         Self::from_execution(execution, fee)
-    }
-
-    /// Initializes a new execution transaction.
-    #[allow(clippy::too_many_arguments)]
-    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        program_id: impl TryInto<ProgramID<N>>,
-        function_name: impl TryInto<Identifier<N>>,
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: (Record<N, Plaintext<N>>, u64),
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the authorization.
-        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Initialize the transaction.
-        Self::execute_authorization_with_fee(vm, private_key, authorization, fee, query, rng)
     }
 }
 

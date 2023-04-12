@@ -372,7 +372,7 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization_with_fee(
+                let transaction = Transaction::execute_authorization(
                     &vm,
                     &caller_private_key,
                     authorization,

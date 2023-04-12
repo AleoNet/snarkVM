@@ -375,7 +375,7 @@ mod tests {
 
         // Execute.
         let transaction =
-            Transaction::execute_authorization_with_fee(&vm, &caller_private_key, authorization, fee, None, rng)
+            Transaction::execute_authorization(&vm, &caller_private_key, authorization, fee, None, rng)
                 .unwrap();
 
         // Verify.
