@@ -142,7 +142,7 @@ impl<N: Network> Transaction<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
+        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
         // Initialize the transaction.
         Self::from_execution(execution, fee)
     }
@@ -168,7 +168,7 @@ impl<N: Network> Transaction<N> {
             }
         }
         // Otherwise, return 'false'.
-        return false;
+        false
     }
 }
 

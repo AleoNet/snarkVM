@@ -439,7 +439,7 @@ mod tests {
                 &caller_private_key,
                 program.id(),
                 Identifier::from_str("mint").unwrap(),
-                [r0.clone(), r1.clone()].iter(),
+                [r0, r1].iter(),
                 rng,
             )
             .unwrap();

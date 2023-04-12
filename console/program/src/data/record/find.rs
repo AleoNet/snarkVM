@@ -20,10 +20,8 @@ impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the entry from the given path.
     pub fn find(&self, path: &[Identifier<N>]) -> Result<Entry<N, Plaintext<N>>> {
         // If the path is of length one, check if the path is requesting the `owner`.
-        if path.len() == 1 {
-            if path[0] == Identifier::from_str("owner")? {
-                return Ok(self.owner.to_entry());
-            }
+        if path.len() == 1 && path[0] == Identifier::from_str("owner")? {
+            return Ok(self.owner.to_entry());
         }
 
         // Ensure the path is not empty.
