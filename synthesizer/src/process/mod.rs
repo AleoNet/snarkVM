@@ -753,7 +753,7 @@ function hello_world:
             r"program id.aleo;
 
   struct data:
-    owner as address;
+    user as address;
 
   function initialize:
     cast id.aleo into r0 as data;
@@ -785,7 +785,7 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Declare the output value.
-        let output = Value::from_str(&format!("{{ owner: {} }}", program_id.to_address().unwrap())).unwrap();
+        let output = Value::from_str(&format!("{{ user: {} }}", program_id.to_address().unwrap())).unwrap();
 
         // Check again to make sure we didn't modify the authorization before calling `evaluate`.
         assert_eq!(authorization.len(), 1);

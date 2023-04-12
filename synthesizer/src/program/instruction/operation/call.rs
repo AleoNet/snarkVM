@@ -755,7 +755,7 @@ mod tests {
                 Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
                 Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
             ],
-            vec![Register::Locator(1), Register::Locator(2)],
+            vec![Register::Locator(1), Register::Locator(2), Register::Locator(3)],
         );
 
         check_parser(
