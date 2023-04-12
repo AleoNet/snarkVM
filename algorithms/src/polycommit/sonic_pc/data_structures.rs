@@ -378,7 +378,7 @@ impl<E: PairingEngine> CommitterKey<E> {
         for ck in committer_keys {
             if biggest_ck.is_none() {
                 biggest_ck = Some(ck);
-            } else if biggest_ck.unwrap().supported_degree() < ck.supported_degree() {
+            } else if biggest_ck.unwrap().shifted_powers_of_beta_g.as_ref().unwrap().len() < ck.shifted_powers_of_beta_g.as_ref().unwrap().len() {
                 biggest_ck = Some(ck);
             }
             union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());

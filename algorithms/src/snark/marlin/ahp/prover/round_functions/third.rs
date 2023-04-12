@@ -96,9 +96,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
         for (circuit, circuit_state) in &state.circuit_specific_states {
-            let v_H_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
-            let v_H_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
-            let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
+            let v_H_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
+            let v_H_i_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
+            let v_H_i_alpha_v_H_i_beta = v_H_i_at_alpha * v_H_i_at_beta;
 
             let label_g_a = witness_label(circuit.id, "g_a", 0);
             pool.add_job(move || {
@@ -108,7 +108,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     &circuit.a_arith,
                     *alpha,
                     beta,
-                    v_H_alpha_v_H_beta,
+                    v_H_i_alpha_v_H_i_beta,
                     largest_non_zero_domain_size,
                     &circuit.fft_precomputation,
                     &circuit.ifft_precomputation,
@@ -124,7 +124,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     &circuit.b_arith,
                     *alpha,
                     beta,
-                    v_H_alpha_v_H_beta,
+                    v_H_i_alpha_v_H_i_beta,
                     largest_non_zero_domain_size,
                     &circuit.fft_precomputation,
                     &circuit.ifft_precomputation,
@@ -140,7 +140,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     &circuit.c_arith,
                     *alpha,
                     beta,
-                    v_H_alpha_v_H_beta,
+                    v_H_i_alpha_v_H_i_beta,
                     largest_non_zero_domain_size,
                     &circuit.fft_precomputation,
                     &circuit.ifft_precomputation,
@@ -189,7 +189,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         arithmetization: &MatrixArithmetization<F>,
         alpha: F,
         beta: F,
-        v_H_alpha_v_H_beta: F,
+        v_H_i_alpha_v_H_i_beta: F,
         largest_non_zero_domain_size: F,
         fft_precomputation: &FFTPrecomputation<F>,
         ifft_precomputation: &IFFTPrecomputation<F>,
@@ -199,7 +199,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));
             let a_poly = {
                 let coeffs = cfg_iter!(arithmetization.val.as_dense().unwrap().coeffs())
-                    .map(|a| v_H_alpha_v_H_beta * a)
+                    .map(|a| v_H_i_alpha_v_H_i_beta * a)
                     .collect();
                 DensePolynomial::from_coefficients_vec(coeffs)
             };
@@ -232,7 +232,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .zip_eq(&col_on_K.evaluations)
             .map(|(r, c)| (beta - r) * (alpha - c))
             .collect();
-        batch_inversion_and_mul(&mut inverses, &v_H_alpha_v_H_beta);
+        batch_inversion_and_mul(&mut inverses, &v_H_i_alpha_v_H_i_beta);
 
         cfg_iter_mut!(inverses).zip_eq(&arithmetization.evals_on_K.val.evaluations).for_each(|(inv, a)| *inv *= a);
         let f_evals_on_K = inverses;
@@ -261,6 +261,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // Later on, we multiply `h` by s, and divide by v_K.
         // Substituting in s, we get that h * s / v_K = h / v_K_M * (K_M.size() / K.size());
         // That's what we're computing here.
+        assert_eq!(h, &a_poly - &(&b_poly * &f));
         let (mut h, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
         assert!(remainder.is_zero());
         let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
@@ -268,6 +269,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g = LabeledPolynomial::new(label, g, Some(non_zero_domain.size() - 2), None);
 
+        assert_eq!(h.mul_by_vanishing_poly(non_zero_domain), &a_poly - &(&b_poly * &f));
         assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
         (f.coeffs[0], h, g)
