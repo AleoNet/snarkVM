@@ -374,18 +374,21 @@ impl<N: Network> Speculate<N> {
         }
 
         // Iterate through all the programs and construct the program trees.
-        let mut program_id_map = vm.program_store().storage.program_id_map().keys();
+        let program_id_map = vm.program_store().storage.program_id_map();
         let mut updates = Vec::new();
         let mut appends = Vec::new();
         for (program_id, program_tree) in updated_program_trees.iter() {
             // Construct the leaf for the storage tree.
             let leaf = program_tree.root().to_bits_le();
 
-            // Specify the update or append operation.
-            match program_id_map.position(|id| *id == *program_id) {
-                Some(program_id_index) => updates.push((program_id_index, leaf)),
-                None => appends.push(leaf),
-            };
+            // // Specify the update or append operation.
+            match vm.program_store().contains_program(program_id)? {
+                true => match program_id_map.iter().position(|(id, _)| *id == *program_id) {
+                    Some(index) => updates.push((index, leaf)),
+                    None => bail!("No index found for program_id: {program_id}"),
+                },
+                false => appends.push(leaf),
+            }
         }
 
         // Add new programs to the storage tree.
@@ -393,6 +396,10 @@ impl<N: Network> Speculate<N> {
 
         // Apply updates to the storage tree.
         if !updates.is_empty() {
+            // Sort the updates by descending order of indexes.
+            updates.sort_by(|(a, _), (b, _)| b.cmp(a));
+
+            // Apply the updates
             updated_storage_tree.update_many(&updates)?;
         }
 
@@ -835,7 +842,7 @@ finalize transfer_public:
 
         let mut transactions = Vec::with_capacity(ITERATIONS as usize);
 
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // Pick the program to create a transaction for.
             let program = programs.choose(rng).unwrap();
             let amount = rng.gen_range(1..100);
