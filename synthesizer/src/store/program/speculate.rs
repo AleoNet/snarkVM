@@ -497,7 +497,7 @@ finalize transfer_public:
         let additional_fee = (credits, 10);
 
         // Deploy.
-        let transaction = Transaction::deploy(&vm, &private_key, &program, additional_fee, None, rng)?;
+        let transaction = Transaction::deploy(vm, private_key, &program, additional_fee, None, rng)?;
 
         // Construct the new block.
         let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, rng)?;
