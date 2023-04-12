@@ -376,7 +376,7 @@ function compute:
                     &vm,
                     &caller_private_key,
                     authorization,
-                    (record, 100),
+                    Some((record, 100)),
                     None,
                     rng,
                 )

@@ -48,12 +48,14 @@ impl<N: Network> Transaction<N> {
             }
             Self::Execute(_, execution, fee) => {
                 // Check if the ID is the transition ID for the fee.
-                if *id == **fee.id() {
-                    // Return the transaction leaf.
-                    return Ok(TransactionLeaf::new_execution(
-                        execution.len() as u16, // The last index.
-                        *id,
-                    ));
+                if let Some(fee) = fee {
+                    if *id == **fee.id() {
+                        // Return the transaction leaf.
+                        return Ok(TransactionLeaf::new_execution(
+                            execution.len() as u16, // The last index.
+                            *id,
+                        ));
+                    }
                 }
 
                 // Iterate through the transitions in the execution.
@@ -121,27 +123,31 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the Merkle tree for the given execution.
-    pub fn execution_tree(execution: &Execution<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
+    pub fn execution_tree(execution: &Execution<N>, fee: &Option<Fee<N>>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_execution_size(execution)?;
         // Prepare the leaves.
-        let leaves = execution
-            .transitions()
-            .enumerate()
-            .map(|(index, transition)| {
+        let leaves = execution.transitions().enumerate().map(|(index, transition)| {
+            // Construct the transaction leaf.
+            TransactionLeaf::new_execution(index as u16, **transition.id()).to_bits_le()
+        });
+        // If the fee is present, add it to the leaves.
+        let leaves = match fee {
+            Some(fee) => {
                 // Construct the transaction leaf.
-                TransactionLeaf::new_execution(index as u16, **transition.id()).to_bits_le()
-            })
-            .chain(
-                // Add the transaction fee to the leaves.
-                [TransactionLeaf::new_execution(
+                let leaf = TransactionLeaf::new_execution(
                     execution.len() as u16, // The last index.
                     **fee.transition_id(),
                 )
-                .to_bits_le()],
-            );
+                .to_bits_le();
+                // Add the leaf to the leaves.
+                leaves.chain([leaf].into_iter()).collect::<Vec<_>>()
+            }
+            None => leaves.collect::<Vec<_>>(),
+        };
+
         // Compute the execution tree.
-        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())
+        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves)
     }
 
     /// Returns `true` if the deployment is within the size bounds.

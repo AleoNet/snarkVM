@@ -50,7 +50,7 @@ pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
     Deploy(N::TransactionID, Box<Deployment<N>>, Fee<N>),
     /// The transaction execution represents a call to an Aleo program.
-    Execute(N::TransactionID, Execution<N>, Fee<N>),
+    Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
@@ -65,7 +65,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
-    pub fn from_execution(execution: Execution<N>, fee: Fee<N>) -> Result<Self> {
+    pub fn from_execution(execution: Execution<N>, fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
         // Compute the transaction ID.
@@ -102,7 +102,7 @@ impl<N: Network> Transaction<N> {
         private_key: &PrivateKey<N>,
         (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: (Record<N, Plaintext<N>>, u64),
+        fee: Option<(Record<N, Plaintext<N>>, u64)>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -117,14 +117,19 @@ impl<N: Network> Transaction<N> {
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
-        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+        fee: Option<(Record<N, Plaintext<N>>, u64)>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
         let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
         // Compute the fee.
-        let fee = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1;
+        let fee = match fee {
+            Some((credits, fee_in_microcredits)) => {
+                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
+            }
+            None => None,
+        };
         // Initialize the transaction.
         Self::from_execution(execution, fee)
     }
@@ -160,7 +165,8 @@ impl<N: Network> Transaction<N> {
     pub fn fee(&self) -> Result<U64<N>> {
         match self {
             Self::Deploy(_, _, fee) => fee.amount(),
-            Self::Execute(_, _, fee) => fee.amount(),
+            Self::Execute(_, _, Some(fee)) => fee.amount(),
+            Self::Execute(_, _, None) => Ok(U64::zero()),
         }
     }
 }
@@ -173,7 +179,8 @@ impl<N: Network> Transaction<N> {
             Self::Deploy(_, _, fee) => fee.id() == transition_id,
             // Check the execution and fee.
             Self::Execute(_, execution, fee) => {
-                execution.contains_transition(transition_id) || fee.id() == transition_id
+                execution.contains_transition(transition_id)
+                    || fee.as_ref().map_or(false, |fee| fee.id() == transition_id)
             }
         }
     }
@@ -199,12 +206,12 @@ impl<N: Network> Transaction<N> {
                 false => None,
             },
             // Check the execution and fee.
-            Self::Execute(_, execution, fee) => {
-                execution.find_transition(transition_id).or_else(|| match fee.id() == transition_id {
+            Self::Execute(_, execution, fee) => execution.find_transition(transition_id).or_else(|| {
+                fee.as_ref().and_then(|fee| match fee.id() == transition_id {
                     true => Some(fee.transition()),
                     false => None,
                 })
-            }
+            }),
         }
     }
 
@@ -234,7 +241,9 @@ impl<N: Network> Transaction<N> {
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
             Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
-            Self::Execute(_, execution, fee) => IterWrap::Execute(execution.transitions().chain([fee.transition()])),
+            Self::Execute(_, execution, fee) => {
+                IterWrap::Execute(execution.transitions().chain(fee.as_ref().map(|fee| fee.transition())))
+            }
         }
     }
 
@@ -299,7 +308,7 @@ impl<N: Network> Transaction<N> {
         match self {
             Self::Deploy(_, _, fee) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
             Self::Execute(_, execution, fee) => {
-                IterWrap::Execute(execution.into_transitions().chain([fee.into_transition()]))
+                IterWrap::Execute(execution.into_transitions().chain(fee.map(|fee| fee.into_transition())))
             }
         }
     }

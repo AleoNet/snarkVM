@@ -49,8 +49,15 @@ impl<N: Network> FromBytes for Transaction<N> {
                 let id = N::TransactionID::read_le(&mut reader)?;
                 // Read the execution.
                 let execution = Execution::read_le(&mut reader)?;
+
+                // Read the fee variant.
+                let fee_variant = u8::read_le(&mut reader)?;
                 // Read the fee.
-                let fee = Fee::read_le(&mut reader)?;
+                let fee = match fee_variant {
+                    0u8 => None,
+                    1u8 => Some(Fee::read_le(&mut reader)?),
+                    _ => return Err(error("Invalid fee variant")),
+                };
 
                 // Initialize the transaction.
                 let transaction = Self::from_execution(execution, fee).map_err(|e| error(e.to_string()))?;
@@ -96,7 +103,13 @@ impl<N: Network> ToBytes for Transaction<N> {
                 // Write the execution.
                 execution.write_le(&mut writer)?;
                 // Write the fee.
-                fee.write_le(&mut writer)
+                match fee {
+                    None => 0u8.write_le(&mut writer),
+                    Some(fee) => {
+                        1u8.write_le(&mut writer)?;
+                        fee.write_le(&mut writer)
+                    }
+                }
             }
         }
     }

@@ -36,7 +36,9 @@ impl<N: Network> Serialize for Transaction<N> {
                     transaction.serialize_field("type", "execute")?;
                     transaction.serialize_field("id", &id)?;
                     transaction.serialize_field("execution", &execution)?;
-                    transaction.serialize_field("fee", &fee)?;
+                    if let Some(fee) = fee {
+                        transaction.serialize_field("fee", &fee)?;
+                    }
                     transaction.end()
                 }
             },

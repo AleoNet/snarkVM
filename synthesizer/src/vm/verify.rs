@@ -123,7 +123,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Invalid transaction size (execution): {error}");
                 }
                 // Verify the fee.
-                self.check_fee(fee)?;
+                if let Some(fee) = fee {
+                    self.check_fee(fee)?;
+                }
                 // Verify the execution.
                 self.check_execution(execution)?;
             }
@@ -355,7 +357,7 @@ mod tests {
 
         // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee = (credits, 10);
+        let fee = Some((credits, 10));
 
         // Authorize.
         let authorization = vm
@@ -375,8 +377,7 @@ mod tests {
 
         // Execute.
         let transaction =
-            Transaction::execute_authorization(&vm, &caller_private_key, authorization, fee, None, rng)
-                .unwrap();
+            Transaction::execute_authorization(&vm, &caller_private_key, authorization, fee, None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());
