@@ -42,7 +42,7 @@ use console::{
         Value,
         TRANSACTION_DEPTH,
     },
-    types::{Field, Group},
+    types::{Field, Group, U64},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -172,10 +172,10 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the transaction fee.
-    pub fn fee(&self) -> Result<i64> {
+    pub fn fee(&self) -> Result<U64<N>> {
         match self {
-            Self::Deploy(_, _, fee) => Ok(fee.amount()),
-            Self::Execute(_, _, fee) => Ok(fee.amount()),
+            Self::Deploy(_, _, fee) => fee.amount(),
+            Self::Execute(_, _, fee) => fee.amount(),
         }
     }
 }

@@ -26,7 +26,7 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
-    types::{Field, Group},
+    types::{Field, Group, U64},
 };
 
 use snarkvm_utilities::{cfg_find, cfg_find_map, cfg_values};
@@ -188,7 +188,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns an iterator over the transaction fees, for all transactions.
-    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<i64>> {
+    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
         self.iter().map(Transaction::fee)
     }
 }

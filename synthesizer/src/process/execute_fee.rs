@@ -133,9 +133,6 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the outputs");
 
-        // Ensure the fee is not negative.
-        ensure!(fee.fee() >= &0, "The fee must be zero or positive");
-
         // Ensure the inclusion proof is valid.
         Inclusion::verify_fee(fee)?;
         lap!(timer, "Verify the inclusion proof");
@@ -149,8 +146,6 @@ impl<N: Network> Process<N> {
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the inputs with the output IDs.
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
-        // Extend the inputs with the fee.
-        inputs.push(*I64::<N>::new(*fee.fee()).to_field()?);
         lap!(timer, "Construct the verifier inputs");
 
         // Retrieve the stack.

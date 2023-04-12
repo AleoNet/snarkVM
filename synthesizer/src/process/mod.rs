@@ -33,7 +33,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
-    types::{I64, U16, U64},
+    types::{U16, U64},
 };
 
 use aleo_std::prelude::{finish, lap, timer};

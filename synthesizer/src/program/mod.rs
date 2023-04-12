@@ -142,7 +142,8 @@ function split:
 
 function fee:
     input r0 as credits.record;
-    input r1 as u64.private;
+    input r1 as u64.public;
+    assert.neq r1 0u64;
     sub r0.microcredits r1 into r2;
     cast r0.owner r2 into r3 as credits.record;
     output r3 as credits.record;
