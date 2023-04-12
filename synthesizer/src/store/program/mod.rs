@@ -644,27 +644,30 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         N::hash_bhp1024(&preimage.into_values().flatten().collect::<Vec<_>>())
     }
 
-    // TODO (raychu86): This depends on the `Map`s being deterministically ordered.
-    /// Merkle tree of program state.
+    // TODO (raychu86): This depends on the `Map`s being deterministically ordered (by insertion).
+    /// Returns the Merkle tree of program state.
     fn to_storage_tree(&self) -> Result<StorageTree<N>> {
         // Initialize a list of program trees.
-        let mut program_trees = IndexMap::new();
+        let mut program_trees: IndexMap<u32, ProgramTree<N>> = IndexMap::new();
 
         // TODO (raychu86): Parallelize this.
         // Iterate through all the programs and construct the program trees.
-        for program_id in self.program_id_map().keys() {
+        for (program_id, index) in self.program_index_map().iter() {
             // Construct the program tree.
             let program_tree = self.to_program_tree(&program_id, None)?;
 
             // Insert the program tree to the list of program trees.
-            program_trees.insert(program_id, program_tree);
+            program_trees.insert(*index, program_tree);
         }
+
+        // Sort the program trees by index.
+        program_trees.sort_keys();
 
         // Construct the storage tree.
         N::merkle_tree_bhp(&cfg_iter!(program_trees).map(|(_, tree)| tree.root().to_bits_le()).collect::<Vec<_>>())
     }
 
-    /// Merkle tree of a program's mappings.
+    /// Returns the Merkle tree of the given program's mapping state.
     fn to_program_tree(
         &self,
         program_id: &ProgramID<N>,
@@ -892,10 +895,10 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
                 let program_tree =
                     self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertMapping(mapping_id)]))?;
 
-                match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
+                match self.storage.program_index_map().get(program_id)? {
                     Some(program_id_index) => {
                         // Construct the updated storage tree.
-                        tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                        tree.prepare_update(usize::try_from(*program_id_index)?, &program_tree.root().to_bits_le())?
                     }
                     None => {
                         // Add the program tree root to the tree if the program ID does not exist yet.
@@ -955,13 +958,13 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
                 )?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                    Some(program_id_index) => program_id_index,
-                    None => bail!("Missing program ID '{program_id}' in program id map"),
+                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                    Some(program_id_index) => *program_id_index,
+                    None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
 
                 // Construct the updated storage tree.
-                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                tree.prepare_update(usize::try_from(program_id_index)?, &program_tree.root().to_bits_le())?
             };
 
             // Insert the key-value pair.
@@ -1026,15 +1029,13 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
                 let program_tree = self.storage.to_program_tree(program_id, Some(&[update]))?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                    Some(program_id_index) => program_id_index,
-                    None => {
-                        bail!("Missing program ID '{program_id}' in program id map")
-                    }
+                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                    Some(program_id_index) => *program_id_index,
+                    None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
 
                 // Construct the updated storage tree.
-                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                tree.prepare_update(usize::try_from(program_id_index)?, &program_tree.root().to_bits_le())?
             };
 
             // Update the key-value pair.
@@ -1093,15 +1094,13 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
                     .to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveValue(mapping_id, key_id_index)]))?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                    Some(program_id_index) => program_id_index,
-                    None => {
-                        bail!("Missing program ID '{program_id}' in program id map")
-                    }
+                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                    Some(program_id_index) => *program_id_index,
+                    None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
 
                 // Construct the updated storage tree.
-                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                tree.prepare_update(usize::try_from(program_id_index)?, &program_tree.root().to_bits_le())?
             };
 
             // Remove the key-value pair.
@@ -1142,15 +1141,13 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
                     self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveMapping(mapping_id)]))?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_id_map().keys().position(|id| *id == *program_id) {
-                    Some(program_id_index) => program_id_index,
-                    None => {
-                        bail!("Missing program ID '{program_id}' in program id map")
-                    }
+                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                    Some(program_id_index) => *program_id_index,
+                    None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
 
                 // Construct the updated storage tree.
-                tree.prepare_update(program_id_index, &program_tree.root().to_bits_le())?
+                tree.prepare_update(usize::try_from(program_id_index)?, &program_tree.root().to_bits_le())?
             };
 
             // Remove the mapping.

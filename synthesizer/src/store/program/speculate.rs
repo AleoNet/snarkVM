@@ -374,7 +374,6 @@ impl<N: Network> Speculate<N> {
         }
 
         // Iterate through all the programs and construct the program trees.
-        let program_id_map = vm.program_store().storage.program_id_map();
         let mut updates = Vec::new();
         let mut appends = Vec::new();
         for (program_id, program_tree) in updated_program_trees.iter() {
@@ -383,8 +382,8 @@ impl<N: Network> Speculate<N> {
 
             // // Specify the update or append operation.
             match vm.program_store().contains_program(program_id)? {
-                true => match program_id_map.iter().position(|(id, _)| *id == *program_id) {
-                    Some(index) => updates.push((index, leaf)),
+                true => match vm.program_store().storage.program_index_map().get(program_id)? {
+                    Some(index) => updates.push((usize::try_from(*index)?, leaf)),
                     None => bail!("No index found for program_id: {program_id}"),
                 },
                 false => appends.push(leaf),
