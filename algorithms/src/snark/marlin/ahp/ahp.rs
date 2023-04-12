@@ -394,7 +394,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label: &str,
         alpha: F,
         beta: F,
-        v_h_at_alpha_beta: F,
+        v_h_i_at_alpha_beta: F,
         b_term: F,
         selector_at_gamma: F,
     ) -> LinearCombination<F> {
@@ -405,7 +405,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let label_a_poly = format!("circuit_{id}_a_poly_{label}");
         let label_denom = format!("circuit_{id}_denom_{label}");
 
-        let a = LinearCombination::new(label_a_poly, [(v_h_at_alpha_beta, label_val)]);
+        let a = LinearCombination::new(label_a_poly, [(v_h_i_at_alpha_beta, label_val)]);
         let alpha_beta = alpha * beta;
 
         let mut b = LinearCombination::new(label_denom, [
