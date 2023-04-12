@@ -845,17 +845,27 @@ finalize transfer_public:
         for _ in 0..ITERATIONS {
             // Pick the program to create a transaction for.
             let program = programs.choose(rng).unwrap();
-            let amount = rng.gen_range(1..100);
 
-            // Generate a transaction
-            let transaction = sample_mint_public(&vm, caller_private_key, program, caller_address, amount, rng);
+            // Generate a mint or transfer transaction
+            let transaction = match rng.gen() {
+                true => {
+                    sample_mint_public(&vm, caller_private_key, program, caller_address, rng.gen_range(50..100), rng)
+                }
+                false => {
+                    sample_transfer_public(&vm, caller_private_key, program, caller_address, rng.gen_range(1..50), rng)
+                }
+            };
 
             transactions.push(transaction);
         }
 
         // Initialize the state speculator.
         let mut speculate = Speculate::new(vm.program_store().current_storage_root());
-        speculate.speculate_transactions(&vm, &transactions).unwrap();
+        let accepted_transactions = speculate.speculate_transactions(&vm, &transactions).unwrap();
+
+        // Keep the transactions that are accepted.
+        let transactions: Vec<_> =
+            transactions.into_iter().filter(|transaction| accepted_transactions.contains(&transaction.id())).collect();
 
         // Sample the next block with the transactions.
         let next_block = sample_next_block(&vm, &caller_private_key, &transactions, &block_3, rng).unwrap();
