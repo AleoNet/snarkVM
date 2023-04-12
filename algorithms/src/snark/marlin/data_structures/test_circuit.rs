@@ -29,6 +29,12 @@ pub struct TestCircuit<F: Field> {
     pub mul_depth: usize,
 }
 
+impl<F: Field> core::fmt::Debug for TestCircuit<F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "TestCircuit {{ num_constraints: {}, num_variables: {}, mul_depth: {} }}", self.num_constraints, self.num_variables, self.mul_depth)
+    }
+}
+
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<ConstraintF> {
     fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;

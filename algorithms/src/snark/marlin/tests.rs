@@ -110,7 +110,7 @@ mod marlin {
 
                                 assert!(
                                     $marlin_inst::verify_batch(&fs_parameters, &vks_to_inputs, &proof).unwrap(),
-                                    "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits"
+                                    "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits for circuits: {constraints:?}"
                                 );
                                 println!("Called verifier");
                                 println!("\nShould not verify (i.e. verifier messages should print below):");
