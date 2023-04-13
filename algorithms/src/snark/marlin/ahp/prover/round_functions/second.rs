@@ -120,6 +120,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> DensePolynomial<F> {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain_inverse = state.max_constraint_domain.size_inv;
+        let max_constraint_domain = state.max_constraint_domain.clone();
 
         for (i, ((circuit, circuit_specific_state), oracles)) in state.circuit_specific_states.iter_mut()
                                         .zip(state.first_round_oracles.as_ref().unwrap().batches.values())
@@ -137,7 +138,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let x_polys = core::mem::take(&mut circuit_specific_state.x_polys);
             let input_domain = circuit_specific_state.input_domain.clone();
             let constraint_domain = circuit_specific_state.constraint_domain.clone();
-            let max_constraint_domain = state.max_constraint_domain.clone();
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
 
@@ -167,10 +167,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     circuit_specific_lhs = circuit_specific_lhs.mul_by_vanishing_poly(max_constraint_domain);
                     let (quotient, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
                     assert!(remainder.is_zero());
-                    circuit_specific_lhs = quotient;
-                };
+                    circuit_specific_lhs = quotient * constraint_domain.size_as_field_element * max_constraint_domain_inverse;
+                }
                 
-                circuit_specific_lhs *= constraint_domain.size_as_field_element * max_constraint_domain_inverse * circuit_combiner;
+                circuit_specific_lhs *= circuit_combiner;
 
                 // Let H = largest_domain;
                 // Let H_i = domain;

@@ -156,15 +156,15 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
         
-        let num_instances = state.total_instances;
-        let mut r_a = Vec::with_capacity(num_instances);
-        let mut r_b = Vec::with_capacity(num_instances);
-        let mut r_c = Vec::with_capacity(num_instances);
+        let num_circuits = state.circuit_specific_states.len();
+        let mut r_a = Vec::with_capacity(num_circuits);
+        let mut r_b = Vec::with_capacity(num_circuits);
+        let mut r_c = Vec::with_capacity(num_circuits);
         let first_elems = fs_rng.squeeze_nonnative_field_elements(2);
         r_a.push(TargetField::one());
         r_b.push(first_elems[0]);
         r_c.push(first_elems[1]);
-        for _ in 1..num_instances {
+        for _ in 1..num_circuits {
             let elems: SmallVec<[TargetField; 10]> = fs_rng.squeeze_nonnative_field_elements(3);
             r_a.push(elems[0]);
             r_b.push(elems[1]);
