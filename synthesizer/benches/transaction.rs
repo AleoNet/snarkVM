@@ -103,27 +103,23 @@ fn execute(c: &mut Criterion) {
     // Initialize the VM.
     let (vm, record) = initialize_vm(&private_key, rng);
 
+    // Prepare the inputs.
+    let inputs = [
+        Value::<Testnet3>::Record(record),
+        Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
+        Value::<Testnet3>::from_str("1u64").unwrap(),
+    ]
+    .into_iter();
+
     // Authorize.
-    let authorization = vm
-        .authorize(
-            &private_key,
-            "credits.aleo",
-            "transfer",
-            [
-                Value::<Testnet3>::Record(record),
-                Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
-                Value::<Testnet3>::from_str("1u64").unwrap(),
-            ]
-            .into_iter(),
-            rng,
-        )
-        .unwrap();
+    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
 
     c.bench_function("Transaction - execution (transfer)", |b| {
         b.iter(|| {
             Transaction::execute_authorization(
                 &vm,
                 Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
+                None,
                 None,
                 rng,
             )
@@ -135,6 +131,7 @@ fn execute(c: &mut Criterion) {
         let transaction = Transaction::execute_authorization(
             &vm,
             Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
+            None,
             None,
             rng,
         )
