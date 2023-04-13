@@ -423,13 +423,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn get_selector_evaluation(
-        cached_selector_evaluations: &mut BTreeMap<(u64, u64), F>,
+        cached_selector_evaluations: &mut BTreeMap<(u64, u64, F), F>,
         largest_domain: &EvaluationDomain<F>,
         target_domain: &EvaluationDomain<F>,
-        gamma: F,
+        challenge: F,
     ) -> F {
-        *cached_selector_evaluations.entry((target_domain.size, largest_domain.size)).or_insert({
-            largest_domain.evaluate_selector_polynomial(*target_domain, gamma)
+        *cached_selector_evaluations.entry((target_domain.size, largest_domain.size, challenge)).or_insert({
+            largest_domain.evaluate_selector_polynomial(*target_domain, challenge)
         })
     }
 }

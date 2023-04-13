@@ -72,8 +72,8 @@ mod marlin {
                                 for i in 0..circuit_batch_size {
                                     let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
                                     .map(|_| {
-                                        let mul_depth = 2;// + i;
-                                        let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints + 1000*i, num_variables, rng);
+                                        let mul_depth = 2 + i;
+                                        let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints + 100*i, num_variables, rng);
                                         (circ, inputs)
                                     })
                                     .unzip();
