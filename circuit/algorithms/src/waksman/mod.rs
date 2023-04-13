@@ -16,8 +16,6 @@
 
 mod check;
 
-use crate::CheckPermutation;
-
 use snarkvm_circuit_types::prelude::*;
 
 use core::marker::PhantomData;
@@ -34,22 +32,22 @@ pub struct ASWaksman<E: Environment> {
 impl<E: Environment> ASWaksman<E> {
     /// Initializes a new `ASWaksman` network of the given size.
     pub fn new(size: u64) -> Self {
-        if size == 0 {
-            E::halt("The size of a Waksman network must be greater than zero.")
+        match size != 0 {
+            true => Self { num_inputs: size, _phantom: Default::default() },
+            false => E::halt("The size of a Waksman network must be greater than zero."),
         }
-        Self { num_inputs: size, _phantom: Default::default() }
     }
 
     /// Runs the network on the given sequence of `inputs` using the given `selectors`.
     pub fn run(&self, inputs: &[Field<E>], selectors: &[Boolean<E>]) -> Vec<Field<E>> {
         // Check that the number of inputs is correct.
         if inputs.len() as u64 != self.num_inputs {
-            E::halt(format!("The number of inputs must be exactly {}.", self.num_inputs));
+            return E::halt(format!("The number of inputs must be exactly {}.", self.num_inputs));
         }
 
         // Check that the number of selectors is correct.
         if selectors.len() as u64 != self.num_selectors() {
-            E::halt(format!("The number of selectors must be exactly {}.", self.num_selectors()));
+            return E::halt(format!("The number of selectors must be exactly {}.", self.num_selectors()));
         }
 
         match self.num_inputs {
@@ -63,6 +61,7 @@ impl<E: Environment> ASWaksman<E> {
                 vec![result.0, result.1]
             }
             _ => {
+                // TODO: Fix casts.
                 // Initialize a counter for the selector bit.
                 let mut selector_counter = 0;
 
@@ -72,22 +71,25 @@ impl<E: Environment> ASWaksman<E> {
                 let lower_num_inputs = self.num_inputs - upper_num_inputs;
 
                 // Initialize the upper subnetwork.
-                let mut upper_network = Self::new(upper_num_inputs);
+                let upper_network = Self::new(upper_num_inputs);
                 // Initialize the lower subnetwork.
-                let mut lower_network = Self::new(lower_num_inputs);
+                let lower_network = Self::new(lower_num_inputs);
 
                 // Calculate the number of input switches.
                 let num_input_switches = self.num_inputs / 2;
                 // Calculate the number of output switches.
-                let num_output_switches = match self.num_inputs.is_even() {
+                let num_output_switches = match self.num_inputs % 2 == 0 {
                     true => self.num_inputs / 2 - 1,
                     false => (self.num_inputs - 1) / 2,
                 };
                 // Check that the number of switches matches the number of selectors.
-                if num_input_switches + num_output_switches + upper.num_selectors() + lower.num_selectors()
+                if num_input_switches
+                    + num_output_switches
+                    + upper_network.num_selectors()
+                    + lower_network.num_selectors()
                     != self.num_selectors()
                 {
-                    E::halt("The number of switches does not match the number of selectors.");
+                    return E::halt("The number of switches does not match the number of selectors.");
                 }
 
                 // Run each pair of inputs through a switch.
@@ -104,11 +106,11 @@ impl<E: Environment> ASWaksman<E> {
                     while input_counter < self.num_inputs {
                         if input_counter == self.num_inputs - 1 {
                             // If we are at the last input, write it to the lower subnetwork.
-                            lower_inputs.push(inputs[input_counter].clone());
+                            lower_inputs.push(inputs[input_counter as usize].clone());
                             break;
                         } else {
-                            let first = &inputs[input_counter];
-                            let second = &inputs[input_counter + 1];
+                            let first = &inputs[input_counter as usize];
+                            let second = &inputs[(input_counter + 1) as usize];
                             let (upper, lower) = Self::switch(first, second, &selectors[selector_counter]);
                             upper_inputs.push(upper);
                             lower_inputs.push(lower);
@@ -116,24 +118,27 @@ impl<E: Environment> ASWaksman<E> {
                             input_counter += 2;
                         }
                     }
+                    (upper_inputs, lower_inputs)
                 };
 
                 // Run the upper subnetwork.
                 let mut upper_outputs = upper_network.run(
                     &upper_inputs,
-                    &selectors[num_input_switches..(num_input_switches + upper_network.num_selectors())],
+                    &selectors[(num_input_switches as usize)
+                        ..((num_input_switches + upper_network.num_selectors()) as usize)],
                 );
 
                 // Run the lower subnetwork.
-                let mut lower_output = lower_network.run(
+                let mut lower_outputs = lower_network.run(
                     &lower_inputs,
-                    &selectors[(num_input_switches + upper_network.num_selectors())
-                        ..(num_input_switches + upper_network.num_selectors() + lower_network.num_selectors())],
+                    &selectors[((num_input_switches + upper_network.num_selectors()) as usize)
+                        ..((num_input_switches + upper_network.num_selectors() + lower_network.num_selectors())
+                            as usize)],
                 );
 
                 // Combine the outputs of the subnetworks.
                 let (pairs, additional) = {
-                    match self.num_inputs.is_even() {
+                    match self.num_inputs % 2 == 0 {
                         true => {
                             // TODO: Unwrap safety
                             let second_to_last = upper_outputs.pop().unwrap();
@@ -174,8 +179,9 @@ impl<E: Environment> ASWaksman<E> {
     }
 
     /// Returns the exact number of selector bits required to program the network.
-    pub const fn num_selectors(&self) -> u64 {
-        (1..=self.num_inputs).map(|i| i.next_power_of_two().ilog2()).sum()
+    // TODO: Can this be a const fn?
+    pub fn num_selectors(&self) -> u64 {
+        (1..=self.num_inputs).map(|i| i.next_power_of_two().ilog2() as u64).sum()
     }
 
     /// A helper function to construct a switch in the network.

@@ -21,13 +21,13 @@ impl<E: Environment> ASWaksman<E> {
     pub fn check_permutation(&self, first: &[Field<E>], second: &[Field<E>], selectors: &[Boolean<E>]) -> Boolean<E> {
         // Check that the two sequences are the same length.
         if first.len() != second.len() {
-            E::halt("The two sequences must be the same length.");
+            return E::halt("The two sequences must be the same length.");
         }
 
         // Run the network on the first sequence, using the given selectors.
         let output = self.run(first, selectors);
 
         // Check that the output of the network is element-wise equal to the second sequence.
-        output.iter().zip_eq(second).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_eq(b))
+        output.iter().zip_eq(second).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
     }
 }
