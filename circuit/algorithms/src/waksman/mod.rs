@@ -16,6 +16,11 @@
 
 mod check;
 
+mod switch;
+
+#[cfg(all(test, console))]
+use snarkvm_circuit_types::environment::assert_scope;
+
 use snarkvm_circuit_types::prelude::*;
 
 use core::marker::PhantomData;
@@ -57,7 +62,7 @@ impl<E: Environment> ASWaksman<E> {
             // Base Case #2: The network has exactly two inputs.
             // In this case, the network is a single switch.
             2 => {
-                let result = Self::switch(&inputs[0], &inputs[1], &selectors[0]);
+                let result = Self::switch(&selectors[0], &inputs[0], &inputs[1]);
                 vec![result.0, result.1]
             }
             _ => {
@@ -111,7 +116,7 @@ impl<E: Environment> ASWaksman<E> {
                         } else {
                             let first = &inputs[input_counter as usize];
                             let second = &inputs[(input_counter + 1) as usize];
-                            let (upper, lower) = Self::switch(first, second, &selectors[selector_counter]);
+                            let (upper, lower) = Self::switch(&selectors[selector_counter], first, second);
                             upper_inputs.push(upper);
                             lower_inputs.push(lower);
                             selector_counter += 1;
@@ -162,7 +167,7 @@ impl<E: Environment> ASWaksman<E> {
                     // TODO: Off by a few
                     let mut outputs = Vec::with_capacity(self.num_inputs as usize);
                     for (first, second) in pairs {
-                        let (upper, lower) = Self::switch(&first, &second, &selectors[selector_counter]);
+                        let (upper, lower) = Self::switch(&selectors[selector_counter], &first, &second);
                         outputs.push(upper);
                         outputs.push(lower);
                         selector_counter += 1;
@@ -183,13 +188,7 @@ impl<E: Environment> ASWaksman<E> {
     pub fn num_selectors(&self) -> u64 {
         (1..=self.num_inputs).map(|i| i.next_power_of_two().ilog2() as u64).sum()
     }
-
-    /// A helper function to construct a switch in the network.
-    /// The switch takes two inputs, `first` and `second`, and returns a pair of outputs.
-    /// The output pair is determined by the `selector` bit.
-    /// If the selector is `true`, the first output is `second` and the second output is `first`.
-    /// If the selector is `false`, the first output is `first` and the second output is `second`.
-    fn switch(first: &Field<E>, second: &Field<E>, selector: &Boolean<E>) -> (Field<E>, Field<E>) {
-        (Field::ternary(selector, second, first), Field::ternary(selector, first, second))
-    }
 }
+
+#[cfg(all(test, console))]
+mod test {}
