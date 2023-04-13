@@ -191,4 +191,171 @@ impl<E: Environment> ASWaksman<E> {
 }
 
 #[cfg(all(test, console))]
-mod test {}
+mod test {
+    use super::*;
+
+    use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_utilities::{TestRng, Uniform};
+
+    use std::iter;
+
+    const ITERATIONS: u64 = 10;
+
+    #[test]
+    #[should_panic]
+    fn test_zero_size_network_fails() {
+        ASWaksman::<Circuit>::new(0);
+    }
+
+    #[test]
+    fn test_identity_network() {
+        fn run_test(num_inputs: u64, rng: &mut TestRng) {
+            for mode in [Mode::Constant, Mode::Public, Mode::Public] {
+                for i in 0..ITERATIONS {
+                    let network = ASWaksman::new(num_inputs);
+
+                    let inputs = iter::repeat_with(|| Field::<Circuit>::new(mode, Uniform::rand(rng)))
+                        .take(num_inputs as usize)
+                        .collect::<Vec<_>>();
+
+                    let selectors = vec![Boolean::new(mode, false); network.num_selectors() as usize];
+
+                    let name = format!("ASWaksman({}, {}, {})", mode, num_inputs, i);
+
+                    Circuit::scope(name, || {
+                        let outputs = network.run(&inputs, &selectors);
+                        for (input, output) in inputs.iter().zip_eq(outputs.iter()) {
+                            assert_eq!(input.eject_value(), output.eject_value());
+                        }
+                        match mode {
+                            Mode::Constant => assert_scope!(0, 0, 0, 0),
+                            _ => assert_scope!(0, 0, 2 * network.num_selectors(), 2 * network.num_selectors()),
+                        }
+                    });
+                }
+            }
+        }
+
+        let mut rng = TestRng::default();
+
+        run_test(1, &mut rng);
+        run_test(2, &mut rng);
+        run_test(3, &mut rng);
+        run_test(4, &mut rng);
+        run_test(5, &mut rng);
+        run_test(6, &mut rng);
+        run_test(7, &mut rng);
+        run_test(8, &mut rng);
+        run_test(9, &mut rng);
+        run_test(10, &mut rng);
+        run_test(11, &mut rng);
+        run_test(12, &mut rng);
+        run_test(13, &mut rng);
+        run_test(14, &mut rng);
+        run_test(15, &mut rng);
+        run_test(16, &mut rng);
+        run_test(17, &mut rng);
+        run_test(32, &mut rng);
+        run_test(33, &mut rng);
+        run_test(64, &mut rng);
+        run_test(65, &mut rng);
+        run_test(128, &mut rng);
+        run_test(129, &mut rng);
+        run_test(256, &mut rng);
+        run_test(257, &mut rng);
+        run_test(512, &mut rng);
+        run_test(513, &mut rng);
+        run_test(1024, &mut rng);
+        run_test(1025, &mut rng);
+        run_test(2048, &mut rng);
+        run_test(2049, &mut rng);
+        run_test(4096, &mut rng);
+        run_test(4097, &mut rng);
+    }
+
+    #[test]
+    fn test_reverse_network() {
+        fn compute_selectors(mode: Mode, num_inputs: u64) -> Vec<Boolean<Circuit>> {
+            match num_inputs {
+                0 => panic!("num_inputs must be greater than 0"),
+                1 => vec![],
+                2 => vec![Boolean::new(mode, true)],
+                _ => {
+                    let mut input_selectors = vec![Boolean::new(mode, true); (num_inputs / 2) as usize];
+                    let upper_selectors = compute_selectors(mode, num_inputs / 2);
+                    let lower_selectors = compute_selectors(mode, num_inputs - num_inputs / 2);
+                    let output_selectors = match num_inputs % 2 == 0 {
+                        true => vec![Boolean::new(mode, false); (num_inputs / 2 - 1) as usize],
+                        false => vec![Boolean::new(mode, true); ((num_inputs - 1) / 2) as usize],
+                    };
+                    input_selectors.extend(upper_selectors);
+                    input_selectors.extend(lower_selectors);
+                    input_selectors.extend(output_selectors);
+                    input_selectors
+                }
+            }
+        }
+
+        fn run_test(num_inputs: u64, rng: &mut TestRng) {
+            for mode in [Mode::Constant, Mode::Public, Mode::Public] {
+                for i in 0..ITERATIONS {
+                    let network = ASWaksman::new(num_inputs);
+
+                    let inputs = iter::repeat_with(|| Field::<Circuit>::new(mode, Uniform::rand(rng)))
+                        .take(num_inputs as usize)
+                        .collect::<Vec<_>>();
+                    let selectors = compute_selectors(mode, num_inputs);
+
+                    let name = format!("ASWaksman({}, {}, {})", mode, num_inputs, i);
+
+                    Circuit::scope(name, || {
+                        let outputs = network.run(&inputs, &selectors);
+                        for (input, output) in inputs.iter().zip_eq(outputs.iter().rev()) {
+                            assert_eq!(input.eject_value(), output.eject_value());
+                        }
+                        match mode {
+                            Mode::Constant => assert_scope!(0, 0, 0, 0),
+                            _ => assert_scope!(0, 0, 2 * network.num_selectors(), 2 * network.num_selectors()),
+                        }
+                    });
+                }
+            }
+        }
+
+        let mut rng = TestRng::default();
+
+        run_test(1, &mut rng);
+        run_test(2, &mut rng);
+        run_test(3, &mut rng);
+        run_test(4, &mut rng);
+        run_test(5, &mut rng);
+        run_test(6, &mut rng);
+        run_test(7, &mut rng);
+        run_test(8, &mut rng);
+        run_test(9, &mut rng);
+        run_test(10, &mut rng);
+        run_test(11, &mut rng);
+        run_test(12, &mut rng);
+        run_test(13, &mut rng);
+        run_test(14, &mut rng);
+        run_test(15, &mut rng);
+        run_test(16, &mut rng);
+        run_test(17, &mut rng);
+        run_test(32, &mut rng);
+        run_test(33, &mut rng);
+        run_test(64, &mut rng);
+        run_test(65, &mut rng);
+        run_test(128, &mut rng);
+        run_test(129, &mut rng);
+        run_test(256, &mut rng);
+        run_test(257, &mut rng);
+        run_test(512, &mut rng);
+        run_test(513, &mut rng);
+        run_test(1024, &mut rng);
+        run_test(1025, &mut rng);
+        run_test(2048, &mut rng);
+        run_test(2049, &mut rng);
+        run_test(4096, &mut rng);
+        run_test(4097, &mut rng);
+    }
+}
