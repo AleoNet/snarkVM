@@ -24,6 +24,9 @@ pub use elligator2::Elligator2;
 pub mod pedersen;
 pub use pedersen::*;
 
+pub mod waksman;
+pub use waksman::*;
+
 pub mod poseidon;
 pub use poseidon::*;
 
