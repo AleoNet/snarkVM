@@ -127,7 +127,7 @@ pub trait Network:
     const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
 
     /// The maximum number of functions in a program.
-    const MAX_FUNCTIONS: usize = 15;
+    const MAX_FUNCTIONS: usize = 31;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.
@@ -136,9 +136,9 @@ pub trait Network:
     const MAX_COMMANDS: usize = u8::MAX as usize;
 
     /// The maximum number of inputs per transition.
-    const MAX_INPUTS: usize = 8;
+    const MAX_INPUTS: usize = 16;
     /// The maximum number of outputs per transition.
-    const MAX_OUTPUTS: usize = 8;
+    const MAX_OUTPUTS: usize = 16;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;

@@ -14,14 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod cli;
-pub use cli::*;
+use super::*;
 
-mod commands;
-pub use commands::*;
+/// Cleans the Aleo package build directory.
+#[derive(Debug, Parser)]
+pub struct Clean;
 
-mod errors;
-pub use errors::*;
+impl Clean {
+    /// Cleans an Aleo package build directory.
+    pub fn parse(self) -> Result<String> {
+        // Derive the program directory path.
+        let path = std::env::current_dir()?;
 
-mod helpers;
-pub use helpers::*;
+        // Clean the build directory.
+        Package::<CurrentNetwork>::clean(&path)?;
+
+        // Prepare the path string.
+        let path_string = format!("(in \"{}\")", path.join("build").display());
+
+        Ok(format!("✅ Cleaned the build directory {}", path_string.dimmed()))
+    }
+}

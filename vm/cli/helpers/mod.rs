@@ -14,14 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod cli;
-pub use cli::*;
-
-mod commands;
-pub use commands::*;
-
-mod errors;
-pub use errors::*;
-
-mod helpers;
-pub use helpers::*;
+pub mod updater;
+pub use updater::*;
