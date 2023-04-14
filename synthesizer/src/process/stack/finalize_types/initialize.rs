@@ -181,7 +181,6 @@ impl<N: Network> FinalizeTypes<N> {
     /// Ensures the given `get` command is well-formed.
     #[inline]
     fn check_get(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, get: &Get<N>) -> Result<()> {
-        println!("Checking get command: {:#?}", get);
         // Ensure the declared mapping in `get` is defined in the program.
         if !stack.program().contains_mapping(get.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get.mapping_name(), stack.program_id())
