@@ -116,7 +116,7 @@ default-features = false
 version = "1"
 
 [dependencies.rust-gpu-tools]
-version = "0.6.0"
+version = "0.7.0"
 optional = true
 
 [dependencies.serde]
