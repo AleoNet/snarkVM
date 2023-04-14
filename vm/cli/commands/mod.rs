@@ -14,14 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod cli;
-pub use cli::*;
+pub mod build;
+pub use build::*;
 
-mod commands;
-pub use commands::*;
+pub mod clean;
+pub use clean::*;
 
-mod errors;
-pub use errors::*;
+pub mod new;
+pub use new::*;
 
-mod helpers;
-pub use helpers::*;
+pub mod run;
+pub use run::*;
+
+pub mod update;
+pub use update::*;
+
+use crate::{
+    package::Package,
+    prelude::{Identifier, Locator, ProgramID, Value},
+};
+
+use anyhow::Result;
+use clap::Parser;
+use colored::Colorize;
+use core::str::FromStr;
+use std::collections::HashMap;
+
+pub(crate) type CurrentNetwork = crate::prelude::Testnet3;
+pub(crate) type Aleo = crate::circuit::AleoV0;
