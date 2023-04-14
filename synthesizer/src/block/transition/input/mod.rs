@@ -186,7 +186,7 @@ pub(crate) mod test_helpers {
 
     /// Sample the transition inputs.
     pub(crate) fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<CurrentNetwork>)> {
-        let rng = &mut TestRng::fixed(11891746139882639259);
+        let rng = &mut TestRng::default();
 
         // Sample a transition.
         let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
