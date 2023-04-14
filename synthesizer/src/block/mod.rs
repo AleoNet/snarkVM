@@ -174,6 +174,16 @@ impl<N: Network> Block<N> {
         self.height() / N::NUM_BLOCKS_PER_EPOCH
     }
 
+    /// Returns the total supply of microcredits at this block.
+    pub const fn total_supply(&self) -> u64 {
+        self.header.total_supply()
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.header.cumulative_proof_target()
+    }
+
     /// Returns the coinbase target for this block.
     pub const fn coinbase_target(&self) -> u64 {
         self.header.coinbase_target()
