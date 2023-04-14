@@ -94,8 +94,14 @@ impl<N: Network> GetOrInit<N> {
         let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_init' a 'record'"),
-            // If a key does not exist, then use the default value.
-            None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
+            // If a key does not exist, then store the default value into the mapping and return it.
+            None => {
+                // Store the default value into the mapping.
+                let default = Value::Plaintext(registers.load_plaintext(stack, &self.default)?);
+                store.update_key_value(stack.program_id(), &self.mapping, key, default.clone())?;
+                // Return the default value.
+                default
+            }
         };
 
         // Assign the value to the destination register.
