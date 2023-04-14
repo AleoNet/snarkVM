@@ -226,43 +226,43 @@ mod tests {
 
     #[test]
     fn test_state_path_verify_global_constant() -> Result<()> {
-        check_verify_global(Mode::Constant, true, 101535, 1, 2, 3)?;
-        check_verify_global(Mode::Constant, false, 101535, 1, 2, 3)
+        check_verify_global(Mode::Constant, true, 104735, 1, 2, 3)?;
+        check_verify_global(Mode::Constant, false, 104735, 1, 2, 3)
     }
 
     #[test]
     fn test_state_path_verify_global_public() -> Result<()> {
-        check_verify_global(Mode::Public, true, 26595, 453, 117712, 118357)?;
-        check_verify_global(Mode::Public, false, 26595, 453, 117712, 118357)
+        check_verify_global(Mode::Public, true, 27413, 455, 121474, 122127)?;
+        check_verify_global(Mode::Public, false, 27413, 455, 121474, 122127)
     }
 
     #[test]
     fn test_state_path_verify_global_private() -> Result<()> {
-        check_verify_global(Mode::Private, true, 26595, 1, 118164, 118357)?;
-        check_verify_global(Mode::Private, false, 26595, 1, 118164, 118357)
+        check_verify_global(Mode::Private, true, 27413, 1, 121928, 122127)?;
+        check_verify_global(Mode::Private, false, 27413, 1, 121928, 122127)
     }
 
     #[test]
     fn test_state_path_verify_local_constant() -> Result<()> {
-        check_verify_local(Mode::Constant, false, true, 101535, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, false, false, 101535, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, true, true, 101535, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, true, false, 101535, 1, 2, 3)
+        check_verify_local(Mode::Constant, false, true, 104735, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, false, false, 104735, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, true, 104735, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, false, 104735, 1, 2, 3)
     }
 
     #[test]
     fn test_state_path_verify_local_public() -> Result<()> {
-        check_verify_local(Mode::Public, false, true, 26595, 453, 117712, 118357)?;
-        check_verify_local(Mode::Public, false, false, 26595, 453, 117712, 118357)?;
-        check_verify_local(Mode::Public, true, true, 26595, 453, 117712, 118357)?;
-        check_verify_local(Mode::Public, true, false, 26595, 453, 117712, 118357)
+        check_verify_local(Mode::Public, false, true, 27413, 455, 121474, 122127)?;
+        check_verify_local(Mode::Public, false, false, 27413, 455, 121474, 122127)?;
+        check_verify_local(Mode::Public, true, true, 27413, 455, 121474, 122127)?;
+        check_verify_local(Mode::Public, true, false, 27413, 455, 121474, 122127)
     }
 
     #[test]
     fn test_state_path_verify_local_private() -> Result<()> {
-        check_verify_local(Mode::Private, false, true, 26595, 1, 118164, 118357)?;
-        check_verify_local(Mode::Private, false, false, 26595, 1, 118164, 118357)?;
-        check_verify_local(Mode::Private, true, true, 26595, 1, 118164, 118357)?;
-        check_verify_local(Mode::Private, true, false, 26595, 1, 118164, 118357)
+        check_verify_local(Mode::Private, false, true, 27413, 1, 121928, 122127)?;
+        check_verify_local(Mode::Private, false, false, 27413, 1, 121928, 122127)?;
+        check_verify_local(Mode::Private, true, true, 27413, 1, 121928, 122127)?;
+        check_verify_local(Mode::Private, true, false, 27413, 1, 121928, 122127)
     }
 }
