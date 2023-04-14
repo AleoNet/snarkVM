@@ -65,7 +65,6 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
-        Balance,
         Entry,
         EntryType,
         Identifier,
@@ -83,7 +82,7 @@ use console::{
         Value,
         ValueType,
     },
-    types::{Field, Group, U64},
+    types::{Field, Group},
 };
 
 use aleo_std::prelude::{finish, lap, timer};

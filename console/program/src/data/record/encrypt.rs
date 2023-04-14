@@ -56,17 +56,6 @@ impl<N: Network> Record<N, Plaintext<N>> {
             index += 1;
         }
 
-        // Encrypt the gates.
-        let gates = match self.gates.is_public() {
-            true => self.gates.encrypt_with_randomizer(&[])?,
-            false => self.gates.encrypt_with_randomizer(&[randomizers[index]])?,
-        };
-
-        // Increment the index if the gates is private.
-        if gates.is_private() {
-            index += 1;
-        }
-
         // Encrypt the data.
         let mut encrypted_data = IndexMap::with_capacity(self.data.len());
         for (id, entry, num_randomizers) in self.data.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
@@ -99,6 +88,6 @@ impl<N: Network> Record<N, Plaintext<N>> {
         }
 
         // Return the encrypted record.
-        Self::from_ciphertext(owner, gates, encrypted_data, self.nonce)
+        Self::from_ciphertext(owner, encrypted_data, self.nonce)
     }
 }

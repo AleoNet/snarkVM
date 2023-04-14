@@ -384,78 +384,9 @@ impl<N: Network> Stack<N> {
             None
         };
 
-        use circuit::{ToField, Zero};
-
-        let mut i64_gates = circuit::I64::zero();
-        let mut field_gates = circuit::Field::zero();
-
-        // Increment the gates by the amount in each record input.
-        for input in request.inputs() {
-            match input {
-                // Dereference the record gates to retrieve the u64 gates.
-                circuit::Value::Record(record) => {
-                    // Retrieve the record gates.
-                    let record_gates = &**record.gates();
-                    // Increment the i64 gates.
-                    i64_gates += record_gates.clone().cast_as_dual();
-                    // Increment the field gates.
-                    field_gates += record_gates.to_field();
-                }
-                // Skip iterations that are not records.
-                _ => continue,
-            }
-        }
-
-        // Ensure the i64 gates matches the field gates.
-        A::assert_eq(i64_gates.to_field(), &field_gates);
-
-        // Decrement the gates by the amount in each record output.
-        for output in response.outputs() {
-            match output {
-                // Dereference the gates to retrieve the u64 gates.
-                circuit::Value::Record(record) => {
-                    // Retrieve the record gates.
-                    let record_gates = &**record.gates();
-                    // Decrement the i64 gates.
-                    i64_gates -= record_gates.clone().cast_as_dual();
-                    // Decrement the field gates.
-                    field_gates -= record_gates.to_field();
-                }
-                // Skip iterations that are not records.
-                _ => continue,
-            }
-        }
-
-        // If the program and function is not a coinbase function, then ensure the i64 gates is positive.
-        if !Program::is_coinbase(self.program.id(), function.name()) {
-            use circuit::MSB;
-
-            // Ensure the i64 gates MSB is false.
-            A::assert(!i64_gates.msb());
-            // Ensure the i64 gates matches the field gates.
-            A::assert_eq(i64_gates.to_field(), &field_gates);
-
-            // Inject the field gates as `Mode::Public`.
-            let public_gates = circuit::Field::<A>::new(circuit::Mode::Public, field_gates.eject_value());
-            // Ensure the injected field gates matches.
-            A::assert_eq(public_gates, field_gates);
-
-            #[cfg(debug_assertions)]
-            println!("Logging fee: {}", i64_gates.eject_value());
-        } else {
-            // Inject the field gates as `Mode::Public`.
-            let public_gates = circuit::Field::<A>::new(circuit::Mode::Public, i64_gates.to_field().eject_value());
-            // Ensure the injected i64 gates matches.
-            A::assert_eq(public_gates, &i64_gates);
-        }
-
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
 
-        lap!(timer, "Perform the fee operations");
-
-        // Eject the fee.
-        let fee = i64_gates.eject_value();
         // Eject the response.
         let response = response.eject_value();
 
@@ -513,7 +444,7 @@ impl<N: Network> Stack<N> {
 
             // Construct the transition.
             let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof, *fee)?;
+                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof)?;
 
             // Add the transition commitments.
             inclusion.write().insert_transition(console_request.input_ids(), &transition)?;

@@ -48,8 +48,8 @@ impl<N: Network> Parser for Plaintext<N> {
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
                     return Err(error("Duplicate member in struct"));
                 }
-                // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
-                match members.len() <= N::MAX_DATA_ENTRIES {
+                // Ensure the number of structs is within the maximum limit.
+                match members.len() <= N::MAX_STRUCT_ENTRIES {
                     true => Ok(members),
                     false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
                 }

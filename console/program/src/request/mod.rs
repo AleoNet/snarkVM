@@ -185,7 +185,7 @@ mod test_helpers {
 
                 // Prepare a record belonging to the address.
                 let record_string =
-                    format!("{{ owner: {address}.private, gates: {i}u64.private, token_amount: {i}u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}");
+                    format!("{{ owner: {address}.private, token_amount: {i}u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}");
 
                 // Construct four inputs.
                 let input_constant = Value::from_str(&format!("{{ token_amount: {i}u128 }}")).unwrap();
