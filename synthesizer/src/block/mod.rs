@@ -175,8 +175,8 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply(&self) -> u64 {
-        self.header.total_supply()
+    pub const fn total_supply_in_microcredits(&self) -> u64 {
+        self.header.total_supply_in_microcredits()
     }
 
     /// Returns the cumulative proof target for this block.

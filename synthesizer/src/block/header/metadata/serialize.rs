@@ -27,7 +27,7 @@ impl<N: Network> Serialize for Metadata<N> {
                 metadata.serialize_field("network", &self.network)?;
                 metadata.serialize_field("round", &self.round)?;
                 metadata.serialize_field("height", &self.height)?;
-                metadata.serialize_field("total_supply", &self.total_supply)?;
+                metadata.serialize_field("total_supply_in_microcredits", &self.total_supply_in_microcredits)?;
                 metadata.serialize_field("cumulative_proof_target", &self.cumulative_proof_target)?;
 
                 metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
@@ -52,7 +52,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     DeserializeExt::take_from_value::<D>(&mut metadata, "network")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "round")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "height")?,
-                    DeserializeExt::take_from_value::<D>(&mut metadata, "total_supply")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "total_supply_in_microcredits")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "cumulative_proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "coinbase_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "proof_target")?,
