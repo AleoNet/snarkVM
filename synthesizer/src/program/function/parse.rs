@@ -266,9 +266,9 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    load_or account[r0] 0u64 into r2;
+    get_or account[r0] 0u64 into r2;
     add r2 r1 into r3;
-    store r3 into account[r0];
+    set r3 into account[r0];
     ",
         )
         .unwrap()
