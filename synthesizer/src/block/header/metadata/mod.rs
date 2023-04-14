@@ -35,6 +35,8 @@ pub struct Metadata<N: Network> {
     height: u32,
     /// The total supply of microcredits - 8 bytes.
     total_supply: u64,
+    /// The cumulative proof target for this block - 16 bytes.
+    cumulative_proof_target: u128,
     /// The coinbase target for this block - 8 bytes.
     coinbase_target: u64,
     /// The proof target for this block - 8 bytes.
@@ -57,6 +59,7 @@ impl<N: Network> Metadata<N> {
         round: u64,
         height: u32,
         total_supply: u64,
+        cumulative_proof_target: u128,
         coinbase_target: u64,
         proof_target: u64,
         last_coinbase_target: u64,
@@ -69,6 +72,7 @@ impl<N: Network> Metadata<N> {
             round,
             height,
             total_supply,
+            cumulative_proof_target,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -132,6 +136,11 @@ impl<N: Network> Metadata<N> {
     /// Returns the total supply of microcredits at this block.
     pub const fn total_supply(&self) -> u64 {
         self.total_supply
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.cumulative_proof_target
     }
 
     /// Returns the coinbase target for this block.

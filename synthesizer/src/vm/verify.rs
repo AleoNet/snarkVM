@@ -386,6 +386,7 @@ mod tests {
             1,
             1,
             CurrentNetwork::STARTING_SUPPLY,
+            0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),

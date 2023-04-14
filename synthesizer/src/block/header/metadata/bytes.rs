@@ -32,6 +32,7 @@ impl<N: Network> FromBytes for Metadata<N> {
         let round = u64::read_le(&mut reader)?;
         let height = u32::read_le(&mut reader)?;
         let total_supply = u64::read_le(&mut reader)?;
+        let cumulative_proof_target = u128::read_le(&mut reader)?;
         let coinbase_target = u64::read_le(&mut reader)?;
         let proof_target = u64::read_le(&mut reader)?;
         let last_coinbase_target = u64::read_le(&mut reader)?;
@@ -44,6 +45,7 @@ impl<N: Network> FromBytes for Metadata<N> {
             round,
             height,
             total_supply,
+            cumulative_proof_target,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -66,6 +68,7 @@ impl<N: Network> ToBytes for Metadata<N> {
         self.round.write_le(&mut writer)?;
         self.height.write_le(&mut writer)?;
         self.total_supply.write_le(&mut writer)?;
+        self.cumulative_proof_target.write_le(&mut writer)?;
         self.coinbase_target.write_le(&mut writer)?;
         self.proof_target.write_le(&mut writer)?;
         self.last_coinbase_target.write_le(&mut writer)?;

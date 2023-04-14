@@ -32,6 +32,7 @@ impl<N: Network> Serialize for Metadata<N> {
                 metadata.serialize_field("proof_target", &self.proof_target)?;
                 metadata.serialize_field("last_coinbase_target", &self.last_coinbase_target)?;
                 metadata.serialize_field("last_coinbase_timestamp", &self.last_coinbase_timestamp)?;
+                metadata.serialize_field("cumulative_proof_target", &self.cumulative_proof_target)?;
                 metadata.serialize_field("timestamp", &self.timestamp)?;
                 metadata.end()
             }
@@ -55,6 +56,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     DeserializeExt::take_from_value::<D>(&mut metadata, "proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_timestamp")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "cumulative_proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "timestamp")?,
                 )
                 .map_err(de::Error::custom)?)
