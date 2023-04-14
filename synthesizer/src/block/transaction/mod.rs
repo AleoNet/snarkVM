@@ -42,7 +42,7 @@ use console::{
         Value,
         TRANSACTION_DEPTH,
     },
-    types::{Field, Group},
+    types::{Field, Group, U64},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -69,13 +69,13 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
-    pub fn from_execution(execution: Execution<N>, additional_fee: Option<Fee<N>>) -> Result<Self> {
+    pub fn from_execution(execution: Execution<N>, fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
         // Compute the transaction ID.
-        let id = *Self::execution_tree(&execution, &additional_fee)?.root();
+        let id = *Self::execution_tree(&execution, &fee)?.root();
         // Construct the execution transaction.
-        Ok(Self::Execute(id.into(), execution, additional_fee))
+        Ok(Self::Execute(id.into(), execution, fee))
     }
 }
 
@@ -88,14 +88,14 @@ impl<N: Network> Transaction<N> {
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
-        (credits, fee_in_gates): (Record<N, Plaintext<N>>, u64),
+        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
         // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_gates, query, rng)?;
+        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
 
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
@@ -105,57 +105,79 @@ impl<N: Network> Transaction<N> {
         Self::from_deployment(deployment, fee, owner)
     }
 
-    /// Initializes a new execution transaction from an authorization, and an optional fee.
+    /// Initializes a new execution transaction.
+    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
+        private_key: &PrivateKey<N>,
+        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
+        fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Compute the authorization.
+        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
+        // Compute the execution.
+        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
+        // Compute the fee.
+        let fee = match fee {
+            None => None,
+            Some((credits, fee_in_microcredits)) => {
+                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
+            }
+        };
+        // Initialize the transaction.
+        Self::from_execution(execution, fee)
+    }
+
+    /// Initializes a new fee.
+    pub fn execute_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, C>,
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
+        fee_in_microcredits: u64,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Fee<N>> {
+        Ok(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
+    }
+
+    /// Initializes a new execution transaction from an authorization.
     pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         authorization: Authorization<N>,
+        fee: Option<Fee<N>>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
         let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
         // Initialize the transaction.
-        Self::from_execution(execution, None)
+        Self::from_execution(execution, fee)
     }
+}
 
-    /// Initializes a new execution transaction from an authorization, and an optional fee.
-    pub fn execute_authorization_with_additional_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        authorization: Authorization<N>,
-        additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
-        // Compute the additional fee, if it is present.
-        let additional_fee = match additional_fee {
-            Some((credits, additional_fee_in_gates)) => {
-                Some(vm.execute_fee(private_key, credits, additional_fee_in_gates, query, rng)?.1)
+impl<N: Network> Transaction<N> {
+    /// Returns `true` if this is a coinbase transaction.
+    #[inline]
+    pub fn is_coinbase(&self) -> bool {
+        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/mint'.
+        if let Self::Execute(_, execution, _) = self {
+            // Ensure there is 1 transition.
+            if execution.len() == 1 {
+                // Retrieve the transition.
+                if let Ok(transition) = execution.get(0) {
+                    // Check if it calls 'credits.aleo/mint'.
+                    if transition.program_id().to_string() == "credits.aleo"
+                        && transition.function_name().to_string() == "mint"
+                    {
+                        return true;
+                    }
+                }
             }
-            None => None,
-        };
-        // Initialize the transaction.
-        Self::from_execution(execution, additional_fee)
-    }
-
-    /// Initializes a new execution transaction.
-    #[allow(clippy::too_many_arguments)]
-    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        program_id: impl TryInto<ProgramID<N>>,
-        function_name: impl TryInto<Identifier<N>>,
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the authorization.
-        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Initialize the transaction.
-        Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, query, rng)
+        }
+        // Otherwise, return 'false'.
+        false
     }
 }
 
@@ -185,12 +207,13 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns the transaction fee, which is the sum of the transition fees.
-    pub fn fee(&self) -> Result<i64> {
-        // Compute the sum of the transition fees.
-        self.transitions().map(Transition::fee).try_fold(0i64, |cumulative, fee| {
-            cumulative.checked_add(*fee).ok_or_else(|| anyhow!("Transaction fee overflowed"))
-        })
+    /// Returns the transaction fee.
+    pub fn fee(&self) -> Result<U64<N>> {
+        match self {
+            Self::Deploy(_, _, fee, _) => fee.amount(),
+            Self::Execute(_, _, Some(fee)) => fee.amount(),
+            Self::Execute(_, _, None) => Ok(U64::zero()),
+        }
     }
 }
 
@@ -264,8 +287,8 @@ impl<N: Network> Transaction<N> {
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
             Self::Deploy(_, _, fee, _) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
-            Self::Execute(_, execution, additional_fee) => {
-                IterWrap::Execute(execution.transitions().chain(additional_fee.as_ref().map(|f| f.transition())))
+            Self::Execute(_, execution, fee) => {
+                IterWrap::Execute(execution.transitions().chain(fee.as_ref().map(|fee| fee.transition())))
             }
         }
     }
@@ -330,8 +353,8 @@ impl<N: Network> Transaction<N> {
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
         match self {
             Self::Deploy(_, _, fee, _) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
-            Self::Execute(_, execution, additional_fee) => {
-                IterWrap::Execute(execution.into_transitions().chain(additional_fee.map(|f| f.into_transition())))
+            Self::Execute(_, execution, fee) => {
+                IterWrap::Execute(execution.into_transitions().chain(fee.map(|fee| fee.into_transition())))
             }
         }
     }

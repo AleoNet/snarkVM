@@ -85,11 +85,11 @@ mod tests {
 
     #[test]
     fn test_commit_public() -> Result<()> {
-        check_commit::<32, 48>(Mode::Public, 1044, 0, 10279, 10281)
+        check_commit::<32, 48>(Mode::Public, 1044, 0, 10781, 10785)
     }
 
     #[test]
     fn test_commit_private() -> Result<()> {
-        check_commit::<32, 48>(Mode::Private, 1044, 0, 10279, 10281)
+        check_commit::<32, 48>(Mode::Private, 1044, 0, 10781, 10785)
     }
 }

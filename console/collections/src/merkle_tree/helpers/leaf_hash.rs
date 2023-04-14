@@ -17,7 +17,7 @@
 use snarkvm_console_algorithms::{Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// A trait for a Merkle leaf hash function.

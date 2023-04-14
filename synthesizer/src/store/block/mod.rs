@@ -42,7 +42,7 @@ use anyhow::Result;
 use parking_lot::RwLock;
 use std::{borrow::Cow, sync::Arc};
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 macro_rules! bail_with_block {
@@ -359,7 +359,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
 
         // Ensure the global state root exists in storage.
-        if !self.reverse_state_root_map().contains_key(&global_state_root)? {
+        if !self.reverse_state_root_map().contains_key(&global_state_root.into())? {
             bail!("The global state root '{global_state_root}' for commitment '{commitment}' is missing in storage");
         }
 

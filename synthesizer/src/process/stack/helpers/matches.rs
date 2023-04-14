@@ -97,8 +97,6 @@ impl<N: Network> Stack<N> {
 
 impl<N: Network> Stack<N> {
     /// Checks that the given record matches the layout of the record type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn matches_record_internal(
         &self,
         record: &Record<N, Plaintext<N>>,
@@ -121,16 +119,6 @@ impl<N: Network> Stack<N> {
         ensure!(
             record.owner().is_private() == record_type.owner().is_private(),
             "Visibility of record entry 'owner' does not match"
-        );
-
-        // Ensure the visibility of the record gates matches the visibility in the record type.
-        ensure!(
-            record.gates().is_public() == record_type.gates().is_public(),
-            "Visibility of record entry 'gates' does not match"
-        );
-        ensure!(
-            record.gates().is_private() == record_type.gates().is_private(),
-            "Visibility of record entry 'gates' does not match"
         );
 
         // Ensure the number of record entries does not exceed the maximum.
@@ -161,8 +149,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given entry matches the layout of the entry type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn matches_entry_internal(
         &self,
         record_name: &Identifier<N>,
@@ -187,8 +173,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn matches_plaintext_internal(
         &self,
         plaintext: &Plaintext<N>,
@@ -236,9 +220,9 @@ impl<N: Network> Stack<N> {
                 // Ensure the number of struct members does not exceed the maximum.
                 let num_members = members.len();
                 ensure!(
-                    num_members <= N::MAX_DATA_ENTRIES,
+                    num_members <= N::MAX_STRUCT_ENTRIES,
                     "'{struct_name}' cannot exceed {} entries",
-                    N::MAX_DATA_ENTRIES
+                    N::MAX_STRUCT_ENTRIES
                 );
 
                 // Ensure the number of struct members match.

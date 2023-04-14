@@ -138,12 +138,6 @@ impl<N: Network> Process<N> {
             }
             lap!(timer, "Verify the outputs");
 
-            // Ensure the fee is correct.
-            match Program::is_coinbase(transition.program_id(), transition.function_name()) {
-                true => ensure!(transition.fee() < &0, "The fee must be negative in a coinbase transition"),
-                false => ensure!(transition.fee() >= &0, "The fee must be zero or positive"),
-            }
-
             // Compute the x- and y-coordinate of `tpk`.
             let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
 
@@ -210,8 +204,6 @@ impl<N: Network> Process<N> {
                 }
             }
 
-            // [Inputs] Extend the verifier inputs with the fee.
-            inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
             lap!(timer, "Construct the verifier inputs");
 
             #[cfg(debug_assertions)]

@@ -153,12 +153,12 @@ mod tests {
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13501, 0, 45810, 45875))
+        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13501, 0, 61938, 62067))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13501, 0, 45810, 45875))
+        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13501, 0, 61938, 62067))
     }
 
     #[test]

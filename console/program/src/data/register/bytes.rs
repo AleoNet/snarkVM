@@ -47,7 +47,7 @@ impl<N: Network> ToBytes for Register<N> {
                 variable_length_integer(locator).write_le(&mut writer)
             }
             Self::Member(locator, identifiers) => {
-                // Ensure the number of identifiers is within `N::MAX_DATA_DEPTH`.
+                // Ensure the number of identifiers is within the limit.
                 if identifiers.len() > N::MAX_DATA_DEPTH {
                     return Err(error("Failed to serialize register: too many identifiers"));
                 }

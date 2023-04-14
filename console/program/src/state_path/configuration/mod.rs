@@ -24,9 +24,9 @@ pub const HEADER_DEPTH: u8 = 3;
 /// The depth of the Merkle tree for transactions in a block.
 pub const TRANSACTIONS_DEPTH: u8 = 16;
 /// The depth of the Merkle tree for the transaction.
-pub const TRANSACTION_DEPTH: u8 = 4;
+pub const TRANSACTION_DEPTH: u8 = 5;
 /// The depth of the Merkle tree for the transition.
-pub const TRANSITION_DEPTH: u8 = 4;
+pub const TRANSITION_DEPTH: u8 = 5;
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;

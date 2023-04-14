@@ -36,7 +36,7 @@ use snarkvm_utilities::cfg_into_iter;
 use core::marker::PhantomData;
 use std::collections::BTreeMap;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;

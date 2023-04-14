@@ -140,7 +140,7 @@ finalize foo:
             r"
 finalize foo:
     input r0 as token.record;
-    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
+    cast r0.owner r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
         .unwrap()
