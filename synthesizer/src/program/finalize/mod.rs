@@ -145,10 +145,10 @@ impl<N: Network> Finalize<N> {
                 // Ensure the destination register is a locator.
                 ensure!(matches!(get.destination(), Register::Locator(..)), "Destination register must be a locator");
             }
-            Command::GetOr(get_or) => {
+            Command::GetOrInit(get_or_init) => {
                 // Ensure the destination register is a locator.
                 ensure!(
-                    matches!(get_or.destination(), Register::Locator(..)),
+                    matches!(get_or_init.destination(), Register::Locator(..)),
                     "Destination register must be a locator"
                 );
             }

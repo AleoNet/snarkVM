@@ -20,8 +20,8 @@ pub use finalize::*;
 mod get;
 pub use get::*;
 
-mod get_or;
-pub use get_or::*;
+mod get_or_init;
+pub use get_or_init::*;
 
 mod set;
 pub use set::*;
@@ -35,8 +35,9 @@ pub enum Command<N: Network> {
     Instruction(Instruction<N>),
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
     Get(Get<N>),
-    /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`. The instruction uses `default` if the key is not present.
-    GetOr(GetOr<N>),
+    /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
+    /// If the key is not present, `default` is stored at the `key` operand in the `mapping` and stored in `destination`.
+    GetOrInit(GetOrInit<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
 }
@@ -53,7 +54,7 @@ impl<N: Network> Command<N> {
         match self {
             Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
             Command::Get(get) => get.evaluate_finalize(stack, store, registers),
-            Command::GetOr(get_or) => get_or.evaluate_finalize(stack, store, registers),
+            Command::GetOrInit(get_or_init) => get_or_init.evaluate_finalize(stack, store, registers),
             Command::Set(set) => set.evaluate_finalize(stack, store, registers),
         }
     }
@@ -69,8 +70,8 @@ impl<N: Network> FromBytes for Command<N> {
             0 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
             // Read the `get` operation.
             1 => Ok(Self::Get(Get::read_le(&mut reader)?)),
-            // Read the `get_or` operation.
-            2 => Ok(Self::GetOr(GetOr::read_le(&mut reader)?)),
+            // Read the `get.or_init` operation.
+            2 => Ok(Self::GetOrInit(GetOrInit::read_le(&mut reader)?)),
             // Read the `set` operation.
             3 => Ok(Self::Set(Set::read_le(&mut reader)?)),
             // Invalid variant.
@@ -95,11 +96,11 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the `get` operation.
                 get.write_le(&mut writer)
             }
-            Self::GetOr(get_or) => {
+            Self::GetOrInit(get_or_init) => {
                 // Write the variant.
                 2u8.write_le(&mut writer)?;
                 // Write the defaulting `get` operation.
-                get_or.write_le(&mut writer)
+                get_or_init.write_le(&mut writer)
             }
             Self::Set(set) => {
                 // Write the variant.
@@ -118,7 +119,7 @@ impl<N: Network> Parser for Command<N> {
         // Parse the command.
         // Note that the order of the parsers is important.
         alt((
-            map(GetOr::parse, |get_or| Self::GetOr(get_or)),
+            map(GetOrInit::parse, |get_or_init| Self::GetOrInit(get_or_init)),
             map(Get::parse, |get| Self::Get(get)),
             map(Set::parse, |set| Self::Set(set)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
@@ -157,7 +158,7 @@ impl<N: Network> Display for Command<N> {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
             Self::Get(get) => Display::fmt(get, f),
-            Self::GetOr(get_or) => Display::fmt(get_or, f),
+            Self::GetOrInit(get_or_init) => Display::fmt(get_or_init, f),
             Self::Set(set) => Display::fmt(set, f),
         }
     }
@@ -193,7 +194,7 @@ mod tests {
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
         // GetOr
-        let expected = "get_or object[r0] r1 into r2;";
+        let expected = "get.or_init object[r0] r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -228,9 +229,9 @@ mod tests {
         assert_eq!(expected, command.to_string());
 
         // GetOr
-        let expected = "get_or object[r0] r1 into r2;";
+        let expected = "get.or_init object[r0] r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::GetOr(GetOr::from_str(expected).unwrap()), command);
+        assert_eq!(Command::GetOrInit(GetOrInit::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
         // Set

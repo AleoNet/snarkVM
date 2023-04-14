@@ -16,7 +16,7 @@
 
 use super::*;
 
-use crate::finalize::{Get, GetOr, Set};
+use crate::finalize::{Get, GetOrInit, Set};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -172,7 +172,7 @@ impl<N: Network> FinalizeTypes<N> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Get(get) => self.check_get(stack, finalize_name, get)?,
-            Command::GetOr(get_or) => self.check_get_or(stack, finalize_name, get_or)?,
+            Command::GetOrInit(get_or_init) => self.check_get_or_init(stack, finalize_name, get_or_init)?,
             Command::Set(set) => self.check_set(stack, finalize_name, set)?,
         }
         Ok(())
@@ -207,36 +207,47 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensures the given `get_or` command is well-formed.
+    /// Ensures the given `get.or_init` command is well-formed.
     #[inline]
-    fn check_get_or(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, get_or: &GetOr<N>) -> Result<()> {
-        // Ensure the declared mapping in `get_or` is defined in the program.
-        if !stack.program().contains_mapping(get_or.mapping_name()) {
-            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get_or.mapping_name(), stack.program_id())
+    fn check_get_or_init(
+        &mut self,
+        stack: &Stack<N>,
+        finalize_name: &Identifier<N>,
+        get_or_init: &GetOrInit<N>,
+    ) -> Result<()> {
+        // Ensure the declared mapping in `get.or_init` is defined in the program.
+        if !stack.program().contains_mapping(get_or_init.mapping_name()) {
+            bail!(
+                "Mapping '{}' in '{}/{finalize_name}' is not defined.",
+                get_or_init.mapping_name(),
+                stack.program_id()
+            )
         }
         // Retrieve the mapping from the program.
         // Note that the unwrap is safe, as we have already checked the mapping exists.
-        let mapping = stack.program().get_mapping(get_or.mapping_name()).unwrap();
+        let mapping = stack.program().get_mapping(get_or_init.mapping_name()).unwrap();
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, get_or.key())?;
+        let key_type = self.get_type_from_operand(stack, get_or_init.key())?;
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
-            bail!("Key type in `get_or` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
+            bail!(
+                "Key type in `get.or_init` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
         }
         // Retrieve the register type of the default value.
-        let default_value_type = self.get_type_from_operand(stack, get_or.default())?;
+        let default_value_type = self.get_type_from_operand(stack, get_or_init.default())?;
         // Check that the value type in the mapping matches the default value type.
         if *mapping_value_type != default_value_type {
             bail!(
-                "Default value type in `get_or` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
+                "Default value type in `get.or_init` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         // Get the destination register.
-        let destination = get_or.destination().clone();
+        let destination = get_or_init.destination().clone();
         // Ensure the destination register is a locator (and does not reference a member).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.

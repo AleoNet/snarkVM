@@ -20,10 +20,11 @@ use console::{
     program::{Identifier, Register, Value},
 };
 
-/// A get command with a default value in case of failure, e.g. `get_or accounts[r0] r1 into r2;`.
+/// A get command that initializes the mapping in case of failure, e.g. `get.or_init accounts[r0] r1 into r2;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
+/// If the key is not present, `default` is stored in `mapping` and stored in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct GetOr<N: Network> {
+pub struct GetOrInit<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
@@ -34,11 +35,11 @@ pub struct GetOr<N: Network> {
     destination: Register<N>,
 }
 
-impl<N: Network> GetOr<N> {
+impl<N: Network> GetOrInit<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("get_or")
+        Opcode::Command("get.or_init")
     }
 
     /// Returns the operands in the operation.
@@ -72,7 +73,7 @@ impl<N: Network> GetOr<N> {
     }
 }
 
-impl<N: Network> GetOr<N> {
+impl<N: Network> GetOrInit<N> {
     /// Evaluates the command.
     #[inline]
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
@@ -92,7 +93,7 @@ impl<N: Network> GetOr<N> {
         // Retrieve the value from storage as a literal.
         let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'get_or' a 'record'"),
+            Some(Value::Record(..)) => bail!("Cannot 'get.or_init' a 'record'"),
             // If a key does not exist, then use the default value.
             None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
         };
@@ -104,7 +105,7 @@ impl<N: Network> GetOr<N> {
     }
 }
 
-impl<N: Network> Parser for GetOr<N> {
+impl<N: Network> Parser for GetOrInit<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -150,7 +151,7 @@ impl<N: Network> Parser for GetOr<N> {
     }
 }
 
-impl<N: Network> FromStr for GetOr<N> {
+impl<N: Network> FromStr for GetOrInit<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -168,14 +169,14 @@ impl<N: Network> FromStr for GetOr<N> {
     }
 }
 
-impl<N: Network> Debug for GetOr<N> {
+impl<N: Network> Debug for GetOrInit<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for GetOr<N> {
+impl<N: Network> Display for GetOrInit<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
@@ -187,7 +188,7 @@ impl<N: Network> Display for GetOr<N> {
     }
 }
 
-impl<N: Network> FromBytes for GetOr<N> {
+impl<N: Network> FromBytes for GetOrInit<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
@@ -203,7 +204,7 @@ impl<N: Network> FromBytes for GetOr<N> {
     }
 }
 
-impl<N: Network> ToBytes for GetOr<N> {
+impl<N: Network> ToBytes for GetOrInit<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
@@ -226,12 +227,12 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, get_or) = GetOr::<CurrentNetwork>::parse("get_or account[r0] r1 into r2;").unwrap();
+        let (string, get_or_init) = GetOrInit::<CurrentNetwork>::parse("get.or_init account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get_or.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(get_or.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(get_or.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(get_or.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(get_or.destination, Register::Locator(2), "The second operand is incorrect");
+        assert_eq!(get_or_init.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(get_or_init.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(get_or_init.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(get_or_init.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(get_or_init.destination, Register::Locator(2), "The second operand is incorrect");
     }
 }
