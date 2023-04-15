@@ -24,7 +24,7 @@ use console::{
     types::{Field, Group},
 };
 
-type Variant = u16;
+type Variant = u8;
 
 /// The transition output.
 #[derive(Clone, PartialEq, Eq)]

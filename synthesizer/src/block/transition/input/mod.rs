@@ -24,7 +24,7 @@ use console::{
     types::Field,
 };
 
-type Variant = u16;
+type Variant = u8;
 
 /// The transition input.
 #[derive(Clone, PartialEq, Eq)]
