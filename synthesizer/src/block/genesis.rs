@@ -18,6 +18,7 @@ use super::*;
 use crate::ConsensusStorage;
 
 impl<N: Network> Block<N> {
+    /// Specifies the number of genesis transactions.
     const NUM_GENESIS_TRANSACTIONS: usize = 4;
 
     /// Initializes a new genesis block.

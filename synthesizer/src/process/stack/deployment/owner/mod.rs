@@ -25,7 +25,9 @@ use console::{
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Owner<N: Network> {
+    /// The address of the owner.
     address: Address<N>,
+    /// The signature of the owner, over the deployment transaction ID.
     signature: Signature<N>,
 }
 
@@ -36,28 +38,30 @@ impl<N: Network> Owner<N> {
         transaction_id: N::TransactionID,
         rng: &mut R,
     ) -> Result<Self> {
+        // Derive the address.
         let address = Address::try_from(private_key)?;
+        // Sign the transaction ID.
         let signature = private_key.sign(&[*transaction_id], rng)?;
-
+        // Return the owner.
         Ok(Self { signature, address })
     }
 
-    /// Initializes a new owner from the address and signature.
+    /// Initializes a new owner from an address and signature.
     pub fn from(address: Address<N>, signature: Signature<N>) -> Self {
         Self { address, signature }
     }
 
-    /// Returns the owner address.
+    /// Returns the address of the owner.
     pub const fn address(&self) -> Address<N> {
         self.address
     }
 
-    /// Returns the signature.
-    pub const fn program(&self) -> &Signature<N> {
+    /// Returns the signature of the owner.
+    pub const fn signature(&self) -> &Signature<N> {
         &self.signature
     }
 
-    /// Verify that the owner signature is correct.
+    /// Verify that the signature is valid for the given transaction ID.
     pub fn verify(&self, transaction_id: N::TransactionID) -> bool {
         self.signature.verify(&self.address, &[*transaction_id])
     }
@@ -85,6 +89,7 @@ pub(crate) mod test_helpers {
             let field: Field<CurrentNetwork> = rng.gen();
             let transaction_id = field.into();
 
+            // Return the owner.
             Owner::new(&private_key, transaction_id, rng).unwrap()
         })
     }
@@ -101,12 +106,12 @@ pub(crate) mod test_helpers {
         let field: Field<CurrentNetwork> = rng.gen();
         let transaction_id = field.into();
 
+        // Construct the owner.
         let owner = Owner::new(&private_key, transaction_id, rng).unwrap();
-
-        // Ensure that the owner is verified for the given transaction id.
+        // Ensure that the owner is verified for the given transaction ID.
         assert!(owner.verify(transaction_id));
 
-        // Ensure that the owner is not verified for a different transaction id.
+        // Ensure that the owner is not verified for a different transaction ID.
         let field: Field<CurrentNetwork> = rng.gen();
         let incorrect_transaction_id = field.into();
         assert!(!owner.verify(incorrect_transaction_id));

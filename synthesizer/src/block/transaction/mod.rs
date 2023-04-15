@@ -48,24 +48,22 @@ use console::{
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Box<Deployment<N>>, Fee<N>, Owner<N>),
+    Deploy(N::TransactionID, Owner<N>, Box<Deployment<N>>, Fee<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn from_deployment(deployment: Deployment<N>, fee: Fee<N>, owner: Owner<N>) -> Result<Self> {
+    pub fn from_deployment(owner: Owner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
-
-        // Verify that the owner is correct for the deployment.
+        // Ensure the owner signed the correct transaction ID.
         ensure!(owner.verify(id.into()), "Attempted to create a transaction deployment with an invalid owner");
-
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id.into(), Box::new(deployment), fee, owner))
+        Ok(Self::Deploy(id.into(), owner, Box::new(deployment), fee))
     }
 
     /// Initializes a new execution transaction.
@@ -102,7 +100,7 @@ impl<N: Network> Transaction<N> {
         let owner = Owner::new(private_key, id.into(), rng)?;
 
         // Initialize the transaction.
-        Self::from_deployment(deployment, fee, owner)
+        Self::from_deployment(owner, deployment, fee)
     }
 
     /// Initializes a new execution transaction.
@@ -210,7 +208,7 @@ impl<N: Network> Transaction<N> {
     /// Returns the transaction fee.
     pub fn fee(&self) -> Result<U64<N>> {
         match self {
-            Self::Deploy(_, _, fee, _) => fee.amount(),
+            Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
             Self::Execute(_, _, None) => Ok(U64::zero()),
         }
@@ -222,7 +220,7 @@ impl<N: Network> Transaction<N> {
     pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
         match self {
             // Check the fee.
-            Self::Deploy(_, _, fee, _) => fee.id() == transition_id,
+            Self::Deploy(_, _, _, fee) => fee.id() == transition_id,
             // Check the execution and fee.
             Self::Execute(_, execution, fee) => {
                 execution.contains_transition(transition_id)
@@ -247,7 +245,7 @@ impl<N: Network> Transaction<N> {
     pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
         match self {
             // Check the fee.
-            Self::Deploy(_, _, fee, _) => match fee.id() == transition_id {
+            Self::Deploy(_, _, _, fee) => match fee.id() == transition_id {
                 true => Some(fee.transition()),
                 false => None,
             },
@@ -286,7 +284,7 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
-            Self::Deploy(_, _, fee, _) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
+            Self::Deploy(_, _, _, fee) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.transitions().chain(fee.as_ref().map(|fee| fee.transition())))
             }
@@ -352,7 +350,7 @@ impl<N: Network> Transaction<N> {
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
         match self {
-            Self::Deploy(_, _, fee, _) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
+            Self::Deploy(_, _, _, fee) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.into_transitions().chain(fee.map(|fee| fee.into_transition())))
             }
