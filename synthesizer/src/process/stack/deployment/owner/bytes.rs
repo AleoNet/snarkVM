@@ -30,7 +30,7 @@ impl<N: Network> FromBytes for Owner<N> {
 }
 
 impl<N: Network> ToBytes for Owner<N> {
-    /// Writes the deployment to a buffer.
+    /// Writes the owner to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the owner address.
         self.address.write_le(&mut writer)?;
