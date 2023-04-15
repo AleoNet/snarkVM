@@ -20,8 +20,8 @@ impl<N: Network> FromBytes for Output<N> {
     /// Reads the output from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let operand = FromBytes::read_le(&mut reader)?;
-        let finalize_type = FromBytes::read_le(&mut reader)?;
-        Ok(Self { operand, finalize_type })
+        let plaintext_type = FromBytes::read_le(&mut reader)?;
+        Ok(Self { operand, plaintext_type })
     }
 }
 
@@ -29,6 +29,6 @@ impl<N: Network> ToBytes for Output<N> {
     /// Writes the output to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.operand.write_le(&mut writer)?;
-        self.finalize_type.write_le(&mut writer)
+        self.plaintext_type.write_le(&mut writer)
     }
 }

@@ -17,10 +17,10 @@
 mod load;
 mod store;
 
-use crate::{FinalizeTypes, Operand, Stack};
+use crate::{FinalizeTypes, Load, Operand, Stack, Store};
 use console::{
     network::prelude::*,
-    program::{Entry, Literal, Plaintext, Register, Value},
+    program::{Literal, Plaintext, Register, Value},
 };
 
 use indexmap::IndexMap;
@@ -30,7 +30,7 @@ pub struct FinalizeRegisters<N: Network> {
     /// The mapping of all registers to their defined types.
     finalize_types: FinalizeTypes<N>,
     /// The mapping of assigned registers to their values.
-    registers: IndexMap<u64, Value<N>>,
+    registers: IndexMap<u64, Plaintext<N>>,
 }
 
 impl<N: Network> FinalizeRegisters<N> {

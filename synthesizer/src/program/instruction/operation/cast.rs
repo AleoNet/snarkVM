@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
 use console::{
     network::prelude::*,
     program::{
@@ -95,6 +95,16 @@ impl<N: Network> Cast<N> {
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_name)?;
 
+                // Ensure that the number of operands is equal to the number of struct members.
+                if inputs.len() != struct_.members().len() {
+                    bail!(
+                        "Casting to the struct {} requires {} operands, but {} were provided",
+                        struct_.name(),
+                        struct_.members().len(),
+                        inputs.len()
+                    )
+                }
+
                 // Initialize the struct members.
                 let mut members = IndexMap::new();
                 for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
@@ -128,6 +138,16 @@ impl<N: Network> Cast<N> {
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
+
+                // Ensure that the number of operands is equal to the number of record entries, including the `owner`.
+                if inputs.len() != record_type.entries().len() + 1 {
+                    bail!(
+                        "Casting to the record {} requires {} operands, but {} were provided",
+                        record_type.name(),
+                        record_type.entries().len() + 1,
+                        inputs.len()
+                    )
+                }
 
                 // Initialize the record owner.
                 let owner: Owner<N, Plaintext<N>> = match &inputs[0] {
@@ -209,6 +229,16 @@ impl<N: Network> Cast<N> {
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_)?;
 
+                // Ensure that the number of operands is equal to the number of struct members.
+                if inputs.len() != struct_.members().len() {
+                    bail!(
+                        "Casting to the struct {} requires {} operands, but {} were provided",
+                        struct_.name(),
+                        struct_.members().len(),
+                        inputs.len()
+                    )
+                }
+
                 // Initialize the struct members.
                 let mut members = IndexMap::new();
                 for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
@@ -247,6 +277,16 @@ impl<N: Network> Cast<N> {
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
+
+                // Ensure that the number of operands is equal to the number of record entries, including the `owner`.
+                if inputs.len() != record_type.entries().len() + 1 {
+                    bail!(
+                        "Casting to the record {} requires {} operands, but {} were provided",
+                        record_type.name(),
+                        record_type.entries().len() + 1,
+                        inputs.len()
+                    )
+                }
 
                 // Initialize the record owner.
                 let owner: circuit::Owner<A, circuit::Plaintext<A>> = match &inputs[0] {
@@ -312,6 +352,67 @@ impl<N: Network> Cast<N> {
         }
     }
 
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        // Load the operands values.
+        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+
+        match self.register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+                }
+
+                // Retrieve the struct and ensure it is defined in the program.
+                let struct_ = stack.program().get_struct(&struct_name)?;
+
+                // Ensure that the number of operands is equal to the number of struct members.
+                if inputs.len() != struct_.members().len() {
+                    bail!(
+                        "Casting to the struct {} requires {} operands, but {} were provided",
+                        struct_.name(),
+                        struct_.members().len(),
+                        inputs.len()
+                    )
+                }
+
+                // Initialize the struct members.
+                let mut members = IndexMap::new();
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
+                    // Compute the register type.
+                    let register_type = RegisterType::Plaintext(*member_type);
+                    // Retrieve the plaintext value from the entry.
+                    let plaintext = match member {
+                        Value::Plaintext(plaintext) => {
+                            // Ensure the member matches the register type.
+                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the struct member is not a record.
+                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
+                    };
+                    // Append the member to the struct members.
+                    members.insert(*member_name, plaintext);
+                }
+
+                // Construct the struct.
+                let struct_ = Plaintext::Struct(members, Default::default());
+                // Store the struct.
+                registers.store(stack, &self.destination, Value::Plaintext(struct_))
+            }
+            RegisterType::Record(_record_name) => {
+                bail!("Illegal operation: Cannot cast to a record in a finalize block.")
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
+            }
+        }
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
     pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
@@ -330,6 +431,20 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_name)?;
+                // Ensure that the input types length is at least the minimum.
+                ensure!(
+                    input_types.len() >= N::MIN_STRUCT_ENTRIES,
+                    "Casting to a struct requires at least {} operand",
+                    N::MIN_STRUCT_ENTRIES
+                );
+                // Ensure that the number of input types is equal to the number of struct members.
+                ensure!(
+                    input_types.len() == struct_.members().len(),
+                    "Casting to the struct {} requires {} operands, but {} were provided",
+                    struct_.name(),
+                    struct_.members().len(),
+                    input_types.len()
+                );
                 // Ensure the input types match the struct.
                 for ((_, member_type), input_type) in struct_.members().iter().zip_eq(input_types) {
                     match input_type {
@@ -360,6 +475,14 @@ impl<N: Network> Cast<N> {
                     input_types.len() >= N::MIN_RECORD_ENTRIES,
                     "Casting to a record requires at least {} operands",
                     N::MIN_RECORD_ENTRIES
+                );
+                // Ensure that the number of input types is equal to the number of record entries, including the `owner`.
+                ensure!(
+                    input_types.len() == record.entries().len() + 1,
+                    "Casting to the record {} requires {} operands, but {} were provided",
+                    record.name(),
+                    record.entries().len() + 1,
+                    input_types.len()
                 );
                 // Ensure the first input type is an address.
                 ensure!(

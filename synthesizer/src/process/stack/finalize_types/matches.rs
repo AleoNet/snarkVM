@@ -50,19 +50,14 @@ impl<N: Network> FinalizeTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects a {member_type}, but found '{operand}' in the operand.",
                     )
                 }
-                // Ensure the register type matches the member type.
+                // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
-                    // Retrieve the register type.
-                    let register_type = self.get_type(stack, register)?;
-                    // Ensure the register type is not a record.
-                    ensure!(
-                        !matches!(register_type, RegisterType::Record(..)),
-                        "Casting a record into a struct is illegal"
-                    );
+                    // Retrieve the type.
+                    let plaintext_type = self.get_type(stack, register)?;
                     // Ensure the register type matches the member type.
                     ensure!(
-                        register_type == RegisterType::Plaintext(*member_type),
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{operand}'.",
+                        plaintext_type == *member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{plaintext_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the program ID type (address) matches the member type.
@@ -84,116 +79,6 @@ impl<N: Network> FinalizeTypes<N> {
                         caller_type == RegisterType::Plaintext(*member_type),
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
                     )
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` **does** matter, however ordering
-    /// for record data does **not** matter, as long as all defined members are present.
-    pub fn matches_record(&self, stack: &Stack<N>, operands: &[Operand<N>], record_type: &RecordType<N>) -> Result<()> {
-        // Retrieve the record name.
-        let record_name = record_type.name();
-        // Ensure the record name is valid.
-        ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
-
-        // Ensure the operands length is at least the minimum required.
-        if operands.len() < N::MIN_RECORD_ENTRIES {
-            bail!("'{record_name}' must have at least {} operand(s)", N::MIN_RECORD_ENTRIES)
-        }
-        // Ensure the operands length is within the maximum limit.
-        if operands.len() > N::MAX_RECORD_ENTRIES {
-            bail!("'{record_name}' cannot exceed {} entries", N::MAX_RECORD_ENTRIES)
-        }
-
-        // Ensure the number of record entries match.
-        let num_entries = operands.len().saturating_sub(N::MIN_RECORD_ENTRIES);
-        let expected_num_entries = record_type.entries().len();
-        if expected_num_entries != num_entries {
-            bail!("'{record_name}' expected {expected_num_entries} entries, found {num_entries} entries")
-        }
-
-        // Ensure the first input type is an address.
-        match &operands[0] {
-            Operand::Literal(literal) => {
-                ensure!(
-                    literal.to_type() == LiteralType::Address,
-                    "Casting to a record requires the first operand to be an address"
-                )
-            }
-            Operand::Register(register) => {
-                // Retrieve the register type.
-                let register_type = self.get_type(stack, register)?;
-                // Ensure the register type is an address.
-                ensure!(
-                    register_type == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-                    "Casting to a record requires the first operand to be an address"
-                );
-            }
-            Operand::ProgramID(program_id) => {
-                // Note: While the ProgramID is rendered as an address, this address is not recoverable
-                // from a private key. Furthermore, programs are not allowed to own any records.
-                // They must hold all necessary state in storage instead.
-                bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
-            }
-            Operand::Caller => {}
-        }
-
-        // Ensure the operand types match the record entry types.
-        for (operand, (entry_name, entry_type)) in
-            operands.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
-        {
-            match entry_type {
-                EntryType::Constant(plaintext_type)
-                | EntryType::Public(plaintext_type)
-                | EntryType::Private(plaintext_type) => {
-                    match operand {
-                        // Ensure the literal type matches the entry type.
-                        Operand::Literal(literal) => {
-                            ensure!(
-                                PlaintextType::Literal(literal.to_type()) == *plaintext_type,
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{literal}' in the operand.",
-                            )
-                        }
-                        // Ensure the register type matches the entry type.
-                        Operand::Register(register) => {
-                            // Retrieve the register type.
-                            let register_type = self.get_type(stack, register)?;
-                            // Ensure the register type is not a record.
-                            ensure!(
-                                !matches!(register_type, RegisterType::Record(..)),
-                                "Casting a record into a record entry is illegal"
-                            );
-                            // Ensure the register type matches the entry type.
-                            ensure!(
-                                register_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{register_type}' in the operand '{operand}'.",
-                            )
-                        }
-                        // Ensure the program ID type (address) matches the member type.
-                        Operand::ProgramID(..) => {
-                            // Retrieve the program ID type.
-                            let program_ref_type =
-                                RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                            // Ensure the program ID type matches the member type.
-                            ensure!(
-                                program_ref_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{program_ref_type}' in the operand '{operand}'.",
-                            )
-                        }
-                        // Ensure the caller type (address) matches the member type.
-                        Operand::Caller => {
-                            // Retrieve the caller type.
-                            let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                            // Ensure the caller type matches the member type.
-                            ensure!(
-                                caller_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
-                            )
-                        }
-                    }
                 }
             }
         }

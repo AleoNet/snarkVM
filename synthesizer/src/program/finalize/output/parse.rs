@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Parser for Output<N> {
     /// Parses a string into an output statement.
-    /// The output statement is of the form `output {operand} as {finalize_type};`.
+    /// The output statement is of the form `output {operand} as {plaintext_type};`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -35,14 +35,14 @@ impl<N: Network> Parser for Output<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the finalize type from the string.
-        let (string, finalize_type) = FinalizeType::parse(string)?;
+        // Parse the plaintext type from the string.
+        let (string, (plaintext_type, _)) = pair(PlaintextType::parse, tag(".public"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the output statement.
-        Ok((string, Self { operand, finalize_type }))
+        Ok((string, Self { operand, plaintext_type }))
     }
 }
 
@@ -76,10 +76,10 @@ impl<N: Network> Display for Output<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {operand} as {finalize_type};",
+            "{type_} {operand} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             operand = self.operand,
-            finalize_type = self.finalize_type
+            plaintext_type = self.plaintext_type
         )
     }
 }
@@ -99,22 +99,22 @@ mod tests {
         // Register
         let output = Output::<CurrentNetwork>::parse("output r0 as field.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(0)));
-        assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         // Literal
         let output = Output::<CurrentNetwork>::parse("output 0u8 as u8.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Literal(Literal::<CurrentNetwork>::U8(U8::new(0))));
-        assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("u8.public")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("u8")?);
 
         // Struct
         let output = Output::<CurrentNetwork>::parse("output r1 as signature.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(1)));
-        assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("signature.public")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("signature")?);
 
         // Record
-        let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
+        let output = Output::<CurrentNetwork>::parse("output r2 as token.public;").unwrap().1;
         assert_eq!(output.operand(), &Operand::Register(Register::<CurrentNetwork>::Locator(2)));
-        assert_eq!(output.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("token.record")?);
+        assert_eq!(output.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("token")?);
 
         Ok(())
     }
@@ -134,7 +134,7 @@ mod tests {
         assert_eq!(format!("{output}"), "output r1 as signature.public;");
 
         // Record
-        let output = Output::<CurrentNetwork>::parse("output r2 as token.record;").unwrap().1;
-        assert_eq!(format!("{output}"), "output r2 as token.record;");
+        let output = Output::<CurrentNetwork>::parse("output r2 as token.public;").unwrap().1;
+        assert_eq!(format!("{output}"), "output r2 as token.public;");
     }
 }

@@ -215,10 +215,12 @@ finalize mint_public:
     // Input the token amount.
     input r1 as u64.public;
 
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, it will be created.
-    // If `account[r0] + r1` overflows, `mint_public` is reverted.
-    increment account[r0] by r1;
+    // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
+    get.or_init account[r0] 0u64 into r2;
+    // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
+    add r2 r1 into r3;
+    // Set `r3` into `account[r0]`.
+    set r3 into account[r0];
 ",
         )
         .unwrap()
@@ -229,7 +231,7 @@ finalize mint_public:
         assert_eq!(0, function.outputs.len());
         assert!(function.finalize_command().is_some());
         assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
-        assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
+        assert_eq!(3, function.finalize_logic().as_ref().unwrap().commands().len());
 
         let function = Function::<CurrentNetwork>::parse(
             r"
@@ -264,7 +266,9 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    increment account[r0] by r1;
+    get.or_init account[r0] 0u64 into r2;
+    add r2 r1 into r3;
+    set r3 into account[r0];
     ",
         )
         .unwrap()
@@ -273,7 +277,7 @@ finalize compute:
         assert_eq!(1, function.instructions.len());
         assert_eq!(0, function.outputs.len());
         assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
-        assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
+        assert_eq!(3, function.finalize_logic().as_ref().unwrap().commands().len());
     }
 
     #[test]

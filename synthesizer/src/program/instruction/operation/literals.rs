@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Operation, Registers, Stack};
+use crate::{Load, LoadCircuit, Opcode, Operand, Operation, Stack, Store, StoreCircuit};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
@@ -66,11 +66,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
-    ) -> Result<()> {
+    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
@@ -104,7 +100,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        registers: &mut (impl LoadCircuit<N, A> + StoreCircuit<N, A>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
@@ -132,6 +128,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
         // Evaluate the operation and store the output.
         registers.store_literal_circuit(stack, &self.destination, output)
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+        self.evaluate(stack, registers)
     }
 
     /// Returns the output type from the given program and input types.
