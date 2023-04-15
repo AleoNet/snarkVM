@@ -52,7 +52,7 @@ pub type ProgramTree<N> = BHPMerkleTree<N, PROGRAM_TREE_DEPTH>;
 /// Each leaf contains the hash of a key-value entry.
 pub type MappingTree<N> = BHPMerkleTree<N, MAPPING_TREE_DEPTH>;
 
-/// Enum to represent the update to the merkle trees.
+/// Enum to represent the allowed set of Merkle tree operations.
 #[derive(Clone, Copy, Debug)]
 pub enum MerkleTreeUpdate<N: Network> {
     /// Insert a leaf into the tree, as (`mapping ID`, `value ID`).
