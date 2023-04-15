@@ -337,7 +337,7 @@ mod tests {
         // Initialize the genesis block.
         let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
         // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
+        vm.add_next_block(&genesis, None).unwrap();
 
         // Fetch a valid execution transaction.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);

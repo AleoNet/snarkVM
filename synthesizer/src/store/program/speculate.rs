@@ -210,15 +210,15 @@ impl<N: Network> Speculate<N> {
                 // Evaluate the commands.
                 for command in finalize.commands() {
                     // If the command is a store, update the relevant state.
-                    if let Command::Store(store) = command {
+                    if let Command::Set(set) = command {
                         // Construct the `mapping ID`.
-                        let mapping_id = N::hash_bhp1024(&(program_id, store.mapping_name()).to_bits_le())?;
+                        let mapping_id = N::hash_bhp1024(&(program_id, set.mapping_name()).to_bits_le())?;
                         updated_mapping_ids.insert(mapping_id);
 
                         // Load the key operand as a plaintext.
-                        let key = registers.load_plaintext(stack, store.key())?;
+                        let key = registers.load_plaintext(stack, set.key())?;
                         // Load the value operand as a plaintext.
-                        let value = Value::Plaintext(registers.load_plaintext(stack, store.value())?);
+                        let value = Value::Plaintext(registers.load_plaintext(stack, set.value())?);
 
                         // Compute the key ID.
                         let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
@@ -226,19 +226,18 @@ impl<N: Network> Speculate<N> {
                         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
                         // Construct the update operation. If the key ID does not exist, insert it.
-                        let operation =
-                            match vm.program_store().get_key_index(program_id, store.mapping_name(), &key)? {
-                                Some(key_index) => {
-                                    // Add an update value operation.
-                                    MerkleTreeUpdate::UpdateValue(mapping_id, key_index as usize, key_id, value_id)
-                                }
-                                None => {
-                                    // Add an insert value operation.
-                                    // NOTE: We currently don't know if the key has already been inserted to the speculate state,
-                                    //  but we assign the operation as `Insert` and handle it downstream.
-                                    MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id)
-                                }
-                            };
+                        let operation = match vm.program_store().get_key_index(program_id, set.mapping_name(), &key)? {
+                            Some(key_index) => {
+                                // Add an update value operation.
+                                MerkleTreeUpdate::UpdateValue(mapping_id, key_index as usize, key_id, value_id)
+                            }
+                            None => {
+                                // Add an insert value operation.
+                                // NOTE: We currently don't know if the key has already been inserted to the speculate state,
+                                //  but we assign the operation as `Insert` and handle it downstream.
+                                MerkleTreeUpdate::InsertValue(mapping_id, key_id, value_id)
+                            }
+                        };
 
                         operations.push((*program_id, operation));
                     }
@@ -279,7 +278,7 @@ impl<N: Network> Speculate<N> {
 
         // Perform the transaction mapping updates.
         match transaction {
-            Transaction::Deploy(transaction_id, deployment, _fee) => {
+            Transaction::Deploy(transaction_id, _, deployment, _fee) => {
                 if let Err(err) = self.speculate_deployment(vm, *transaction_id, deployment) {
                     eprintln!("Failed to speculate transaction {transaction_id}: {err}");
                     return Ok(false);
@@ -460,9 +459,9 @@ finalize mint_public:
     input r0 as address.public;
     input r1 as u64.public;
 
-    load_or account[r0] 0u64 into r2;
+    get.or_init account[r0] 0u64 into r2;
     add r2 r1 into r3;
-    store r3 into account[r0];
+    set r3 into account[r0];
 
 function transfer_public:
     input r0 as address.public;
@@ -475,14 +474,14 @@ finalize transfer_public:
     input r1 as address.public;
     input r2 as u64.public;
 
-    load_or account[r0] 0u64 into r3;
-    load_or account[r1] 0u64 into r4;
+    get.or_init account[r0] 0u64 into r3;
+    get.or_init account[r1] 0u64 into r4;
 
     sub r3 r2 into r5;
     add r4 r2 into r6;
 
-    store r5 into account[r0];
-    store r6 into account[r1];"
+    set r5 into account[r0];
+    set r6 into account[r1];"
         ))?;
 
         // Fetch the unspent records.
@@ -519,6 +518,8 @@ finalize transfer_public:
             CurrentNetwork::ID,
             previous_block.round() + 1,
             previous_block.height() + 1,
+            CurrentNetwork::STARTING_SUPPLY,
+            0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
@@ -552,7 +553,7 @@ finalize transfer_public:
             vm.authorize(&caller_private_key, program_id, function_name, inputs.into_iter(), rng).unwrap();
 
         // Execute.
-        let transaction = Transaction::execute_authorization(vm, authorization, None, rng).unwrap();
+        let transaction = Transaction::execute_authorization(vm, authorization, None, None, rng).unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction));
 

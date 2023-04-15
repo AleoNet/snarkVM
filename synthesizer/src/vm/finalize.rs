@@ -73,7 +73,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             for transaction in transactions.values() {
                 // Finalize the transaction.
                 match transaction {
-                    Transaction::Deploy(_, deployment, _) => {
+                    Transaction::Deploy(_, _, deployment, _) => {
                         if let Err(err) = process.finalize_deployment(self.program_store(), deployment) {
                             // If the commit failed, set the speculate flag to `false`.
                             self.program_store().is_speculate.store(false, Ordering::SeqCst);

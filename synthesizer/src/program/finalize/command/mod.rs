@@ -69,10 +69,12 @@ impl<N: Network> Command<N> {
         speculate: &mut Speculate<N>,
     ) -> Result<()> {
         match self {
-            Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
-            Command::Load(load) => load.speculate_finalize(stack, program_store, registers, speculate),
-            Command::LoadDefault(load_or) => load_or.speculate_finalize(stack, program_store, registers, speculate),
-            Command::Store(store) => store.speculate_finalize(stack, program_store, registers, speculate),
+            Command::Instruction(instruction) => instruction.finalize(stack, registers),
+            Command::Get(get) => get.speculate_finalize(stack, program_store, registers, speculate),
+            Command::GetOrInit(get_or_init) => {
+                get_or_init.speculate_finalize(stack, program_store, registers, speculate)
+            }
+            Command::Set(set) => set.speculate_finalize(stack, program_store, registers, speculate),
         }
     }
 }

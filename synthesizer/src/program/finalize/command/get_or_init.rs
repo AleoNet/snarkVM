@@ -138,7 +138,7 @@ impl<N: Network> GetOrInit<N> {
         // Extract the value as a literal.
         let value = match stored_value {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'load_or' a 'record'"),
+            Some(Value::Record(..)) => bail!("Cannot 'get.or_init' a 'record'"),
             // If a key does not exist, then use the default value.
             None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
         };
