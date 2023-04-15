@@ -142,6 +142,22 @@ mod integers {
         println!("{}", output);
     }
 
+    // for op see circuit/types/integers/and.rs
+
+    // var & var
+    #[test]
+    fn and_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a & &b; // '&' on integers turns into a.and(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// and u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
     // for ops see circuit/types/integers/{sub_checked,sub_wrapped}.rs
 
     // var - var
@@ -456,6 +472,37 @@ mod integers {
         println!("{}", output);
     }
 
+    // for op see circuit/types/integers/not.rs
+
+    // !var
+    #[test]
+    fn not_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let _candidate = !&a; // '!' on integers turns into a.not()
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// not u64 private var");
+        println!("{}", output);
+    }
+
+    // for op see circuit/types/integers/or.rs
+
+    // var | var
+    #[test]
+    fn or_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a | &b; // '|' on integers turns into a.or(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// or u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
     // for ops see circuit/types/integers/{rem_checked,rem_wrapped}.rs
     // However, unsigned rem (checked) and unsigned rem.w (wrapped) are identical.
     // So we don't bother getting samples of rem_wrapped.
@@ -471,6 +518,22 @@ mod integers {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// rem (checked) u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
+    // for op see circuit/types/integers/xor.rs
+
+    // var ^ var
+    #[test]
+    fn xor_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a ^ &b; // '^' on integers turns into a.xor(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// xor u64 private var with u64 private var");
         println!("{}", output);
     }
 
