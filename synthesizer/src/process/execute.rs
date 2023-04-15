@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use console::program::Literal;
 
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
@@ -290,29 +289,6 @@ impl<N: Network> Process<N> {
                         bail!("'finalize' failed to evaluate command ({command}): {error}");
                     }
                 }
-
-                // Retrieve the output operands.
-                let output_operands = finalize.outputs().iter().map(|output| output.operand());
-
-                // TODO (howardwu): Save the outputs in ProgramStore.
-                // Load the outputs.
-                let _outputs = output_operands
-                    .map(|operand| {
-                        // Load the outputs.
-                        match operand {
-                            // If the operand is a literal, use the literal directly.
-                            Operand::Literal(literal) => Ok(Value::Plaintext(Plaintext::from(literal))),
-                            // If the operand is a register, retrieve the stack value from the register.
-                            Operand::Register(register) => registers.load(stack, &Operand::Register(register.clone())),
-                            // If the operand is the program ID, convert the program ID into an address.
-                            Operand::ProgramID(program_id) => {
-                                Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
-                            }
-                            // If the operand is the caller, retrieve the caller from the registers.
-                            Operand::Caller => bail!("Forbidden operation: Cannot use 'self.caller' in 'finalize'"),
-                        }
-                    })
-                    .collect::<Result<Vec<_>>>()?;
 
                 lap!(timer, "Finalize transition for {function_name}");
             }

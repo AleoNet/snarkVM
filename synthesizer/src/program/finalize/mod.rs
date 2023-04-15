@@ -20,9 +20,6 @@ pub use command::*;
 mod input;
 use input::*;
 
-mod output;
-use output::*;
-
 mod bytes;
 mod parse;
 
@@ -44,14 +41,12 @@ pub struct Finalize<N: Network> {
     inputs: IndexSet<Input<N>>,
     /// The commands, in order of execution.
     commands: Vec<Command<N>>,
-    /// The output statements, in order of the desired output.
-    outputs: IndexSet<Output<N>>,
 }
 
 impl<N: Network> Finalize<N> {
     /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), commands: Vec::new(), outputs: IndexSet::new() }
+        Self { name, inputs: IndexSet::new(), commands: Vec::new() }
     }
 
     /// Returns the name of the associated function.
@@ -73,30 +68,19 @@ impl<N: Network> Finalize<N> {
     pub fn commands(&self) -> &[Command<N>] {
         &self.commands
     }
-
-    /// Returns the finalize outputs.
-    pub const fn outputs(&self) -> &IndexSet<Output<N>> {
-        &self.outputs
-    }
-
-    /// Returns the plaintext output types.
-    pub fn output_types(&self) -> Vec<PlaintextType<N>> {
-        self.outputs.iter().map(|output| *output.plaintext_type()).collect()
-    }
 }
 
 impl<N: Network> Finalize<N> {
     /// Adds the input statement to finalize.
     ///
     /// # Errors
-    /// This method will halt if there are commands or output statements already.
+    /// This method will halt if a command was previously added.
     /// This method will halt if the maximum number of inputs has been reached.
     /// This method will halt if the input statement was previously added.
     #[inline]
     fn add_input(&mut self, input: Input<N>) -> Result<()> {
-        // Ensure there are no commands or output statements in memory.
+        // Ensure there are no commands in memory.
         ensure!(self.commands.is_empty(), "Cannot add inputs after commands have been added");
-        ensure!(self.outputs.is_empty(), "Cannot add inputs after outputs have been added");
 
         // Ensure the maximum number of inputs has not been exceeded.
         ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
@@ -114,13 +98,9 @@ impl<N: Network> Finalize<N> {
     /// Adds the given command to finalize.
     ///
     /// # Errors
-    /// This method will halt if there are output statements already.
     /// This method will halt if the maximum number of commands has been reached.
     #[inline]
     pub fn add_command(&mut self, command: Command<N>) -> Result<()> {
-        // Ensure there are no output statements in memory.
-        ensure!(self.outputs.is_empty(), "Cannot add commands after outputs have been added");
-
         // Ensure the maximum number of commands has not been exceeded.
         ensure!(self.commands.len() <= N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
 
@@ -157,22 +137,6 @@ impl<N: Network> Finalize<N> {
 
         // Insert the command.
         self.commands.push(command);
-        Ok(())
-    }
-
-    /// Adds the output statement to finalize.
-    ///
-    /// # Errors
-    /// This method will halt if the maximum number of outputs has been reached.
-    #[inline]
-    fn add_output(&mut self, output: Output<N>) -> Result<()> {
-        // Ensure the maximum number of outputs has not been exceeded.
-        ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
-        // Ensure the output statement was not previously added.
-        ensure!(!self.outputs.contains(&output), "Cannot add duplicate output statement");
-
-        // Insert the output statement.
-        self.outputs.insert(output);
         Ok(())
     }
 }

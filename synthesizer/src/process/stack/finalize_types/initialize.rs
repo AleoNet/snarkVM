@@ -38,12 +38,6 @@ impl<N: Network> FinalizeTypes<N> {
             finalize_types.check_command(stack, finalize.name(), command)?;
         }
 
-        // Step 3. Check the outputs are well-formed.
-        for output in finalize.outputs() {
-            // Check the output operand type.
-            finalize_types.check_output(stack, output.operand(), output.plaintext_type())?;
-        }
-
         Ok(finalize_types)
     }
 }
@@ -124,49 +118,6 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the register type and the input type match.
         if *plaintext_type != self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
-        }
-        Ok(())
-    }
-
-    /// Ensure the given output operand is well-formed.
-    #[inline]
-    fn check_output(
-        &mut self,
-        stack: &Stack<N>,
-        operand: &Operand<N>,
-        plaintext_type: &PlaintextType<N>,
-    ) -> Result<()> {
-        match operand {
-            // Inform the user the output operand is an input register, to ensure this is intended behavior.
-            Operand::Register(register) if self.is_input(register) => {
-                eprintln!("Output {operand} in '{}' is an input register, ensure this is intended", stack.program_id())
-            }
-            // Inform the user the output operand is a literal, to ensure this is intended behavior.
-            Operand::Literal(..) => {
-                eprintln!("Output {operand} in '{}' is a literal, ensure this is intended", stack.program_id())
-            }
-            // Otherwise, do nothing.
-            _ => (),
-        }
-
-        // Ensure the operand type is defined in the program.
-        match plaintext_type {
-            PlaintextType::Literal(..) => (),
-            PlaintextType::Struct(struct_name) => {
-                // Ensure the struct is defined in the program.
-                if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
-        };
-
-        // Ensure the operand type and the output type match.
-        if *plaintext_type != self.get_type_from_operand(stack, operand)? {
-            bail!(
-                "Output '{operand}' does not match the expected output operand type: expected '{}', found '{}'",
-                self.get_type_from_operand(stack, operand)?,
-                plaintext_type
-            )
         }
         Ok(())
     }
