@@ -25,7 +25,7 @@ mod execute_fee;
 
 use crate::{
     block::{Input, Transition},
-    program::{Instruction, Operand, Program},
+    program::{Instruction, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
 };
