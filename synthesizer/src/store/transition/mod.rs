@@ -21,6 +21,7 @@ mod output;
 pub use output::*;
 
 use crate::{
+    atomic_write_batch,
     block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
@@ -139,15 +140,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `transition` into storage.
     fn insert(&self, transition: &Transition<N>) -> Result<()> {
-        // Check if an atomic batch write is already in progress.
-        let is_part_of_atomic_batch = self.is_atomic_in_progress();
-
-        // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.start_atomic();
-        }
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_write_batch!(self, {
             // Retrieve the transition ID.
             let transition_id = *transition.id();
             // Store the program ID and function name.
@@ -170,18 +163,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
 
             Ok(())
-        };
-
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.finish_atomic()?;
-        }
+        });
 
         Ok(())
     }
@@ -199,15 +181,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(()),
         };
 
-        // Check if an atomic batch write is already in progress.
-        let is_part_of_atomic_batch = self.is_atomic_in_progress();
-
-        // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.start_atomic();
-        }
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_write_batch!(self, {
             // Remove the program ID and function name.
             self.locator_map().remove(transition_id)?;
             // Remove the inputs.
@@ -228,18 +202,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.reverse_tcm_map().remove(&tcm)?;
 
             Ok(())
-        };
-
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.finish_atomic()?;
-        }
+        });
 
         Ok(())
     }
