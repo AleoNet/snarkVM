@@ -21,7 +21,7 @@ mod string;
 
 use crate::{
     block::Transition,
-    process::{Authorization, Deployment, Execution, Fee, Owner},
+    process::{Authorization, Deployment, Execution, Fee, ProgramOwner},
     program::Program,
     vm::VM,
     ConsensusStorage,
@@ -48,14 +48,14 @@ use console::{
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Owner<N>, Box<Deployment<N>>, Fee<N>),
+    Deploy(N::TransactionID, ProgramOwner<N>, Box<Deployment<N>>, Fee<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn from_deployment(owner: Owner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
+    pub fn from_deployment(owner: ProgramOwner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
@@ -98,7 +98,7 @@ impl<N: Network> Transaction<N> {
         let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = Owner::new(private_key, id.into(), rng)?;
+        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
 
         // Initialize the transaction.
         Self::from_deployment(owner, deployment, fee)
