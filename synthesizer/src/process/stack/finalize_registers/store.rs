@@ -39,7 +39,7 @@ impl<N: Network> Store<N> for FinalizeRegisters<N> {
                 // Ensure the register does not already exist.
                 ensure!(!self.registers.contains_key(locator), "Cannot write to occupied register '{register}'");
 
-                // Ensure the type of the is valid.
+                // Ensure the type of the register is valid.
                 match self.finalize_types.get_type(stack, register) {
                     // Ensure the plaintext value matches the plaintext type.
                     Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
