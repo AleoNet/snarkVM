@@ -50,7 +50,7 @@ impl<N: Network> Load<N> for FinalizeRegisters<N> {
             Register::Member(_, ref path) => plaintext_value.find(path)?,
         };
 
-        // Retrieve the type pf the register.
+        // Retrieve the type of the register.
         match self.finalize_types.get_type(stack, register) {
             // Ensure the plaintext value matches the register type.
             Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
