@@ -51,7 +51,7 @@ impl<N: Network> FinalizeTypes<N> {
 impl<N: Network> FinalizeTypes<N> {
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
-    fn add_input(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
+    fn add_input(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
         // Ensure there are no destination registers set yet.
         ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
 
@@ -62,7 +62,7 @@ impl<N: Network> FinalizeTypes<N> {
                 ensure!(self.inputs.len() as u64 == locator, "Register '{register}' is out of order");
 
                 // Insert the input register and type.
-                match self.inputs.insert(locator, register_type) {
+                match self.inputs.insert(locator, plaintext_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Input '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -76,7 +76,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
-    fn add_destination(&mut self, register: Register<N>, register_type: PlaintextType<N>) -> Result<()> {
+    fn add_destination(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
@@ -85,7 +85,7 @@ impl<N: Network> FinalizeTypes<N> {
                 ensure!(expected_locator == locator, "Register '{register}' is out of order");
 
                 // Insert the destination register and type.
-                match self.destinations.insert(locator, register_type) {
+                match self.destinations.insert(locator, plaintext_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Destination '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -105,10 +105,10 @@ impl<N: Network> FinalizeTypes<N> {
         &mut self,
         stack: &Stack<N>,
         register: &Register<N>,
-        register_type: &PlaintextType<N>,
+        plaintext_type: &PlaintextType<N>,
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
-        match register_type {
+        match plaintext_type {
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
@@ -119,10 +119,10 @@ impl<N: Network> FinalizeTypes<N> {
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *register_type)?;
+        self.add_input(register.clone(), *plaintext_type)?;
 
         // Ensure the register type and the input type match.
-        if *register_type != self.get_type(stack, register)? {
+        if *plaintext_type != self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
         }
         Ok(())
@@ -130,7 +130,12 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensure the given output operand is well-formed.
     #[inline]
-    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &PlaintextType<N>) -> Result<()> {
+    fn check_output(
+        &mut self,
+        stack: &Stack<N>,
+        operand: &Operand<N>,
+        plaintext_type: &PlaintextType<N>,
+    ) -> Result<()> {
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
@@ -145,7 +150,7 @@ impl<N: Network> FinalizeTypes<N> {
         }
 
         // Ensure the operand type is defined in the program.
-        match register_type {
+        match plaintext_type {
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
@@ -156,11 +161,11 @@ impl<N: Network> FinalizeTypes<N> {
         };
 
         // Ensure the operand type and the output type match.
-        if *register_type != self.get_type_from_operand(stack, operand)? {
+        if *plaintext_type != self.get_type_from_operand(stack, operand)? {
             bail!(
                 "Output '{operand}' does not match the expected output operand type: expected '{}', found '{}'",
                 self.get_type_from_operand(stack, operand)?,
-                register_type
+                plaintext_type
             )
         }
         Ok(())
@@ -396,15 +401,7 @@ impl<N: Network> FinalizeTypes<N> {
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
                     }
                     RegisterType::Record(..) => {
-                        bail!("Unsupported operation: Cannot cast to a record (yet).")
-                        // // Ensure the record type is defined in the program.
-                        // if !stack.program().contains_record(record_name) {
-                        //     bail!("Record '{record_name}' is not defined.")
-                        // }
-                        // // Retrieve the record type.
-                        // let record_type = stack.program().get_record(record_name)?;
-                        // // Ensure the operand types match the record type.
-                        // self.matches_record(stack, instruction.operands(), &record_type)?;
+                        bail!("Illegal operation: Cannot cast to a record.")
                     }
                     RegisterType::ExternalRecord(_locator) => {
                         bail!("Illegal operation: Cannot cast to an external record.")

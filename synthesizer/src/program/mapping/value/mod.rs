@@ -22,7 +22,7 @@ use console::{
     program::{Identifier, PlaintextType},
 };
 
-/// An value statement is of the form `value {name} as {register_type};`.
+/// An value statement is of the form `value {name} as {plaintext_type}.public;`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct MapValue<N: Network> {
     /// The value name.

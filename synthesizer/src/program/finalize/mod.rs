@@ -124,7 +124,7 @@ impl<N: Network> Finalize<N> {
         // Ensure the maximum number of commands has not been exceeded.
         ensure!(self.commands.len() <= N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
 
-        // If the command is an instruction, perform additional checks.
+        // If the command is an instruction, `get` command, or `get.or_init` command, perform additional checks.
         match &command {
             Command::Instruction(instruction) => {
                 match instruction {
@@ -152,7 +152,7 @@ impl<N: Network> Finalize<N> {
                     "Destination register must be a locator"
                 );
             }
-            _ => {}
+            Command::Set(_) => {}
         }
 
         // Insert the command.

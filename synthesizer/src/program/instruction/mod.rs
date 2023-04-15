@@ -362,12 +362,6 @@ impl<N: Network> Instruction<N> {
         instruction!(self, |instruction| instruction.evaluate(stack, registers))
     }
 
-    /// Evaluates the instruction in the context of the finalize block.
-    #[inline]
-    pub fn evaluate_finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
-        instruction!(self, |instruction| instruction.evaluate_finalize(stack, registers))
-    }
-
     /// Executes the instruction.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
@@ -376,6 +370,12 @@ impl<N: Network> Instruction<N> {
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        instruction!(self, |instruction| instruction.finalize(stack, registers))
     }
 
     /// Returns the output type from the given input types.

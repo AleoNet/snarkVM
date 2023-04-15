@@ -229,12 +229,6 @@ impl<N: Network> Call<N> {
         Ok(())
     }
 
-    /// Evaluates the instruction in the context of a finalize block.
-    #[inline]
-    pub fn evaluate_finalize(&self, _stack: &Stack<N>, _registers: &mut FinalizeRegisters<N>) -> Result<()> {
-        bail!("Forbidden operation: Finalize cannot invoke a 'call'")
-    }
-
     /// Executes the instruction.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
@@ -446,6 +440,12 @@ impl<N: Network> Call<N> {
         }
 
         Ok(())
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, _stack: &Stack<N>, _registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        bail!("Forbidden operation: Finalize cannot invoke a 'call'")
     }
 
     /// Returns the output type from the given program and input types.

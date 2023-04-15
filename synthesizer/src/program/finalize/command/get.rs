@@ -65,9 +65,9 @@ impl<N: Network> Get<N> {
 }
 
 impl<N: Network> Get<N> {
-    /// Evaluates the command.
+    /// Finalizes the command.
     #[inline]
-    pub fn evaluate_finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: ProgramStorage<N>>(
         &self,
         stack: &Stack<N>,
         store: &ProgramStore<N, P>,

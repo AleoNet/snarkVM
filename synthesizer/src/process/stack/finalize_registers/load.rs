@@ -38,26 +38,26 @@ impl<N: Network> Load<N> for FinalizeRegisters<N> {
             Operand::Caller => bail!("Forbidden operation: Cannot use 'self.caller' in 'finalize'"),
         };
 
-        // Retrieve the stack value.
-        let stack_value =
+        // Retrieve the plaintext value.
+        let plaintext_value =
             self.registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
         // Return the value for the given register or register member.
-        let stack_value = match register {
-            // If the register is a locator, then return the stack value.
-            Register::Locator(..) => stack_value.clone(),
-            // If the register is a register member, then load the specific stack value.
-            Register::Member(_, ref path) => stack_value.find(path)?,
+        let plaintext_value = match register {
+            // If the register is a locator, then return the plaintext value.
+            Register::Locator(..) => plaintext_value.clone(),
+            // If the register is a register member, then load the specific plaintext value.
+            Register::Member(_, ref path) => plaintext_value.find(path)?,
         };
 
-        // Retrieve the register type.
+        // Retrieve the type pf the register.
         match self.finalize_types.get_type(stack, register) {
-            // Ensure the stack value matches the register type.
-            Ok(register_type) => stack.matches_plaintext(&stack_value, &register_type)?,
+            // Ensure the plaintext value matches the register type.
+            Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
         };
 
-        Ok(Value::Plaintext(stack_value))
+        Ok(Value::Plaintext(plaintext_value))
     }
 }

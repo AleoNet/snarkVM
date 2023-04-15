@@ -90,12 +90,6 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
 
-    /// Evaluates the instruction in the context of a finalize block.
-    #[inline]
-    pub fn evaluate_finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
-        self.evaluate(stack, registers)
-    }
-
     /// Executes the instruction.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
@@ -122,6 +116,12 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
         registers.store_circuit(stack, &self.destination, output)
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+        self.evaluate(stack, registers)
     }
 
     /// Returns the output type from the given program and input types.

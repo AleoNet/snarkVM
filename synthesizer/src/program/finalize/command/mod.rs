@@ -43,19 +43,19 @@ pub enum Command<N: Network> {
 }
 
 impl<N: Network> Command<N> {
-    /// Evaluates the command.
+    /// Finalizes the command.
     #[inline]
-    pub fn evaluate_finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: ProgramStorage<N>>(
         &self,
         stack: &Stack<N>,
         store: &ProgramStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
         match self {
-            Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
-            Command::Get(get) => get.evaluate_finalize(stack, store, registers),
-            Command::GetOrInit(get_or_init) => get_or_init.evaluate_finalize(stack, store, registers),
-            Command::Set(set) => set.evaluate_finalize(stack, store, registers),
+            Command::Instruction(instruction) => instruction.finalize(stack, registers),
+            Command::Get(get) => get.finalize(stack, store, registers),
+            Command::GetOrInit(get_or_init) => get_or_init.finalize(stack, store, registers),
+            Command::Set(set) => set.finalize(stack, store, registers),
         }
     }
 }

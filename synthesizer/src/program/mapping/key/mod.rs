@@ -22,7 +22,7 @@ use console::{
     program::{Identifier, PlaintextType},
 };
 
-/// A key statement is of the form `key {name} as {register_type}`.
+/// A key statement is of the form `key {name} as {plaintext_type}.public`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct MapKey<N: Network> {
     /// The key name.

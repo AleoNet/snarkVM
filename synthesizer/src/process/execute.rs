@@ -286,7 +286,7 @@ impl<N: Network> Process<N> {
                 // Evaluate the commands.
                 for command in finalize.commands() {
                     // If the evaluation fails, bail and return the error.
-                    if let Err(error) = command.evaluate_finalize(stack, store, &mut registers) {
+                    if let Err(error) = command.finalize(stack, store, &mut registers) {
                         bail!("'finalize' failed to evaluate command ({command}): {error}");
                     }
                 }

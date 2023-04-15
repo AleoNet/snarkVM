@@ -50,14 +50,14 @@ impl<N: Network> FinalizeTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects a {member_type}, but found '{operand}' in the operand.",
                     )
                 }
-                // Ensure the register type matches the member type.
+                // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
-                    // Retrieve the register type.
-                    let register_type = self.get_type(stack, register)?;
+                    // Retrieve the type.
+                    let plaintext_type = self.get_type(stack, register)?;
                     // Ensure the register type matches the member type.
                     ensure!(
-                        register_type == *member_type,
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{operand}'.",
+                        plaintext_type == *member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{plaintext_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the program ID type (address) matches the member type.

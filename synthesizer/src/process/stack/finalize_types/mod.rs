@@ -76,8 +76,8 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Returns the type of the given register.
     pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<PlaintextType<N>> {
-        // Initialize a tracker for the register type.
-        let mut register_type = if self.is_input(register) {
+        // Initialize a tracker for the type of the register.
+        let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
             *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         } else {
@@ -91,7 +91,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the member path if the register is a member. Otherwise, return the type.
         let path = match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => return Ok(register_type),
+            Register::Locator(..) => return Ok(plaintext_type),
             // If the register is a member, then traverse the member path to output the register type.
             Register::Member(_, path) => {
                 // Ensure the member path is valid.
@@ -104,7 +104,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Traverse the member path to find the register type.
         for path_name in path.iter() {
             // Update the register type at each step.
-            register_type = match &register_type {
+            plaintext_type = match &plaintext_type {
                 // Ensure the plaintext type is not a literal, as the register references a member.
                 PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
                 // Traverse the member path to output the register type.
@@ -119,6 +119,6 @@ impl<N: Network> FinalizeTypes<N> {
             }
         }
         // Output the member type.
-        Ok(register_type)
+        Ok(plaintext_type)
     }
 }

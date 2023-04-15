@@ -95,12 +95,6 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         registers.store_literal(stack, &self.destination, output)
     }
 
-    /// Evaluates the instruction in the context of a finalize block.
-    #[inline]
-    pub fn evaluate_finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
-        self.evaluate(stack, registers)
-    }
-
     /// Executes the instruction.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
@@ -134,6 +128,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
         // Evaluate the operation and store the output.
         registers.store_literal_circuit(stack, &self.destination, output)
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+        self.evaluate(stack, registers)
     }
 
     /// Returns the output type from the given program and input types.
