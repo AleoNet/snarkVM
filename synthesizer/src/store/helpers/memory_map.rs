@@ -59,8 +59,10 @@ impl<
 {
     /// Initializes a new `MemoryMap` from the given iterator.
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        // Serialize each key in the iterator, and collect them into a map.
+        // Note: The 'unwrap' is safe here, because the keys are defined by us.
         let map = iter.into_iter().map(|(k, v)| (bincode::serialize(&k).unwrap(), v)).collect();
-
+        // Return the new map.
         Self {
             map: Arc::new(RwLock::new(map)),
             batch_in_progress: Default::default(),
@@ -89,10 +91,10 @@ impl<
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
-                let key = bincode::serialize(&key).unwrap();
-                self.map.write().insert(key, value);
+                self.map.write().insert(bincode::serialize(&key)?, value);
             }
         }
+
         Ok(())
     }
 
@@ -110,10 +112,10 @@ impl<
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                let key = bincode::serialize(&key).unwrap();
-                self.map.write().remove(&key);
+                self.map.write().remove(&bincode::serialize(&key)?);
             }
         }
+
         Ok(())
     }
 
@@ -157,9 +159,17 @@ impl<
         if !operations.is_empty() {
             // Acquire a write lock on the map.
             let mut locked_map = self.map.write();
+
+            // Prepare the key for each queued operation.
+            // Note: This step is taken to ensure (with 100% certainty) that there will be
+            // no chance to fail partway through committing the queued operations.
+            let prepared_operations = operations
+                .into_iter()
+                .map(|(key, value)| Ok((bincode::serialize(&key)?, value)))
+                .collect::<Result<Vec<_>>>()?;
+
             // Perform all the queued operations.
-            for (key, value) in operations {
-                let key = bincode::serialize(&key).unwrap();
+            for (key, value) in prepared_operations {
                 match value {
                     Some(value) => locked_map.insert(key, value),
                     None => locked_map.remove(&key),
@@ -192,8 +202,7 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        let key = bincode::serialize(key).unwrap();
-        Ok(self.map.read().contains_key(&key))
+        Ok(self.map.read().contains_key(&bincode::serialize(key)?))
     }
 
     ///
@@ -204,8 +213,7 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        let key = bincode::serialize(key).unwrap();
-        Ok(self.map.read().get(&key).cloned().map(Cow::Owned))
+        Ok(self.map.read().get(&bincode::serialize(key)?).cloned().map(Cow::Owned))
     }
 
     ///
@@ -229,6 +237,7 @@ impl<
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
+        // Note: The 'unwrap' is safe here, because the keys are defined by us.
         self.map.read().clone().into_iter().map(|(k, v)| (Cow::Owned(bincode::deserialize(&k).unwrap()), Cow::Owned(v)))
     }
 
@@ -236,6 +245,7 @@ impl<
     /// Returns an iterator over each key in the map.
     ///
     fn keys(&'a self) -> Self::Keys {
+        // Note: The 'unwrap' is safe here, because the keys are defined by us.
         self.map.read().clone().into_keys().map(|k| Cow::Owned(bincode::deserialize(&k).unwrap()))
     }
 
