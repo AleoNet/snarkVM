@@ -69,7 +69,6 @@ impl<N: Network> Stack<N> {
 
 impl<N: Network> Stack<N> {
     /// Returns a record for the given record name.
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,
@@ -85,15 +84,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the owner based on the visibility.
         let owner = match record_type.owner().is_public() {
-            true => Owner::Public(*burner_address),
-            false => Owner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
-        };
-
-        // Initialize the gates based on the visibility.
-        let amount = U64::new(rng.gen_range(0..(1 << 52)));
-        let gates = match record_type.gates().is_public() {
-            true => Balance::Public(amount),
-            false => Balance::Private(Plaintext::Literal(Literal::U64(amount), Default::default())),
+            true => RecordOwner::Public(*burner_address),
+            false => RecordOwner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
         };
 
         // Initialize the record data according to the defined type.
@@ -112,12 +104,10 @@ impl<N: Network> Stack<N> {
         let nonce = Group::rand(rng);
 
         // Return the record.
-        Record::<N, Plaintext<N>>::from_plaintext(owner, gates, data, nonce)
+        Record::<N, Plaintext<N>>::from_plaintext(owner, data, nonce)
     }
 
     /// Samples an entry according to the given entry type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_entry_internal<R: Rng + CryptoRng>(
         &self,
         entry_type: &EntryType<N>,
@@ -144,8 +134,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Samples a plaintext value according to the given plaintext type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_plaintext_internal<R: Rng + CryptoRng>(
         &self,
         plaintext_type: &PlaintextType<N>,

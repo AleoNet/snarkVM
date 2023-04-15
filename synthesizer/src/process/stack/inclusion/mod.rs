@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(debug_assertions)]
+use crate::Stack;
 use crate::{
     BlockStorage,
     BlockStore,
@@ -24,7 +26,6 @@ use crate::{
     Program,
     Proof,
     ProvingKey,
-    Stack,
     Transaction,
     Transition,
     VerifyingKey,
@@ -657,7 +658,7 @@ mod tests {
     fn test_inclusion_verify_execution() {
         let rng = &mut TestRng::default();
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         match execution_transaction {
             Transaction::Execute(_, execution, _) => {
@@ -674,7 +675,7 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         match deployment_transaction {
-            Transaction::Deploy(_, _, fee) => {
+            Transaction::Deploy(_, _, _, fee) => {
                 assert!(Inclusion::verify_fee(&fee).is_ok());
             }
             _ => panic!("Expected a deployment transaction"),

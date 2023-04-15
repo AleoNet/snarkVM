@@ -24,7 +24,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = console::BLOCKS_DEPTH;
@@ -183,16 +183,16 @@ mod tests {
 
     #[test]
     fn test_state_path_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 450, 1, 0, 0)
+        check_new(Mode::Constant, 444, 1, 0, 0)
     }
 
     #[test]
     fn test_state_path_new_public() -> Result<()> {
-        check_new(Mode::Public, 0, 451, 0, 384)
+        check_new(Mode::Public, 0, 445, 0, 376)
     }
 
     #[test]
     fn test_state_path_new_private() -> Result<()> {
-        check_new(Mode::Private, 0, 1, 450, 384)
+        check_new(Mode::Private, 0, 1, 444, 376)
     }
 }

@@ -107,17 +107,27 @@ pub trait Network:
     /// The number of blocks per epoch (1 hour).
     const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
 
-    /// The maximum recursive depth of a value and/or entry.
+    /// The maximum number of entries in data.
+    const MAX_DATA_ENTRIES: usize = 32;
+    /// The maximum recursive depth of an entry.
     /// Note: This value must be strictly less than u8::MAX.
     const MAX_DATA_DEPTH: usize = 32;
-    /// The maximum number of values and/or entries in data.
-    const MAX_DATA_ENTRIES: usize = 32;
     /// The maximum number of fields in data (must not exceed u16::MAX).
     #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
+    /// The minimum number of entries in a struct.
+    const MIN_STRUCT_ENTRIES: usize = 1; // This ensures the struct is not empty.
+    /// The maximum number of entries in a struct.
+    const MAX_STRUCT_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
+
+    /// The minimum number of entries in a record.
+    const MIN_RECORD_ENTRIES: usize = 1; // This accounts for 'record.owner'.
+    /// The maximum number of entries in a record.
+    const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
+
     /// The maximum number of functions in a program.
-    const MAX_FUNCTIONS: usize = 15;
+    const MAX_FUNCTIONS: usize = 31;
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a closure or function.
@@ -126,9 +136,9 @@ pub trait Network:
     const MAX_COMMANDS: usize = u8::MAX as usize;
 
     /// The maximum number of inputs per transition.
-    const MAX_INPUTS: usize = 8;
+    const MAX_INPUTS: usize = 16;
     /// The maximum number of outputs per transition.
-    const MAX_OUTPUTS: usize = 8;
+    const MAX_OUTPUTS: usize = 16;
 
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;

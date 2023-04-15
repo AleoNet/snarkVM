@@ -17,7 +17,7 @@
 mod load;
 mod store;
 
-use crate::{CallStack, Operand, RegisterTypes, Stack};
+use crate::{CallStack, Load, LoadCircuit, Operand, RegisterTypes, Stack, Store, StoreCircuit};
 use console::{
     network::prelude::*,
     program::{Entry, Literal, Plaintext, Register, Value},

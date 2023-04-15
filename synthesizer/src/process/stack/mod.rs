@@ -41,6 +41,9 @@ pub use register_types::*;
 mod registers;
 pub use registers::*;
 
+mod traits;
+pub use traits::*;
+
 mod authorize;
 mod deploy;
 mod evaluate;
@@ -65,13 +68,12 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
-        Balance,
         Entry,
         EntryType,
         Identifier,
         Literal,
         Locator,
-        Owner,
+        Owner as RecordOwner,
         Plaintext,
         PlaintextType,
         ProgramID,
@@ -83,7 +85,7 @@ use console::{
         Value,
         ValueType,
     },
-    types::{Field, Group, U64},
+    types::{Field, Group},
 };
 
 use aleo_std::prelude::{finish, lap, timer};

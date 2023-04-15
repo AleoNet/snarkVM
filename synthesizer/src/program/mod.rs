@@ -106,11 +106,11 @@ program credits.aleo;
 
 record credits:
     owner as address.private;
-    gates as u64.private;
+    microcredits as u64.private;
 
 function mint:
-    input r0 as address.private;
-    input r1 as u64.private;
+    input r0 as address.public;
+    input r1 as u64.public;
     cast r0 r1 into r2 as credits.record;
     output r2 as credits.record;
 
@@ -118,7 +118,7 @@ function transfer:
     input r0 as credits.record;
     input r1 as address.private;
     input r2 as u64.private;
-    sub r0.gates r2 into r3;
+    sub r0.microcredits r2 into r3;
     cast r1 r2 into r4 as credits.record;
     cast r0.owner r3 into r5 as credits.record;
     output r4 as credits.record;
@@ -127,14 +127,14 @@ function transfer:
 function join:
     input r0 as credits.record;
     input r1 as credits.record;
-    add r0.gates r1.gates into r2;
+    add r0.microcredits r1.microcredits into r2;
     cast r0.owner r2 into r3 as credits.record;
     output r3 as credits.record;
 
 function split:
     input r0 as credits.record;
     input r1 as u64.private;
-    sub r0.gates r1 into r2;
+    sub r0.microcredits r1 into r2;
     cast r0.owner r1 into r3 as credits.record;
     cast r0.owner r2 into r4 as credits.record;
     output r3 as credits.record;
@@ -142,8 +142,9 @@ function split:
 
 function fee:
     input r0 as credits.record;
-    input r1 as u64.private;
-    sub r0.gates r1 into r2;
+    input r1 as u64.public;
+    assert.neq r1 0u64;
+    sub r0.microcredits r1 into r2;
     cast r0.owner r2 into r3 as credits.record;
     output r3 as credits.record;
 ",
@@ -559,7 +560,7 @@ impl<N: Network> Program<N> {
         "into",
         // Record
         "record",
-        "gates",
+        "owner",
         // Program
         "function",
         "struct",
@@ -611,12 +612,6 @@ impl<N: Network> Program<N> {
         let name = name.to_string();
         // Check if the name is a keyword.
         Self::KEYWORDS.iter().any(|keyword| *keyword == name)
-    }
-
-    /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
-    #[inline]
-    pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint"
     }
 }
 
@@ -699,7 +694,6 @@ struct message:
             r"
 record foo:
     owner as address.private;
-    gates as u64.private;
     first as field.private;
     second as field.public;",
         )?;
@@ -941,7 +935,6 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -964,7 +957,7 @@ function compute:
 
         // Declare the input value.
         let input_record = Record::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record);
@@ -1131,12 +1124,11 @@ program token_with_cast.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
     input r0 as token.record;
-    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
+    cast r0.owner r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
         .unwrap();
@@ -1154,7 +1146,7 @@ function compute:
 
         // Declare the input value.
         let input_record = Record::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record);
@@ -1175,7 +1167,7 @@ function compute:
 
         // Declare the expected output value.
         let expected = Value::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
         ))
         .unwrap();
 

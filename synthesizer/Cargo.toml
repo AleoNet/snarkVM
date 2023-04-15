@@ -34,6 +34,11 @@ path = "benches/coinbase_puzzle.rs"
 harness = false
 required-features = [ "setup" ]
 
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
+
 [features]
 default = [ ]
 aleo-cli = [ ]
@@ -82,6 +87,9 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0.70"
+
+[dependencies.bincode]
+version = "1"
 
 [dependencies.blake2]
 version = "0.10"

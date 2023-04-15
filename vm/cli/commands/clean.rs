@@ -14,21 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod parse;
-mod serialize;
+use super::*;
 
-use crate::{Identifier, Locator, PlaintextType};
-use snarkvm_console_network::prelude::*;
+/// Cleans the Aleo package build directory.
+#[derive(Debug, Parser)]
+pub struct Clean;
 
-use enum_index::EnumIndex;
+impl Clean {
+    /// Cleans an Aleo package build directory.
+    pub fn parse(self) -> Result<String> {
+        // Derive the program directory path.
+        let path = std::env::current_dir()?;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum FinalizeType<N: Network> {
-    /// A publicly-visible type.
-    Public(PlaintextType<N>),
-    /// A record type inherits its visibility from the record definition.
-    Record(Identifier<N>),
-    /// An external record type inherits its visibility from its record definition.
-    ExternalRecord(Locator<N>),
+        // Clean the build directory.
+        Package::<CurrentNetwork>::clean(&path)?;
+
+        // Prepare the path string.
+        let path_string = format!("(in \"{}\")", path.join("build").display());
+
+        Ok(format!("✅ Cleaned the build directory {}", path_string.dimmed()))
+    }
 }

@@ -26,7 +26,7 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{Registers, Stack};
+use crate::{FinalizeRegisters, Registers, Stack};
 use console::{
     network::{
         prelude::{
@@ -359,7 +359,7 @@ impl<N: Network> Instruction<N> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        instruction!(self, |instruction| instruction.evaluate::<A>(stack, registers))
+        instruction!(self, |instruction| instruction.evaluate(stack, registers))
     }
 
     /// Executes the instruction.
@@ -370,6 +370,12 @@ impl<N: Network> Instruction<N> {
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        instruction!(self, |instruction| instruction.finalize(stack, registers))
     }
 
     /// Returns the output type from the given input types.

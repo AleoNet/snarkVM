@@ -18,8 +18,12 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{snark::Proof, Transition};
-use console::network::prelude::*;
+use crate::{snark::Proof, Input, Transition};
+use console::{
+    network::prelude::*,
+    program::{Literal, Plaintext},
+    types::U64,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Fee<N: Network> {
@@ -61,6 +65,15 @@ impl<N: Network> Fee<N> {
     /// Returns the inclusion proof.
     pub const fn inclusion_proof(&self) -> Option<&Proof<N>> {
         self.inclusion_proof.as_ref()
+    }
+
+    /// Returns the amount (in microcredits).
+    pub fn amount(&self) -> Result<U64<N>> {
+        // Retrieve the amount (in microcredits) as a plaintext value.
+        match self.transition.inputs().get(1) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
+            _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
+        }
     }
 }
 

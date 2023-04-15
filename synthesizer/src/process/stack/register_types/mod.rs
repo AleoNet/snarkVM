@@ -131,9 +131,6 @@ impl<N: Network> RegisterTypes<N> {
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else if path_name == &Identifier::from_str("gates")? {
-                        // If the member is the gates, then output the u64 type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
                     } else {
                         // Retrieve the entry type from the record.
                         match stack.program().get_record(record_name)?.entries().get(path_name) {
@@ -154,9 +151,6 @@ impl<N: Network> RegisterTypes<N> {
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else if path_name == &Identifier::from_str("gates")? {
-                        // If the member is the gates, then output the u64 type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
                     } else {
                         // Retrieve the entry type from the external record.
                         match stack.get_external_record(locator)?.entries().get(path_name) {

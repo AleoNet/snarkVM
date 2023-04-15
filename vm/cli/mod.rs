@@ -17,8 +17,11 @@
 mod cli;
 pub use cli::*;
 
+mod commands;
+pub use commands::*;
+
 mod errors;
 pub use errors::*;
 
-mod updater;
-pub use updater::*;
+mod helpers;
+pub use helpers::*;
