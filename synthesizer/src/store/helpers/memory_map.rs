@@ -19,10 +19,10 @@ use console::network::prelude::*;
 use indexmap::IndexMap;
 
 use core::{borrow::Borrow, hash::Hash};
-use indexmap::map;
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
+    collections::{btree_map, BTreeMap},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -34,7 +34,10 @@ pub struct MemoryMap<
     K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > {
-    map: Arc<RwLock<IndexMap<K, V>>>,
+    // The reason for using BTreeMap with binary keys is for the order of items to be the same as
+    // the one in the RocksDB-backed DataMap in snarkOS; if not for that, it could be any map
+    // with fast lookups and the keys could be typed (i.e. just `K` instead of `Vec<u8>`).
+    map: Arc<RwLock<BTreeMap<Vec<u8>, V>>>,
     batch_in_progress: Arc<AtomicBool>,
     atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
 }
@@ -56,8 +59,10 @@ impl<
 {
     /// Initializes a new `MemoryMap` from the given iterator.
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let map = iter.into_iter().map(|(k, v)| (bincode::serialize(&k).unwrap(), v)).collect();
+
         Self {
-            map: Arc::new(RwLock::new(IndexMap::from_iter(iter))),
+            map: Arc::new(RwLock::new(map)),
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
         }
@@ -84,6 +89,7 @@ impl<
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
+                let key = bincode::serialize(&key).unwrap();
                 self.map.write().insert(key, value);
             }
         }
@@ -104,7 +110,8 @@ impl<
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                self.map.write().shift_remove(key);
+                let key = bincode::serialize(&key).unwrap();
+                self.map.write().remove(&key);
             }
         }
         Ok(())
@@ -151,10 +158,11 @@ impl<
             // Acquire a write lock on the map.
             let mut locked_map = self.map.write();
             // Perform all the queued operations.
-            for operation in operations {
-                match operation {
-                    (key, Some(value)) => locked_map.insert(key, value),
-                    (key, None) => locked_map.remove(&key),
+            for (key, value) in operations {
+                let key = bincode::serialize(&key).unwrap();
+                match value {
+                    Some(value) => locked_map.insert(key, value),
+                    None => locked_map.remove(&key),
                 };
             }
         }
@@ -172,9 +180,9 @@ impl<
     V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > MapRead<'a, K, V> for MemoryMap<K, V>
 {
-    type Iterator = core::iter::Map<map::IntoIter<K, V>, fn((K, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
-    type Keys = core::iter::Map<map::IntoKeys<K, V>, fn(K) -> Cow<'a, K>>;
-    type Values = core::iter::Map<map::IntoValues<K, V>, fn(V) -> Cow<'a, V>>;
+    type Iterator = core::iter::Map<btree_map::IntoIter<Vec<u8>, V>, fn((Vec<u8>, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
+    type Keys = core::iter::Map<btree_map::IntoKeys<Vec<u8>, V>, fn(Vec<u8>) -> Cow<'a, K>>;
+    type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -184,7 +192,8 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.read().contains_key(key))
+        let key = bincode::serialize(key).unwrap();
+        Ok(self.map.read().contains_key(&key))
     }
 
     ///
@@ -195,7 +204,8 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.read().get(key).cloned().map(Cow::Owned))
+        let key = bincode::serialize(key).unwrap();
+        Ok(self.map.read().get(&key).cloned().map(Cow::Owned))
     }
 
     ///
@@ -219,14 +229,14 @@ impl<
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
-        self.map.read().clone().into_iter().map(|(k, v)| (Cow::Owned(k), Cow::Owned(v)))
+        self.map.read().clone().into_iter().map(|(k, v)| (Cow::Owned(bincode::deserialize(&k).unwrap()), Cow::Owned(v)))
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
     fn keys(&'a self) -> Self::Keys {
-        self.map.read().clone().into_keys().map(Cow::Owned)
+        self.map.read().clone().into_keys().map(|k| Cow::Owned(bincode::deserialize(&k).unwrap()))
     }
 
     ///
@@ -242,7 +252,7 @@ impl<
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > Deref for MemoryMap<K, V>
 {
-    type Target = Arc<RwLock<IndexMap<K, V>>>;
+    type Target = Arc<RwLock<BTreeMap<Vec<u8>, V>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
