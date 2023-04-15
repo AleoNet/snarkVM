@@ -792,9 +792,5 @@ const fn is_left_child(index: usize) -> bool {
 /// Returns the index of the parent, given the index of a child.
 #[inline]
 const fn parent(index: usize) -> Option<usize> {
-    if index > 0 {
-        Some((index - 1) >> 1)
-    } else {
-        None
-    }
+    if index > 0 { Some((index - 1) >> 1) } else { None }
 }
