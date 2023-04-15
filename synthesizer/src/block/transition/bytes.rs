@@ -103,12 +103,12 @@ impl<N: Network> ToBytes for Transition<N> {
         self.function_name.write_le(&mut writer)?;
 
         // Write the number of inputs.
-        (self.inputs.len() as u8).write_le(&mut writer)?;
+        (u8::try_from(self.inputs.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
         // Write the inputs.
         self.inputs.write_le(&mut writer)?;
 
         // Write the number of outputs.
-        (self.outputs.len() as u8).write_le(&mut writer)?;
+        (u8::try_from(self.outputs.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
         // Write the outputs.
         self.outputs.write_le(&mut writer)?;
 
@@ -122,7 +122,7 @@ impl<N: Network> ToBytes for Transition<N> {
                 // Write the finalize variant.
                 1u8.write_le(&mut writer)?;
                 // Write the number of inputs to finalize.
-                (finalize.len() as u8).write_le(&mut writer)?;
+                (u8::try_from(finalize.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
                 // Write the inputs to finalize.
                 finalize.write_le(&mut writer)?;
             }
