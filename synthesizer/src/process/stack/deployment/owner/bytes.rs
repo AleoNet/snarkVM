@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        // Construct a new deployment.
+        // Construct a new owner.
         let expected = test_helpers::sample_owner();
 
         // Check the byte representation.
