@@ -29,7 +29,7 @@ use crate::{
     process,
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
-    store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
+    store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
 };
 use console::{
@@ -103,10 +103,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.process.clone()
     }
 
-    /// Returns the program store.
+    /// Returns the finalize store.
     #[inline]
-    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
-        self.store.program_store()
+    pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
+        self.store.finalize_store()
     }
 
     /// Returns the block store.

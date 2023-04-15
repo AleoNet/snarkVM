@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load, Opcode, Operand, ProgramStorage, ProgramStore, Stack};
+use crate::{FinalizeStorage, FinalizeStore, Load, Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
     program::{Identifier, Value},
@@ -67,10 +67,10 @@ impl<N: Network> Set<N> {
 impl<N: Network> Set<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut impl Load<N>,
     ) -> Result<()> {
         // Ensure the mapping exists in storage.

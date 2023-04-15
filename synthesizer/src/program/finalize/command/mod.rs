@@ -26,7 +26,7 @@ pub use get_or_init::*;
 mod set;
 pub use set::*;
 
-use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Stack};
+use crate::{program::Instruction, FinalizeRegisters, FinalizeStorage, FinalizeStore, Stack};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -45,10 +45,10 @@ pub enum Command<N: Network> {
 impl<N: Network> Command<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
         match self {

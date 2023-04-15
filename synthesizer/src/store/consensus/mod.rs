@@ -18,9 +18,9 @@ use crate::store::{
     BlockMemory,
     BlockStorage,
     BlockStore,
-    ProgramMemory,
-    ProgramStorage,
-    ProgramStore,
+    FinalizeMemory,
+    FinalizeStorage,
+    FinalizeStore,
     TransactionMemory,
     TransactionStorage,
     TransactionStore,
@@ -35,8 +35,8 @@ use core::marker::PhantomData;
 
 /// A trait for consensus storage.
 pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
-    /// The program storage.
-    type ProgramStorage: ProgramStorage<N>;
+    /// The finalize storage.
+    type FinalizeStorage: FinalizeStorage<N>;
     /// The block storage.
     type BlockStorage: BlockStorage<N, TransactionStorage = Self::TransactionStorage, TransitionStorage = Self::TransitionStorage>;
     /// The transaction storage.
@@ -47,8 +47,8 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the consensus storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
-    /// Returns the program storage.
-    fn program_store(&self) -> &ProgramStore<N, Self::ProgramStorage>;
+    /// Returns the finalize storage.
+    fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage>;
     /// Returns the block storage.
     fn block_store(&self) -> &BlockStore<N, Self::BlockStorage>;
     /// Returns the transaction store.
@@ -68,24 +68,24 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
-        self.program_store().start_atomic();
+        self.finalize_store().start_atomic();
         self.block_store().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
     fn is_atomic_in_progress(&self) -> bool {
-        self.program_store().is_atomic_in_progress() || self.block_store().is_atomic_in_progress()
+        self.finalize_store().is_atomic_in_progress() || self.block_store().is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
-        self.program_store().abort_atomic();
+        self.finalize_store().abort_atomic();
         self.block_store().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
-        self.program_store().finish_atomic()?;
+        self.finalize_store().finish_atomic()?;
         self.block_store().finish_atomic()
     }
 }
@@ -93,35 +93,35 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
 /// An in-memory consensus storage.
 #[derive(Clone)]
 pub struct ConsensusMemory<N: Network> {
-    /// The program store.
-    program_store: ProgramStore<N, ProgramMemory<N>>,
+    /// The finalize store.
+    finalize_store: FinalizeStore<N, FinalizeMemory<N>>,
     /// The block store.
     block_store: BlockStore<N, BlockMemory<N>>,
 }
 
 #[rustfmt::skip]
 impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
-    type ProgramStorage = ProgramMemory<N>;
+    type FinalizeStorage = FinalizeMemory<N>;
     type BlockStorage = BlockMemory<N>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the consensus storage.
     fn open(dev: Option<u16>) -> Result<Self> {
-        // Initialize the program store.
-        let program_store = ProgramStore::<N, ProgramMemory<N>>::open(dev)?;
+        // Initialize the finalize store.
+        let finalize_store = FinalizeStore::<N, FinalizeMemory<N>>::open(dev)?;
         // Initialize the block store.
         let block_store = BlockStore::<N, BlockMemory<N>>::open(dev)?;
         // Return the consensus storage.
         Ok(Self {
-            program_store,
+            finalize_store,
             block_store,
         })
     }
 
-    /// Returns the program store.
-    fn program_store(&self) -> &ProgramStore<N, Self::ProgramStorage> {
-        &self.program_store
+    /// Returns the finalize store.
+    fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage> {
+        &self.finalize_store
     }
 
     /// Returns the block store.
@@ -153,9 +153,9 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
         Self { storage, _phantom: PhantomData }
     }
 
-    /// Returns the program store.
-    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
-        self.storage.program_store()
+    /// Returns the finalize store.
+    pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
+        self.storage.finalize_store()
     }
 
     /// Returns the block store.
