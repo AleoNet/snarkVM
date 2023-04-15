@@ -35,7 +35,7 @@ pub struct MemoryMap<
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > {
     // The reason for using BTreeMap with binary keys is for the order of items to be the same as
-    // the one in the RocksDB-backed DataMap in snarkOS; if not for that, it could be any map
+    // the one in the RocksDB-backed DataMap; if not for that, it could be any map
     // with fast lookups and the keys could be typed (i.e. just `K` instead of `Vec<u8>`).
     map: Arc<RwLock<BTreeMap<Vec<u8>, V>>>,
     batch_in_progress: Arc<AtomicBool>,
