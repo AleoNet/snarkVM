@@ -92,9 +92,10 @@ impl<N: Network> Transaction<N> {
     ) -> Result<Self> {
         // Compute the deployment.
         let deployment = vm.deploy(program, rng)?;
+        // Ensure the transaction is not empty.
+        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the fee.
         let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
-
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
         let owner = Owner::new(private_key, id.into(), rng)?;
