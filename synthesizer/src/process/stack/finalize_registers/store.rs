@@ -28,7 +28,7 @@ impl<N: Network> Store<N> for FinalizeRegisters<N> {
         // Ensure that the stack value is a plaintext value.
         let plaintext_value = match stack_value {
             Value::Plaintext(plaintext) => plaintext,
-            Value::Record(_) => bail!("Cannot store a record to a finalize register"),
+            Value::Record(_) => bail!("Cannot store a record in a finalize register"),
         };
         // Store the value to the register.
         match register {
