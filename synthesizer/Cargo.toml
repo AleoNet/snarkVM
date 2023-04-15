@@ -88,6 +88,9 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.70"
 
+[dependencies.bincode]
+version = "1"
+
 [dependencies.blake2]
 version = "0.10"
 default-features = false
