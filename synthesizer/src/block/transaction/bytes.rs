@@ -42,7 +42,7 @@ impl<N: Network> FromBytes for Transaction<N> {
                 let fee = Fee::read_le(&mut reader)?;
 
                 // Initialize the transaction.
-                let transaction = Self::from_deployment(deployment, owner, fee).map_err(|e| error(e.to_string()))?;
+                let transaction = Self::from_deployment(owner, deployment, fee).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
                 (id, transaction)
             }

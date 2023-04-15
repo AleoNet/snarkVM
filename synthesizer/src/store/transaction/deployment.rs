@@ -46,6 +46,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type EditionMap: for<'a> Map<'a, ProgramID<N>, u16>;
     /// The mapping of `(program ID, edition)` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, (ProgramID<N>, u16), N::TransactionID>;
+    /// The mapping of `(program ID, edition)` to `Owner`.
+    type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), Owner<N>>;
     /// The mapping of `(program ID, edition)` to `program`.
     type ProgramMap: for<'a> Map<'a, (ProgramID<N>, u16), Program<N>>;
     /// The mapping of `(program ID, function name, edition)` to `verifying key`.
@@ -56,8 +58,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-    /// The mapping of `(program ID, revision)` to `Owner`.
-    type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), Owner<N>>;
 
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
@@ -96,12 +96,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().start_atomic();
         self.edition_map().start_atomic();
         self.reverse_id_map().start_atomic();
+        self.owner_map().start_atomic();
         self.program_map().start_atomic();
         self.verifying_key_map().start_atomic();
         self.certificate_map().start_atomic();
         self.fee_map().start_atomic();
         self.reverse_fee_map().start_atomic();
-        self.owner_map().start_atomic();
         self.transition_store().start_atomic();
     }
 
@@ -110,12 +110,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().is_atomic_in_progress()
             || self.edition_map().is_atomic_in_progress()
             || self.reverse_id_map().is_atomic_in_progress()
+            || self.owner_map().is_atomic_in_progress()
             || self.program_map().is_atomic_in_progress()
             || self.verifying_key_map().is_atomic_in_progress()
             || self.certificate_map().is_atomic_in_progress()
             || self.fee_map().is_atomic_in_progress()
             || self.reverse_fee_map().is_atomic_in_progress()
-            || self.owner_map().is_atomic_in_progress()
             || self.transition_store().is_atomic_in_progress()
     }
 
@@ -124,12 +124,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().abort_atomic();
         self.edition_map().abort_atomic();
         self.reverse_id_map().abort_atomic();
+        self.owner_map().abort_atomic();
         self.program_map().abort_atomic();
         self.verifying_key_map().abort_atomic();
         self.certificate_map().abort_atomic();
         self.fee_map().abort_atomic();
         self.reverse_fee_map().abort_atomic();
-        self.owner_map().abort_atomic();
         self.transition_store().abort_atomic();
     }
 
@@ -138,12 +138,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().finish_atomic()?;
         self.edition_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
+        self.owner_map().finish_atomic()?;
         self.program_map().finish_atomic()?;
         self.verifying_key_map().finish_atomic()?;
         self.certificate_map().finish_atomic()?;
         self.fee_map().finish_atomic()?;
         self.reverse_fee_map().finish_atomic()?;
-        self.owner_map().finish_atomic()?;
         self.transition_store().finish_atomic()
     }
 
@@ -151,7 +151,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a deployment.
         let (transaction_id, owner, deployment, fee) = match transaction {
-            Transaction::Deploy(transaction_id, deployment, fee, owner) => (transaction_id, deployment, fee, owner),
+            Transaction::Deploy(transaction_id, owner, deployment, fee) => (transaction_id, owner, deployment, fee),
             Transaction::Execute(..) => {
                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
             }
@@ -177,6 +177,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
             // Store the reverse program ID.
             self.reverse_id_map().insert((program_id, edition), *transaction_id)?;
+            // Store the owner.
+            self.owner_map().insert((program_id, edition), *owner)?;
             // Store the program.
             self.program_map().insert((program_id, edition), program.clone())?;
 
@@ -194,9 +196,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
             )?;
             self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
-
-            // Store the owner.
-            self.owner_map().insert((program_id, edition), *owner)?;
 
             // Store the fee transition.
             self.transition_store().insert(fee)?;
@@ -238,6 +237,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
             // Remove the reverse program ID.
             self.reverse_id_map().remove(&(program_id, edition))?;
+            // Remove the owner.
+            self.owner_map().remove(&(program_id, edition))?;
             // Remove the program.
             self.program_map().remove(&(program_id, edition))?;
 
@@ -252,9 +253,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             // Remove the fee.
             self.fee_map().remove(transaction_id)?;
             self.reverse_fee_map().remove(&transition_id)?;
-
-            // Remove the owner.
-            self.owner_map().remove(&(program_id, edition))?;
 
             // Remove the fee transition.
             self.transition_store().remove(&transition_id)?;
