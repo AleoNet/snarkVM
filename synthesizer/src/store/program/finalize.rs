@@ -40,7 +40,7 @@ use std::collections::BTreeMap;
 /// `FinalizeStorage` emulates the following data structure:
 /// ```text
 /// // (program_id => (mapping_name => (key => value)))
-/// IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Key, Value>>>
+/// BTreeMap<ProgramID<N>, BTreeMap<Identifier<N>, BTreeMap<Key, Value>>>
 /// ```
 pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
