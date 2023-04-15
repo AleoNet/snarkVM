@@ -675,7 +675,7 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         match deployment_transaction {
-            Transaction::Deploy(_, _, fee) => {
+            Transaction::Deploy(_, _, _, fee) => {
                 assert!(Inclusion::verify_fee(&fee).is_ok());
             }
             _ => panic!("Expected a deployment transaction"),

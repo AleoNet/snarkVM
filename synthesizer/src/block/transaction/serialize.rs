@@ -23,10 +23,11 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
-                Self::Deploy(id, deployment, fee) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 4)?;
+                Self::Deploy(id, owner, deployment, fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 5)?;
                     transaction.serialize_field("type", "deploy")?;
                     transaction.serialize_field("id", &id)?;
+                    transaction.serialize_field("owner", &owner)?;
                     transaction.serialize_field("deployment", &deployment)?;
                     transaction.serialize_field("fee", &fee)?;
                     transaction.end()
@@ -64,12 +65,14 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                     .as_str()
                 {
                     Some("deploy") => {
+                        // Retrieve the owner.
+                        let owner = DeserializeExt::take_from_value::<D>(&mut transaction, "owner")?;
                         // Retrieve the deployment.
                         let deployment = DeserializeExt::take_from_value::<D>(&mut transaction, "deployment")?;
                         // Retrieve the fee.
                         let fee = DeserializeExt::take_from_value::<D>(&mut transaction, "fee")?;
                         // Construct the transaction.
-                        Transaction::from_deployment(deployment, fee).map_err(de::Error::custom)?
+                        Transaction::from_deployment(owner, deployment, fee).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
                         // Retrieve the execution.

@@ -134,7 +134,7 @@ impl<N: Network> Transactions<N> {
     /// Returns an iterator over all transactions in `self` that are deployments.
     pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
         self.iter().filter_map(|transaction| match transaction {
-            Transaction::Deploy(_, deployment, _) => Some(deployment.as_ref()),
+            Transaction::Deploy(_, _, deployment, _) => Some(deployment.as_ref()),
             _ => None,
         })
     }
@@ -212,7 +212,7 @@ impl<N: Network> Transactions<N> {
     /// Returns a consuming iterator over all transactions in `self` that are deployments.
     pub fn into_deployments(self) -> impl Iterator<Item = Deployment<N>> {
         self.into_iter().filter_map(|transaction| match transaction {
-            Transaction::Deploy(_, deployment, _) => Some(*deployment),
+            Transaction::Deploy(_, _, deployment, _) => Some(*deployment),
             _ => None,
         })
     }

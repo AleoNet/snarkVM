@@ -84,8 +84,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the owner based on the visibility.
         let owner = match record_type.owner().is_public() {
-            true => Owner::Public(*burner_address),
-            false => Owner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
+            true => RecordOwner::Public(*burner_address),
+            false => RecordOwner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
         };
 
         // Initialize the record data according to the defined type.
