@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for Owner<N> {
 impl<N: Network> ToBytes for Owner<N> {
     /// Writes the owner to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the owner address.
+        // Write the address.
         self.address.write_le(&mut writer)?;
         // Write the signature.
         self.signature.write_le(&mut writer)
