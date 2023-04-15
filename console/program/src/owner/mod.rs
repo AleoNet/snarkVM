@@ -18,10 +18,9 @@ mod bytes;
 mod serialize;
 mod string;
 
-use console::{
-    account::{Address, PrivateKey, Signature},
-    network::prelude::*,
-};
+use snarkvm_console_account::{Address, PrivateKey, Signature};
+use snarkvm_console_network::Network;
+use snarkvm_console_types::prelude::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProgramOwner<N: Network> {
@@ -70,7 +69,7 @@ impl<N: Network> ProgramOwner<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, types::Field};
+    use snarkvm_console_network::Testnet3;
 
     use once_cell::sync::OnceCell;
 

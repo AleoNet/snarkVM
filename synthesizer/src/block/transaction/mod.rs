@@ -21,7 +21,7 @@ mod string;
 
 use crate::{
     block::Transition,
-    process::{Authorization, Deployment, Execution, Fee, ProgramOwner},
+    process::{Authorization, Deployment, Execution, Fee},
     program::Program,
     vm::VM,
     ConsensusStorage,
@@ -35,6 +35,7 @@ use console::{
         Identifier,
         Plaintext,
         ProgramID,
+        ProgramOwner,
         Record,
         TransactionLeaf,
         TransactionPath,

@@ -51,7 +51,7 @@ impl<N: Network> ToBytes for ProgramOwner<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 

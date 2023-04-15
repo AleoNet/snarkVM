@@ -19,7 +19,7 @@ use crate::{
     block::Transaction,
     cow_to_cloned,
     cow_to_copied,
-    process::{Deployment, Fee, ProgramOwner},
+    process::{Deployment, Fee},
     program::Program,
     snark::{Certificate, Proof, VerifyingKey},
     store::{
@@ -31,7 +31,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, ProgramID},
+    program::{Identifier, ProgramID, ProgramOwner},
 };
 
 use anyhow::Result;
@@ -46,7 +46,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type EditionMap: for<'a> Map<'a, ProgramID<N>, u16>;
     /// The mapping of `(program ID, edition)` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, (ProgramID<N>, u16), N::TransactionID>;
-    /// The mapping of `(program ID, edition)` to `Owner`.
+    /// The mapping of `(program ID, edition)` to `ProgramOwner`.
     type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), ProgramOwner<N>>;
     /// The mapping of `(program ID, edition)` to `program`.
     type ProgramMap: for<'a> Map<'a, (ProgramID<N>, u16), Program<N>>;
