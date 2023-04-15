@@ -47,11 +47,11 @@ use rayon::prelude::*;
 /// The depth of the Merkle tree for the programs.
 pub const PROGRAMS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for each program.
-pub const PROGRAM_DEPTH: u8 = 4;
+pub const PROGRAM_DEPTH: u8 = 5;
 // TODO (raychu86): Handle different Merkle tree depths for different keys types.
 //  i.e. `u8` and `address` keys should have different depths.
 /// The depth of the Merkle tree for each mapping.
-pub const MAPPING_DEPTH: u8 = 30;
+pub const MAPPING_DEPTH: u8 = 32;
 
 /// The Merkle tree for the program state.
 pub type StorageTree<N> = BHPMerkleTree<N, PROGRAMS_DEPTH>;
