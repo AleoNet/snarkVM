@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    atomic_write_batch,
     block::Output,
     store::helpers::{memory_map::MemoryMap, Map, MapRead},
 };
@@ -119,15 +120,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `(transition ID, output)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
-        // Check if an atomic batch write is already in progress.
-        let is_part_of_atomic_batch = self.is_atomic_in_progress();
-
-        // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.start_atomic();
-        }
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_write_batch!(self, {
             // Store the output IDs.
             self.id_map().insert(transition_id, outputs.iter().map(Output::id).copied().collect())?;
 
@@ -153,18 +146,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        };
-
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.finish_atomic()?;
-        }
+        });
 
         Ok(())
     }
@@ -178,15 +160,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(()),
         };
 
-        // Check if an atomic batch write is already in progress.
-        let is_part_of_atomic_batch = self.is_atomic_in_progress();
-
-        // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.start_atomic();
-        }
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_write_batch!(self, {
             // Remove the output IDs.
             self.id_map().remove(transition_id)?;
 
@@ -211,18 +185,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        };
-
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.finish_atomic()?;
-        }
+        });
 
         Ok(())
     }
