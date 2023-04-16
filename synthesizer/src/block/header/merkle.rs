@@ -34,15 +34,15 @@ impl<N: Network> Header<N> {
         if id == &self.previous_state_root {
             Ok(HeaderLeaf::<N>::new(0, self.previous_state_root))
         }
-        // If the ID is the previous state root, return the 1st leaf.
+        // If the ID is the transactions root, return the 1st leaf.
         else if id == &self.transactions_root {
             Ok(HeaderLeaf::<N>::new(1, self.transactions_root))
         }
-        // If the ID is the previous state root, return the 1st leaf.
+        // If the ID is the finalize root, return the 2nd leaf.
         else if id == &self.finalize_root {
             Ok(HeaderLeaf::<N>::new(2, self.finalize_root))
         }
-        // If the ID is the coinbase accumulator point, return the 2nd leaf.
+        // If the ID is the coinbase accumulator point, return the 3rd leaf.
         else if id == &self.coinbase_accumulator_point {
             Ok(HeaderLeaf::<N>::new(3, self.coinbase_accumulator_point))
         }
