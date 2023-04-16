@@ -53,17 +53,6 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
             index += 1;
         }
 
-        // Encrypt the gates.
-        let gates = match self.gates.is_public().eject_value() {
-            true => self.gates.encrypt(&[]),
-            false => self.gates.encrypt(&[randomizers[index].clone()]),
-        };
-
-        // Increment the index if the gates is private.
-        if gates.is_private().eject_value() {
-            index += 1;
-        }
-
         // Encrypt the data.
         let mut encrypted_data = IndexMap::with_capacity(self.data.len());
         for (id, entry, num_randomizers) in self.data.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
@@ -87,6 +76,6 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
         }
 
         // Return the encrypted record.
-        Record { owner, gates, data: encrypted_data, nonce: self.nonce.clone() }
+        Record { owner, data: encrypted_data, nonce: self.nonce.clone() }
     }
 }

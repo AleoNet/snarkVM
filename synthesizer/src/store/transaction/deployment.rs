@@ -31,7 +31,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, ProgramID},
+    program::{Identifier, ProgramID, ProgramOwner},
 };
 
 use anyhow::Result;
@@ -46,6 +46,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type EditionMap: for<'a> Map<'a, ProgramID<N>, u16>;
     /// The mapping of `(program ID, edition)` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, (ProgramID<N>, u16), N::TransactionID>;
+    /// The mapping of `(program ID, edition)` to `ProgramOwner`.
+    type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), ProgramOwner<N>>;
     /// The mapping of `(program ID, edition)` to `program`.
     type ProgramMap: for<'a> Map<'a, (ProgramID<N>, u16), Program<N>>;
     /// The mapping of `(program ID, function name, edition)` to `verifying key`.
@@ -56,6 +58,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
+
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
 
@@ -78,6 +81,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the reverse fee map.
     fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
@@ -91,6 +96,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().start_atomic();
         self.edition_map().start_atomic();
         self.reverse_id_map().start_atomic();
+        self.owner_map().start_atomic();
         self.program_map().start_atomic();
         self.verifying_key_map().start_atomic();
         self.certificate_map().start_atomic();
@@ -104,6 +110,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().is_atomic_in_progress()
             || self.edition_map().is_atomic_in_progress()
             || self.reverse_id_map().is_atomic_in_progress()
+            || self.owner_map().is_atomic_in_progress()
             || self.program_map().is_atomic_in_progress()
             || self.verifying_key_map().is_atomic_in_progress()
             || self.certificate_map().is_atomic_in_progress()
@@ -117,6 +124,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().abort_atomic();
         self.edition_map().abort_atomic();
         self.reverse_id_map().abort_atomic();
+        self.owner_map().abort_atomic();
         self.program_map().abort_atomic();
         self.verifying_key_map().abort_atomic();
         self.certificate_map().abort_atomic();
@@ -130,6 +138,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.id_map().finish_atomic()?;
         self.edition_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
+        self.owner_map().finish_atomic()?;
         self.program_map().finish_atomic()?;
         self.verifying_key_map().finish_atomic()?;
         self.certificate_map().finish_atomic()?;
@@ -141,8 +150,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Stores the given `deployment transaction` pair into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
         // Ensure the transaction is a deployment.
-        let (transaction_id, deployment, fee) = match transaction {
-            Transaction::Deploy(transaction_id, deployment, fee) => (transaction_id, deployment, fee),
+        let (transaction_id, owner, deployment, fee) = match transaction {
+            Transaction::Deploy(transaction_id, owner, deployment, fee) => (transaction_id, owner, deployment, fee),
             Transaction::Execute(..) => {
                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
             }
@@ -168,6 +177,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
             // Store the reverse program ID.
             self.reverse_id_map().insert((program_id, edition), *transaction_id)?;
+            // Store the owner.
+            self.owner_map().insert((program_id, edition), *owner)?;
             // Store the program.
             self.program_map().insert((program_id, edition), program.clone())?;
 
@@ -226,6 +237,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
             // Remove the reverse program ID.
             self.reverse_id_map().remove(&(program_id, edition))?;
+            // Remove the owner.
+            self.owner_map().remove(&(program_id, edition))?;
             // Remove the program.
             self.program_map().remove(&(program_id, edition))?;
 
@@ -397,6 +410,22 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         }
     }
 
+    /// Returns the owner for the given `program ID`.
+    fn get_owner(&self, program_id: &ProgramID<N>) -> Result<Option<ProgramOwner<N>>> {
+        // TODO (raychu86): Consider program upgrades and edition changes.
+        // Retrieve the edition.
+        let edition = match self.get_edition(program_id)? {
+            Some(edition) => edition,
+            None => return Ok(None),
+        };
+
+        // Retrieve the owner.
+        match self.owner_map().get(&(*program_id, edition))? {
+            Some(owner) => Ok(Some(cow_to_copied!(owner))),
+            None => bail!("Failed to find the Owner for program '{program_id}' (edition {edition})"),
+        }
+    }
+
     /// Returns the transaction for the given `transaction ID`.
     fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
         // Retrieve the deployment.
@@ -410,8 +439,14 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the fee for transaction '{transaction_id}'"),
         };
 
+        // Retrieve the owner.
+        let owner = match self.get_owner(deployment.program_id())? {
+            Some(owner) => owner,
+            None => bail!("Failed to get the owner for transaction '{transaction_id}'"),
+        };
+
         // Construct the deployment transaction.
-        let deployment_transaction = Transaction::from_deployment(deployment, fee)?;
+        let deployment_transaction = Transaction::from_deployment(owner, deployment, fee)?;
         // Ensure the transaction ID matches.
         match *transaction_id == deployment_transaction.id() {
             true => Ok(Some(deployment_transaction)),
@@ -430,6 +465,8 @@ pub struct DeploymentMemory<N: Network> {
     edition_map: MemoryMap<ProgramID<N>, u16>,
     /// The reverse ID map.
     reverse_id_map: MemoryMap<(ProgramID<N>, u16), N::TransactionID>,
+    /// The owner map.
+    owner_map: MemoryMap<(ProgramID<N>, u16), ProgramOwner<N>>,
     /// The program map.
     program_map: MemoryMap<(ProgramID<N>, u16), Program<N>>,
     /// The verifying key map.
@@ -449,6 +486,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, ProgramID<N>>;
     type EditionMap = MemoryMap<ProgramID<N>, u16>;
     type ReverseIDMap = MemoryMap<(ProgramID<N>, u16), N::TransactionID>;
+    type OwnerMap = MemoryMap<(ProgramID<N>, u16), ProgramOwner<N>>;
     type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
     type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
@@ -462,6 +500,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             id_map: MemoryMap::default(),
             edition_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
+            owner_map: MemoryMap::default(),
             program_map: MemoryMap::default(),
             verifying_key_map: MemoryMap::default(),
             certificate_map: MemoryMap::default(),
@@ -484,6 +523,11 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     /// Returns the reverse ID map.
     fn reverse_id_map(&self) -> &Self::ReverseIDMap {
         &self.reverse_id_map
+    }
+
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap {
+        &self.owner_map
     }
 
     /// Returns the program map.
@@ -729,7 +773,7 @@ mod tests {
         let transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         let transaction_id = transaction.id();
         let program_id = match transaction {
-            Transaction::Deploy(_, ref deployment, _) => *deployment.program_id(),
+            Transaction::Deploy(_, _, ref deployment, _) => *deployment.program_id(),
             _ => panic!("Incorrect transaction type"),
         };
 

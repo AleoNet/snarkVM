@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{Load, Opcode, Operand, Stack};
 use console::{network::prelude::*, program::Register};
 
 /// Finalizes the operands on-chain.
@@ -63,7 +63,7 @@ impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        registers: &mut impl Load<N>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() > N::MAX_INPUTS {

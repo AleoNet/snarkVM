@@ -57,8 +57,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type TCMMap: for<'a> Map<'a, N::TransitionID, Field<N>>;
     /// The mapping of `transition commitment` to `transition ID`.
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-    /// The transition fees.
-    type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
     /// Initializes the transition storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -81,8 +79,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn tcm_map(&self) -> &Self::TCMMap;
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
-    /// Returns the transition fees.
-    fn fee_map(&self) -> &Self::FeeMap;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16> {
@@ -101,7 +97,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().start_atomic();
         self.tcm_map().start_atomic();
         self.reverse_tcm_map().start_atomic();
-        self.fee_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -115,7 +110,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             || self.reverse_tpk_map().is_atomic_in_progress()
             || self.tcm_map().is_atomic_in_progress()
             || self.reverse_tcm_map().is_atomic_in_progress()
-            || self.fee_map().is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.
@@ -129,7 +123,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().abort_atomic();
         self.tcm_map().abort_atomic();
         self.reverse_tcm_map().abort_atomic();
-        self.fee_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -142,8 +135,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.tpk_map().finish_atomic()?;
         self.reverse_tpk_map().finish_atomic()?;
         self.tcm_map().finish_atomic()?;
-        self.reverse_tcm_map().finish_atomic()?;
-        self.fee_map().finish_atomic()
+        self.reverse_tcm_map().finish_atomic()
     }
 
     /// Stores the given `transition` into storage.
@@ -169,8 +161,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.tcm_map().insert(transition_id, *transition.tcm())?;
             // Store the reverse `tcm` entry.
             self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
-            // Store the fee.
-            self.fee_map().insert(transition_id, *transition.fee())?;
 
             Ok(())
         });
@@ -210,8 +200,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.tcm_map().remove(transition_id)?;
             // Remove the reverse `tcm` entry.
             self.reverse_tcm_map().remove(&tcm)?;
-            // Remove the fee.
-            self.fee_map().remove(transition_id)?;
 
             Ok(())
         });
@@ -238,11 +226,9 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         let tpk = self.tpk_map().get(transition_id)?;
         // Retrieve `tcm`.
         let tcm = self.tcm_map().get(transition_id)?;
-        // Retrieve the fee.
-        let fee = self.fee_map().get(transition_id)?;
 
-        match (finalize, proof, tpk, tcm, fee) {
-            (Some(finalize), Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
+        match (finalize, proof, tpk, tcm) {
+            (Some(finalize), Some(proof), Some(tpk), Some(tcm)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
@@ -253,7 +239,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
                     cow_to_cloned!(proof),
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
-                    cow_to_cloned!(fee),
                 )?;
                 // Ensure the transition ID matches.
                 match transition.id() == transition_id {
@@ -287,8 +272,6 @@ pub struct TransitionMemory<N: Network> {
     tcm_map: MemoryMap<N::TransitionID, Field<N>>,
     /// The reverse `tcm` map.
     reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
-    /// The transition fees.
-    fee_map: MemoryMap<N::TransitionID, i64>,
 }
 
 #[rustfmt::skip]
@@ -302,7 +285,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
     type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
-    type FeeMap = MemoryMap<N::TransitionID, i64>;
 
     /// Initializes the transition storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -316,7 +298,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
             reverse_tcm_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
         })
     }
 
@@ -364,11 +345,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap {
         &self.reverse_tcm_map
     }
-
-    /// Returns the transition fees.
-    fn fee_map(&self) -> &Self::FeeMap {
-        &self.fee_map
-    }
 }
 
 /// The transition store.
@@ -392,8 +368,6 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     tcm: T::TCMMap,
     /// The reverse `tcm` map.
     reverse_tcm: T::ReverseTCMMap,
-    /// The map of transition fees.
-    fee: T::FeeMap,
     /// The transition storage.
     storage: T,
 }
@@ -414,7 +388,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
             reverse_tcm: storage.reverse_tcm_map().clone(),
-            fee: storage.fee_map().clone(),
             storage,
         })
     }
@@ -431,7 +404,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
             reverse_tcm: storage.reverse_tcm_map().clone(),
-            fee: storage.fee_map().clone(),
             storage,
         }
     }
@@ -609,7 +581,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
-        self.fee.keys()
+        self.tcm.keys()
     }
 
     /* Input */
@@ -748,11 +720,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     pub fn tcms(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.tcm.values()
     }
-
-    /// Returns an iterator over the transition fees, for all transitions.
-    pub fn fees(&self) -> impl '_ + Iterator<Item = Cow<'_, i64>> {
-        self.fee.values()
-    }
 }
 
 #[cfg(test)]
@@ -764,7 +731,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the transitions.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         let transitions = transaction
             .transitions()
             .chain([crate::process::test_helpers::sample_transition()].iter())

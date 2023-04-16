@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CallStack, Opcode, Operand, Registers, Stack};
+use crate::{CallStack, FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
 use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
@@ -442,6 +442,12 @@ impl<N: Network> Call<N> {
         Ok(())
     }
 
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(&self, _stack: &Stack<N>, _registers: &mut FinalizeRegisters<N>) -> Result<()> {
+        bail!("Forbidden operation: Finalize cannot invoke a 'call'")
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
     pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
@@ -708,7 +714,6 @@ mod tests {
         "call foo r0",
         "call foo r0.owner",
         "call foo r0 r1",
-        "call foo r0.owner r0.gates",
         "call foo into r0",
         "call foo into r0 r1",
         "call foo into r0 r1 r2",
@@ -750,11 +755,10 @@ mod tests {
     #[test]
     fn test_parse() {
         check_parser(
-            "call transfer r0.owner r0.gates r0.token_amount into r1 r2 r3",
+            "call transfer r0.owner r0.token_amount into r1 r2 r3",
             CallOperator::from_str("transfer").unwrap(),
             vec![
                 Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
-                Operand::Register(Register::Member(0, vec![Identifier::from_str("gates").unwrap()])),
                 Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
             ],
             vec![Register::Locator(1), Register::Locator(2), Register::Locator(3)],

@@ -24,11 +24,10 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len() as u64;
         if num_bits > I::BITS {
-            // Check if all excess bits are zero.
-            let should_be_zero =
-                bits_le[I::BITS as usize..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
-            // Ensure `should_be_zero` is zero.
-            E::assert_eq(E::zero(), should_be_zero);
+            // Check that all excess bits are zero.
+            for bit in &bits_le[I::BITS as usize..] {
+                E::assert_eq(E::zero(), bit);
+            }
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.

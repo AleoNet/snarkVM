@@ -21,7 +21,7 @@ impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
             return Err(error("Invalid transaction version"));
@@ -34,12 +34,15 @@ impl<N: Network> FromBytes for Transaction<N> {
             0 => {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
+                // Read the owner.
+                let owner = ProgramOwner::read_le(&mut reader)?;
                 // Read the deployment.
                 let deployment = Deployment::read_le(&mut reader)?;
                 // Read the fee.
                 let fee = Fee::read_le(&mut reader)?;
+
                 // Initialize the transaction.
-                let transaction = Self::from_deployment(deployment, fee).map_err(|e| error(e.to_string()))?;
+                let transaction = Self::from_deployment(owner, deployment, fee).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
                 (id, transaction)
             }
@@ -49,17 +52,17 @@ impl<N: Network> FromBytes for Transaction<N> {
                 // Read the execution.
                 let execution = Execution::read_le(&mut reader)?;
 
-                // Read the additional fee variant.
-                let additional_fee_variant = u8::read_le(&mut reader)?;
-                // Read the additional fee.
-                let additional_fee = match additional_fee_variant {
+                // Read the fee variant.
+                let fee_variant = u8::read_le(&mut reader)?;
+                // Read the fee.
+                let fee = match fee_variant {
                     0u8 => None,
                     1u8 => Some(Fee::read_le(&mut reader)?),
-                    _ => return Err(error("Invalid additional fee variant")),
+                    _ => return Err(error("Invalid fee variant")),
                 };
 
                 // Initialize the transaction.
-                let transaction = Self::from_execution(execution, additional_fee).map_err(|e| error(e.to_string()))?;
+                let transaction = Self::from_execution(execution, fee).map_err(|e| error(e.to_string()))?;
                 // Return the ID and the transaction.
                 (id, transaction)
             }
@@ -80,33 +83,35 @@ impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        0u8.write_le(&mut writer)?;
 
         // Write the transaction.
         match self {
-            Self::Deploy(id, deployment, fee) => {
+            Self::Deploy(id, owner, deployment, fee) => {
                 // Write the variant.
                 0u8.write_le(&mut writer)?;
                 // Write the ID.
                 id.write_le(&mut writer)?;
+                // Write the owner.
+                owner.write_le(&mut writer)?;
                 // Write the deployment.
                 deployment.write_le(&mut writer)?;
                 // Write the fee.
                 fee.write_le(&mut writer)
             }
-            Self::Execute(id, execution, additional_fee) => {
+            Self::Execute(id, execution, fee) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
                 // Write the ID.
                 id.write_le(&mut writer)?;
                 // Write the execution.
                 execution.write_le(&mut writer)?;
-                // Write the additional fee.
-                match additional_fee {
+                // Write the fee.
+                match fee {
                     None => 0u8.write_le(&mut writer),
-                    Some(additional_fee) => {
+                    Some(fee) => {
                         1u8.write_le(&mut writer)?;
-                        additional_fee.write_le(&mut writer)
+                        fee.write_le(&mut writer)
                     }
                 }
             }
@@ -127,7 +132,7 @@ mod tests {
 
         for expected in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::vm::test_helpers::sample_execution_transaction(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
         ]
         .into_iter()
         {

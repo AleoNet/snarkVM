@@ -93,16 +93,16 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_hash_to_scalar(Mode::Public, 0, 254, 0, 0, 0, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 1, 1, 0, 588, 589, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 2, 1, 0, 593, 594, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 3, 1, 0, 598, 599, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 4, 1, 0, 603, 604, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 5, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 6, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 7, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 8, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 9, 1, 0, 1313, 1314, &mut rng)?;
-        check_hash_to_scalar(Mode::Public, 10, 1, 0, 1313, 1314, &mut rng)
+        check_hash_to_scalar(Mode::Public, 1, 1, 0, 840, 842, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 2, 1, 0, 845, 847, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 3, 1, 0, 850, 852, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 4, 1, 0, 855, 857, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 5, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 6, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 7, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 8, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 9, 1, 0, 1565, 1567, &mut rng)?;
+        check_hash_to_scalar(Mode::Public, 10, 1, 0, 1565, 1567, &mut rng)
     }
 
     #[test]
@@ -110,15 +110,15 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_hash_to_scalar(Mode::Private, 0, 254, 0, 0, 0, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 1, 1, 0, 588, 589, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 2, 1, 0, 593, 594, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 3, 1, 0, 598, 599, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 4, 1, 0, 603, 604, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 5, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 6, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 7, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 8, 1, 0, 958, 959, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 9, 1, 0, 1313, 1314, &mut rng)?;
-        check_hash_to_scalar(Mode::Private, 10, 1, 0, 1313, 1314, &mut rng)
+        check_hash_to_scalar(Mode::Private, 1, 1, 0, 840, 842, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 2, 1, 0, 845, 847, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 3, 1, 0, 850, 852, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 4, 1, 0, 855, 857, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 5, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 6, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 7, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 8, 1, 0, 1210, 1212, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 9, 1, 0, 1565, 1567, &mut rng)?;
+        check_hash_to_scalar(Mode::Private, 10, 1, 0, 1565, 1567, &mut rng)
     }
 }

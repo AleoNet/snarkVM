@@ -604,8 +604,6 @@ fn test_profiler() -> Result<()> {
     let mut rng = TestRng::default();
 
     for num_leaves in NUM_LEAVES {
-        println!("Generating Merkle tree with {num_leaves} leaves, and appending 1 leaf...");
-
         // New
         let leaves = generate_leaves!(*num_leaves, &mut rng);
         let mut merkle_tree =
