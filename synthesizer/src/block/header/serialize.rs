@@ -23,7 +23,7 @@ impl<N: Network> Serialize for Header<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("Header", 4)?;
+                let mut header = serializer.serialize_struct("Header", 5)?;
                 header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
                 header.serialize_field("finalize_root", &self.finalize_root)?;
