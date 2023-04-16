@@ -56,7 +56,7 @@ mod tests {
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        // Previous state root, transactions root, and accumulator point size.
+        // Previous state root, transactions root, finalize root, and accumulator point size.
         (Field::<N>::size_in_bytes() * 4)
             // Metadata size.
             + 2 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
