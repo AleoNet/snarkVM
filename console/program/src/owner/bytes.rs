@@ -16,14 +16,14 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Owner<N> {
-    /// Reads the owner from a buffer.
+impl<N: Network> FromBytes for ProgramOwner<N> {
+    /// Reads the program owner from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid deployment owner version"));
+            return Err(error("Invalid program owner version"));
         }
 
         // Read the address.
@@ -31,13 +31,13 @@ impl<N: Network> FromBytes for Owner<N> {
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;
 
-        // Return the owner.
+        // Return the program owner.
         Ok(Self::from(address, signature))
     }
 }
 
-impl<N: Network> ToBytes for Owner<N> {
-    /// Writes the owner to a buffer.
+impl<N: Network> ToBytes for ProgramOwner<N> {
+    /// Writes the program owner to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u8.write_le(&mut writer)?;
@@ -51,19 +51,19 @@ impl<N: Network> ToBytes for Owner<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() -> Result<()> {
-        // Construct a new owner.
-        let expected = test_helpers::sample_owner();
+        // Construct a new program owner.
+        let expected = test_helpers::sample_program_owner();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Owner::read_le(&expected_bytes[..])?);
-        assert!(Owner::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, ProgramOwner::read_le(&expected_bytes[..])?);
+        assert!(ProgramOwner::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         Ok(())
     }
 }
