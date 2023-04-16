@@ -414,6 +414,7 @@ mod tests {
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
             Field::zero(),
+            Field::zero(),
             deployment_metadata,
         )
         .unwrap();

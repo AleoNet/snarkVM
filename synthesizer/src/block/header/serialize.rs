@@ -26,6 +26,7 @@ impl<N: Network> Serialize for Header<N> {
                 let mut header = serializer.serialize_struct("Header", 4)?;
                 header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
+                header.serialize_field("finalize_root", &self.finalize_root)?;
                 header.serialize_field("coinbase_accumulator_point", &self.coinbase_accumulator_point)?;
                 header.serialize_field("metadata", &self.metadata)?;
                 header.end()
@@ -44,6 +45,7 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
                 Ok(Self::from(
                     DeserializeExt::take_from_value::<D>(&mut header, "previous_state_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "transactions_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "finalize_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "coinbase_accumulator_point")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "metadata")?,
                 )
