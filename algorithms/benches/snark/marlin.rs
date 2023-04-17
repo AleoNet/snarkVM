@@ -83,6 +83,7 @@ fn snark_batch_prove(c: &mut Criterion) {
     c.bench_function("snark_batch_prove", move |b| {
         let num_constraints_base = 100;
         let num_variables_base = 25;
+        let mul_depth_base = 1;
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
@@ -98,7 +99,14 @@ fn snark_batch_prove(c: &mut Criterion) {
         for i in 0..circuit_batch_size {
             let num_constraints = num_constraints_base + i;
             let num_variables = num_variables_base + i;
-            let mul_depth = 1 + i;
+            let mul_depth = mul_depth_base + i;
+            // values used for testing performance on large circuits
+            // if i > 0 {
+            //     num_constraints = num_constraints_base + 10000;
+            //     num_variables = num_variables_base + 10000;
+            //     mul_depth = mul_depth_base + 10000;
+            // }
+
             let mut circuits = Vec::with_capacity(instance_batch_size);
             for _ in 0..instance_batch_size {
                 let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
