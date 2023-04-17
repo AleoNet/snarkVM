@@ -395,6 +395,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 
         if !enforced_degree_bounds.is_empty() {
             enforced_degree_bounds.sort();
+            enforced_degree_bounds.dedup();
             union.enforced_degree_bounds = Some(enforced_degree_bounds);
             union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
         }
@@ -532,13 +533,13 @@ impl<E: PairingEngine> VerifierKey<E> {
             if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree() < vk.supported_degree() {
                 biggest_vk = Some(vk);
             }
-            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.clone().unwrap();
-            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.clone().unwrap();
+            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.as_ref().unwrap();
+            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
             assert!(new_bounds.len() == new_prep_bounds.len());
             for ((bound, neg_powers), (_, prep_neg_powers)) in new_bounds.into_iter().zip(new_prep_bounds) {
-                if bounds_seen.insert(bound) {
-                    bounds_and_neg_powers.push((bound, neg_powers));
-                    bounds_and_prepared_neg_powers.push((bound, prep_neg_powers));
+                if bounds_seen.insert(*bound) {
+                    bounds_and_neg_powers.push((*bound, *neg_powers));
+                    bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers.clone()));
                 }
             }
         }
@@ -554,10 +555,12 @@ impl<E: PairingEngine> VerifierKey<E> {
 
         if !bounds_and_neg_powers.is_empty() {
             bounds_and_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
+            bounds_and_neg_powers.dedup_by(|a, b| a.0 <= b.0);
             union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
         }
         if !bounds_and_prepared_neg_powers.is_empty() {
             bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
+            bounds_and_prepared_neg_powers.dedup_by(|a, b| a.0 <= b.0);
             union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
         union
