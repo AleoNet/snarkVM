@@ -298,6 +298,8 @@ mod tests {
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
 
+    const ITERATIONS: usize = 100;
+
     /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
     #[allow(clippy::type_complexity)]
     fn sample_stack(
@@ -433,19 +435,22 @@ mod tests {
                     let mut rng = TestRng::default();
 
                    // Prepare the test.
-                    let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-                    let literals_b = vec![console::program::Literal::Scalar(console::types::Scalar::rand(&mut rng))];
                     let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
                     let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
                     // Prepare the key cache.
                     let mut cache = Default::default();
 
-                    for literal_a in &literals_a {
-                        for literal_b in &literals_b {
-                            for mode_a in &modes_a {
-                                for mode_b in &modes_b {
-                                    check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    for _ in 0..ITERATIONS {
+                        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+                        let literals_b = vec![console::program::Literal::Scalar(console::types::Scalar::rand(&mut rng))];
+
+                        for literal_a in &literals_a {
+                            for literal_b in &literals_b {
+                                for mode_a in &modes_a {
+                                    for mode_b in &modes_b {
+                                        check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                                    }
                                 }
                             }
                         }
@@ -471,27 +476,30 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = [
-            Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-            Literal::I8(console::types::I8::rand(&mut rng)),
-            Literal::I16(console::types::I16::rand(&mut rng)),
-            Literal::I32(console::types::I32::rand(&mut rng)),
-            Literal::U8(console::types::U8::rand(&mut rng)),
-            Literal::U16(console::types::U16::rand(&mut rng)),
-            Literal::U32(console::types::U32::rand(&mut rng)),
-        ];
-        let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = [
+                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                Literal::I8(console::types::I8::rand(&mut rng)),
+                Literal::I16(console::types::I16::rand(&mut rng)),
+                Literal::I32(console::types::I32::rand(&mut rng)),
+                Literal::U8(console::types::U8::rand(&mut rng)),
+                Literal::U16(console::types::U16::rand(&mut rng)),
+                Literal::U32(console::types::U32::rand(&mut rng)),
+            ];
+            let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
+
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
+                            check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                        }
                     }
                 }
             }
@@ -509,29 +517,32 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = [
-            Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-            Literal::I8(console::types::I8::rand(&mut rng)),
-            Literal::I16(console::types::I16::rand(&mut rng)),
-            Literal::I32(console::types::I32::rand(&mut rng)),
-            Literal::I64(console::types::I64::rand(&mut rng)),
-            Literal::U8(console::types::U8::rand(&mut rng)),
-            Literal::U16(console::types::U16::rand(&mut rng)),
-            Literal::U32(console::types::U32::rand(&mut rng)),
-            Literal::U64(console::types::U64::rand(&mut rng)),
-        ];
-        let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                for mode_a in &modes_a {
-                    for mode_b in &modes_b {
-                        check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = [
+                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                Literal::I8(console::types::I8::rand(&mut rng)),
+                Literal::I16(console::types::I16::rand(&mut rng)),
+                Literal::I32(console::types::I32::rand(&mut rng)),
+                Literal::I64(console::types::I64::rand(&mut rng)),
+                Literal::U8(console::types::U8::rand(&mut rng)),
+                Literal::U16(console::types::U16::rand(&mut rng)),
+                Literal::U32(console::types::U32::rand(&mut rng)),
+                Literal::U64(console::types::U64::rand(&mut rng)),
+            ];
+            let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
+
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    for mode_a in &modes_a {
+                        for mode_b in &modes_b {
+                            check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                        }
                     }
                 }
             }

@@ -266,6 +266,8 @@ mod tests {
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
 
+    const ITERATIONS: usize = 100;
+
     /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
     #[allow(clippy::type_complexity)]
     fn sample_stack(
@@ -549,19 +551,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
-            for mode_a in &modes_a {
-                for mode_b in &modes_b {
-                    // Check the operation.
-                    check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
+                for mode_a in &modes_a {
+                    for mode_b in &modes_b {
+                        // Check the operation.
+                        check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    }
                 }
             }
         }
@@ -576,21 +580,23 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                            }
                         }
                     }
                 }
@@ -609,19 +615,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
-            for mode_a in &modes_a {
-                for mode_b in &modes_b {
-                    // Check the operation.
-                    check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
+                for mode_a in &modes_a {
+                    for mode_b in &modes_b {
+                        // Check the operation.
+                        check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    }
                 }
             }
         }
@@ -636,21 +644,23 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                            }
                         }
                     }
                 }
