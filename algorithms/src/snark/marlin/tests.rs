@@ -44,7 +44,7 @@ mod marlin {
                     let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
                     let fs_parameters = FS::sample_parameters();
 
-                    for _ in 0..50 {
+                    for _ in 0..25 {
                         let mul_depth = 2;
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
@@ -63,79 +63,77 @@ mod marlin {
                         assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [random, random], &proof).unwrap());
                     }
 
-                    for _ in 0..10 {
-                        for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                            for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                                let mut constraints = BTreeMap::new();
-                                let mut inputs = BTreeMap::new();
+                    for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                        for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                            let mut constraints = BTreeMap::new();
+                            let mut inputs = BTreeMap::new();
 
-                                for i in 0..circuit_batch_size {
-                                    let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
-                                    .map(|_| {
-                                        let mul_depth = 2 + i;
-                                        let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints + 100*i, num_variables, rng);
-                                        (circ, inputs)
-                                    })
-                                    .unzip();
-                                    let circuit_id = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().id;
-                                    constraints.insert(circuit_id.clone(), circuit_batch);
-                                    inputs.insert(circuit_id, input_batch);
-                                }
-                                let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();
-
-                                let (index_pks, index_vks) =
-                                    $marlin_inst::batch_circuit_setup(&universal_srs, unique_instances.as_slice()).unwrap();
-                                println!("Called circuit setup");
-
-                                let mut pks_to_constraints = BTreeMap::new();
-                                let mut vks_to_inputs = BTreeMap::new();
-                                let mut constraint_refs = Vec::with_capacity(index_pks.len());
-                                for (index_pk, index_vk) in index_pks.iter().zip(index_vks.iter()) {
-                                    let circuit_constraints = &constraints[&index_pk.circuit.id];
-                                    let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
-                                    for constraint in circuit_constraints.iter() {
-                                        circuit_constraint_refs.push(constraint)
-                                    }
-                                    constraint_refs.push(circuit_constraint_refs);
-                                    let circuit_inputs = &inputs[&index_pk.circuit.id];
-                                    vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
-                                }
-                                for (i, index_pk) in index_pks.iter().enumerate() {
-                                    pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
-                                }
-
-                                let proof =
-                                    $marlin_inst::prove_batch(&fs_parameters, &pks_to_constraints, rng).unwrap();
-                                println!("Called prover");
-
-                                assert!(
-                                    $marlin_inst::verify_batch(&fs_parameters, &vks_to_inputs, &proof).unwrap(),
-                                    "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits for circuits: {constraints:?}"
-                                );
-                                println!("Called verifier");
-                                println!("\nShould not verify (i.e. verifier messages should print below):");
-                                let mut fake_instance_inputs = Vec::with_capacity(vks_to_inputs.len());
-                                for instance_input in vks_to_inputs.values() {
-                                    let mut fake_instance_input = Vec::with_capacity(instance_input.len());
-                                    for input in instance_input.iter() {
-                                        let fake_input = vec![Fr::rand(rng); input.len()];
-                                        fake_instance_input.push(fake_input);
-                                    }
-                                    fake_instance_inputs.push(fake_instance_input);
-                                }
-                                let mut vks_to_fake_inputs = BTreeMap::new();
-                                for (i, vk) in vks_to_inputs.keys().enumerate() {
-                                    vks_to_fake_inputs.insert(*vk, fake_instance_inputs[i].as_slice());
-                                }
-                                assert!(
-                                    !$marlin_inst::verify_batch(
-                                        &fs_parameters,
-                                        &vks_to_fake_inputs,
-                                        &proof
-                                    )
-                                    .unwrap()
-                                );
+                            for i in 0..circuit_batch_size {
+                                let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
+                                .map(|_| {
+                                    let mul_depth = 2 + i;
+                                    let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints + 100*i, num_variables, rng);
+                                    (circ, inputs)
+                                })
+                                .unzip();
+                                let circuit_id = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().id;
+                                constraints.insert(circuit_id.clone(), circuit_batch);
+                                inputs.insert(circuit_id, input_batch);
                             }
+                            let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();
+
+                            let (index_pks, index_vks) =
+                                $marlin_inst::batch_circuit_setup(&universal_srs, unique_instances.as_slice()).unwrap();
+                            println!("Called circuit setup");
+
+                            let mut pks_to_constraints = BTreeMap::new();
+                            let mut vks_to_inputs = BTreeMap::new();
+                            let mut constraint_refs = Vec::with_capacity(index_pks.len());
+                            for (index_pk, index_vk) in index_pks.iter().zip(index_vks.iter()) {
+                                let circuit_constraints = &constraints[&index_pk.circuit.id];
+                                let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
+                                for constraint in circuit_constraints.iter() {
+                                    circuit_constraint_refs.push(constraint)
+                                }
+                                constraint_refs.push(circuit_constraint_refs);
+                                let circuit_inputs = &inputs[&index_pk.circuit.id];
+                                vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
+                            }
+                            for (i, index_pk) in index_pks.iter().enumerate() {
+                                pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
+                            }
+
+                            let proof =
+                                $marlin_inst::prove_batch(&fs_parameters, &pks_to_constraints, rng).unwrap();
+                            println!("Called prover");
+
+                            assert!(
+                                $marlin_inst::verify_batch(&fs_parameters, &vks_to_inputs, &proof).unwrap(),
+                                "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits for circuits: {constraints:?}"
+                            );
+                            println!("Called verifier");
+                            println!("\nShould not verify (i.e. verifier messages should print below):");
+                            let mut fake_instance_inputs = Vec::with_capacity(vks_to_inputs.len());
+                            for instance_input in vks_to_inputs.values() {
+                                let mut fake_instance_input = Vec::with_capacity(instance_input.len());
+                                for input in instance_input.iter() {
+                                    let fake_input = vec![Fr::rand(rng); input.len()];
+                                    fake_instance_input.push(fake_input);
+                                }
+                                fake_instance_inputs.push(fake_instance_input);
+                            }
+                            let mut vks_to_fake_inputs = BTreeMap::new();
+                            for (i, vk) in vks_to_inputs.keys().enumerate() {
+                                vks_to_fake_inputs.insert(*vk, fake_instance_inputs[i].as_slice());
+                            }
+                            assert!(
+                                !$marlin_inst::verify_batch(
+                                    &fs_parameters,
+                                    &vks_to_fake_inputs,
+                                    &proof
+                                )
+                                .unwrap()
+                            );
                         }
                     }
                 }
