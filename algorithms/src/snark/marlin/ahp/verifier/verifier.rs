@@ -47,7 +47,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
         let mut batch_combiners = BTreeMap::new();
         let mut circuit_specific_states = BTreeMap::new();
-        let mut total_instances = 0;
         let mut num_circuit_combiners = vec![1; batch_sizes.len()]; 
         num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
 
@@ -67,8 +66,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             }
             combiners.instance_combiners.extend(instance_combiners);
             batch_combiners.insert(*circuit_id, combiners);
-
-            total_instances += batch_size;
 
             // Check that the R1CS is a square matrix.
             if circuit_info.num_constraints != circuit_info.num_variables {
@@ -120,7 +117,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         let new_state = State {
             circuit_specific_states: circuit_specific_states,
-            total_instances,
             largest_constraint_domain: max_constraint_domain,
             largest_non_zero_domain: largest_non_zero_domain,
 

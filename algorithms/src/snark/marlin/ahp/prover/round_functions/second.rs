@@ -24,7 +24,6 @@ use crate::{
         polynomial::PolyMultiplier,
         DensePolynomial,
         EvaluationDomain,
-        SparsePolynomial,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
@@ -79,23 +78,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let zk_bound = Self::zk_bound();
 
+        let max_constraint_domain = state.max_constraint_domain;
+
         let verifier::FirstMessage { alpha, eta_b, eta_c, batch_combiners } = verifier_message;
 
         let summed_z_m_and_t = Self::calculate_summed_z_m_and_t(&state, *alpha, *eta_b, *eta_c, batch_combiners);
 
-        let sumcheck_lhs = Self::calculate_lhs(&mut state, batch_combiners, summed_z_m_and_t, alpha);
+        let (h_1, x_g_1) = Self::calculate_lhs(&mut state, batch_combiners, summed_z_m_and_t, alpha);
 
-        let max_constraint_domain = state.max_constraint_domain;
-
+        let mut sumcheck_lhs = h_1.mul_by_vanishing_poly(max_constraint_domain);
+        sumcheck_lhs += &x_g_1;
         debug_assert!(
             sumcheck_lhs.evaluate_over_domain_by_ref(max_constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
         );
 
-        let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
-        let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(max_constraint_domain).unwrap();
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         drop(x_g_1);
-        end_timer!(sumcheck_time);
 
         assert!(g_1.degree() <= max_constraint_domain.size() - 2);
         assert!(h_1.degree() <= 2 * max_constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
@@ -117,7 +115,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
         mut summed_z_m_and_t: Vec<LincheckPoly<F>>,
         alpha: &F,
-    ) -> DensePolynomial<F> {
+    ) -> (DensePolynomial<F>, DensePolynomial<F>) {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain_inverse = state.max_constraint_domain.size_inv;
         let max_constraint_domain = state.max_constraint_domain.clone();
@@ -160,48 +158,59 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 end_timer!(z_time);
 
-                let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(&constraint_domain, fft_precomputation, ifft_precomputation, summed_t, summed_z_m, z, *alpha);
+                let circuit_specific_lhs = Self::calculate_circuit_specific_lhs(&constraint_domain, fft_precomputation, ifft_precomputation, summed_t, summed_z_m, z, *alpha);
         
-                // Naive setup:
-                if constraint_domain != max_constraint_domain {
-                    circuit_specific_lhs = circuit_specific_lhs.mul_by_vanishing_poly(max_constraint_domain);
-                    let (quotient, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
-                    assert!(remainder.is_zero());
-                    circuit_specific_lhs = quotient * constraint_domain.size_as_field_element * max_constraint_domain_inverse;
-                }
-                
-                circuit_specific_lhs *= circuit_combiner;
-
                 // Let H = largest_domain;
                 // Let H_i = domain;
                 // Let v_H := H.vanishing_polynomial();
                 // Let v_H_i := H_i.vanishing_polynomial();
-                // Let s := H.selector_polynomial(H_i) = (v_H / v_H_i) * (H_i.size() / H.size());
+                // Let s_i := H.selector_polynomial(H_i) = (v_H / v_H_i) * (H_i.size() / H.size());
                 // Let m := masking polynomial
+                // Let c_i := circuit combiner
+                // Let lhs_i := circuit_specific partial left hand size of the lincheck sumcheck, see protocol docs for more details 
 
-                // Later on, we multiply `lhs` by s, add m and divide by v_H.
-                // Substituting in s, we get that (lhs * s + m) / v_H = (lhs / v_H_i) * (H_i.size() / H.size()) + m / v_H;
+                // Instead of just multiplying each lhs_i by `s_i*c_i`, we reorder the lincheck sumcheck to cancel out some terms
+                // This removes a mul and div by v_H operation over each circuit's (max_constraint_domain - constraint_domain)
+
+                // Later on, we divide each `lhs_i` and m by v_H, then multiply by `s_i*c_i` and sum them.
+                // Substituting in s, we get that: 
+                // (\sum_i{lhs_i} + m)/v_H = \sum{h_1_i*v_H + x_g_1_i}
+                // \sum_i{c_i*s_i*(lhs_i/v_H - x_g_1_i)} + (m/v_H - x_g_1_m) = \sum{h_1_i*v_H}
+                // \sum_i{c_i*(H_i.size()/H.size())*(lhs_i/v_H_i - x_g_1_i*v_H/v_H_i)} + (m/v_H - x_g_1_m) = \sum{h_1_i*v_H}
+                // \sum_i{c_i*(H_i.size()/H.size())*(lhs_i/v_H_i} + m/v_H = \sum{h_1_i*v_H} + \sum{c_i*x_g_1_i*(v_H/v_H_i)*(H_i.size()/H.size())} + x_g_1_m
+                // (\sum_i{c_i*s_i*lhs_i} + m)/v_H = \sum{h_1_i*v_H} + \sum{c_i*s_i*x_g_1_i} + x_g_1_m
+                // (\sum_i{c_i*s_i*lhs_i} + m)/v_H = h_1*v_H + x_g_1
                 // That's what we're computing here.
 
-                // TODO: Potential optimization:
-                // let (mut circuit_specific_lhs, remainder) = circuit_specific_lhs.divide_by_vanishing_poly(*constraint_domain).unwrap();
-                // let multiplier = constraint_domain.size_as_field_element / max_constraint_domain_size;
-                // cfg_iter_mut!(circuit_specific_lhs.coeffs).for_each(|c| *c *= multiplier);        
-                // cfg_iter_mut!(remainder.coeffs).for_each(|c| *c *= multiplier);        
-                // TODO: Can we just sum up all of the remainders, potentially carrying back to the quotient?
-                // TODO: Would also still need to divide m by v_H 
-                // TODO: remove division by v_H one level up the callchain.
+                let sumcheck_time = start_timer!(|| format!("Compute sumcheck h and g polys for circuit {}", _circuit_id));
+                let (mut h_1_i, mut xg_1_i) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+                xg_1_i = xg_1_i.mul_by_vanishing_poly(max_constraint_domain);
+                let (mut xg_1_i, remainder) = xg_1_i.divide_by_vanishing_poly(constraint_domain).unwrap();
+                assert!(remainder.is_zero());
+                let multiplier = circuit_combiner * constraint_domain.size_as_field_element * max_constraint_domain_inverse;
+                cfg_iter_mut!(h_1_i.coeffs).for_each(|c| *c *= multiplier);
+                cfg_iter_mut!(xg_1_i.coeffs).for_each(|c| *c *= multiplier);
+                end_timer!(sumcheck_time);
 
-                circuit_specific_lhs
+                (h_1_i, xg_1_i)
             });
         }
-        let circuit_specific_lhs_s: Vec<_> = job_pool.execute_all().try_into().unwrap();
-        let mut lhs_sum = circuit_specific_lhs_s.into_iter().sum::<DensePolynomial<F>>();
+
+        let mut h_1_sum = DensePolynomial::zero();
+        let mut xg_1_sum = DensePolynomial::zero();
+        for (h_1_i, xg_1_i) in job_pool.execute_all().into_iter() {
+            h_1_sum += &h_1_i;
+            xg_1_sum += &xg_1_i;
+        }
 
         let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
-        lhs_sum += &mask_poly.map_or(SparsePolynomial::zero(), |p| p.polynomial().as_sparse().unwrap().clone());
-        lhs_sum
+        let mask_poly = &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense().clone());
+        let (h_1_mask, xg_1_mask) = mask_poly.divide_by_vanishing_poly(max_constraint_domain).unwrap();
+        h_1_sum += &h_1_mask;
+        xg_1_sum += &xg_1_mask;
+
+        (h_1_sum, xg_1_sum)
     }
 
     fn calculate_circuit_specific_lhs(
