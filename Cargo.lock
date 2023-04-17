@@ -2570,6 +2570,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-synthesizer",
  "snarkvm-utilities",
  "tracing",
  "ureq",
