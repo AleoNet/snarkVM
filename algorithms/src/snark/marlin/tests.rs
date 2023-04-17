@@ -16,7 +16,7 @@
 
 use crate::{
     snark::marlin::TestCircuit,
-    traits::{AlgebraicSponge, SNARK}
+    traits::{AlgebraicSponge, SNARK},
 };
 use std::collections::BTreeMap;
 

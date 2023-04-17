@@ -25,13 +25,14 @@ use crate::{
             AHPError,
             AHPForR1CS,
         },
-        MarlinMode, verifier::CircuitSpecificState,
+        verifier::CircuitSpecificState,
+        MarlinMode,
     },
     AlgebraicSponge,
 };
+use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
-use smallvec::SmallVec;
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
@@ -47,20 +48,20 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
         let mut batch_combiners = BTreeMap::new();
         let mut circuit_specific_states = BTreeMap::new();
-        let mut num_circuit_combiners = vec![1; batch_sizes.len()]; 
+        let mut num_circuit_combiners = vec![1; batch_sizes.len()];
         num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
 
-        for ((batch_size, (circuit_id, circuit_info)), num_c_combiner) in batch_sizes.values().zip(circuit_infos).zip(num_circuit_combiners) {
+        for ((batch_size, (circuit_id, circuit_info)), num_c_combiner) in
+            batch_sizes.values().zip(circuit_infos).zip(num_circuit_combiners)
+        {
             let squeeze_time = start_timer!(|| format!("Squeezing challenges for {circuit_id}"));
             let elems = fs_rng.squeeze_nonnative_field_elements(*batch_size - 1 + num_c_combiner);
             end_timer!(squeeze_time);
 
             let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
             assert!(circuit_combiner.len() == num_c_combiner);
-            let mut combiners = BatchCombiners {
-                circuit_combiner: TargetField::one(),
-                instance_combiners: vec![TargetField::one()],
-            };
+            let mut combiners =
+                BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
             if num_c_combiner == 1 {
                 combiners.circuit_combiner = circuit_combiner[0];
             }
@@ -112,8 +113,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         assert!(!max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
-        let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners};
-
+        let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners };
 
         let new_state = State {
             circuit_specific_states,
@@ -151,7 +151,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        
         let num_circuits = state.circuit_specific_states.len();
         let mut r_a = Vec::with_capacity(num_circuits);
         let mut r_b = Vec::with_capacity(num_circuits);

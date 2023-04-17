@@ -46,12 +46,7 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Compute the proof.
-        let proof = Proof::new(Marlin::<N>::prove(
-            N::marlin_fs_parameters(),
-            self,
-            assignment,
-            rng,
-        )?);
+        let proof = Proof::new(Marlin::<N>::prove(N::marlin_fs_parameters(), self, assignment, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -74,7 +69,7 @@ impl<N: Network> ProvingKey<N> {
             assignment_refs.push(assignment);
         }
         let mut keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(self.deref(), assignment_refs.as_slice()); 
+        keys_to_constraints.insert(self.deref(), assignment_refs.as_slice());
         let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &keys_to_constraints, rng)?);
 
         #[cfg(feature = "aleo-cli")]

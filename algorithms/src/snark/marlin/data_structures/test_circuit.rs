@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use rand::{CryptoRng, Rng};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use rand::{Rng, CryptoRng};
 
 #[derive(Clone)]
 pub struct TestCircuit<F: Field> {
@@ -29,7 +29,11 @@ pub struct TestCircuit<F: Field> {
 
 impl<F: Field> core::fmt::Debug for TestCircuit<F> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "TestCircuit {{ num_constraints: {}, num_variables: {}, mul_depth: {} }}", self.num_constraints, self.num_variables, self.mul_depth)
+        write!(
+            f,
+            "TestCircuit {{ num_constraints: {}, num_variables: {}, mul_depth: {} }}",
+            self.num_constraints, self.num_variables, self.mul_depth
+        )
     }
 }
 
@@ -73,7 +77,12 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
 }
 
 impl<F: Field> TestCircuit<F> {
-    pub fn gen_rand<R: Rng + CryptoRng>(mul_depth: usize, num_constraints: usize, num_variables: usize, rng: &mut R) -> (Self, Vec<F>) {
+    pub fn gen_rand<R: Rng + CryptoRng>(
+        mul_depth: usize,
+        num_constraints: usize,
+        num_variables: usize,
+        rng: &mut R,
+    ) -> (Self, Vec<F>) {
         let mut public_inputs: Vec<F> = Vec::with_capacity(mul_depth);
         let a = F::rand(rng);
         let b = F::rand(rng);

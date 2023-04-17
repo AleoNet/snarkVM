@@ -24,10 +24,10 @@ use crate::{
     polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
 };
+use hex::FromHex;
 use sha2::Digest;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
-use hex::FromHex;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitId(pub [u8; 32]);
@@ -43,9 +43,9 @@ impl std::fmt::Display for CircuitId {
 
 impl CircuitId {
     pub fn from_witness_label(witness_label: &str) -> Self {
-        CircuitId (<[u8;32]>::from_hex(witness_label.split('_')
-            .collect::<Vec<&str>>()[1])
-            .expect("Decoding circuit_id failed"),
+        CircuitId(
+            <[u8; 32]>::from_hex(witness_label.split('_').collect::<Vec<&str>>()[1])
+                .expect("Decoding circuit_id failed"),
         )
     }
 }
@@ -224,7 +224,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             _mode: PhantomData,
-            id
+            id,
         })
     }
 }

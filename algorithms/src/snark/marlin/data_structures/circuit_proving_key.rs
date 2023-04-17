@@ -26,7 +26,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use std::{sync::Arc, cmp::Ordering};
+use std::{cmp::Ordering, sync::Arc};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug, PartialEq, Eq)]

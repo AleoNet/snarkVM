@@ -19,8 +19,8 @@ use core::marker::PhantomData;
 use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
-        CircuitId,
         ahp::verifier::{FirstMessage, SecondMessage, ThirdMessage},
+        CircuitId,
         MarlinMode,
     },
 };

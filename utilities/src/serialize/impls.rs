@@ -407,14 +407,16 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for [T; 32] {
     ) -> Result<Self, SerializationError> {
         let len = u64::deserialize_with_mode(&mut reader, compress, validate)?;
         assert!(len == 32); // in the future we can parametrize the array on length
-        let values = [(); 32].iter().map(|_| {
-            T::deserialize_with_mode(&mut reader, compress, Validate::No)
-        }).collect::<Result<Vec<T>,_>>()?;
+        let values = [(); 32]
+            .iter()
+            .map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No))
+            .collect::<Result<Vec<T>, _>>()?;
 
         if let Validate::Yes = validate {
             T::batch_check(values.iter())?
         }
-        let arr = values.try_into()
+        let arr = values
+            .try_into()
             .unwrap_or_else(|values: Vec<T>| panic!("Expected a Vec of length {} but it was {}", 32, values.len()));
 
         Ok(arr)

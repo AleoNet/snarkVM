@@ -201,7 +201,11 @@ pub(crate) fn matrix_evals<F: PrimeField>(
 }
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
-pub(crate) fn arithmetize_matrix<F: PrimeField>(id: CircuitId, label: &str, matrix_evals: MatrixEvals<F>) -> MatrixArithmetization<F> {
+pub(crate) fn arithmetize_matrix<F: PrimeField>(
+    id: CircuitId,
+    label: &str,
+    matrix_evals: MatrixEvals<F>,
+) -> MatrixArithmetization<F> {
     let matrix_time = start_timer!(|| "Computing row, col, and val LDEs");
 
     let interpolate_time = start_timer!(|| "Interpolating on K");
@@ -293,7 +297,7 @@ mod tests {
                 &constraint_domain_elements,
                 &constraint_domain_eq_poly_vals,
             );
-            let dummy_id = CircuitId([0;32]);
+            let dummy_id = CircuitId([0; 32]);
             let arith = arithmetize_matrix(dummy_id, label, evals);
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {

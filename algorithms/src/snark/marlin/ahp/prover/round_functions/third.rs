@@ -27,18 +27,18 @@ use crate::{
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{indexer::CircuitInfo, CircuitId, verifier, AHPError, AHPForR1CS},
+        ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS, CircuitId},
         matrices::MatrixArithmetization,
         prover,
-        MarlinMode,
         witness_label,
+        MarlinMode,
     },
 };
 use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
-use rand_core::RngCore;
 use itertools::Itertools;
+use rand_core::RngCore;
 
 #[cfg(not(feature = "parallel"))]
 use itertools::Itertools;
@@ -50,31 +50,34 @@ type Lhs<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-
     /// Output the number of oracles sent by the prover in the third round.
     pub fn num_third_round_oracles(circuits: usize) -> usize {
-        circuits*3
+        circuits * 3
     }
 
     /// Output the degree bounds of oracles in the third round.
     pub fn third_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (CircuitId, &'a CircuitInfo<F>)>
+        circuits: impl Iterator<Item = (CircuitId, &'a CircuitInfo<F>)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        circuits.flat_map(|(circuit_id, circuit_info)| {
+        circuits
+            .flat_map(|(circuit_id, circuit_info)| {
+                let non_zero_a_size =
+                    EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_a).unwrap();
+                let non_zero_b_size =
+                    EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_b).unwrap();
+                let non_zero_c_size =
+                    EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_c).unwrap();
 
-            let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_a).unwrap();
-            let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_b).unwrap();
-            let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(circuit_info.num_non_zero_c).unwrap();
-    
-            [   
-                PolynomialInfo::new(witness_label(circuit_id, "g_a", 0), Some(non_zero_a_size - 2), None),
-                PolynomialInfo::new(witness_label(circuit_id, "g_b", 0), Some(non_zero_b_size - 2), None),
-                PolynomialInfo::new(witness_label(circuit_id, "g_c", 0), Some(non_zero_c_size - 2), None)
-            ]
-            .into_iter()
-            .map(|info| (info.label().into(), info))
-            .collect::<BTreeMap<PolynomialLabel, PolynomialInfo>>()
-        }).collect()
+                [
+                    PolynomialInfo::new(witness_label(circuit_id, "g_a", 0), Some(non_zero_a_size - 2), None),
+                    PolynomialInfo::new(witness_label(circuit_id, "g_b", 0), Some(non_zero_b_size - 2), None),
+                    PolynomialInfo::new(witness_label(circuit_id, "g_c", 0), Some(non_zero_c_size - 2), None),
+                ]
+                .into_iter()
+                .map(|info| (info.label().into(), info))
+                .collect::<BTreeMap<PolynomialLabel, PolynomialInfo>>()
+            })
+            .collect()
     }
 
     /// Output the third round message and the next state.
@@ -92,7 +95,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let beta = verifier_message.beta;
 
-        let mut pool = ExecutionPool::with_capacity(3*state.circuit_specific_states.len());
+        let mut pool = ExecutionPool::with_capacity(3 * state.circuit_specific_states.len());
 
         let largest_non_zero_domain_size = state.max_non_zero_domain.size_as_field_element;
         for (circuit, circuit_state) in &state.circuit_specific_states {
@@ -151,31 +154,23 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut sums = BTreeMap::new();
         let mut gs = BTreeMap::new();
-        for (
-            (circuit_a, (sum_a, lhs_a, g_a)), 
-            (circuit_b, (sum_b, lhs_b, g_b)), 
-            (circuit_c, (sum_c, lhs_c, g_c))
-        ) in pool.execute_all().into_iter().tuples() {
+        for ((circuit_a, (sum_a, lhs_a, g_a)), (circuit_b, (sum_b, lhs_b, g_b)), (circuit_c, (sum_c, lhs_c, g_c))) in
+            pool.execute_all().into_iter().tuples()
+        {
             assert!(circuit_a == circuit_b && circuit_a == circuit_c);
-            let matrix_sum = prover::message::MatrixSums {
-                sum_a,
-                sum_b,
-                sum_c,
-            };
+            let matrix_sum = prover::message::MatrixSums { sum_a, sum_b, sum_c };
             sums.insert(circuit_a.id, matrix_sum);
             state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
-            let matrix_gs = prover::MatrixGs {
-                g_a,
-                g_b,
-                g_c,
-            };
+            let matrix_gs = prover::MatrixGs { g_a, g_b, g_c };
             gs.insert(circuit_a.id, matrix_gs);
         }
 
         let msg = prover::ThirdMessage { sums };
         let oracles = prover::ThirdOracles { gs };
 
-        assert!(oracles.matches_info(&Self::third_round_polynomial_info(state.circuit_specific_states.keys().map(|c| (c.id, &c.index_info)))));
+        assert!(oracles.matches_info(&Self::third_round_polynomial_info(
+            state.circuit_specific_states.keys().map(|c| (c.id, &c.index_info))
+        )));
 
         end_timer!(round_time);
 
@@ -193,7 +188,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         largest_non_zero_domain_size: F,
         fft_precomputation: &FFTPrecomputation<F>,
         ifft_precomputation: &IFFTPrecomputation<F>,
-    ) -> (Sum<F>, Lhs<F>, Gpoly<F>){
+    ) -> (Sum<F>, Lhs<F>, Gpoly<F>) {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));

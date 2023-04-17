@@ -66,7 +66,7 @@ impl<N: Network> VerifyingKey<N> {
 
         // Verify the batch proof.
         let mut keys_to_inputs = BTreeMap::new();
-        keys_to_inputs.insert(self.deref(), inputs); 
+        keys_to_inputs.insert(self.deref(), inputs);
         match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]

@@ -53,4 +53,4 @@ impl<E: PairingEngine, MM: MarlinMode> PartialEq for PreparedCircuitVerifyingKey
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Eq for PreparedCircuitVerifyingKey<E, MM> { }
+impl<E: PairingEngine, MM: MarlinMode> Eq for PreparedCircuitVerifyingKey<E, MM> {}

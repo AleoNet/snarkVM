@@ -21,7 +21,7 @@ use crate::{
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
-        ahp::{matrices, verifier, AHPError, CircuitInfo, CircuitId},
+        ahp::{matrices, verifier, AHPError, CircuitId, CircuitInfo},
         prover,
         MarlinMode,
     },
@@ -56,7 +56,6 @@ pub(crate) struct NonZeroDomains<F: PrimeField> {
     pub(crate) domain_b: EvaluationDomain<F>,
     pub(crate) domain_c: EvaluationDomain<F>,
 }
-
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The linear combinations that are statically known to evaluate to zero.
@@ -119,18 +118,23 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         ]
     }
 
-    pub(crate) fn max_constraint_domain(info: &CircuitInfo<F>, max_candidate: Option<EvaluationDomain<F>>) -> Result<ConstraintDomains<F>, SynthesisError> {
-        let constraint_domain = EvaluationDomain::new(info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+    pub(crate) fn max_constraint_domain(
+        info: &CircuitInfo<F>,
+        max_candidate: Option<EvaluationDomain<F>>,
+    ) -> Result<ConstraintDomains<F>, SynthesisError> {
+        let constraint_domain =
+            EvaluationDomain::new(info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let mut max_constraint_domain = Some(constraint_domain);
         if max_candidate.is_some() && max_candidate.unwrap().size() > constraint_domain.size() {
             max_constraint_domain = max_candidate;
         }
-        Ok(ConstraintDomains{
-            max_constraint_domain,
-            constraint_domain,
-        })
+        Ok(ConstraintDomains { max_constraint_domain, constraint_domain })
     }
-    pub(crate) fn max_non_zero_domain(info: &CircuitInfo<F>, max_candidate: Option<EvaluationDomain<F>>) -> Result<NonZeroDomains<F>, SynthesisError> {
+
+    pub(crate) fn max_non_zero_domain(
+        info: &CircuitInfo<F>,
+        max_candidate: Option<EvaluationDomain<F>>,
+    ) -> Result<NonZeroDomains<F>, SynthesisError> {
         let domain_a = EvaluationDomain::new(info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_b = EvaluationDomain::new(info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_c = EvaluationDomain::new(info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -139,12 +143,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         if max_candidate.is_some() && max_candidate.unwrap().size() > new_candidate.size() {
             max_non_zero_domain = max_candidate;
         }
-        Ok(NonZeroDomains{
-            max_non_zero_domain,
-            domain_a,
-            domain_b,
-            domain_c,
-        })
+        Ok(NonZeroDomains { max_non_zero_domain, domain_a, domain_b, domain_c })
     }
 
     pub fn fft_precomputation(
@@ -184,17 +183,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(!public_inputs.is_empty());
         let largest_constraint_domain = state.max_constraint_domain;
         let largest_non_zero_domain = state.largest_non_zero_domain;
-        let public_inputs = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
-            let input_domain = circuit_state.input_domain;
-            let public_inputs = public_inputs[circuit_id]
-                .iter()
-                .map(|p| {
-                    let public_input = prover::ConstraintSystem::format_public_input(p);
-                    Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
-                }).collect::<Result<Vec<_>, _>>();
-            assert_eq!(public_inputs.as_ref().unwrap()[0].len(), input_domain.size());
-            public_inputs
-        }).collect::<Result<Vec<_>, _>>()?;
+        let public_inputs = state
+            .circuit_specific_states
+            .iter()
+            .map(|(circuit_id, circuit_state)| {
+                let input_domain = circuit_state.input_domain;
+                let public_inputs = public_inputs[circuit_id]
+                    .iter()
+                    .map(|p| {
+                        let public_input = prover::ConstraintSystem::format_public_input(p);
+                        Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
+                    })
+                    .collect::<Result<Vec<_>, _>>();
+                assert_eq!(public_inputs.as_ref().unwrap()[0].len(), input_domain.size());
+                public_inputs
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         let first_round_msg = state.first_round_message.as_ref().unwrap();
         let alpha = first_round_msg.alpha;
@@ -204,39 +208,50 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let batch_combiners = &first_round_msg.batch_combiners;
         let prover::ThirdMessage { sums } = prover_third_message;
 
-        let t_at_beta_s = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
-            let sums_i = &sums[circuit_id];
-            let t_at_beta =
-                eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums_i.sum_a +
-                eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums_i.sum_b +
-                eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums_i.sum_c;
-            (circuit_id, t_at_beta)
-        }).collect::<BTreeMap<_, _>>();
+        let t_at_beta_s = state
+            .circuit_specific_states
+            .iter()
+            .map(|(circuit_id, circuit_state)| {
+                let sums_i = &sums[circuit_id];
+                let t_at_beta = eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums_i.sum_a
+                    + eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums_i.sum_b
+                    + eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums_i.sum_c;
+                (circuit_id, t_at_beta)
+            })
+            .collect::<BTreeMap<_, _>>();
 
         let verifier::ThirdMessage { r_a, r_b, r_c } = state.third_round_message.as_ref().unwrap();
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = BTreeMap::new();
-        let mut cached_selectors = BTreeMap::new(); 
+        let mut cached_selectors = BTreeMap::new();
 
         // Lincheck sumcheck:
         let lincheck_time = start_timer!(|| "Lincheck");
-        let z_b_s = state.circuit_specific_states.iter().map(|(&circuit_id, circuit_state)| {
-            let z_b_i = (0..circuit_state.batch_size).map(|i| {
-                    let z_b = witness_label(circuit_id, "z_b", i);
-                    LinearCombination::new(z_b.clone(), [(F::one(), z_b)])
-                })
-            .collect::<Vec<_>>();
-            (circuit_id, z_b_i)
-        }).collect::<BTreeMap<_, _>>();
+        let z_b_s = state
+            .circuit_specific_states
+            .iter()
+            .map(|(&circuit_id, circuit_state)| {
+                let z_b_i = (0..circuit_state.batch_size)
+                    .map(|i| {
+                        let z_b = witness_label(circuit_id, "z_b", i);
+                        LinearCombination::new(z_b.clone(), [(F::one(), z_b)])
+                    })
+                    .collect::<Vec<_>>();
+                (circuit_id, z_b_i)
+            })
+            .collect::<BTreeMap<_, _>>();
 
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let bivariate_poly_time = start_timer!(|| "Bivariate poly");
         let mut r_alpha_at_beta_s = BTreeMap::new();
         for (circuit_id, circuit_state) in state.circuit_specific_states.iter() {
-            r_alpha_at_beta_s.insert(circuit_id, circuit_state.constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta));
+            r_alpha_at_beta_s.insert(
+                circuit_id,
+                circuit_state.constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta),
+            );
         }
         end_timer!(bivariate_poly_time);
 
@@ -245,43 +260,53 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(v_H_at_beta_time);
 
         let v_X_at_beta_time = start_timer!(|| "v_X_at_beta");
-        let v_X_at_beta = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
-            let v_X_i_at_beta = circuit_state.input_domain.evaluate_vanishing_polynomial(beta);
-            (circuit_id, v_X_i_at_beta)
-        }).collect::<BTreeMap<_,_>>();
+        let v_X_at_beta = state
+            .circuit_specific_states
+            .iter()
+            .map(|(circuit_id, circuit_state)| {
+                let v_X_i_at_beta = circuit_state.input_domain.evaluate_vanishing_polynomial(beta);
+                (circuit_id, v_X_i_at_beta)
+            })
+            .collect::<BTreeMap<_, _>>();
         end_timer!(v_X_at_beta_time);
 
-        let z_b_s_at_beta = z_b_s.iter().map(|(circuit_id, z_b_i)| {
-            let z_b_i_s = z_b_i.iter().map(|z_b|{
-                evals.get_lc_eval(z_b, beta).unwrap()
-            }).collect::<Vec<F>>();
-            (*circuit_id, z_b_i_s)
-        }).collect::<BTreeMap<_,_>>();
-        let batch_z_b_s_at_beta = z_b_s_at_beta.iter()
-                                        .zip_eq(batch_combiners.values())
-                                        .zip_eq(r_alpha_at_beta_s.values())
-                                        .map(|(((circuit_id, z_b_i_at_beta), combiners), &r_alpha_at_beta)| {
-            let z_b_at_beta = z_b_i_at_beta.iter()
-                                           .zip_eq(&combiners.instance_combiners)
-                                           .map(|(z_b_at_beta, instance_combiner)| {
-                *z_b_at_beta * instance_combiner
-            }).sum::<F>();
-            (*circuit_id, r_alpha_at_beta * z_b_at_beta)
-        }).collect::<BTreeMap<_,_>>();
+        let z_b_s_at_beta = z_b_s
+            .iter()
+            .map(|(circuit_id, z_b_i)| {
+                let z_b_i_s = z_b_i.iter().map(|z_b| evals.get_lc_eval(z_b, beta).unwrap()).collect::<Vec<F>>();
+                (*circuit_id, z_b_i_s)
+            })
+            .collect::<BTreeMap<_, _>>();
+        let batch_z_b_s_at_beta = z_b_s_at_beta
+            .iter()
+            .zip_eq(batch_combiners.values())
+            .zip_eq(r_alpha_at_beta_s.values())
+            .map(|(((circuit_id, z_b_i_at_beta), combiners), &r_alpha_at_beta)| {
+                let z_b_at_beta = z_b_i_at_beta
+                    .iter()
+                    .zip_eq(&combiners.instance_combiners)
+                    .map(|(z_b_at_beta, instance_combiner)| *z_b_at_beta * instance_combiner)
+                    .sum::<F>();
+                (*circuit_id, r_alpha_at_beta * z_b_at_beta)
+            })
+            .collect::<BTreeMap<_, _>>();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
-        let combined_x_at_betas = state.circuit_specific_states.iter()
-                                        .enumerate()
-                                        .map(|(i, (circuit_id, circuit_state))| {
-            let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
-            let combined_x_at_beta = batch_combiners[circuit_id]
-                .instance_combiners
-                .iter()
-                .zip_eq(public_inputs[i].iter())
-                .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
-                .sum::<F>();
-            (circuit_id, combined_x_at_beta)
-        }).collect::<BTreeMap<_,_>>();
+        let combined_x_at_betas = state
+            .circuit_specific_states
+            .iter()
+            .enumerate()
+            .map(|(i, (circuit_id, circuit_state))| {
+                let lag_at_beta = circuit_state.input_domain.evaluate_all_lagrange_coefficients(beta);
+                let combined_x_at_beta = batch_combiners[circuit_id]
+                    .instance_combiners
+                    .iter()
+                    .zip_eq(public_inputs[i].iter())
+                    .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
+                    .sum::<F>();
+                (circuit_id, combined_x_at_beta)
+            })
+            .collect::<BTreeMap<_, _>>();
 
         // We're now going to calculate the lincheck_sumcheck
         // Note that we precalculated a number of terms already to prevent duplicate calculations:
@@ -296,11 +321,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
                     let z_a_j = witness_label(*id, "z_a", j);
                     let w_j = witness_label(*id, "w", j);
-                    circuit_term 
+                    circuit_term
                         .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[id][j]), z_a_j)
                         .add(-t_at_beta_s[id] * v_X_at_beta[id] * instance_combiner, w_j);
                 }
-               circuit_term 
+               circuit_term
                     .add(-t_at_beta_s[id] * combined_x_at_betas[id], LCTerm::One)
                     .add(eta_b * batch_z_b_s_at_beta[id], LCTerm::One);
                 let constraint_domain = state.circuit_specific_states[id].constraint_domain;
@@ -331,15 +356,30 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let v_H_i_at_alpha_time = start_timer!(|| format!("v_H_i_at_alpha {id}"));
             let v_H_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(alpha);
             end_timer!(v_H_i_at_alpha_time);
-    
+
             let v_H_i_at_beta_time = start_timer!(|| format!("v_H_i_at_beta {id}"));
             let v_H_i_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
             end_timer!(v_H_i_at_beta_time);
             let v_H_i_alpha_beta = v_H_i_at_alpha * v_H_i_at_beta;
-    
-            let selector_a = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
-            let selector_b = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
-            let selector_c = Self::get_selector_evaluation(&mut cached_selectors, &largest_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
+
+            let selector_a = Self::get_selector_evaluation(
+                &mut cached_selectors,
+                &largest_non_zero_domain,
+                &circuit_state.non_zero_a_domain,
+                gamma,
+            );
+            let selector_b = Self::get_selector_evaluation(
+                &mut cached_selectors,
+                &largest_non_zero_domain,
+                &circuit_state.non_zero_b_domain,
+                gamma,
+            );
+            let selector_c = Self::get_selector_evaluation(
+                &mut cached_selectors,
+                &largest_non_zero_domain,
+                &circuit_state.non_zero_c_domain,
+                gamma,
+            );
 
             let g_a_label = witness_label(id, "g_a", 0);
             let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
@@ -348,13 +388,52 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_c_label = witness_label(id, "g_c", 0);
             let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
 
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", alpha, beta, gamma, evals, &g_a, v_H_i_alpha_beta, r_a[i], sums[&id].sum_a, selector_a)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", alpha, beta, gamma, evals, &g_b, v_H_i_alpha_beta, r_b[i], sums[&id].sum_b, selector_b)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", alpha, beta, gamma, evals, &g_c, v_H_i_alpha_beta, r_c[i], sums[&id].sum_c, selector_c)?;
+            Self::add_g_m_term(
+                &mut matrix_sumcheck,
+                id,
+                "a",
+                alpha,
+                beta,
+                gamma,
+                evals,
+                &g_a,
+                v_H_i_alpha_beta,
+                r_a[i],
+                sums[&id].sum_a,
+                selector_a,
+            )?;
+            Self::add_g_m_term(
+                &mut matrix_sumcheck,
+                id,
+                "b",
+                alpha,
+                beta,
+                gamma,
+                evals,
+                &g_b,
+                v_H_i_alpha_beta,
+                r_b[i],
+                sums[&id].sum_b,
+                selector_b,
+            )?;
+            Self::add_g_m_term(
+                &mut matrix_sumcheck,
+                id,
+                "c",
+                alpha,
+                beta,
+                gamma,
+                evals,
+                &g_c,
+                v_H_i_alpha_beta,
+                r_c[i],
+                sums[&id].sum_c,
+                selector_c,
+            )?;
 
             linear_combinations.insert(g_a.label.clone(), g_a);
             linear_combinations.insert(g_b.label.clone(), g_b);
-            linear_combinations.insert(g_c.label.clone(), g_c);    
+            linear_combinations.insert(g_c.label.clone(), g_c);
         }
 
         matrix_sumcheck -=
@@ -428,9 +507,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         target_domain: &EvaluationDomain<F>,
         challenge: F,
     ) -> F {
-        *cached_selector_evaluations.entry((target_domain.size, largest_domain.size, challenge)).or_insert({
-            largest_domain.evaluate_selector_polynomial(*target_domain, challenge)
-        })
+        *cached_selector_evaluations
+            .entry((target_domain.size, largest_domain.size, challenge))
+            .or_insert(largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
     }
 }
 

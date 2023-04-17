@@ -85,7 +85,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
-        Ok(Circuit { 
+        Ok(Circuit {
             index_info,
             a,
             b,
@@ -104,23 +104,35 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut map = BTreeMap::new();
         for id in circuit_ids {
             for matrix in ["a", "b", "c"] {
-                map.insert(format!("circuit_{id}_row_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_row_{matrix}"), None, None));
-                map.insert(format!("circuit_{id}_col_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_col_{matrix}"), None, None));
-                map.insert(format!("circuit_{id}_val_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_val_{matrix}"), None, None));
-                map.insert(format!("circuit_{id}_row_col_{matrix}"), PolynomialInfo::new(format!("circuit_{id}_row_col_{matrix}"), None, None));
+                map.insert(
+                    format!("circuit_{id}_row_{matrix}"),
+                    PolynomialInfo::new(format!("circuit_{id}_row_{matrix}"), None, None),
+                );
+                map.insert(
+                    format!("circuit_{id}_col_{matrix}"),
+                    PolynomialInfo::new(format!("circuit_{id}_col_{matrix}"), None, None),
+                );
+                map.insert(
+                    format!("circuit_{id}_val_{matrix}"),
+                    PolynomialInfo::new(format!("circuit_{id}_val_{matrix}"), None, None),
+                );
+                map.insert(
+                    format!("circuit_{id}_row_col_{matrix}"),
+                    PolynomialInfo::new(format!("circuit_{id}_row_col_{matrix}"), None, None),
+                );
             }
         }
         map
     }
 
     pub fn index_polynomial_labels(circuit_ids: Vec<CircuitId>) -> impl Iterator<Item = PolynomialLabel> {
-        circuit_ids.into_iter().flat_map(|id|{
+        circuit_ids.into_iter().flat_map(|id| {
             ["a", "b", "c"].into_iter().flat_map(move |matrix| {
                 [
-                    format!("circuit_{id}_row_{matrix}"), 
+                    format!("circuit_{id}_row_{matrix}"),
                     format!("circuit_{id}_col_{matrix}"),
                     format!("circuit_{id}_val_{matrix}"),
-                    format!("circuit_{id}_row_col_{matrix}")
+                    format!("circuit_{id}_row_col_{matrix}"),
                 ]
             })
         })

@@ -363,7 +363,7 @@ impl<E: PairingEngine> CommitterKey<E> {
     }
 
     pub fn union<'a, T: IntoIterator<Item = &'a Self> + Clone>(committer_keys: T) -> Self {
-        let mut union = CommitterKey::<E>{
+        let mut union = CommitterKey::<E> {
             powers_of_beta_g: vec![],
             lagrange_bases_at_beta_g: BTreeMap::new(),
             powers_of_beta_times_gamma_g: vec![],
@@ -376,8 +376,10 @@ impl<E: PairingEngine> CommitterKey<E> {
         let mut biggest_ck: Option<&CommitterKey<E>> = None;
         let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
         for ck in committer_keys {
-            if biggest_ck.is_none() ||
-               biggest_ck.unwrap().shifted_powers_of_beta_g.as_ref().unwrap().len() < ck.shifted_powers_of_beta_g.as_ref().unwrap().len() {
+            if biggest_ck.is_none()
+                || biggest_ck.unwrap().shifted_powers_of_beta_g.as_ref().unwrap().len()
+                    < ck.shifted_powers_of_beta_g.as_ref().unwrap().len()
+            {
                 biggest_ck = Some(ck);
             }
             union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
@@ -397,7 +399,7 @@ impl<E: PairingEngine> CommitterKey<E> {
             union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
         }
 
-       union 
+        union
     }
 }
 
@@ -527,14 +529,13 @@ impl<E: PairingEngine> VerifierKey<E> {
         let mut bounds_and_prepared_neg_powers = vec![];
         let mut biggest_vk: Option<&VerifierKey<E>> = None;
         for vk in verifier_keys {
-            if biggest_vk.is_none() ||
-                    biggest_vk.unwrap().supported_degree() < vk.supported_degree() {
+            if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree() < vk.supported_degree() {
                 biggest_vk = Some(vk);
             }
             let new_bounds = vk.degree_bounds_and_neg_powers_of_h.clone().unwrap();
             let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.clone().unwrap();
             assert!(new_bounds.len() == new_prep_bounds.len());
-            for ((bound, neg_powers),(_, prep_neg_powers)) in new_bounds.into_iter().zip(new_prep_bounds) {
+            for ((bound, neg_powers), (_, prep_neg_powers)) in new_bounds.into_iter().zip(new_prep_bounds) {
                 if bounds_seen.insert(bound) {
                     bounds_and_neg_powers.push((bound, neg_powers));
                     bounds_and_prepared_neg_powers.push((bound, prep_neg_powers));
@@ -543,7 +544,7 @@ impl<E: PairingEngine> VerifierKey<E> {
         }
 
         let biggest_vk = biggest_vk.unwrap();
-        let mut union = VerifierKey::<E>{
+        let mut union = VerifierKey::<E> {
             vk: biggest_vk.vk.clone(),
             degree_bounds_and_neg_powers_of_h: None,
             degree_bounds_and_prepared_neg_powers_of_h: None,
@@ -559,7 +560,7 @@ impl<E: PairingEngine> VerifierKey<E> {
             bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
-       union 
+        union
     }
 }
 

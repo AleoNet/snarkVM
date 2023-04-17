@@ -17,12 +17,13 @@
 use std::collections::BTreeMap;
 
 use crate::{
+    fft::DensePolynomial,
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{verifier, AHPError, AHPForR1CS},
         prover,
         MarlinMode,
-    }, fft::DensePolynomial,
+    },
 };
 
 use itertools::Itertools;
@@ -34,7 +35,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn num_fourth_round_oracles() -> usize {
         1
     }
-    
+
     /// Output the fourth round message and the next state.
     pub fn prover_fourth_round<R: RngCore>(
         verifier_message: &mut verifier::ThirdMessage<F>,

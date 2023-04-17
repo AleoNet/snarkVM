@@ -16,9 +16,9 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::snark::marlin::{CircuitId, witness_label, MarlinMode};
-use std::collections::BTreeMap;
+use crate::snark::marlin::{witness_label, CircuitId, MarlinMode};
 use itertools::Itertools;
+use std::collections::BTreeMap;
 
 /// Randomizers used to combine circuit-specific and instance-specific elements in the AHP sumchecks
 #[derive(Clone, Debug)]
@@ -58,12 +58,7 @@ pub struct ThirdMessage<F> {
 
 impl<F: PrimeField> ThirdMessage<F> {
     pub fn iter(&self) -> impl Iterator<Item = &F> {
-        self.r_a.iter()
-            .zip_eq(&self.r_b)
-            .zip_eq(&self.r_c)
-            .flat_map(|((r_a, r_b), r_c)|{
-                [r_a, r_b, r_c]
-            })
+        self.r_a.iter().zip_eq(&self.r_b).zip_eq(&self.r_c).flat_map(|((r_a, r_b), r_c)| [r_a, r_b, r_c])
     }
 }
 
@@ -94,7 +89,11 @@ impl<F: PrimeField> QuerySet<F> {
         // We also use an optimization: instead of explicitly calculating z_c, we
         // use the "virtual oracle" z_a * z_b
         Self {
-            batch_sizes: state.circuit_specific_states.iter().map(|(c,s)|(*c, s.batch_size)).collect::<BTreeMap<_,_>>(),
+            batch_sizes: state
+                .circuit_specific_states
+                .iter()
+                .map(|(c, s)| (*c, s.batch_size))
+                .collect::<BTreeMap<_, _>>(),
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),

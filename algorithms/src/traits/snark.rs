@@ -30,7 +30,7 @@ pub trait Prepare {
 
 /// Defines trait that describes preparing from an unprepared version to an orderable prepare version.
 pub trait PrepareOrd {
-    // NOTE: merging this with the Prepare trait is possible but introduces more complexity 
+    // NOTE: merging this with the Prepare trait is possible but introduces more complexity
     type Prepared: Ord;
     fn prepare(&self) -> Self::Prepared;
 }
@@ -130,12 +130,7 @@ pub trait SNARK {
         let mut keys_to_constraints = BTreeMap::new();
         let constraints_vec = vec![constraints];
         keys_to_constraints.insert(proving_key, constraints_vec.as_slice());
-        Self::prove_batch_with_terminator(
-            fs_parameters,
-            &keys_to_constraints,
-            terminator,
-            rng,
-        )
+        Self::prove_batch_with_terminator(fs_parameters, &keys_to_constraints, terminator, rng)
     }
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
@@ -157,10 +152,13 @@ pub trait SNARK {
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let preparation_time = start_timer!(|| "Preparing vks");
-        let prepared_keys_to_inputs = keys_to_inputs.iter().map(|(key, inputs)| {
-            let prepared_key = key.prepare();
-            (prepared_key, *inputs)
-        }).collect::<BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
+        let prepared_keys_to_inputs = keys_to_inputs
+            .iter()
+            .map(|(key, inputs)| {
+                let prepared_key = key.prepare();
+                (prepared_key, *inputs)
+            })
+            .collect::<BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
         end_timer!(preparation_time);
         Self::verify_batch_prepared(fs_parameters, &prepared_keys_to_inputs, proof)
     }

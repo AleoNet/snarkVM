@@ -17,17 +17,8 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
-    fft::{
-        DensePolynomial,
-        EvaluationDomain,
-        Evaluations as EvaluationsOnDomain,
-    },
-    snark::marlin::{
-        Circuit,
-        AHPError,
-        AHPForR1CS, MarlinMode,
-        ahp::verifier,
-    },
+    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    snark::marlin::{ahp::verifier, AHPError, AHPForR1CS, Circuit, MarlinMode},
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::SynthesisResult;
@@ -96,15 +87,12 @@ pub(super) struct Assignments<F>(
     pub(super) PaddedPubInputs<F>,
     pub(super) PrivateInputs<F>,
     pub(super) Za<F>,
-    pub(super) Zb<F>
+    pub(super) Zb<F>,
 );
 
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub(super) fn initialize(
-        indices_and_assignments: BTreeMap<
-            &'a Circuit<F, MM>, 
-            Vec<Assignments<F>>
-        >
+        indices_and_assignments: BTreeMap<&'a Circuit<F, MM>, Vec<Assignments<F>>>,
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
@@ -133,12 +121,12 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                     z_as.push(z_a);
                     z_bs.push(z_b);
                     let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain)
-                            .interpolate();
+                        .interpolate();
                     x_polys.push(x_poly);
                     padded_public_variables.push(padded_public_input);
                     private_variables.push(private_input);
                 }
-                
+
                 let state = CircuitSpecificState {
                     input_domain,
                     constraint_domain: constraint_domains.constraint_domain,
@@ -179,7 +167,9 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     /// Get the public inputs for the entire batch.
     pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
         // We need to export inputs as they live longer than prover_state
-        self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect())
+        self.circuit_specific_states.get(circuit).map(|s| {
+            s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect()
+        })
     }
 
     /// Get the padded public inputs for the entire batch.
@@ -192,6 +182,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         self.circuit_specific_states
             .values_mut()
             .flat_map(|s| s.lhs_polynomials.as_mut().unwrap().iter_mut())
-            .collect::<Vec<_>>().into_iter()
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }

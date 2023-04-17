@@ -55,7 +55,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn num_second_round_oracles() -> usize {
         2
     }
-    
+
     /// Output the degree bounds of oracles in the first round.
     pub fn second_round_polynomial_info(constraint_domain_size: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         [
@@ -88,7 +88,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut sumcheck_lhs = h_1.mul_by_vanishing_poly(max_constraint_domain);
         sumcheck_lhs += &x_g_1;
         debug_assert!(
-            sumcheck_lhs.evaluate_over_domain_by_ref(max_constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
+            sumcheck_lhs
+                .evaluate_over_domain_by_ref(max_constraint_domain)
+                .evaluations
+                .into_iter()
+                .sum::<F>()
+                .is_zero()
         );
 
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
@@ -119,14 +124,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let max_constraint_domain_inverse = state.max_constraint_domain.size_inv;
         let max_constraint_domain = state.max_constraint_domain;
 
-        for (i, ((circuit, circuit_specific_state), oracles)) in state.circuit_specific_states.iter_mut()
-                                        .zip(state.first_round_oracles.as_ref().unwrap().batches.values())
-                                        .enumerate() {
-            let summed_z_m = &mut summed_z_m_and_t[2*i];
+        for (i, ((circuit, circuit_specific_state), oracles)) in state
+            .circuit_specific_states
+            .iter_mut()
+            .zip(state.first_round_oracles.as_ref().unwrap().batches.values())
+            .enumerate()
+        {
+            let summed_z_m = &mut summed_z_m_and_t[2 * i];
             assert!(summed_z_m.circuit_id == circuit.id); // does z_m belong to the right circuit?
             let summed_z_m = core::mem::take(&mut summed_z_m.poly);
 
-            let summed_t = &mut summed_z_m_and_t[2*i + 1];
+            let summed_t = &mut summed_z_m_and_t[2 * i + 1];
             assert!(summed_t.circuit_id == circuit.id); // does t belong to the right circuit?
             let summed_t = core::mem::take(&mut summed_t.poly);
 
@@ -157,8 +165,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 end_timer!(z_time);
 
-                let circuit_specific_lhs = Self::calculate_circuit_specific_lhs(&constraint_domain, fft_precomputation, ifft_precomputation, summed_t, summed_z_m, z, *alpha);
-        
+                let circuit_specific_lhs = Self::calculate_circuit_specific_lhs(
+                    &constraint_domain,
+                    fft_precomputation,
+                    ifft_precomputation,
+                    summed_t,
+                    summed_z_m,
+                    z,
+                    *alpha,
+                );
+
                 // Let H = largest_domain;
                 // Let H_i = domain;
                 // Let v_H := H.vanishing_polynomial();
@@ -166,13 +182,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 // Let s_i := H.selector_polynomial(H_i) = (v_H / v_H_i) * (H_i.size() / H.size());
                 // Let m := masking polynomial
                 // Let c_i := circuit combiner
-                // Let lhs_i := circuit_specific partial left hand size of the lincheck sumcheck, see protocol docs for more details 
+                // Let lhs_i := circuit_specific partial left hand size of the lincheck sumcheck, see protocol docs for more details
 
                 // Instead of just multiplying each lhs_i by `s_i*c_i`, we reorder the lincheck sumcheck to cancel out some terms
                 // This removes a mul and div by v_H operation over each circuit's (max_constraint_domain - constraint_domain)
 
                 // Later on, we divide each `lhs_i` and m by v_H, then multiply by `s_i*c_i` and sum them.
-                // Substituting in s, we get that: 
+                // Substituting in s, we get that:
                 // (\sum_i{lhs_i} + m)/v_H = \sum{h_1_i*v_H + x_g_1_i}
                 // \sum_i{c_i*s_i*(lhs_i/v_H - x_g_1_i)} + (m/v_H - x_g_1_m) = \sum{h_1_i*v_H}
                 // \sum_i{c_i*(H_i.size()/H.size())*(lhs_i/v_H_i - x_g_1_i*v_H/v_H_i)} + (m/v_H - x_g_1_m) = \sum{h_1_i*v_H}
@@ -181,12 +197,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 // (\sum_i{c_i*s_i*lhs_i} + m)/v_H = h_1*v_H + x_g_1
                 // That's what we're computing here.
 
-                let sumcheck_time = start_timer!(|| format!("Compute sumcheck h and g polys for circuit {}", _circuit_id));
+                let sumcheck_time =
+                    start_timer!(|| format!("Compute sumcheck h and g polys for circuit {}", _circuit_id));
                 let (mut h_1_i, mut xg_1_i) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
                 xg_1_i = xg_1_i.mul_by_vanishing_poly(max_constraint_domain);
                 let (mut xg_1_i, remainder) = xg_1_i.divide_by_vanishing_poly(constraint_domain).unwrap();
                 assert!(remainder.is_zero());
-                let multiplier = circuit_combiner * constraint_domain.size_as_field_element * max_constraint_domain_inverse;
+                let multiplier =
+                    circuit_combiner * constraint_domain.size_as_field_element * max_constraint_domain_inverse;
                 cfg_iter_mut!(h_1_i.coeffs).for_each(|c| *c *= multiplier);
                 cfg_iter_mut!(xg_1_i.coeffs).for_each(|c| *c *= multiplier);
                 end_timer!(sumcheck_time);
@@ -271,7 +289,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let circuit_constraint_domain = circuit_specific_state.constraint_domain;
             let circuit_input_domain = circuit_specific_state.input_domain;
             job_pool.add_job(move || {
-                let summed_z_m_poly_time = start_timer!(|| format!("Compute z_m poly for circuit {:?}", _circuit_id_z_m));
+                let summed_z_m_poly_time =
+                    start_timer!(|| format!("Compute z_m poly for circuit {:?}", _circuit_id_z_m));
                 let summed_z_m = cfg_iter!(first_msg_i)
                     .zip_eq(instance_combiners)
                     .map(|(entry, combiner)| {
@@ -283,7 +302,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         } else {
                             assert!(z_b.degree() < circuit_constraint_domain.size());
                         }
-    
+
                         // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
                         // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
                         // This is better since it reduces the number of required
@@ -304,7 +323,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         };
                         // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
                         cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
-    
+
                         // Multiply by linear combination coefficient.
                         cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= combiner);
 
@@ -313,9 +332,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         summed_z_m
                     })
                     .sum::<DensePolynomial<_>>();
-                LincheckPoly { circuit_id: circuit.id, poly: summed_z_m}
+                LincheckPoly { circuit_id: circuit.id, poly: summed_z_m }
             });
-    
+
             job_pool.add_job(move || {
                 let t_poly_time = start_timer!(|| format!("Compute t poly for circuit {:?}", _circuit_id_t));
 
@@ -330,7 +349,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     ifft_precomputation,
                 );
                 end_timer!(t_poly_time);
-                LincheckPoly { circuit_id: circuit.id, poly: t}
+                LincheckPoly { circuit_id: circuit.id, poly: t }
             });
         }
 

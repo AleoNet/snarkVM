@@ -28,8 +28,8 @@ use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, TestRng};
 
 use criterion::Criterion;
 
-use std::collections::BTreeMap;
 use itertools::Itertools;
+use std::collections::BTreeMap;
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
@@ -116,11 +116,9 @@ fn snark_batch_prove(c: &mut Criterion) {
             all_circuits.push(circuits);
         }
         // We need to create references to the circuits we just created
-        let all_circuit_refs = (0..circuit_batch_size).map(|i|{
-            (0..instance_batch_size).map(|j|{
-                &all_circuits[i][j]
-            }).collect_vec()
-        }).collect_vec();
+        let all_circuit_refs = (0..circuit_batch_size)
+            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
+            .collect_vec();
 
         for i in 0..circuit_batch_size {
             keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
@@ -189,11 +187,9 @@ fn snark_batch_verify(c: &mut Criterion) {
             all_inputs.push(inputs);
         }
         // We need to create references to the circuits and inputs we just created
-        let all_circuit_refs = (0..circuit_batch_size).map(|i|{
-            (0..instance_batch_size).map(|j|{
-                &all_circuits[i][j]
-            }).collect_vec()
-        }).collect_vec();
+        let all_circuit_refs = (0..circuit_batch_size)
+            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
+            .collect_vec();
 
         for i in 0..circuit_batch_size {
             keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());

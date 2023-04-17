@@ -32,33 +32,23 @@ pub struct FirstOracles<F: PrimeField> {
 }
 
 impl<F: PrimeField> FirstOracles<F> {
-
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
     #[allow(clippy::needless_collect)]
     pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'static, F>> {
-        let t = self.batches
-            .values_mut()
-            .flat_map(|b| b.iter_mut())
-            .flat_map(|b| b.iter_for_commit())
-            .collect::<Vec<_>>();
+        let t =
+            self.batches.values_mut().flat_map(|b| b.iter_mut()).flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
         t.into_iter().chain(self.mask_poly.clone().map(Into::into))
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
     pub fn iter_for_open(&self) -> impl Iterator<Item = &'_ LabeledPolynomial<F>> {
-        self.batches
-            .values()
-            .flat_map(|b| b.iter())
-            .flat_map(|b| b.iter_for_open())
-            .chain(self.mask_poly.as_ref())
+        self.batches.values().flat_map(|b| b.iter()).flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.batches
-            .values()
-            .all(|b| b.iter().all(|b| b.matches_info(info)))
+        self.batches.values().all(|b| b.iter().all(|b| b.matches_info(info)))
             && self.mask_poly.as_ref().map_or(true, |p| Some(p.info()) == info.get(p.label()))
     }
 }
@@ -153,15 +143,11 @@ impl<F: PrimeField> MatrixGs<F> {
 impl<F: PrimeField> ThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        self.gs.values().flat_map(|gs| {
-            [&gs.g_a, &gs.g_b, &gs.g_c].into_iter()
-        })
+        self.gs.values().flat_map(|gs| [&gs.g_a, &gs.g_b, &gs.g_c].into_iter())
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.gs
-            .values()
-            .all(|b| b.matches_matrix_info(info))
+        self.gs.values().all(|b| b.matches_matrix_info(info))
     }
 }
 
