@@ -328,11 +328,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
         for (i, (&id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
-            let v_H_i_at_alpha_time = start_timer!(|| "v_H_i_at_alpha");
+            let v_H_i_at_alpha_time = start_timer!(|| format!("v_H_i_at_alpha {id}"));
             let v_H_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(alpha);
             end_timer!(v_H_i_at_alpha_time);
     
-            let v_H_i_at_beta_time = start_timer!(|| "v_H_i_at_beta");
+            let v_H_i_at_beta_time = start_timer!(|| format!("v_H_i_at_beta {id}"));
             let v_H_i_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
             end_timer!(v_H_i_at_beta_time);
             let v_H_i_alpha_beta = v_H_i_at_alpha * v_H_i_at_beta;

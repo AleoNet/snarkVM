@@ -63,9 +63,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
             index_info,
         } = Self::index_helper(c)?;
-        let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
-
         let id = CircuitId { 0: Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap(), };
+        let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
             .map(|(label, evals)| arithmetize_matrix(id, &label, evals))
@@ -75,7 +74,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         end_timer!(joint_arithmetization_time);
 
-        let fft_precomp_time = start_timer!(|| "Precomputing roots of unity");
+        let fft_precomp_time = start_timer!(|| format!("Precomputing roots of unity {id}"));
 
         let (fft_precomputation, ifft_precomputation) = Self::fft_precomputation(
             constraint_domain.size(),

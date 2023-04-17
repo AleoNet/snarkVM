@@ -37,7 +37,7 @@ pub struct PreparedCircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
 
 impl<E: PairingEngine, MM: MarlinMode> Ord for PreparedCircuitVerifyingKey<E, MM> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.orig_vk.hash.cmp(&other.orig_vk.hash)
+        self.orig_vk.id.cmp(&other.orig_vk.id)
     }
 }
 
@@ -49,7 +49,7 @@ impl<E: PairingEngine, MM: MarlinMode> PartialOrd for PreparedCircuitVerifyingKe
 
 impl<E: PairingEngine, MM: MarlinMode> PartialEq for PreparedCircuitVerifyingKey<E, MM> {
     fn eq(&self, other: &Self) -> bool {
-        self.orig_vk.hash == other.orig_vk.hash
+        self.orig_vk.id == other.orig_vk.id
     }
 }
 

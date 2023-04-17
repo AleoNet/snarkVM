@@ -35,6 +35,7 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
+    // NOTE: The circuit verifying key's circuit_info and circuit id are also stored in Circuit for convenience.
     /// The circuit itself.
     pub circuit: Arc<Circuit<E::Fr, MM>>,
     /// The committer key for this index, trimmed from the universal SRS.

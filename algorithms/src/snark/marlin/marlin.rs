@@ -114,7 +114,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 Some(coefficient_support.as_slice()),
             )?;
 
-            let commit_time = start_timer!(|| "Commit to index polynomials");
+            let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
                 SonicKZG10::<E, FS>::commit(&committer_key, indexed_circuit.iter().map(Into::into), None)?;
             end_timer!(commit_time);
@@ -126,7 +126,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 circuit_commitments,
                 verifier_key,
                 mode: PhantomData,
-                hash: indexed_circuit.id.clone(),
+                id: indexed_circuit.id.clone(),
             };
             circuit_verifying_keys.push(circuit_verifying_key.clone());
 
@@ -279,7 +279,7 @@ where
             lc.add(c, poly.label());
         }
 
-        let circuit_id = vec![verifying_key.hash];
+        let circuit_id = vec![verifying_key.id];
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
@@ -307,7 +307,7 @@ where
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
-        let circuit_id = vec![verifying_key.hash];
+        let circuit_id = vec![verifying_key.id];
         let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id);
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
@@ -317,7 +317,7 @@ where
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().unwrap();
 
-        let circuit_id = verifying_key.hash;
+        let circuit_id = verifying_key.id;
         let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, circuit_id, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
@@ -651,7 +651,7 @@ where
         let batch_sizes_vec = proof.batch_sizes()?;
         let mut batch_sizes = BTreeMap::new();
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
-            batch_sizes.insert(vk.orig_vk.hash, batch_sizes_vec[i]);
+            batch_sizes.insert(vk.orig_vk.id, batch_sizes_vec[i]);
 
             if public_inputs_i.is_empty() {
                 return Err(SNARKError::EmptyBatch);
@@ -682,7 +682,7 @@ where
  
             let input_domain = 
                 EvaluationDomain::<E::Fr>::new(vk.orig_vk.circuit_info.num_public_inputs).unwrap();
-            input_domains.insert(vk.orig_vk.hash.clone(), input_domain);
+            input_domains.insert(vk.orig_vk.id.clone(), input_domain);
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
                 public_inputs_i
@@ -700,14 +700,14 @@ where
                     })
                     .unzip()
             };
-            let circuit_id = vk.orig_vk.hash;
+            let circuit_id = vk.orig_vk.id;
             public_inputs.insert(circuit_id, parsed_public_inputs_i);
             padded_public_vec.push(padded_public_inputs_i);
             circuit_infos.insert(circuit_id, &vk.orig_vk.circuit_info);
             circuit_ids.push(circuit_id);
         }
         for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes.values()).enumerate() {
-            inputs_and_batch_sizes.insert(vk.orig_vk.hash, (batch_size, padded_public_vec[i].as_slice()));
+            inputs_and_batch_sizes.insert(vk.orig_vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
 
         let verifier_key = VerifierKey::<E>::union(vks);
@@ -901,60 +901,23 @@ pub mod test {
     use super::*;
     use crate::{
         crypto_hash::PoseidonSponge,
-        snark::marlin::{MarlinHidingMode, MarlinSNARK},
+        snark::marlin::{MarlinHidingMode, MarlinSNARK, TestCircuit},
         AlgebraicSponge,
         SRS,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_fields::Field;
-    use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use core::ops::MulAssign;
 
     const ITERATIONS: usize = 10;
 
-    #[derive(Copy, Clone)]
-    pub struct Circuit<F: Field> {
-        pub a: Option<F>,
-        pub b: Option<F>,
-        pub num_constraints: usize,
-        pub num_variables: usize,
-    }
-
-    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-            let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
-            let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
-            let c = cs.alloc_input(
-                || "c",
-                || {
-                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
-
-                    a.mul_assign(&b);
-                    Ok(a)
-                },
-            )?;
-
-            for i in 0..(self.num_variables - 3) {
-                let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
-            }
-
-            for i in 0..(self.num_constraints - 1) {
-                cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + c);
-            }
-
-            Ok(())
-        }
-    }
-
     type FS = PoseidonSponge<Fq, 2, 1>;
     type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 
     #[test]
     fn marlin_snark_test() {
-        let mut rng = TestRng::default();
+        let mut rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
             // Construct the circuit.
@@ -964,7 +927,10 @@ pub mod test {
             let mut c = a;
             c.mul_assign(&b);
 
-            let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25 };
+            let mul_depth = 1;
+            let num_constraints = 100;
+            let num_variables = 25;
+            let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
             // Generate the circuit parameters.
 
@@ -976,7 +942,7 @@ pub mod test {
             let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&fs_parameters, &vk.clone(), [c].as_ref(), &proof).unwrap(),
+                TestSNARK::verify(&fs_parameters, &vk.clone(), public_inputs.as_slice(), &proof).unwrap(),
                 "The native verification check fails."
             );
         }

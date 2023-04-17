@@ -51,8 +51,7 @@ pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
     pub verifier_key: sonic_pc::VerifierKey<E>,
     #[doc(hidden)]
     pub mode: PhantomData<MM>,
-    // TODO: we are also storing the hash in proving_key.circuit. Investigate how to consolidate
-    pub hash: CircuitId,
+    pub id: CircuitId,
 }
 
 impl<E: PairingEngine, MM: MarlinMode> PrepareOrd for CircuitVerifyingKey<E, MM> {
@@ -243,7 +242,7 @@ impl<'de, E: PairingEngine, MM: MarlinMode> Deserialize<'de> for CircuitVerifyin
 
 impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitVerifyingKey<E, MM> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.hash.cmp(&other.hash)
+        self.id.cmp(&other.id)
     }
 }
 

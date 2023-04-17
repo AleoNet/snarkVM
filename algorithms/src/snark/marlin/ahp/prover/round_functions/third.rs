@@ -211,7 +211,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             (&arithmetization.evals_on_K.row, &arithmetization.evals_on_K.col, &arithmetization.evals_on_K.row_col);
 
         job_pool.add_job(|| {
-            let b_poly_time = start_timer!(|| format!("Computing a poly for {label}"));
+            let b_poly_time = start_timer!(|| format!("Computing b poly for {label}"));
             let alpha_beta = alpha * beta;
             let b_poly = {
                 let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)

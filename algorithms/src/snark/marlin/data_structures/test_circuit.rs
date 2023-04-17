@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// TODO: I can use this in bench, in tests.rs, in marlin.rs at the bottom
-
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use rand::{Rng, CryptoRng};
