@@ -33,7 +33,7 @@ pub struct ThirdMessage<F: PrimeField> {
     pub sums: BTreeMap<CircuitId, MatrixSums<F>>,
 }
 
-impl<'b, F: PrimeField> ToBytes for ThirdMessage<F> {
+impl<F: PrimeField> ToBytes for ThirdMessage<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

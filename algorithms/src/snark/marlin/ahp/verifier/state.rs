@@ -42,7 +42,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
 #[derive(Debug)]
 pub struct State<F: PrimeField, MM: MarlinMode> {
     pub(crate) circuit_specific_states: BTreeMap<CircuitId, CircuitSpecificState<F>>,
-    pub(crate) largest_constraint_domain: EvaluationDomain<F>,
+    pub(crate) max_constraint_domain: EvaluationDomain<F>,
     pub(crate) largest_non_zero_domain: EvaluationDomain<F>,
 
     pub(crate) first_round_message: Option<FirstMessage<F>>,

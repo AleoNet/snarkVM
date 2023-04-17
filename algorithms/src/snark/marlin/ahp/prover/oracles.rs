@@ -150,7 +150,7 @@ impl<F: PrimeField> MatrixGs<F> {
     }
 }
 
-impl<'a, F: PrimeField> ThirdOracles<F> {
+impl<F: PrimeField> ThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         self.gs.values().flat_map(|gs| {

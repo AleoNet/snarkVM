@@ -116,9 +116,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
 
         let new_state = State {
-            circuit_specific_states: circuit_specific_states,
-            largest_constraint_domain: max_constraint_domain,
-            largest_non_zero_domain: largest_non_zero_domain,
+            circuit_specific_states,
+            max_constraint_domain,
+            largest_non_zero_domain,
 
             first_round_message: Some(message.clone()),
             second_round_message: None,
@@ -132,13 +132,13 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the second message and next round state.
-    pub fn verifier_second_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
-        assert!(!state.largest_constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!state.max_constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = SecondMessage { beta };
         state.second_round_message = Some(message);
@@ -147,7 +147,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
@@ -173,7 +173,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_fourth_round<'a, BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<State<TargetField, MM>, AHPError> {

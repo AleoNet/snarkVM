@@ -127,7 +127,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut circuit_specific_batches = BTreeMap::new();
         for ((circuit, state), r_b_s) in state.circuit_specific_states.iter_mut().zip(r_b_s) {
             let batches = batches[batch_consumed_so_far..][..state.batch_size].to_vec();
-            circuit_specific_batches.insert(circuit.id.clone(), batches);
+            circuit_specific_batches.insert(circuit.id, batches);
             batch_consumed_so_far += state.batch_size;
             state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
             end_timer!(round_time);

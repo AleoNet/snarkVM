@@ -43,11 +43,10 @@ impl std::fmt::Display for CircuitId {
 
 impl CircuitId {
     pub fn from_witness_label(witness_label: &str) -> Self {
-        CircuitId {
-            0: <[u8;32]>::from_hex(witness_label.split("_")
-                .collect::<Vec<&str>>()[1])
-                .expect("Decoding circuit_id failed"),
-        }
+        CircuitId (<[u8;32]>::from_hex(witness_label.split('_')
+            .collect::<Vec<&str>>()[1])
+            .expect("Decoding circuit_id failed"),
+        )
     }
 }
 
@@ -213,7 +212,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let id = CircuitId { 0: Self::hash(&index_info, &a, &b, &c).unwrap(), };
+        let id = CircuitId(Self::hash(&index_info, &a, &b, &c).unwrap());
         Ok(Circuit {
             index_info,
             a,

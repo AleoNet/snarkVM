@@ -46,7 +46,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 type Sum<F> = F;
-type LHS<F> = DensePolynomial<F>;
+type Lhs<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
@@ -162,7 +162,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 sum_b,
                 sum_c,
             };
-            sums.insert(circuit_a.id.clone(), matrix_sum);
+            sums.insert(circuit_a.id, matrix_sum);
             state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
             let matrix_gs = prover::MatrixGs {
                 g_a,
@@ -193,7 +193,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         largest_non_zero_domain_size: F,
         fft_precomputation: &FFTPrecomputation<F>,
         ifft_precomputation: &IFFTPrecomputation<F>,
-    ) -> (Sum<F>, LHS<F>, Gpoly<F>){
+    ) -> (Sum<F>, Lhs<F>, Gpoly<F>){
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));

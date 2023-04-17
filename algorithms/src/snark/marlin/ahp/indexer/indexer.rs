@@ -63,11 +63,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
             index_info,
         } = Self::index_helper(c)?;
-        let id = CircuitId { 0: Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap(), };
+        let id = CircuitId(Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap());
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(id, &label, evals))
+            .map(|(label, evals)| arithmetize_matrix(id, label, evals))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
@@ -113,7 +113,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         map
     }
 
-    pub fn index_polynomial_labels<'a>(circuit_ids: Vec<CircuitId>) -> impl Iterator<Item = PolynomialLabel> {
+    pub fn index_polynomial_labels(circuit_ids: Vec<CircuitId>) -> impl Iterator<Item = PolynomialLabel> {
         circuit_ids.into_iter().flat_map(|id|{
             ["a", "b", "c"].into_iter().flat_map(move |matrix| {
                 [

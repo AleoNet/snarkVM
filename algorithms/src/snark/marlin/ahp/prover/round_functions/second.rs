@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::convert::TryInto;
 use std::collections::BTreeMap;
 
 use crate::{
@@ -110,7 +109,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         (oracles, state)
     }
 
-    fn calculate_lhs<'a>(
+    fn calculate_lhs(
         state: &mut prover::State<F, MM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
         mut summed_z_m_and_t: Vec<LincheckPoly<F>>,
@@ -118,7 +117,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> (DensePolynomial<F>, DensePolynomial<F>) {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain_inverse = state.max_constraint_domain.size_inv;
-        let max_constraint_domain = state.max_constraint_domain.clone();
+        let max_constraint_domain = state.max_constraint_domain;
 
         for (i, ((circuit, circuit_specific_state), oracles)) in state.circuit_specific_states.iter_mut()
                                         .zip(state.first_round_oracles.as_ref().unwrap().batches.values())
@@ -134,8 +133,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let circuit_combiner = batch_combiners[&circuit.id].circuit_combiner;
             let instance_combiners = batch_combiners[&circuit.id].instance_combiners.clone();
             let x_polys = core::mem::take(&mut circuit_specific_state.x_polys);
-            let input_domain = circuit_specific_state.input_domain.clone();
-            let constraint_domain = circuit_specific_state.constraint_domain.clone();
+            let input_domain = circuit_specific_state.input_domain;
+            let constraint_domain = circuit_specific_state.constraint_domain;
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
 
@@ -205,7 +204,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
-        let mask_poly = &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense().clone());
+        let mask_poly = &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense());
         let (h_1_mask, xg_1_mask) = mask_poly.divide_by_vanishing_poly(max_constraint_domain).unwrap();
         h_1_sum += &h_1_mask;
         xg_1_sum += &xg_1_mask;
@@ -335,7 +334,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             });
         }
 
-        job_pool.execute_all().try_into().unwrap()
+        job_pool.execute_all()
     }
 
     fn calculate_t(

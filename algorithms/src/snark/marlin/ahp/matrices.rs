@@ -293,7 +293,7 @@ mod tests {
                 &constraint_domain_elements,
                 &constraint_domain_eq_poly_vals,
             );
-            let dummy_id = CircuitId { 0: [0;32] };
+            let dummy_id = CircuitId([0;32]);
             let arith = arithmetize_matrix(dummy_id, label, evals);
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {

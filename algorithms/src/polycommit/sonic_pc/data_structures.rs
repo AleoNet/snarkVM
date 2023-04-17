@@ -373,12 +373,11 @@ impl<E: PairingEngine> CommitterKey<E> {
             max_degree: 0,
         };
         let mut enforced_degree_bounds = vec![];
-        let mut biggest_ck = None;
+        let mut biggest_ck: Option<&CommitterKey<E>> = None;
         let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
         for ck in committer_keys {
-            if biggest_ck.is_none() {
-                biggest_ck = Some(ck);
-            } else if biggest_ck.unwrap().shifted_powers_of_beta_g.as_ref().unwrap().len() < ck.shifted_powers_of_beta_g.as_ref().unwrap().len() {
+            if biggest_ck.is_none() ||
+               biggest_ck.unwrap().shifted_powers_of_beta_g.as_ref().unwrap().len() < ck.shifted_powers_of_beta_g.as_ref().unwrap().len() {
                 biggest_ck = Some(ck);
             }
             union.lagrange_bases_at_beta_g.append(&mut ck.lagrange_bases_at_beta_g.clone());
@@ -392,7 +391,7 @@ impl<E: PairingEngine> CommitterKey<E> {
         union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.clone();
         union.max_degree = biggest_ck.max_degree;
 
-        if enforced_degree_bounds.len() > 0 {
+        if !enforced_degree_bounds.is_empty() {
             enforced_degree_bounds.sort();
             union.enforced_degree_bounds = Some(enforced_degree_bounds);
             union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
@@ -526,11 +525,10 @@ impl<E: PairingEngine> VerifierKey<E> {
         let mut bounds_seen = HashSet::<usize>::new();
         let mut bounds_and_neg_powers = vec![];
         let mut bounds_and_prepared_neg_powers = vec![];
-        let mut biggest_vk = None;
+        let mut biggest_vk: Option<&VerifierKey<E>> = None;
         for vk in verifier_keys {
-            if biggest_vk.is_none() {
-                biggest_vk = Some(vk);
-            } else if biggest_vk.unwrap().supported_degree() < vk.supported_degree() {
+            if biggest_vk.is_none() ||
+                    biggest_vk.unwrap().supported_degree() < vk.supported_degree() {
                 biggest_vk = Some(vk);
             }
             let new_bounds = vk.degree_bounds_and_neg_powers_of_h.clone().unwrap();
@@ -553,11 +551,11 @@ impl<E: PairingEngine> VerifierKey<E> {
             max_degree: biggest_vk.max_degree,
         };
 
-        if bounds_and_neg_powers.len() > 0 {
+        if !bounds_and_neg_powers.is_empty() {
             bounds_and_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
         }
-        if bounds_and_prepared_neg_powers.len() > 0 {
+        if !bounds_and_prepared_neg_powers.is_empty() {
             bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }

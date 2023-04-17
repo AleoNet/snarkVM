@@ -36,9 +36,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
     
     /// Output the fourth round message and the next state.
-    pub fn prover_fourth_round<'a, R: RngCore>(
+    pub fn prover_fourth_round<R: RngCore>(
         verifier_message: &mut verifier::ThirdMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'_, F, MM>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
         let mut lhs_sum = DensePolynomial::zero();

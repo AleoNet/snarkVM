@@ -97,9 +97,9 @@ fn snark_batch_prove(c: &mut Criterion) {
         let mut all_circuits = Vec::with_capacity(circuit_batch_size);
         let mut keys_to_constraints = BTreeMap::new();
         for i in 0..circuit_batch_size {
-            let mut num_constraints = num_constraints_base + i;
-            let mut num_variables = num_variables_base + i;
-            let mut mul_depth = mul_depth_base + i;
+            let num_constraints = num_constraints_base + i;
+            let num_variables = num_variables_base + i;
+            let mul_depth = mul_depth_base + i;
             // if i > 0 {
             //     num_constraints += 5000;
             //     num_variables += 5000;

@@ -80,7 +80,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let indexed_circuit = AHPForR1CS::<E::Fr, MM>::index(circuit)?;
         let srs = Self::universal_setup(&indexed_circuit.max_degree())?;
-        return Self::circuit_setup(&srs, circuit);
+        Self::circuit_setup(&srs, circuit)
     }
 
     // TODO: implement optimizations resulting from batching 
@@ -126,14 +126,14 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 circuit_commitments,
                 verifier_key,
                 mode: PhantomData,
-                id: indexed_circuit.id.clone(),
+                id: indexed_circuit.id,
             };
             circuit_verifying_keys.push(circuit_verifying_key.clone());
 
             let circuit_proving_key = CircuitProvingKey {
                 circuit: Arc::new(indexed_circuit),
                 circuit_commitment_randomness,
-                circuit_verifying_key: circuit_verifying_key,
+                circuit_verifying_key,
                 committer_key: Arc::new(committer_key),
             };
             circuit_proving_keys.push(circuit_proving_key);
@@ -190,7 +190,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         sponge
     }
 
-    fn absorb_labeled_with_msg<'a>(
+    fn absorb_labeled_with_msg(
         comms: &[LabeledCommitment<Commitment<E>>],
         message: &prover::ThirdMessage<E::Fr>,
         sponge: &mut FS,
@@ -210,7 +210,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         end_timer!(sponge_time);
     }
 
-    fn absorb_with_msg<'a>(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
+    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
         for sum in msg.sums.values() {
@@ -359,7 +359,7 @@ where
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
-        if keys_to_constraints.len() == 0 {
+        if keys_to_constraints.is_empty() {
             return Err(SNARKError::EmptyBatch);
         }
 
@@ -383,7 +383,7 @@ where
             let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let padded_public_input = prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let circuit_id = pk.circuit.id;
-            batch_sizes.insert(circuit_id.clone(), batch_size); // Cloning circuit_id for Proof::new to consume 
+            batch_sizes.insert(circuit_id, batch_size);
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
             total_instances += batch_size;
@@ -429,8 +429,8 @@ where
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
             &batch_sizes,
             &circuit_infos,
-            prover_state.max_constraint_domain.clone(),
-            prover_state.max_non_zero_domain.clone(),
+            prover_state.max_constraint_domain,
+            prover_state.max_non_zero_domain,
             &mut sponge,
         )?;
         // --------------------------------------------------------------------
@@ -644,7 +644,7 @@ where
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
 
-        if keys_to_inputs.len() == 0 {
+        if keys_to_inputs.is_empty() {
             return Err(SNARKError::EmptyBatch);
         }
 
@@ -682,7 +682,7 @@ where
  
             let input_domain = 
                 EvaluationDomain::<E::Fr>::new(vk.orig_vk.circuit_info.num_public_inputs).unwrap();
-            input_domains.insert(vk.orig_vk.id.clone(), input_domain);
+            input_domains.insert(vk.orig_vk.id, input_domain);
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
                 public_inputs_i
@@ -783,7 +783,7 @@ where
         let mut sponge = Self::init_sponge(
             fs_parameters,
             &inputs_and_batch_sizes,
-            &circuit_commitments.as_slice(),
+            circuit_commitments.as_slice(),
         );
 
         // --------------------------------------------------------------------

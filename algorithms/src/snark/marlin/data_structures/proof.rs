@@ -140,7 +140,7 @@ pub struct Evaluations<F: PrimeField> {
     pub g_c_evals: Vec<F>,
 }
 
-impl<'a, F: PrimeField> Evaluations<F> {
+impl<F: PrimeField> Evaluations<F> {
     fn serialize_with_mode<W: snarkvm_utilities::Write>(
         &self,
         mut writer: W,
@@ -179,7 +179,7 @@ impl<'a, F: PrimeField> Evaluations<F> {
     }
 }
 
-impl<'a, F: PrimeField> Evaluations<F> {
+impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_sizes: BTreeMap<CircuitId, usize>) -> Self {
         let mut z_b_evals_collect: BTreeMap<CircuitId, Vec<F>> = BTreeMap::new();
         let mut g_a_evals = Vec::with_capacity(batch_sizes.len());
@@ -208,7 +208,7 @@ impl<'a, F: PrimeField> Evaluations<F> {
                 g_c_evals.push(*value);
             }
         }
-        let z_b_evals = z_b_evals_collect.into_iter().map(|(_, v)| v).collect();
+        let z_b_evals = z_b_evals_collect.into_values().collect();
         Self { z_b_evals, g_1_eval: map["g_1"], g_a_evals, g_b_evals, g_c_evals }
     }
 
@@ -221,11 +221,11 @@ impl<'a, F: PrimeField> Evaluations<F> {
             let z_b_eval_circuit = &self.z_b_evals[circuit_index];
             let instance_index = label[index + 4..].parse::<usize>().unwrap();
             z_b_eval_circuit.get(instance_index).copied()
-        } else if let Some(_) = label.find("g_a") {
+        } else if label.contains("g_a") {
             self.g_a_evals.get(circuit_index).copied()
-        } else if let Some(_) = label.find("g_b") {
+        } else if label.contains("g_b") {
             self.g_b_evals.get(circuit_index).copied()
-        } else if let Some(_) = label.find("g_c") {
+        } else if label.contains("g_c") {
             self.g_c_evals.get(circuit_index).copied()
         } else {
             None
@@ -242,7 +242,7 @@ impl<'a, F: PrimeField> Evaluations<F> {
     }
 }
 
-impl<'a, F: PrimeField> Valid for Evaluations<F> {
+impl<F: PrimeField> Valid for Evaluations<F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
         self.g_1_eval.check()?;
@@ -271,7 +271,7 @@ pub struct Proof<E: PairingEngine> {
     pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<'a, E: PairingEngine> Proof<E> {
+impl<E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
         batch_sizes_map: BTreeMap<CircuitId, usize>,
@@ -308,7 +308,7 @@ impl<'a, E: PairingEngine> Proof<E> {
     }
 }
 
-impl<'a, E: PairingEngine> CanonicalSerialize for Proof<E> {
+impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         CanonicalSerialize::serialize_with_mode(&self.batch_sizes, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
@@ -329,7 +329,7 @@ impl<'a, E: PairingEngine> CanonicalSerialize for Proof<E> {
     }
 }
 
-impl<'a, E: PairingEngine> Valid for Proof<E> {
+impl<E: PairingEngine> Valid for Proof<E> {
     fn check(&self) -> Result<(), SerializationError> {
         self.batch_sizes.check()?;
         self.commitments.check()?;
@@ -339,7 +339,7 @@ impl<'a, E: PairingEngine> Valid for Proof<E> {
     }
 }
 
-impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<E> {
+impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -357,13 +357,13 @@ impl<'a, E: PairingEngine> CanonicalDeserialize for Proof<E> {
     }
 }
 
-impl<'a, E: PairingEngine> ToBytes for Proof<E> {
+impl<E: PairingEngine> ToBytes for Proof<E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         Self::serialize_compressed(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<'a, E: PairingEngine> FromBytes for Proof<E> {
+impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

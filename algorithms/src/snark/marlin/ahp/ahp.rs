@@ -175,14 +175,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// (1) simple comitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
     /// (2) virtual commitments for the lincheck_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
     #[allow(non_snake_case)]
-    pub fn construct_linear_combinations<'a, E: EvaluationsProvider<F>>(
+    pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_inputs: &BTreeMap<CircuitId, Vec<Vec<F>>>,
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
-        let largest_constraint_domain = state.largest_constraint_domain;
+        let largest_constraint_domain = state.max_constraint_domain;
         let largest_non_zero_domain = state.largest_non_zero_domain;
         let public_inputs = state.circuit_specific_states.iter().map(|(circuit_id, circuit_state)| {
             let input_domain = circuit_state.input_domain;
@@ -381,7 +381,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         sum: F,
         selector: F,
     ) -> Result<(), AHPError> {
-        let g_at_gamma = evals.get_lc_eval(g_m, gamma.clone())?;
+        let g_at_gamma = evals.get_lc_eval(g_m, gamma)?;
         let b_term = gamma * g_at_gamma + sum; // Xg_m(X) + sum_m
         let lhs_a = Self::construct_lhs(id, m, alpha, beta, v_h_i_alpha_beta, b_term, selector);
         *matrix_sumcheck += (r, &lhs_a);

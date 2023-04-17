@@ -81,7 +81,7 @@ pub struct QuerySet<F: PrimeField> {
     pub matrix_sumcheck_query: (String, F),
 }
 
-impl<'a, F: PrimeField> QuerySet<F> {
+impl<F: PrimeField> QuerySet<F> {
     pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
