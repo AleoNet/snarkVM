@@ -44,11 +44,6 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                     // Note that this expression handles the wrapping case, where the dividend is `I::MIN` and the divisor is `-1` and the result should be `I::MIN`.
                     Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
                 } else {
-                    // Ensure that `other` is not zero.
-                    // Note that all other implementations of `div_wrapped` and `div_checked` invoke this check.
-                    // TODO: This check is redundant. By checking that the remainder is less than `other` (divisor), we implicitly check that `other` is non-zero.
-                    E::assert_neq(other, &Self::zero());
-                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     self.unsigned_division_via_witness(other).0
                 }
             }
@@ -83,6 +78,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         }
 
         // Ensure that the remainder is less than the divisor.
+        // Note that if this check is satisfied and `other` is an unsigned integer, then `other` is not zero.
         E::assert(remainder.is_less_than(other));
 
         // Return the quotient and remainder of `self` and `other`.

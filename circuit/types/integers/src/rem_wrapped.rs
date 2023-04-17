@@ -42,19 +42,7 @@ impl<E: Environment, I: IntegerType> RemWrapped<Self> for Integer<E, I> {
                     // The remainder takes on the same sign as `self` because the division operation rounds towards zero.
                     Self::ternary(&!self.msb(), &signed_remainder, &Self::zero().sub_wrapped(&signed_remainder))
                 } else {
-                    // Check that `other` is not zero.
-                    // Note that all other implementations of `rem_wrapped` and `rem_checked` invoke this check.
-                    E::assert_neq(other, &Self::zero());
-
-                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
-                    if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
-                        self.unsigned_division_via_witness(other).1
-                    } else {
-                        Self {
-                            bits_le: self.unsigned_binary_long_division(other).1.to_lower_bits_le(I::BITS as usize),
-                            phantom: Default::default(),
-                        }
-                    }
+                    self.unsigned_division_via_witness(other).1
                 }
             }
         }
