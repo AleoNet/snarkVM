@@ -234,7 +234,7 @@ where
         .map_err(SNARKError::from)
     }
 
-    /// Prove that the verifying key indeed includes a part of the reference string,
+    /// Prove that the [VerifyingKey] indeed includes a part of the reference string,
     /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
     fn prove_vk(
         fs_parameters: &Self::FSParameters,
@@ -278,7 +278,7 @@ where
         Ok(Self::Certificate::new(certificate))
     }
 
-    /// Verify that the verifying key indeed includes a part of the reference string,
+    /// Verify that the [VerifyingKey] indeed includes a part of the reference string,
     /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         fs_parameters: &Self::FSParameters,
