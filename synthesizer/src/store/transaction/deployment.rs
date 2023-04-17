@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::{helpers::memory_map::MemoryMap, TransitionMemory};
 use crate::{
     atomic_write_batch,
     block::Transaction,
@@ -23,8 +25,7 @@ use crate::{
     program::Program,
     snark::{Certificate, Proof, VerifyingKey},
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransitionMemory,
+        helpers::{Map, MapRead},
         TransitionStorage,
         TransitionStore,
     },
@@ -456,6 +457,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 }
 
 /// An in-memory deployment storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 #[allow(clippy::type_complexity)]
 pub struct DeploymentMemory<N: Network> {
@@ -481,6 +483,7 @@ pub struct DeploymentMemory<N: Network> {
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, ProgramID<N>>;

@@ -20,6 +20,8 @@ pub use deployment::*;
 mod execution;
 pub use execution::*;
 
+#[cfg(feature = "memory-map")]
+use crate::store::{helpers::memory_map::MemoryMap, TransitionMemory};
 use crate::{
     atomic_write_batch,
     block::Transaction,
@@ -28,8 +30,7 @@ use crate::{
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransitionMemory,
+        helpers::{Map, MapRead},
         TransitionStorage,
         TransitionStore,
     },
@@ -190,6 +191,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
 }
 
 /// An in-memory transaction storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 pub struct TransactionMemory<N: Network> {
     /// The mapping of `transaction ID` to `transaction type`.
@@ -200,6 +202,7 @@ pub struct TransactionMemory<N: Network> {
     execution_store: ExecutionStore<N, ExecutionMemory<N>>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, TransactionType>;

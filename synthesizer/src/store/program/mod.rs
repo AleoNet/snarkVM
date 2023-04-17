@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::helpers::memory_map::MemoryMap;
 use crate::{
     atomic_write_batch,
     cow_to_cloned,
     cow_to_copied,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -536,6 +538,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 }
 
 /// An in-memory program state storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 pub struct ProgramMemory<N: Network> {
     /// The program ID map.
@@ -554,6 +557,7 @@ pub struct ProgramMemory<N: Network> {
     dev: Option<u16>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
@@ -580,7 +584,7 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map
     }
-    
+
     /// Returns the program index map.
     fn program_index_map(&self) -> &Self::ProgramIndexMap {
         &self.program_index_map

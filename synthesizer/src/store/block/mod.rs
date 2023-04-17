@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::{helpers::memory_map::MemoryMap, TransactionMemory, TransitionMemory};
 use crate::{
     atomic_write_batch,
     block::{Block, Header, Transactions},
@@ -21,11 +23,9 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransactionMemory,
+        helpers::{Map, MapRead},
         TransactionStorage,
         TransactionStore,
-        TransitionMemory,
         TransitionStorage,
         TransitionStore,
     },
@@ -521,6 +521,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 }
 
 /// An in-memory block storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
     /// The mapping of `block height` to `state root`.
@@ -547,6 +548,7 @@ pub struct BlockMemory<N: Network> {
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type StateRootMap = MemoryMap<u32, N::StateRoot>;

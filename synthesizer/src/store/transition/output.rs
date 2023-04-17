@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::helpers::memory_map::MemoryMap;
 use crate::{
     atomic_write_batch,
     block::Output,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -259,6 +261,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
 }
 
 /// An in-memory transition output storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 #[allow(clippy::type_complexity)]
 pub struct OutputMemory<N: Network> {
@@ -282,6 +285,7 @@ pub struct OutputMemory<N: Network> {
     dev: Option<u16>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;

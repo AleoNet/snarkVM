@@ -20,13 +20,15 @@ pub use input::*;
 mod output;
 pub use output::*;
 
+#[cfg(feature = "memory-map")]
+use crate::store::helpers::memory_map::MemoryMap;
 use crate::{
     atomic_write_batch,
     block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
     snark::Proof,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -252,6 +254,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
 }
 
 /// An in-memory transition storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 pub struct TransitionMemory<N: Network> {
     /// The transition program IDs and function names.
@@ -274,6 +277,7 @@ pub struct TransitionMemory<N: Network> {
     reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;

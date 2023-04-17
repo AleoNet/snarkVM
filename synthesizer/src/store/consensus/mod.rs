@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::{BlockMemory, ProgramMemory, TransactionMemory, TransitionMemory};
 use crate::store::{
-    BlockMemory,
     BlockStorage,
     BlockStore,
-    ProgramMemory,
     ProgramStorage,
     ProgramStore,
-    TransactionMemory,
     TransactionStorage,
     TransactionStore,
-    TransitionMemory,
     TransitionStorage,
     TransitionStore,
 };
@@ -91,6 +89,7 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
 }
 
 /// An in-memory consensus storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 pub struct ConsensusMemory<N: Network> {
     /// The program store.
@@ -99,6 +98,7 @@ pub struct ConsensusMemory<N: Network> {
     block_store: BlockStore<N, BlockMemory<N>>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
     type ProgramStorage = ProgramMemory<N>;

@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::helpers::memory_map::MemoryMap;
 use crate::{
     atomic_write_batch,
     block::Input,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -255,6 +257,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
 }
 
 /// An in-memory transition input storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 pub struct InputMemory<N: Network> {
     /// The mapping of `transition ID` to `input IDs`.
@@ -277,6 +280,7 @@ pub struct InputMemory<N: Network> {
     dev: Option<u16>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> InputStorage<N> for InputMemory<N> {
     type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;

@@ -106,6 +106,7 @@ path = "../console"
 
 [dev-dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
+features = [ "memory-map" ]
 
 [dev-dependencies.curl]
 version = "0.4.34"

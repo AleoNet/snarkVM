@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(feature = "memory-map")]
+use crate::store::{helpers::memory_map::MemoryMap, TransitionMemory};
 use crate::{
     atomic_write_batch,
     block::{Transaction, Transition},
@@ -22,8 +24,7 @@ use crate::{
     process::{Execution, Fee},
     snark::Proof,
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransitionMemory,
+        helpers::{Map, MapRead},
         TransitionStorage,
         TransitionStore,
     },
@@ -293,6 +294,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 }
 
 /// An in-memory execution storage.
+#[cfg(feature = "memory-map")]
 #[derive(Clone)]
 #[allow(clippy::type_complexity)]
 pub struct ExecutionMemory<N: Network> {
@@ -308,6 +310,7 @@ pub struct ExecutionMemory<N: Network> {
     fee_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
 }
 
+#[cfg(feature = "memory-map")]
 #[rustfmt::skip]
 impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
