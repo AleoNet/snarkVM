@@ -241,7 +241,11 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{FinalizeRegisters, ProvingKey, Registers, Store, StoreCircuit, VerifyingKey};
+    use crate::{
+        program::instruction::operation::tests::{sample_finalize_registers, sample_registers},
+        ProvingKey,
+        VerifyingKey,
+    };
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
@@ -302,83 +306,6 @@ mod tests {
         Ok((stack, operands))
     }
 
-    /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.
-    fn sample_registers(
-        stack: &Stack<CurrentNetwork>,
-        literal_a: &Literal<CurrentNetwork>,
-        literal_b: &Literal<CurrentNetwork>,
-        mode_a: Option<circuit::Mode>,
-        mode_b: Option<circuit::Mode>,
-    ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
-        use crate::{Authorization, CallStack};
-        use console::program::{Identifier, Plaintext, Value};
-
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
-        // Initialize the registers.
-        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
-            CallStack::evaluate(Authorization::new(&[]))?,
-            stack.get_register_types(&function_name)?.clone(),
-        );
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-        let r1 = Register::Locator(1);
-
-        // Initialize the console values.
-        let value_a = Value::Plaintext(Plaintext::from(literal_a));
-        let value_b = Value::Plaintext(Plaintext::from(literal_b));
-
-        // Store the values in the console registers.
-        registers.store(stack, &r0, value_a.clone())?;
-        registers.store(stack, &r1, value_b.clone())?;
-
-        if let (Some(mode_a), Some(mode_b)) = (mode_a, mode_b) {
-            use circuit::Inject;
-
-            // Initialize the circuit values.
-            let circuit_a = circuit::Value::new(mode_a, value_a);
-            let circuit_b = circuit::Value::new(mode_b, value_b);
-
-            // Store the values in the circuit registers.
-            registers.store_circuit(stack, &r0, circuit_a)?;
-            registers.store_circuit(stack, &r1, circuit_b)?;
-        }
-
-        Ok(registers)
-    }
-
-    /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
-    fn sample_finalize_registers(
-        stack: &Stack<CurrentNetwork>,
-        literal_a: &Literal<CurrentNetwork>,
-        literal_b: &Literal<CurrentNetwork>,
-    ) -> Result<FinalizeRegisters<CurrentNetwork>> {
-        use console::program::{Identifier, Plaintext, Value};
-
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
-        // Initialize the registers.
-        let mut finalize_registers =
-            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(&function_name)?.clone());
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-        let r1 = Register::Locator(1);
-
-        // Initialize the console values.
-        let value_a = Value::Plaintext(Plaintext::from(literal_a));
-        let value_b = Value::Plaintext(Plaintext::from(literal_b));
-
-        // Store the values in the console registers.
-        finalize_registers.store(stack, &r0, value_a)?;
-        finalize_registers.store(stack, &r1, value_b)?;
-
-        Ok(finalize_registers)
-    }
-
     fn check_assert<const VARIANT: u8>(
         operation: impl FnOnce(Vec<Operand<CurrentNetwork>>) -> AssertInstruction<CurrentNetwork, VARIANT>,
         opcode: Opcode,
@@ -403,7 +330,7 @@ mod tests {
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to evaluate the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_a, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &[(literal_a, None), (literal_a, None)]).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -417,7 +344,8 @@ mod tests {
             }
 
             // Attempt to execute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+            let mut registers =
+                sample_registers(&stack, &[(literal_a, Some(*mode_a)), (literal_a, Some(*mode_a))]).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -450,7 +378,7 @@ mod tests {
             <CurrentAleo as circuit::Environment>::reset();
 
             // Attempt to finalize the valid operand case.
-            let mut registers = sample_finalize_registers(&stack, literal_a, literal_a).unwrap();
+            let mut registers = sample_finalize_registers(&stack, &[literal_a, literal_a]).unwrap();
             let result_c = operation.finalize(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -466,7 +394,7 @@ mod tests {
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to evaluate the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_b, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &[(literal_a, None), (literal_b, None)]).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -480,7 +408,8 @@ mod tests {
             }
 
             // Attempt to execute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
+            let mut registers =
+                sample_registers(&stack, &[(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))]).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -513,7 +442,7 @@ mod tests {
             <CurrentAleo as circuit::Environment>::reset();
 
             // Attempt to finalize the valid operand case.
-            let mut registers = sample_finalize_registers(&stack, literal_a, literal_b).unwrap();
+            let mut registers = sample_finalize_registers(&stack, &[literal_a, literal_b]).unwrap();
             let result_c = operation.finalize(&stack, &mut registers);
 
             // Ensure the result is correct.

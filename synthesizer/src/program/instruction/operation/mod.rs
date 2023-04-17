@@ -769,3 +769,82 @@ crate::operation!(
         (U128, U128) => U128,
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FinalizeRegisters, Registers, Stack, Store, StoreCircuit};
+    use circuit::AleoV0;
+    use console::{
+        network::Testnet3,
+        program::{Literal, Register},
+    };
+
+    type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
+
+    /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.
+    pub(crate) fn sample_registers(
+        stack: &Stack<CurrentNetwork>,
+        values: &[(&Literal<CurrentNetwork>, Option<circuit::Mode>)],
+    ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
+        use crate::{Authorization, CallStack};
+        use console::program::{Identifier, Plaintext, Value};
+
+        // Initialize the function name.
+        let function_name = Identifier::from_str("run")?;
+
+        // Initialize the registers.
+        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
+            CallStack::evaluate(Authorization::new(&[]))?,
+            stack.get_register_types(&function_name)?.clone(),
+        );
+
+        // For each value,
+        for (index, (literal, mode)) in values.iter().enumerate() {
+            // Initialize the register
+            let register = Register::Locator(index as u64);
+            // Initialize the console value.
+            let value = Value::Plaintext(Plaintext::from(*literal));
+            // Store the value in the console registers.
+            registers.store(stack, &register, value.clone())?;
+            // If the mode is not `None`,
+            if let Some(mode) = mode {
+                use circuit::Inject;
+
+                // Initialize the circuit value.
+                let circuit_value = circuit::Value::new(*mode, value);
+                // Store the value in the circuit registers.
+                registers.store_circuit(stack, &register, circuit_value)?;
+            }
+        }
+        Ok(registers)
+    }
+
+    /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
+    pub(crate) fn sample_finalize_registers(
+        stack: &Stack<CurrentNetwork>,
+        literals: &[&Literal<CurrentNetwork>],
+    ) -> Result<FinalizeRegisters<CurrentNetwork>> {
+        use console::program::{Identifier, Plaintext, Value};
+
+        // Initialize the function name.
+        let function_name = Identifier::from_str("run")?;
+
+        // Initialize the registers.
+        let mut finalize_registers =
+            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(&function_name)?.clone());
+
+        // For each literal,
+        for (index, literal) in literals.iter().enumerate() {
+            // Initialize the register
+            let register = Register::Locator(index as u64);
+            // Initialize the console value.
+            let value = Value::Plaintext(Plaintext::from(*literal));
+            // Store the value in the console registers.
+            finalize_registers.store(stack, &register, value)?;
+        }
+
+        Ok(finalize_registers)
+    }
+}

@@ -279,7 +279,11 @@ impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{FinalizeRegisters, ProvingKey, Registers, VerifyingKey};
+    use crate::{
+        program::instruction::operation::tests::{sample_finalize_registers, sample_registers},
+        ProvingKey,
+        VerifyingKey,
+    };
     use circuit::{AleoV0, Eject};
     use console::network::Testnet3;
 
@@ -332,72 +336,6 @@ mod tests {
         Ok((stack, operands, r1))
     }
 
-    /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.
-    fn sample_registers(
-        stack: &Stack<CurrentNetwork>,
-        literal: &Literal<CurrentNetwork>,
-        mode: Option<circuit::Mode>,
-    ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
-        use crate::{Authorization, CallStack};
-        use console::program::Identifier;
-
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
-        // Initialize the registers.
-        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
-            CallStack::evaluate(Authorization::new(&[]))?,
-            stack.get_register_types(&function_name)?.clone(),
-        );
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-
-        // Initialize the console values.
-        let value = Value::Plaintext(Plaintext::from(literal));
-
-        // Store the values in the console registers.
-        registers.store(stack, &r0, value.clone())?;
-
-        if let Some(mode_a) = mode {
-            use circuit::Inject;
-
-            // Initialize the circuit values.
-            let circuit = circuit::Value::new(mode_a, value);
-
-            // Store the values in the circuit registers.
-            registers.store_circuit(stack, &r0, circuit)?;
-        }
-
-        Ok(registers)
-    }
-
-    /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
-    fn sample_finalize_registers(
-        stack: &Stack<CurrentNetwork>,
-        literal_a: &Literal<CurrentNetwork>,
-    ) -> Result<FinalizeRegisters<CurrentNetwork>> {
-        use console::program::Identifier;
-
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
-        // Initialize the registers.
-        let mut finalize_registers =
-            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(&function_name)?.clone());
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-
-        // Initialize the console values.
-        let value_a = Value::Plaintext(Plaintext::from(literal_a));
-
-        // Store the values in the console registers.
-        finalize_registers.store(stack, &r0, value_a)?;
-
-        Ok(finalize_registers)
-    }
-
     fn check_hash<const VARIANT: u8>(
         operation: impl FnOnce(
             Vec<Operand<CurrentNetwork>>,
@@ -422,15 +360,15 @@ mod tests {
         let destination_operand = Operand::Register(destination);
 
         // Attempt to evaluate the valid operand case.
-        let mut evaluate_registers = sample_registers(&stack, literal, None).unwrap();
+        let mut evaluate_registers = sample_registers(&stack, &[(literal, None)]).unwrap();
         let result_a = operation.evaluate(&stack, &mut evaluate_registers);
 
         // Attempt to execute the valid operand case.
-        let mut execute_registers = sample_registers(&stack, literal, Some(*mode)).unwrap();
+        let mut execute_registers = sample_registers(&stack, &[(literal, Some(*mode))]).unwrap();
         let result_b = operation.execute::<CurrentAleo>(&stack, &mut execute_registers);
 
         // Attempt to finalize the valid operand case.
-        let mut finalize_registers = sample_finalize_registers(&stack, literal).unwrap();
+        let mut finalize_registers = sample_finalize_registers(&stack, &[literal]).unwrap();
         let result_c = operation.finalize(&stack, &mut finalize_registers);
 
         // Check that either all operations failed, or all operations succeeded.
