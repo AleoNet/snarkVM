@@ -241,7 +241,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ProvingKey, Registers, Store, StoreCircuit, VerifyingKey};
+    use crate::{FinalizeRegisters, ProvingKey, Registers, Store, StoreCircuit, VerifyingKey};
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
@@ -281,6 +281,12 @@ mod tests {
             function {function_name}:
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
+                {opcode} {r0} {r1};
+                finalize {r0} {r1};
+
+            finalize {function_name}:
+                input {r0} as {type_a}.public;
+                input {r1} as {type_b}.public;
                 {opcode} {r0} {r1};
         "
         ))?;
@@ -343,6 +349,36 @@ mod tests {
         Ok(registers)
     }
 
+    /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
+    fn sample_finalize_registers(
+        stack: &Stack<CurrentNetwork>,
+        literal_a: &Literal<CurrentNetwork>,
+        literal_b: &Literal<CurrentNetwork>,
+    ) -> Result<FinalizeRegisters<CurrentNetwork>> {
+        use console::program::{Identifier, Plaintext, Value};
+
+        // Initialize the function name.
+        let function_name = Identifier::from_str("run")?;
+
+        // Initialize the registers.
+        let mut finalize_registers =
+            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(&function_name)?.clone());
+
+        // Initialize the registers.
+        let r0 = Register::Locator(0);
+        let r1 = Register::Locator(1);
+
+        // Initialize the console values.
+        let value_a = Value::Plaintext(Plaintext::from(literal_a));
+        let value_b = Value::Plaintext(Plaintext::from(literal_b));
+
+        // Store the values in the console registers.
+        finalize_registers.store(stack, &r0, value_a)?;
+        finalize_registers.store(stack, &r1, value_b)?;
+
+        Ok(finalize_registers)
+    }
+
     fn check_assert<const VARIANT: u8>(
         operation: impl FnOnce(Vec<Operand<CurrentNetwork>>) -> AssertInstruction<CurrentNetwork, VARIANT>,
         opcode: Opcode,
@@ -366,7 +402,7 @@ mod tests {
 
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
-            // Attempt to compute the valid operand case.
+            // Attempt to evaluate the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_a, None, None).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
@@ -380,7 +416,7 @@ mod tests {
                 _ => panic!("Found an invalid 'assert' variant in the test"),
             }
 
-            // Attempt to compute the valid operand case.
+            // Attempt to execute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
@@ -412,10 +448,24 @@ mod tests {
 
             // Reset the circuit.
             <CurrentAleo as circuit::Environment>::reset();
+
+            // Attempt to finalize the valid operand case.
+            let mut registers = sample_finalize_registers(&stack, literal_a, literal_a).unwrap();
+            let result_c = operation.finalize(&stack, &mut registers);
+
+            // Ensure the result is correct.
+            match VARIANT {
+                0 => assert!(result_c.is_ok(), "Instruction '{operation}' failed (console): {literal_a} {literal_a}"),
+                1 => assert!(
+                    result_c.is_err(),
+                    "Instruction '{operation}' should have failed (console): {literal_a} {literal_a}"
+                ),
+                _ => panic!("Found an invalid 'assert' variant in the test"),
+            }
         }
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
-            // Attempt to compute the valid operand case.
+            // Attempt to evaluate the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_b, None, None).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
@@ -429,7 +479,7 @@ mod tests {
                 _ => panic!("Found an invalid 'assert' variant in the test"),
             }
 
-            // Attempt to compute the valid operand case.
+            // Attempt to execute the valid operand case.
             let mut registers = sample_registers(&stack, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
@@ -461,6 +511,20 @@ mod tests {
 
             // Reset the circuit.
             <CurrentAleo as circuit::Environment>::reset();
+
+            // Attempt to finalize the valid operand case.
+            let mut registers = sample_finalize_registers(&stack, literal_a, literal_b).unwrap();
+            let result_c = operation.finalize(&stack, &mut registers);
+
+            // Ensure the result is correct.
+            match VARIANT {
+                0 => assert!(
+                    result_c.is_err(),
+                    "Instruction '{operation}' should have failed (console): {literal_a} {literal_b}"
+                ),
+                1 => assert!(result_c.is_ok(), "Instruction '{operation}' failed (console): {literal_a} {literal_b}"),
+                _ => panic!("Found an invalid 'assert' variant in the test"),
+            }
         }
     }
 
