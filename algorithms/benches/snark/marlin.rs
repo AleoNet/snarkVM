@@ -100,11 +100,6 @@ fn snark_batch_prove(c: &mut Criterion) {
             let num_constraints = num_constraints_base + i;
             let num_variables = num_variables_base + i;
             let mul_depth = mul_depth_base + i;
-            // if i > 0 {
-            //     num_constraints += 5000;
-            //     num_variables += 5000;
-            //     mul_depth += 5000;
-            // }
 
             let mut circuits = Vec::with_capacity(instance_batch_size);
             for _ in 0..instance_batch_size {

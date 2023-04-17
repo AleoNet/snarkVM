@@ -509,7 +509,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> F {
         *cached_selector_evaluations
             .entry((target_domain.size, largest_domain.size, challenge))
-            .or_insert(largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
+            .or_insert_with(|| largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
     }
 }
 
