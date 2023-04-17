@@ -46,6 +46,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 } else {
                     // Ensure that `other` is not zero.
                     // Note that all other implementations of `div_wrapped` and `div_checked` invoke this check.
+                    // TODO: This check is redundant. By checking that the remainder is less than `other` (divisor), we implicitly check that `other` is non-zero.
                     E::assert_neq(other, &Self::zero());
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
