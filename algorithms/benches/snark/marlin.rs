@@ -86,7 +86,7 @@ fn snark_batch_prove(c: &mut Criterion) {
         let mul_depth_base = 1;
         let rng = &mut TestRng::default();
 
-        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
@@ -97,14 +97,13 @@ fn snark_batch_prove(c: &mut Criterion) {
         let mut all_circuits = Vec::with_capacity(circuit_batch_size);
         let mut keys_to_constraints = BTreeMap::new();
         for i in 0..circuit_batch_size {
-            let num_constraints = num_constraints_base + i;
-            let num_variables = num_variables_base + i;
-            let mul_depth = mul_depth_base + i;
-            // values used for testing performance on large circuits
+            let mut num_constraints = num_constraints_base + i;
+            let mut num_variables = num_variables_base + i;
+            let mut mul_depth = mul_depth_base + i;
             // if i > 0 {
-            //     num_constraints = num_constraints_base + 10000;
-            //     num_variables = num_variables_base + 10000;
-            //     mul_depth = mul_depth_base + 10000;
+            //     num_constraints += 5000;
+            //     num_variables += 5000;
+            //     mul_depth += 5000;
             // }
 
             let mut circuits = Vec::with_capacity(instance_batch_size);
@@ -159,12 +158,12 @@ fn snark_batch_verify(c: &mut Criterion) {
         let num_variables_base = 25;
         let rng = &mut TestRng::default();
 
-        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let circuit_batch_size = 100;
-        let instance_batch_size = 100;
+        let circuit_batch_size = 5;
+        let instance_batch_size = 5;
 
         let mut pks = Vec::with_capacity(circuit_batch_size);
         let mut vks = Vec::with_capacity(circuit_batch_size);
