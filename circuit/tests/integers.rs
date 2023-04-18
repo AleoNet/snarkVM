@@ -27,6 +27,7 @@ extern crate snarkvm_circuit;
 mod integers {
     use snarkvm_circuit::{FromStr, U64};
     use snarkvm_circuit_environment::{Environment, FormalCircuit, FromBits, Inject, Mode, ToBits, Transcribe};
+    use snarkvm_circuit_types::Modulo;
     use snarkvm_console_types_integers::{AddWrapped, MulWrapped, One, SubWrapped, Zero, U64 as ConsoleU64};
 
     // for ops see circuit/types/integers/{add_checked,add_wrapped}.rs
@@ -469,6 +470,22 @@ mod integers {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// div. (checked) u64 private with u64 private ");
+        println!("{}", output);
+    }
+
+    // for op see circuit/types/integers/modulo.rs
+
+    // var.modulo(var)
+    #[test]
+    fn modulo_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a.modulo(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// mod u64 private with u64 private");
         println!("{}", output);
     }
 
