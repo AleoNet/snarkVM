@@ -878,7 +878,7 @@ finalize transfer_public:
     }
 
     #[test]
-    fn test_deployment_exceeds_maximum_number_of_mappings() {
+    fn test_deployment_with_maximum_number_of_mappings() {
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
@@ -888,7 +888,7 @@ finalize transfer_public:
         // Fetch a deployment transaction.
         let deployment_transaction = {
             let mut program_string = "program test.aleo;".to_string();
-            for i in 0..=(2.pow(PROGRAM_DEPTH as u32)) {
+            for i in 0..(2.pow(PROGRAM_DEPTH as u32)) {
                 program_string
                     .push_str(&format!("mapping map_{i}:key left as field.public;value right as field.public;"));
             }
@@ -939,7 +939,7 @@ finalize transfer_public:
         assert_eq!(expected_storage_tree.root(), duplicate_storage_tree.root());
 
         // Check that the storage tree contains the mappings.
-        for i in 0..=(2.pow(PROGRAM_DEPTH as u32)) {
+        for i in 0..(2.pow(PROGRAM_DEPTH as u32)) {
             assert!(
                 vm.program_store()
                     .contains_mapping(
