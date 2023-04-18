@@ -63,7 +63,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
             index_info,
         } = Self::index_helper(c)?;
-        let id = CircuitId(Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap());
+        let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()

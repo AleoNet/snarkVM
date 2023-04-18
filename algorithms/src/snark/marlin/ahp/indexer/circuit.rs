@@ -105,13 +105,13 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         a: &Matrix<F>,
         b: &Matrix<F>,
         c: &Matrix<F>,
-    ) -> Result<[u8; 32], SerializationError> {
+    ) -> Result<CircuitId, SerializationError> {
         let mut sha2 = sha2::Sha256::new();
         index_info.serialize_uncompressed(&mut sha2)?;
         a.serialize_uncompressed(&mut sha2)?;
         b.serialize_uncompressed(&mut sha2)?;
         c.serialize_uncompressed(&mut sha2)?;
-        Ok(sha2.finalize().into())
+        Ok(CircuitId(sha2.finalize().into()))
     }
 
     /// The maximum degree required to represent polynomials of this index.
@@ -212,7 +212,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let id = CircuitId(Self::hash(&index_info, &a, &b, &c).unwrap());
+        let id = Self::hash(&index_info, &a, &b, &c)?;
         Ok(Circuit {
             index_info,
             a,
