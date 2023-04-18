@@ -59,7 +59,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             end_timer!(squeeze_time);
 
             let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
-            assert!(circuit_combiner.len() == num_c_combiner);
+            assert_eq!(circuit_combiner.len(), num_c_combiner);
             let mut combiners =
                 BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
             if num_c_combiner == 1 {

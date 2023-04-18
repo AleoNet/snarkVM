@@ -131,11 +131,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .enumerate()
         {
             let summed_z_m = &mut summed_z_m_and_t[2 * i];
-            assert!(summed_z_m.circuit_id == circuit.id); // does z_m belong to the right circuit?
+            assert_eq!(summed_z_m.circuit_id, circuit.id); // does z_m belong to the right circuit?
             let summed_z_m = core::mem::take(&mut summed_z_m.poly);
 
             let summed_t = &mut summed_z_m_and_t[2 * i + 1];
-            assert!(summed_t.circuit_id == circuit.id); // does t belong to the right circuit?
+            assert_eq!(summed_t.circuit_id, circuit.id); // does t belong to the right circuit?
             let summed_t = core::mem::take(&mut summed_t.poly);
 
             let circuit_combiner = batch_combiners[&circuit.id].circuit_combiner;
@@ -275,7 +275,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let max_constraint_domain = state.max_constraint_domain;
         let first_msg = state.first_round_oracles.as_ref().unwrap();
 
-        assert!(batch_combiners.len() == state.circuit_specific_states.len());
+        assert_eq!(batch_combiners.len(), state.circuit_specific_states.len());
         let mut job_pool = ExecutionPool::with_capacity(2 * state.circuit_specific_states.len());
 
         for (circuit, circuit_specific_state) in state.circuit_specific_states.iter() {
