@@ -126,6 +126,8 @@ pub trait Network:
     /// The maximum number of entries in a record.
     const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
 
+    /// The maximum number of mappings in a program.
+    const MAX_MAPPINGS: usize = 32;
     /// The maximum number of functions in a program.
     const MAX_FUNCTIONS: usize = 31;
     /// The maximum number of operands in an instruction.

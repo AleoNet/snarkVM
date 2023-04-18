@@ -47,6 +47,7 @@ use rayon::prelude::*;
 /// The depth of the Merkle tree for the programs.
 pub const PROGRAMS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for each program.
+/// Note: 2 ^ PROGRAM_DEPTH must be greater than or equal to N::MAX_MAPPINGS.
 pub const PROGRAM_DEPTH: u8 = 5;
 // TODO (raychu86): Handle different Merkle tree depths for different keys types.
 //  i.e. `u8` and `address` keys should have different depths.
