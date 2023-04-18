@@ -98,22 +98,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (j, (z_a, z_b, private_variables, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
             {
-                let witness_label_w = witness_label(circuit.id, "w", j);
-                let witness_label_za = witness_label(circuit.id, "z_a", j);
-                let witness_label_zb = witness_label(circuit.id, "z_b", j);
+                let w_label = witness_label(circuit.id, "w", j);
+                let za_label = witness_label(circuit.id, "z_a", j);
+                let zb_label = witness_label(circuit.id, "z_b", j);
                 job_pool.add_job(move || {
-                    Self::calculate_w(witness_label_w, private_variables, &x_poly, c_domain, i_domain, circuit)
+                    Self::calculate_w(w_label, private_variables, &x_poly, c_domain, i_domain, circuit)
                 });
-                job_pool.add_job(move || Self::calculate_z_m(witness_label_za, z_a, c_domain, circuit, None));
+                job_pool.add_job(move || Self::calculate_z_m(za_label, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);
-                job_pool.add_job(move || Self::calculate_z_m(witness_label_zb, z_b, c_domain, circuit, Some(r_b)));
+                job_pool.add_job(move || Self::calculate_z_m(zb_label, z_b, c_domain, circuit, Some(r_b)));
                 if MM::ZK {
                     circuit_r_b_s.push(r_b);
                 }
             }
             r_b_s.push(circuit_r_b_s);
         }
-        let batches = job_pool
+        let mut batches = job_pool
             .execute_all()
             .into_iter()
             .tuples()
@@ -127,12 +127,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), state.total_instances);
 
-        let mut batch_consumed_so_far = 0;
         let mut circuit_specific_batches = BTreeMap::new();
         for ((circuit, state), r_b_s) in state.circuit_specific_states.iter_mut().zip(r_b_s) {
-            let batches = batches[batch_consumed_so_far..][..state.batch_size].to_vec();
+            let batches = batches.drain(0..state.batch_size).collect_vec();
             circuit_specific_batches.insert(circuit.id, batches);
-            batch_consumed_so_far += state.batch_size;
             state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
             end_timer!(round_time);
         }

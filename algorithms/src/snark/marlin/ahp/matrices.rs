@@ -19,7 +19,10 @@
 use crate::{
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::marlin::ahp::{indexer::Matrix, CircuitId, UnnormalizedBivariateLagrangePoly},
+    snark::marlin::{
+        ahp::{indexer::Matrix, AHPForR1CS, CircuitId, UnnormalizedBivariateLagrangePoly},
+        MarlinHidingMode,
+    },
 };
 use itertools::Itertools;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
@@ -217,16 +220,14 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     end_timer!(matrix_time);
 
-    let label_row = format!("circuit_{id}_row_{label}");
-    let label_col = format!("circuit_{id}_col_{label}");
-    let label_val = format!("circuit_{id}_val_{label}");
-    let label_row_col = format!("circuit_{id}_row_col_{label}");
+    let mut labels: Vec<String> =
+        AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(&[label], vec![id]).collect_vec();
 
     MatrixArithmetization {
-        row: LabeledPolynomial::new(label_row, row, None, None),
-        col: LabeledPolynomial::new(label_col, col, None, None),
-        val: LabeledPolynomial::new(label_val, val, None, None),
-        row_col: LabeledPolynomial::new(label_row_col, row_col, None, None),
+        row: LabeledPolynomial::new(core::mem::take(&mut labels[0]), row, None, None),
+        col: LabeledPolynomial::new(core::mem::take(&mut labels[1]), col, None, None),
+        val: LabeledPolynomial::new(core::mem::take(&mut labels[2]), val, None, None),
+        row_col: LabeledPolynomial::new(core::mem::take(&mut labels[3]), row_col, None, None),
         evals_on_K: matrix_evals,
     }
 }

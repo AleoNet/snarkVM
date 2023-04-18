@@ -41,6 +41,13 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
     mode: PhantomData<MM>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct VerifierChallenges<F: Field> {
+    alpha: F,
+    beta: F,
+    gamma: F,
+}
+
 pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
     format!("circuit_{circuit_id}_{poly}_{i:0>8}")
 }
@@ -182,7 +189,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
         let largest_constraint_domain = state.max_constraint_domain;
-        let largest_non_zero_domain = state.largest_non_zero_domain;
+        let max_non_zero_domain = state.largest_non_zero_domain;
         let public_inputs = state
             .circuit_specific_states
             .iter()
@@ -225,7 +232,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = BTreeMap::new();
-        let mut cached_selectors = BTreeMap::new();
+        let mut selectors = BTreeMap::new();
 
         // Lincheck sumcheck:
         let lincheck_time = start_timer!(|| "Lincheck");
@@ -329,7 +336,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     .add(-t_at_beta_s[id] * combined_x_at_betas[id], LCTerm::One)
                     .add(eta_b * batch_z_b_s_at_beta[id], LCTerm::One);
                 let constraint_domain = state.circuit_specific_states[id].constraint_domain;
-                let selector = Self::get_selector_evaluation(&mut cached_selectors, &largest_constraint_domain, &constraint_domain, beta);
+                let selector = selector_evals(&mut selectors, &largest_constraint_domain, &constraint_domain, beta);
                 circuit_term *= selector;
                 lincheck_sumcheck += (c.circuit_combiner, &circuit_term);
             }
@@ -360,26 +367,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let v_H_i_at_beta_time = start_timer!(|| format!("v_H_i_at_beta {id}"));
             let v_H_i_at_beta = circuit_state.constraint_domain.evaluate_vanishing_polynomial(beta);
             end_timer!(v_H_i_at_beta_time);
-            let v_H_i_alpha_beta = v_H_i_at_alpha * v_H_i_at_beta;
+            let v_H_i = v_H_i_at_alpha * v_H_i_at_beta;
 
-            let selector_a = Self::get_selector_evaluation(
-                &mut cached_selectors,
-                &largest_non_zero_domain,
-                &circuit_state.non_zero_a_domain,
-                gamma,
-            );
-            let selector_b = Self::get_selector_evaluation(
-                &mut cached_selectors,
-                &largest_non_zero_domain,
-                &circuit_state.non_zero_b_domain,
-                gamma,
-            );
-            let selector_c = Self::get_selector_evaluation(
-                &mut cached_selectors,
-                &largest_non_zero_domain,
-                &circuit_state.non_zero_c_domain,
-                gamma,
-            );
+            let s_a = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
+            let s_b = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
+            let s_c = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
 
             let g_a_label = witness_label(id, "g_a", 0);
             let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
@@ -388,48 +380,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_c_label = witness_label(id, "g_c", 0);
             let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
 
-            Self::add_g_m_term(
-                &mut matrix_sumcheck,
-                id,
-                "a",
-                alpha,
-                beta,
-                gamma,
-                evals,
-                &g_a,
-                v_H_i_alpha_beta,
-                r_a[i],
-                sums[&id].sum_a,
-                selector_a,
-            )?;
-            Self::add_g_m_term(
-                &mut matrix_sumcheck,
-                id,
-                "b",
-                alpha,
-                beta,
-                gamma,
-                evals,
-                &g_b,
-                v_H_i_alpha_beta,
-                r_b[i],
-                sums[&id].sum_b,
-                selector_b,
-            )?;
-            Self::add_g_m_term(
-                &mut matrix_sumcheck,
-                id,
-                "c",
-                alpha,
-                beta,
-                gamma,
-                evals,
-                &g_c,
-                v_H_i_alpha_beta,
-                r_c[i],
-                sums[&id].sum_c,
-                selector_c,
-            )?;
+            let challenges = VerifierChallenges { alpha, beta, gamma };
+            let sum_a = sums[&id].sum_a;
+            let sum_b = sums[&id].sum_b;
+            let sum_c = sums[&id].sum_c;
+
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, evals, &g_a, v_H_i, r_a[i], sum_a, s_a)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, evals, &g_b, v_H_i, r_b[i], sum_b, s_b)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", challenges, evals, &g_c, v_H_i, r_c[i], sum_c, s_c)?;
 
             linear_combinations.insert(g_a.label.clone(), g_a);
             linear_combinations.insert(g_b.label.clone(), g_b);
@@ -437,7 +395,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
 
         matrix_sumcheck -=
-            &LinearCombination::new("h_2", [(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
+            &LinearCombination::new("h_2", [(max_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
         debug_assert!(evals.get_lc_eval(&matrix_sumcheck, gamma)?.is_zero());
 
         linear_combinations.insert("matrix_sumcheck".into(), matrix_sumcheck);
@@ -450,9 +408,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         matrix_sumcheck: &mut LinearCombination<F>,
         id: CircuitId,
         m: &str,
-        alpha: F,
-        beta: F,
-        gamma: F,
+        challenges: VerifierChallenges<F>,
         evals: &E,
         g_m: &LinearCombination<F>,
         v_h_i_alpha_beta: F,
@@ -460,9 +416,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         sum: F,
         selector: F,
     ) -> Result<(), AHPError> {
-        let g_at_gamma = evals.get_lc_eval(g_m, gamma)?;
-        let b_term = gamma * g_at_gamma + sum; // Xg_m(X) + sum_m
-        let lhs_a = Self::construct_lhs(id, m, alpha, beta, v_h_i_alpha_beta, b_term, selector);
+        let g_at_gamma = evals.get_lc_eval(g_m, challenges.gamma)?;
+        let b_term = challenges.gamma * g_at_gamma + sum; // Xg_m(X) + sum_m
+        let lhs_a = Self::construct_lhs(id, m, challenges.alpha, challenges.beta, v_h_i_alpha_beta, b_term, selector);
         *matrix_sumcheck += (r, &lhs_a);
         Ok(())
     }
@@ -500,17 +456,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         lhs *= selector_at_gamma;
         lhs
     }
+}
 
-    fn get_selector_evaluation(
-        cached_selector_evaluations: &mut BTreeMap<(u64, u64, F), F>,
-        largest_domain: &EvaluationDomain<F>,
-        target_domain: &EvaluationDomain<F>,
-        challenge: F,
-    ) -> F {
-        *cached_selector_evaluations
-            .entry((target_domain.size, largest_domain.size, challenge))
-            .or_insert_with(|| largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
-    }
+fn selector_evals<F: PrimeField>(
+    cached_selector_evaluations: &mut BTreeMap<(u64, u64, F), F>,
+    largest_domain: &EvaluationDomain<F>,
+    target_domain: &EvaluationDomain<F>,
+    challenge: F,
+) -> F {
+    *cached_selector_evaluations
+        .entry((target_domain.size, largest_domain.size, challenge))
+        .or_insert_with(|| largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
 }
 
 /// Abstraction that provides evaluations of (linear combinations of) polynomials

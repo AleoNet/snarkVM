@@ -102,32 +102,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     pub fn index_polynomial_info(circuit_ids: Vec<CircuitId>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
-        for id in circuit_ids {
-            for matrix in ["a", "b", "c"] {
-                map.insert(
-                    format!("circuit_{id}_row_{matrix}"),
-                    PolynomialInfo::new(format!("circuit_{id}_row_{matrix}"), None, None),
-                );
-                map.insert(
-                    format!("circuit_{id}_col_{matrix}"),
-                    PolynomialInfo::new(format!("circuit_{id}_col_{matrix}"), None, None),
-                );
-                map.insert(
-                    format!("circuit_{id}_val_{matrix}"),
-                    PolynomialInfo::new(format!("circuit_{id}_val_{matrix}"), None, None),
-                );
-                map.insert(
-                    format!("circuit_{id}_row_col_{matrix}"),
-                    PolynomialInfo::new(format!("circuit_{id}_row_col_{matrix}"), None, None),
-                );
-            }
+        for label in Self::index_polynomial_labels(&["a", "b", "c"], circuit_ids) {
+            map.insert(label.clone(), PolynomialInfo::new(label.clone(), None, None));
         }
         map
     }
 
-    pub fn index_polynomial_labels(circuit_ids: Vec<CircuitId>) -> impl Iterator<Item = PolynomialLabel> {
-        circuit_ids.into_iter().flat_map(|id| {
-            ["a", "b", "c"].into_iter().flat_map(move |matrix| {
+    pub fn index_polynomial_labels<'a>(
+        matrices: &'a [&str],
+        ids: Vec<CircuitId>,
+    ) -> impl Iterator<Item = PolynomialLabel> + 'a {
+        ids.into_iter().flat_map(move |id| {
+            matrices.iter().flat_map(move |matrix| {
                 [
                     format!("circuit_{id}_row_{matrix}"),
                     format!("circuit_{id}_col_{matrix}"),
@@ -255,20 +241,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;
         let mut evals = [
-            ("a", state.a_evals, state.non_zero_a_domain),
-            ("b", state.b_evals, state.non_zero_b_domain),
-            ("c", state.c_evals, state.non_zero_c_domain),
+            (state.a_evals, state.non_zero_a_domain),
+            (state.b_evals, state.non_zero_b_domain),
+            (state.c_evals, state.non_zero_c_domain),
         ]
         .into_iter()
-        .flat_map(move |(matrix, evals, domain)| {
-            let labels = [
-                format!("circuit_{id}_row_{matrix}"),
-                format!("circuit_{id}_col_{matrix}"),
-                format!("circuit_{id}_val_{matrix}"),
-                format!("circuit_{id}_row_col_{matrix}"),
-            ];
+        .flat_map(move |(evals, domain)| {
+            let labels = Self::index_polynomial_labels(&["a", "b", "c"], vec![id]);
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            labels.into_iter().zip(evals.evaluate(&lagrange_coefficients_at_point))
+            labels.zip(evals.evaluate(&lagrange_coefficients_at_point))
         })
         .collect::<Vec<_>>();
         evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
