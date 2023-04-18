@@ -1821,4 +1821,36 @@ mod tests {
         // Ensure initializing the mapping fails.
         assert!(program_store.initialize_mapping(&program_id, &mapping_name).is_err());
     }
+
+    #[test]
+    fn test_maximum_number_of_mappings_while_speculating() {
+        // Initialize a program ID and mapping name.
+        let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
+
+        // Initialize a new program store.
+        let program_memory = ProgramMemory::open(None).unwrap();
+        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Set the `is_speculating` flag to true.
+        program_store.is_speculate.store(true, Ordering::SeqCst);
+        // Ensure the program ID does not exist.
+        assert!(!program_store.contains_program(&program_id).unwrap());
+
+        // Initialize one more than the maximum number of mappings.
+        for i in 0..=(2.pow(PROGRAM_DEPTH as u32)) {
+            let mapping_name = Identifier::from_str(&format!("account_{i}")).unwrap();
+            // Ensure the mapping name does not exist.
+            assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            // Now, initialize the mapping.
+            program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+            // Ensure the mapping name got initialized.
+            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        }
+
+        // Set the `is_speculating` flag to false.
+        program_store.is_speculate.store(false, Ordering::SeqCst);
+
+        let mapping_name = Identifier::from_str(&format!("account_{}", 2.pow(PROGRAM_DEPTH as u32))).unwrap();
+        // Check that the extra mapping still exists.
+        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+    }
 }
