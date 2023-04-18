@@ -155,7 +155,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         for ((circuit_a, (sum_a, lhs_a, g_a)), (circuit_b, (sum_b, lhs_b, g_b)), (circuit_c, (sum_c, lhs_c, g_c))) in
             pool.execute_all().into_iter().tuples()
         {
-            assert!(circuit_a == circuit_b && circuit_a == circuit_c);
+            assert_eq!(circuit_a, circuit_b);
+            assert_eq!(circuit_a, circuit_c);
             let matrix_sum = prover::message::MatrixSums { sum_a, sum_b, sum_c };
             sums.push(matrix_sum);
             state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);

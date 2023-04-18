@@ -121,7 +121,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         alpha: &F,
     ) -> (DensePolynomial<F>, DensePolynomial<F>) {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
-        let max_constraint_domain_inverse = state.max_constraint_domain.size_inv;
+        let max_constraint_domain_inv = state.max_constraint_domain.size_inv;
         let max_constraint_domain = state.max_constraint_domain;
 
         for (i, ((circuit, circuit_specific_state), oracles)) in state
@@ -165,7 +165,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                 end_timer!(z_time);
 
-                let circuit_specific_lhs = Self::calculate_circuit_specific_lhs(
+                let mut circuit_specific_lhs = Self::calculate_circuit_specific_lhs(
                     &constraint_domain,
                     fft_precomputation,
                     ifft_precomputation,
@@ -197,16 +197,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 // (\sum_i{c_i*s_i*lhs_i} + m)/v_H = h_1*v_H + x_g_1
                 // That's what we're computing here.
 
-                let sumcheck_time =
-                    start_timer!(|| format!("Compute sumcheck h and g polys for circuit {}", _circuit_id));
-                let (mut h_1_i, mut xg_1_i) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+                let sumcheck_time = start_timer!(|| format!("Compute sumcheck h and g for {}", _circuit_id));
+                let multiplier = circuit_combiner * constraint_domain.size_as_field_element * max_constraint_domain_inv;
+                cfg_iter_mut!(circuit_specific_lhs.coeffs).for_each(|c| *c *= multiplier);
+                let (h_1_i, mut xg_1_i) = circuit_specific_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
                 xg_1_i = xg_1_i.mul_by_vanishing_poly(max_constraint_domain);
-                let (mut xg_1_i, remainder) = xg_1_i.divide_by_vanishing_poly(constraint_domain).unwrap();
+                let (xg_1_i, remainder) = xg_1_i.divide_by_vanishing_poly(constraint_domain).unwrap();
                 assert!(remainder.is_zero());
-                let multiplier =
-                    circuit_combiner * constraint_domain.size_as_field_element * max_constraint_domain_inverse;
-                cfg_iter_mut!(h_1_i.coeffs).for_each(|c| *c *= multiplier);
-                cfg_iter_mut!(xg_1_i.coeffs).for_each(|c| *c *= multiplier);
                 end_timer!(sumcheck_time);
 
                 (h_1_i, xg_1_i)

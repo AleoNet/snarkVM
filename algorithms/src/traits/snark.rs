@@ -30,7 +30,7 @@ pub trait Prepare {
 
 /// Defines trait that describes preparing from an unprepared version to an orderable prepare version.
 pub trait PrepareOrd {
-    // NOTE: merging this with the Prepare trait is possible but introduces more complexity
+    // NOTE: we keep this separate from Prepare because we also have unordered Prepared types
     type Prepared: Ord;
     fn prepare(&self) -> Self::Prepared;
 }
