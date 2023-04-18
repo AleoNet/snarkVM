@@ -67,7 +67,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(id, label, evals))
+            .map(|(label, evals)| arithmetize_matrix(&id, label, evals))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
@@ -100,7 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         })
     }
 
-    pub fn index_polynomial_info(circuit_ids: Vec<CircuitId>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+    pub fn index_polynomial_info<'a>(circuit_ids: impl Iterator<Item = &'a CircuitId> + 'a) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
         for label in Self::index_polynomial_labels(&["a", "b", "c"], circuit_ids) {
             map.insert(label.clone(), PolynomialInfo::new(label, None, None));
@@ -110,9 +110,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     pub fn index_polynomial_labels<'a>(
         matrices: &'a [&str],
-        ids: Vec<CircuitId>,
+        ids: impl Iterator<Item = &'a CircuitId> + 'a,
     ) -> impl Iterator<Item = PolynomialLabel> + 'a {
-        ids.into_iter().flat_map(move |id| {
+        ids.flat_map(move |id| {
             matrices.iter().flat_map(move |matrix| {
                 [
                     format!("circuit_{id}_row_{matrix}"),
@@ -236,7 +236,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     pub fn evaluate_index_polynomials<C: ConstraintSynthesizer<F>>(
         c: &C,
-        id: CircuitId,
+        id: &CircuitId,
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;
@@ -247,7 +247,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         ]
         .into_iter()
         .flat_map(move |(evals, domain)| {
-            let labels = Self::index_polynomial_labels(&["a", "b", "c"], vec![id]);
+            let labels = Self::index_polynomial_labels(&["a", "b", "c"], std::iter::once(id));
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
             labels.zip(evals.evaluate(&lagrange_coefficients_at_point))
         })

@@ -31,7 +31,7 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use hashbrown::HashMap;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -205,7 +205,7 @@ pub(crate) fn matrix_evals<F: PrimeField>(
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
 pub(crate) fn arithmetize_matrix<F: PrimeField>(
-    id: CircuitId,
+    id: &CircuitId,
     label: &str,
     matrix_evals: MatrixEvals<F>,
 ) -> MatrixArithmetization<F> {
@@ -220,14 +220,14 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     end_timer!(matrix_time);
 
-    let mut labels: Vec<String> =
-        AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(&[label], vec![id]).collect_vec();
+    let mut labels: VecDeque<String> =
+        AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(&[label], std::iter::once(id)).collect();
 
     MatrixArithmetization {
-        row: LabeledPolynomial::new(core::mem::take(&mut labels[0]), row, None, None),
-        col: LabeledPolynomial::new(core::mem::take(&mut labels[1]), col, None, None),
-        val: LabeledPolynomial::new(core::mem::take(&mut labels[2]), val, None, None),
-        row_col: LabeledPolynomial::new(core::mem::take(&mut labels[3]), row_col, None, None),
+        row: LabeledPolynomial::new(labels.pop_front().unwrap(), row, None, None),
+        col: LabeledPolynomial::new(labels.pop_front().unwrap(), col, None, None),
+        val: LabeledPolynomial::new(labels.pop_front().unwrap(), val, None, None),
+        row_col: LabeledPolynomial::new(labels.pop_front().unwrap(), row_col, None, None),
         evals_on_K: matrix_evals,
     }
 }
@@ -299,7 +299,7 @@ mod tests {
                 &constraint_domain_eq_poly_vals,
             );
             let dummy_id = CircuitId([0; 32]);
-            let arith = arithmetize_matrix(dummy_id, label, evals);
+            let arith = arithmetize_matrix(&dummy_id, label, evals);
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {
                 let row_val = arith.row.evaluate(k);

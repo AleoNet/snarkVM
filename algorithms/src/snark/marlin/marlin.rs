@@ -288,7 +288,7 @@ where
             lc.add(c, poly.label());
         }
 
-        let circuit_id = vec![verifying_key.id];
+        let circuit_id = std::iter::once(&verifying_key.id);
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
@@ -318,8 +318,8 @@ where
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
-        let circuit_id = vec![verifying_key.id];
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id);
+        let circuit_id = &verifying_key.id;
+        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(std::iter::once(circuit_id));
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
@@ -328,7 +328,6 @@ where
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().unwrap();
 
-        let circuit_id = verifying_key.id;
         let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, circuit_id, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
@@ -563,7 +562,7 @@ where
             .keys()
             .flat_map(|pk| pk.circuit_verifying_key.iter())
             .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids).values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .chain(first_commitments.into_iter())
             .chain(second_commitments.into_iter())
@@ -854,7 +853,7 @@ where
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids).values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
             .chain(second_commitments)
