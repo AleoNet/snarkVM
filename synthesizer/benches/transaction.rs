@@ -17,6 +17,9 @@
 #[macro_use]
 extern crate criterion;
 
+mod utilities;
+use utilities::initialize_vm;
+
 use console::{
     account::*,
     network::Testnet3,
@@ -34,30 +37,6 @@ use snarkvm_synthesizer::{
 };
 
 use criterion::Criterion;
-use indexmap::IndexMap;
-use rand::{CryptoRng, Rng};
-
-fn initialize_vm<R: Rng + CryptoRng>(
-    private_key: &PrivateKey<Testnet3>,
-    rng: &mut R,
-) -> (VM<Testnet3, ConsensusMemory<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>) {
-    let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
-
-    // Initialize the genesis block.
-    let genesis = Block::genesis(&vm, private_key, rng).unwrap();
-
-    // Fetch the unspent records.
-    let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-
-    // Select a record to spend.
-    let view_key = ViewKey::try_from(private_key).unwrap();
-    let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
-
-    // Update the VM.
-    vm.add_next_block(&genesis).unwrap();
-
-    (vm, record)
-}
 
 fn deploy(c: &mut Criterion) {
     let rng = &mut TestRng::default();

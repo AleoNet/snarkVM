@@ -35,6 +35,11 @@ harness = false
 required-features = [ "setup" ]
 
 [[bench]]
+name = "speculate"
+path = "benches/speculate.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
