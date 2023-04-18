@@ -411,15 +411,18 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
             {
                 biggest_ck = Some(ck);
             }
-            let lagrange_bases = ck.lagrange_bases_at_beta_g.iter();
-            let shifted_powers = ck.shifted_powers_of_beta_times_gamma_g.as_ref().unwrap().iter();
-            use itertools::Itertools;
-            for ((bound_base, bases), (bound_power, powers)) in lagrange_bases.zip_eq(shifted_powers) {
-                assert!(bound_base - 2 == *bound_power);
+            let lagrange_bases = &ck.lagrange_bases_at_beta_g;
+            for (bound_base, bases) in lagrange_bases.iter() {
                 union.lagrange_bases_at_beta_g.entry(*bound_base).or_insert(bases);
-                shifted_powers_of_beta_times_gamma_g.entry(*bound_power).or_insert(powers);
             }
-            enforced_degree_bounds.append(&mut ck.enforced_degree_bounds.clone().unwrap());
+            if let Some(shifted_powers) = ck.shifted_powers_of_beta_times_gamma_g.as_ref() {
+                for (bound_power, powers) in shifted_powers.iter() {
+                    shifted_powers_of_beta_times_gamma_g.entry(*bound_power).or_insert(powers);
+                }
+            }
+            if let Some(degree_bounds) = &ck.enforced_degree_bounds {
+                enforced_degree_bounds.append(&mut degree_bounds.clone());
+            }
         }
 
         let biggest_ck = biggest_ck.unwrap();
