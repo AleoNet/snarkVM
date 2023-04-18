@@ -68,8 +68,6 @@ pub struct Transition<N: Network> {
     tpk: Group<N>,
     /// The transition commitment.
     tcm: Field<N>,
-    /// The network fee.
-    fee: i64,
 }
 
 impl<N: Network> Transition<N> {
@@ -84,12 +82,11 @@ impl<N: Network> Transition<N> {
         proof: Proof<N>,
         tpk: Group<N>,
         tcm: Field<N>,
-        fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
         let id = *Self::function_tree(&inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm })
     }
 
     /// Initializes a new transition from a request and response.
@@ -100,7 +97,6 @@ impl<N: Network> Transition<N> {
         output_types: &[ValueType<N>],
         output_registers: &[Option<Register<N>>],
         proof: Proof<N>,
-        fee: i64,
     ) -> Result<Self> {
         let network_id = *request.network_id();
         let program_id = *request.program_id();
@@ -260,7 +256,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm, fee)
+        Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm)
     }
 }
 
@@ -308,11 +304,6 @@ impl<N: Network> Transition<N> {
     /// Returns the transition commitment.
     pub const fn tcm(&self) -> &Field<N> {
         &self.tcm
-    }
-
-    /// Returns the network fee.
-    pub const fn fee(&self) -> &i64 {
-        &self.fee
     }
 }
 

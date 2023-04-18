@@ -23,6 +23,8 @@ impl<N: Network> Metadata<N> {
         let network = N::ID;
         let round = 0;
         let height = 0;
+        let total_supply_in_microcredits = N::STARTING_SUPPLY;
+        let cumulative_proof_target = 0;
         let coinbase_target = N::GENESIS_COINBASE_TARGET;
         let proof_target = N::GENESIS_PROOF_TARGET;
         let last_coinbase_target = N::GENESIS_COINBASE_TARGET;
@@ -34,6 +36,8 @@ impl<N: Network> Metadata<N> {
             network,
             round,
             height,
+            total_supply_in_microcredits,
+            cumulative_proof_target,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -50,6 +54,10 @@ impl<N: Network> Metadata<N> {
             && self.round == 0u64
             // Ensure the height in the genesis block is 0.
             && self.height == 0u32
+            // Ensure the total supply in the genesis block is `STARTING_SUPPLY`.
+            && self.total_supply_in_microcredits == N::STARTING_SUPPLY
+            // Ensure the cumulative proof target in the genesis block is 0.
+            && self.cumulative_proof_target == 0u128
             // Ensure the coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.coinbase_target == N::GENESIS_COINBASE_TARGET
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
@@ -72,9 +80,9 @@ mod tests {
 
     /// Returns the expected metadata size by summing its subcomponent sizes.
     /// Update this method if the contents of the metadata have changed.
-    fn get_expected_size<N: Network>() -> usize {
+    fn get_expected_size() -> usize {
         // Metadata size.
-        2 + 4 + 8 + 8 + 8 + 8 + 8 + 8
+        2 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
             + 2
     }
@@ -84,7 +92,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the expected size.
-        let expected_size = get_expected_size::<CurrentNetwork>();
+        let expected_size = get_expected_size();
         // Prepare the genesis metadata.
         let genesis_metadata = *crate::vm::test_helpers::sample_genesis_block(&mut rng).metadata();
         // Ensure the size of the genesis metadata is correct.
@@ -102,8 +110,10 @@ mod tests {
 
         // Ensure the genesis block contains the following.
         assert_eq!(metadata.network(), CurrentNetwork::ID);
-        assert_eq!(metadata.height(), 0);
         assert_eq!(metadata.round(), 0);
+        assert_eq!(metadata.height(), 0);
+        assert_eq!(metadata.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
+        assert_eq!(metadata.cumulative_proof_target(), 0);
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);

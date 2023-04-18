@@ -42,19 +42,7 @@ impl<E: Environment, I: IntegerType> RemWrapped<Self> for Integer<E, I> {
                     // The remainder takes on the same sign as `self` because the division operation rounds towards zero.
                     Self::ternary(&!self.msb(), &signed_remainder, &Self::zero().sub_wrapped(&signed_remainder))
                 } else {
-                    // Check that `other` is not zero.
-                    // Note that all other implementations of `rem_wrapped` and `rem_checked` invoke this check.
-                    E::assert_neq(other, &Self::zero());
-
-                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
-                    if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
-                        self.unsigned_division_via_witness(other).1
-                    } else {
-                        Self {
-                            bits_le: self.unsigned_binary_long_division(other).1.to_lower_bits_le(I::BITS as usize),
-                            phantom: Default::default(),
-                        }
-                    }
+                    self.unsigned_division_via_witness(other).1
                 }
             }
         }
@@ -65,18 +53,21 @@ impl<E: Environment, I: IntegerType> Metrics<dyn RemWrapped<Integer<E, I>, Outpu
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        match I::is_signed() {
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(9 * I::BITS, 0, (8 * I::BITS) + 2, (8 * I::BITS) + 12)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(5 * I::BITS + 1, 0, (9 * I::BITS) + 5, (9 * I::BITS) + 11),
+                    (true, false) => Count::less_than(5 * I::BITS + 1, 0, 1610, 1813),
+                    (false, true) => Count::less_than(I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                    (false, false) => Count::less_than(I::BITS + 1, 0, 839, 1039),
                 }
-                (_, _) => Count::is(8 * I::BITS, 0, (10 * I::BITS) + 15, (10 * I::BITS) + 27),
-            },
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 1, (3 * I::BITS) + 4),
-                (Mode::Constant, _) | (_, _) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 4, (3 * I::BITS) + 9),
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(4 * I::BITS, 0, (9 * I::BITS) + 5, (9 * I::BITS) + 11),
+                (true, false) => Count::is(4 * I::BITS, 0, 1610, 1813),
+                (false, true) => Count::is(I::BITS, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                (false, false) => Count::is(I::BITS, 0, 839, 1039),
             },
         }
     }
@@ -120,8 +111,7 @@ mod tests {
                 Mode::Constant => check_operation_halts(&a, &b, Integer::rem_wrapped),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.rem_wrapped(&b);
-                    // assert_count_fails!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                    assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
+                    assert_count_fails!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 }),
             }
         } else {
@@ -130,9 +120,8 @@ mod tests {
                 let candidate = a.rem_wrapped(&b);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
-                // assert_count!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_mode!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
-                assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                assert_count!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
             })
         }
         Circuit::reset();

@@ -45,7 +45,18 @@ impl<E: Environment> ToBits for &Scalar<E> {
                 );
 
                 // Construct a vector of `Boolean`s comprising the bits of the scalar value.
-                self.field.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits())
+                let bits_le = self.field.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits());
+
+                // Ensure the bit representation is unique.
+                {
+                    // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+                    // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
+                    let modulus_minus_one = -E::ScalarField::one();
+                    // Assert `bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
+                    Boolean::assert_less_than_or_equal_constant(&bits_le, &modulus_minus_one.to_bits_le());
+                }
+
+                bits_le
             })
             .clone()
     }
@@ -131,28 +142,28 @@ mod tests {
     fn test_to_bits_le_public() {
         let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
-        check_to_bits_le("Public", &expected.to_bits_le(), &candidate, 0, 0, 251, 252);
+        check_to_bits_le("Public", &expected.to_bits_le(), &candidate, 0, 0, 501, 503);
     }
 
     #[test]
     fn test_to_bits_be_public() {
         let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
-        check_to_bits_be("Public", &expected.to_bits_be(), candidate, 0, 0, 251, 252);
+        check_to_bits_be("Public", &expected.to_bits_be(), candidate, 0, 0, 501, 503);
     }
 
     #[test]
     fn test_to_bits_le_private() {
         let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
-        check_to_bits_le("Private", &expected.to_bits_le(), &candidate, 0, 0, 251, 252);
+        check_to_bits_le("Private", &expected.to_bits_le(), &candidate, 0, 0, 501, 503);
     }
 
     #[test]
     fn test_to_bits_be_private() {
         let expected = Uniform::rand(&mut TestRng::default());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
-        check_to_bits_be("Private", &expected.to_bits_be(), candidate, 0, 0, 251, 252);
+        check_to_bits_be("Private", &expected.to_bits_be(), candidate, 0, 0, 501, 503);
     }
 
     #[test]

@@ -40,7 +40,7 @@ use console::{
     account::{Address, PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
-    types::{Field, Group},
+    types::{Field, Group, U64},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -149,6 +149,11 @@ impl<N: Network> Block<N> {
         self.header.transactions_root()
     }
 
+    /// Returns the finalize root in the block header.
+    pub const fn finalize_root(&self) -> Field<N> {
+        self.header.finalize_root()
+    }
+
     /// Returns the metadata in the block header.
     pub const fn metadata(&self) -> &Metadata<N> {
         self.header.metadata()
@@ -172,6 +177,16 @@ impl<N: Network> Block<N> {
     /// Returns the epoch number of this block.
     pub const fn epoch_number(&self) -> u32 {
         self.height() / N::NUM_BLOCKS_PER_EPOCH
+    }
+
+    /// Returns the total supply of microcredits at this block.
+    pub const fn total_supply_in_microcredits(&self) -> u64 {
+        self.header.total_supply_in_microcredits()
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.header.cumulative_proof_target()
     }
 
     /// Returns the coinbase target for this block.
@@ -321,7 +336,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns an iterator over the transaction fees, for all transactions.
-    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<i64>> {
+    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
         self.transactions.transaction_fees()
     }
 }
@@ -405,12 +420,11 @@ pub(crate) mod test_helpers {
                 // Initialize the VM.
                 let vm = crate::vm::test_helpers::sample_vm();
                 // Prepare the function inputs.
-                let inputs = [address.to_string(), "1_u64".to_string()];
-                // Authorize the call to start.
-                let authorization = vm.authorize(&private_key, "credits.aleo", "mint", inputs, rng).unwrap();
+                let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
 
                 // Construct the transaction.
-                let transaction = Transaction::execute_authorization(&vm, authorization, None, rng).unwrap();
+                let transaction =
+                    Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
                 let transactions = Transactions::from(&[transaction.clone()]);
                 // Construct the block.

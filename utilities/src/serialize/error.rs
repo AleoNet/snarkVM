@@ -34,6 +34,9 @@ pub enum SerializationError {
     /// expected.
     #[error("the call expects empty flags")]
     UnexpectedFlags,
+    /// During serialization, the target was found to be incompatible
+    #[error("the value was serialized on a target that is incompatible with the current target")]
+    IncompatibleTarget,
 }
 
 impl From<SerializationError> for crate::io::Error {

@@ -65,8 +65,8 @@ impl<N: Network> Parser for Struct<N> {
             if has_duplicates(members.iter().map(|(identifier, _)| identifier)) {
                 return Err(error(format!("Duplicate identifier found in struct '{name}'")));
             }
-            // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
-            if members.len() > N::MAX_DATA_ENTRIES {
+            // Ensure the number of members is within the maximum limit.
+            if members.len() > N::MAX_STRUCT_ENTRIES {
                 return Err(error("Failed to parse struct: too many members"));
             }
             Ok(members)
@@ -198,7 +198,7 @@ struct message:
     #[test]
     fn test_max_members() {
         let mut string = "struct message:\n".to_string();
-        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+        for i in 0..CurrentNetwork::MAX_STRUCT_ENTRIES {
             string += &format!("    member_{i} as field;\n");
         }
         assert!(Struct::<CurrentNetwork>::parse(&string).is_ok());
@@ -207,7 +207,7 @@ struct message:
     #[test]
     fn test_too_many_members() {
         let mut string = "struct message:\n".to_string();
-        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+        for i in 0..=CurrentNetwork::MAX_STRUCT_ENTRIES {
             string += &format!("    member_{i} as field;\n");
         }
         assert!(Struct::<CurrentNetwork>::parse(&string).is_err());

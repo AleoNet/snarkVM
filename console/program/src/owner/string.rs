@@ -14,21 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod parse;
-mod serialize;
+use super::*;
 
-use crate::{Identifier, Locator, PlaintextType};
-use snarkvm_console_network::prelude::*;
+impl<N: Network> FromStr for ProgramOwner<N> {
+    type Err = Error;
 
-use enum_index::EnumIndex;
+    /// Initializes the program owner from a JSON-string.
+    fn from_str(owner: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(owner)?)
+    }
+}
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum FinalizeType<N: Network> {
-    /// A publicly-visible type.
-    Public(PlaintextType<N>),
-    /// A record type inherits its visibility from the record definition.
-    Record(Identifier<N>),
-    /// An external record type inherits its visibility from its record definition.
-    ExternalRecord(Locator<N>),
+impl<N: Network> Debug for ProgramOwner<N> {
+    /// Prints the program owner as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for ProgramOwner<N> {
+    /// Displays the program owner as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    }
 }

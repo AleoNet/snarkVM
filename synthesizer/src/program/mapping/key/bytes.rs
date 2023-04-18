@@ -22,9 +22,9 @@ impl<N: Network> FromBytes for MapKey<N> {
         // Read the key name.
         let name = FromBytes::read_le(&mut reader)?;
         // Read the key type.
-        let finalize_type = FromBytes::read_le(&mut reader)?;
+        let plaintext_type = FromBytes::read_le(&mut reader)?;
         // Return the key.
-        Ok(Self { name, finalize_type })
+        Ok(Self { name, plaintext_type })
     }
 }
 
@@ -34,6 +34,6 @@ impl<N: Network> ToBytes for MapKey<N> {
         // Write the key name.
         self.name.write_le(&mut writer)?;
         // Write the key type.
-        self.finalize_type.write_le(&mut writer)
+        self.plaintext_type.write_le(&mut writer)
     }
 }

@@ -37,6 +37,8 @@ pub struct Header<N: Network> {
     previous_state_root: Field<N>,
     /// The Merkle root representing the transactions in the block.
     transactions_root: Field<N>,
+    /// The Merkle root representing the on-chain finalize including the current block.
+    finalize_root: Field<N>,
     /// The accumulator point of the coinbase puzzle.
     coinbase_accumulator_point: Field<N>,
     /// The metadata of the block.
@@ -48,11 +50,13 @@ impl<N: Network> Header<N> {
     pub fn from(
         previous_state_root: Field<N>,
         transactions_root: Field<N>,
+        finalize_root: Field<N>,
         coinbase_accumulator_point: Field<N>,
         metadata: Metadata<N>,
     ) -> Result<Self> {
         // Construct a new block header.
-        let header = Self { previous_state_root, transactions_root, coinbase_accumulator_point, metadata };
+        let header =
+            Self { previous_state_root, transactions_root, finalize_root, coinbase_accumulator_point, metadata };
         // Ensure the header is valid.
         match header.is_valid() {
             true => Ok(header),
@@ -85,6 +89,11 @@ impl<N: Network> Header<N> {
         self.transactions_root
     }
 
+    /// Returns the finalize root in the block header.
+    pub const fn finalize_root(&self) -> Field<N> {
+        self.finalize_root
+    }
+
     /// Returns the coinbase puzzle accumulator point in the block header.
     pub const fn coinbase_accumulator_point(&self) -> Field<N> {
         self.coinbase_accumulator_point
@@ -108,6 +117,16 @@ impl<N: Network> Header<N> {
     /// Returns the height of the block.
     pub const fn height(&self) -> u32 {
         self.metadata.height()
+    }
+
+    /// Returns the total supply of microcredits at this block.
+    pub const fn total_supply_in_microcredits(&self) -> u64 {
+        self.metadata.total_supply_in_microcredits()
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.metadata.cumulative_proof_target()
     }
 
     /// Returns the coinbase target for this block.

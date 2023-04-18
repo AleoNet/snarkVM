@@ -40,18 +40,10 @@ impl<N: Network> FromBytes for Finalize<N> {
             commands.push(Command::read_le(&mut reader)?);
         }
 
-        // Read the outputs.
-        let num_outputs = u16::read_le(&mut reader)?;
-        let mut outputs = Vec::with_capacity(num_outputs as usize);
-        for _ in 0..num_outputs {
-            outputs.push(Output::read_le(&mut reader)?);
-        }
-
         // Initialize a new finalize.
         let mut finalize = Self::new(name);
         inputs.into_iter().try_for_each(|input| finalize.add_input(input)).map_err(|e| error(e.to_string()))?;
         commands.into_iter().try_for_each(|command| finalize.add_command(command)).map_err(|e| error(e.to_string()))?;
-        outputs.into_iter().try_for_each(|output| finalize.add_output(output)).map_err(|e| error(e.to_string()))?;
 
         Ok(finalize)
     }
@@ -88,18 +80,6 @@ impl<N: Network> ToBytes for Finalize<N> {
             command.write_le(&mut writer)?;
         }
 
-        // Write the number of outputs for the finalize.
-        let num_outputs = self.outputs.len();
-        match num_outputs <= N::MAX_OUTPUTS {
-            true => (num_outputs as u16).write_le(&mut writer)?,
-            false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
-        }
-
-        // Write the outputs.
-        for output in self.outputs.iter() {
-            output.write_le(&mut writer)?;
-        }
-
         Ok(())
     }
 }
@@ -126,8 +106,7 @@ finalize main:
     add r0 r1 into r8;
     add r0 r1 into r9;
     add r0 r1 into r10;
-    add r0 r1 into r11;
-    output r11 as field.public;";
+    add r0 r1 into r11;";
 
         let expected = Finalize::<CurrentNetwork>::from_str(finalize_string)?;
         let expected_bytes = expected.to_bytes_le()?;

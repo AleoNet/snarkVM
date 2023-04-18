@@ -37,8 +37,6 @@ impl<N: Network> Parser for Finalize<N> {
         let (string, inputs) = many0(Input::parse)(string)?;
         // Parse the commands from the string.
         let (string, commands) = many1(Command::parse)(string)?;
-        // Parse the outputs from the string.
-        let (string, outputs) = many0(Output::parse)(string)?;
 
         map_res(take(0usize), move |_| {
             // Initialize a new finalize.
@@ -48,10 +46,6 @@ impl<N: Network> Parser for Finalize<N> {
                 return Err(error);
             }
             if let Err(error) = commands.iter().cloned().try_for_each(|command| finalize.add_command(command)) {
-                eprintln!("{error}");
-                return Err(error);
-            }
-            if let Err(error) = outputs.iter().cloned().try_for_each(|output| finalize.add_output(output)) {
                 eprintln!("{error}");
                 return Err(error);
             }
@@ -90,8 +84,7 @@ impl<N: Network> Display for Finalize<N> {
         // Write the finalize to a string.
         write!(f, "{} {}:", Self::type_name(), self.name)?;
         self.inputs.iter().try_for_each(|input| write!(f, "\n    {input}"))?;
-        self.commands.iter().try_for_each(|command| write!(f, "\n    {command}"))?;
-        self.outputs.iter().try_for_each(|output| write!(f, "\n    {output}"))
+        self.commands.iter().try_for_each(|command| write!(f, "\n    {command}"))
     }
 }
 
@@ -109,29 +102,25 @@ mod tests {
 finalize foo:
     input r0 as field.public;
     input r1 as field.public;
-    add r0 r1 into r2;
-    output r2 as field.public;",
+    add r0 r1 into r2;",
         )
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
         assert_eq!(2, finalize.inputs.len());
         assert_eq!(1, finalize.commands.len());
-        assert_eq!(1, finalize.outputs.len());
 
         // Finalize with 0 inputs.
         let finalize = Finalize::<CurrentNetwork>::parse(
             r"
 finalize foo:
-    add 1u32 2u32 into r0;
-    output r0 as u32.public;",
+    add 1u32 2u32 into r0;",
         )
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
         assert_eq!(0, finalize.inputs.len());
         assert_eq!(1, finalize.commands.len());
-        assert_eq!(1, finalize.outputs.len());
     }
 
     #[test]
@@ -139,16 +128,14 @@ finalize foo:
         let finalize = Finalize::<CurrentNetwork>::parse(
             r"
 finalize foo:
-    input r0 as token.record;
-    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
-    output r1 as token.record;",
+    input r0 as token.public;
+    cast r0.owner r0.token_amount into r1 as token;",
         )
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
         assert_eq!(1, finalize.inputs.len());
         assert_eq!(1, finalize.commands.len());
-        assert_eq!(1, finalize.outputs.len());
     }
 
     #[test]
@@ -156,8 +143,7 @@ finalize foo:
         let expected = r"finalize foo:
     input r0 as field.public;
     input r1 as field.public;
-    add r0 r1 into r2;
-    output r2 as field.public;";
+    add r0 r1 into r2;";
         let finalize = Finalize::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{finalize}"),);
     }

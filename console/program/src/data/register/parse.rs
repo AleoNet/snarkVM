@@ -29,7 +29,7 @@ impl<N: Network> Parser for Register<N> {
         // Parse the identifier from the string, if it is a register member.
         let (string, identifiers): (&str, Vec<Identifier<N>>) =
             map_res(many0(pair(tag("."), Identifier::parse)), |identifiers| {
-                // Ensure the number of identifiers is within `N::MAX_DATA_DEPTH`.
+                // Ensure the number of identifiers is within the limit.
                 if identifiers.len() <= N::MAX_DATA_DEPTH {
                     Ok(identifiers.iter().cloned().map(|(_, identifier)| identifier).collect())
                 } else {

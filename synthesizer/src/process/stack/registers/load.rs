@@ -16,29 +16,14 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
-    /// Loads the literal of a given operand from the registers.
-    ///
-    /// # Errors
-    /// This method will halt if the given operand is not a literal.
-    /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
-    #[inline]
-    pub fn load_literal(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Literal<N>> {
-        match self.load(stack, operand)? {
-            Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            Value::Plaintext(Plaintext::Struct(..)) => bail!("Operand must be a literal"),
-            Value::Record(..) => bail!("Operand must be a literal"),
-        }
-    }
-
+impl<N: Network, A: circuit::Aleo<Network = N>> Load<N> for Registers<N, A> {
     /// Loads the value of a given operand from the registers.
     ///
     /// # Errors
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Value<N>> {
+    fn load(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Value<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
@@ -88,29 +73,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
-    /// Loads the literal circuit of a given operand from the registers.
-    ///
-    /// # Errors
-    /// This method will halt if the given operand is not a literal.
-    /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
-    #[inline]
-    pub fn load_literal_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::program::Literal<A>> {
-        match self.load_circuit(stack, operand)? {
-            circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
-            circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => bail!("Operand must be a literal"),
-            circuit::Value::Record(..) => bail!("Operand must be a literal"),
-        }
-    }
-
+impl<N: Network, A: circuit::Aleo<Network = N>> LoadCircuit<N, A> for Registers<N, A> {
     /// Loads the value of a given operand from the registers.
     ///
     /// # Errors
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Value<A>> {
+    fn load_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Value<A>> {
         use circuit::Inject;
 
         // Retrieve the register.

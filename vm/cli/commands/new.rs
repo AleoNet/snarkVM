@@ -16,19 +16,29 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Output<N> {
-    /// Reads the output from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let operand = FromBytes::read_le(&mut reader)?;
-        let finalize_type = FromBytes::read_le(&mut reader)?;
-        Ok(Self { operand, finalize_type })
-    }
+/// Create a new Aleo package.
+#[derive(Debug, Parser)]
+pub struct New {
+    /// The program name.
+    name: String,
 }
 
-impl<N: Network> ToBytes for Output<N> {
-    /// Writes the output to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operand.write_le(&mut writer)?;
-        self.finalize_type.write_le(&mut writer)
+impl New {
+    /// Creates an Aleo package with the specified name.
+    pub fn parse(self) -> Result<String> {
+        // Derive the program directory path.
+        let mut path = std::env::current_dir()?;
+        path.push(&self.name);
+
+        // Create the program ID from the name.
+        let id = ProgramID::<CurrentNetwork>::from_str(&format!("{}.aleo", self.name))?;
+
+        // Create the package.
+        Package::create(&path, &id)?;
+
+        // Prepare the path string.
+        let path_string = format!("(in \"{}\")", path.display());
+
+        Ok(format!("✅ Created an Aleo program '{}' {}", self.name.bold(), path_string.dimmed()))
     }
 }

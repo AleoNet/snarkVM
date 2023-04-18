@@ -44,9 +44,8 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &[
-        "record message: owner as address.private; gates as u64.private; is_new as boolean.public; total_supply as u64.private;",
-    ];
+    const TEST_CASES: &[&str] =
+        &["record message: owner as address.private; is_new as boolean.public; total_supply as u64.private;"];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,

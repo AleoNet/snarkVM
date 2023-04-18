@@ -164,15 +164,11 @@ impl<N: Network> Request<N> {
                         // Ensure the input is a record.
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
+                    // Ensure the record belongs to the caller.
+                    ensure!(**record.owner() == caller, "Input record for '{program_id}' must belong to the signer");
 
                     // Compute the record commitment.
                     let commitment = record.to_commitment(&program_id, record_name)?;
-                    // Ensure the record belongs to the caller.
-                    ensure!(**record.owner() == caller, "Input record for '{program_id}' must belong to the signer");
-                    // Ensure the record gates is less than or equal to 2^52.
-                    if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
-                        bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
-                    }
 
                     // Compute the generator `H` as `HashToGroup(commitment)`.
                     let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;

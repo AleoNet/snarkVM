@@ -33,6 +33,10 @@ pub struct Metadata<N: Network> {
     round: u64,
     /// The height of this block - 4 bytes.
     height: u32,
+    /// The total supply of microcredits - 8 bytes.
+    total_supply_in_microcredits: u64,
+    /// The cumulative proof target for this block - 16 bytes.
+    cumulative_proof_target: u128,
     /// The coinbase target for this block - 8 bytes.
     coinbase_target: u64,
     /// The proof target for this block - 8 bytes.
@@ -54,6 +58,8 @@ impl<N: Network> Metadata<N> {
         network: u16,
         round: u64,
         height: u32,
+        total_supply_in_microcredits: u64,
+        cumulative_proof_target: u128,
         coinbase_target: u64,
         proof_target: u64,
         last_coinbase_target: u64,
@@ -65,6 +71,8 @@ impl<N: Network> Metadata<N> {
             network,
             round,
             height,
+            total_supply_in_microcredits,
+            cumulative_proof_target,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -90,6 +98,8 @@ impl<N: Network> Metadata<N> {
                     && self.round != 0u64
                     // Ensure the height is nonzero.
                     && self.height != 0u32
+                    // Ensure the total supply is nonzero.
+                    && self.total_supply_in_microcredits != 0u64
                     // Ensure the coinbase target is at or above the minimum.
                     && self.coinbase_target >= N::GENESIS_COINBASE_TARGET
                     // Ensure the proof target is at or above the minimum.
@@ -121,6 +131,16 @@ impl<N: Network> Metadata<N> {
     /// Returns the height of the block.
     pub const fn height(&self) -> u32 {
         self.height
+    }
+
+    /// Returns the total supply of microcredits at this block.
+    pub const fn total_supply_in_microcredits(&self) -> u64 {
+        self.total_supply_in_microcredits
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.cumulative_proof_target
     }
 
     /// Returns the coinbase target for this block.
