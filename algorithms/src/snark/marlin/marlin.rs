@@ -173,7 +173,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     fn init_sponge(
         fs_parameters: &FS::Parameters,
         inputs_and_batch_sizes: &BTreeMap<CircuitId, (usize, &[Vec<E::Fr>])>,
-        circuit_commitments: &[Vec<crate::polycommit::sonic_pc::Commitment<E>>],
+        circuit_commitments: &[&Vec<crate::polycommit::sonic_pc::Commitment<E>>],
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -408,10 +408,8 @@ where
 
         let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
 
-        let circuit_commitments = keys_to_constraints
-            .keys()
-            .map(|pk| pk.circuit_verifying_key.circuit_commitments.clone())
-            .collect::<Vec<_>>();
+        let circuit_commitments =
+            keys_to_constraints.keys().map(|pk| &pk.circuit_verifying_key.circuit_commitments).collect::<Vec<_>>();
 
         let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.as_slice());
 
@@ -724,7 +722,7 @@ where
         let verifier_key = VerifierUnionKey::<E>::union(vks);
 
         let circuit_commitments =
-            keys_to_inputs.iter().map(|(vk, _)| vk.orig_vk.circuit_commitments.clone()).collect::<Vec<_>>();
+            keys_to_inputs.iter().map(|(vk, _)| &vk.orig_vk.circuit_commitments).collect::<Vec<_>>();
 
         let comms = &proof.commitments;
         let proof_has_correct_zk_mode = if MM::ZK {
@@ -854,7 +852,7 @@ where
 
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_commitments
-            .iter()
+            .into_iter()
             .flatten()
             .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))

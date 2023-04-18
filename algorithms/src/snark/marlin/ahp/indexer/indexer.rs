@@ -103,7 +103,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn index_polynomial_info(circuit_ids: Vec<CircuitId>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
         for label in Self::index_polynomial_labels(&["a", "b", "c"], circuit_ids) {
-            map.insert(label.clone(), PolynomialInfo::new(label.clone(), None, None));
+            map.insert(label.clone(), PolynomialInfo::new(label, None, None));
         }
         map
     }
