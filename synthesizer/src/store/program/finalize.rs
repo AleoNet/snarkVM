@@ -1180,4 +1180,33 @@ mod tests {
         check_initialize_insert_remove(&finalize_store, program_id, mapping_name);
         check_initialize_update_remove(&finalize_store, program_id, mapping_name);
     }
+
+    #[test]
+    fn test_maximum_number_of_mappings() {
+        // Initialize a program ID and mapping name.
+        let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
+
+        // Initialize a new program store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let program_store = FinalizeMemory::from(program_memory).unwrap();
+        // Ensure the program ID does not exist.
+        assert!(!program_store.contains_program(&program_id).unwrap());
+
+        for i in 0..(2.pow(PROGRAM_TREE_DEPTH as u32)) {
+            let mapping_name = Identifier::from_str(&format!("account_{i}")).unwrap();
+            // Ensure the mapping name does not exist.
+            assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            // Now, initialize the mapping.
+            program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+            // Ensure the mapping name got initialized.
+            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        }
+
+        // Now, attempt to initialize an additional mapping.
+        let mapping_name = Identifier::from_str(&format!("account_{}", 2.pow(PROGRAM_TREE_DEPTH as u32))).unwrap();
+        // Ensure the mapping name does not exist.
+        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        // Ensure initializing the mapping fails.
+        assert!(program_store.initialize_mapping(&program_id, &mapping_name).is_err());
+    }
 }
