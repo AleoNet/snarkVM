@@ -28,6 +28,7 @@ use crate::{
 
 use itertools::Itertools;
 use rand_core::RngCore;
+use rayon::prelude::*;
 use snarkvm_fields::PrimeField;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
@@ -38,14 +39,25 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the fourth round message and the next state.
     pub fn prover_fourth_round<R: RngCore>(
-        verifier_message: &mut verifier::ThirdMessage<F>,
+        verifier_message: verifier::ThirdMessage<F>,
         mut state: prover::State<'_, F, MM>,
         _r: &mut R,
     ) -> Result<prover::FourthOracles<F>, AHPError> {
-        let mut lhs_sum = DensePolynomial::zero();
-        for (&r, lhs) in verifier_message.iter().zip_eq(state.lhs_polys_iter_mut()) {
-            lhs_sum += &(std::mem::take(lhs) * r);
-        }
+        let lhs_sum: DensePolynomial<F> = verifier_message
+            .into_iter()
+            .zip_eq(state.lhs_polys_into_iter())
+            .par_bridge()
+            .map(|(r, mut lhs)| {
+                lhs *= r;
+                lhs
+            })
+            .reduce(
+                || DensePolynomial::zero(),
+                |mut a, mut b| {
+                    a += &std::mem::take(&mut b);
+                    a
+                },
+            );
         let h_2 = LabeledPolynomial::new("h_2".into(), lhs_sum, None, None);
         let oracles = prover::FourthOracles { h_2 };
         assert!(oracles.matches_info(&Self::fourth_round_polynomial_info()));

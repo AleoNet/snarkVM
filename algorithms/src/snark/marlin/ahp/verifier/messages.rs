@@ -57,8 +57,12 @@ pub struct ThirdMessage<F> {
 }
 
 impl<F: PrimeField> ThirdMessage<F> {
-    pub fn iter(&self) -> impl Iterator<Item = &F> {
-        self.r_a.iter().zip_eq(&self.r_b).zip_eq(&self.r_c).flat_map(|((r_a, r_b), r_c)| [r_a, r_b, r_c])
+    pub fn into_iter(mut self) -> impl Iterator<Item = F> {
+        core::mem::take(&mut self.r_a)
+            .into_iter()
+            .zip_eq(core::mem::take(&mut self.r_b).into_iter())
+            .zip_eq(core::mem::take(&mut self.r_c).into_iter())
+            .flat_map(|((r_a, r_b), r_c)| [r_a, r_b, r_c])
     }
 }
 

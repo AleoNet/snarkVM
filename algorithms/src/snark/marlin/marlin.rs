@@ -482,7 +482,7 @@ where
 
         Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
 
-        let (mut verifier_third_msg, verifier_state) =
+        let (verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
@@ -492,7 +492,7 @@ where
         Self::terminate(terminator)?;
 
         let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&mut verifier_third_msg, prover_state, zk_rng)?;
+        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(verifier_third_msg, prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
