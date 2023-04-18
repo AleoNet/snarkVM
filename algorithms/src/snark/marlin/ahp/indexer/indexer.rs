@@ -100,7 +100,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         })
     }
 
-    pub fn index_polynomial_info<'a>(circuit_ids: impl Iterator<Item = &'a CircuitId> + 'a) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+    pub fn index_polynomial_info<'a>(
+        circuit_ids: impl Iterator<Item = &'a CircuitId> + 'a,
+    ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
         for label in Self::index_polynomial_labels(&["a", "b", "c"], circuit_ids) {
             map.insert(label.clone(), PolynomialInfo::new(label, None, None));
