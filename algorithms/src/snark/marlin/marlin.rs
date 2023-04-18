@@ -222,7 +222,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
-        for sum in msg.sums.values() {
+        for sum in msg.sums.iter() {
             sponge.absorb_nonnative_field_elements([sum.sum_a, sum.sum_b, sum.sum_c]);
         }
         end_timer!(sponge_time);

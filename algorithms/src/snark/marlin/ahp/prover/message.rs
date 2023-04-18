@@ -17,9 +17,6 @@
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
-use crate::snark::marlin::CircuitId;
-use std::collections::BTreeMap;
-
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MatrixSums<F: PrimeField> {
     pub sum_a: F,
@@ -30,7 +27,7 @@ pub struct MatrixSums<F: PrimeField> {
 /// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ThirdMessage<F: PrimeField> {
-    pub sums: BTreeMap<CircuitId, MatrixSums<F>>,
+    pub sums: Vec<MatrixSums<F>>,
 }
 
 impl<F: PrimeField> ToBytes for ThirdMessage<F> {

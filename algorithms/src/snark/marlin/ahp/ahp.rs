@@ -218,8 +218,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let t_at_beta_s = state
             .circuit_specific_states
             .iter()
-            .map(|(circuit_id, circuit_state)| {
-                let sums_i = &sums[circuit_id];
+            .enumerate()
+            .map(|(i, (circuit_id, circuit_state))| {
+                let sums_i = &sums[i];
                 let t_at_beta = eta_a * circuit_state.non_zero_a_domain.size_as_field_element * sums_i.sum_a
                     + eta_b * circuit_state.non_zero_b_domain.size_as_field_element * sums_i.sum_b
                     + eta_c * circuit_state.non_zero_c_domain.size_as_field_element * sums_i.sum_c;
@@ -381,9 +382,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
 
             let challenges = VerifierChallenges { alpha, beta, gamma };
-            let sum_a = sums[&id].sum_a;
-            let sum_b = sums[&id].sum_b;
-            let sum_c = sums[&id].sum_c;
+            let sum_a = sums[i].sum_a;
+            let sum_b = sums[i].sum_b;
+            let sum_c = sums[i].sum_c;
 
             Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, evals, &g_a, v_H_i, r_a[i], sum_a, s_a)?;
             Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, evals, &g_b, v_H_i, r_b[i], sum_b, s_b)?;
