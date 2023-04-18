@@ -18,13 +18,13 @@ use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{
         Commitment,
-        CommitterKey,
+        CommitterUnionKey,
         Evaluations,
         LabeledCommitment,
         QuerySet,
         Randomness,
         SonicKZG10,
-        VerifierKey,
+        VerifierUnionKey,
     },
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
@@ -122,9 +122,11 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 Some(coefficient_support.as_slice()),
             )?;
 
+            let ck = CommitterUnionKey::union(std::iter::once(&committer_key));
+
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
-                SonicKZG10::<E, FS>::commit(&committer_key, indexed_circuit.iter().map(Into::into), None)?;
+                SonicKZG10::<E, FS>::commit(&ck, indexed_circuit.iter().map(Into::into), None)?;
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
@@ -295,8 +297,10 @@ where
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
 
+        let committer_key = CommitterUnionKey::union(std::iter::once(proving_key.committer_key.as_ref()));
+
         let certificate = SonicKZG10::<E, FS>::open_combinations(
-            &proving_key.committer_key,
+            &committer_key,
             &[lc],
             proving_key.circuit.iter(),
             &commitments,
@@ -346,8 +350,10 @@ where
             .collect::<Vec<_>>();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
 
+        let verifier_key = VerifierUnionKey::union(std::iter::once(&verifying_key.verifier_key));
+
         SonicKZG10::<E, FS>::check_combinations(
-            &verifying_key.verifier_key,
+            &verifier_key,
             &[lc],
             &commitments,
             &query_set,
@@ -400,7 +406,7 @@ where
         }
         assert_eq!(prover_state.total_instances, total_instances);
 
-        let committer_key = CommitterKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
+        let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
 
         let circuit_commitments = keys_to_constraints
             .keys()
@@ -715,7 +721,7 @@ where
             inputs_and_batch_sizes.insert(vk.orig_vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
 
-        let verifier_key = VerifierKey::<E>::union(vks);
+        let verifier_key = VerifierUnionKey::<E>::union(vks);
 
         let circuit_commitments =
             keys_to_inputs.iter().map(|(vk, _)| vk.orig_vk.circuit_commitments.clone()).collect::<Vec<_>>();
