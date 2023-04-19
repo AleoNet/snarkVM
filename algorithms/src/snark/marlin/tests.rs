@@ -82,14 +82,14 @@ mod marlin {
                             }
                             let unique_instances = constraints.values().map(|instances| &instances[0]).collect::<Vec<_>>();
 
-                            let (index_pks, index_vks) =
+                            let index_keys =
                                 $marlin_inst::batch_circuit_setup(&universal_srs, unique_instances.as_slice()).unwrap();
                             println!("Called circuit setup");
 
                             let mut pks_to_constraints = BTreeMap::new();
                             let mut vks_to_inputs = BTreeMap::new();
-                            let mut constraint_refs = Vec::with_capacity(index_pks.len());
-                            for (index_pk, index_vk) in index_pks.iter().zip(index_vks.iter()) {
+                            let mut constraint_refs = Vec::with_capacity(index_keys.len());
+                            for (index_pk, index_vk) in index_keys.iter() {
                                 let circuit_constraints = &constraints[&index_pk.circuit.id];
                                 let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
                                 for constraint in circuit_constraints.iter() {
@@ -99,7 +99,7 @@ mod marlin {
                                 let circuit_inputs = &inputs[&index_pk.circuit.id];
                                 vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
                             }
-                            for (i, index_pk) in index_pks.iter().enumerate() {
+                            for (i, (index_pk, _)) in index_keys.iter().enumerate() {
                                 pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
                             }
 

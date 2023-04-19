@@ -96,11 +96,10 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
-    ) -> Result<(Vec<CircuitProvingKey<E, MM>>, Vec<CircuitVerifyingKey<E, MM>>), SNARKError> {
+    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>)>, SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
-        let mut circuit_proving_keys = Vec::with_capacity(circuits.len());
-        let mut circuit_verifying_keys = Vec::with_capacity(circuits.len());
+        let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
             let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
@@ -138,20 +137,17 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 mode: PhantomData,
                 id: indexed_circuit.id,
             };
-            circuit_verifying_keys.push(circuit_verifying_key.clone());
-
             let circuit_proving_key = CircuitProvingKey {
                 circuit: Arc::new(indexed_circuit),
                 circuit_commitment_randomness,
-                circuit_verifying_key,
+                circuit_verifying_key: circuit_verifying_key.clone(),
                 committer_key: Arc::new(committer_key),
             };
-            circuit_proving_keys.push(circuit_proving_key);
+            circuit_keys.push((circuit_proving_key, circuit_verifying_key));
         }
 
         end_timer!(index_time);
-
-        Ok((circuit_proving_keys, circuit_verifying_keys))
+        Ok(circuit_keys)
     }
 
     /// Generates the circuit proving and verifying keys.
@@ -161,9 +157,9 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         universal_srs: &UniversalSRS<E>,
         circuit: &C,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
-        let (mut proving_keys, mut verifying_keys) = Self::batch_circuit_setup(universal_srs, &[circuit])?;
-        assert!(proving_keys.len() == 1 && verifying_keys.len() == 1);
-        Ok((proving_keys.pop().unwrap(), verifying_keys.pop().unwrap()))
+        let mut circuit_keys = Self::batch_circuit_setup(universal_srs, &[circuit])?;
+        assert_eq!(circuit_keys.len(), 1);
+        Ok(circuit_keys.pop().unwrap())
     }
 
     fn terminate(terminator: &AtomicBool) -> Result<(), MarlinError> {
