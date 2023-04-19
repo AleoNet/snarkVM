@@ -17,10 +17,55 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::Criterion;
+mod utilities;
+use utilities::*;
+
+use console::{account::PrivateKey, network::Testnet3};
+use snarkvm_synthesizer::{Speculate, Transaction};
+use snarkvm_utilities::{TestRng, ToBytes};
+
+use criterion::{BatchSize, Criterion};
+
+const NUM_MAPPINGS: &[usize] = &[0, 1, 2, 4, 8, 16, 32];
 
 fn commit_deployment(c: &mut Criterion) {
-    todo!()
+    let rng = &mut TestRng::default();
+
+    // Sample a new private key and address.
+    let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
+
+    // Initialize a `Namer` to help construct unique programs.
+    let mut namer = Namer::new();
+
+    // Create a new benchmark group.
+    let mut group = c.benchmark_group("commit_deployment");
+    for num_mappings in NUM_MAPPINGS {
+        // Initialize the VM.
+        let (vm, record) = initialize_vm(&private_key, rng);
+
+        // Construct a new program.
+        let program =
+            construct_program(ProgramConfig { num_mappings: *num_mappings, transition_configs: vec![] }, &mut namer);
+
+        // Calculate the program size.
+        let program_size = program.to_bytes_le().unwrap().len();
+
+        // Construct a deployment transaction.
+        let transaction =
+            Transaction::deploy(&vm, &private_key, &program, (record.clone(), program_size as u64), None, rng).unwrap();
+
+        // Construct a speculate object.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+
+        // Speculate the transaction.
+        speculate.speculate_transaction(&vm, &transaction).unwrap();
+
+        // Benchmark the speculation of a deployment with the given number of mappings.
+        group.bench_function(&format!("{}_mappings", num_mappings), |b| {
+            b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
+        });
+    }
+    group.finish();
 }
 
 fn commit_execution(c: &mut Criterion) {
@@ -30,7 +75,7 @@ fn commit_execution(c: &mut Criterion) {
 criterion_group! {
     name = commit;
     config = Criterion::default().sample_size(10);
-    targets = commit_deployment, commit_execution
+    targets = commit_deployment
 }
 
 criterion_main!(commit);

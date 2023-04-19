@@ -27,7 +27,7 @@ use snarkvm_synthesizer::{Speculate, Transaction};
 
 use snarkvm_utilities::{TestRng, ToBytes};
 
-const NUM_MAPPINGS: &[usize] = &[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65535];
+const NUM_MAPPINGS: &[usize] = &[0, 1, 2, 4, 8, 16, 32];
 
 fn speculate_deployment(c: &mut Criterion) {
     let rng = &mut TestRng::default();
@@ -55,10 +55,13 @@ fn speculate_deployment(c: &mut Criterion) {
         let transaction =
             Transaction::deploy(&vm, &private_key, &program, (record.clone(), program_size as u64), None, rng).unwrap();
 
+        // Construct a speculate object.
+        let speculate = Speculate::new(vm.program_store().current_storage_root());
+
         // Benchmark the speculation of a deployment with the given number of mappings.
-        group.bench_function(&format!("/{}_mappings", num_mappings), |b| {
+        group.bench_function(&format!("{}_mappings", num_mappings), |b| {
             b.iter_batched(
-                || Speculate::new(vm.program_store().current_storage_root()),
+                || speculate.clone(),
                 |mut speculate| speculate.speculate_transaction(&vm, &transaction).unwrap(),
                 BatchSize::SmallInput,
             )
@@ -67,9 +70,9 @@ fn speculate_deployment(c: &mut Criterion) {
     group.finish();
 }
 
-// fn speculate_execution(c: &mut Criterion) {
-//     todo!()
-// }
+fn speculate_execution(c: &mut Criterion) {
+    todo!()
+}
 
 criterion_group! {
     name = speculate;

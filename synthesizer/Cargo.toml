@@ -35,6 +35,11 @@ harness = false
 required-features = [ "setup" ]
 
 [[bench]]
+name = "commit"
+path = "benches/commit.rs"
+harness = false
+
+[[bench]]
 name = "speculate"
 path = "benches/speculate.rs"
 harness = false
