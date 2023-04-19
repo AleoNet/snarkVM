@@ -18,7 +18,7 @@ use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, ToBits};
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 pub struct FixedBase;

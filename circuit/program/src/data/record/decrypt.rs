@@ -51,17 +51,6 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
             index += 1;
         }
 
-        // Decrypt the gates.
-        let gates = match self.gates.is_public().eject_value() {
-            true => self.gates.decrypt(&[]),
-            false => self.gates.decrypt(&[randomizers[index].clone()]),
-        };
-
-        // Increment the index if the gates is private.
-        if gates.is_private().eject_value() {
-            index += 1;
-        }
-
         // Decrypt the program data.
         let mut decrypted_data = IndexMap::with_capacity(self.data.len());
         for (id, entry, num_randomizers) in self.data.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
@@ -85,7 +74,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
         }
 
         // Return the decrypted record.
-        Record { owner, gates, data: decrypted_data, nonce: self.nonce.clone() }
+        Record { owner, data: decrypted_data, nonce: self.nonce.clone() }
     }
 }
 
@@ -93,7 +82,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
 mod tests {
     use super::*;
     use crate::{Circuit, Literal};
-    use snarkvm_circuit_types::{Address, Field, U64};
+    use snarkvm_circuit_types::{Address, Field};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
@@ -103,14 +92,12 @@ mod tests {
     fn check_encrypt_and_decrypt<A: Aleo>(
         view_key: &ViewKey<A>,
         owner: Owner<A, Plaintext<A>>,
-        gates: Balance<A, Plaintext<A>>,
         rng: &mut TestRng,
     ) -> Result<()> {
         // Prepare the record.
         let randomizer = Scalar::new(Mode::Private, Uniform::rand(rng));
         let record = Record {
             owner,
-            gates,
             data: IndexMap::from_iter(
                 vec![
                     (
@@ -151,40 +138,17 @@ mod tests {
             let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
             let owner = address;
 
-            // Public owner and public gates.
+            // Public owner.
             {
                 let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
-                let gates = Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut rng) >> 12)));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, &mut rng)?;
             }
 
-            // Private owner and public gates.
+            // Private owner.
             {
                 let owner =
                     Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
-                let gates = Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut rng) >> 12)));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
-            }
-
-            // Public owner and private gates.
-            {
-                let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
-                let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(
-                    Mode::Private,
-                    console::U64::new(u64::rand(&mut rng) >> 12),
-                ))));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
-            }
-
-            // Private owner and private gates.
-            {
-                let owner =
-                    Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
-                let gates = Balance::Private(Plaintext::from(Literal::U64(U64::new(
-                    Mode::Private,
-                    console::U64::new(u64::rand(&mut rng) >> 12),
-                ))));
-                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, gates, &mut rng)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, &mut rng)?;
             }
         }
         Ok(())

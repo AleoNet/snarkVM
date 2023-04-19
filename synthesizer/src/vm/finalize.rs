@@ -29,7 +29,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             for transaction in transactions.values() {
                 // Finalize the transaction.
                 match transaction {
-                    Transaction::Deploy(_, deployment, _) => {
+                    Transaction::Deploy(_, _, deployment, _) => {
                         process.finalize_deployment(self.program_store(), deployment)?;
                         lap!(timer, "Finalize deployment");
                     }

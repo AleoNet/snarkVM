@@ -30,7 +30,7 @@ use hashbrown::HashMap;
 
 use std::collections::BTreeMap;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 // This function converts a matrix output by Zexe's constraint infrastructure

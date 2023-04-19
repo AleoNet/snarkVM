@@ -34,13 +34,17 @@ impl<N: Network> Header<N> {
         if id == &self.previous_state_root {
             Ok(HeaderLeaf::<N>::new(0, self.previous_state_root))
         }
-        // If the ID is the previous state root, return the 1st leaf.
+        // If the ID is the transactions root, return the 1st leaf.
         else if id == &self.transactions_root {
             Ok(HeaderLeaf::<N>::new(1, self.transactions_root))
         }
-        // If the ID is the coinbase accumulator point, return the 2nd leaf.
+        // If the ID is the finalize root, return the 2nd leaf.
+        else if id == &self.finalize_root {
+            Ok(HeaderLeaf::<N>::new(2, self.finalize_root))
+        }
+        // If the ID is the coinbase accumulator point, return the 3rd leaf.
         else if id == &self.coinbase_accumulator_point {
-            Ok(HeaderLeaf::<N>::new(2, self.coinbase_accumulator_point))
+            Ok(HeaderLeaf::<N>::new(3, self.coinbase_accumulator_point))
         }
         // If the ID is the metadata hash, then return the 7th leaf.
         else if id == &self.metadata.to_hash()? {
@@ -61,8 +65,9 @@ impl<N: Network> Header<N> {
         let mut leaves: Vec<Vec<bool>> = Vec::with_capacity(num_leaves);
         leaves.push(HeaderLeaf::<N>::new(0, self.previous_state_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(1, self.transactions_root).to_bits_le());
-        leaves.push(HeaderLeaf::<N>::new(2, self.coinbase_accumulator_point).to_bits_le());
-        for i in 3..7 {
+        leaves.push(HeaderLeaf::<N>::new(2, self.finalize_root).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(3, self.coinbase_accumulator_point).to_bits_le());
+        for i in 4..7 {
             leaves.push(HeaderLeaf::<N>::new(i, Field::zero()).to_bits_le());
         }
         leaves.push(HeaderLeaf::<N>::new(7, self.metadata.to_hash()?).to_bits_le());
@@ -108,10 +113,13 @@ mod tests {
                 Field::rand(rng),
                 Field::rand(rng),
                 Field::rand(rng),
+                Field::rand(rng),
                 Metadata::new(
                     CurrentNetwork::ID,
                     u64::rand(rng),
                     u32::rand(rng),
+                    u64::rand(rng),
+                    u128::rand(rng),
                     coinbase_target,
                     proof_target,
                     u64::rand(rng),
@@ -134,8 +142,13 @@ mod tests {
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 2nd leaf.
-            let leaf = header.to_leaf(&header.coinbase_accumulator_point())?;
+            let leaf = header.to_leaf(&header.finalize_root())?;
             assert_eq!(leaf.index(), 2);
+            check_path(header.to_path(&leaf)?, root, &leaf)?;
+
+            // Check the 3rd leaf.
+            let leaf = header.to_leaf(&header.coinbase_accumulator_point())?;
+            assert_eq!(leaf.index(), 3);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.

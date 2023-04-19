@@ -58,7 +58,7 @@ mod tests {
     fn test_value_plaintext_bytes() -> Result<()> {
         // Construct a new plaintext value.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, gates: 5u64, token_amount: 100u64 }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
         )?);
 
         // Check the byte representation.
@@ -72,7 +72,7 @@ mod tests {
     fn test_value_record_bytes() -> Result<()> {
         // Construct a new record value.
         let expected = Value::Record(Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: 0group.public }",
         )?);
 
         // Check the byte representation.

@@ -256,7 +256,6 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -285,7 +284,6 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 function compute:

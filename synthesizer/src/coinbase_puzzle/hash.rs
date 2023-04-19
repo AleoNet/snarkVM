@@ -22,7 +22,7 @@ use snarkvm_utilities::CanonicalSerialize;
 
 use blake2::Digest;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 pub fn hash_to_coefficients<F: PrimeField>(input: &[u8], num_coefficients: u32) -> Vec<F> {

@@ -21,7 +21,7 @@ impl<N: Network> FromBytes for Transactions<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
             return Err(error("Invalid header version"));
@@ -40,7 +40,7 @@ impl<N: Network> ToBytes for Transactions<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        0u8.write_le(&mut writer)?;
         // Write the number of transactions.
         (self.transactions.len() as u32).write_le(&mut writer)?;
         // Write the transactions.

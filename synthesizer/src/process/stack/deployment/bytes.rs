@@ -61,7 +61,7 @@ impl<N: Network> ToBytes for Deployment<N> {
         // Write the program.
         self.program.write_le(&mut writer)?;
         // Write the number of entries in the bundle.
-        (self.verifying_keys.len() as u16).write_le(&mut writer)?;
+        (u16::try_from(self.verifying_keys.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
         // Write each entry.
         for (function_name, (verifying_key, certificate)) in &self.verifying_keys {
             // Write the function name.

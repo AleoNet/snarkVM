@@ -39,7 +39,7 @@ use core::{
 use itertools::Itertools;
 use rand_core::RngCore;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 mod data_structures;
