@@ -31,7 +31,7 @@ impl<N: Network> Client<N> {
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
 
         // Initialize the query.
-        let query: Query<N, BlockMemory<_>> = (&self.base_url.to_string()).into();
+        let query: Query<N, BlockMemory<_>> = (&self.node_url().to_string()).into();
         // Check if the program exists.
         if !self.vm.contains_program(&program_id) {
             match query.get_program(&program_id) {
