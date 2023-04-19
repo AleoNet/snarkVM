@@ -25,7 +25,7 @@ use reqwest::Url;
 use crate::{
     console::{
         account::{PrivateKey, ViewKey},
-        program::{Ciphertext, Field, Identifier, Network, ProgramID, Record, Response, Value},
+        program::{Ciphertext, Field, Identifier, Network, Plaintext, ProgramID, Record, Response, Value},
     },
     synthesizer::{Block, BlockMemory, ConsensusMemory, ConsensusStore, Program, Query, Transaction, VM},
 };
