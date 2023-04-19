@@ -627,8 +627,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof =
-            Proof::<E>::new(batch_sizes, total_instances, commitments, evaluations, prover_third_message, pc_proof)?;
+        let proof = Proof::<E>::new(batch_sizes, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
 
         // Collect verification key and public inputs to verify_batch

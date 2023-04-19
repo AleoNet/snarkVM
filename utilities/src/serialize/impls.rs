@@ -405,8 +405,6 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for [T; 32] {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let len = u64::deserialize_with_mode(&mut reader, compress, validate)?;
-        assert!(len == 32); // in the future we can parametrize the array on length
         let values = [(); 32]
             .iter()
             .map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No))
@@ -458,9 +456,6 @@ impl<T: CanonicalSerialize> CanonicalSerialize for [T] {
 impl<T: CanonicalSerialize> CanonicalSerialize for [T; 32] {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
-        let len = self.len() as u64;
-        assert!(len == 32); // in the future we can parametrize the array on length
-        len.serialize_with_mode(&mut writer, compress)?;
         for item in self.iter() {
             item.serialize_with_mode(&mut writer, compress)?;
         }

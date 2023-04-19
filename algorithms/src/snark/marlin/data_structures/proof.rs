@@ -57,61 +57,48 @@ impl<E: PairingEngine> Commitments<E> {
         mut writer: W,
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        for comm in &self.witness_commitments {
-            comm.serialize_with_mode(&mut writer, compress)?;
-        }
+        serialize_vec_without_len(&self.witness_commitments, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.mask_poly, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_1, &mut writer, compress)?;
-        for comm in &self.g_a_commitments {
-            comm.serialize_with_mode(&mut writer, compress)?;
-        }
-        for comm in &self.g_b_commitments {
-            comm.serialize_with_mode(&mut writer, compress)?;
-        }
-        for comm in &self.g_c_commitments {
-            comm.serialize_with_mode(&mut writer, compress)?;
-        }
+        serialize_vec_without_len(&self.g_a_commitments, &mut writer, compress)?;
+        serialize_vec_without_len(&self.g_b_commitments, &mut writer, compress)?;
+        serialize_vec_without_len(&self.g_c_commitments, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_2, &mut writer, compress)?;
         Ok(())
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
         let mut size = 0;
-        size += self.witness_commitments.len()
-            * CanonicalSerialize::serialized_size(&self.witness_commitments[0], compress);
+        size += serialized_vec_size_without_len(&self.witness_commitments, compress);
         size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1, compress);
         size += CanonicalSerialize::serialized_size(&self.h_1, compress);
-        size += self.g_a_commitments.len() * CanonicalSerialize::serialized_size(&self.g_a_commitments[0], compress);
-        size += self.g_b_commitments.len() * CanonicalSerialize::serialized_size(&self.g_b_commitments[0], compress);
-        size += self.g_c_commitments.len() * CanonicalSerialize::serialized_size(&self.g_c_commitments[0], compress);
+        size += serialized_vec_size_without_len(&self.g_a_commitments, compress);
+        size += serialized_vec_size_without_len(&self.g_b_commitments, compress);
+        size += serialized_vec_size_without_len(&self.g_c_commitments, compress);
         size += CanonicalSerialize::serialized_size(&self.h_2, compress);
         size
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
-        batch_size: usize,
+        batch_sizes: &Vec<usize>,
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
+        let mut w = Vec::with_capacity(batch_sizes.iter().sum());
+        for batch_size in batch_sizes {
+            w.extend(deserialize_vec_without_len(&mut reader, compress, validate, *batch_size)?);
+        }
         Ok(Commitments {
-            witness_commitments: (0..batch_size)
-                .map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate))
-                .collect::<Result<_, _>>()?,
+            witness_commitments: w,
             mask_poly: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             h_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_a_commitments: (0..batch_size)
-                .map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate))
-                .collect::<Result<_, _>>()?,
-            g_b_commitments: (0..batch_size)
-                .map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate))
-                .collect::<Result<_, _>>()?,
-            g_c_commitments: (0..batch_size)
-                .map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate))
-                .collect::<Result<_, _>>()?,
+            g_a_commitments: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
+            g_b_commitments: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
+            g_c_commitments: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
             h_2: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }
@@ -147,35 +134,42 @@ impl<F: PrimeField> Evaluations<F> {
         mut writer: W,
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        CanonicalSerialize::serialize_with_mode(&self.z_b_evals, &mut writer, compress)?;
+        for z_b_eval_circuit in &self.z_b_evals {
+            serialize_vec_without_len(z_b_eval_circuit, &mut writer, compress)?;
+        }
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_a_evals, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_b_evals, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.g_c_evals, &mut writer, compress)?;
+        serialize_vec_without_len(&self.g_a_evals, &mut writer, compress)?;
+        serialize_vec_without_len(&self.g_b_evals, &mut writer, compress)?;
+        serialize_vec_without_len(&self.g_c_evals, &mut writer, compress)?;
         Ok(())
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
         let mut size = 0;
-        size += CanonicalSerialize::serialized_size(&self.z_b_evals, compress);
+        for z_b_eval_circuit in &self.z_b_evals {
+            size += serialized_vec_size_without_len(z_b_eval_circuit, compress);
+        }
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_a_evals, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_b_evals, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_c_evals, compress);
+        size += serialized_vec_size_without_len(&self.g_a_evals, compress);
+        size += serialized_vec_size_without_len(&self.g_b_evals, compress);
+        size += serialized_vec_size_without_len(&self.g_c_evals, compress);
         size
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
+        batch_sizes: &Vec<usize>,
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
         Ok(Evaluations {
-            z_b_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            z_b_evals: (0..batch_sizes.len())
+                .map(|batch_size| deserialize_vec_without_len(&mut reader, compress, validate, batch_size))
+                .collect::<Result<Vec<Vec<_>>, _>>()?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_a_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_b_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            g_c_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            g_a_evals: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
+            g_b_evals: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
+            g_c_evals: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
         })
     }
 }
@@ -279,20 +273,21 @@ impl<E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
         batch_sizes_map: BTreeMap<CircuitId, usize>,
-        total_instances: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::ThirdMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
-        if commitments.witness_commitments.len() != total_instances {
-            return Err(SNARKError::BatchSizeMismatch);
-        }
+        let mut total_instances = 0;
         let batch_sizes: Vec<usize> = batch_sizes_map.into_values().collect();
         for (i, z_b_evals_i) in evaluations.z_b_evals.iter().enumerate() {
+            total_instances += batch_sizes[i];
             if z_b_evals_i.len() != batch_sizes[i] {
                 return Err(SNARKError::BatchSizeMismatch);
             }
+        }
+        if commitments.witness_commitments.len() != total_instances {
+            return Err(SNARKError::BatchSizeMismatch);
         }
         Ok(Self { batch_sizes, commitments, evaluations, msg, pc_proof })
     }
@@ -350,13 +345,12 @@ impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let batch_sizes: Vec<usize> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let total_batch_size = batch_sizes.iter().sum();
         Ok(Proof {
-            batch_sizes,
-            commitments: Commitments::deserialize_with_mode(total_batch_size, &mut reader, compress, validate)?,
-            evaluations: Evaluations::deserialize_with_mode(&mut reader, compress, validate)?,
+            commitments: Commitments::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?,
+            evaluations: Evaluations::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?,
             msg: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             pc_proof: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            batch_sizes,
         })
     }
 }
