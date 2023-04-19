@@ -228,7 +228,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect::<BTreeMap<_, _>>();
 
-        let verifier::ThirdMessage { r_a, r_b, r_c } = state.third_round_message.as_ref().unwrap();
+        let verifier::ThirdMessage { delta_a, delta_b, delta_c } = state.third_round_message.as_ref().unwrap();
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
@@ -386,9 +386,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let sum_b = sums[i].sum_b;
             let sum_c = sums[i].sum_c;
 
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, evals, &g_a, v_H_i, r_a[i], sum_a, s_a)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, evals, &g_b, v_H_i, r_b[i], sum_b, s_b)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", challenges, evals, &g_c, v_H_i, r_c[i], sum_c, s_c)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, evals, &g_a, v_H_i, delta_a[i], sum_a, s_a)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, evals, &g_b, v_H_i, delta_b[i], sum_b, s_b)?;
+            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", challenges, evals, &g_c, v_H_i, delta_c[i], sum_c, s_c)?;
 
             linear_combinations.insert(g_a.label.clone(), g_a);
             linear_combinations.insert(g_b.label.clone(), g_b);

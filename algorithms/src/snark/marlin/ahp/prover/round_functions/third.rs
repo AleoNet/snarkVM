@@ -233,6 +233,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(f_evals_time);
 
         let f_poly_time = start_timer!(|| format!("Computing f poly for {label}"));
+        // we define f as the rational equation for which we're running the sumcheck protocol
         let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain)
             .interpolate_with_pc(ifft_precomputation);
         end_timer!(f_poly_time);
@@ -245,26 +246,26 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
                 multiplier.multiply().unwrap()
             };
-
-        // Let K = largest_non_zero_domain;
-        // Let K_M = non_zero_domain;
-        // Let s := K.selector_polynomial(K_M) = (v_K / v_K_M) * (K_M.size() / K.size());
+        // Let K_max = largest_non_zero_domain;
+        // Let K = non_zero_domain;
+        // Let s := K_max.selector_polynomial(K) = (v_K_max / v_K) * (K.size() / K_max.size());
+        // Let v_K_max := K_max.vanishing_polynomial();
         // Let v_K := K.vanishing_polynomial();
-        // Let v_K_M := K_M.vanishing_polynomial();
+        // Let lhs := h / v_K * (K.size() / K_max.size());
 
         // Later on, we multiply `h` by s, and divide by v_K.
-        // Substituting in s, we get that h * s / v_K = h / v_K_M * (K_M.size() / K.size());
+        // Substituting in s, we get that h * s / v_K_max = h / v_K * (K.size() / K_max.size());
         // That's what we're computing here.
         assert_eq!(h, &a_poly - &(&b_poly * &f));
-        let (mut h, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
+        let (mut lhs, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
         assert!(remainder.is_zero());
         let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
-        cfg_iter_mut!(h.coeffs).for_each(|c| *c *= multiplier);
+        cfg_iter_mut!(lhs.coeffs).for_each(|c| *c *= multiplier);
 
         let g = LabeledPolynomial::new(label, g, Some(non_zero_domain.size() - 2), None);
 
-        assert!(h.degree() <= non_zero_domain.size() - 2);
+        assert!(lhs.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
-        (f.coeffs[0], h, g)
+        (f.coeffs[0], lhs, g)
     }
 }

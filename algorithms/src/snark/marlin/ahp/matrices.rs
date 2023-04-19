@@ -157,9 +157,6 @@ pub(crate) fn matrix_evals<F: PrimeField>(
 ) -> MatrixEvals<F> {
     let lde_evals_time = start_timer!(|| "Computing row, col and val evals");
 
-    // Recall that we are computing the arithmetization of M^*,
-    // where `M^*(i, j) := M(j, i) * u_H(j, j)`.
-
     let mut row_vec = Vec::with_capacity(non_zero_domain.size());
     let mut col_vec = Vec::with_capacity(non_zero_domain.size());
     let mut val_vec = Vec::with_capacity(non_zero_domain.size());

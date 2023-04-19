@@ -32,6 +32,7 @@ pub(crate) struct BatchCombiners<F> {
 pub struct FirstMessage<F: PrimeField> {
     /// Query for the random polynomial.
     pub alpha: F,
+    /// We only need randomizers for B and C to get a linear combination for {A,B,C}
     /// Randomizer for the lincheck for `B`.
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.
@@ -51,17 +52,17 @@ pub struct SecondMessage<F> {
 #[derive(Clone, Debug)]
 pub struct ThirdMessage<F> {
     /// Randomizers for the h-polynomial for `A_i`, `B_i`, `C_i` for circuit i.
-    pub r_a: Vec<F>,
-    pub r_b: Vec<F>,
-    pub r_c: Vec<F>,
+    pub delta_a: Vec<F>,
+    pub delta_b: Vec<F>,
+    pub delta_c: Vec<F>,
 }
 
 impl<F: PrimeField> ThirdMessage<F> {
     pub fn into_iter(mut self) -> impl Iterator<Item = F> {
-        core::mem::take(&mut self.r_a)
+        core::mem::take(&mut self.delta_a)
             .into_iter()
-            .zip_eq(core::mem::take(&mut self.r_b).into_iter())
-            .zip_eq(core::mem::take(&mut self.r_c).into_iter())
+            .zip_eq(core::mem::take(&mut self.delta_b).into_iter())
+            .zip_eq(core::mem::take(&mut self.delta_c).into_iter())
             .flat_map(|((r_a, r_b), r_c)| [r_a, r_b, r_c])
     }
 }
@@ -86,7 +87,7 @@ impl<F: PrimeField> QuerySet<F> {
         let gamma = state.gamma.unwrap();
         // For the first linear combination
         // Lincheck sumcheck test:
-        //   s(beta) + r(alpha, beta) * (sum_M eta_M z_M(beta)) - t(beta) * z(beta)
+        //   s(beta) + r(alpha, beta) * (sum_i batch_combiner_i (sum_M eta_M z_M(beta))) - t(beta) * z(beta)
         // = h_1(beta) * v_H(beta) + beta * g_1(beta)
         //
         // Note that z is the interpolation of x || w, so it equals x + v_X * w

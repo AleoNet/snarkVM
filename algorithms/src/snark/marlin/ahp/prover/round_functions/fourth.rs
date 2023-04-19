@@ -47,8 +47,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .into_iter()
             .zip_eq(state.lhs_polys_into_iter())
             .par_bridge()
-            .map(|(r, mut lhs)| {
-                lhs *= r;
+            .map(|(delta, mut lhs)| {
+                lhs *= delta;
                 lhs
             })
             .reduce(

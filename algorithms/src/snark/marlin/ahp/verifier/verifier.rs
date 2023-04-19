@@ -152,26 +152,26 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let num_circuits = state.circuit_specific_states.len();
-        let mut r_a = Vec::with_capacity(num_circuits);
-        let mut r_b = Vec::with_capacity(num_circuits);
-        let mut r_c = Vec::with_capacity(num_circuits);
+        let mut delta_a = Vec::with_capacity(num_circuits);
+        let mut delta_b = Vec::with_capacity(num_circuits);
+        let mut delta_c = Vec::with_capacity(num_circuits);
         let first_elems = fs_rng.squeeze_nonnative_field_elements(2);
-        r_a.push(TargetField::one());
-        r_b.push(first_elems[0]);
-        r_c.push(first_elems[1]);
+        delta_a.push(TargetField::one());
+        delta_b.push(first_elems[0]);
+        delta_c.push(first_elems[1]);
         for _ in 1..num_circuits {
             let elems: SmallVec<[TargetField; 10]> = fs_rng.squeeze_nonnative_field_elements(3);
-            r_a.push(elems[0]);
-            r_b.push(elems[1]);
-            r_c.push(elems[2]);
+            delta_a.push(elems[0]);
+            delta_b.push(elems[1]);
+            delta_c.push(elems[2]);
         }
-        let message = ThirdMessage { r_a, r_b, r_c };
+        let message = ThirdMessage { delta_a, delta_b, delta_c };
 
         state.third_round_message = Some(message.clone());
         Ok((message, state))
     }
 
-    /// Output the third message and next round state.
+    /// Output the next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,

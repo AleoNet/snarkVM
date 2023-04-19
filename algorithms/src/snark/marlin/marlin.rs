@@ -267,6 +267,8 @@ where
         .map_err(SNARKError::from)
     }
 
+    /// Prove that the verifying key indeed includes a part of the reference string,
+    /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
     fn prove_vk(
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
@@ -312,6 +314,8 @@ where
         Ok(Self::Certificate::new(certificate))
     }
 
+    /// Verify that the verifying key indeed includes a part of the reference string,
+    /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         fs_parameters: &Self::FSParameters,
         circuit: &C,
@@ -364,6 +368,9 @@ where
     }
 
     #[allow(clippy::only_used_in_recursion)]
+    /// This is the main entrypoint for creating proofs.
+    /// You can find a specification of the prover algorithm in:
+    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[&C]>,
@@ -645,6 +652,9 @@ where
         Ok(proof)
     }
 
+    /// This is the main entrypoint for verifying proofs.
+    /// You can find a specification of the verifier algorithm in:
+    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
