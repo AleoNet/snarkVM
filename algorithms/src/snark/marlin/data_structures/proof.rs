@@ -163,8 +163,9 @@ impl<F: PrimeField> Evaluations<F> {
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
         Ok(Evaluations {
-            z_b_evals: (0..batch_sizes.len())
-                .map(|batch_size| deserialize_vec_without_len(&mut reader, compress, validate, batch_size))
+            z_b_evals: batch_sizes
+                .iter()
+                .map(|batch_size| deserialize_vec_without_len(&mut reader, compress, validate, *batch_size))
                 .collect::<Result<Vec<Vec<_>>, _>>()?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_evals: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
@@ -364,5 +365,154 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
 impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         Self::deserialize_compressed(&mut r).map_err(|_| error("could not deserialize Proof"))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(non_camel_case_types)]
+
+    use super::*;
+
+    use crate::{
+        polycommit::{
+            kzg10::{KZGCommitment, KZGProof},
+            sonic_pc::BatchProof,
+        },
+        snark::marlin::prover::MatrixSums,
+    };
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fr, G1Affine},
+        AffineCurve,
+    };
+    use snarkvm_utilities::{TestRng, Uniform};
+
+    fn modes() -> [(Compress, Validate); 4] {
+        [
+            (Compress::No, Validate::No),
+            (Compress::Yes, Validate::No),
+            (Compress::No, Validate::Yes),
+            (Compress::Yes, Validate::Yes),
+        ]
+    }
+
+    fn sample_commit() -> KZGCommitment<Bls12_377> {
+        let buf = G1Affine::prime_subgroup_generator().to_bytes_le().unwrap();
+        FromBytes::read_le(buf.as_slice()).unwrap()
+    }
+
+    fn rand_commitments(i: usize, j: usize, test_with_none: bool) -> Commitments<Bls12_377> {
+        assert!(i > 0);
+        assert!(j > 0);
+        let mask_poly = if test_with_none { None } else { Some(sample_commit()) };
+        Commitments {
+            witness_commitments: vec![
+                WitnessCommitments {
+                    w: sample_commit(),
+                    z_a: sample_commit(),
+                    z_b: sample_commit(),
+                };
+                i * j
+            ],
+            mask_poly,
+            g_1: sample_commit(),
+            h_1: sample_commit(),
+            g_a_commitments: vec![sample_commit(); j],
+            g_b_commitments: vec![sample_commit(); j],
+            g_c_commitments: vec![sample_commit(); j],
+            h_2: sample_commit(),
+        }
+    }
+
+    fn rand_evaluations<F: PrimeField>(rng: &mut TestRng, i: usize, j: usize) -> Evaluations<F> {
+        Evaluations {
+            z_b_evals: vec![vec![F::rand(rng); i]; j],
+            g_1_eval: F::rand(rng),
+            g_a_evals: vec![F::rand(rng); j],
+            g_b_evals: vec![F::rand(rng); j],
+            g_c_evals: vec![F::rand(rng); j],
+        }
+    }
+
+    fn rand_sums<F: PrimeField>(rng: &mut TestRng) -> MatrixSums<F> {
+        MatrixSums::<F> { sum_a: F::rand(rng), sum_b: F::rand(rng), sum_c: F::rand(rng) }
+    }
+
+    fn rand_kzg_proof(rng: &mut TestRng, test_with_none: bool) -> KZGProof<Bls12_377> {
+        let random_v = if test_with_none { None } else { Some(Fr::rand(rng)) };
+        KZGProof::<Bls12_377> { w: G1Affine::prime_subgroup_generator(), random_v }
+    }
+
+    #[test]
+    fn test_serializing_commitments() {
+        for i in 1..11 {
+            for j in 1..11 {
+                let test_with_none = i * j % 2 == 0;
+                let commitments = rand_commitments(i, j, test_with_none);
+                let batch_sizes = vec![i; j];
+                let combinations = modes();
+                for (compress, validate) in combinations {
+                    let size = Commitments::serialized_size(&commitments, compress);
+                    let mut serialized = vec![0; size];
+                    Commitments::serialize_with_mode(&commitments, &mut &mut serialized[..], compress).unwrap();
+                    let de = Commitments::deserialize_with_mode(&batch_sizes, &mut &serialized[..], compress, validate)
+                        .unwrap();
+                    assert_eq!(commitments, de);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_serializing_evaluations() {
+        let rng = &mut TestRng::default();
+
+        for i in 1..11 {
+            for j in 1..11 {
+                let evaluations: Evaluations<Fr> = rand_evaluations(rng, i, j);
+                let batch_sizes = vec![i; j];
+                let combinations = modes();
+                for (compress, validate) in combinations {
+                    let size = Evaluations::serialized_size(&evaluations, compress);
+                    let mut serialized = vec![0; size];
+                    Evaluations::serialize_with_mode(&evaluations, &mut &mut serialized[..], compress).unwrap();
+                    let de = Evaluations::deserialize_with_mode(&batch_sizes, &mut &serialized[..], compress, validate)
+                        .unwrap();
+                    assert_eq!(evaluations, de);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_serializing_proof() {
+        let rng = &mut snarkvm_utilities::rand::TestRng::default();
+
+        for i in 1..11 {
+            for j in 1..11 {
+                let test_with_none = i * j % 2 == 0;
+                let batch_sizes = vec![i; j];
+                let commitments = rand_commitments(i, j, test_with_none);
+                let evaluations: Evaluations<Fr> = rand_evaluations(rng, i, j);
+                let msg = ahp::prover::ThirdMessage::<Fr> { sums: vec![rand_sums(rng); j] };
+                let mut proof_evaluations = None;
+                if !test_with_none {
+                    proof_evaluations = Some(vec![Fr::rand(rng); j]);
+                }
+                let pc_proof = sonic_pc::BatchLCProof {
+                    proof: BatchProof(vec![rand_kzg_proof(rng, test_with_none); j]),
+                    evaluations: proof_evaluations,
+                };
+                let proof = Proof { batch_sizes, commitments, evaluations, msg, pc_proof };
+                let combinations = modes();
+                for (compress, validate) in combinations {
+                    let size = Proof::serialized_size(&proof, compress);
+                    let mut serialized = vec![0; size];
+                    Proof::serialize_with_mode(&proof, &mut &mut serialized[..], compress).unwrap();
+                    let de = Proof::deserialize_with_mode(&mut &serialized[..], compress, validate).unwrap();
+                    assert_eq!(proof, de);
+                }
+            }
+        }
     }
 }

@@ -592,6 +592,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{deserialize_vec_without_len, serialize_vec_without_len, serialized_vec_size_without_len};
 
     fn test_serialize<T: PartialEq + std::fmt::Debug + CanonicalSerialize + CanonicalDeserialize>(data: T) {
         let combinations = [
@@ -604,6 +605,25 @@ mod test {
             let mut serialized = vec![0; data.serialized_size(compress)];
             data.serialize_with_mode(&mut &mut serialized[..], compress).unwrap();
             let de = T::deserialize_with_mode(&mut &serialized[..], compress, validate).unwrap();
+            assert_eq!(data, de);
+        }
+    }
+
+    fn test_serialize_without_len<T: PartialEq + std::fmt::Debug + CanonicalSerialize + CanonicalDeserialize>(
+        data: Vec<T>,
+    ) {
+        let combinations = [
+            (Compress::No, Validate::No),
+            (Compress::Yes, Validate::No),
+            (Compress::No, Validate::Yes),
+            (Compress::Yes, Validate::Yes),
+        ];
+        for (compress, validate) in combinations {
+            let len = serialized_vec_size_without_len(&data, compress);
+            let mut serialized = vec![0; len];
+            serialize_vec_without_len(&data, &mut &mut serialized[..], compress).unwrap();
+            let elements = if len > 0 { len / CanonicalSerialize::serialized_size(&data[0], compress) } else { 0 };
+            let de = deserialize_vec_without_len(&mut &serialized[..], compress, validate, elements).unwrap();
             assert_eq!(data, de);
         }
     }
@@ -632,6 +652,12 @@ mod test {
     fn test_vec() {
         test_serialize(vec![1u64, 2, 3, 4, 5]);
         test_serialize(Vec::<u64>::new());
+    }
+
+    #[test]
+    fn test_vec_without_len() {
+        test_serialize_without_len(vec![1u64, 2, 3, 4, 5]);
+        test_serialize_without_len(Vec::<u64>::new());
     }
 
     #[test]
