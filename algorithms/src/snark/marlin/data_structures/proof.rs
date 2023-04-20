@@ -273,17 +273,17 @@ pub struct Proof<E: PairingEngine> {
 impl<E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
-        batch_sizes_map: BTreeMap<CircuitId, usize>,
+        batch_sizes: BTreeMap<CircuitId, usize>,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::ThirdMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         let mut total_instances = 0;
-        let batch_sizes: Vec<usize> = batch_sizes_map.into_values().collect();
-        for (i, z_b_evals_i) in evaluations.z_b_evals.iter().enumerate() {
-            total_instances += batch_sizes[i];
-            if z_b_evals_i.len() != batch_sizes[i] {
+        let batch_sizes: Vec<usize> = batch_sizes.into_values().collect();
+        for (z_b_evals, batch_size) in evaluations.z_b_evals.iter().zip(&batch_sizes) {
+            total_instances += batch_size;
+            if z_b_evals.len() != *batch_size {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
@@ -293,7 +293,7 @@ impl<E: PairingEngine> Proof<E> {
         Ok(Self { batch_sizes, commitments, evaluations, msg, pc_proof })
     }
 
-    pub fn batch_sizes(&self) -> Result<&Vec<usize>, SNARKError> {
+    pub fn batch_sizes(&self) -> Result<&[usize], SNARKError> {
         let mut total_instances = 0;
         for (z_b_evals_i, &batch_size) in self.evaluations.z_b_evals.iter().zip(self.batch_sizes.iter()) {
             total_instances += batch_size;
