@@ -70,13 +70,13 @@ pub fn batch_inversion<F: Field>(v: &mut [F]) {
     batch_inversion_and_mul(v, &F::one());
 }
 
-#[cfg(not(feature = "parallel"))]
+#[cfg(feature = "serial")]
 // Given a vector of field elements {v_i}, compute the vector {coeff * v_i^(-1)}
 pub fn batch_inversion_and_mul<F: Field>(v: &mut [F], coeff: &F) {
     serial_batch_inversion_and_mul(v, coeff);
 }
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 // Given a vector of field elements {v_i}, compute the vector {coeff * v_i^(-1)}
 pub fn batch_inversion_and_mul<F: Field>(v: &mut [F], coeff: &F) {
     use rayon::prelude::*;

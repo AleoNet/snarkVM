@@ -66,11 +66,11 @@ mod tests {
 
     #[test]
     fn test_to_view_key_public() -> Result<()> {
-        check_to_view_key(Mode::Public, 1509, 0, 5105, 5112)
+        check_to_view_key(Mode::Public, 1509, 0, 5857, 5867)
     }
 
     #[test]
     fn test_to_view_key_private() -> Result<()> {
-        check_to_view_key(Mode::Private, 1509, 0, 5105, 5112)
+        check_to_view_key(Mode::Private, 1509, 0, 5857, 5867)
     }
 }

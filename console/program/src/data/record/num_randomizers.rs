@@ -27,11 +27,6 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
             num_randomizers += 1;
         }
 
-        // If the gates is private, increment the number of randomizers by 1.
-        if self.gates.is_private() {
-            num_randomizers += 1;
-        }
-
         // Increment the number of randomizers by the number of data randomizers.
         for (_, entry) in self.data.iter() {
             num_randomizers = num_randomizers

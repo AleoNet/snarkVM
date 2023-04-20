@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Parser for MapKey<N> {
-    /// Parses a string into a key statement of the form `key {name} as {register_type};`.
+    /// Parses a string into a key statement of the form `key {name} as {plaintext_type}.public;`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -34,14 +34,14 @@ impl<N: Network> Parser for MapKey<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the finalize type from the string.
-        let (string, finalize_type) = FinalizeType::parse(string)?;
+        // Parse the plaintext type from the string.
+        let (string, (plaintext_type, _)) = pair(PlaintextType::parse, tag(".public"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the key statement.
-        Ok((string, Self { name, finalize_type }))
+        Ok((string, Self { name, plaintext_type }))
     }
 }
 
@@ -75,10 +75,10 @@ impl<N: Network> Display for MapKey<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {name} as {finalize_type};",
+            "{type_} {name} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             name = self.name,
-            finalize_type = self.finalize_type
+            plaintext_type = self.plaintext_type
         )
     }
 }
@@ -95,7 +95,7 @@ mod tests {
         // Literal
         let key = MapKey::<CurrentNetwork>::parse("key hello as field.public;").unwrap().1;
         assert_eq!(key.name(), &Identifier::<CurrentNetwork>::from_str("hello")?);
-        assert_eq!(key.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(key.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         Ok(())
     }

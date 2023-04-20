@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.9.13"
+version = "0.10.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -34,15 +34,26 @@ path = "benches/coinbase_puzzle.rs"
 harness = false
 required-features = [ "setup" ]
 
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
+
 [features]
 default = [ "request" ]
 parallel = [
-  "rayon",
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
 ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
+serial = [
+  "console/serial",
+  "snarkvm-algorithms/serial",
+  "snarkvm-curves/serial",
+  "snarkvm-fields/serial",
+  "snarkvm-utilities/serial"
+]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
 request = ["reqwest"] # reqwest cannot compile in fortanix, so when using fortanix target use default-features = false
@@ -51,28 +62,28 @@ wasm = [ ]
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "0.9.13"
+version = "0.10.2"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.9.13"
+version = "0.10.2"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.9.13"
+version = "0.10.2"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.13"
+version = "0.10.2"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.13"
+version = "0.10.2"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.13"
+version = "0.10.2"
 default-features = false
 
 [dependencies.aleo-std]
@@ -80,7 +91,10 @@ version = "0.1.15"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.69"
+version = "1.0.70"
+
+[dependencies.bincode]
+version = "1"
 
 [dependencies.blake2]
 version = "0.10"
@@ -93,6 +107,9 @@ version = "2"
 version = "1.9"
 features = [ "serde", "rayon" ]
 
+[dependencies.itertools]
+version = "0.10.1"
+
 [dependencies.once_cell]
 version = "1.17"
 
@@ -100,14 +117,14 @@ version = "1.17"
 version = "0.12"
 
 [dependencies.paste]
-version = "1.0.11"
+version = "1.0.12"
 
 [dependencies.rand]
 version = "0.8"
 
 [dependencies.rayon]
 version = "1"
-optional = true
+# optional = true
 
 [target."cfg(not(target_vendor = \"fortanix\"))".dependencies.reqwest]
 version = "0.11"
@@ -124,6 +141,10 @@ features = [ "preserve_order" ]
 
 [dependencies.tracing]
 version = "0.1"
+
+[dependencies.ureq]
+version = "2.6.2"
+features = [ "json" ]
 
 [dev-dependencies.console]
 package = "snarkvm-console"

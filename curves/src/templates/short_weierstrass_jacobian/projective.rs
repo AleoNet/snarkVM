@@ -19,7 +19,7 @@ use crate::{
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{cfg_iter_mut, rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -30,6 +30,8 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Copy, Clone, Debug)]
@@ -208,28 +210,13 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             g.z = tmp * s;
             tmp = newtmp;
         }
-        #[cfg(not(feature = "parallel"))]
-        {
+        cfg_iter_mut!(v).filter(|g| !g.is_normalized()).for_each(|g| {
             // Perform affine transformations
-            for g in v.iter_mut().filter(|g| !g.is_normalized()) {
-                let z2 = g.z.square(); // 1/z
-                g.x *= &z2; // x/z^2
-                g.y *= &(z2 * g.z); // y/z^3
-                g.z = P::BaseField::one(); // z = 1
-            }
-        }
-
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            // Perform affine transformations
-            v.par_iter_mut().filter(|g| !g.is_normalized()).for_each(|g| {
-                let z2 = g.z.square(); // 1/z
-                g.x *= &z2; // x/z^2
-                g.y *= &(z2 * g.z); // y/z^3
-                g.z = P::BaseField::one(); // z = 1
-            });
-        }
+            let z2 = g.z.square(); // 1/z
+            g.x *= &z2; // x/z^2
+            g.y *= &(z2 * g.z); // y/z^3
+            g.z = P::BaseField::one(); // z = 1
+        });
     }
 
     #[allow(clippy::many_single_char_names)]

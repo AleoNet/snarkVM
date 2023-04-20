@@ -38,11 +38,7 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The program storage.
     type ProgramStorage: ProgramStorage<N>;
     /// The block storage.
-    type BlockStorage: BlockStorage<
-        N,
-        TransactionStorage = Self::TransactionStorage,
-        TransitionStorage = Self::TransitionStorage,
-    >;
+    type BlockStorage: BlockStorage<N, TransactionStorage = Self::TransactionStorage, TransitionStorage = Self::TransitionStorage>;
     /// The transaction storage.
     type TransactionStorage: TransactionStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The transition storage.

@@ -109,12 +109,12 @@ mod tests {
 
     #[test]
     fn test_hash_children_bhp512_public() -> Result<()> {
-        check_hash_children!(BHP512, Public, (409, 0, 1375, 1377))
+        check_hash_children!(BHP512, Public, (409, 0, 1879, 1883))
     }
 
     #[test]
     fn test_hash_children_bhp512_private() -> Result<()> {
-        check_hash_children!(BHP512, Private, (409, 0, 1375, 1377))
+        check_hash_children!(BHP512, Private, (409, 0, 1879, 1883))
     }
 
     #[test]

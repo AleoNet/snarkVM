@@ -44,15 +44,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                     // Note that this expression handles the wrapping case, where the dividend is `I::MIN` and the divisor is `-1` and the result should be `I::MIN`.
                     Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
                 } else {
-                    // Ensure that `other` is not zero.
-                    // Note that all other implementations of `div_wrapped` and `div_checked` invoke this check.
-                    E::assert_neq(other, &Self::zero());
-                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
-                    if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
-                        self.unsigned_division_via_witness(other).0
-                    } else {
-                        self.unsigned_binary_long_division(other).0
-                    }
+                    self.unsigned_division_via_witness(other).0
                 }
             }
         }
@@ -63,6 +55,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Divides `self` by `other`, via witnesses, returning the quotient and remainder.
     /// This method does not check that `other` is non-zero.
     /// This method should only be used when 2 * I::BITS < E::BaseField::size_in_data_bits().
+    /// This method assumes the `self` and `other` are unsigned integers.
     pub(super) fn unsigned_division_via_witness(&self, other: &Self) -> (Self, Self) {
         // Eject the dividend and divisor, to compute the quotient as a witness.
         let dividend_value = self.eject_value();
@@ -76,49 +69,20 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         let quotient = Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_div(&divisor_value)));
         let remainder = Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_rem(&divisor_value)));
 
-        // Ensure that Euclidean division holds for these values in the base field.
-        E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
-
-        // Ensure that the remainder is less than the divisor.
-        E::assert(remainder.is_less_than(other));
-
-        // Return the quotient of `self` and `other`.
-        (quotient, remainder)
-    }
-
-    /// Divides `self` by `other`, using binary long division returning the quotient and remainder
-    /// See https://en.wikipedia.org/wiki/Division_algorithm under "Integer division (unsigned) with remainder".
-    /// Note that this method should be used when 2 * I::BITS >= E::BaseField::size_in_data_bits().
-    pub(super) fn unsigned_binary_long_division(&self, other: &Self) -> (Self, Field<E>) {
-        let divisor = other.to_field();
-        let max = Self::constant(console::Integer::MAX).to_field();
-
-        // The bits of the quotient in big-endian order.
-        let mut quotient_bits_be = Vec::with_capacity(I::BITS as usize);
-        let mut remainder: Field<E> = Field::zero();
-
-        for bit in self.to_bits_le().into_iter().rev() {
-            remainder = remainder.double();
-            remainder += Field::from_bits_le(&[bit]);
-
-            // Check that remainder is greater than or equal to divisor, via an unsigned overflow check.
-            //   - difference := I:MAX + (b - a).
-            //   - If difference > I::MAX, then b > a.
-            //   - If difference <= I::MAX, then a >= b.
-            //   - Note that difference > I::MAX if `carry_bit` is set.
-            let difference = &max + (&divisor - &remainder);
-            let bits = difference.to_lower_bits_le((I::BITS + 1) as usize);
-            // The `unwrap` is safe since we extract at least one bit from the difference.
-            let carry_bit = bits.last().unwrap();
-            let remainder_is_gte_divisor = carry_bit.not();
-
-            remainder = Field::ternary(&remainder_is_gte_divisor, &(&remainder - &divisor), &remainder);
-            quotient_bits_be.push(remainder_is_gte_divisor);
+        if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+            // Ensure that Euclidean division holds for these values in the base field.
+            E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
+        } else {
+            // Ensure that Euclidean division holds for these values as integers.
+            E::assert_eq(self, quotient.mul_checked(other).add_checked(&remainder));
         }
 
-        // Reverse and return the quotient bits.
-        quotient_bits_be.reverse();
-        (Self::from_bits_le(&quotient_bits_be), remainder)
+        // Ensure that the remainder is less than the divisor.
+        // Note that if this check is satisfied and `other` is an unsigned integer, then `other` is not zero.
+        E::assert(remainder.is_less_than(other));
+
+        // Return the quotient and remainder of `self` and `other`.
+        (quotient, remainder)
     }
 }
 
@@ -126,18 +90,21 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Outpu
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        match I::is_signed() {
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(9 * I::BITS, 0, (8 * I::BITS) + 2, (8 * I::BITS) + 12)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(5 * I::BITS + 1, 0, (9 * I::BITS) + 6, (9 * I::BITS) + 12),
+                    (true, false) => Count::less_than(5 * I::BITS + 1, 0, 1611, 1814),
+                    (false, true) => Count::less_than(I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                    (false, false) => Count::less_than(I::BITS + 1, 0, 839, 1039),
                 }
-                (_, _) => Count::is(8 * I::BITS, 0, (10 * I::BITS) + 15, (10 * I::BITS) + 27),
-            },
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 1, (3 * I::BITS) + 4),
-                (Mode::Constant, _) | (_, _) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 4, (3 * I::BITS) + 9),
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(4 * I::BITS, 0, (9 * I::BITS) + 6, (9 * I::BITS) + 12),
+                (true, false) => Count::is(4 * I::BITS, 0, 1611, 1814),
+                (false, true) => Count::is(I::BITS, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                (false, false) => Count::is(I::BITS, 0, 839, 1039),
             },
         }
     }
@@ -181,8 +148,7 @@ mod tests {
                 Mode::Constant => check_operation_halts(&a, &b, Integer::div_wrapped),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.div_wrapped(&b);
-                    // assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                    assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
+                    assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 }),
             }
         } else {
@@ -191,9 +157,8 @@ mod tests {
                 let candidate = a.div_wrapped(&b);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
-                // assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
-                assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
             })
         }
         Circuit::reset();

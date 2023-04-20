@@ -24,11 +24,11 @@ impl<N: Network> FromBytes for Struct<N> {
 
         // Read the number of members.
         let num_members = u16::read_le(&mut reader)?;
-        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
-        if num_members as usize > N::MAX_DATA_ENTRIES {
+        // Ensure the number of members is within the maximum limit.
+        if num_members as usize > N::MAX_STRUCT_ENTRIES {
             return Err(error(format!(
                 "Struct exceeds size: expected <= {}, found {num_members}",
-                N::MAX_DATA_ENTRIES
+                N::MAX_STRUCT_ENTRIES
             )));
         }
         // Read the members.
@@ -51,8 +51,8 @@ impl<N: Network> FromBytes for Struct<N> {
 impl<N: Network> ToBytes for Struct<N> {
     /// Writes the struct to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
-        if self.members.len() > N::MAX_DATA_ENTRIES {
+        // Ensure the number of members is within the maximum limit.
+        if self.members.len() > N::MAX_STRUCT_ENTRIES {
             return Err(error("Failed to serialize struct: too many members"));
         }
 

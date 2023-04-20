@@ -81,7 +81,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<E, 
         }
 
         // Compute the bases lookup.
-        let bases_lookup = cfg_iter!(bases)
+        let bases_lookup = bases
+            .iter()
             .map(|x| {
                 x.iter()
                     .map(|g| {

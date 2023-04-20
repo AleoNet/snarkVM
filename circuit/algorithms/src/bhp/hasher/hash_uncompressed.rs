@@ -174,7 +174,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_curves::ProjectiveCurve;
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
