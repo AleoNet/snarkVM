@@ -185,13 +185,16 @@ path = "./wasm"
 version = "=0.11.2"
 optional = true
 
+[dependencies.anstyle]
+version = "1"
+
 [dependencies.anyhow]
 version = "1.0.71"
 optional = true
 
 [dependencies.clap]
-version = "3.2"
-features = [ "derive" ]
+version = "4.3"
+features = [ "derive", "color", "unstable-styles" ]
 optional = true
 
 [dependencies.colored]
