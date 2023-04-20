@@ -69,6 +69,17 @@ impl<N: Network> Transaction<N> {
         Ok(Self::Deploy(id.into(), owner, Box::new(deployment), fee))
     }
 
+    /// Initializes a new deployment transaction, without checking for correctness.
+    #[cfg(any(test, feature = "test-utilities"))]
+    pub fn from_deployment_unchecked(
+        id: N::TransactionID,
+        owner: Owner<N>,
+        deployment: Deployment<N>,
+        fee: Fee<N>,
+    ) -> Self {
+        Self::Deploy(id, owner, Box::new(deployment), fee)
+    }
+
     /// Initializes a new execution transaction.
     pub fn from_execution(execution: Execution<N>, fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.

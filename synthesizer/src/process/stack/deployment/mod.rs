@@ -49,6 +49,16 @@ impl<N: Network> Deployment<N> {
         Ok(deployment)
     }
 
+    /// Initializes a new deployment, without checking the order.
+    #[cfg(any(test, feature = "test-utilities"))]
+    pub fn new_unchecked(
+        edition: u16,
+        program: Program<N>,
+        verifying_keys: Vec<(Identifier<N>, (VerifyingKey<N>, Certificate<N>))>,
+    ) -> Self {
+        Self { edition, program, verifying_keys }
+    }
+
     /// Checks that the deployment is ordered.
     pub fn check_is_ordered(&self) -> Result<()> {
         let program_id = self.program.id();
