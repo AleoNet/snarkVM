@@ -174,7 +174,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         for (batch_size, inputs) in inputs_and_batch_sizes.values() {
-            sponge.absorb_bytes(&batch_size.to_le_bytes());
+            sponge.absorb_bytes(&(u64::try_from(*batch_size).unwrap()).to_le_bytes());
             for input in inputs.iter() {
                 sponge.absorb_nonnative_field_elements(input.iter().copied());
             }

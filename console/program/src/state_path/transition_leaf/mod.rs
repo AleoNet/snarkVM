@@ -32,19 +32,19 @@ pub struct TransitionLeaf<N: Network> {
     /// The index of the Merkle leaf.
     index: u8,
     /// The variant of the Merkle leaf.
-    variant: u16,
+    variant: u8,
     /// The ID.
     id: Field<N>,
 }
 
 impl<N: Network> TransitionLeaf<N> {
     /// Initializes a new instance of `TransitionLeaf`.
-    pub const fn new_with_version(index: u8, variant: u16, id: Field<N>) -> Self {
+    pub const fn new_with_version(index: u8, variant: u8, id: Field<N>) -> Self {
         Self { version: VERSION, index, variant, id }
     }
 
     /// Initializes a new instance of `TransitionLeaf`.
-    pub const fn from(version: u8, index: u8, variant: u16, id: Field<N>) -> Self {
+    pub const fn from(version: u8, index: u8, variant: u8, id: Field<N>) -> Self {
         Self { version, index, variant, id }
     }
 
@@ -59,7 +59,7 @@ impl<N: Network> TransitionLeaf<N> {
     }
 
     /// Returns the variant of the Merkle leaf.
-    pub const fn variant(&self) -> u16 {
+    pub const fn variant(&self) -> u8 {
         self.variant
     }
 

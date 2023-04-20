@@ -27,11 +27,6 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
             num_randomizers += 1;
         }
 
-        // If the gates is private, increment the number of randomizers by 1.
-        if self.gates.is_private().eject_value() {
-            num_randomizers += 1;
-        }
-
         // Increment the number of randomizers by the number of data randomizers.
         for (_, entry) in self.data.iter() {
             num_randomizers = match num_randomizers.checked_add(entry.num_randomizers()) {

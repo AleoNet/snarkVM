@@ -42,7 +42,7 @@ use anyhow::Result;
 use parking_lot::RwLock;
 use std::{borrow::Cow, sync::Arc};
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 macro_rules! bail_with_block {

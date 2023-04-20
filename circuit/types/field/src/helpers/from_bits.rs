@@ -46,16 +46,8 @@ impl<E: Environment> FromBits for Field<E> {
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
             let bits_le = &bits_le[..size_in_bits];
 
-            // Compute `!((BaseField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < BaseField::MODULUS`.
-            let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le).fold(
-                Boolean::constant(false),
-                |rest_is_less, (this, that)| {
-                    if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
-                },
-            );
-
-            // Ensure the field element is less than `BaseField::MODULUS`.
-            E::assert(is_less_than_modulus);
+            // Assert `bits_le <= (BaseField::MODULUS - 1)`, which is equivalent to `bits_le < BaseField::MODULUS`.
+            Boolean::assert_less_than_or_equal_constant(bits_le, &modulus_minus_one.to_bits_le());
         }
 
         // Reconstruct the bits as a linear combination representing the original field value.

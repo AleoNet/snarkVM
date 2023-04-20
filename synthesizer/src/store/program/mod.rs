@@ -45,6 +45,8 @@ use std::collections::BTreeMap;
 pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
+    /// The mapping of `program ID` to `deployment index`.
+    type ProgramIndexMap: for<'a> Map<'a, ProgramID<N>, u32>;
     /// The mapping of `(program ID, mapping name)` to `mapping ID`.
     type MappingIDMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>), Field<N>>;
     /// The mapping of `mapping ID` to `[(key ID, value ID)]`.
@@ -59,6 +61,8 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap;
+    /// Returns the program ID map.
+    fn program_index_map(&self) -> &Self::ProgramIndexMap;
     /// Returns the mapping ID map.
     fn mapping_id_map(&self) -> &Self::MappingIDMap;
     /// Returns the key-value ID map.
@@ -74,6 +78,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
         self.program_id_map().start_atomic();
+        self.program_index_map().start_atomic();
         self.mapping_id_map().start_atomic();
         self.key_value_id_map().start_atomic();
         self.key_map().start_atomic();
@@ -83,6 +88,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Checks if an atomic batch is in progress.
     fn is_atomic_in_progress(&self) -> bool {
         self.program_id_map().is_atomic_in_progress()
+            || self.program_index_map().is_atomic_in_progress()
             || self.mapping_id_map().is_atomic_in_progress()
             || self.key_value_id_map().is_atomic_in_progress()
             || self.key_map().is_atomic_in_progress()
@@ -92,6 +98,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.program_id_map().abort_atomic();
+        self.program_index_map().abort_atomic();
         self.mapping_id_map().abort_atomic();
         self.key_value_id_map().abort_atomic();
         self.key_map().abort_atomic();
@@ -101,6 +108,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
         self.program_id_map().finish_atomic()?;
+        self.program_index_map().finish_atomic()?;
         self.mapping_id_map().finish_atomic()?;
         self.key_value_id_map().finish_atomic()?;
         self.key_map().finish_atomic()?;
@@ -131,9 +139,20 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // Insert the new mapping name.
         mapping_names.insert(*mapping_name);
 
+        // Retrieve the program index.
+        let program_index = match self.program_index_map().get_speculative(program_id)? {
+            Some(program_index) => cow_to_cloned!(program_index),
+            None => match self.program_index_map().values().max() {
+                Some(max_program_index) => max_program_index.saturating_add(1),
+                None => 0,
+            },
+        };
+
         atomic_write_batch!(self, {
             // Update the program ID map with the new mapping name.
             self.program_id_map().insert(*program_id, mapping_names)?;
+            // Update the program index map with the new program index.
+            self.program_index_map().insert(*program_id, program_index)?;
             // Initialize the mapping ID map.
             self.mapping_id_map().insert((*program_id, *mapping_name), mapping_id)?;
             // Initialize the key-value ID map.
@@ -340,9 +359,25 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
 
+        // Retrieve the deployment index.
+        let deployment_index = match self.program_index_map().get_speculative(program_id)? {
+            Some(deployment_index) => deployment_index,
+            None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove index."),
+        };
+
         atomic_write_batch!(self, {
             // Update the mapping names.
             self.program_id_map().remove(program_id)?;
+
+            // Update the deployment index.
+            self.program_index_map().remove(program_id)?;
+
+            // Update each subsequent deployment index.
+            for (program_id, index) in self.program_index_map().iter() {
+                if *index > *deployment_index {
+                    self.program_index_map().insert(*program_id, index.saturating_sub(1))?;
+                }
+            }
 
             // Remove each mapping.
             for mapping_name in mapping_names.iter() {
@@ -382,7 +417,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns `true` if the given `program ID` exist.
     fn contains_program(&self, program_id: &ProgramID<N>) -> Result<bool> {
-        self.program_id_map().contains_key(program_id)
+        self.program_id_map().contains_key(program_id).and(self.program_index_map().contains_key(program_id))
     }
 
     /// Returns `true` if the given `program ID` and `mapping name` exist.
@@ -505,6 +540,8 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 pub struct ProgramMemory<N: Network> {
     /// The program ID map.
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
+    /// The program index map.
+    program_index_map: MemoryMap<ProgramID<N>, u32>,
     /// The mapping ID map.
     mapping_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>,
     /// The key-value ID map.
@@ -520,6 +557,7 @@ pub struct ProgramMemory<N: Network> {
 #[rustfmt::skip]
 impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
+    type ProgramIndexMap = MemoryMap<ProgramID<N>, u32>;
     type MappingIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>;
     type KeyValueIDMap = MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
     type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
@@ -529,6 +567,7 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     fn open(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             program_id_map: MemoryMap::default(),
+            program_index_map: MemoryMap::default(),
             mapping_id_map: MemoryMap::default(),
             key_value_id_map: MemoryMap::default(),
             key_map: MemoryMap::default(),
@@ -540,6 +579,11 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map
+    }
+    
+    /// Returns the program index map.
+    fn program_index_map(&self) -> &Self::ProgramIndexMap {
+        &self.program_index_map
     }
 
     /// Returns the mapping ID map.

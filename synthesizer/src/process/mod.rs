@@ -25,7 +25,7 @@ mod execute_fee;
 
 use crate::{
     block::{Input, Transition},
-    program::{Instruction, Operand, Program},
+    program::{Instruction, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
     store::{ProgramStorage, ProgramStore},
 };
@@ -33,7 +33,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
-    types::{I64, U16, U64},
+    types::{U16, U64},
 };
 
 use aleo_std::prelude::{finish, lap, timer};
@@ -428,10 +428,10 @@ mod tests {
         let caller = Address::try_from(&caller_private_key).unwrap();
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
-        let r1 = Value::<CurrentNetwork>::from_str("1_100_000_000_000_000_u64").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
 
         // Construct the process.
-        let mut process = Process::load().unwrap();
+        let process = Process::load().unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -439,7 +439,7 @@ mod tests {
                 &caller_private_key,
                 program.id(),
                 Identifier::from_str("mint").unwrap(),
-                [r0.clone(), r1.clone()].iter(),
+                [r0, r1].iter(),
                 rng,
             )
             .unwrap();
@@ -452,7 +452,7 @@ mod tests {
 
         // Declare the expected output value.
         let r2 = Value::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 1_100_000_000_000_000_u64.private, _nonce: {nonce}.public }}"
+            "{{ owner: {caller}.private, microcredits: 1_500_000_000_000_000_u64.private, _nonce: {nonce}.public }}"
         ))
         .unwrap();
 
@@ -483,43 +483,6 @@ mod tests {
         // assert_eq!(20561, CurrentAleo::num_private());
         // assert_eq!(20579, CurrentAleo::num_constraints());
         // assert_eq!(79386, CurrentAleo::num_gates());
-
-        /******************************************/
-
-        // Ensure a non-coinbase program function fails.
-
-        // Initialize a new program.
-        let program = Program::<CurrentNetwork>::from_str(
-            r"program token.aleo;
-
-  record token:
-    owner as address.private;
-    gates as u64.private;
-
-  function mint:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as token.record;
-    output r2 as token.record;",
-        )
-        .unwrap();
-        process.add_program(&program).unwrap();
-
-        let authorization = process
-            .authorize::<CurrentAleo, _>(
-                &caller_private_key,
-                program.id(),
-                Identifier::from_str("mint").unwrap(),
-                [r0, r1].iter(),
-                rng,
-            )
-            .unwrap();
-        let result = process.execute::<CurrentAleo, _>(authorization, rng);
-        assert!(result.is_err());
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            format!("'token.aleo/mint' is not satisfied on the given inputs (26610 constraints).")
-        );
     }
 
     #[test]
@@ -554,19 +517,26 @@ function hello_world:
 
   record record_a:
     owner as address.private;
-    gates as u64.private;
+    item as u64.private;
 
   record record_b:
     owner as address.private;
-    gates as u64.private;
+    item as u64.private;
+
+  record record_c:
+    owner as address.private;
+    item as u64.private;
 
   function initialize:
     input r0 as record_a.record;
     input r1 as record_b.record;
-    cast r0.owner r0.gates into r2 as record_a.record;
-    cast r1.owner r1.gates into r3 as record_b.record;
-    output r2 as record_a.record;
-    output r3 as record_b.record;",
+    input r2 as record_c.record;
+    cast r0.owner r0.item into r3 as record_a.record;
+    cast r1.owner r1.item into r4 as record_b.record;
+    cast r2.owner r2.item into r5 as record_c.record;
+    output r3 as record_a.record;
+    output r4 as record_b.record;
+    output r5 as record_c.record;",
         )
         .unwrap();
 
@@ -586,10 +556,13 @@ function hello_world:
 
         // Declare the input value.
         let input_a =
-            Value::from_str(&format!("{{ owner: {caller}.private, gates: 1234u64.private, _nonce: 0group.public }}"))
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 1234u64.private, _nonce: 0group.public }}"))
                 .unwrap();
         let input_b =
-            Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private, _nonce: 0group.public }}"))
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 4321u64.private, _nonce: 0group.public }}"))
+                .unwrap();
+        let input_c =
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 5678u64.private, _nonce: 0group.public }}"))
                 .unwrap();
 
         // Authorize the function call.
@@ -598,30 +571,35 @@ function hello_world:
                 &caller_private_key,
                 program.id(),
                 function_name,
-                [input_a, input_b].iter(),
+                [input_a, input_b, input_c].iter(),
                 rng,
             )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
 
-        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        let randomizer_a = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(2)]).unwrap();
+        // Compute the encryption randomizer for the first output as `HashToScalar(tvk || index)`.
+        let randomizer_a = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
         let nonce_a = CurrentNetwork::g_scalar_multiply(&randomizer_a);
 
-        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        let randomizer_b = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
+        // Compute the encryption randomizer for the second output as `HashToScalar(tvk || index)`.
+        let randomizer_b = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(4)]).unwrap();
         let nonce_b = CurrentNetwork::g_scalar_multiply(&randomizer_b);
 
+        // Compute the encryption randomizer for the third output as `HashToScalar(tvk || index)`.
+        let randomizer_c = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(5)]).unwrap();
+        let nonce_c = CurrentNetwork::g_scalar_multiply(&randomizer_c);
+
         // Declare the output value.
-        let output_a = Value::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 1234u64.private, _nonce: {nonce_a}.public }}"
-        ))
-        .unwrap();
-        let output_b = Value::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 4321u64.private, _nonce: {nonce_b}.public }}"
-        ))
-        .unwrap();
+        let output_a =
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 1234u64.private, _nonce: {nonce_a}.public }}"))
+                .unwrap();
+        let output_b =
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 4321u64.private, _nonce: {nonce_b}.public }}"))
+                .unwrap();
+        let output_c =
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 5678u64.private, _nonce: {nonce_c}.public }}"))
+                .unwrap();
 
         // Check again to make sure we didn't modify the authorization before calling `evaluate`.
         assert_eq!(authorization.len(), 1);
@@ -629,9 +607,10 @@ function hello_world:
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
         let candidate = response.outputs();
-        assert_eq!(2, candidate.len());
+        assert_eq!(3, candidate.len());
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
+        assert_eq!(output_c, candidate[2]);
 
         // Check again to make sure we didn't modify the authorization after calling `evaluate`.
         assert_eq!(authorization.len(), 1);
@@ -640,9 +619,10 @@ function hello_world:
         let (response, execution, _inclusion, _metrics) =
             process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
-        assert_eq!(2, candidate.len());
+        assert_eq!(3, candidate.len());
         assert_eq!(output_a, candidate[0]);
         assert_eq!(output_b, candidate[1]);
+        assert_eq!(output_c, candidate[2]);
 
         process.verify_execution::<false>(&execution).unwrap();
 
@@ -663,11 +643,11 @@ function hello_world:
 
   record data:
     owner as address.private;
-    gates as u64.private;
+    item as u64.private;
 
   function initialize:
     input r0 as data.record;
-    cast self.caller r0.gates into r1 as data.record;
+    cast self.caller r0.item into r1 as data.record;
     output r1 as data.record;",
         )
         .unwrap();
@@ -688,7 +668,7 @@ function hello_world:
 
         // Declare the input value.
         let input =
-            Value::from_str(&format!("{{ owner: {caller}.private, gates: 1234u64.private, _nonce: 0group.public }}"))
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 1234u64.private, _nonce: 0group.public }}"))
                 .unwrap();
 
         // Authorize the function call.
@@ -704,7 +684,7 @@ function hello_world:
 
         // Declare the output value.
         let output =
-            Value::from_str(&format!("{{ owner: {caller}.private, gates: 1234u64.private, _nonce: {nonce}.public }}"))
+            Value::from_str(&format!("{{ owner: {caller}.private, item: 1234u64.private, _nonce: {nonce}.public }}"))
                 .unwrap();
 
         // Check again to make sure we didn't modify the authorization before calling `evaluate`.
@@ -736,7 +716,7 @@ function hello_world:
             r"program id.aleo;
 
   struct data:
-    owner as address;
+    user as address;
 
   function initialize:
     cast id.aleo into r0 as data;
@@ -768,7 +748,7 @@ function hello_world:
         assert_eq!(authorization.len(), 1);
 
         // Declare the output value.
-        let output = Value::from_str(&format!("{{ owner: {} }}", program_id.to_address().unwrap())).unwrap();
+        let output = Value::from_str(&format!("{{ user: {} }}", program_id.to_address().unwrap())).unwrap();
 
         // Check again to make sure we didn't modify the authorization before calling `evaluate`.
         assert_eq!(authorization.len(), 1);
@@ -893,7 +873,6 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     token_amount as u64.private;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
@@ -916,7 +895,7 @@ function compute:
     input r0 as field.private;
     input r1 as field.public;
     input r2 as token.record;
-    cast r2.owner r2.gates r2.token_amount into r3 as token.record;
+    cast r2.owner r2.token_amount into r3 as token.record;
     call check_not_equal r0 r1;
     call execute r0 r1 into r4 r5 r6;
     output r3 as token.record;
@@ -947,9 +926,8 @@ function compute:
         let caller = Address::try_from(&caller_private_key).unwrap();
 
         // Prepare a record belonging to the address.
-        let record_string = format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
-        );
+        let record_string =
+            format!("{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}");
 
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str("3field").unwrap();
@@ -969,7 +947,7 @@ function compute:
 
         // Declare the expected output value.
         let r3 = Value::<CurrentNetwork>::from_str(&format!(
-            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
+            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
         ))
         .unwrap();
         let r4 = Value::from_str("19field").unwrap();
@@ -1021,13 +999,12 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    gates as u64.private;
     amount as u64.private;
 
 function mint:
     input r0 as address.private;
     input r1 as u64.private;
-    cast r0 0u64 r1 into r2 as token.record;
+    cast r0 r1 into r2 as token.record;
     output r2 as token.record;
 
 function produce_magic_number:
@@ -1045,8 +1022,8 @@ function transfer:
     input r1 as address.private;
     input r2 as u64.private;
     sub r0.amount r2 into r3;
-    cast r1 0u64 r2 into r4 as token.record;
-    cast r0.owner r0.gates r3 into r5 as token.record;
+    cast r1 r2 into r4 as token.record;
+    cast r0.owner r3 into r5 as token.record;
     output r4 as token.record;
     output r5 as token.record;",
         )
@@ -1095,7 +1072,7 @@ function transfer:
 
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!(
-            "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private, _nonce: 0group.public }}"
+            "{{ owner: {caller0}.private, amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
         let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
@@ -1122,11 +1099,11 @@ function transfer:
 
             // Declare the expected output value.
             let output_a = Value::from_str(&format!(
-                "{{ owner: {caller1}.private, gates: 0u64.private, amount: 99u64.private, _nonce: {nonce_a}.public }}"
+                "{{ owner: {caller1}.private, amount: 99u64.private, _nonce: {nonce_a}.public }}"
             ))
             .unwrap();
             let output_b = Value::from_str(&format!(
-                "{{ owner: {caller0}.private, gates: 0u64.private, amount: 1u64.private, _nonce: {nonce_b}.public }}"
+                "{{ owner: {caller0}.private, amount: 1u64.private, _nonce: {nonce_b}.public }}"
             ))
             .unwrap();
 
@@ -1172,7 +1149,7 @@ function transfer:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_increment() {
+    fn test_process_execute_and_finalize_get_add_set() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1192,7 +1169,9 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    increment account[r0] by r1;
+    get.or_init account[r0] 0u64 into r2;
+    add r2 r1 into r3;
+    set r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1269,7 +1248,7 @@ finalize compute:
     }
 
     #[test]
-    fn test_process_execute_and_finalize_increment_decrement() {
+    fn test_process_execute_and_finalize_increment_decrement_via_get_set() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -1289,8 +1268,10 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    increment account[r0] by r1;
-    decrement account[r0] by r1;
+    get.or_init account[r0] 0u64 into r2;
+    add r2 r1 into r3;
+    sub r3 r1 into r4;
+    set r4 into account[r0];
 ",
         )
         .unwrap();
@@ -1399,10 +1380,12 @@ finalize mint_public:
     // Input the token amount.
     input r1 as u64.public;
 
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, it will be created.
-    // If `account[r0] + r1` overflows, `mint_public` is reverted.
-    increment account[r0] by r1;
+    // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
+    get.or_init account[r0] 0u64 into r2;
+    // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
+    add r2 r1 into r3;
+    // Set `r3` into `account[r0]`.
+    set r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1515,10 +1498,12 @@ finalize mint_public:
     // Input the token amount.
     input r1 as u64.public;
 
-    // Increments `account[r0]` by `r1`.
-    // If `account[r0]` does not exist, it will be created.
-    // If `account[r0] + r1` overflows, `mint_public` is reverted.
-    increment account[r0] by r1;
+    // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
+    get.or_init account[r0] 0u64 into r2;
+    // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
+    add r2 r1 into r3;
+    // Set `r3` into `account[r0]`.
+    set r3 into account[r0];
 ",
         )
         .unwrap();
@@ -1617,5 +1602,107 @@ function mint:
         let candidate =
             store.get_value(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
         assert_eq!(candidate, Value::from_str("100u64").unwrap());
+    }
+
+    #[test]
+    fn test_process_execute_and_finalize_get_set() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program testing.aleo;
+
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
+
+function compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    input r2 as u64.public;
+    add r1 r2 into r3;
+    finalize r0 r3;
+
+finalize compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    get.or_init account[r0] 0u64 into r2;
+    add r1 r2 into r3;
+    set r3 into account[r0];
+    get account[r0] into r4;
+    add r1 r4 into r5;
+    set r5 into account[r0];
+",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the program ID.
+        let program_id = program.id();
+        // Declare the mapping.
+        let mapping_name = Identifier::from_str("account").unwrap();
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let mut process = Process::load().unwrap();
+
+        // Initialize a new program store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+
+        // Add the program to the process.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+        // Check that the deployment verifies.
+        process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+        // Finalize the deployment.
+        process.finalize_deployment(&store, &deployment).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("3u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("5u64").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1, r2].iter(), rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution, _inclusion, _metrics) =
+            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Verify the execution.
+        process.verify_execution::<true>(&execution).unwrap();
+
+        // Now, finalize the execution.
+        process.finalize_execution(&store, &execution).unwrap();
+
+        // Check that the account balance is now 8.
+        let candidate =
+            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        assert_eq!(candidate, Value::from_str("16u64").unwrap());
     }
 }

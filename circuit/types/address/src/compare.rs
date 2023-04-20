@@ -120,41 +120,41 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        run_test(Mode::Constant, Mode::Public, 253, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Public, 253, 0, 757, 759);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        run_test(Mode::Constant, Mode::Private, 253, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Private, 253, 0, 757, 759);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        run_test(Mode::Public, Mode::Constant, 253, 0, 506, 507);
+        run_test(Mode::Public, Mode::Constant, 253, 0, 757, 759);
     }
 
     #[test]
     fn test_public_is_less_than_public() {
-        run_test(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
+        run_test(Mode::Public, Mode::Public, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        run_test(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
+        run_test(Mode::Public, Mode::Private, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_private_is_less_than_constant() {
-        run_test(Mode::Private, Mode::Constant, 253, 0, 506, 507);
+        run_test(Mode::Private, Mode::Constant, 253, 0, 757, 759);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        run_test(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
+        run_test(Mode::Private, Mode::Public, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        run_test(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
+        run_test(Mode::Private, Mode::Private, 0, 0, 1516, 1520);
     }
 }

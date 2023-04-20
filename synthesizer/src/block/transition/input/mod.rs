@@ -24,7 +24,7 @@ use console::{
     types::Field,
 };
 
-type Variant = u16;
+type Variant = u8;
 
 /// The transition input.
 #[derive(Clone, PartialEq, Eq)]
@@ -189,7 +189,7 @@ pub(crate) mod test_helpers {
         let rng = &mut TestRng::default();
 
         // Sample a transition.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         let transition = transaction.transitions().next().unwrap();
 
         // Retrieve the transition ID and input.

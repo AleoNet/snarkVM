@@ -57,7 +57,7 @@ impl<A: Aleo> StatePath<A> {
             &self.transition_path,
             self.transaction_leaf.id(),
             &self.transition_leaf.to_bits_le(),
-        ) & self.transition_leaf.variant().is_equal(&U16::constant(console::U16::new(3))); // Variant = 3 (Input::Record)
+        ) & self.transition_leaf.variant().is_equal(&U8::constant(console::U8::new(3))); // Variant = 3 (Input::Record)
 
         // Ensure the transaction path is valid.
         let check_transaction_path = A::verify_merkle_path_bhp(
@@ -226,43 +226,43 @@ mod tests {
 
     #[test]
     fn test_state_path_verify_global_constant() -> Result<()> {
-        check_verify_global(Mode::Constant, true, 101535, 1, 2, 3)?;
-        check_verify_global(Mode::Constant, false, 101535, 1, 2, 3)
+        check_verify_global(Mode::Constant, true, 104707, 1, 2, 3)?;
+        check_verify_global(Mode::Constant, false, 104707, 1, 2, 3)
     }
 
     #[test]
     fn test_state_path_verify_global_public() -> Result<()> {
-        check_verify_global(Mode::Public, true, 26595, 453, 86212, 86732)?;
-        check_verify_global(Mode::Public, false, 26595, 453, 86212, 86732)
+        check_verify_global(Mode::Public, true, 27405, 447, 121460, 122105)?;
+        check_verify_global(Mode::Public, false, 27405, 447, 121460, 122105)
     }
 
     #[test]
     fn test_state_path_verify_global_private() -> Result<()> {
-        check_verify_global(Mode::Private, true, 26595, 1, 86664, 86732)?;
-        check_verify_global(Mode::Private, false, 26595, 1, 86664, 86732)
+        check_verify_global(Mode::Private, true, 27405, 1, 121906, 122105)?;
+        check_verify_global(Mode::Private, false, 27405, 1, 121906, 122105)
     }
 
     #[test]
     fn test_state_path_verify_local_constant() -> Result<()> {
-        check_verify_local(Mode::Constant, false, true, 101535, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, false, false, 101535, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, true, true, 101535, 1, 2, 3)?;
-        check_verify_local(Mode::Constant, true, false, 101535, 1, 2, 3)
+        check_verify_local(Mode::Constant, false, true, 104707, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, false, false, 104707, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, true, 104707, 1, 2, 3)?;
+        check_verify_local(Mode::Constant, true, false, 104707, 1, 2, 3)
     }
 
     #[test]
     fn test_state_path_verify_local_public() -> Result<()> {
-        check_verify_local(Mode::Public, false, true, 26595, 453, 86212, 86732)?;
-        check_verify_local(Mode::Public, false, false, 26595, 453, 86212, 86732)?;
-        check_verify_local(Mode::Public, true, true, 26595, 453, 86212, 86732)?;
-        check_verify_local(Mode::Public, true, false, 26595, 453, 86212, 86732)
+        check_verify_local(Mode::Public, false, true, 27405, 447, 121460, 122105)?;
+        check_verify_local(Mode::Public, false, false, 27405, 447, 121460, 122105)?;
+        check_verify_local(Mode::Public, true, true, 27405, 447, 121460, 122105)?;
+        check_verify_local(Mode::Public, true, false, 27405, 447, 121460, 122105)
     }
 
     #[test]
     fn test_state_path_verify_local_private() -> Result<()> {
-        check_verify_local(Mode::Private, false, true, 26595, 1, 86664, 86732)?;
-        check_verify_local(Mode::Private, false, false, 26595, 1, 86664, 86732)?;
-        check_verify_local(Mode::Private, true, true, 26595, 1, 86664, 86732)?;
-        check_verify_local(Mode::Private, true, false, 26595, 1, 86664, 86732)
+        check_verify_local(Mode::Private, false, true, 27405, 1, 121906, 122105)?;
+        check_verify_local(Mode::Private, false, false, 27405, 1, 121906, 122105)?;
+        check_verify_local(Mode::Private, true, true, 27405, 1, 121906, 122105)?;
+        check_verify_local(Mode::Private, true, false, 27405, 1, 121906, 122105)
     }
 }

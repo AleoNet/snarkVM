@@ -1,6 +1,13 @@
 {
+<<<<<<< HEAD
   "prover_checksum": "212025836b71f569e45b2af1e099a37a7d4978b91e55715b8327d8aed26afa1a",
   "prover_size": 207814617,
   "verifier_checksum": "a33630c3648bcdbad6b17850c79d7f6488782717a1af7f38455d1dba3ba018eb",
   "verifier_size": 3787
+=======
+  "prover_checksum": "b98de1b07b08616131dacb75a93d196f8746a7aa58c0e60a51e69a81b2612a32",
+  "prover_size": 209146669,
+  "verifier_checksum": "cb92a526497dca307e3683373cf3c4b152b0ba1ab14506cd18b3c38798c1eb36",
+  "verifier_size": 3755
+>>>>>>> origin/testnet3
 }

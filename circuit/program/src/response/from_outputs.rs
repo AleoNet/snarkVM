@@ -192,8 +192,8 @@ mod tests {
             let output_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str(&format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}")).unwrap());
-            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
+            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str(&format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: {nonce}.public }}")).unwrap());
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
             let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
@@ -276,11 +276,11 @@ mod tests {
 
     #[test]
     fn test_from_outputs_public() -> Result<()> {
-        check_from_outputs(Mode::Public, 24781, 6, 13708, 13725)
+        check_from_outputs(Mode::Public, 24793, 6, 13962, 13983)
     }
 
     #[test]
     fn test_from_outputs_private() -> Result<()> {
-        check_from_outputs(Mode::Private, 24781, 6, 13708, 13725)
+        check_from_outputs(Mode::Private, 24793, 6, 13962, 13983)
     }
 }

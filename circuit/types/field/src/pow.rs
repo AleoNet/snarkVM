@@ -108,8 +108,8 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
                     case.1.mode()
                 )),
             },
-            (Mode::Constant, _) => Count::is(0, 0, 757, 758),
-            (_, _) => Count::is(0, 0, 1010, 1011),
+            (Mode::Constant, _) => Count::is(0, 0, 1009, 1011),
+            (_, _) => Count::is(0, 0, 1262, 1264),
         }
     }
 }

@@ -21,7 +21,7 @@ impl<N: Network> Parser for RecordType<N> {
     /// ```text
     ///   record message:
     ///       owner as address.private;
-    ///       gates as u64.public;
+    ///       user_defined as u64.public;
     /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -80,38 +80,15 @@ impl<N: Network> Parser for RecordType<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
-        // Parse the "gates" tag from the string.
-        let (string, _) = tag("gates")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the "as" from the string.
-        let (string, _) = tag("as")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the gates visibility from the string.
-        let (string, gates) = alt((
-            map(tag("u64.public"), |_| PublicOrPrivate::Public),
-            map(tag("u64.private"), |_| PublicOrPrivate::Private),
-        ))(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the ";" from the string.
-        let (string, _) = tag(";")(string)?;
-
         // Parse the entries from the string.
         let (string, entries) = map_res(many0(parse_entry), |entries| {
             // Prepare the reserved entry names.
-            let reserved = [
-                Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
-                Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
-            ];
+            let reserved = [Identifier::from_str("owner").map_err(|e| error(e.to_string()))?];
             // Ensure the entries has no duplicate names.
             if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
                 return Err(error(format!("Duplicate entry type found in record '{name}'")));
             }
-            // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+            // Ensure the number of members is within the maximum limit.
             if entries.len() > N::MAX_DATA_ENTRIES {
                 return Err(error("Failed to parse record: too many entries"));
             }
@@ -119,7 +96,7 @@ impl<N: Network> Parser for RecordType<N> {
         })(string)?;
 
         // Return the record type.
-        Ok((string, Self { name, owner, gates, entries: IndexMap::from_iter(entries.into_iter()) }))
+        Ok((string, Self { name, owner, entries: IndexMap::from_iter(entries.into_iter()) }))
     }
 }
 
@@ -152,7 +129,6 @@ impl<N: Network> Display for RecordType<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{} {}:", Self::type_name(), self.name)?;
         write!(f, "\n    owner as address.{};", self.owner)?;
-        write!(f, "\n    gates as u64.{};", self.gates)?;
         self.entries.iter().try_for_each(|(entry_name, entry_type)| write!(f, "\n    {entry_name} as {entry_type};"))
     }
 }
@@ -169,7 +145,6 @@ mod tests {
         let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             owner: PublicOrPrivate::Private,
-            gates: PublicOrPrivate::Public,
             entries: IndexMap::from_iter(
                 vec![(Identifier::from_str("first")?, EntryType::from_str("field.constant")?)].into_iter(),
             ),
@@ -179,7 +154,6 @@ mod tests {
             r"
 record message:
     owner as address.private;
-    gates as u64.public;
     first as field.constant;
 ",
         )?;
@@ -222,7 +196,7 @@ record message:
 
     #[test]
     fn test_display() {
-        let expected = "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as field.private;\n    second as field.constant;";
+        let expected = "record message:\n    owner as address.private;\n    first as field.private;\n    second as field.constant;";
         let message = RecordType::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{message}"));
     }
@@ -231,26 +205,26 @@ record message:
     fn test_display_fails() {
         // Duplicate identifier.
         let candidate = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as field.public;\n    first as field.constant;",
+            "record message:\n    owner as address.private;\n    first as field.public;\n    first as field.constant;",
         );
         assert!(candidate.is_err());
 
         // Visibility is missing in entry.
         let candidate = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as field;\n    first as field.private;",
+            "record message:\n    owner as address.private;\n    first as field;\n    first as field.private;",
         );
         assert!(candidate.is_err());
 
         // Attempted to store another record inside.
         let candidate = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    owner as address.private;\n    gates as u64.public;\n    first as token.record;",
+            "record message:\n    owner as address.private;\n    first as token.record;",
         );
         assert!(candidate.is_err());
     }
 
     #[test]
     fn test_parse_max_members() {
-        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        let mut string = "record message:\n    owner as address.private;\n".to_string();
         for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
             string += &format!("    member_{i} as field.private;\n");
         }
@@ -260,7 +234,7 @@ record message:
 
     #[test]
     fn test_parse_too_many_members() {
-        let mut string = "record message:\n    owner as address.private;\n    gates as u64.public;\n".to_string();
+        let mut string = "record message:\n    owner as address.private;\n".to_string();
         for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
             string += &format!("    member_{i} as field.private;\n");
         }

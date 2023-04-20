@@ -129,11 +129,11 @@ pub(crate) mod tests {
 
     #[test]
     fn test_compute_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 9, 4, 621, 622)
+        check_new(Mode::Public, 9, 4, 873, 875)
     }
 
     #[test]
     fn test_compute_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 9, 0, 621, 620)
+        check_new(Mode::Private, 9, 0, 873, 873)
     }
 }
