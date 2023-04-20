@@ -398,26 +398,30 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     }
 }
 
-impl<T: CanonicalDeserialize> CanonicalDeserialize for [T; 32] {
+impl<T: CanonicalDeserialize + std::fmt::Debug> CanonicalDeserialize for [T; 32] {
     #[inline]
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let values = [(); 32]
-            .iter()
-            .map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No))
-            .collect::<Result<Vec<T>, _>>()?;
+        let mut values = [(); 32].map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No));
+
+        for value in &mut values {
+            // check that each value is error free
+            if value.as_ref().is_err() {
+                println!("Err: {}", value.as_ref().unwrap_err());
+                return Err(SerializationError::InvalidData);
+            }
+        }
+
+        let values = values.map(|r| r.unwrap());
 
         if let Validate::Yes = validate {
             T::batch_check(values.iter())?
         }
-        let arr = values
-            .try_into()
-            .unwrap_or_else(|values: Vec<T>| panic!("Expected a Vec of length {} but it was {}", 32, values.len()));
 
-        Ok(arr)
+        Ok(values)
     }
 }
 
