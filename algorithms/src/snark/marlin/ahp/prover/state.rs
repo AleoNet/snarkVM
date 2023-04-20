@@ -178,10 +178,10 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     }
 
     /// Iterate over the lhs_polynomials
-    pub fn lhs_polys_into_iter(&mut self) -> impl Iterator<Item = DensePolynomial<F>> {
+    pub fn lhs_polys_into_iter(self) -> impl Iterator<Item = DensePolynomial<F>> {
         self.circuit_specific_states
-            .values_mut()
-            .flat_map(|s| core::mem::take(&mut s.lhs_polynomials).unwrap().into_iter())
+            .into_values()
+            .flat_map(|s| s.lhs_polynomials.unwrap().into_iter())
             .collect::<Vec<_>>()
             .into_iter()
     }
