@@ -176,7 +176,7 @@ version = "1.0.70"
 optional = true
 
 [dependencies.clap]
-version = "3.2"
+version = "4.2"
 features = [ "derive" ]
 optional = true
 
