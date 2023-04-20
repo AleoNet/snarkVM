@@ -578,7 +578,6 @@ where
             .keys()
             .flat_map(|pk| pk.circuit_commitment_randomness.clone())
             .clone()
-            .into_iter()
             .chain(first_commitment_randomnesses)
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
