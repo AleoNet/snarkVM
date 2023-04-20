@@ -133,13 +133,13 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Load circuit keys");
 
-        // Initialize the inclusion proving key.
-        let _ = N::inclusion_proving_key();
-        lap!(timer, "Load inclusion proving key");
+        // // Initialize the inclusion proving key.
+        // let _ = N::inclusion_proving_key();
+        // lap!(timer, "Load inclusion proving key");
 
-        // Initialize the inclusion verifying key.
-        let _ = N::inclusion_verifying_key();
-        lap!(timer, "Load inclusion verifying key");
+        // // Initialize the inclusion verifying key.
+        // let _ = N::inclusion_verifying_key();
+        // lap!(timer, "Load inclusion verifying key");
 
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
