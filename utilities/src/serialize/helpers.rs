@@ -49,8 +49,5 @@ pub fn deserialize_vec_without_len<T: CanonicalDeserialize>(
     validate: Validate,
     len: usize,
 ) -> Result<Vec<T>, SerializationError> {
-    let res = (0..len)
-        .map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate))
-        .collect::<Result<Vec<T>, _>>()?;
-    Ok(res)
+    (0..len).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)).collect()
 }

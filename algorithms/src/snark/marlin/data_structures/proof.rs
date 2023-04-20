@@ -82,7 +82,7 @@ impl<E: PairingEngine> Commitments<E> {
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
-        batch_sizes: &Vec<usize>,
+        batch_sizes: &[usize],
         mut reader: R,
         compress: Compress,
         validate: Validate,
@@ -157,7 +157,7 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
-        batch_sizes: &Vec<usize>,
+        batch_sizes: &[usize],
         mut reader: R,
         compress: Compress,
         validate: Validate,
@@ -310,7 +310,8 @@ impl<E: PairingEngine> Proof<E> {
 
 impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
-        CanonicalSerialize::serialize_with_mode(&self.batch_sizes, &mut writer, compress)?;
+        let batch_sizes: Vec<u64> = self.batch_sizes.iter().map(|x| *x as u64).collect();
+        CanonicalSerialize::serialize_with_mode(&batch_sizes, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
         Evaluations::serialize_with_mode(&self.evaluations, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.msg, &mut writer, compress)?;
@@ -345,7 +346,8 @@ impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let batch_sizes: Vec<usize> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let batch_sizes: Vec<u64> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let batch_sizes: Vec<usize> = batch_sizes.into_iter().map(|x| x as usize).collect();
         Ok(Proof {
             commitments: Commitments::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?,
             evaluations: Evaluations::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?,
