@@ -95,18 +95,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let i_domain = circuit_state.input_domain;
 
             let mut circuit_r_b_s = Vec::with_capacity(batch_size);
-            for (j, (z_a, z_b, private_variables, x_poly)) in
+            for (j, (z_a, z_b, private_vars, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
             {
                 let w_label = witness_label(circuit.id, "w", j);
                 let za_label = witness_label(circuit.id, "z_a", j);
                 let zb_label = witness_label(circuit.id, "z_b", j);
-                job_pool.add_job(move || {
-                    Self::calculate_w(w_label, private_variables, &x_poly, c_domain, i_domain, circuit)
-                });
-                job_pool.add_job(move || Self::calculate_z_m(za_label, z_a, c_domain, circuit, None));
+                job_pool.add_job(move || Self::calc_w(w_label, private_vars, &x_poly, c_domain, i_domain, circuit));
+                job_pool.add_job(move || Self::calc_z_m(za_label, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);
-                job_pool.add_job(move || Self::calculate_z_m(zb_label, z_b, c_domain, circuit, Some(r_b)));
+                job_pool.add_job(move || Self::calc_z_m(zb_label, z_b, c_domain, circuit, Some(r_b)));
                 if MM::ZK {
                     circuit_r_b_s.push(r_b);
                 }
@@ -174,7 +172,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None))
     }
 
-    fn calculate_w(
+    fn calc_w(
         label: String,
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
@@ -210,7 +208,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         PoolResult::Witness(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
     }
 
-    fn calculate_z_m(
+    fn calc_z_m(
         label: impl ToString,
         evaluations: Vec<F>,
         constraint_domain: EvaluationDomain<F>,
