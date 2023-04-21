@@ -17,29 +17,25 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::{BatchSize, Criterion};
-use itertools::Itertools;
-use std::{iter, str::FromStr};
-
 mod utilities;
 use utilities::*;
 
 use console::{
     account::PrivateKey,
     network::{Network, Testnet3},
-    prelude::Zero,
-    program::{Identifier, ProgramID},
     types::Field,
 };
-use snarkvm_synthesizer::{Deployment, Fee, Owner, Speculate, Transaction, Transition};
+use snarkvm_synthesizer::{Deployment, Owner, Speculate, Transaction};
+use snarkvm_utilities::TestRng;
 
-use snarkvm_utilities::{TestRng, ToBytes};
+use criterion::{BatchSize, Criterion};
 
+// Note: 32 is the maximum number of mappings that can be included in a single program.
 const NUM_MAPPINGS: &[usize] = &[0, 1, 2, 4, 8, 16, 32];
-const NUM_PROGRAMS: &[usize] = &[10, 100, 1000, 10000, 100000];
+const NUM_PROGRAMS: &[usize] = &[10, 100, 1000, 10000];
 
 #[cfg(feature = "test-utilities")]
-fn speculate_single_deployment(c: &mut Criterion) {
+fn single_deployment(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     // Sample a new private key and address.
@@ -56,8 +52,6 @@ fn speculate_single_deployment(c: &mut Criterion) {
     let owner = Owner::new(&private_key, id, rng).unwrap();
     let (_, fee, _) = vm.execute_fee(&private_key, record, 1, None, rng).unwrap();
 
-    // Create a new benchmark group.
-    let mut group = c.benchmark_group("speculate_single_deployment");
     for num_mappings in NUM_MAPPINGS {
         // Construct a new program.
         let program =
@@ -67,23 +61,30 @@ fn speculate_single_deployment(c: &mut Criterion) {
         let deployment = Deployment::new_unchecked(<Testnet3 as Network>::EDITION, program, vec![]);
         let transaction = Transaction::from_deployment_unchecked(id, owner, deployment, fee.clone());
 
-        // Construct a speculate object.
-        let speculate = Speculate::new(vm.program_store().current_storage_root());
+        // Construct a `Speculate` object.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
 
         // Benchmark the speculation with the given number of mappings.
-        group.bench_function(&format!("{}_mappings", num_mappings), |b| {
+        c.bench_function(&format!("speculate_single_deployment/{}_mappings", num_mappings), |b| {
             b.iter_batched(
                 || speculate.clone(),
                 |mut speculate| speculate.speculate_transaction(&vm, &transaction).unwrap(),
                 BatchSize::SmallInput,
             )
         });
+
+        // Speculate the transaction.
+        speculate.speculate_transaction(&vm, &transaction).unwrap();
+
+        // Benchmark the commit operation with the given number of mappings.
+        c.bench_function(&format!("commit_single_deployment/{}_mappings", num_mappings), |b| {
+            b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
+        });
     }
-    group.finish();
 }
 
 #[cfg(feature = "test-utilities")]
-fn speculate_multiple_deployments(c: &mut Criterion) {
+fn multiple_deployments(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     // Sample a new private key and address.
@@ -108,8 +109,6 @@ fn speculate_multiple_deployments(c: &mut Criterion) {
     // Construct a vector for transactions.
     let mut transactions = vec![];
 
-    // Create a new benchmark group.
-    let mut group = c.benchmark_group("speculate_multiple_deployments");
     for num_programs in NUM_PROGRAMS {
         // Add the required number of transactions
         for i in transactions.len()..*num_programs {
@@ -118,25 +117,32 @@ fn speculate_multiple_deployments(c: &mut Criterion) {
             transactions.push(Transaction::from_deployment_unchecked(id, owner, deployment.clone(), fee.clone()));
         }
 
-        // Construct a speculate object.
-        let speculate = Speculate::new(vm.program_store().current_storage_root());
+        // Construct a `Speculate` object.
+        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
 
         // Benchmark speculation with the given number of programs.
-        group.bench_function(&format!("{}_programs", num_programs), |b| {
+        c.bench_function(&format!("speculate_multiple_deployments/{}_programs", num_programs), |b| {
             b.iter_batched(
                 || speculate.clone(),
                 |mut speculate| speculate.speculate_transactions(&vm, &transactions).unwrap(),
                 BatchSize::SmallInput,
             )
         });
+
+        // Speculate the transactions.
+        speculate.speculate_transactions(&vm, &transactions).unwrap();
+
+        // Benchmark the commit operation with the given number of programs.
+        c.bench_function(&format!("commit_multiple_deployments/{}_programs", num_programs), |b| {
+            b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
+        });
     }
-    group.finish();
 }
 
 criterion_group! {
-    name = speculate_deployment;
+    name = deployment;
     config = Criterion::default().sample_size(10);
-    targets = speculate_single_deployment, speculate_multiple_deployments,
+    targets = single_deployment, multiple_deployments
 }
 
-criterion_main!(speculate_deployment);
+criterion_main!(deployment);

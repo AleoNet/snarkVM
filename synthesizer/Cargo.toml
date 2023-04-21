@@ -23,10 +23,10 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-#[[bench]]
-#name = "block"
-#path = "benches/block.rs"
-#harness = false
+[[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
 
 [[bench]]
 name = "coinbase_puzzle"
@@ -35,21 +35,21 @@ harness = false
 required-features = [ "setup" ]
 
 [[bench]]
-name = "commit_deployment"
-path = "benches/commit_deployment.rs"
+name = "deployment"
+path = "benches/deployment.rs"
 harness = false
 required-features = [ "test-utilities" ]
 
 [[bench]]
-name = "speculate_deployment"
-path = "benches/speculate_deployment.rs"
+name = "execution"
+path = "benches/execution.rs"
 harness = false
 required-features = [ "test-utilities" ]
 
-#[[bench]]
-#name = "transaction"
-#path = "benches/transaction.rs"
-#harness = false
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
 
 [features]
 default = [ ]
