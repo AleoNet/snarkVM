@@ -124,9 +124,13 @@ version = "1.0"
 default-features = false
 features = [ "derive" ]
 
-[dependencies.sha2]
+[dependencies.blake2]
 version = "0.10"
 default-features = true
+
+[dependencies.sha2]
+version = "0.10"
+default-features = false
 
 [dependencies.smallvec]
 version = "1.10"

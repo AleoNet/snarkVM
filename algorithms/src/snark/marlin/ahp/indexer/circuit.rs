@@ -24,8 +24,8 @@ use crate::{
     polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
 };
+use blake2::Digest;
 use hex::FromHex;
-use sha2::Digest;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
@@ -106,12 +106,12 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         b: &Matrix<F>,
         c: &Matrix<F>,
     ) -> Result<CircuitId, SerializationError> {
-        let mut sha2 = sha2::Sha256::new();
-        index_info.serialize_uncompressed(&mut sha2)?;
-        a.serialize_uncompressed(&mut sha2)?;
-        b.serialize_uncompressed(&mut sha2)?;
-        c.serialize_uncompressed(&mut sha2)?;
-        Ok(CircuitId(sha2.finalize().into()))
+        let mut blake2 = blake2::Blake2s256::new();
+        index_info.serialize_uncompressed(&mut blake2)?;
+        a.serialize_uncompressed(&mut blake2)?;
+        b.serialize_uncompressed(&mut blake2)?;
+        c.serialize_uncompressed(&mut blake2)?;
+        Ok(CircuitId(blake2.finalize().into()))
     }
 
     /// The maximum degree required to represent polynomials of this index.
