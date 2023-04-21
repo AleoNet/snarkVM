@@ -449,7 +449,6 @@ impl<T: CanonicalDeserialize + std::fmt::Debug> CanonicalDeserialize for [T; 32]
         for value in &mut values {
             // check that each value is error free
             if value.as_ref().is_err() {
-                println!("Err: {}", value.as_ref().unwrap_err());
                 return Err(SerializationError::InvalidData);
             }
         }
