@@ -138,7 +138,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Multiply the integer bits of `this` and `that` in the base field.
     #[inline]
-    pub(super) fn mul_with_carry(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Vec<Boolean<E>>) {
+    pub fn mul_with_carry(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Vec<Boolean<E>>) {
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             // Instead of multiplying the bits of `self` and `other` directly, the integers are
