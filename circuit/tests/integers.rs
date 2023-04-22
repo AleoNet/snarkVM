@@ -274,6 +274,20 @@ mod integers {
 
     // for ops see circuit/types/integers/{mul_checked,mul_wrapped}.rs
 
+    // mul with carry of var and var
+    #[test]
+    fn mul_with_carry_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let (_candidate1, _candidate2) = snarkvm_circuit_types::integers::U64::mul_with_carry(&a, &b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// mul with carry u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
     // var * var
     #[test]
     fn mul_checked_var_var() {
