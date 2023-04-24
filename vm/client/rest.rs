@@ -65,6 +65,14 @@ impl<N: Network> Client<N> {
         }
     }
 
+    pub async fn get_block_from_hash(&self, block_hash: N::BlockHash) -> Result<Block<N>> {
+        let url = format!("{}/testnet3/block/{block_hash}", self.node_url());
+        match self.client.get(url).send().await?.json().await {
+            Ok(block) => Ok(block),
+            Err(error) => bail!("Failed to parse block {block_hash}: {error}"),
+        }
+    }
+
     pub async fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
         let url = format!("{}/testnet3/transaction/{transaction_id}", self.node_url());
         match self.client.get(url).send().await?.json().await {
