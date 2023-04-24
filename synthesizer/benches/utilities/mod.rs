@@ -431,7 +431,7 @@ fn split(
 
     // Create and add a block for the fee transaction.
     let block =
-        sample_next_block(&vm, &private_key, &[Transaction::from_execution(execution, None).unwrap()], rng).unwrap();
+        sample_next_block(vm, private_key, &[Transaction::from_execution(execution, None).unwrap()], rng).unwrap();
     vm.add_next_block(&block, None).unwrap();
 
     match (response.outputs()[0].clone(), response.outputs()[1].clone()) {
