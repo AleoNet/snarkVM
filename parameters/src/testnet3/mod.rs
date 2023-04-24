@@ -20,7 +20,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://testnet3.parameters.aleo.org";
+const REMOTE_URL: &str = "https://aleotestcors.s3.us-east-2.amazonaws.com";
 
 // Degrees
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
@@ -114,4 +114,25 @@ lazy_static! {
         InclusionProver::load_bytes().expect("Failed to load inclusion proving key");
     pub static ref INCLUSION_VERIFYING_KEY: Vec<u8> =
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn test_transfer_flow() {
+        Degree16::load_bytes().expect("Failed to load degree 16");
+        Degree17::load_bytes().expect("Failed to load degree 17");
+        //Degree18::load_bytes().expect("Failed to load degree 18");
+        //Degree19::load_bytes().expect("Failed to load degree 19");
+        //TransferProver::load_bytes().expect("Failed to load transfer prover");
+        TransferVerifier::load_bytes().expect("Failed to load transfer verifier");
+        //FeeProver::load_bytes().expect("Failed to load fee prover");
+        FeeVerifier::load_bytes().expect("Failed to load fee verifier");
+        //InclusionProver::load_bytes().expect("Failed to load inclusion prover");
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
+    }
 }

@@ -32,19 +32,15 @@ pub enum ParameterError {
 
     #[error("Expected size of {}, found size of {}", _0, _1)]
     SizeMismatch(usize, usize),
+
+    #[error("{}", _0)]
+    Wasm(String),
 }
 
 #[cfg(not(feature = "wasm"))]
 impl From<curl::Error> for ParameterError {
     fn from(error: curl::Error) -> Self {
         ParameterError::Crate("curl::error", format!("{error:?}"))
-    }
-}
-
-#[cfg(feature = "wasm")]
-impl From<reqwest::Error> for ParameterError {
-    fn from(error: reqwest::Error) -> Self {
-        ParameterError::Crate("request::error", format!("{error:?}"))
     }
 }
 
