@@ -104,7 +104,7 @@ pub fn sample_next_block<R: Rng + CryptoRng>(
 
 #[cfg(feature = "test-utilities")]
 #[allow(unused)]
-pub fn bench_speculate_and_commit(
+pub fn bench_speculate_commit_and_finalize(
     c: &mut Criterion,
     name: impl Display,
     initial_deployments: &[Program<Testnet3>],
@@ -204,6 +204,14 @@ pub fn bench_speculate_and_commit(
             c.bench_function(&format!("{}/deployment/{}_repetitions/commit", name, num_repetitions), |b| {
                 b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
             });
+
+            // Construct a `Transactions` object.
+            let transactions = Transactions::from(&transactions);
+
+            // Benchmark the finalize operation.
+            c.bench_function(&format!("{}/deployment/{}_repetitions/finalize", name, num_repetitions), |b| {
+                b.iter(|| vm.finalize(&transactions, None).unwrap())
+            });
         }
     }
 
@@ -255,6 +263,14 @@ pub fn bench_speculate_and_commit(
             // Benchmark the commit operation.
             c.bench_function(&format!("{}/execution/{}_repetitions/commit", name, num_repetitions), |b| {
                 b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
+            });
+
+            // Construct a `Transactions` object.
+            let transactions = Transactions::from(&transactions);
+
+            // Benchmark the finalize operation.
+            c.bench_function(&format!("{}/execution/{}_repetitions/finalize", name, num_repetitions), |b| {
+                b.iter(|| vm.finalize(&transactions, None).unwrap())
             });
         }
     }

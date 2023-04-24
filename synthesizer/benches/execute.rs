@@ -54,18 +54,18 @@ finalize getter:"
             program_string.push_str(&format!("get balances[0field] into r{i};"));
         }
         commands_added = *num_commands;
-        bench_speculate_and_commit(
+        bench_speculate_commit_and_finalize(
             c,
             format!("static_get/{num_commands}_commands"),
             &[Program::from_str(&program_string).unwrap()],
             &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("initialize").unwrap(), vec![])],
             &[],
-            &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("initialize").unwrap(), vec![])],
+            &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("getter").unwrap(), vec![])],
             &[1],
         );
     }
 
-    bench_speculate_and_commit(
+    bench_speculate_commit_and_finalize(
         c,
         format!("static_get/{}_commands", NUM_COMMANDS.last().unwrap()),
         &[Program::from_str(&program_string).unwrap()],
@@ -95,7 +95,7 @@ finalize init:"
             program_string.push_str(&format!("get.or_init balances[0field] 0field into r{i};"));
         }
         commands_added = *num_commands;
-        bench_speculate_and_commit(
+        bench_speculate_commit_and_finalize(
             c,
             format!("static_init/{num_commands}_commands"),
             &[Program::from_str(&program_string).unwrap()],
@@ -106,7 +106,7 @@ finalize init:"
         );
     }
 
-    bench_speculate_and_commit(
+    bench_speculate_commit_and_finalize(
         c,
         format!("static_init/{}_commands", NUM_COMMANDS.last().unwrap()),
         &[Program::from_str(&program_string).unwrap()],
@@ -136,7 +136,7 @@ finalize setter:"
             program_string.push_str("set 0field into balances[0field];");
         }
         commands_added = *num_commands;
-        bench_speculate_and_commit(
+        bench_speculate_commit_and_finalize(
             c,
             format!("static_set/{num_commands}_commands"),
             &[Program::from_str(&program_string).unwrap()],
@@ -147,7 +147,7 @@ finalize setter:"
         );
     }
 
-    bench_speculate_and_commit(
+    bench_speculate_commit_and_finalize(
         c,
         format!("static_set/{}_commands", NUM_COMMANDS.last().unwrap()),
         &[Program::from_str(&program_string).unwrap()],
