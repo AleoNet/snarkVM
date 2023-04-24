@@ -31,7 +31,6 @@ use std::str::FromStr;
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
 const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
 
-#[cfg(feature = "test-utilities")]
 fn bench_static_get(c: &mut Criterion) {
     let mut program_string = r"
 program static_get.aleo;
@@ -54,7 +53,7 @@ finalize getter:"
             program_string.push_str(&format!("get balances[0field] into r{i};"));
         }
         commands_added = *num_commands;
-        bench_speculate_commit_and_finalize(
+        bench_add_next_block(
             c,
             format!("static_get/{num_commands}_commands"),
             &[Program::from_str(&program_string).unwrap()],
@@ -65,7 +64,7 @@ finalize getter:"
         );
     }
 
-    bench_speculate_commit_and_finalize(
+    bench_add_next_block(
         c,
         format!("static_get/{}_commands", NUM_COMMANDS.last().unwrap()),
         &[Program::from_str(&program_string).unwrap()],
@@ -76,7 +75,6 @@ finalize getter:"
     )
 }
 
-#[cfg(feature = "test-utilities")]
 fn bench_static_get_or_init(c: &mut Criterion) {
     let mut program_string = r"
 program static_init.aleo;
@@ -95,7 +93,7 @@ finalize init:"
             program_string.push_str(&format!("get.or_init balances[0field] 0field into r{i};"));
         }
         commands_added = *num_commands;
-        bench_speculate_commit_and_finalize(
+        bench_add_next_block(
             c,
             format!("static_init/{num_commands}_commands"),
             &[Program::from_str(&program_string).unwrap()],
@@ -106,7 +104,7 @@ finalize init:"
         );
     }
 
-    bench_speculate_commit_and_finalize(
+    bench_add_next_block(
         c,
         format!("static_init/{}_commands", NUM_COMMANDS.last().unwrap()),
         &[Program::from_str(&program_string).unwrap()],
@@ -117,7 +115,6 @@ finalize init:"
     )
 }
 
-#[cfg(feature = "test-utilities")]
 fn bench_static_set(c: &mut Criterion) {
     let mut program_string = r"
 program static_set.aleo;
@@ -136,7 +133,7 @@ finalize setter:"
             program_string.push_str("set 0field into balances[0field];");
         }
         commands_added = *num_commands;
-        bench_speculate_commit_and_finalize(
+        bench_add_next_block(
             c,
             format!("static_set/{num_commands}_commands"),
             &[Program::from_str(&program_string).unwrap()],
@@ -147,7 +144,7 @@ finalize setter:"
         );
     }
 
-    bench_speculate_commit_and_finalize(
+    bench_add_next_block(
         c,
         format!("static_set/{}_commands", NUM_COMMANDS.last().unwrap()),
         &[Program::from_str(&program_string).unwrap()],
@@ -158,11 +155,10 @@ finalize setter:"
     );
 }
 
-#[cfg(feature = "test-utilities")]
 criterion_group! {
-    name = execute;
+    name = add_next_block;
     config = Criterion::default().sample_size(10);
     targets = bench_static_get, bench_static_get_or_init, bench_static_set,
 }
-#[cfg(feature = "test-utilities")]
-criterion_main!(execute);
+
+criterion_main!(add_next_block);

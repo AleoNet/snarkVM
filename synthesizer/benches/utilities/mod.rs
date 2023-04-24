@@ -44,6 +44,7 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::{borrow::Borrow, fmt::Display};
 
+/// A helper function to initialize a VM with a genesis block.
 pub fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
@@ -67,7 +68,6 @@ pub fn initialize_vm<R: Rng + CryptoRng>(
 }
 
 /// Construct a new block based on the given transactions.
-#[cfg(feature = "test-utilities")]
 #[allow(unused)]
 pub fn sample_next_block<R: Rng + CryptoRng>(
     vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
@@ -102,6 +102,7 @@ pub fn sample_next_block<R: Rng + CryptoRng>(
     Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
 }
 
+/// A helper function for benchmarking `Speculate::speculate`, `Speculate::commit`, and `VM::finalize`.
 #[cfg(feature = "test-utilities")]
 #[allow(unused)]
 pub fn bench_speculate_commit_and_finalize(
@@ -276,9 +277,9 @@ pub fn bench_speculate_commit_and_finalize(
     }
 }
 
-#[cfg(feature = "test-utilities")]
+/// A helper function for benchmarking the `VM::add_next_block` function.
 #[allow(unused)]
-pub fn bench_finalize(
+pub fn bench_add_next_block(
     c: &mut Criterion,
     name: impl Display,
     initial_deployments: &[Program<Testnet3>],
@@ -340,74 +341,71 @@ pub fn bench_finalize(
 
     // Run the deployment benchmarks for each of the runs.
     if !benchmark_deployments.is_empty() {
-        // Compute placeholder data for the deployment transactions.
-        let id = <Testnet3 as Network>::TransactionID::default();
-        let owner = Owner::new(&private_key, id, rng).unwrap();
-        let (_, fee, _) = vm.execute_fee(&private_key, record, 1, None, rng).unwrap();
-
         for num_repetitions in runs {
             // Construct the required number of transactions.
-            let mut count = 0u64;
             let mut transactions = Vec::with_capacity(benchmark_deployments.len() * *num_repetitions);
 
             for _ in 0..*num_repetitions {
                 for program in benchmark_deployments {
-                    transactions.push(Transaction::from_deployment_unchecked(
-                        AleoID::from(Field::from_u64(count)),
-                        owner,
-                        Deployment::new_unchecked(<Testnet3 as Network>::EDITION, program.clone(), vec![]),
-                        fee.clone(),
-                    ));
-                    count += 1;
+                    let program_size = program.to_bytes_le().unwrap().len();
+                    // Split out a fee record, updating VM state.
+                    let (fee_record, remaining_record) = split(&vm, &private_key, record, program_size as u64, rng);
+                    record = remaining_record;
+
+                    transactions.push(
+                        Transaction::deploy(&vm, &private_key, program, (fee_record, program_size as u64), None, rng)
+                            .unwrap(),
+                    );
                 }
             }
 
-            let transactions = Transactions::from(&transactions);
-
             // Benchmark speculation.
-            c.bench_function(&format!("{}/deployment/{}_repetitions/finalize", name, num_repetitions), |b| {
-                b.iter(|| {
-                    vm.finalize(&transactions, None).unwrap();
-                })
-            });
+            c.bench_function(
+                &format!("{}/add_next_block/deployment/{}_repetitions/finalize", name, num_repetitions),
+                |b| {
+                    b.iter_batched(
+                        || sample_next_block(&vm, &private_key, &transactions, rng).unwrap(),
+                        |block| vm.add_next_block(&block, None).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                },
+            );
         }
     }
 
     // Run the execution benchmarks for each of the runs.
     if !benchmark_executions.is_empty() {
-        // Construct the executions.
-        let executions = benchmark_executions
-            .iter()
-            .map(|(program_id, function_name, inputs)| {
-                let authorization = vm.authorize(&private_key, program_id, function_name, inputs, rng).unwrap();
-                let (_, execution, _) = vm.execute(authorization, None, rng).unwrap();
-                execution
-            })
-            .collect_vec();
-
         for num_repetitions in runs {
             // Construct the required number of transactions.
-            let mut count = 0u64;
             let mut transactions = Vec::with_capacity(benchmark_executions.len() * *num_repetitions);
             for _ in 0..*num_repetitions {
-                for execution in executions.iter() {
-                    transactions.push(Transaction::from_execution_unchecked(
-                        AleoID::from(Field::from_u64(count)),
-                        execution.clone(),
-                        None,
-                    ));
-                    count += 1;
+                for (program_id, function_name, inputs) in benchmark_executions {
+                    transactions.push(
+                        Transaction::execute(
+                            &vm,
+                            &private_key,
+                            (program_id, function_name),
+                            inputs.iter(),
+                            None,
+                            None,
+                            rng,
+                        )
+                        .unwrap(),
+                    );
                 }
             }
 
-            let transactions = Transactions::from(&transactions);
-
             // Benchmark speculation.
-            c.bench_function(&format!("{}/execution/{}_repetitions/finalize", name, num_repetitions), |b| {
-                b.iter(|| {
-                    vm.finalize(&transactions, None).unwrap();
-                })
-            });
+            c.bench_function(
+                &format!("{}/add_next_block/execution/{}_repetitions/finalize", name, num_repetitions),
+                |b| {
+                    b.iter_batched(
+                        || sample_next_block(&vm, &private_key, &transactions, rng).unwrap(),
+                        |block| vm.add_next_block(&block, None).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                },
+            );
         }
     }
 }
