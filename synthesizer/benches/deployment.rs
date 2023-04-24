@@ -18,131 +18,60 @@
 extern crate criterion;
 
 mod utilities;
+
+use std::str::FromStr;
 use utilities::*;
 
-use console::{
-    account::PrivateKey,
-    network::{Network, Testnet3},
-    types::Field,
-};
-use snarkvm_synthesizer::{Deployment, Owner, Speculate, Transaction};
-use snarkvm_utilities::TestRng;
+use snarkvm_synthesizer::Program;
 
-use criterion::{BatchSize, Criterion};
+use criterion::Criterion;
 
 // Note: 32 is the maximum number of mappings that can be included in a single program.
 const NUM_MAPPINGS: &[usize] = &[0, 1, 2, 4, 8, 16, 32];
-const NUM_PROGRAMS: &[usize] = &[10, 100, 1000, 10000];
+const NUM_DEPLOYMENTS: &[usize] = &[10, 100, 1000, 10000];
 
 #[cfg(feature = "test-utilities")]
-fn single_deployment(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
+fn bench_deployment(c: &mut Criterion) {
+    let mut program_string = r"
+program test.aleo;"
+        .to_string();
 
-    // Sample a new private key and address.
-    let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
-
-    // Initialize a `Namer` to help construct unique programs.
-    let mut namer = Namer::new();
-
-    // Initialize the VM.
-    let (vm, record) = initialize_vm(&private_key, rng);
-
-    // Compute placeholder data for the transaction.
-    let id = <Testnet3 as Network>::TransactionID::default();
-    let owner = Owner::new(&private_key, id, rng).unwrap();
-    let (_, fee, _) = vm.execute_fee(&private_key, record, 1, None, rng).unwrap();
-
+    let mut mappings_added = 0;
     for num_mappings in NUM_MAPPINGS {
-        // Construct a new program.
-        let program =
-            construct_program(ProgramConfig { num_mappings: *num_mappings, transition_configs: vec![] }, &mut namer);
-
-        // Construct a deployment transaction.
-        let deployment = Deployment::new_unchecked(<Testnet3 as Network>::EDITION, program, vec![]);
-        let transaction = Transaction::from_deployment_unchecked(id, owner, deployment, fee.clone());
-
-        // Construct a `Speculate` object.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
-
-        // Benchmark the speculation with the given number of mappings.
-        c.bench_function(&format!("speculate_single_deployment/{}_mappings", num_mappings), |b| {
-            b.iter_batched(
-                || speculate.clone(),
-                |mut speculate| speculate.speculate_transaction(&vm, &transaction).unwrap(),
-                BatchSize::SmallInput,
-            )
-        });
-
-        // Speculate the transaction.
-        speculate.speculate_transaction(&vm, &transaction).unwrap();
-
-        // Benchmark the commit operation with the given number of mappings.
-        c.bench_function(&format!("commit_single_deployment/{}_mappings", num_mappings), |b| {
-            b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
-        });
-    }
-}
-
-#[cfg(feature = "test-utilities")]
-fn multiple_deployments(c: &mut Criterion) {
-    let rng = &mut TestRng::default();
-
-    // Sample a new private key and address.
-    let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
-
-    // Initialize a `Namer` to help construct unique programs.
-    let mut namer = Namer::new();
-
-    // Initialize the VM.
-    let (vm, record) = initialize_vm(&private_key, rng);
-
-    // Construct a new program.
-    let program = construct_program(
-        ProgramConfig { num_mappings: *NUM_MAPPINGS.last().unwrap(), transition_configs: vec![] },
-        &mut namer,
-    );
-
-    // Construct a fee and deployment for the transaction.
-    let (_, fee, _) = vm.execute_fee(&private_key, record, 1, None, rng).unwrap();
-    let deployment = Deployment::new_unchecked(<Testnet3 as Network>::EDITION, program, vec![]);
-
-    // Construct a vector for transactions.
-    let mut transactions = vec![];
-
-    for num_programs in NUM_PROGRAMS {
-        // Add the required number of transactions
-        for i in transactions.len()..*num_programs {
-            let id = <Testnet3 as Network>::TransactionID::from(Field::from_u64(i as u64));
-            let owner = Owner::new(&private_key, id, rng).unwrap();
-            transactions.push(Transaction::from_deployment_unchecked(id, owner, deployment.clone(), fee.clone()));
+        // Construct the program.
+        for i in mappings_added..*num_mappings {
+            program_string.push_str(&format!("mapping map_{i}:key left as field.public;value right as field.public;"));
         }
-
-        // Construct a `Speculate` object.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
-
-        // Benchmark speculation with the given number of programs.
-        c.bench_function(&format!("speculate_multiple_deployments/{}_programs", num_programs), |b| {
-            b.iter_batched(
-                || speculate.clone(),
-                |mut speculate| speculate.speculate_transactions(&vm, &transactions).unwrap(),
-                BatchSize::SmallInput,
-            )
-        });
-
-        // Speculate the transactions.
-        speculate.speculate_transactions(&vm, &transactions).unwrap();
-
-        // Benchmark the commit operation with the given number of programs.
-        c.bench_function(&format!("commit_multiple_deployments/{}_programs", num_programs), |b| {
-            b.iter_batched(|| speculate.clone(), |speculate| speculate.commit(&vm).unwrap(), BatchSize::SmallInput)
-        });
+        let mut final_string = program_string.clone();
+        final_string.push_str("function foo:");
+        mappings_added = *num_mappings;
+        bench_speculate_and_commit(
+            c,
+            format!("deploy_with_{num_mappings}_mappings"),
+            &[],
+            &[],
+            &[Program::from_str(&final_string).unwrap()],
+            &[],
+            &[1],
+        );
     }
+
+    program_string.push_str("function foo:");
+    bench_speculate_and_commit(
+        c,
+        format!("deploy_with_{}_mappings", NUM_MAPPINGS.last().unwrap()),
+        &[],
+        &[],
+        &[Program::from_str(&program_string).unwrap()],
+        &[],
+        NUM_DEPLOYMENTS,
+    );
 }
 
 criterion_group! {
     name = deployment;
     config = Criterion::default().sample_size(10);
-    targets = single_deployment, multiple_deployments
+    targets = bench_deployment
 }
 
 criterion_main!(deployment);
