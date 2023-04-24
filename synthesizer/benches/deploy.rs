@@ -69,9 +69,9 @@ program test.aleo;"
 }
 
 criterion_group! {
-    name = deployment;
+    name = deploy;
     config = Criterion::default().sample_size(10);
     targets = bench_deployment
 }
 
-criterion_main!(deployment);
+criterion_main!(deploy);

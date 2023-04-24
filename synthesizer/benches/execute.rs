@@ -18,14 +18,14 @@
 extern crate criterion;
 
 mod utilities;
-
-use std::str::FromStr;
 use utilities::*;
 
 use console::program::{Identifier, ProgramID};
 
 use criterion::Criterion;
 use snarkvm_synthesizer::Program;
+
+use std::str::FromStr;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
@@ -159,9 +159,9 @@ finalize setter:"
 }
 
 criterion_group! {
-    name = execution;
+    name = execute;
     config = Criterion::default().sample_size(10);
     targets = bench_static_get, bench_static_get_or_init, bench_static_set,
 }
 
-criterion_main!(execution);
+criterion_main!(execute);

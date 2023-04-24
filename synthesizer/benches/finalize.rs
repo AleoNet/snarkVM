@@ -17,16 +17,151 @@
 #[macro_use]
 extern crate criterion;
 
-use criterion::Criterion;
+mod utilities;
+use utilities::*;
 
-fn finalize_transactions(c: &mut Criterion) {
-    todo!()
+use console::program::{Identifier, ProgramID};
+
+use criterion::Criterion;
+use snarkvm_synthesizer::Program;
+
+use std::str::FromStr;
+
+// Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
+const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
+const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
+
+#[cfg(feature = "test-utilities")]
+fn bench_static_get(c: &mut Criterion) {
+    let mut program_string = r"
+program static_get.aleo;
+mapping balances:
+    key left as field.public;
+    value right as field.public;
+function initialize:
+    finalize;
+finalize initialize:
+    set 0field into balances[0field];
+function getter:
+    finalize;
+finalize getter:"
+        .to_string();
+
+    let mut commands_added = 0;
+    for num_commands in NUM_COMMANDS {
+        // Construct the program.
+        for i in commands_added..*num_commands {
+            program_string.push_str(&format!("get balances[0field] into r{i};"));
+        }
+        commands_added = *num_commands;
+        bench_finalize(
+            c,
+            format!("static_get/{num_commands}_commands"),
+            &[Program::from_str(&program_string).unwrap()],
+            &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("initialize").unwrap(), vec![])],
+            &[],
+            &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("initialize").unwrap(), vec![])],
+            &[1],
+        );
+    }
+
+    bench_finalize(
+        c,
+        format!("static_get/{}_commands", NUM_COMMANDS.last().unwrap()),
+        &[Program::from_str(&program_string).unwrap()],
+        &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("initialize").unwrap(), vec![])],
+        &[],
+        &[(ProgramID::from_str("static_get.aleo").unwrap(), Identifier::from_str("getter").unwrap(), vec![])],
+        NUM_EXECUTIONS,
+    )
+}
+
+#[cfg(feature = "test-utilities")]
+fn bench_static_get_or_init(c: &mut Criterion) {
+    let mut program_string = r"
+program static_init.aleo;
+mapping balances:
+    key left as field.public;
+    value right as field.public;
+function init:
+    finalize;
+finalize init:"
+        .to_string();
+
+    let mut commands_added = 0;
+    for num_commands in NUM_COMMANDS {
+        // Construct the program.
+        for i in commands_added..*num_commands {
+            program_string.push_str(&format!("get.or_init balances[0field] 0field into r{i};"));
+        }
+        commands_added = *num_commands;
+        bench_finalize(
+            c,
+            format!("static_init/{num_commands}_commands"),
+            &[Program::from_str(&program_string).unwrap()],
+            &[],
+            &[],
+            &[(ProgramID::from_str("static_init.aleo").unwrap(), Identifier::from_str("init").unwrap(), vec![])],
+            &[1],
+        );
+    }
+
+    bench_finalize(
+        c,
+        format!("static_init/{}_commands", NUM_COMMANDS.last().unwrap()),
+        &[Program::from_str(&program_string).unwrap()],
+        &[],
+        &[],
+        &[(ProgramID::from_str("static_init.aleo").unwrap(), Identifier::from_str("init").unwrap(), vec![])],
+        NUM_EXECUTIONS,
+    )
+}
+
+#[cfg(feature = "test-utilities")]
+fn bench_static_set(c: &mut Criterion) {
+    let mut program_string = r"
+program static_set.aleo;
+mapping balances:
+    key left as field.public;
+    value right as field.public;
+function setter:
+    finalize;
+finalize setter:"
+        .to_string();
+
+    let mut commands_added = 0;
+    for num_commands in NUM_COMMANDS {
+        // Construct the program.
+        for _ in commands_added..*num_commands {
+            program_string.push_str("set 0field into balances[0field];");
+        }
+        commands_added = *num_commands;
+        bench_finalize(
+            c,
+            format!("static_set/{num_commands}_commands"),
+            &[Program::from_str(&program_string).unwrap()],
+            &[],
+            &[],
+            &[(ProgramID::from_str("static_set.aleo").unwrap(), Identifier::from_str("setter").unwrap(), vec![])],
+            &[1],
+        );
+    }
+
+    bench_finalize(
+        c,
+        format!("static_set/{}_commands", NUM_COMMANDS.last().unwrap()),
+        &[Program::from_str(&program_string).unwrap()],
+        &[],
+        &[],
+        &[(ProgramID::from_str("static_set.aleo").unwrap(), Identifier::from_str("setter").unwrap(), vec![])],
+        NUM_EXECUTIONS,
+    );
 }
 
 criterion_group! {
     name = finalize;
     config = Criterion::default().sample_size(10);
-    targets = finalize_transactions
+    targets = bench_static_get, bench_static_get_or_init, bench_static_set,
 }
 
 criterion_main!(finalize);

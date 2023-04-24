@@ -35,14 +35,20 @@ harness = false
 required-features = [ "setup" ]
 
 [[bench]]
-name = "deployment"
-path = "benches/deployment.rs"
+name = "deploy"
+path = "benches/deploy.rs"
 harness = false
 required-features = [ "test-utilities" ]
 
 [[bench]]
-name = "execution"
-path = "benches/execution.rs"
+name = "execute"
+path = "benches/execute.rs"
+harness = false
+required-features = [ "test-utilities" ]
+
+[[bench]]
+name = "finalize"
+path = "benches/finalize.rs"
 harness = false
 required-features = [ "test-utilities" ]
 
