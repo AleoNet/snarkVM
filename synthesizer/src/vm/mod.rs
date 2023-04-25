@@ -151,13 +151,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ConsensusMemory, Fee, Inclusion, Transition};
+    use crate::{program::Program, Block, ConsensusMemory, Fee, Header, Inclusion, Metadata, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::Value,
     };
 
+    use console::program::{Entry, Literal};
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
 
@@ -409,5 +410,109 @@ function compute:
                 fee
             })
             .clone()
+    }
+
+    #[test]
+    fn test_multiple_splits_in_a_single_block() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, records) = {
+            // Initialize the genesis block.
+            let genesis = sample_genesis_block(rng);
+
+            // Fetch the unspent records.
+            let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+
+            // Initialize the VM.
+            let vm = sample_vm();
+            // Update the VM.
+            vm.add_next_block(&genesis).unwrap();
+
+            (vm, records)
+        };
+
+        // Fetch the unspent record.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Prepare the inputs.
+        let inputs =
+            [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("2u64").unwrap()].into_iter();
+
+        // Execute.
+        let first_split =
+            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+
+        // Verify the transaction.
+        assert!(vm.verify_transaction(&first_split));
+
+        // Get the record with 2 micro-credits.
+        let record = first_split
+            .records()
+            .find_map(|(_, record)| {
+                if let Ok(record) = record.decrypt(&caller_view_key) {
+                    match record.data().get(&Identifier::from_str("microcredits").unwrap()) {
+                        Some(Entry::<Testnet3, Plaintext<Testnet3>>::Private(Plaintext::Literal(
+                            Literal::U64(balance),
+                            ..,
+                        ))) if **balance == 2u64 => Some(record),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        // Prepare the inputs.
+        let inputs =
+            [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("1u64").unwrap()].into_iter();
+
+        // Execute.
+        let second_split =
+            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+
+        // Verify the transaction.
+        assert!(vm.verify_transaction(&second_split));
+
+        // Construct a new block with the transaction.
+        let block = {
+            // Get the most recent block.
+            let previous_block = sample_genesis_block(rng);
+
+            // Construct the new block header.
+            let transactions = Transactions::from(&[first_split, second_split]);
+            // Construct the metadata associated with the block.
+            let metadata = Metadata::new(
+                Testnet3::ID,
+                previous_block.round() + 1,
+                previous_block.height() + 1,
+                Testnet3::STARTING_SUPPLY,
+                0,
+                Testnet3::GENESIS_COINBASE_TARGET,
+                Testnet3::GENESIS_PROOF_TARGET,
+                previous_block.last_coinbase_target(),
+                previous_block.last_coinbase_timestamp(),
+                Testnet3::GENESIS_TIMESTAMP + 1,
+            )
+            .unwrap();
+            let header = Header::from(
+                *vm.block_store().current_state_root(),
+                transactions.to_root().unwrap(),
+                Field::zero(),
+                Field::zero(),
+                metadata,
+            )
+            .unwrap();
+
+            Block::new(&caller_private_key, previous_block.hash(), header, transactions, None, rng).unwrap()
+        };
+
+        // Update the VM.
+        vm.add_next_block(&block).unwrap();
     }
 }
