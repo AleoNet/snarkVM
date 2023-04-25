@@ -592,7 +592,8 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
             let new_bounds = vk.degree_bounds_and_neg_powers_of_h.as_ref().unwrap();
             let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
             assert_eq!(new_bounds.len(), new_prep_bounds.len());
-            for ((bound, neg_powers), (_, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
+            for ((bound, neg_powers), (bound2, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
+                assert_eq!(bound, bound2);
                 if bounds_seen.insert(*bound) {
                     bounds_and_neg_powers.push((*bound, neg_powers));
                     bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers));
