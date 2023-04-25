@@ -126,13 +126,13 @@ mod tests {
     fn test_transfer_flow() {
         Degree16::load_bytes().expect("Failed to load degree 16");
         Degree17::load_bytes().expect("Failed to load degree 17");
-        //Degree18::load_bytes().expect("Failed to load degree 18");
-        //Degree19::load_bytes().expect("Failed to load degree 19");
-        //TransferProver::load_bytes().expect("Failed to load transfer prover");
+        Degree18::load_bytes().expect("Failed to load degree 18");
+        Degree19::load_bytes().expect("Failed to load degree 19");
+        TransferProver::load_bytes().expect("Failed to load transfer prover");
         TransferVerifier::load_bytes().expect("Failed to load transfer verifier");
-        //FeeProver::load_bytes().expect("Failed to load fee prover");
+        FeeProver::load_bytes().expect("Failed to load fee prover");
         FeeVerifier::load_bytes().expect("Failed to load fee verifier");
-        //InclusionProver::load_bytes().expect("Failed to load inclusion prover");
+        InclusionProver::load_bytes().expect("Failed to load inclusion prover");
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
     }
 }

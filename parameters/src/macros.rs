@@ -173,7 +173,6 @@ macro_rules! impl_load_bytes_logic_remote {
         let mut file_path = aleo_std::aleo_dir();
         file_path.push($local_dir);
         file_path.push($filename);
-        println!("file_path: {:?}", file_path);
 
         let buffer = if file_path.exists() {
             // Attempts to load the parameter file locally with an absolute path.
@@ -196,7 +195,7 @@ macro_rules! impl_load_bytes_logic_remote {
             // Load remote file
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
-                    let mut buffer = Vec::new();
+                    let mut buffer = vec![];
                     Self::remote_fetch(&mut buffer, &url)?;
 
                     // Ensure the checksum matches.
