@@ -20,7 +20,7 @@ use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 #[doc(hidden)]
 #[derive(Clone)]
-// This Circuit is only for testing and should not be used in production
+/// This Circuit is only for testing and should not be used in production
 pub struct TestCircuit<F: Field> {
     pub a: Option<F>,
     pub b: Option<F>,

@@ -101,7 +101,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let w_label = witness_label(circuit.id, "w", j);
                 let za_label = witness_label(circuit.id, "z_a", j);
                 let zb_label = witness_label(circuit.id, "z_b", j);
-                job_pool.add_job(move || Self::calc_w(w_label, private_vars, &x_poly, c_domain, i_domain, circuit));
+                job_pool.add_job(move || Self::calc_w(w_label, private_vars, x_poly, c_domain, i_domain, circuit));
                 job_pool.add_job(move || Self::calc_z_m(za_label, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);
                 job_pool.add_job(move || Self::calc_z_m(zb_label, z_b, c_domain, circuit, Some(r_b)));
@@ -175,7 +175,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calc_w(
         label: String,
         private_variables: Vec<F>,
-        x_poly: &DensePolynomial<F>,
+        x_poly: DensePolynomial<F>,
         constraint_domain: EvaluationDomain<F>,
         input_domain: EvaluationDomain<F>,
         circuit: &Circuit<F, MM>,
@@ -185,7 +185,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
 
         let x_evals = {
-            let mut coeffs = x_poly.coeffs.clone();
+            let mut coeffs = x_poly.coeffs;
             coeffs.resize(constraint_domain.size(), F::zero());
             constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, &circuit.fft_precomputation);
             coeffs

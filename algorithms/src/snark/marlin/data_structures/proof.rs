@@ -232,7 +232,7 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     pub fn to_field_elements(&self) -> Vec<F> {
-        let mut result: Vec<F> = self.z_b_evals.clone().into_iter().flatten().collect();
+        let mut result: Vec<F> = self.z_b_evals.iter().flatten().copied().collect();
         result.extend([self.g_1_eval]);
         result.extend(self.g_a_evals.clone());
         result.extend(self.g_b_evals.clone());

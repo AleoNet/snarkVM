@@ -212,17 +212,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut h_1_sum = DensePolynomial::zero();
         let mut xg_1_sum = DensePolynomial::zero();
-        for (h_1_i, xg_1_i) in job_pool.execute_all().into_iter() {
-            h_1_sum += &h_1_i;
-            xg_1_sum += &xg_1_i;
+        for (mut h_1_i, mut xg_1_i) in job_pool.execute_all().into_iter() {
+            h_1_sum += &core::mem::take(&mut h_1_i);
+            xg_1_sum += &core::mem::take(&mut xg_1_i);
         }
 
         let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
         let mask_poly = &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense());
-        let (h_1_mask, xg_1_mask) = mask_poly.divide_by_vanishing_poly(max_constraint_domain).unwrap();
-        h_1_sum += &h_1_mask;
-        xg_1_sum += &xg_1_mask;
+        let (mut h_1_mask, mut xg_1_mask) = mask_poly.divide_by_vanishing_poly(max_constraint_domain).unwrap();
+        h_1_sum += &core::mem::take(&mut h_1_mask);
+        xg_1_sum += &core::mem::take(&mut xg_1_mask);
 
         (h_1_sum, xg_1_sum)
     }

@@ -28,11 +28,11 @@ pub(crate) struct BatchCombiners<F> {
 }
 
 /// First message of the verifier.
+/// We only need randomizers for B and C to get a linear combination for {A,B,C}
 #[derive(Clone, Debug)]
 pub struct FirstMessage<F: PrimeField> {
     /// Query for the random polynomial.
     pub alpha: F,
-    /// We only need randomizers for B and C to get a linear combination for {A,B,C}
     /// Randomizer for the lincheck for `B`.
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.

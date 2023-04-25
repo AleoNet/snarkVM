@@ -23,6 +23,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::SynthesisResult;
 
+/// Circuit Specific State of the Prover
 pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
     pub(super) constraint_domain: EvaluationDomain<F>,
@@ -63,14 +64,18 @@ pub struct CircuitSpecificState<F: PrimeField> {
 
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
+    /// The state for each circuit in the batch.
     pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
-    /// The challenges sent by the verifier in the first round
+    /// The challenges sent by the verifier in the first round.
     pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
+    /// The largest non_zero domain of all circuits in the batch.
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
+    /// The largest constraint domain of all circuits in the batch.
     pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
+    /// The total number of instances we're proving in the batch.
     pub(in crate::snark) total_instances: usize,
 }
 
