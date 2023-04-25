@@ -2834,6 +2834,7 @@ dependencies = [
  "rand",
  "rayon",
  "rocksdb",
+ "reqwest",
  "serde",
  "serde_json",
  "serial_test",

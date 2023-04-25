@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod query;
+pub use query::*;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
+#[cfg(feature = "wasm")]
+pub use wasm::*;
+
 #[cfg(debug_assertions)]
 use crate::Stack;
 use crate::{
@@ -37,97 +45,6 @@ use console::{
 };
 
 use std::collections::HashMap;
-
-#[derive(Clone)]
-pub enum Query<N: Network, B: BlockStorage<N>> {
-    /// The block store from the VM.
-    VM(BlockStore<N, B>),
-    /// The base URL of the node.
-    REST(String),
-}
-
-impl<N: Network, B: BlockStorage<N>> From<BlockStore<N, B>> for Query<N, B> {
-    fn from(block_store: BlockStore<N, B>) -> Self {
-        Self::VM(block_store)
-    }
-}
-
-impl<N: Network, B: BlockStorage<N>> From<&BlockStore<N, B>> for Query<N, B> {
-    fn from(block_store: &BlockStore<N, B>) -> Self {
-        Self::VM(block_store.clone())
-    }
-}
-
-impl<N: Network, B: BlockStorage<N>> From<String> for Query<N, B> {
-    fn from(url: String) -> Self {
-        Self::REST(url)
-    }
-}
-
-impl<N: Network, B: BlockStorage<N>> From<&String> for Query<N, B> {
-    fn from(url: &String) -> Self {
-        Self::REST(url.to_string())
-    }
-}
-
-impl<N: Network, B: BlockStorage<N>> From<&str> for Query<N, B> {
-    fn from(url: &str) -> Self {
-        Self::REST(url.to_string())
-    }
-}
-
-impl<N: Network, B: BlockStorage<N>> Query<N, B> {
-    /// Returns the program for the given program ID.
-    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Program<N>> {
-        match self {
-            Self::VM(block_store) => {
-                block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
-            }
-            #[cfg(not(feature = "wasm"))]
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-            #[cfg(feature = "wasm")]
-            _ => bail!("External API calls not supported from WASM"),
-        }
-    }
-
-    /// Returns the current state root.
-    pub fn current_state_root(&self) -> Result<N::StateRoot> {
-        match self {
-            Self::VM(block_store) => Ok(block_store.current_state_root()),
-            #[cfg(not(feature = "wasm"))]
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-            #[cfg(feature = "wasm")]
-            _ => bail!("External API calls not supported from WASM"),
-        }
-    }
-
-    /// Returns a state path for the given `commitment`.
-    pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        match self {
-            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
-            #[cfg(not(feature = "wasm"))]
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-            #[cfg(feature = "wasm")]
-            _ => bail!("External API calls not supported from WASM"),
-        }
-    }
-
-    /// Performs a GET request to the given URL.
-    #[cfg(not(feature = "wasm"))]
-    fn get_request(url: &str) -> Result<ureq::Response> {
-        let response = ureq::get(url).call()?;
-        if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {}", url) }
-    }
-}
 
 #[derive(Clone, Debug)]
 struct InputTask<N: Network> {
