@@ -116,7 +116,7 @@ pub fn bench_speculate_commit_and_finalize(
 ) {
     let rng = &mut TestRng::default();
 
-    // Sample a new private key and address.
+    // Sample a new private key.
     let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
 
     // Initialize the VM.

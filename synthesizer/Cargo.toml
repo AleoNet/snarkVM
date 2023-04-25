@@ -23,10 +23,10 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[[bench]]
-name = "add_next_block"
-path = "benches/add_next_block.rs"
-harness = false
+#[[bench]]
+#name = "add_next_block"
+#path = "benches/add_next_block.rs"
+#harness = false
 
 [[bench]]
 name = "block"
@@ -40,16 +40,22 @@ harness = false
 required-features = [ "setup" ]
 
 [[bench]]
-name = "deploy"
-path = "benches/deploy.rs"
+name = "credits"
+path = "benches/credits.rs"
 harness = false
 required-features = [ "test-utilities" ]
 
-[[bench]]
-name = "execute"
-path = "benches/execute.rs"
-harness = false
-required-features = [ "test-utilities" ]
+#[[bench]]
+#name = "deploy"
+#path = "benches/deploy.rs"
+#harness = false
+#required-features = [ "test-utilities" ]
+#
+#[[bench]]
+#name = "execute"
+#path = "benches/execute.rs"
+#harness = false
+#required-features = [ "test-utilities" ]
 
 [[bench]]
 name = "transaction"
