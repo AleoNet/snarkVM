@@ -301,7 +301,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         }
 
                         // we want to calculate batch_combiner_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
-                        // we rewrite this as  batch_combiner_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
+                        // we rewrite this as batch_combiner_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
                         // This is better since it reduces the number of required
                         // multiplications by `circuit_constraint_domain.size()`.
                         let mut summed_z_m = {
@@ -319,6 +319,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             result
                         };
                         // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
+                        // Zip safety: `z_b` is smaller than `summed_z_m`.
                         cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
                         // Multiply by linear combination coefficient.
