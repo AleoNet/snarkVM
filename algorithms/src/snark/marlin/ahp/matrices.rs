@@ -31,7 +31,7 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use hashbrown::HashMap;
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -220,14 +220,14 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     end_timer!(matrix_time);
 
-    let mut labels: VecDeque<String> =
-        AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(&[label], std::iter::once(id)).collect();
+    let label = &[label];
+    let mut labels = AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(label, std::iter::once(id));
 
     MatrixArithmetization {
-        row: LabeledPolynomial::new(labels.pop_front().unwrap(), row, None, None),
-        col: LabeledPolynomial::new(labels.pop_front().unwrap(), col, None, None),
-        val: LabeledPolynomial::new(labels.pop_front().unwrap(), val, None, None),
-        row_col: LabeledPolynomial::new(labels.pop_front().unwrap(), row_col, None, None),
+        row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
+        col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
+        val: LabeledPolynomial::new(labels.next().unwrap(), val, None, None),
+        row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
         evals_on_K: matrix_evals,
     }
 }
