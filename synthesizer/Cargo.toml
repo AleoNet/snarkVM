@@ -146,6 +146,7 @@ version = "0.1"
 [dependencies.ureq]
 version = "2.6.2"
 features = [ "json" ]
+default-features = false
 
 [dev-dependencies.console]
 package = "snarkvm-console"
