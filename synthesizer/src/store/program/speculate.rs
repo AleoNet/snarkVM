@@ -371,6 +371,11 @@ impl<N: Network> Speculate<N> {
             operations.push(operation_to_add);
         }
 
+        println!("5");
+
+        println!("final_operations: {:?}", final_operations);
+
+
         // Construct the updated program trees.
         let mut updated_program_trees = IndexMap::with_capacity(final_operations.len());
         for (program_id, operations) in final_operations {
@@ -380,6 +385,10 @@ impl<N: Network> Speculate<N> {
             updated_program_trees.insert(program_id, program_tree);
         }
 
+        println!("6");
+
+        println!("updated_program_trees: {:?}", updated_program_trees.iter().map(|(k, v)| (k, v.root())).collect::<Vec<_>>());
+
         // Iterate through all the programs and construct the program trees.
         let mut updates = BTreeMap::new();
         let mut appends = Vec::new();
@@ -387,7 +396,7 @@ impl<N: Network> Speculate<N> {
             // Construct the leaf for the finalize tree.
             let leaf = program_tree.root().to_bits_le();
 
-            // // Specify the update or append operation.
+            // Specify the update or append operation.
             match vm.finalize_store().contains_program_confirmed(program_id)? {
                 true => match vm.finalize_store().get_program_index(program_id)? {
                     Some(index) => {

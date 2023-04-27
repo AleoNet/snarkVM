@@ -36,6 +36,12 @@ impl<N: Network> ProvingKey<N> {
         Self { proving_key }
     }
 
+    #[cfg(feature = "test-utilities")]
+    /// Initializes a mock proving key.
+    pub fn mock() -> Self {
+        Self::new(N::inclusion_proving_key().clone())
+    }
+
     /// Returns a proof for the given assignment on the circuit.
     pub fn prove<R: Rng + CryptoRng>(
         &self,

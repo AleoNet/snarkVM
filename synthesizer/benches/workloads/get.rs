@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::utilities::{Operation, Workload};
 
+use console::network::Network;
+
+use snarkvm_synthesizer::Program;
 use std::{marker::PhantomData, str::FromStr};
 
 pub struct StaticGet<N: Network> {
@@ -33,18 +36,26 @@ impl<N: Network> StaticGet<N> {
 }
 
 impl<N: Network> Workload<N> for StaticGet<N> {
-    fn setup(&self) -> Vec<Operation<N>> {
+    fn name(&self) -> String {
+        format!(
+            "static_get/{}_mappings/{}_commands/{}_executions/{}_programs",
+            self.num_mappings, self.num_commands, self.num_executions, self.num_programs
+        )
+    }
+
+    fn setup(&self) -> Vec<Vec<Operation<N>>> {
         // Initialize storage for the setup operations.
-        let mut operations = Vec::with_capacity(self.num_programs);
+        let mut deploy_operations = Vec::with_capacity(self.num_programs);
+        let mut init_operations = Vec::with_capacity(self.num_programs);
         // Construct the operations.
         for i in 0..self.num_programs {
             // Initialize the program string.
             let mut program_string =
-                format!("program get_{}_mappings_{}_commands_{i}.aleo;", self.num_mappings, self.num_commands);
+                format!("program get_{}_{}_{}_{i}.aleo;", self.num_mappings, self.num_commands, self.num_executions);
             // Add the mappings.
             for j in 0..self.num_mappings {
                 program_string
-                    .push_str(&format!("mapping map_{j};key left as field.public;value right as field.public;"));
+                    .push_str(&format!("mapping map_{j}:key left as field.public;value right as field.public;"));
             }
             // Construct the init function.
             let mut init_function = "function init:finalize;finalize init:".to_string();
@@ -53,18 +64,23 @@ impl<N: Network> Workload<N> for StaticGet<N> {
             // Add the commands.
             for j in 0..self.num_mappings {
                 for k in 0..self.num_commands {
-                    init_function.push_str(&format!("set {k}field map_{j}[{k}field];"));
+                    init_function.push_str(&format!("set {k}field into map_{j}[{k}field];"));
                     getter_function.push_str(&format!("get map_{j}[{k}field] into r{k};"));
                 }
             }
             // Add the functions to the program string.
             program_string.push_str(&init_function);
             program_string.push_str(&getter_function);
-            // Construct and add the setup operation.
-            operations.push(Operation::Deploy(Box::new(Program::from_str(&program_string).unwrap())));
+            // Construct and add the setup operations.
+            deploy_operations.push(Operation::Deploy(Box::new(Program::from_str(&program_string).unwrap())));
+            init_operations.push(Operation::Execute(
+                format!("get_{}_{}_{}_{i}.aleo", self.num_mappings, self.num_commands, self.num_executions),
+                "init".to_string(),
+                vec![],
+            ));
         }
         // Return the setup operations.
-        operations
+        vec![deploy_operations, init_operations]
     }
 
     fn run(&self) -> Vec<Operation<N>> {
@@ -74,7 +90,7 @@ impl<N: Network> Workload<N> for StaticGet<N> {
         for i in 0..self.num_programs {
             for _ in 0..self.num_executions {
                 operations.push(Operation::Execute(
-                    format!("get_{}_mappings_{}_commands_{i}.aleo", self.num_mappings, self.num_commands),
+                    format!("get_{}_{}_{}_{i}.aleo", self.num_mappings, self.num_commands, self.num_executions),
                     "getter".to_string(),
                     vec![],
                 ));

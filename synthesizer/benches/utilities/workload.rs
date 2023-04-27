@@ -14,11 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod get;
-pub use get::*;
+use console::{prelude::Network, program::Value};
+use snarkvm_synthesizer::Program;
 
-pub mod get_or_init;
-pub use get_or_init::*;
+/// An operation executed in a workload.
+#[derive(Clone, Debug)]
+pub enum Operation<N: Network> {
+    /// Deploy a program.
+    Deploy(Box<Program<N>>),
+    /// Execute a program.
+    Execute(String, String, Vec<Value<N>>),
+}
 
-pub mod set;
-pub use set::*;
+/// A trait for workloads.
+pub trait Workload<N: Network> {
+    /// The name of the workload.
+    fn name(&self) -> String;
+    /// The sequence of operations to be run when setting up the workload.
+    fn setup(&self) -> Vec<Vec<Operation<N>>>;
+    /// The sequence of operations to be run when benchmarking the workload.
+    fn run(&self) -> Vec<Operation<N>>;
+}

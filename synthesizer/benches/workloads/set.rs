@@ -46,8 +46,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::utilities::{Operation, Workload};
 
+use console::network::Network;
+
+use snarkvm_synthesizer::Program;
 use std::{marker::PhantomData, str::FromStr};
 
 pub struct StaticSet<N: Network> {
@@ -65,25 +68,32 @@ impl<N: Network> StaticSet<N> {
 }
 
 impl<N: Network> Workload<N> for StaticSet<N> {
-    fn setup(&self) -> Vec<Operation<N>> {
+    fn name(&self) -> String {
+        format!(
+            "static_set/{}_mappings/{}_commands/{}_executions/{}_programs",
+            self.num_mappings, self.num_commands, self.num_executions, self.num_programs
+        )
+    }
+
+    fn setup(&self) -> Vec<Vec<Operation<N>>> {
         // Initialize storage for the setup operations.
         let mut operations = Vec::with_capacity(self.num_programs);
         // Construct the operations.
         for i in 0..self.num_programs {
             // Initialize the program string.
             let mut program_string =
-                format!("program set_{}_mappings_{}_commands_{i}.aleo;", self.num_mappings, self.num_commands);
+                format!("program set_{}_{}_{}_{i}.aleo;", self.num_mappings, self.num_commands, self.num_executions);
             // Add the mappings.
             for j in 0..self.num_mappings {
                 program_string
-                    .push_str(&format!("mapping map_{j};key left as field.public;value right as field.public;"));
+                    .push_str(&format!("mapping map_{j}:key left as field.public;value right as field.public;"));
             }
             // Construct the setter function.
             let mut setter = "function setter:finalize;finalize setter:".to_string();
             // Add the commands.
             for j in 0..self.num_mappings {
                 for k in 0..self.num_commands {
-                    setter.push_str(&format!("set map_{j}[{k}field] {k}field into r{k};"));
+                    setter.push_str(&format!("set {k}field into map_{j}[{k}field];"));
                 }
             }
             // Add the functions to the program string.
@@ -92,7 +102,7 @@ impl<N: Network> Workload<N> for StaticSet<N> {
             operations.push(Operation::Deploy(Box::new(Program::from_str(&program_string).unwrap())));
         }
         // Return the setup operations.
-        operations
+        vec![operations]
     }
 
     fn run(&self) -> Vec<Operation<N>> {
@@ -102,8 +112,8 @@ impl<N: Network> Workload<N> for StaticSet<N> {
         for i in 0..self.num_programs {
             for _ in 0..self.num_executions {
                 operations.push(Operation::Execute(
-                    format!("set_{}_mappings_{}_commands_{i}.aleo", self.num_mappings, self.num_commands),
-                    "init".to_string(),
+                    format!("set_{}_{}_{}_{i}.aleo", self.num_mappings, self.num_commands, self.num_executions),
+                    "setter".to_string(),
                     vec![],
                 ));
             }

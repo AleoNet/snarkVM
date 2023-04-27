@@ -80,6 +80,21 @@ impl<N: Network> Transaction<N> {
         Self::Deploy(id, owner, Box::new(deployment), fee)
     }
 
+    /// Initializes a new deployment transaction, given a deployment and a fee.
+    #[cfg(any(test, feature = "test-utilities"))]
+    pub fn from_deployment_and_fee<R: Rng + CryptoRng>(
+        private_key: &PrivateKey<N>,
+        deployment: Deployment<N>,
+        fee: Fee<N>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Construct the owner.
+        let id = *Self::deployment_tree(&deployment, &fee)?.root();
+        let owner = Owner::new(private_key, id.into(), rng)?;
+        // Initialize the deployment transaction.
+        Ok(Self::Deploy(id.into(), owner, Box::new(deployment), fee))
+    }
+
     /// Initializes a new execution transaction.
     pub fn from_execution(execution: Execution<N>, fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
