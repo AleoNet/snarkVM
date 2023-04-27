@@ -40,7 +40,7 @@ path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ "request", "aleo-std" ]
+default = [ "request" ]
 parallel = [
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
@@ -89,7 +89,6 @@ default-features = false
 [dependencies.aleo-std]
 version = "0.1.15"
 default-features = false
-optional = true
 
 [dependencies.anyhow]
 version = "1.0.70"
