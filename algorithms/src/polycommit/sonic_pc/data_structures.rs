@@ -392,7 +392,7 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
     }
 
     pub fn union<T: IntoIterator<Item = &'a CommitterKey<E>>>(committer_keys: T) -> Self {
-        let mut union = CommitterUnionKey::<E> {
+        let mut ck_union = CommitterUnionKey::<E> {
             powers_of_beta_g: None,
             lagrange_bases_at_beta_g: BTreeMap::new(),
             powers_of_beta_times_gamma_g: None,
@@ -413,7 +413,7 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
             }
             let lagrange_bases = &ck.lagrange_bases_at_beta_g;
             for (bound_base, bases) in lagrange_bases.iter() {
-                union.lagrange_bases_at_beta_g.entry(*bound_base).or_insert(bases);
+                ck_union.lagrange_bases_at_beta_g.entry(*bound_base).or_insert(bases);
             }
             if let Some(shifted_powers) = ck.shifted_powers_of_beta_times_gamma_g.as_ref() {
                 for (bound_power, powers) in shifted_powers.iter() {
@@ -426,19 +426,19 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         }
 
         let biggest_ck = biggest_ck.unwrap();
-        union.powers_of_beta_g = Some(&biggest_ck.powers_of_beta_g);
-        union.powers_of_beta_times_gamma_g = Some(&biggest_ck.powers_of_beta_times_gamma_g);
-        union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.as_ref();
-        union.max_degree = biggest_ck.max_degree;
+        ck_union.powers_of_beta_g = Some(&biggest_ck.powers_of_beta_g);
+        ck_union.powers_of_beta_times_gamma_g = Some(&biggest_ck.powers_of_beta_times_gamma_g);
+        ck_union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.as_ref();
+        ck_union.max_degree = biggest_ck.max_degree;
 
         if !enforced_degree_bounds.is_empty() {
             enforced_degree_bounds.sort();
             enforced_degree_bounds.dedup();
-            union.enforced_degree_bounds = Some(enforced_degree_bounds);
-            union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
+            ck_union.enforced_degree_bounds = Some(enforced_degree_bounds);
+            ck_union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
         }
 
-        union
+        ck_union
     }
 }
 
@@ -602,7 +602,7 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         }
 
         let biggest_vk = biggest_vk.unwrap();
-        let mut union = VerifierUnionKey::<E> {
+        let mut vk_union = VerifierUnionKey::<E> {
             vk: &biggest_vk.vk,
             degree_bounds_and_neg_powers_of_h: None,
             degree_bounds_and_prepared_neg_powers_of_h: None,
@@ -613,14 +613,14 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         if !bounds_and_neg_powers.is_empty() {
             bounds_and_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             bounds_and_neg_powers.dedup_by(|a, b| a.0 <= b.0);
-            union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
+            vk_union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
         }
         if !bounds_and_prepared_neg_powers.is_empty() {
             bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             bounds_and_prepared_neg_powers.dedup_by(|a, b| a.0 <= b.0);
-            union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
+            vk_union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
-        union
+        vk_union
     }
 }
 
