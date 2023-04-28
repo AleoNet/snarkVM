@@ -20,24 +20,16 @@
 extern crate criterion;
 
 mod utilities;
-
-use std::iter;
 use utilities::*;
 
 mod workloads;
 use workloads::*;
 
-use console::{
-    account::PrivateKey,
-    network::{AleoID, Testnet3},
-    prelude::Network,
-    types::Field,
-};
-use snarkvm_synthesizer::{Deployment, Owner, Speculate, Transaction};
+use console::{account::PrivateKey, network::Testnet3};
+use snarkvm_synthesizer::{Speculate, Transaction};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
-use itertools::Itertools;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
@@ -72,16 +64,8 @@ pub fn bench_speculate(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3
         for operation in operations.iter() {
             match operation {
                 Operation::Deploy(program) => {
-                    // Construct a mock fee for the deployment.
-                    let fee = mock_fee(rng);
-                    // Construct mock verifying keys.
-                    let verifying_keys = mock_verifying_keys(&program);
-                    // Construct an unchecked deployment.
-                    let deployment = Deployment::new_unchecked(Testnet3::EDITION, *program.clone(), verifying_keys);
                     // Construct a transaction for the deployment.
-                    transactions.push(
-                        Transaction::from_deployment_and_fee(&private_key, deployment, fee.clone(), rng).unwrap(),
-                    );
+                    transactions.push(mock_deployment_transaction(&private_key, *program.clone(), rng));
                 }
                 Operation::Execute(program_id, function_name, inputs) => {
                     let authorization = vm.authorize(&private_key, program_id, function_name, inputs, rng).unwrap();

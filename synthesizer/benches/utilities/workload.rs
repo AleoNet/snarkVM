@@ -19,6 +19,7 @@ use snarkvm_synthesizer::Program;
 
 /// An operation executed in a workload.
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub enum Operation<N: Network> {
     /// Deploy a program.
     Deploy(Box<Program<N>>),

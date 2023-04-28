@@ -30,18 +30,19 @@ use crate::utilities::{Operation, Workload};
 
 use console::prelude::Network;
 
+type Setups<N> = Vec<Vec<Operation<N>>>;
+type Benchmarks<N> = Vec<(String, Vec<Operation<N>>)>;
+
 /// A helper function for preparing benchmarks.
 /// This function takes a number of workloads and returns the setup operations and the benchmarks.
 /// Note that setup operations are aggregated across all workloads.
-pub fn prepare_benchmarks<N: Network>(
-    workloads: &[Box<dyn Workload<N>>],
-) -> (Vec<Vec<Operation<N>>>, Vec<(String, Vec<Operation<N>>)>) {
+pub fn prepare_benchmarks<N: Network>(workloads: &[Box<dyn Workload<N>>]) -> (Setups<N>, Benchmarks<N>) {
     // Get the setup operations.
     let setup_operations = workloads.iter().map(|workload| workload.setup()).collect_vec();
 
     // Aggregate the batches for each setup operation.
     let max_num_batches = setup_operations.iter().map(|operations| operations.len()).max().unwrap_or(0);
-    let mut batches = iter::repeat_with(|| vec![]).take(max_num_batches).collect_vec();
+    let mut batches = iter::repeat_with(Vec::new).take(max_num_batches).collect_vec();
     for setup in setup_operations {
         for (i, batch) in setup.into_iter().enumerate() {
             batches[i].extend(batch);

@@ -89,22 +89,6 @@ impl<N: Network> Transition<N> {
         Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm })
     }
 
-    #[cfg(feature = "test-utilities")]
-    /// Initializes a new transition, without checking for correctness.
-    pub fn new_unchecked(
-        id: N::TransitionID,
-        program_id: ProgramID<N>,
-        function_name: Identifier<N>,
-        inputs: Vec<Input<N>>,
-        outputs: Vec<Output<N>>,
-        finalize: Option<Vec<Value<N>>>,
-        proof: Proof<N>,
-        tpk: Group<N>,
-        tcm: Field<N>,
-    ) -> Self {
-        Self { id, program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm }
-    }
-
     /// Initializes a new transition from a request and response.
     pub fn from(
         request: &Request<N>,

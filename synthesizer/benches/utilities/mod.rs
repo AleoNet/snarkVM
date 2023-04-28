@@ -19,9 +19,9 @@ pub use workload::*;
 
 use console::{
     account::{PrivateKey, ViewKey},
-    network::{AleoID, Testnet3},
+    network::Testnet3,
     prelude::Network,
-    program::{Field, Group, Identifier, Literal, Plaintext, ProgramID, Record, Value, Zero, U64},
+    program::{Field, Identifier, Literal, Plaintext, ProgramID, Record, Value, Zero, U64},
 };
 use snarkvm_synthesizer::{
     Block,
@@ -34,25 +34,22 @@ use snarkvm_synthesizer::{
     Input,
     Metadata,
     Output,
-    Owner,
     Program,
     Proof,
-    Speculate,
     Transaction,
     Transactions,
     Transition,
     VerifyingKey,
     VM,
 };
-use snarkvm_utilities::{TestRng, ToBytes, Uniform};
+use snarkvm_utilities::{TestRng, Uniform};
 
 use anyhow::Result;
-use criterion::{BatchSize, Criterion};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
-use std::{borrow::Borrow, fmt::Display, iter, str::FromStr};
+use std::{borrow::Borrow, iter, str::FromStr};
 
 /// A helper function to initialize a VM with a genesis block.
 pub fn initialize_vm<R: Rng + CryptoRng>(
@@ -77,8 +74,8 @@ pub fn initialize_vm<R: Rng + CryptoRng>(
     (vm, record)
 }
 
-/// Construct a new block based on the given transactions.
 #[allow(unused)]
+/// Construct a new block based on the given transactions.
 pub fn construct_next_block<R: Rng + CryptoRng>(
     vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
     private_key: &PrivateKey<Testnet3>,
@@ -113,6 +110,7 @@ pub fn construct_next_block<R: Rng + CryptoRng>(
     Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
 }
 
+#[allow(unused)]
 /// A helper function that deploys and executes programs.
 pub fn setup(
     vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
@@ -121,26 +119,18 @@ pub fn setup(
     rng: &mut TestRng,
 ) {
     // For each batch of setup operations, construct and add a block.
-    for (i, operations) in batches.iter().enumerate() {
+    for operations in batches {
         // Storage for the transactions.
         let mut transactions = Vec::with_capacity(operations.len());
         // Construct transactions for the operations.
-        for (i, operation) in operations.iter().enumerate() {
+        for operation in operations {
             match operation {
                 Operation::Deploy(program) => {
-                    // Construct a mock fee for the deployment.
-                    let fee = mock_fee(rng);
-                    // Construct mock verifying keys.
-                    let verifying_keys = mock_verifying_keys(&program);
-                    // Construct an unchecked deployment.
-                    let deployment = Deployment::new_unchecked(Testnet3::EDITION, *program.clone(), verifying_keys);
                     // Construct a transaction for the deployment.
-                    transactions.push(
-                        Transaction::from_deployment_and_fee(&private_key, deployment, fee.clone(), rng).unwrap(),
-                    );
+                    transactions.push(mock_deployment_transaction(private_key, *program.clone(), rng));
                 }
                 Operation::Execute(program_id, function_name, inputs) => {
-                    let authorization = vm.authorize(&private_key, program_id, function_name, inputs, rng).unwrap();
+                    let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng).unwrap();
                     let (_, execution, _) = vm.execute(authorization, None, rng).unwrap();
                     transactions.push(Transaction::from_execution(execution, Some(mock_fee(rng))).unwrap());
                 }
@@ -154,6 +144,7 @@ pub fn setup(
     }
 }
 
+#[allow(unused)]
 /// A helper function to invoke the `split` function an a credits.aleo record.
 pub fn split(
     vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
@@ -184,6 +175,8 @@ pub fn split(
     }
 }
 
+#[allow(unused)]
+/// Samples a proof for a fee transition.
 pub fn sample_proof() -> Proof<Testnet3> {
     static INSTANCE: OnceCell<Proof<Testnet3>> = OnceCell::new();
     INSTANCE
@@ -200,6 +193,28 @@ pub fn sample_proof() -> Proof<Testnet3> {
 }
 
 #[cfg(feature = "test-utilities")]
+/// Constructs a deployment transaction without the overhead of synthesis.
+pub fn mock_deployment_transaction(
+    private_key: &PrivateKey<Testnet3>,
+    program: Program<Testnet3>,
+    rng: &mut TestRng,
+) -> Transaction<Testnet3> {
+    // Construct a mock fee for the deployment.
+    let fee = mock_fee(rng);
+    // Construct mock verifying keys.
+    let verifying_keys = program
+        .functions()
+        .iter()
+        .map(|(identifier, _)| (*identifier, (VerifyingKey::mock(), Certificate::mock(identifier).unwrap())))
+        .collect_vec();
+    // Construct an unchecked deployment.
+    let deployment = Deployment::new_unchecked(Testnet3::EDITION, program, verifying_keys);
+    // Construct a transaction for the deployment.
+    Transaction::from_deployment_and_fee(private_key, deployment, fee, rng).unwrap()
+}
+
+#[allow(unused)]
+/// Constructs a mock fee without the overhead of execution.
 pub fn mock_fee(rng: &mut TestRng) -> Fee<Testnet3> {
     let proof = sample_proof();
     Fee::from(
@@ -220,12 +235,15 @@ pub fn mock_fee(rng: &mut TestRng) -> Fee<Testnet3> {
 }
 
 #[cfg(feature = "test-utilities")]
+#[allow(clippy::type_complexity)]
+#[allow(unused)]
+/// Constructs mock verifying keys for a program without the overhead of synthesis.
 pub fn mock_verifying_keys(
     program: &Program<Testnet3>,
 ) -> Vec<(Identifier<Testnet3>, (VerifyingKey<Testnet3>, Certificate<Testnet3>))> {
     program
         .functions()
         .iter()
-        .map(|(identifier, _)| (identifier.clone(), (VerifyingKey::mock(), Certificate::mock(identifier).unwrap())))
+        .map(|(identifier, _)| (*identifier, (VerifyingKey::mock(), Certificate::mock(identifier).unwrap())))
         .collect_vec()
 }
