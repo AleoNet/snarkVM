@@ -34,11 +34,6 @@ path = "benches/coinbase_puzzle.rs"
 harness = false
 required-features = [ "setup" ]
 
-#[[bench]]
-#name = "credits"
-#path = "benches/credits.rs"
-#harness = false
-#required-features = [ "test-utilities" ]
 
 #[[bench]]
 #name = "deploy"

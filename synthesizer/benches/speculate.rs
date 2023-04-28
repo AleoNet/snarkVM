@@ -57,58 +57,36 @@ pub fn bench_speculate(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3
     // Initialize the VM.
     let (vm, record) = initialize_vm(&private_key, rng);
 
-    // Get the setup operations.
-    let setup_operations = workloads.iter().map(|workload| workload.setup()).collect_vec();
-
-    // Aggregate the batches for each setup operation.
-    let max_num_batches = setup_operations.iter().map(|operations| operations.len()).max().unwrap_or(0);
-    let mut batches = iter::repeat_with(|| vec![]).take(max_num_batches).collect_vec();
-    for setup in setup_operations {
-        for (i, batch) in setup.into_iter().enumerate() {
-            batches[i].extend(batch);
-        }
-    }
+    // Prepare the benchmarks.
+    let (setup_operations, benchmarks) = prepare_benchmarks(workloads);
 
     // Deploy and execute programs to get the VM in the desired state.
-    let mut record = setup(&vm, &private_key, record, &batches, rng);
-
-    // For each workload, get the name.
-    let benchmark_names = workloads.iter().map(|workload| workload.name()).collect_vec();
-
-    // For each workload, generate the benchmark operations.
-    let benchmark_operations = workloads.iter().map(|workload| workload.run()).collect_vec();
+    setup(&vm, &private_key, &setup_operations, rng);
 
     // Benchmark each of the programs.
-    let mut count = 0;
-    for (name, operations) in benchmark_names.into_iter().zip_eq(benchmark_operations.into_iter()) {
-        // // Split out a record for the benchmark.
-        // let (remaining_record, fee_record) = split(&vm, &private_key, record, 1, rng);
-        // record = remaining_record;
-
+    for (name, operations) in benchmarks {
         assert!(!operations.is_empty(), "There must be at least one operation to benchmark.");
 
-        // // Construct mock data for the transactions.
-        // let id = <Testnet3 as Network>::TransactionID::default();
-        // let owner = Owner::new(&private_key, id, rng).unwrap();
-        // let (_, fee, _) = vm.execute_fee(&private_key, fee_record, 1, None, rng).unwrap();
-
         // Construct the transactions.
-        println!("Benchmark #{}: {} transactions", count, operations.len());
         let mut transactions = Vec::with_capacity(operations.len());
-        for (i, operation) in operations.iter().enumerate() {
+        for operation in operations.iter() {
             match operation {
                 Operation::Deploy(program) => {
-                    // transactions.push(Transaction::from_deployment_unchecked(
-                    //     AleoID::from(Field::from_u64(i as u64)),
-                    //     owner,
-                    //     Deployment::new_unchecked(<Testnet3 as Network>::EDITION, *program.clone(), vec![]),
-                    //     fee.clone(),
-                    // ));
+                    // Construct a mock fee for the deployment.
+                    let fee = mock_fee(rng);
+                    // Construct mock verifying keys.
+                    let verifying_keys = mock_verifying_keys(&program);
+                    // Construct an unchecked deployment.
+                    let deployment = Deployment::new_unchecked(Testnet3::EDITION, *program.clone(), verifying_keys);
+                    // Construct a transaction for the deployment.
+                    transactions.push(
+                        Transaction::from_deployment_and_fee(&private_key, deployment, fee.clone(), rng).unwrap(),
+                    );
                 }
                 Operation::Execute(program_id, function_name, inputs) => {
                     let authorization = vm.authorize(&private_key, program_id, function_name, inputs, rng).unwrap();
                     let (_, execution, _) = vm.execute(authorization, None, rng).unwrap();
-                    let transaction = Transaction::from_execution(execution, Some(construct_dummy_fee(rng))).unwrap();
+                    let transaction = Transaction::from_execution(execution, Some(mock_fee(rng))).unwrap();
                     transactions.push(transaction)
                 }
             }
@@ -134,16 +112,18 @@ pub fn bench_speculate(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workloads.
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
-    workloads.extend(NUM_COMMANDS.iter().map(|num_commands| Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>));
-    workloads.extend(NUM_COMMANDS.iter().map(|num_commands| Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>));
-    workloads.extend(NUM_COMMANDS.iter().map(|num_commands| Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>));
-    //workloads.push(Box::new(StaticGet::new(1, 1, 1, 1)) as Box<dyn Workload<Testnet3>>);
+    //workloads.extend(NUM_COMMANDS.iter().map(|num_commands| Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>));
+    workloads.extend(
+        NUM_COMMANDS
+            .iter()
+            .map(|num_commands| Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>),
+    );
+    //workloads.extend(NUM_COMMANDS.iter().map(|num_commands| Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>));
 
     bench_speculate(c, &workloads)
 }
 
 fn bench_multiple_operations(c: &mut Criterion) {
-    println!("Hello");
     // Initialize the workloads.
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
     let max_commands = *NUM_COMMANDS.last().unwrap();
@@ -151,9 +131,9 @@ fn bench_multiple_operations(c: &mut Criterion) {
     workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
         Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
     }));
-    workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
-        Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
-    }));
+    //workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
+    //    Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
+    //}));
 
     bench_speculate(c, &workloads)
 }
@@ -163,15 +143,15 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     let max_commands = *NUM_COMMANDS.last().unwrap();
     let max_executions = *NUM_EXECUTIONS.last().unwrap();
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
-    workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
-        Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
-    }));
+    //workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
+    //    Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
+    //}));
     workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
         Box::new(StaticGetOrInit::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
     }));
-    workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
-        Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
-    }));
+    //workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
+    //    Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
+    //}));
 
     bench_speculate(c, &workloads)
 }

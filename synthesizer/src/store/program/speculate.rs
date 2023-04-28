@@ -375,7 +375,6 @@ impl<N: Network> Speculate<N> {
 
         println!("final_operations: {:?}", final_operations);
 
-
         // Construct the updated program trees.
         let mut updated_program_trees = IndexMap::with_capacity(final_operations.len());
         for (program_id, operations) in final_operations {
@@ -387,7 +386,10 @@ impl<N: Network> Speculate<N> {
 
         println!("6");
 
-        println!("updated_program_trees: {:?}", updated_program_trees.iter().map(|(k, v)| (k, v.root())).collect::<Vec<_>>());
+        println!(
+            "updated_program_trees: {:?}",
+            updated_program_trees.iter().map(|(k, v)| (k, v.root())).collect::<Vec<_>>()
+        );
 
         // Iterate through all the programs and construct the program trees.
         let mut updates = BTreeMap::new();
