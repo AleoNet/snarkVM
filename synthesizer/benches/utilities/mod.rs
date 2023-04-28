@@ -233,17 +233,3 @@ pub fn mock_fee(rng: &mut TestRng) -> Fee<Testnet3> {
         None,
     )
 }
-
-#[cfg(feature = "test-utilities")]
-#[allow(clippy::type_complexity)]
-#[allow(unused)]
-/// Constructs mock verifying keys for a program without the overhead of synthesis.
-pub fn mock_verifying_keys(
-    program: &Program<Testnet3>,
-) -> Vec<(Identifier<Testnet3>, (VerifyingKey<Testnet3>, Certificate<Testnet3>))> {
-    program
-        .functions()
-        .iter()
-        .map(|(identifier, _)| (*identifier, (VerifyingKey::mock(), Certificate::mock(identifier).unwrap())))
-        .collect_vec()
-}
