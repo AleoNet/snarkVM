@@ -524,7 +524,7 @@ where
             .collect();
         assert!(
             polynomials.len()
-                == keys_to_constraints.len()*12 + // polys for row, col, rowcol, val
+                == keys_to_constraints.len() * 12 + // polys for row, col, rowcol, val
             AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances) +
             AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
             AHPForR1CS::<E::Fr, MM>::num_third_round_oracles(keys_to_constraints.len()) +
@@ -875,7 +875,7 @@ where
                 evaluations.insert((label, q), E::Fr::zero());
             } else {
                 if label != "g_1" {
-                    let circuit_id = format!("{}", CircuitId::from_witness_label(&label));
+                    let circuit_id = CircuitId::from_witness_label(&label).to_string();
                     if circuit_id != current_circuit_id {
                         circuit_index += 1;
                         current_circuit_id = circuit_id;

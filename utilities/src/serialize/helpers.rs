@@ -44,7 +44,7 @@ pub fn serialized_vec_size_without_len(src: &Vec<impl CanonicalSerialize>, compr
 /// Deserialize a Vector's elements without deserializing the Vector's length
 /// If you want to deserialize the full Vector, use `CanonicalDeserialize for Vec<T>`
 pub fn deserialize_vec_without_len<T: CanonicalDeserialize>(
-    mut reader: &mut impl Read,
+    mut reader: &mut impl Read, 
     compress: Compress,
     validate: Validate,
     len: usize,

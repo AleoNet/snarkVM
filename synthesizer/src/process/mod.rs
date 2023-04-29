@@ -840,7 +840,7 @@ function hello_world:
         authorize_execute_and_verify(
             &program,
             Identifier::from_str("program_id").unwrap(),
-            Value::from_str(&format!("{}", program.id().to_address().unwrap())).unwrap(),
+            Value::from_str(&program.id().to_address().unwrap().to_string()).unwrap(),
             &caller_private_key,
             rng,
         );

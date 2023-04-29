@@ -457,8 +457,8 @@ mod test {
                 for (compress, validate) in combinations {
                     let size = Commitments::serialized_size(&commitments, compress);
                     let mut serialized = vec![0; size];
-                    Commitments::serialize_with_mode(&commitments, &mut &mut serialized[..], compress).unwrap();
-                    let de = Commitments::deserialize_with_mode(&batch_sizes, &mut &serialized[..], compress, validate)
+                    Commitments::serialize_with_mode(&commitments, &mut serialized[..], compress).unwrap();
+                    let de = Commitments::deserialize_with_mode(&batch_sizes, &serialized[..], compress, validate)
                         .unwrap();
                     assert_eq!(commitments, de);
                 }
@@ -478,8 +478,8 @@ mod test {
                 for (compress, validate) in combinations {
                     let size = Evaluations::serialized_size(&evaluations, compress);
                     let mut serialized = vec![0; size];
-                    Evaluations::serialize_with_mode(&evaluations, &mut &mut serialized[..], compress).unwrap();
-                    let de = Evaluations::deserialize_with_mode(&batch_sizes, &mut &serialized[..], compress, validate)
+                    Evaluations::serialize_with_mode(&evaluations, &mut serialized[..], compress).unwrap();
+                    let de = Evaluations::deserialize_with_mode(&batch_sizes, &serialized[..], compress, validate)
                         .unwrap();
                     assert_eq!(evaluations, de);
                 }
@@ -511,8 +511,8 @@ mod test {
                 for (compress, validate) in combinations {
                     let size = Proof::serialized_size(&proof, compress);
                     let mut serialized = vec![0; size];
-                    Proof::serialize_with_mode(&proof, &mut &mut serialized[..], compress).unwrap();
-                    let de = Proof::deserialize_with_mode(&mut &serialized[..], compress, validate).unwrap();
+                    Proof::serialize_with_mode(&proof, &mut serialized[..], compress).unwrap();
+                    let de = Proof::deserialize_with_mode(&serialized[..], compress, validate).unwrap();
                     assert_eq!(proof, de);
                 }
             }

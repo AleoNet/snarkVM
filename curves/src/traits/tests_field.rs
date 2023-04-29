@@ -671,7 +671,7 @@ pub fn field_serialization_test<F: Field>(rng: &mut TestRng) {
                 SerializationError::NotEnoughSpace
             ));
             assert!(matches!(
-                F::deserialize_with_flags::<_, DummyFlags>(&mut &serialized[..]).unwrap_err(),
+                F::deserialize_with_flags::<_, DummyFlags>(&serialized[..]).unwrap_err(),
                 SerializationError::NotEnoughSpace
             ));
         }

@@ -413,7 +413,7 @@ impl<T: Valid> Valid for Vec<T> {
     where
         Self: 'a,
     {
-        T::batch_check(batch.flat_map(|v| v.iter()))
+        T::batch_check(batch.flatten())
     }
 }
 
@@ -474,7 +474,7 @@ impl<T: Valid> Valid for [T; 32] {
     where
         Self: 'a,
     {
-        T::batch_check(batch.flat_map(|v| v.iter()))
+        T::batch_check(batch.flatten())
     }
 }
 
@@ -645,8 +645,8 @@ mod test {
         ];
         for (compress, validate) in combinations {
             let mut serialized = vec![0; data.serialized_size(compress)];
-            data.serialize_with_mode(&mut &mut serialized[..], compress).unwrap();
-            let de = T::deserialize_with_mode(&mut &serialized[..], compress, validate).unwrap();
+            data.serialize_with_mode(&mut serialized[..], compress).unwrap();
+            let de = T::deserialize_with_mode(&serialized[..], compress, validate).unwrap();
             assert_eq!(data, de);
         }
     }
@@ -663,7 +663,7 @@ mod test {
         for (compress, validate) in combinations {
             let len = serialized_vec_size_without_len(&data, compress);
             let mut serialized = vec![0; len];
-            serialize_vec_without_len(&data, &mut &mut serialized[..], compress).unwrap();
+            serialize_vec_without_len(&data, &mut serialized[..], compress).unwrap();
             let elements = if len > 0 { len / CanonicalSerialize::serialized_size(&data[0], compress) } else { 0 };
             let de = deserialize_vec_without_len(&mut &serialized[..], compress, validate, elements).unwrap();
             assert_eq!(data, de);
