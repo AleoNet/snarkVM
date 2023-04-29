@@ -389,7 +389,7 @@ mod test {
     };
     use snarkvm_utilities::{TestRng, Uniform};
 
-    fn modes() -> [(Compress, Validate); 4] {
+    const fn modes() -> [(Compress, Validate); 4] {
         [
             (Compress::No, Validate::No),
             (Compress::Yes, Validate::No),
