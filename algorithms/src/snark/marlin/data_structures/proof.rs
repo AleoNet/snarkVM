@@ -310,7 +310,7 @@ impl<E: PairingEngine> Proof<E> {
 
 impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
-        let batch_sizes: Vec<u64> = self.batch_sizes.iter().map(|x| *x as u64).collect();
+        let batch_sizes: Vec<u64> = self.batch_sizes.iter().map(|x| u64::try_from(*x)).collect::<Result<_, _>>()?;
         CanonicalSerialize::serialize_with_mode(&batch_sizes, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
         Evaluations::serialize_with_mode(&self.evaluations, &mut writer, compress)?;

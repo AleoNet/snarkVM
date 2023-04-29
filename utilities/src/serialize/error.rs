@@ -27,6 +27,9 @@ pub enum SerializationError {
     /// During serialization, we countered an I/O error.
     #[error("IoError: {0}")]
     IoError(#[from] crate::io::Error),
+    /// During serialization we could not serialize to the right sized int
+    #[error(transparent)]
+    IntError(#[from] std::num::TryFromIntError),
     /// During serialization, we didn't have enough space to write extra info.
     #[error("the last byte does not have enough space to encode the extra info bits")]
     NotEnoughSpace,
