@@ -444,14 +444,10 @@ impl<T: CanonicalDeserialize + std::fmt::Debug> CanonicalDeserialize for [T; 32]
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let mut values = [(); 32].map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No));
+        let values = [(); 32].map(|_| T::deserialize_with_mode(&mut reader, compress, Validate::No));
 
-        for value in &mut values {
-            // check that each value is error free
-            if value.as_ref().is_err() {
-                return Err(SerializationError::InvalidData);
-            }
-        }
+        // check that each value is error free
+        if values.iter().any(|value| value.is_err()) { return Err(SerializationError::InvalidData); }
 
         let values = values.map(|r| r.unwrap());
 
