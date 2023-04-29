@@ -57,13 +57,13 @@ impl<E: PairingEngine> Commitments<E> {
         mut writer: W,
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        serialize_vec_without_len(&self.witness_commitments, &mut writer, compress)?;
+        serialize_vec_without_len(self.witness_commitments.iter(), &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.mask_poly, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_1, &mut writer, compress)?;
-        serialize_vec_without_len(&self.g_a_commitments, &mut writer, compress)?;
-        serialize_vec_without_len(&self.g_b_commitments, &mut writer, compress)?;
-        serialize_vec_without_len(&self.g_c_commitments, &mut writer, compress)?;
+        serialize_vec_without_len(self.g_a_commitments.iter(), &mut writer, compress)?;
+        serialize_vec_without_len(self.g_b_commitments.iter(), &mut writer, compress)?;
+        serialize_vec_without_len(self.g_c_commitments.iter(), &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_2, &mut writer, compress)?;
         Ok(())
     }
@@ -135,12 +135,12 @@ impl<F: PrimeField> Evaluations<F> {
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
         for z_b_eval_circuit in &self.z_b_evals {
-            serialize_vec_without_len(z_b_eval_circuit, &mut writer, compress)?;
+            serialize_vec_without_len(z_b_eval_circuit.iter(), &mut writer, compress)?;
         }
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
-        serialize_vec_without_len(&self.g_a_evals, &mut writer, compress)?;
-        serialize_vec_without_len(&self.g_b_evals, &mut writer, compress)?;
-        serialize_vec_without_len(&self.g_c_evals, &mut writer, compress)?;
+        serialize_vec_without_len(self.g_a_evals.iter(), &mut writer, compress)?;
+        serialize_vec_without_len(self.g_b_evals.iter(), &mut writer, compress)?;
+        serialize_vec_without_len(self.g_c_evals.iter(), &mut writer, compress)?;
         Ok(())
     }
 

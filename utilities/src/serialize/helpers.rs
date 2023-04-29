@@ -24,8 +24,8 @@ use crate::{serialize::traits::*, SerializationError};
 
 /// Serialize a Vector's elements without serializing the Vector's length
 /// If you want to serialize the full Vector, use `CanonicalSerialize for Vec<T>`
-pub fn serialize_vec_without_len(
-    src: &Vec<impl CanonicalSerialize>,
+pub fn serialize_vec_without_len<'a>(
+    src: impl Iterator<Item = &'a (impl CanonicalSerialize + 'a)>,
     mut writer: impl Write,
     compress: Compress,
 ) -> Result<(), SerializationError> {
@@ -37,7 +37,7 @@ pub fn serialize_vec_without_len(
 
 /// Serialize a Vector's element sizes without serializing the Vector's length
 /// If you want to serialize the full Vector, use `CanonicalSerialize for Vec<T>`
-pub fn serialized_vec_size_without_len(src: &Vec<impl CanonicalSerialize>, compress: Compress) -> usize {
+pub fn serialized_vec_size_without_len(src: &[impl CanonicalSerialize], compress: Compress) -> usize {
     if src.is_empty() { 0 } else { src.len() * CanonicalSerialize::serialized_size(&src[0], compress) }
 }
 
