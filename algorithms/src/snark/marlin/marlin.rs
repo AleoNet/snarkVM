@@ -166,10 +166,10 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         if terminator.load(Ordering::Relaxed) { Err(MarlinError::Terminated) } else { Ok(()) }
     }
 
-    fn init_sponge(
+    fn init_sponge<'a>(
         fs_parameters: &FS::Parameters,
         inputs_and_batch_sizes: &BTreeMap<CircuitId, (usize, &[Vec<E::Fr>])>,
-        circuit_commitments: &[&Vec<crate::polycommit::sonic_pc::Commitment<E>>],
+        circuit_commitments: impl Iterator<Item = &'a [crate::polycommit::sonic_pc::Commitment<E>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
@@ -180,7 +180,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             }
         }
         for circuit_specific_commitments in circuit_commitments {
-            sponge.absorb_native_field_elements(circuit_specific_commitments);
+            sponge.absorb_native_field_elements(&circuit_specific_commitments);
         }
         sponge
     }
@@ -410,10 +410,9 @@ where
 
         let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
 
-        let circuit_commitments =
-            keys_to_constraints.keys().map(|pk| &pk.circuit_verifying_key.circuit_commitments).collect::<Vec<_>>();
+        let circuit_commitments = keys_to_constraints.keys().map(|pk| pk.circuit_verifying_key.circuit_commitments.as_slice());
 
-        let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.as_slice());
+        let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.clone());
 
         // --------------------------------------------------------------------
         // First round
@@ -561,12 +560,11 @@ where
             h_2: *fourth_commitments[0].commitment(),
         };
 
-        let labeled_commitments: Vec<_> = keys_to_constraints
-            .keys()
-            .flat_map(|pk| pk.circuit_verifying_key.iter())
-            .cloned()
+        let labeled_commitments: Vec<_> = circuit_commitments
+            .into_iter()
+            .flatten()
             .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
+            .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments.into_iter())
             .chain(second_commitments.into_iter())
             .chain(third_commitments.into_iter())
@@ -577,7 +575,6 @@ where
         let commitment_randomnesses: Vec<Randomness<E>> = keys_to_constraints
             .keys()
             .flat_map(|pk| pk.circuit_commitment_randomness.clone())
-            .clone()
             .chain(first_commitment_randomnesses)
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
@@ -724,9 +721,6 @@ where
 
         let verifier_key = VerifierUnionKey::<E>::union(vks);
 
-        let circuit_commitments =
-            keys_to_inputs.iter().map(|(vk, _)| &vk.orig_vk.circuit_commitments).collect::<Vec<_>>();
-
         let comms = &proof.commitments;
         let proof_has_correct_zk_mode = if MM::ZK {
             proof.pc_proof.is_hiding() & comms.mask_poly.is_some()
@@ -807,7 +801,8 @@ where
         let fourth_round_info = AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info();
         let fourth_commitments = [LabeledCommitment::new_with_info(&fourth_round_info["h_2"], comms.h_2)];
 
-        let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.as_slice());
+        let circuit_commitments = keys_to_inputs.keys().map(|vk| vk.orig_vk.circuit_commitments.as_slice());
+        let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.clone());
 
         // --------------------------------------------------------------------
         // First round

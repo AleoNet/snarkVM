@@ -98,7 +98,7 @@ impl<F: PrimeField> QuerySet<F> {
                 .circuit_specific_states
                 .iter()
                 .map(|(c, s)| (*c, s.batch_size))
-                .collect::<BTreeMap<_, _>>(),
+                .collect(),
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),

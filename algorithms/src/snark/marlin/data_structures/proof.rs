@@ -166,7 +166,7 @@ impl<F: PrimeField> Evaluations<F> {
             z_b_evals: batch_sizes
                 .iter()
                 .map(|batch_size| deserialize_vec_without_len(&mut reader, compress, validate, *batch_size))
-                .collect::<Result<Vec<Vec<_>>, _>>()?,
+                .collect::<Result<_, _>>()?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_evals: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
             g_b_evals: deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?,
@@ -233,10 +233,10 @@ impl<F: PrimeField> Evaluations<F> {
 
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result: Vec<F> = self.z_b_evals.iter().flatten().copied().collect();
-        result.extend([self.g_1_eval]);
-        result.extend(self.g_a_evals.clone());
-        result.extend(self.g_b_evals.clone());
-        result.extend(self.g_c_evals.clone());
+        result.push(self.g_1_eval);
+        result.extend_from_slice(&self.g_a_evals);
+        result.extend_from_slice(&self.g_b_evals);
+        result.extend_from_slice(&self.g_c_evals);
         result
     }
 }
@@ -406,23 +406,24 @@ mod test {
     fn rand_commitments(i: usize, j: usize, test_with_none: bool) -> Commitments<Bls12_377> {
         assert!(i > 0);
         assert!(j > 0);
-        let mask_poly = if test_with_none { None } else { Some(sample_commit()) };
+        let sample_commit = sample_commit();
+        let mask_poly = if test_with_none { None } else { Some(sample_commit.clone()) };
         Commitments {
             witness_commitments: vec![
                 WitnessCommitments {
-                    w: sample_commit(),
-                    z_a: sample_commit(),
-                    z_b: sample_commit(),
+                    w: sample_commit.clone(),
+                    z_a: sample_commit.clone(),
+                    z_b: sample_commit.clone(),
                 };
                 i * j
             ],
             mask_poly,
-            g_1: sample_commit(),
-            h_1: sample_commit(),
-            g_a_commitments: vec![sample_commit(); j],
-            g_b_commitments: vec![sample_commit(); j],
-            g_c_commitments: vec![sample_commit(); j],
-            h_2: sample_commit(),
+            g_1: sample_commit.clone(),
+            h_1: sample_commit.clone(),
+            g_a_commitments: vec![sample_commit.clone(); j],
+            g_b_commitments: vec![sample_commit.clone(); j],
+            g_c_commitments: vec![sample_commit.clone(); j],
+            h_2: sample_commit,
         }
     }
 
