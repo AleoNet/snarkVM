@@ -311,6 +311,12 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
     }
 }
 
+impl<E: PairingEngine> CommitterKey<E> {
+    fn len(&self) -> usize {
+        if self.shifted_powers_of_beta_g.is_some() { self.shifted_powers_of_beta_g.as_ref().unwrap().len() } else { 0 }
+    }
+}
+
 /// `CommitterUnionKey` is a union of `CommitterKey`s, useful for multi-circuit batch proofs.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct CommitterUnionKey<'a, E: PairingEngine> {
@@ -405,10 +411,7 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         let mut biggest_ck: Option<&CommitterKey<E>> = None;
         let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
         for ck in committer_keys {
-            if biggest_ck.is_none()
-                || biggest_ck.unwrap().shifted_powers_of_beta_g.as_ref().unwrap().len()
-                    < ck.shifted_powers_of_beta_g.as_ref().unwrap().len()
-            {
+            if biggest_ck.is_none() || biggest_ck.unwrap().len() < ck.len() {
                 biggest_ck = Some(ck);
             }
             let lagrange_bases = &ck.lagrange_bases_at_beta_g;
