@@ -570,7 +570,7 @@ finalize transfer_public:
 
             // Execute.
             let transaction =
-                Transaction::execute(&vm, &private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+                Transaction::execute(vm, private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
 
             transactions.push(transaction);
         }

@@ -28,7 +28,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Some(speculate) => speculate,
             None => {
                 // Perform the transaction speculation.
-                let mut speculate = Speculate::new(self.finalize_store().current_storage_root());
+                let mut speculate = Speculate::new(self.finalize_store().current_finalize_root());
                 speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
 
                 speculate
@@ -45,11 +45,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Acquire the write lock on the process.
             let mut process = self.process.write();
 
-            // Update the storage tree.
+            // Update the finalize tree.
             if !speculate.operations.is_empty() {
-                // Construct the new storage tree.
-                let new_storage_tree = match speculate.commit(self) {
-                    Ok(new_storage_tree) => new_storage_tree,
+                // Construct the new finalize tree.
+                let new_finalize_tree = match speculate.commit(self) {
+                    Ok(new_finalize_tree) => new_finalize_tree,
                     Err(err) => {
                         // If the commit failed, set the speculate flag to `false`.
                         self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
@@ -59,10 +59,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 };
 
                 // Acquire the write lock on the tree.
-                let mut storage_tree = self.finalize_store().tree.write();
+                let finalize_tree_lock = self.finalize_store().get_finalize_tree();
+                let mut finalize_tree = finalize_tree_lock.write();
 
-                // Update the storage tree.
-                *storage_tree = new_storage_tree;
+                // Update the finalize tree.
+                *finalize_tree = new_finalize_tree;
             }
 
             // Update the `is_speculate` flag.
