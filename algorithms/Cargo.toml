@@ -80,6 +80,10 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.blake2]
+version = "0.10"
+default-features = true
+
 [dependencies.crossbeam-channel]
 version = "0.5"
 optional = true

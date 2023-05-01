@@ -2037,6 +2037,7 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "bincode",
+ "blake2",
  "criterion",
  "crossbeam-channel",
  "expect-test",

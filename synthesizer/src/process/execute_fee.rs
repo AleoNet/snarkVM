@@ -36,7 +36,7 @@ impl<N: Network> Process<N> {
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
-        let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_microcredits)))?];
+        let inputs = [Value::Record(credits), Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?];
         lap!(timer, "Construct the inputs");
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;

@@ -24,10 +24,32 @@ use crate::{
     polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
 };
+use blake2::Digest;
+use hex::FromHex;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
+pub struct CircuitId(pub [u8; 32]);
+
+impl std::fmt::Display for CircuitId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
+    }
+}
+
+impl CircuitId {
+    pub fn from_witness_label(witness_label: &str) -> Self {
+        CircuitId(
+            <[u8; 32]>::from_hex(witness_label.split('_').collect::<Vec<&str>>()[1])
+                .expect("Decoding circuit_id failed"),
+        )
+    }
+}
+
 /// The indexed version of the constraint system.
 /// This struct contains three kinds of objects:
 /// 1) `index_info` is information about the index, such as the size of the
@@ -35,6 +57,7 @@ use snarkvm_utilities::{serialize::*, SerializationError};
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_star_arith` are structs containing information about A^*, B^*, and C^*,
 /// which are matrices defined as `M^*(i, j) = M(j, i) * u_H(j, j)`.
+#[derive(Clone, Debug)]
 pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo<F>,
@@ -53,11 +76,44 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
 
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
+    pub(crate) _mode: PhantomData<MM>,
+    pub(crate) id: CircuitId,
+}
 
-    pub(crate) mode: PhantomData<MM>,
+impl<F: PrimeField, MM: MarlinMode> Eq for Circuit<F, MM> {}
+impl<F: PrimeField, MM: MarlinMode> PartialEq for Circuit<F, MM> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl<F: PrimeField, MM: MarlinMode> Ord for Circuit<F, MM> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl<F: PrimeField, MM: MarlinMode> PartialOrd for Circuit<F, MM> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
+    pub fn hash(
+        index_info: &CircuitInfo<F>,
+        a: &Matrix<F>,
+        b: &Matrix<F>,
+        c: &Matrix<F>,
+    ) -> Result<CircuitId, SerializationError> {
+        let mut blake2 = blake2::Blake2s256::new();
+        index_info.serialize_uncompressed(&mut blake2)?;
+        a.serialize_uncompressed(&mut blake2)?;
+        b.serialize_uncompressed(&mut blake2)?;
+        c.serialize_uncompressed(&mut blake2)?;
+        Ok(CircuitId(blake2.finalize().into()))
+    }
+
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
         self.index_info.max_degree::<MM>()
@@ -99,7 +155,6 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.a_arith.serialize_with_mode(&mut writer, compress)?;
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
-        self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
     }
 
@@ -113,10 +168,10 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.a_arith.serialized_size(mode);
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
-        size += self.mode.serialized_size(mode);
         size
     }
 }
+
 impl<F: PrimeField, MM: MarlinMode> snarkvm_utilities::Valid for Circuit<F, MM> {
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())
@@ -154,17 +209,22 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             non_zero_c_domain_size,
         )
         .ok_or(SerializationError::InvalidData)?;
+        let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let id = Self::hash(&index_info, &a, &b, &c)?;
         Ok(Circuit {
             index_info,
-            a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            a,
+            b,
+            c,
             a_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             b_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             fft_precomputation,
             ifft_precomputation,
-            mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            _mode: PhantomData,
+            id,
         })
     }
 }

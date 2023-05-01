@@ -97,33 +97,18 @@ mod tests {
     #[test]
     fn test_register_display() -> Result<()> {
         // Register::Locator
-        assert_eq!("r0", format!("{}", Register::<CurrentNetwork>::Locator(0)));
-        assert_eq!("r1", format!("{}", Register::<CurrentNetwork>::Locator(1)));
-        assert_eq!("r2", format!("{}", Register::<CurrentNetwork>::Locator(2)));
-        assert_eq!("r3", format!("{}", Register::<CurrentNetwork>::Locator(3)));
-        assert_eq!("r4", format!("{}", Register::<CurrentNetwork>::Locator(4)));
+        assert_eq!("r0", Register::<CurrentNetwork>::Locator(0).to_string());
+        assert_eq!("r1", Register::<CurrentNetwork>::Locator(1).to_string());
+        assert_eq!("r2", Register::<CurrentNetwork>::Locator(2).to_string());
+        assert_eq!("r3", Register::<CurrentNetwork>::Locator(3).to_string());
+        assert_eq!("r4", Register::<CurrentNetwork>::Locator(4).to_string());
 
         // Register::Member
-        assert_eq!(
-            "r0.owner",
-            format!("{}", Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]))
-        );
-        assert_eq!(
-            "r1.owner",
-            format!("{}", Register::<CurrentNetwork>::Member(1, vec![Identifier::from_str("owner")?]))
-        );
-        assert_eq!(
-            "r2.owner",
-            format!("{}", Register::<CurrentNetwork>::Member(2, vec![Identifier::from_str("owner")?]))
-        );
-        assert_eq!(
-            "r3.owner",
-            format!("{}", Register::<CurrentNetwork>::Member(3, vec![Identifier::from_str("owner")?]))
-        );
-        assert_eq!(
-            "r4.owner",
-            format!("{}", Register::<CurrentNetwork>::Member(4, vec![Identifier::from_str("owner")?]))
-        );
+        assert_eq!("r0.owner", Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]).to_string());
+        assert_eq!("r1.owner", Register::<CurrentNetwork>::Member(1, vec![Identifier::from_str("owner")?]).to_string());
+        assert_eq!("r2.owner", Register::<CurrentNetwork>::Member(2, vec![Identifier::from_str("owner")?]).to_string());
+        assert_eq!("r3.owner", Register::<CurrentNetwork>::Member(3, vec![Identifier::from_str("owner")?]).to_string());
+        assert_eq!("r4.owner", Register::<CurrentNetwork>::Member(4, vec![Identifier::from_str("owner")?]).to_string());
         Ok(())
     }
 

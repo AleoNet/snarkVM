@@ -18,7 +18,7 @@ use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc,
     snark::marlin::{ahp::indexer::*, CircuitProvingKey, MarlinMode, PreparedCircuitVerifyingKey},
-    Prepare,
+    PrepareOrd,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
@@ -38,6 +38,7 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use core::{fmt, marker::PhantomData, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::cmp::Ordering;
 
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
@@ -50,9 +51,10 @@ pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
     pub verifier_key: sonic_pc::VerifierKey<E>,
     #[doc(hidden)]
     pub mode: PhantomData<MM>,
+    pub id: CircuitId,
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Prepare for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine, MM: MarlinMode> PrepareOrd for CircuitVerifyingKey<E, MM> {
     type Prepared = PreparedCircuitVerifyingKey<E, MM>;
 
     /// Prepare the circuit verifying key.
@@ -235,5 +237,17 @@ impl<'de, E: PairingEngine, MM: MarlinMode> Deserialize<'de> for CircuitVerifyin
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "verifying key"),
         }
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitVerifyingKey<E, MM> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> PartialOrd for CircuitVerifyingKey<E, MM> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
