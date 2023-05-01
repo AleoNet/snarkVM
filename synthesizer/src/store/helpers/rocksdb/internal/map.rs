@@ -268,7 +268,7 @@ impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> fmt::Debu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::helpers::rocksdb::{tests::temp_dir, MapID, TestMap};
+    use crate::store::helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap};
     use console::{account::Address, network::Testnet3, prelude::FromStr};
 
     use serial_test::serial;
