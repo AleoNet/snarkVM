@@ -14,75 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use super::*;
 use crate::store::helpers::{Map, MapRead};
-use console::network::prelude::*;
-use indexmap::IndexMap;
 
-use core::{borrow::Borrow, hash::Hash};
-use parking_lot::{Mutex, RwLock};
-use std::{
-    borrow::Cow,
-    collections::{btree_map, BTreeMap},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use core::{fmt, fmt::Debug, hash::Hash};
+use indexmap::IndexMap;
+use rocksdb::WriteBatch;
+use std::{borrow::Cow, sync::atomic::Ordering};
 
 #[derive(Clone)]
-pub struct MemoryMap<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-> {
-    // The reason for using BTreeMap with binary keys is for the order of items to be the same as
-    // the one in the RocksDB-backed DataMap; if not for that, it could be any map
-    // with fast lookups and the keys could be typed (i.e. just `K` instead of `Vec<u8>`).
-    map: Arc<RwLock<BTreeMap<Vec<u8>, V>>>,
-    batch_in_progress: Arc<AtomicBool>,
-    atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
-}
-
-impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-> Default for MemoryMap<K, V>
-{
-    fn default() -> Self {
-        Self { map: Default::default(), batch_in_progress: Default::default(), atomic_batch: Default::default() }
-    }
-}
-
-impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-> FromIterator<(K, V)> for MemoryMap<K, V>
-{
-    /// Initializes a new `MemoryMap` from the given iterator.
-    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        // Serialize each key in the iterator, and collect them into a map.
-        // Note: The 'unwrap' is safe here, because the keys are defined by us.
-        let map = iter.into_iter().map(|(k, v)| (bincode::serialize(&k).unwrap(), v)).collect();
-        // Return the new map.
-        Self {
-            map: Arc::new(RwLock::new(map)),
-            batch_in_progress: Default::default(),
-            atomic_batch: Default::default(),
-        }
-    }
+pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
+    pub(super) database: RocksDB,
+    pub(super) context: Vec<u8>,
+    /// The tracker for whether a database transaction is in progress.
+    pub(super) batch_in_progress: Arc<AtomicBool>,
+    /// The database transaction.
+    pub(super) atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
 }
 
 impl<
     'a,
-    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-> Map<'a, K, V> for MemoryMap<K, V>
+    K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
+> Map<'a, K, V> for DataMap<K, V>
 {
     ///
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
         // Determine if an atomic batch is in progress.
-        let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
+        let is_batch = self.batch_in_progress.load(Ordering::Acquire);
 
         match is_batch {
             // If a batch is in progress, add the key-value pair to the batch.
@@ -91,7 +52,10 @@ impl<
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
-                self.map.write().insert(bincode::serialize(&key)?, value);
+                // Prepare the prefixed key and serialized value.
+                let raw_key = self.create_prefixed_key(&key)?;
+                let raw_value = bincode::serialize(&value)?;
+                self.database.put(raw_key, raw_value)?;
             }
         }
 
@@ -103,16 +67,18 @@ impl<
     ///
     fn remove(&self, key: &K) -> Result<()> {
         // Determine if an atomic batch is in progress.
-        let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
+        let is_batch = self.batch_in_progress.load(Ordering::Acquire);
 
         match is_batch {
-            // If a batch is in progress, add the key-None pair to the batch.
+            // If a batch is in progress, add the key to the batch.
             true => {
                 self.atomic_batch.lock().insert(*key, None);
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                self.map.write().remove(&bincode::serialize(&key)?);
+                // Prepare the prefixed key.
+                let raw_key = self.create_prefixed_key(key)?;
+                self.database.delete(raw_key)?;
             }
         }
 
@@ -125,7 +91,7 @@ impl<
     ///
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
-        self.batch_in_progress.store(true, Ordering::SeqCst);
+        self.batch_in_progress.store(true, Ordering::Relaxed);
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
     }
@@ -136,7 +102,7 @@ impl<
     /// if they are already part of a larger one.
     ///
     fn is_atomic_in_progress(&self) -> bool {
-        self.batch_in_progress.load(Ordering::SeqCst)
+        self.batch_in_progress.load(Ordering::Acquire)
     }
 
     ///
@@ -146,7 +112,7 @@ impl<
         // Clear the atomic batch.
         *self.atomic_batch.lock() = Default::default();
         // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::SeqCst);
+        self.batch_in_progress.store(false, Ordering::Release);
     }
 
     ///
@@ -157,9 +123,6 @@ impl<
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         if !operations.is_empty() {
-            // Acquire a write lock on the map.
-            let mut locked_map = self.map.write();
-
             // Prepare the key and value for each queued operation.
             //
             // Note: This step is taken to ensure (with 100% certainty) that there will be
@@ -169,20 +132,29 @@ impl<
             // or none of them will be.
             let prepared_operations = operations
                 .into_iter()
-                .map(|(key, value)| Ok((bincode::serialize(&key)?, value)))
+                .map(|(key, value)| match value {
+                    Some(value) => Ok((self.create_prefixed_key(&key)?, Some(bincode::serialize(&value)?))),
+                    None => Ok((self.create_prefixed_key(&key)?, None)),
+                })
                 .collect::<Result<Vec<_>>>()?;
 
+            // Prepare operations batch for underlying database.
+            let mut batch = WriteBatch::default();
+
             // Perform all the queued operations.
-            for (key, value) in prepared_operations {
-                match value {
-                    Some(value) => locked_map.insert(key, value),
-                    None => locked_map.remove(&key),
+            for (raw_key, raw_value) in prepared_operations {
+                match raw_value {
+                    Some(raw_value) => batch.put(raw_key, raw_value),
+                    None => batch.delete(raw_key),
                 };
             }
+
+            // Execute all the operations atomically.
+            self.database.rocksdb.write(batch)?;
         }
 
         // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::SeqCst);
+        self.batch_in_progress.store(false, Ordering::Release);
 
         Ok(())
     }
@@ -190,13 +162,13 @@ impl<
 
 impl<
     'a,
-    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-> MapRead<'a, K, V> for MemoryMap<K, V>
+    K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
+> MapRead<'a, K, V> for DataMap<K, V>
 {
-    type Iterator = core::iter::Map<btree_map::IntoIter<Vec<u8>, V>, fn((Vec<u8>, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
-    type Keys = core::iter::Map<btree_map::IntoKeys<Vec<u8>, V>, fn(Vec<u8>) -> Cow<'a, K>>;
-    type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
+    type Iterator = Iter<'a, K, V>;
+    type Keys = Keys<'a, K>;
+    type Values = Values<'a, V>;
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -206,7 +178,7 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.read().contains_key(&bincode::serialize(key)?))
+        self.get_raw(key).map(|v| v.is_some())
     }
 
     ///
@@ -217,7 +189,11 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.read().get(&bincode::serialize(key)?).cloned().map(Cow::Owned))
+        match self.get_raw(key) {
+            Ok(Some(bytes)) => Ok(Some(Cow::Owned(bincode::deserialize(&bytes)?))),
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
     ///
@@ -233,73 +209,95 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        // Return early if there is no atomic batch in progress.
-        if self.batch_in_progress.load(Ordering::SeqCst) { self.atomic_batch.lock().get(key).cloned() } else { None }
+        if self.batch_in_progress.load(Ordering::Acquire) { self.atomic_batch.lock().get(key).cloned() } else { None }
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
-        // Note: The 'unwrap' is safe here, because the keys are defined by us.
-        self.map.read().clone().into_iter().map(|(k, v)| (Cow::Owned(bincode::deserialize(&k).unwrap()), Cow::Owned(v)))
+        Iter::new(self.database.prefix_iterator(&self.context))
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
     fn keys(&'a self) -> Self::Keys {
-        // Note: The 'unwrap' is safe here, because the keys are defined by us.
-        self.map.read().clone().into_keys().map(|k| Cow::Owned(bincode::deserialize(&k).unwrap()))
+        Keys::new(self.database.prefix_iterator(&self.context))
     }
 
     ///
     /// Returns an iterator over each value in the map.
     ///
     fn values(&'a self) -> Self::Values {
-        self.map.read().clone().into_values().map(Cow::Owned)
+        Values::new(self.database.prefix_iterator(&self.context))
     }
 }
 
-impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
-> Deref for MemoryMap<K, V>
-{
-    type Target = Arc<RwLock<BTreeMap<Vec<u8>, V>>>;
+impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> DataMap<K, V> {
+    #[inline]
+    fn create_prefixed_key<Q>(&self, key: &Q) -> Result<Vec<u8>>
+    where
+        K: Borrow<Q>,
+        Q: Serialize + ?Sized,
+    {
+        let mut raw_key = self.context.clone();
+        bincode::serialize_into(&mut raw_key, &key)?;
+        Ok(raw_key)
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.map
+    fn get_raw<Q>(&self, key: &Q) -> Result<Option<rocksdb::DBPinnableSlice>>
+    where
+        K: Borrow<Q>,
+        Q: Serialize + ?Sized,
+    {
+        let raw_key = self.create_prefixed_key(key)?;
+        match self.database.get_pinned(&raw_key)? {
+            Some(data) => Ok(Some(data)),
+            None => Ok(None),
+        }
+    }
+}
+
+impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> fmt::Debug for DataMap<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DataMap").field("context", &self.context).finish()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{account::Address, network::Testnet3};
+    use crate::store::helpers::rocksdb::{tests::temp_dir, MapID, TestMap};
+    use console::{account::Address, network::Testnet3, prelude::FromStr};
+
+    use serial_test::serial;
+    use tracing_test::traced_test;
 
     type CurrentNetwork = Testnet3;
 
     #[test]
+    #[serial]
     fn test_contains_key() {
         // Initialize an address.
         let address =
             Address::<CurrentNetwork>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")
                 .unwrap();
 
-        // Sanity check.
-        let addresses: IndexMap<Address<CurrentNetwork>, ()> = [(address, ())].into_iter().collect();
-        assert!(addresses.contains_key(&address));
-
         // Initialize a map.
-        let map: MemoryMap<Address<CurrentNetwork>, ()> = [(address, ())].into_iter().collect();
+        let map: DataMap<Address<CurrentNetwork>, ()> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        map.insert(address, ()).expect("Failed to insert into data map");
         assert!(map.contains_key(&address).unwrap());
     }
 
     #[test]
+    #[serial]
+    #[traced_test]
     fn test_insert_and_get_speculative() {
         // Initialize a map.
-        let map: MemoryMap<usize, String> = Default::default();
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter().next().is_none());
@@ -347,9 +345,12 @@ mod tests {
     }
 
     #[test]
+    #[serial]
+    #[traced_test]
     fn test_remove_and_get_speculative() {
         // Initialize a map.
-        let map: MemoryMap<usize, String> = Default::default();
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter().next().is_none());
@@ -404,12 +405,15 @@ mod tests {
     }
 
     #[test]
+    #[serial]
+    #[traced_test]
     fn test_atomic_writes_are_batched() {
         // The number of items that will be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: MemoryMap<usize, String> = Default::default();
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter().next().is_none());
@@ -462,12 +466,15 @@ mod tests {
     }
 
     #[test]
+    #[serial]
+    #[traced_test]
     fn test_atomic_writes_can_be_aborted() {
         // The number of items that will be queued to be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: MemoryMap<usize, String> = Default::default();
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter().next().is_none());
