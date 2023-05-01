@@ -94,11 +94,7 @@ impl<F: PrimeField> QuerySet<F> {
         // We also use an optimization: instead of explicitly calculating z_c, we
         // use the "virtual oracle" z_a * z_b
         Self {
-            batch_sizes: state
-                .circuit_specific_states
-                .iter()
-                .map(|(c, s)| (*c, s.batch_size))
-                .collect(),
+            batch_sizes: state.circuit_specific_states.iter().map(|(c, s)| (*c, s.batch_size)).collect(),
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),

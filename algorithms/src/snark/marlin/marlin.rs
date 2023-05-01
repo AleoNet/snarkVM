@@ -180,7 +180,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             }
         }
         for circuit_specific_commitments in circuit_commitments {
-            sponge.absorb_native_field_elements(&circuit_specific_commitments);
+            sponge.absorb_native_field_elements(circuit_specific_commitments);
         }
         sponge
     }
@@ -410,7 +410,8 @@ where
 
         let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
 
-        let circuit_commitments = keys_to_constraints.keys().map(|pk| pk.circuit_verifying_key.circuit_commitments.as_slice());
+        let circuit_commitments =
+            keys_to_constraints.keys().map(|pk| pk.circuit_verifying_key.circuit_commitments.as_slice());
 
         let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.clone());
 

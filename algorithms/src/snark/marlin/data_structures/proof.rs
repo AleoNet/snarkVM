@@ -407,22 +407,18 @@ mod test {
         assert!(i > 0);
         assert!(j > 0);
         let sample_commit = sample_commit();
-        let mask_poly = if test_with_none { None } else { Some(sample_commit.clone()) };
+        let mask_poly = if test_with_none { None } else { Some(sample_commit) };
         Commitments {
             witness_commitments: vec![
-                WitnessCommitments {
-                    w: sample_commit.clone(),
-                    z_a: sample_commit.clone(),
-                    z_b: sample_commit.clone(),
-                };
+                WitnessCommitments { w: sample_commit, z_a: sample_commit, z_b: sample_commit };
                 i * j
             ],
             mask_poly,
-            g_1: sample_commit.clone(),
-            h_1: sample_commit.clone(),
-            g_a_commitments: vec![sample_commit.clone(); j],
-            g_b_commitments: vec![sample_commit.clone(); j],
-            g_c_commitments: vec![sample_commit.clone(); j],
+            g_1: sample_commit,
+            h_1: sample_commit,
+            g_a_commitments: vec![sample_commit; j],
+            g_b_commitments: vec![sample_commit; j],
+            g_c_commitments: vec![sample_commit; j],
             h_2: sample_commit,
         }
     }
@@ -458,8 +454,8 @@ mod test {
                     let size = Commitments::serialized_size(&commitments, compress);
                     let mut serialized = vec![0; size];
                     Commitments::serialize_with_mode(&commitments, &mut serialized[..], compress).unwrap();
-                    let de = Commitments::deserialize_with_mode(&batch_sizes, &serialized[..], compress, validate)
-                        .unwrap();
+                    let de =
+                        Commitments::deserialize_with_mode(&batch_sizes, &serialized[..], compress, validate).unwrap();
                     assert_eq!(commitments, de);
                 }
             }
@@ -479,8 +475,8 @@ mod test {
                     let size = Evaluations::serialized_size(&evaluations, compress);
                     let mut serialized = vec![0; size];
                     Evaluations::serialize_with_mode(&evaluations, &mut serialized[..], compress).unwrap();
-                    let de = Evaluations::deserialize_with_mode(&batch_sizes, &serialized[..], compress, validate)
-                        .unwrap();
+                    let de =
+                        Evaluations::deserialize_with_mode(&batch_sizes, &serialized[..], compress, validate).unwrap();
                     assert_eq!(evaluations, de);
                 }
             }

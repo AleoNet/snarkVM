@@ -64,12 +64,12 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Compute the batch proof.
-        let mut assignment_refs = vec![];
+        let mut assignment_refs: Vec<&circuit::Assignment<N::Field>> = vec![];
         for assignment in assignments {
             assignment_refs.push(assignment);
         }
         let mut keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(self.deref(), assignments);
+        keys_to_constraints.insert(self.deref(), assignment_refs.as_slice());
         let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &keys_to_constraints, rng)?);
 
         #[cfg(feature = "aleo-cli")]
