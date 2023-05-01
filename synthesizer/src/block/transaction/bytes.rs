@@ -35,7 +35,7 @@ impl<N: Network> FromBytes for Transaction<N> {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
                 // Read the owner.
-                let owner = Owner::read_le(&mut reader)?;
+                let owner = ProgramOwner::read_le(&mut reader)?;
                 // Read the deployment.
                 let deployment = Deployment::read_le(&mut reader)?;
                 // Read the fee.
