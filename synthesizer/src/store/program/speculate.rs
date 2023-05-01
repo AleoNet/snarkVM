@@ -14,19 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
 use crate::{
+    process::{Deployment, Execution, FinalizeRegisters, Load, Store},
     program::finalize::Command,
-    ConsensusStorage,
-    Deployment,
-    Execution,
-    FinalizeRegisters,
-    Load,
-    Store,
+    store::{ConsensusStorage, FinalizeTree, MerkleTreeUpdate},
     Transaction,
     VM,
 };
+use console::{
+    network::prelude::*,
+    program::{Identifier, Plaintext, ProgramID, Value},
+    types::Field,
+};
+
+use indexmap::{IndexMap, IndexSet};
 
 // TODO (raychu86): Move this out of `store/program`
 
