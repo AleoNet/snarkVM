@@ -17,6 +17,8 @@
 /// Describes the failure modes of the AHP scheme.
 #[derive(Debug)]
 pub enum AHPError {
+    /// The batch size is zero.
+    BatchSizeIsZero,
     /// An error occurred during constraint generation.
     ConstraintSystemError(snarkvm_r1cs::errors::SynthesisError),
     /// The instance generated during proving does not match that in the index.
@@ -29,8 +31,6 @@ pub enum AHPError {
     NonSquareMatrix,
     /// During synthesis, our polynomials ended up being too high of degree
     PolynomialDegreeTooLarge,
-    /// The batch size is zero.
-    BatchSizeIsZero,
 }
 
 impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {
