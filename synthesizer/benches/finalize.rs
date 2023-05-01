@@ -26,15 +26,15 @@ mod workloads;
 use workloads::*;
 
 use console::{account::PrivateKey, network::Testnet3};
-use snarkvm_synthesizer::{Speculate, Transaction, Transactions};
+use snarkvm_synthesizer::{Transaction, Transactions};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
-const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64, 128];
-const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 255];
+const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64];
+const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function for benchmarking `VM::finalize`.
 #[cfg(feature = "test-utilities")]
@@ -76,25 +76,12 @@ pub fn bench_finalize(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3>
             }
         }
 
-        // Construct a `Speculate` object.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
-
-        // Speculate the transactions.
-        speculate.speculate_transactions(&vm, &transactions).unwrap();
-
-        // Commit the transactions.
-        speculate.commit(&vm).unwrap();
-
         // Construct a `Transactions` object.
         let transactions = Transactions::from(&transactions);
 
         // Benchmark speculation.
         c.bench_function(&format!("{}/finalize", name), |b| {
-            b.iter_batched(
-                || speculate.clone(),
-                |speculate| vm.finalize(&transactions, Some(speculate)).unwrap(),
-                BatchSize::SmallInput,
-            )
+            b.iter_batched(|| {}, |speculate| vm.finalize(&transactions, None).unwrap(), BatchSize::SmallInput)
         });
     }
 }

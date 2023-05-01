@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(clippy::single_element_loop)]
+#![cfg(feature = "setup")]
 
 #[macro_use]
 extern crate criterion;
@@ -47,7 +48,6 @@ fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Te
     (address, nonce)
 }
 
-#[cfg(feature = "setup")]
 fn coinbase_puzzle_trim(c: &mut Criterion) {
     let max_degree = 1 << 15;
     let max_config = PuzzleConfig { degree: max_degree };
@@ -62,7 +62,6 @@ fn coinbase_puzzle_trim(c: &mut Criterion) {
     }
 }
 
-#[cfg(feature = "setup")]
 fn coinbase_puzzle_prove(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
@@ -81,7 +80,6 @@ fn coinbase_puzzle_prove(c: &mut Criterion) {
     }
 }
 
-#[cfg(feature = "setup")]
 fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
@@ -110,7 +108,6 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
     }
 }
 
-#[cfg(feature = "setup")]
 fn coinbase_puzzle_verify(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
