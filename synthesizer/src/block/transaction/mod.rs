@@ -179,6 +179,28 @@ impl<N: Network> Transaction<N> {
         // Otherwise, return 'false'.
         false
     }
+
+    /// Returns `true` if this is a `split` transaction.
+    #[inline]
+    pub fn is_split(&self) -> bool {
+        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/split'.
+        if let Self::Execute(_, execution, _) = self {
+            // Ensure there is 1 transition.
+            if execution.len() == 1 {
+                // Retrieve the transition.
+                if let Ok(transition) = execution.get(0) {
+                    // Check if it calls 'credits.aleo/split'.
+                    if transition.program_id().to_string() == "credits.aleo"
+                        && transition.function_name().to_string() == "split"
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Otherwise, return 'false'.
+        false
+    }
 }
 
 /// A helper enum for iterators and consuming iterators over a transaction.
