@@ -40,17 +40,17 @@ edition = "2021"
 #harness = false
 #required-features = [ "setup" ]
 #
-#[[bench]]
-#name = "commit"
-#path = "benches/commit.rs"
-#harness = false
-#required-features = [ "test-utilities" ]
+[[bench]]
+name = "commit"
+path = "benches/commit.rs"
+harness = false
+required-features = [ "test-utilities" ]
 #
-#[[bench]]
-#name = "finalize"
-#path = "benches/finalize.rs"
-#harness = false
-#required-features = [ "test-utilities"]
+[[bench]]
+name = "finalize"
+path = "benches/finalize.rs"
+harness = false
+required-features = [ "test-utilities"]
 
 [[bench]]
 name = "speculate"

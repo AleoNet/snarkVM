@@ -104,6 +104,7 @@ fn bench_one_operation(c: &mut Criterion) {
         // workloads.push(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
     }
     workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+    workloads.push(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Workload<Testnet3>>);
     workloads.push(Box::new(TransferPublic::new(1)) as Box<dyn Workload<Testnet3>>);
     workloads.push(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Workload<Testnet3>>);
 
@@ -120,6 +121,7 @@ fn bench_multiple_operations(c: &mut Criterion) {
         //     .push(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
         // workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(MintPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(TransferPrivateToPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
     }

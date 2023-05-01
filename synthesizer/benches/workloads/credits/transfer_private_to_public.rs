@@ -41,39 +41,39 @@ use snarkvm_utilities::TestRng;
 
 use std::{marker::PhantomData, str::FromStr};
 
-pub struct TransferPublicToPrivate<N: Network> {
+pub struct TransferPrivateToPublic<N: Network> {
     num_executions: usize,
     phantom: PhantomData<N>,
 }
 
-impl<N: Network> TransferPublicToPrivate<N> {
+impl<N: Network> TransferPrivateToPublic<N> {
     pub fn new(num_executions: usize) -> Self {
         Self { num_executions, phantom: Default::default() }
     }
 }
 
-impl<N: Network> Workload<N> for TransferPublicToPrivate<N> {
+impl<N: Network> Workload<N> for TransferPrivateToPublic<N> {
     fn name(&self) -> String {
-        format!("transfer_public_to_private/{}_executions", self.num_executions)
+        format!("transfer_private_to_public/{}_executions", self.num_executions)
     }
 
     fn setup(&mut self) -> Vec<Vec<Operation<N>>> {
         // Construct the program.
         let program = Program::from_str(&format!(
             r"
-program transfer_public_to_private_{}.aleo;
+program transfer_private_to_public_{}.aleo;
 mapping account:
     key left as address.public;
     value right as u64.public;
-function transfer_public_to_private:
+function transfer_private_to_public:
     input r0 as address.public;
     input r1 as u64.public;
     finalize r0 r1;
-finalize transfer_public_to_private:
+finalize transfer_private_to_public:
     input r0 as address.public;
     input r1 as u64.public;
     get.or_init account[r0] 0u64 into r2;
-    sub r2 r1 into r3;
+    add r2 r1 into r3;
     set r3 into account[r0];
 ",
             self.num_executions
@@ -90,12 +90,12 @@ finalize transfer_public_to_private:
         let rng = &mut TestRng::default();
         // Construct the operations.
         for _ in 0..self.num_executions {
-            let sender = Address::rand(rng);
+            let receiver = Address::rand(rng);
             operations.push(Operation::Execute(
-                format!("transfer_public_to_private_{}.aleo", self.num_executions),
-                "transfer_public_to_private".to_string(),
+                format!("transfer_private_to_public_{}.aleo", self.num_executions),
+                "transfer_private_to_public".to_string(),
                 vec![
-                    Value::Plaintext(Plaintext::from(Literal::Address(sender))),
+                    Value::Plaintext(Plaintext::from(Literal::Address(receiver))),
                     Value::Plaintext(Plaintext::from(Literal::U64(U64::zero()))),
                 ],
             ));
