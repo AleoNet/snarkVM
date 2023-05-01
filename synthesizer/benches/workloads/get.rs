@@ -43,7 +43,7 @@ impl<N: Network> Workload<N> for StaticGet<N> {
         )
     }
 
-    fn setup(&self) -> Vec<Vec<Operation<N>>> {
+    fn setup(&mut self) -> Vec<Vec<Operation<N>>> {
         // Initialize storage for the setup operations.
         let mut deploy_operations = Vec::with_capacity(self.num_programs);
         let mut init_operations = Vec::with_capacity(self.num_programs);
@@ -83,7 +83,7 @@ impl<N: Network> Workload<N> for StaticGet<N> {
         vec![deploy_operations, init_operations]
     }
 
-    fn run(&self) -> Vec<Operation<N>> {
+    fn run(&mut self) -> Vec<Operation<N>> {
         // Initialize storage for the run operations.
         let mut operations = Vec::with_capacity(self.num_programs * self.num_executions);
         // Construct the operations.

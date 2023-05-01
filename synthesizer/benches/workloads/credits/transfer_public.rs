@@ -34,35 +34,35 @@ use crate::utilities::{Operation, Workload};
 
 use console::{
     network::Network,
-    program::{Address, Literal, Plaintext, Value, U64},
+    program::{Address, Literal, Plaintext, Value, Zero, U64},
 };
 use snarkvm_synthesizer::Program;
 use snarkvm_utilities::{TestRng, Uniform};
 
-use console::program::Zero;
+use indexmap::IndexMap;
 use std::{marker::PhantomData, str::FromStr};
 
-pub struct MintPublic<N: Network> {
+pub struct TransferPublic<N: Network> {
     num_executions: usize,
     phantom: PhantomData<N>,
 }
 
-impl<N: Network> MintPublic<N> {
+impl<N: Network> TransferPublic<N> {
     pub fn new(num_executions: usize) -> Self {
         Self { num_executions, phantom: Default::default() }
     }
 }
 
-impl<N: Network> Workload<N> for MintPublic<N> {
+impl<N: Network> Workload<N> for TransferPublic<N> {
     fn name(&self) -> String {
-        format!("mint_public/{}_executions", self.num_executions)
+        format!("transfer_public/{}_executions", self.num_executions)
     }
 
     fn setup(&mut self) -> Vec<Vec<Operation<N>>> {
         // Construct the program.
         let program = Program::from_str(&format!(
             r"
-program mint_public_{}.aleo;
+program transfer_public_{}.aleo;
 mapping account:
     key left as address.public;
     value right as u64.public;
@@ -76,6 +76,21 @@ finalize mint_public:
     get.or_init account[r0] 0u64 into r2;
     add r2 r1 into r3;
     set r3 into account[r0];
+function transfer_public:
+    input r0 as address.public;
+    input r1 as address.public;
+    input r2 as u64.public;
+    finalize r0 r1 r2;
+finalize transfer_public:
+    input r0 as address.public;
+    input r1 as address.public;
+    input r2 as u64.public;
+    get.or_init account[r0] 0u64 into r3;
+    sub r3 r2 into r4;
+    set r4 into account[r0];
+    get.or_init account[r1] 0u64 into r5;
+    add r5 r2 into r6;
+    set r6 into account[r1];
 ",
             self.num_executions
         ))
@@ -91,11 +106,14 @@ finalize mint_public:
         let rng = &mut TestRng::default();
         // Construct the operations.
         for _ in 0..self.num_executions {
+            let sender = Address::rand(rng);
+            let receiver = Address::rand(rng);
             operations.push(Operation::Execute(
-                format!("mint_public_{}.aleo", self.num_executions),
-                "mint_public".to_string(),
+                format!("transfer_public_{}.aleo", self.num_executions),
+                "transfer_public".to_string(),
                 vec![
-                    Value::Plaintext(Plaintext::from(Literal::Address(Address::rand(rng)))),
+                    Value::Plaintext(Plaintext::from(Literal::Address(sender))),
+                    Value::Plaintext(Plaintext::from(Literal::Address(receiver))),
                     Value::Plaintext(Plaintext::from(Literal::U64(U64::zero()))),
                 ],
             ));

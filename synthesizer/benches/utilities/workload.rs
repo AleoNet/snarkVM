@@ -32,7 +32,7 @@ pub trait Workload<N: Network> {
     /// The name of the workload.
     fn name(&self) -> String;
     /// The sequence of operations to be run when setting up the workload.
-    fn setup(&self) -> Vec<Vec<Operation<N>>>;
+    fn setup(&mut self) -> Vec<Vec<Operation<N>>>;
     /// The sequence of operations to be run when benchmarking the workload.
-    fn run(&self) -> Vec<Operation<N>>;
+    fn run(&mut self) -> Vec<Operation<N>>;
 }

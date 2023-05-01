@@ -30,6 +30,7 @@ use snarkvm_synthesizer::{Speculate, Transaction};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
+use itertools::Itertools;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
@@ -39,7 +40,7 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 /// A helper function for benchmarking `Speculate::speculate`.
 #[cfg(feature = "test-utilities")]
 #[allow(unused)]
-pub fn bench_speculate(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3>>]) {
+pub fn bench_speculate(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet3>>>) {
     // Initialize the RNG.
     let rng = &mut TestRng::default();
 
@@ -98,12 +99,13 @@ fn bench_one_operation(c: &mut Criterion) {
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
     for num_commands in NUM_COMMANDS {
         //workloads.push(Box::new(StaticGet::new(1, *num_commands, 1, 1) as Box<dyn Workload<Testnet3>>));
-        workloads.push(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
-        workloads.push(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
-        workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+        // workloads.push(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
+        // workloads.push(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
     }
+    workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+    workloads.push(Box::new(TransferPublic::new(1)) as Box<dyn Workload<Testnet3>>);
 
-    bench_speculate(c, &workloads)
+    bench_speculate(c, workloads)
 }
 
 fn bench_multiple_operations(c: &mut Criterion) {
@@ -112,13 +114,14 @@ fn bench_multiple_operations(c: &mut Criterion) {
     let max_commands = *NUM_COMMANDS.last().unwrap();
     for num_executions in NUM_EXECUTIONS {
         //workloads.push(Box::new(StaticGet::new(1, max_commands, *num_executions, 1) as Box<dyn Workload<Testnet3>>));
-        workloads
-            .push(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
-        workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
+        // workloads
+        //     .push(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
+        // workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(MintPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
     }
 
-    bench_speculate(c, &workloads)
+    bench_speculate(c, workloads)
 }
 
 fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
@@ -135,7 +138,7 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
         );
     }
 
-    bench_speculate(c, &workloads)
+    bench_speculate(c, workloads)
 }
 
 criterion_group! {

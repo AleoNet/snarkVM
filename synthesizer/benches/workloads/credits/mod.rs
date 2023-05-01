@@ -16,3 +16,6 @@
 
 pub mod mint_public;
 pub use mint_public::*;
+
+pub mod transfer_public;
+pub use transfer_public::*;

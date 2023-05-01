@@ -39,9 +39,13 @@ type Benchmarks<N> = Vec<(String, Vec<Operation<N>>)>;
 /// A helper function for preparing benchmarks.
 /// This function takes a number of workloads and returns the setup operations and the benchmarks.
 /// Note that setup operations are aggregated across all workloads.
-pub fn prepare_benchmarks<N: Network>(workloads: &[Box<dyn Workload<N>>]) -> (Setups<N>, Benchmarks<N>) {
-    // Get the setup operations.
-    let setup_operations = workloads.iter().map(|workload| workload.setup()).collect_vec();
+pub fn prepare_benchmarks<N: Network>(workloads: Vec<Box<dyn Workload<N>>>) -> (Setups<N>, Benchmarks<N>) {
+    let mut setup_operations = vec![];
+    let mut benchmarks = vec![];
+    for mut workload in workloads {
+        setup_operations.push(workload.setup());
+        benchmarks.push((workload.name(), workload.run()));
+    }
 
     // Aggregate the batches for each setup operation.
     let max_num_batches = setup_operations.iter().map(|operations| operations.len()).max().unwrap_or(0);
@@ -51,9 +55,6 @@ pub fn prepare_benchmarks<N: Network>(workloads: &[Box<dyn Workload<N>>]) -> (Se
             batches[i].extend(batch);
         }
     }
-
-    // Construct tuples of benchmark names and benchmark operations.
-    let benchmarks = workloads.iter().map(|workload| (workload.name(), workload.run())).collect_vec();
 
     (batches, benchmarks)
 }

@@ -39,7 +39,7 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 /// A helper function for benchmarking `VM::finalize`.
 #[cfg(feature = "test-utilities")]
 #[allow(unused)]
-pub fn bench_finalize(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3>>]) {
+pub fn bench_finalize(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet3>>>) {
     // Initialize the RNG.
     let rng = &mut TestRng::default();
 
@@ -91,12 +91,13 @@ fn bench_one_operation(c: &mut Criterion) {
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
     for num_commands in NUM_COMMANDS {
         //workloads.push(Box::new(StaticGet::new(1, *num_commands, 1, 1) as Box<dyn Workload<Testnet3>>));
-        workloads.push(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
-        workloads.push(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
-        workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+        // workloads.push(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
+        // workloads.push(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
     }
+    workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+    workloads.push(Box::new(TransferPublic::new(1)) as Box<dyn Workload<Testnet3>>);
 
-    bench_finalize(c, &workloads)
+    bench_finalize(c, workloads)
 }
 
 fn bench_multiple_operations(c: &mut Criterion) {
@@ -105,13 +106,14 @@ fn bench_multiple_operations(c: &mut Criterion) {
     let max_commands = *NUM_COMMANDS.last().unwrap();
     for num_executions in NUM_EXECUTIONS {
         //workloads.push(Box::new(StaticGet::new(1, max_commands, *num_executions, 1) as Box<dyn Workload<Testnet3>>));
-        workloads
-            .push(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
-        workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
+        // workloads
+        //     .push(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
+        // workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(MintPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
     }
 
-    bench_finalize(c, &workloads)
+    bench_finalize(c, workloads)
 }
 
 fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
@@ -128,7 +130,7 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
         );
     }
 
-    bench_finalize(c, &workloads)
+    bench_finalize(c, workloads)
 }
 
 criterion_group! {
