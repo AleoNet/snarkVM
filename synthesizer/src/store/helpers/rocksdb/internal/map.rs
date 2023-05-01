@@ -166,6 +166,8 @@ impl<
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
 > MapRead<'a, K, V> for DataMap<K, V>
 {
+    type BatchedIterator =
+        core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Iterator = Iter<'a, K, V>;
     type Keys = Keys<'a, K>;
     type Values = Values<'a, V>;
@@ -210,6 +212,13 @@ impl<
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         if self.batch_in_progress.load(Ordering::Acquire) { self.atomic_batch.lock().get(key).cloned() } else { None }
+    }
+
+    ///
+    /// Returns an iterator visiting each key-value pair in the atomic batch.
+    ///
+    fn batched_iter(&'a self) -> Self::BatchedIterator {
+        self.atomic_batch.lock().clone().into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 
     ///

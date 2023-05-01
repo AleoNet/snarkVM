@@ -230,13 +230,33 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Insert the new mapping name.
         mapping_names.insert(*mapping_name);
 
-        // Retrieve the program index.
+        // Retrieve the program index. If the program ID does not exist, initialize the program index
+        // by first checking if there are any existing program indices and incrementing the maximum.
         let program_index = match self.program_index_map().get_speculative(program_id)? {
             Some(program_index) => cow_to_cloned!(program_index),
-            None => match self.program_index_map().values().max() {
-                Some(max_program_index) => max_program_index.saturating_add(1),
-                None => 0,
-            },
+            None => {
+                // Get the maximum program index.
+                let max_program_index = self.program_index_map().values().max();
+                // Get the maximum program index in the atomic batch.
+                let max_batched_index = self
+                    .program_index_map()
+                    .batched_iter()
+                    .map(|(_, index)| index)
+                    .max_by(|index_1, index_2| index_1.cmp(index_2));
+
+                // Find the next program index.
+                match (max_program_index, max_batched_index) {
+                    // If both the program index and batched index exist, take the maximum and increment.
+                    (Some(program_index), Some(Some(batched_index))) => {
+                        std::cmp::max(program_index, batched_index).saturating_add(1)
+                    }
+                    // If only the batched index exists, increment.
+                    (None, Some(Some(batched_index))) => batched_index.saturating_add(1),
+                    // If only the program index exists, increment.
+                    (Some(program_index), None) => program_index.saturating_add(1),
+                    _ => 0,
+                }
+            }
         };
 
         atomic_write_batch!(self, {

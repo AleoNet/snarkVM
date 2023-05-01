@@ -108,7 +108,7 @@ pub trait MapRead<
     ///
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
-    fn get_batched_iter(&'a self) -> Self::BatchedIterator;
+    fn batched_iter(&'a self) -> Self::BatchedIterator;
 
     ///
     /// Returns the value for the given key from the atomic batch first, if it exists,

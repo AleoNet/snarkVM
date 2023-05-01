@@ -242,7 +242,7 @@ impl<
     ///
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
-    fn get_batched_iter(&'a self) -> Self::BatchedIterator {
+    fn batched_iter(&'a self) -> Self::BatchedIterator {
         self.atomic_batch.lock().clone().into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 
