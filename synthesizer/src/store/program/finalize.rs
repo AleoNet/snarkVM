@@ -637,8 +637,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         N::hash_bhp1024(&preimage.into_values().flatten().collect::<Vec<_>>())
     }
 
-    // TODO (raychu86): This depends on the `Map`s being deterministically ordered (by insertion).
-    /// Returns the Merkle tree of program state.
+    /// Returns the Merkle tree of the finalize state.
     fn to_finalize_tree(&self) -> Result<FinalizeTree<N>> {
         // Initialize a list of program trees.
         let mut program_trees: IndexMap<u32, ProgramTree<N>> = IndexMap::new();
@@ -1237,6 +1236,15 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         self.storage.get_mapping_names(program_id)
     }
 
+    /// Returns the index of the given `program ID` if it exists.
+    pub fn get_program_index(&self, program_id: &ProgramID<N>) -> Result<Option<u32>> {
+        match self.storage.program_index_map().get(program_id) {
+            Ok(Some(index)) => Ok(Some(*index)),
+            Ok(None) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
     /// Returns the index for the given `program ID`, `mapping name`, and `key` if it exists.
     pub fn get_key_index(
         &self,
@@ -1266,6 +1274,22 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         key: &Plaintext<N>,
     ) -> Result<Option<Value<N>>> {
         self.storage.get_value(program_id, mapping_name, key)
+    }
+}
+
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
+    /// Returns the Merkle tree of finalize state.
+    pub fn to_finalize_tree(&self) -> Result<FinalizeTree<N>> {
+        self.storage.to_finalize_tree()
+    }
+
+    /// Returns the Merkle tree of the given program's mapping state.
+    pub fn to_program_tree(
+        &self,
+        program_id: &ProgramID<N>,
+        optional_updates: Option<&[MerkleTreeUpdate<N>]>,
+    ) -> Result<ProgramTree<N>> {
+        self.storage.to_program_tree(program_id, optional_updates)
     }
 }
 

@@ -368,7 +368,7 @@ impl<N: Network> Speculate<N> {
         let mut updated_program_trees = IndexMap::with_capacity(final_operations.len());
         for (program_id, operations) in final_operations {
             // Construct the program tree.
-            let program_tree = vm.finalize_store().storage.to_program_tree(&program_id, Some(&operations))?;
+            let program_tree = vm.finalize_store().to_program_tree(&program_id, Some(&operations))?;
 
             updated_program_trees.insert(program_id, program_tree);
         }
@@ -382,8 +382,8 @@ impl<N: Network> Speculate<N> {
 
             // // Specify the update or append operation.
             match vm.finalize_store().contains_program(program_id)? {
-                true => match vm.finalize_store().storage.program_index_map().get(program_id)? {
-                    Some(index) => updates.push((usize::try_from(*index)?, leaf)),
+                true => match vm.finalize_store().get_program_index(program_id)? {
+                    Some(index) => updates.push((usize::try_from(index)?, leaf)),
                     None => bail!("No index found for program_id: {program_id}"),
                 },
                 false => appends.push(leaf),
@@ -703,7 +703,7 @@ finalize transfer_public:
 
         // Fetch the expected storage tree.
         let expected_storage_tree = vm.finalize_store().tree.read();
-        let storage_tree_from_scratch = vm.finalize_store().storage.to_finalize_tree().unwrap();
+        let storage_tree_from_scratch = vm.finalize_store().to_finalize_tree().unwrap();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
@@ -837,10 +837,7 @@ finalize transfer_public:
         vm.add_next_block(&block_3, None).unwrap();
 
         // Ensure that the storage trees are the same.
-        assert_eq!(
-            vm.finalize_store().tree.read().root(),
-            vm.finalize_store().storage.to_finalize_tree().unwrap().root()
-        );
+        assert_eq!(vm.finalize_store().tree.read().root(), vm.finalize_store().to_finalize_tree().unwrap().root());
 
         // Generate many transactions.
         let programs = [program_1, program_2, program_3];
@@ -879,9 +876,6 @@ finalize transfer_public:
         vm.add_next_block(&next_block, Some(speculate)).unwrap();
 
         // Ensure that the storage trees are the same.
-        assert_eq!(
-            vm.finalize_store().tree.read().root(),
-            vm.finalize_store().storage.to_finalize_tree().unwrap().root()
-        );
+        assert_eq!(vm.finalize_store().tree.read().root(), vm.finalize_store().to_finalize_tree().unwrap().root());
     }
 }
