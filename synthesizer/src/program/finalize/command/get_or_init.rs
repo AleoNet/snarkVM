@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load as LoadTrait, Opcode, Operand, ProgramStorage, ProgramStore, Speculate, Stack, Store};
+use crate::{FinalizeStorage, FinalizeStore, Load as LoadTrait, Opcode, Operand, Speculate, Stack, Store};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},
@@ -76,10 +76,10 @@ impl<N: Network> GetOrInit<N> {
 impl<N: Network> GetOrInit<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + Store<N>),
     ) -> Result<()> {
         // Ensure the mapping exists in storage.
@@ -112,10 +112,10 @@ impl<N: Network> GetOrInit<N> {
 
     /// Speculatively evaluate the command.
     #[inline]
-    pub fn speculate_finalize<P: ProgramStorage<N>>(
+    pub fn speculate_finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + Store<N>),
         speculate: &mut Speculate<N>,
     ) -> Result<()> {

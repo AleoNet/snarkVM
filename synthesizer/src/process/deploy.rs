@@ -67,9 +67,9 @@ impl<N: Network> Process<N> {
     /// Finalizes the deployment.
     /// This method assumes the given deployment **is valid**.
     #[inline]
-    pub fn finalize_deployment<P: ProgramStorage<N>>(
+    pub fn finalize_deployment<P: FinalizeStorage<N>>(
         &mut self,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         deployment: &Deployment<N>,
     ) -> Result<()> {
         let timer = timer!("Process::finalize_deployment");
@@ -152,7 +152,7 @@ mod tests {
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));
         // Finalize the deployment.
-        process.finalize_deployment(vm.program_store(), &deployment).unwrap();
+        process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
         // Ensure the program exists.
         assert!(process.contains_program(program.id()));
     }

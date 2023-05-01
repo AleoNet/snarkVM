@@ -226,9 +226,9 @@ impl<N: Network> Process<N> {
     /// Finalizes the execution.
     /// This method assumes the given execution **is valid**.
     #[inline]
-    pub fn finalize_execution<P: ProgramStorage<N>>(
+    pub fn finalize_execution<P: FinalizeStorage<N>>(
         &self,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         execution: &Execution<N>,
     ) -> Result<()> {
         let timer = timer!("Program::finalize_execution");

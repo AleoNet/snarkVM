@@ -226,7 +226,7 @@ impl<N: Network> Speculate<N> {
                         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
                         // Construct the update operation. If the key ID does not exist, insert it.
-                        let operation = match vm.program_store().get_key_index(program_id, set.mapping_name(), &key)? {
+                        let operation = match vm.finalize_store().get_key_index(program_id, set.mapping_name(), &key)? {
                             Some(key_index) => {
                                 // Add an update value operation.
                                 MerkleTreeUpdate::UpdateValue(mapping_id, key_index as usize, key_id, value_id)
@@ -244,7 +244,7 @@ impl<N: Network> Speculate<N> {
 
                     // TODO (raychu86): Catch the panics here.
                     // Perform the speculative execution on the command.
-                    command.speculate_finalize(stack, vm.program_store(), &mut registers, self)?;
+                    command.speculate_finalize(stack, vm.finalize_store(), &mut registers, self)?;
                 }
             }
         }
@@ -264,7 +264,7 @@ impl<N: Network> Speculate<N> {
         transaction: &Transaction<N>,
     ) -> Result<bool> {
         // Check that the `VM` state is correct.
-        if vm.program_store().current_storage_root() != self.latest_storage_root {
+        if vm.finalize_store().current_storage_root() != self.latest_storage_root {
             bail!("The latest storage root does not match the VM storage root");
         }
 
@@ -323,12 +323,12 @@ impl<N: Network> Speculate<N> {
     /// Finalize the speculate and build the merkle trees.
     pub fn commit<C: ConsensusStorage<N>>(&self, vm: &VM<N, C>) -> Result<FinalizeTree<N>> {
         // Check that the `VM` state is correct.
-        if vm.program_store().current_storage_root() != self.latest_storage_root {
+        if vm.finalize_store().current_storage_root() != self.latest_storage_root {
             bail!("The latest storage root does not match the VM storage root");
         }
 
         // Fetch the current storage tree.
-        let storage_tree = vm.program_store().tree.read();
+        let storage_tree = vm.finalize_store().tree.read();
 
         // Collect the operations.
         let all_operations = self.operations.values().flatten().collect::<Vec<_>>();
@@ -367,7 +367,7 @@ impl<N: Network> Speculate<N> {
         let mut updated_program_trees = IndexMap::with_capacity(final_operations.len());
         for (program_id, operations) in final_operations {
             // Construct the program tree.
-            let program_tree = vm.program_store().storage.to_program_tree(&program_id, Some(&operations))?;
+            let program_tree = vm.finalize_store().storage.to_program_tree(&program_id, Some(&operations))?;
 
             updated_program_trees.insert(program_id, program_tree);
         }
@@ -380,8 +380,8 @@ impl<N: Network> Speculate<N> {
             let leaf = program_tree.root().to_bits_le();
 
             // // Specify the update or append operation.
-            match vm.program_store().contains_program(program_id)? {
-                true => match vm.program_store().storage.program_index_map().get(program_id)? {
+            match vm.finalize_store().contains_program(program_id)? {
+                true => match vm.finalize_store().storage.program_index_map().get(program_id)? {
                     Some(index) => updates.push((usize::try_from(*index)?, leaf)),
                     None => bail!("No index found for program_id: {program_id}"),
                 },
@@ -606,14 +606,14 @@ finalize transfer_public:
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
 
         // Check that `speculate_transaction` will fail if you try with the same transaction.
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).is_err());
 
         // Check that `speculate_transactions` will fail if you try with duplicate transactions.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
         assert!(
             speculate.speculate_transactions(&vm, &[deployment_transaction.clone(), deployment_transaction]).is_err()
         );
@@ -631,7 +631,7 @@ finalize transfer_public:
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
 
         // Construct the new storage tree.
@@ -643,8 +643,8 @@ finalize transfer_public:
         duplicate_vm.finalize(&transactions, Some(speculate)).unwrap();
 
         // Fetch the expected storage tree.
-        let expected_storage_tree = vm.program_store().tree.read();
-        let duplicate_storage_tree = duplicate_vm.program_store().tree.read();
+        let expected_storage_tree = vm.finalize_store().tree.read();
+        let duplicate_storage_tree = duplicate_vm.finalize_store().tree.read();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
@@ -680,7 +680,7 @@ finalize transfer_public:
             sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 10, rng);
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
         assert!(speculate.speculate_transaction(&vm, &mint_transaction).unwrap());
         assert!(speculate.speculate_transaction(&vm, &transfer_transaction).unwrap());
 
@@ -701,8 +701,8 @@ finalize transfer_public:
         vm.add_next_block(&next_block, None).unwrap();
 
         // Fetch the expected storage tree.
-        let expected_storage_tree = vm.program_store().tree.read();
-        let storage_tree_from_scratch = vm.program_store().storage.to_finalize_tree().unwrap();
+        let expected_storage_tree = vm.finalize_store().tree.read();
+        let storage_tree_from_scratch = vm.finalize_store().storage.to_finalize_tree().unwrap();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
@@ -752,7 +752,7 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 30 - 10 = 20
         // Transfer_20 -> Balance = 20 - 20
         {
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
 
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
 
@@ -769,7 +769,7 @@ finalize transfer_public:
         // Mint_20 -> Balance = 10 + 20 = 30
         // Transfer_30 -> Balance = 30 - 30 = 0
         {
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
 
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
 
@@ -787,7 +787,7 @@ finalize transfer_public:
             let transactions = [transfer_20.clone(), transfer_10.clone()];
 
             // Assert that the first transaction is valid.
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
             assert_eq!(vec![transfer_20.id()], speculate.speculate_transactions(&vm, &transactions).unwrap());
         }
 
@@ -800,7 +800,7 @@ finalize transfer_public:
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20, transfer_10.clone()];
 
             // Assert that the first transaction is valid.
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
             assert_eq!(
                 vec![mint_20.id(), transfer_30.id(), transfer_10.id()],
                 speculate.speculate_transactions(&vm, &transactions).unwrap()
@@ -837,8 +837,8 @@ finalize transfer_public:
 
         // Ensure that the storage trees are the same.
         assert_eq!(
-            vm.program_store().tree.read().root(),
-            vm.program_store().storage.to_finalize_tree().unwrap().root()
+            vm.finalize_store().tree.read().root(),
+            vm.finalize_store().storage.to_finalize_tree().unwrap().root()
         );
 
         // Generate many transactions.
@@ -864,7 +864,7 @@ finalize transfer_public:
         }
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_storage_root());
         let accepted_transactions = speculate.speculate_transactions(&vm, &transactions).unwrap();
 
         // Keep the transactions that are accepted.
@@ -879,8 +879,8 @@ finalize transfer_public:
 
         // Ensure that the storage trees are the same.
         assert_eq!(
-            vm.program_store().tree.read().root(),
-            vm.program_store().storage.to_finalize_tree().unwrap().root()
+            vm.finalize_store().tree.read().root(),
+            vm.finalize_store().storage.to_finalize_tree().unwrap().root()
         );
     }
 }

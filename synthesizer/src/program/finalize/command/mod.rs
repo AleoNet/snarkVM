@@ -26,7 +26,7 @@ pub use get_or_init::*;
 mod set;
 pub use set::*;
 
-use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Speculate, Stack};
+use crate::{program::Instruction, FinalizeRegisters, FinalizeStorage, FinalizeStore, Speculate, Stack};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -45,10 +45,10 @@ pub enum Command<N: Network> {
 impl<N: Network> Command<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
         match self {
@@ -61,20 +61,20 @@ impl<N: Network> Command<N> {
 
     /// Speculatively evaluate the command.
     #[inline]
-    pub fn speculate_finalize<P: ProgramStorage<N>>(
+    pub fn speculate_finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        program_store: &ProgramStore<N, P>,
+        finalize_store: &FinalizeStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
         speculate: &mut Speculate<N>,
     ) -> Result<()> {
         match self {
             Command::Instruction(instruction) => instruction.finalize(stack, registers),
-            Command::Get(get) => get.speculate_finalize(stack, program_store, registers, speculate),
+            Command::Get(get) => get.speculate_finalize(stack, finalize_store, registers, speculate),
             Command::GetOrInit(get_or_init) => {
-                get_or_init.speculate_finalize(stack, program_store, registers, speculate)
+                get_or_init.speculate_finalize(stack, finalize_store, registers, speculate)
             }
-            Command::Set(set) => set.speculate_finalize(stack, program_store, registers, speculate),
+            Command::Set(set) => set.speculate_finalize(stack, finalize_store, registers, speculate),
         }
     }
 }

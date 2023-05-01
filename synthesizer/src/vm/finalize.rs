@@ -28,7 +28,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Some(speculate) => speculate,
             None => {
                 // Perform the transaction speculation.
-                let mut speculate = Speculate::new(self.program_store().current_storage_root());
+                let mut speculate = Speculate::new(self.finalize_store().current_storage_root());
                 speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
 
                 speculate
@@ -52,21 +52,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     Ok(new_storage_tree) => new_storage_tree,
                     Err(err) => {
                         // If the commit failed, set the speculate flag to `false`.
-                        self.program_store().is_speculate.store(false, Ordering::SeqCst);
+                        self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
 
                         bail!("Failed to commit speculate: {err}")
                     }
                 };
 
                 // Acquire the write lock on the tree.
-                let mut storage_tree = self.program_store().tree.write();
+                let mut storage_tree = self.finalize_store().tree.write();
 
                 // Update the storage tree.
                 *storage_tree = new_storage_tree;
             }
 
             // Update the `is_speculate` flag.
-            self.program_store().is_speculate.store(true, Ordering::SeqCst);
+            self.finalize_store().is_speculate.store(true, Ordering::SeqCst);
 
             // TODO (raychu86): Use the `Speculate` struct to finalize the transactions. This will
             //  reduce the re-execution of the transactions.
@@ -74,18 +74,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Finalize the transaction.
                 match transaction {
                     Transaction::Deploy(_, _, deployment, _) => {
-                        if let Err(err) = process.finalize_deployment(self.program_store(), deployment) {
+                        if let Err(err) = process.finalize_deployment(self.finalize_store(), deployment) {
                             // If the commit failed, set the speculate flag to `false`.
-                            self.program_store().is_speculate.store(false, Ordering::SeqCst);
+                            self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
 
                             bail!("Failed to finalize deployment: {err}")
                         }
                         lap!(timer, "Finalize deployment");
                     }
                     Transaction::Execute(_, execution, _) => {
-                        if let Err(err) = process.finalize_execution(self.program_store(), execution) {
+                        if let Err(err) = process.finalize_execution(self.finalize_store(), execution) {
                             // If the commit failed, set the speculate flag to `false`.
-                            self.program_store().is_speculate.store(false, Ordering::SeqCst);
+                            self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
 
                             bail!("Failed to finalize execution: {err}")
                         }
@@ -94,7 +94,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
             }
 
-            self.program_store().is_speculate.store(false, Ordering::SeqCst);
+            self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
 
             Ok(())
         });

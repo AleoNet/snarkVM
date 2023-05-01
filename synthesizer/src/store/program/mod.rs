@@ -131,12 +131,12 @@ impl<N: Network> MerkleTreeUpdate<N> {
 /// and the `key ID := Hash ( mapping ID || Hash(key) )`,
 /// and the `value ID := Hash ( key ID || Hash(value) )`.
 ///
-/// `ProgramStorage` emulates the following data structure:
+/// `FinalizeStorage` emulates the following data structure:
 /// ```text
 /// // (program_id => (mapping_name => (key => value)))
 /// IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Key, Value>>>
 /// ```
-pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
+pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `program ID` to `deployment index`.
@@ -761,7 +761,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
 /// An in-memory program state storage.
 #[derive(Clone)]
-pub struct ProgramMemory<N: Network> {
+pub struct FinalizeMemory<N: Network> {
     /// The program ID map.
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
     /// The program index map.
@@ -779,7 +779,7 @@ pub struct ProgramMemory<N: Network> {
 }
 
 #[rustfmt::skip]
-impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
+impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
     type ProgramIndexMap = MemoryMap<ProgramID<N>, u32>;
     type MappingIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>;
@@ -836,10 +836,10 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     }
 }
 
-/// The program store.
+/// The finalize store.
 #[derive(Clone)]
-pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
-    /// The program storage.
+pub struct FinalizeStore<N: Network, P: FinalizeStorage<N>> {
+    /// The finalize storage.
     storage: P,
     /// The finalize tree.
     pub(crate) tree: Arc<RwLock<FinalizeTree<N>>>,
@@ -852,10 +852,10 @@ pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
     _phantom: PhantomData<N>,
 }
 
-impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
-    /// Initializes the program store.
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
+    /// Initializes the finalize store.
     pub fn open(dev: Option<u16>) -> Result<Self> {
-        // Initialize the program storage.
+        // Initialize the finalize storage.
         let storage = P::open(dev)?;
 
         // Compute the finalize tree.
@@ -864,7 +864,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
 
-    /// Initializes a program store from storage.
+    /// Initializes a finalize store from storage.
     pub fn from(storage: P) -> Result<Self> {
         // Compute the finalize tree.
         let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
@@ -1207,7 +1207,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     }
 }
 
-impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Returns `true` if the given `program ID` exist.
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> Result<bool> {
         self.storage.contains_program(program_id)
@@ -1229,7 +1229,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     }
 }
 
-impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Returns the current storage root.
     pub fn current_storage_root(&self) -> Field<N> {
         *self.tree.read().root()
@@ -1281,7 +1281,7 @@ mod tests {
 
     /// Checks `initialize_mapping`, `insert_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_insert_remove<N: Network>(
-        program_store: &ProgramStore<N, ProgramMemory<N>>,
+        finalize_store: &FinalizeStore<N, FinalizeMemory<N>>,
         program_id: ProgramID<N>,
         mapping_name: Identifier<N>,
     ) {
@@ -1290,81 +1290,81 @@ mod tests {
         let value = Value::from_str("987654321u128").unwrap();
 
         // Ensure the program ID does not exist.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
 
         // Now, initialize the mapping.
-        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID got initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name got initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key did not get initialized.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Insert a (key, value) pair.
-        program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key got initialized.
-        assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns Some(value).
-        assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the key succeeds.
-        program_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+        finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key got removed.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the mapping succeeds.
-        program_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key is still removed.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the program succeeds.
-        program_store.remove_program(&program_id).unwrap();
+        finalize_store.remove_program(&program_id).unwrap();
         // Ensure the program ID is no longer initialized.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is still no longer initialized.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key is still removed.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
     }
 
     /// Checks `initialize_mapping`, `update_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_update_remove<N: Network>(
-        program_store: &ProgramStore<N, ProgramMemory<N>>,
+        finalize_store: &FinalizeStore<N, FinalizeMemory<N>>,
         program_id: ProgramID<N>,
         mapping_name: Identifier<N>,
     ) {
@@ -1373,53 +1373,53 @@ mod tests {
         let value = Value::from_str("987654321u128").unwrap();
 
         // Ensure the program ID does not exist.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
 
         // Now, initialize the mapping.
-        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID got initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name got initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key did not get initialized.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Update a (key, value) pair.
-        program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key got initialized.
-        assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns Some(value).
-        assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure calling `insert_key_value` with the same key and value fails.
-        assert!(program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
+        assert!(finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
         // Ensure the key is still initialized.
-        assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns Some(value).
-        assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure calling `update_key_value` with the same key and value succeeds.
-        program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
         // Ensure the key is still initialized.
-        assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns Some(value).
-        assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+        assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
 
         {
             // Prepare the same key and different value.
@@ -1427,70 +1427,76 @@ mod tests {
 
             // Ensure calling `insert_key_value` with a different key and value fails.
             assert!(
-                program_store.insert_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).is_err()
+                finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).is_err()
             );
             // Ensure the key is still initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value still returns Some(value).
-            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
 
             // Ensure calling `update_key_value` with a different key and value succeeds.
-            program_store.update_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).unwrap();
+            finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).unwrap();
             // Ensure the key is still initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(new_value).
-            assert_eq!(new_value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(new_value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
             // Ensure that the storage tree is updated correctly.
-            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+            assert_eq!(
+                finalize_store.current_storage_root(),
+                *finalize_store.storage.to_finalize_tree().unwrap().root()
+            );
 
             // Ensure calling `update_key_value` with the same key and original value succeeds.
-            program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the key is still initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
-            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
             // Ensure that the storage tree is updated correctly.
-            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+            assert_eq!(
+                finalize_store.current_storage_root(),
+                *finalize_store.storage.to_finalize_tree().unwrap().root()
+            );
         }
 
         // Ensure removing the key succeeds.
-        program_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+        finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key got removed.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the mapping succeeds.
-        program_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key is still removed.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the program succeeds.
-        program_store.remove_program(&program_id).unwrap();
+        finalize_store.remove_program(&program_id).unwrap();
         // Ensure the program ID is no longer initialized.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is still no longer initialized.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure the key is still removed.
-        assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+        assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns None.
-        assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+        assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
     }
 
     #[test]
@@ -1499,11 +1505,11 @@ mod tests {
         let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
         let mapping_name = Identifier::from_str("account").unwrap();
 
-        // Initialize a new program store.
-        let program_memory = ProgramMemory::open(None).unwrap();
-        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Check the operations.
-        check_initialize_insert_remove(&program_store, program_id, mapping_name);
+        check_initialize_insert_remove(&finalize_store, program_id, mapping_name);
     }
 
     #[test]
@@ -1512,11 +1518,11 @@ mod tests {
         let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
         let mapping_name = Identifier::from_str("account").unwrap();
 
-        // Initialize a new program store.
-        let program_memory = ProgramMemory::open(None).unwrap();
-        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Check the operations.
-        check_initialize_update_remove(&program_store, program_id, mapping_name);
+        check_initialize_update_remove(&finalize_store, program_id, mapping_name);
     }
 
     #[test]
@@ -1525,22 +1531,22 @@ mod tests {
         let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
         let mapping_name = Identifier::from_str("account").unwrap();
 
-        // Initialize a new program store.
-        let program_memory = ProgramMemory::open(None).unwrap();
-        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
 
         // Now, initialize the mapping.
-        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID got initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name got initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
 
         // Insert the list of keys and values.
         for item in 0..1000 {
@@ -1548,23 +1554,23 @@ mod tests {
             let key = Plaintext::from_str(&format!("{item}field")).unwrap();
             let value = Value::from_str(&format!("{item}u64")).unwrap();
             // Ensure the key did not get initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Insert the key and value.
-            program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
-            assert!(program_store.contains_program(&program_id).unwrap());
+            assert!(finalize_store.contains_program(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
-            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
             // Ensure the key got initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
-            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Remove the list of keys and values.
         for item in 0..1000 {
@@ -1572,23 +1578,23 @@ mod tests {
             let key = Plaintext::from_str(&format!("{item}field")).unwrap();
             let value = Value::from_str(&format!("{item}u64")).unwrap();
             // Ensure the key is still initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
-            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
 
             // Remove the key-value pair.
-            program_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+            finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
             // Ensure the program ID is still initialized.
-            assert!(program_store.contains_program(&program_id).unwrap());
+            assert!(finalize_store.contains_program(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
-            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
             // Ensure the key is no longer initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
     }
 
     #[test]
@@ -1597,22 +1603,22 @@ mod tests {
         let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
         let mapping_name = Identifier::from_str("account").unwrap();
 
-        // Initialize a new program store.
-        let program_memory = ProgramMemory::open(None).unwrap();
-        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
 
         // Now, initialize the mapping.
-        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID got initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name got initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
 
         // Insert the list of keys and values.
         for item in 0..1000 {
@@ -1620,32 +1626,32 @@ mod tests {
             let key = Plaintext::from_str(&format!("{item}field")).unwrap();
             let value = Value::from_str(&format!("{item}u64")).unwrap();
             // Ensure the key did not get initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Insert the key and value.
-            program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
-            assert!(program_store.contains_program(&program_id).unwrap());
+            assert!(finalize_store.contains_program(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
-            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
             // Ensure the key got initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
-            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Remove the mapping.
-        program_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID is still initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Check the list of keys and values.
         for item in 0..1000 {
@@ -1653,9 +1659,9 @@ mod tests {
             let key = Plaintext::from_str(&format!("{item}field")).unwrap();
 
             // Ensure the key is no longer initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         }
     }
 
@@ -1665,22 +1671,22 @@ mod tests {
         let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
         let mapping_name = Identifier::from_str("account").unwrap();
 
-        // Initialize a new program store.
-        let program_memory = ProgramMemory::open(None).unwrap();
-        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
 
         // Now, initialize the mapping.
-        program_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
         // Ensure the program ID got initialized.
-        assert!(program_store.contains_program(&program_id).unwrap());
+        assert!(finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name got initialized.
-        assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
 
         // Insert the list of keys and values.
         for item in 0..1000 {
@@ -1688,32 +1694,32 @@ mod tests {
             let key = Plaintext::from_str(&format!("{item}field")).unwrap();
             let value = Value::from_str(&format!("{item}u64")).unwrap();
             // Ensure the key did not get initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Insert the key and value.
-            program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
-            assert!(program_store.contains_program(&program_id).unwrap());
+            assert!(finalize_store.contains_program(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
-            assert!(program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            assert!(finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
             // Ensure the key got initialized.
-            assert!(program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
-            assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
+            assert_eq!(value, finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Remove the program.
-        program_store.remove_program(&program_id).unwrap();
+        finalize_store.remove_program(&program_id).unwrap();
         // Ensure the program ID is no longer initialized.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+        assert_eq!(finalize_store.current_storage_root(), *finalize_store.storage.to_finalize_tree().unwrap().root());
 
         // Check the list of keys and values.
         for item in 0..1000 {
@@ -1721,9 +1727,9 @@ mod tests {
             let key = Plaintext::from_str(&format!("{item}field")).unwrap();
 
             // Ensure the key is no longer initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         }
     }
 
@@ -1733,59 +1739,62 @@ mod tests {
         let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
         let mapping_name = Identifier::from_str("account").unwrap();
 
-        // Initialize a new program store.
-        let program_memory = ProgramMemory::open(None).unwrap();
-        let program_store = ProgramStore::from(program_memory).unwrap();
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
-        assert!(!program_store.contains_program(&program_id).unwrap());
+        assert!(!finalize_store.contains_program(&program_id).unwrap());
         // Ensure the mapping name does not exist.
-        assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+        assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
 
         {
             // Ensure inserting a (key, value) before initializing the mapping fails.
             let key = Plaintext::from_str("123456789field").unwrap();
             let value = Value::from_str("987654321u128").unwrap();
-            assert!(program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
+            assert!(finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
 
             // Ensure the program ID did not get initialized.
-            assert!(!program_store.contains_program(&program_id).unwrap());
+            assert!(!finalize_store.contains_program(&program_id).unwrap());
             // Ensure the mapping name did not get initialized.
-            assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
             // Ensure the key did not get initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
             // Ensure removing an un-initialized key fails.
-            assert!(program_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
-            assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+            assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
             // Ensure that the storage tree is updated correctly.
-            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
+            assert_eq!(
+                finalize_store.current_storage_root(),
+                *finalize_store.storage.to_finalize_tree().unwrap().root()
+            );
         }
         {
             // Ensure updating a (key, value) before initializing the mapping fails.
             let key = Plaintext::from_str("987654321field").unwrap();
             let value = Value::from_str("123456789u128").unwrap();
-            assert!(program_store.update_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
+            assert!(finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
 
             // Ensure the program ID did not get initialized.
-            assert!(!program_store.contains_program(&program_id).unwrap());
+            assert!(!finalize_store.contains_program(&program_id).unwrap());
             // Ensure the mapping name did not get initialized.
-            assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
+            assert!(!finalize_store.contains_mapping(&program_id, &mapping_name).unwrap());
             // Ensure the key did not get initialized.
-            assert!(!program_store.contains_key(&program_id, &mapping_name, &key).unwrap());
+            assert!(!finalize_store.contains_key(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
-            assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
             // Ensure removing an un-initialized key fails.
-            assert!(program_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
-            assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
+            assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
         }
 
-        // Ensure program storage still behaves correctly after the above operations.
-        check_initialize_insert_remove(&program_store, program_id, mapping_name);
-        check_initialize_update_remove(&program_store, program_id, mapping_name);
+        // Ensure finalize storage still behaves correctly after the above operations.
+        check_initialize_insert_remove(&finalize_store, program_id, mapping_name);
+        check_initialize_update_remove(&finalize_store, program_id, mapping_name);
     }
 }
