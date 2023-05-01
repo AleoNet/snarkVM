@@ -190,6 +190,8 @@ impl<
     V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > MapRead<'a, K, V> for MemoryMap<K, V>
 {
+    type BatchedIterator =
+        core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Iterator = core::iter::Map<btree_map::IntoIter<Vec<u8>, V>, fn((Vec<u8>, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
     type Keys = core::iter::Map<btree_map::IntoKeys<Vec<u8>, V>, fn(Vec<u8>) -> Cow<'a, K>>;
     type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
@@ -231,6 +233,13 @@ impl<
     {
         // Return early if there is no atomic batch in progress.
         if self.batch_in_progress.load(Ordering::SeqCst) { self.atomic_batch.lock().get(key).cloned() } else { None }
+    }
+
+    ///
+    /// Returns an iterator visiting each key-value pair in the atomic batch.
+    ///
+    fn get_batched_iter(&'a self) -> Self::BatchedIterator {
+        self.atomic_batch.lock().clone().into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 
     ///

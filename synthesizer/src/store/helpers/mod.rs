@@ -69,6 +69,7 @@ pub trait MapRead<
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
 >
 {
+    type BatchedIterator: Iterator<Item = (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Iterator: Iterator<Item = (Cow<'a, K>, Cow<'a, V>)>;
     type Keys: Iterator<Item = Cow<'a, K>>;
     type Values: Iterator<Item = Cow<'a, V>>;
@@ -101,6 +102,11 @@ pub trait MapRead<
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Returns an iterator visiting each key-value pair in the atomic batch.
+    ///
+    fn get_batched_iter(&'a self) -> Self::BatchedIterator;
 
     ///
     /// Returns the value for the given key from the atomic batch first, if it exists,

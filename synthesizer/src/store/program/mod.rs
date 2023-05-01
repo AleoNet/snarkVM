@@ -237,12 +237,17 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // Insert the new mapping name.
         mapping_names.insert(*mapping_name);
 
-        // Retrieve the program index.
+        // Retrieve the program index. If the program ID does not exist, initialize the program index
+        // by first checking if there are any existing program indices and incrementing the maximum.
         let program_index = match self.program_index_map().get_speculative(program_id)? {
             Some(program_index) => cow_to_cloned!(program_index),
-            None => match self.program_index_map().values().max() {
-                Some(max_program_index) => max_program_index.saturating_add(1),
-                None => 0,
+            None => match self
+                .program_index_map()
+                .get_batched_iter()
+                .max_by(|(_, index_1), (_, index_2)| index_1.cmp(index_2))
+            {
+                Some((_, Some(max_program_index))) => max_program_index.saturating_add(1),
+                _ => 0,
             },
         };
 
