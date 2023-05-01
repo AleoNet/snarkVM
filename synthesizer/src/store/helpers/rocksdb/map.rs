@@ -123,23 +123,32 @@ impl<
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         if !operations.is_empty() {
+            // Prepare the key and value for each queued operation.
+            //
+            // Note: This step is taken to ensure (with 100% certainty) that there will be
+            // no chance to fail partway through committing the queued operations.
+            //
+            // The expected behavior is that either all the operations will be committed
+            // or none of them will be.
+            let prepared_operations = operations
+                .into_iter()
+                .map(|(key, value)| match value {
+                    Some(value) => Ok((self.create_prefixed_key(&key)?, Some(bincode::serialize(&value)?))),
+                    None => Ok((self.create_prefixed_key(&key)?, None)),
+                })
+                .collect::<Result<Vec<_>>>()?;
+
             // Prepare operations batch for underlying database.
             let mut batch = WriteBatch::default();
-            for operation in operations {
-                match operation {
-                    (key, Some(value)) => {
-                        // Prepare the prefixed key and serialized value for insertion.
-                        let raw_key = self.create_prefixed_key(&key)?;
-                        let raw_value = bincode::serialize(&value)?;
-                        batch.put(raw_key, raw_value);
-                    }
-                    (key, None) => {
-                        // Prepare the prefixed key for deletion.
-                        let raw_key = self.create_prefixed_key(&key)?;
-                        batch.delete(raw_key);
-                    }
+
+            // Perform all the queued operations.
+            for (raw_key, raw_value) in prepared_operations {
+                match raw_value {
+                    Some(raw_value) => batch.put(raw_key, raw_value),
+                    None => batch.delete(raw_key),
                 };
             }
+
             // Execute all the operations atomically.
             self.database.rocksdb.write(batch)?;
         }

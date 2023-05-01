@@ -160,9 +160,13 @@ impl<
             // Acquire a write lock on the map.
             let mut locked_map = self.map.write();
 
-            // Prepare the key for each queued operation.
+            // Prepare the key and value for each queued operation.
+            //
             // Note: This step is taken to ensure (with 100% certainty) that there will be
             // no chance to fail partway through committing the queued operations.
+            //
+            // The expected behavior is that either all the operations will be committed
+            // or none of them will be.
             let prepared_operations = operations
                 .into_iter()
                 .map(|(key, value)| Ok((bincode::serialize(&key)?, value)))
