@@ -37,9 +37,8 @@ use console::{
     program::{Address, Literal, Plaintext, Value, Zero, U64},
 };
 use snarkvm_synthesizer::Program;
-use snarkvm_utilities::{TestRng, Uniform};
+use snarkvm_utilities::TestRng;
 
-use indexmap::IndexMap;
 use std::{marker::PhantomData, str::FromStr};
 
 pub struct TransferPublic<N: Network> {
@@ -66,16 +65,6 @@ program transfer_public_{}.aleo;
 mapping account:
     key left as address.public;
     value right as u64.public;
-function mint_public:
-    input r0 as address.public;
-    input r1 as u64.public;
-    finalize r0 r1;
-finalize mint_public:
-    input r0 as address.public;
-    input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
-    add r2 r1 into r3;
-    set r3 into account[r0];
 function transfer_public:
     input r0 as address.public;
     input r1 as address.public;
@@ -102,7 +91,7 @@ finalize transfer_public:
     fn run(&mut self) -> Vec<Operation<N>> {
         // Initialize storage for the run operations.
         let mut operations = Vec::with_capacity(self.num_executions);
-        // Initalize an RNG for generating the operations.
+        // Initialize an RNG for generating the operations.
         let rng = &mut TestRng::default();
         // Construct the operations.
         for _ in 0..self.num_executions {

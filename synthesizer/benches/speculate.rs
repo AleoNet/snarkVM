@@ -30,7 +30,6 @@ use snarkvm_synthesizer::{Speculate, Transaction};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
-use itertools::Itertools;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
@@ -104,6 +103,7 @@ fn bench_one_operation(c: &mut Criterion) {
     }
     workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
     workloads.push(Box::new(TransferPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+    workloads.push(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Workload<Testnet3>>);
 
     bench_speculate(c, workloads)
 }
@@ -119,6 +119,7 @@ fn bench_multiple_operations(c: &mut Criterion) {
         // workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(MintPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
         workloads.push(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
     }
 
     bench_speculate(c, workloads)
