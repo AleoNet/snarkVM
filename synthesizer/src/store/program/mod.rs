@@ -241,14 +241,29 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
         // by first checking if there are any existing program indices and incrementing the maximum.
         let program_index = match self.program_index_map().get_speculative(program_id)? {
             Some(program_index) => cow_to_cloned!(program_index),
-            None => match self
-                .program_index_map()
-                .get_batched_iter()
-                .max_by(|(_, index_1), (_, index_2)| index_1.cmp(index_2))
-            {
-                Some((_, Some(max_program_index))) => max_program_index.saturating_add(1),
-                _ => 0,
-            },
+            None => {
+                // Get the maximum program index.
+                let max_program_index = self.program_index_map().values().max();
+                // Get the maximum program index in the atomic batch.
+                let max_batched_index = self
+                    .program_index_map()
+                    .get_batched_iter()
+                    .map(|(_, index)| index)
+                    .max_by(|index_1, index_2| index_1.cmp(index_2));
+
+                // Find the next program index.
+                match (max_program_index, max_batched_index) {
+                    // If both the program index and batched index exist, take the maximum and increment.
+                    (Some(program_index), Some(Some(batched_index))) => {
+                        std::cmp::max(program_index, batched_index).saturating_add(1)
+                    }
+                    // If only the batched index exists, increment.
+                    (None, Some(Some(batched_index))) => batched_index.saturating_add(1),
+                    // If only the program index exists, increment.
+                    (Some(program_index), None) => program_index.saturating_add(1),
+                    _ => 0,
+                }
+            }
         };
 
         atomic_write_batch!(self, {
@@ -813,7 +828,7 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map
     }
-    
+
     /// Returns the program index map.
     fn program_index_map(&self) -> &Self::ProgramIndexMap {
         &self.program_index_map
