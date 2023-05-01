@@ -19,7 +19,7 @@ use crate::{
     polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
-            indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
+            indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
             matrices::arithmetize_matrix,
             AHPError,
             AHPForR1CS,
@@ -63,18 +63,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
             index_info,
         } = Self::index_helper(c)?;
-        let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
-
+        let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
+        let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(label, evals))
+            .map(|(label, evals)| arithmetize_matrix(&id, label, evals))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
 
         end_timer!(joint_arithmetization_time);
 
-        let fft_precomp_time = start_timer!(|| "Precomputing roots of unity");
+        let fft_precomp_time = start_timer!(|| format!("Precomputing roots of unity {id}"));
 
         let (fft_precomputation, ifft_precomputation) = Self::fft_precomputation(
             constraint_domain.size(),
@@ -95,24 +95,34 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
-            mode: PhantomData,
+            id,
+            _mode: PhantomData,
         })
     }
 
-    pub fn index_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+    pub fn index_polynomial_info<'a>(
+        circuit_ids: impl Iterator<Item = &'a CircuitId> + 'a,
+    ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut map = BTreeMap::new();
-        for matrix in ["a", "b", "c"] {
-            map.insert(format!("row_{matrix}"), PolynomialInfo::new(format!("row_{matrix}"), None, None));
-            map.insert(format!("col_{matrix}"), PolynomialInfo::new(format!("col_{matrix}"), None, None));
-            map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
-            map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
+        for label in Self::index_polynomial_labels(&["a", "b", "c"], circuit_ids) {
+            map.insert(label.clone(), PolynomialInfo::new(label, None, None));
         }
         map
     }
 
-    pub fn index_polynomial_labels() -> impl Iterator<Item = PolynomialLabel> {
-        ["a", "b", "c"].into_iter().flat_map(|matrix| {
-            [format!("row_{matrix}"), format!("col_{matrix}"), format!("val_{matrix}"), format!("row_col_{matrix}")]
+    pub fn index_polynomial_labels<'a>(
+        matrices: &'a [&str],
+        ids: impl Iterator<Item = &'a CircuitId> + 'a,
+    ) -> impl Iterator<Item = PolynomialLabel> + 'a {
+        ids.flat_map(move |id| {
+            matrices.iter().flat_map(move |matrix| {
+                [
+                    format!("circuit_{id}_row_{matrix}"),
+                    format!("circuit_{id}_col_{matrix}"),
+                    format!("circuit_{id}_val_{matrix}"),
+                    format!("circuit_{id}_row_col_{matrix}"),
+                ]
+            })
         })
     }
 
@@ -228,24 +238,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     pub fn evaluate_index_polynomials<C: ConstraintSynthesizer<F>>(
         c: &C,
+        id: &CircuitId,
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;
         let mut evals = [
-            ("a", state.a_evals, state.non_zero_a_domain),
-            ("b", state.b_evals, state.non_zero_b_domain),
-            ("c", state.c_evals, state.non_zero_c_domain),
+            (state.a_evals, state.non_zero_a_domain),
+            (state.b_evals, state.non_zero_b_domain),
+            (state.c_evals, state.non_zero_c_domain),
         ]
         .into_iter()
-        .flat_map(move |(matrix, evals, domain)| {
-            let labels = [
-                format!("row_{matrix}"),
-                format!("col_{matrix}"),
-                format!("val_{matrix}"),
-                format!("row_col_{matrix}"),
-            ];
+        .flat_map(move |(evals, domain)| {
+            let labels = Self::index_polynomial_labels(&["a", "b", "c"], std::iter::once(id));
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            labels.into_iter().zip(evals.evaluate(&lagrange_coefficients_at_point))
+            labels.zip(evals.evaluate(&lagrange_coefficients_at_point))
         })
         .collect::<Vec<_>>();
         evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));

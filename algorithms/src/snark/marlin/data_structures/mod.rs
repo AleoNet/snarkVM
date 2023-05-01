@@ -34,6 +34,10 @@ pub use prepared_circuit_verifying_key::*;
 pub(super) mod proof;
 pub use proof::*;
 
+/// A test circuit.
+pub(super) mod test_circuit;
+pub use test_circuit::*;
+
 /// The Marlin universal SRS.
 pub(super) mod universal_srs;
 pub use universal_srs::*;

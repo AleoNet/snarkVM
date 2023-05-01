@@ -26,7 +26,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use std::sync::Arc;
+use std::{cmp::Ordering, sync::Arc};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,6 +35,7 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
+    // NOTE: The circuit verifying key's circuit_info and circuit id are also stored in Circuit for convenience.
     /// The circuit itself.
     pub circuit: Arc<Circuit<E::Fr, MM>>,
     /// The committer key for this index, trimmed from the universal SRS.
@@ -60,5 +61,17 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
         let committer_key = Arc::new(FromBytes::read_le(&mut reader)?);
 
         Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitProvingKey<E, MM> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.circuit.id.cmp(&other.circuit.id)
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> PartialOrd for CircuitProvingKey<E, MM> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

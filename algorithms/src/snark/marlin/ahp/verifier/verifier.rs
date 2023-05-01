@@ -20,78 +20,110 @@ use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
         ahp::{
-            indexer::CircuitInfo,
-            verifier::{FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
+            indexer::{CircuitId, CircuitInfo},
+            verifier::{BatchCombiners, FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
         },
+        verifier::CircuitSpecificState,
         MarlinMode,
     },
     AlgebraicSponge,
 };
+use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
+use std::collections::BTreeMap;
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        index_info: CircuitInfo<TargetField>,
-        batch_size: usize,
+        batch_sizes: &BTreeMap<CircuitId, usize>,
+        circuit_infos: &BTreeMap<CircuitId, &CircuitInfo<TargetField>>,
+        max_constraint_domain: EvaluationDomain<TargetField>,
+        largest_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
     ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        // Check that the R1CS is a square matrix.
-        if index_info.num_constraints != index_info.num_variables {
-            return Err(AHPError::NonSquareMatrix);
+        let elems = fs_rng.squeeze_nonnative_field_elements(3);
+        let (first, _) = elems.split_at(3);
+        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
+        let mut batch_combiners = BTreeMap::new();
+        let mut circuit_specific_states = BTreeMap::new();
+        let mut num_circuit_combiners = vec![1; batch_sizes.len()];
+        num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
+
+        for ((batch_size, (circuit_id, circuit_info)), num_c_combiner) in
+            batch_sizes.values().zip(circuit_infos).zip(num_circuit_combiners)
+        {
+            let squeeze_time = start_timer!(|| format!("Squeezing challenges for {circuit_id}"));
+            let elems = fs_rng.squeeze_nonnative_field_elements(*batch_size - 1 + num_c_combiner);
+            end_timer!(squeeze_time);
+
+            let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
+            assert_eq!(circuit_combiner.len(), num_c_combiner);
+            let mut combiners =
+                BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
+            if num_c_combiner == 1 {
+                combiners.circuit_combiner = circuit_combiner[0];
+            }
+            combiners.instance_combiners.extend(instance_combiners);
+            batch_combiners.insert(*circuit_id, combiners);
+
+            // Check that the R1CS is a square matrix.
+            if circuit_info.num_constraints != circuit_info.num_variables {
+                return Err(AHPError::NonSquareMatrix);
+            }
+
+            let constraint_domain_time = start_timer!(|| format!("Constructing constraint domain for {circuit_id}"));
+            let constraint_domain =
+                EvaluationDomain::new(circuit_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            end_timer!(constraint_domain_time);
+
+            let non_zero_a_time = start_timer!(|| format!("Constructing non-zero-a domain for {circuit_id}"));
+            let non_zero_a_domain =
+                EvaluationDomain::new(circuit_info.num_non_zero_a).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            end_timer!(non_zero_a_time);
+
+            let non_zero_b_time = start_timer!(|| format!("Constructing non-zero-b domain {circuit_id}"));
+            let non_zero_b_domain =
+                EvaluationDomain::new(circuit_info.num_non_zero_b).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            end_timer!(non_zero_b_time);
+
+            let non_zero_c_time = start_timer!(|| format!("Constructing non-zero-c domain for {circuit_id}"));
+            let non_zero_c_domain =
+                EvaluationDomain::new(circuit_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            end_timer!(non_zero_c_time);
+
+            let input_domain_time = start_timer!(|| format!("Constructing input domain {circuit_id}"));
+            let input_domain =
+                EvaluationDomain::new(circuit_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+            end_timer!(input_domain_time);
+
+            let circuit_specific_state = CircuitSpecificState {
+                input_domain,
+                constraint_domain,
+                non_zero_a_domain,
+                non_zero_b_domain,
+                non_zero_c_domain,
+                batch_size: *batch_size,
+            };
+            circuit_specific_states.insert(*circuit_id, circuit_specific_state);
         }
 
-        let constraint_domain_time = start_timer!(|| "Constructing constraint domain");
-        let constraint_domain =
-            EvaluationDomain::new(index_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
-        end_timer!(constraint_domain_time);
-
-        let non_zero_a_time = start_timer!(|| "Constructing non-zero-a domain");
-        let non_zero_a_domain =
-            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(AHPError::PolynomialDegreeTooLarge)?;
-        end_timer!(non_zero_a_time);
-
-        let non_zero_b_time = start_timer!(|| "Constructing non-zero-b domain");
-        let non_zero_b_domain =
-            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(AHPError::PolynomialDegreeTooLarge)?;
-        end_timer!(non_zero_b_time);
-
-        let non_zero_c_time = start_timer!(|| "Constructing non-zero-c domain");
-        let non_zero_c_domain =
-            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
-        end_timer!(non_zero_c_time);
-
-        let input_domain_time = start_timer!(|| "Constructing input domain");
-        let input_domain =
-            EvaluationDomain::new(index_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
-        end_timer!(input_domain_time);
-
-        let squeeze_time = start_timer!(|| "Squeezing challenges");
-        let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1);
-        let (first, rest) = elems.split_at(3);
-        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
-        let mut batch_combiners = vec![TargetField::one()];
-        batch_combiners.extend_from_slice(rest);
-        end_timer!(squeeze_time);
-
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
-        assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
+        assert!(!max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
         let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners };
 
         let new_state = State {
-            batch_size,
-            input_domain,
-            constraint_domain,
-            non_zero_a_domain,
-            non_zero_b_domain,
-            non_zero_c_domain,
+            circuit_specific_states,
+            max_constraint_domain,
+            largest_non_zero_domain,
+
             first_round_message: Some(message.clone()),
             second_round_message: None,
             third_round_message: None,
+
             gamma: None,
             mode: PhantomData,
         };
@@ -106,7 +138,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
-        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!state.max_constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = SecondMessage { beta };
         state.second_round_message = Some(message);
@@ -119,16 +151,27 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(2);
-        let r_b = elems[0];
-        let r_c = elems[1];
-        let message = ThirdMessage { r_b, r_c };
+        let num_circuits = state.circuit_specific_states.len();
+        let mut delta_a = Vec::with_capacity(num_circuits);
+        let mut delta_b = Vec::with_capacity(num_circuits);
+        let mut delta_c = Vec::with_capacity(num_circuits);
+        let first_elems = fs_rng.squeeze_nonnative_field_elements(2);
+        delta_a.push(TargetField::one());
+        delta_b.push(first_elems[0]);
+        delta_c.push(first_elems[1]);
+        for _ in 1..num_circuits {
+            let elems: SmallVec<[TargetField; 10]> = fs_rng.squeeze_nonnative_field_elements(3);
+            delta_a.push(elems[0]);
+            delta_b.push(elems[1]);
+            delta_c.push(elems[2]);
+        }
+        let message = ThirdMessage { delta_a, delta_b, delta_c };
 
-        state.third_round_message = Some(message);
+        state.third_round_message = Some(message.clone());
         Ok((message, state))
     }
 
-    /// Output the third message and next round state.
+    /// Output the next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,

@@ -19,54 +19,20 @@ extern crate criterion;
 
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
-    snark::marlin::{ahp::AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK},
+    snark::marlin::{ahp::AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK, TestCircuit},
     AlgebraicSponge,
     SNARK,
 };
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::{ops::MulAssign, CanonicalDeserialize, CanonicalSerialize, TestRng, Uniform};
+use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, TestRng};
 
 use criterion::Criterion;
 
+use itertools::Itertools;
+use std::collections::BTreeMap;
+
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
 type FS = PoseidonSponge<Fq, 2, 1>;
-
-#[derive(Copy, Clone)]
-pub struct Benchmark<F: Field> {
-    pub a: Option<F>,
-    pub b: Option<F>,
-    pub num_constraints: usize,
-    pub num_variables: usize,
-}
-
-impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<ConstraintF> {
-    fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-        let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
-        let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
-        let c = cs.alloc_input(
-            || "c",
-            || {
-                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
-
-                a.mul_assign(&b);
-                Ok(a)
-            },
-        )?;
-
-        for i in 0..(self.num_variables - 3) {
-            let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
-        }
-
-        for i in 0..(self.num_constraints - 1) {
-            cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + c);
-        }
-
-        Ok(())
-    }
-}
 
 fn snark_universal_setup(c: &mut Criterion) {
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
@@ -81,16 +47,14 @@ fn snark_universal_setup(c: &mut Criterion) {
 fn snark_circuit_setup(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
-    let x = Fr::rand(rng);
-    let y = Fr::rand(rng);
-
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
 
     for size in [100, 1_000, 10_000] {
         let num_constraints = size;
         let num_variables = size;
-        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        let mul_depth = 1;
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         c.bench_function(&format!("snark_circuit_setup_{size}"), |b| {
             b.iter(|| MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap())
         });
@@ -100,20 +64,61 @@ fn snark_circuit_setup(c: &mut Criterion) {
 fn snark_prove(c: &mut Criterion) {
     c.bench_function("snark_prove", move |b| {
         let num_constraints = 100;
-        let num_variables = 100;
+        let num_variables = 25;
+        let mul_depth = 1;
         let rng = &mut TestRng::default();
-
-        let x = Fr::rand(rng);
-        let y = Fr::rand(rng);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         b.iter(|| MarlinInst::prove(&fs_parameters, &params.0, &circuit, rng).unwrap())
+    });
+}
+
+fn snark_batch_prove(c: &mut Criterion) {
+    c.bench_function("snark_batch_prove", move |b| {
+        let num_constraints_base = 100;
+        let num_variables_base = 25;
+        let mul_depth_base = 1;
+        let rng = &mut TestRng::default();
+
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let fs_parameters = FS::sample_parameters();
+
+        let circuit_batch_size = 5;
+        let instance_batch_size = 5;
+
+        let mut pks = Vec::with_capacity(circuit_batch_size);
+        let mut all_circuits = Vec::with_capacity(circuit_batch_size);
+        let mut keys_to_constraints = BTreeMap::new();
+        for i in 0..circuit_batch_size {
+            let num_constraints = num_constraints_base + i;
+            let num_variables = num_variables_base + i;
+            let mul_depth = mul_depth_base + i;
+
+            let mut circuits = Vec::with_capacity(instance_batch_size);
+            for _ in 0..instance_batch_size {
+                let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                circuits.push(circuit);
+            }
+            let (pk, _) = MarlinInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
+            pks.push(pk);
+            all_circuits.push(circuits);
+        }
+        // We need to create references to the circuits we just created
+        let all_circuit_refs = (0..circuit_batch_size)
+            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
+            .collect_vec();
+
+        for i in 0..circuit_batch_size {
+            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+        }
+        b.iter(|| MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap())
     });
 }
 
@@ -121,24 +126,74 @@ fn snark_verify(c: &mut Criterion) {
     c.bench_function("snark_verify", move |b| {
         let num_constraints = 100;
         let num_variables = 25;
+        let mul_depth = 1;
         let rng = &mut TestRng::default();
-
-        let x = Fr::rand(rng);
-        let y = Fr::rand(rng);
-        let mut z = x;
-        z.mul_assign(&y);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
         let proof = MarlinInst::prove(&fs_parameters, &pk, &circuit, rng).unwrap();
         b.iter(|| {
-            let verification = MarlinInst::verify(&fs_parameters, &vk, [z], &proof).unwrap();
+            let verification = MarlinInst::verify(&fs_parameters, &vk, public_inputs.as_slice(), &proof).unwrap();
+            assert!(verification);
+        })
+    });
+}
+
+fn snark_batch_verify(c: &mut Criterion) {
+    c.bench_function("snark_batch_verify", move |b| {
+        let num_constraints_base = 100;
+        let num_variables_base = 25;
+        let rng = &mut TestRng::default();
+
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 100).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let fs_parameters = FS::sample_parameters();
+
+        let circuit_batch_size = 5;
+        let instance_batch_size = 5;
+
+        let mut pks = Vec::with_capacity(circuit_batch_size);
+        let mut vks = Vec::with_capacity(circuit_batch_size);
+        let mut all_circuits = Vec::with_capacity(circuit_batch_size);
+        let mut all_inputs = Vec::with_capacity(circuit_batch_size);
+        let mut keys_to_constraints = BTreeMap::new();
+        let mut keys_to_inputs = BTreeMap::new();
+        for i in 0..circuit_batch_size {
+            let num_constraints = num_constraints_base + i;
+            let num_variables = num_variables_base + i;
+            let mul_depth = 1 + i;
+            let mut circuits = Vec::with_capacity(circuit_batch_size);
+            let mut inputs = Vec::with_capacity(circuit_batch_size);
+            for _ in 0..instance_batch_size {
+                let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                circuits.push(circuit);
+                inputs.push(public_inputs);
+            }
+            let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
+            pks.push(pk);
+            vks.push(vk);
+            all_circuits.push(circuits);
+            all_inputs.push(inputs);
+        }
+        // We need to create references to the circuits and inputs we just created
+        let all_circuit_refs = (0..circuit_batch_size)
+            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
+            .collect_vec();
+
+        for i in 0..circuit_batch_size {
+            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+            keys_to_inputs.insert(&vks[i], all_inputs[i].as_slice());
+        }
+
+        let proof = MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap();
+        b.iter(|| {
+            let verification = MarlinInst::verify_batch(&fs_parameters, &keys_to_inputs, &proof).unwrap();
             assert!(verification);
         })
     });
@@ -154,16 +209,12 @@ fn snark_vk_serialize(c: &mut Criterion) {
         };
         let num_constraints = 100;
         let num_variables = 25;
+        let mul_depth = 1;
         let rng = &mut TestRng::default();
-
-        let x = Fr::rand(rng);
-        let y = Fr::rand(rng);
-        let mut z = x;
-        z.mul_assign(&y);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
-        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         let mut bytes = Vec::with_capacity(10000);
@@ -193,16 +244,12 @@ fn snark_vk_deserialize(c: &mut Criterion) {
             let name = format!("{compress_name}_{validate_name}");
             let num_constraints = 100;
             let num_variables = 25;
+            let mul_depth = 1;
             let rng = &mut TestRng::default();
-
-            let x = Fr::rand(rng);
-            let y = Fr::rand(rng);
-            let mut z = x;
-            z.mul_assign(&y);
 
             let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
             let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
-            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
             let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             let mut bytes = Vec::with_capacity(10000);
@@ -223,9 +270,6 @@ fn snark_vk_deserialize(c: &mut Criterion) {
 fn snark_certificate_prove(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
-    let x = Fr::rand(rng);
-    let y = Fr::rand(rng);
-
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
     let fs_parameters = FS::sample_parameters();
@@ -235,7 +279,8 @@ fn snark_certificate_prove(c: &mut Criterion) {
         c.bench_function(&format!("snark_certificate_prove_{size}"), |b| {
             let num_constraints = size;
             let num_variables = size;
-            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+            let mul_depth = 1;
+            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
             let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
             b.iter(|| MarlinInst::prove_vk(fs_p, &vk, &pk).unwrap())
@@ -246,9 +291,6 @@ fn snark_certificate_prove(c: &mut Criterion) {
 fn snark_certificate_verify(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
-    let x = Fr::rand(rng);
-    let y = Fr::rand(rng);
-
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
     let fs_parameters = FS::sample_parameters();
@@ -258,7 +300,8 @@ fn snark_certificate_verify(c: &mut Criterion) {
         c.bench_function(&format!("snark_certificate_verify_{size}"), |b| {
             let num_constraints = size;
             let num_variables = size;
-            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+            let mul_depth = 1;
+            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
             let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             let certificate = MarlinInst::prove_vk(fs_p, &vk, &pk).unwrap();
 
@@ -270,7 +313,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_vk_serialize, snark_vk_deserialize, snark_certificate_prove, snark_certificate_verify,
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_batch_prove, snark_batch_verify, snark_vk_serialize, snark_vk_deserialize, snark_certificate_prove, snark_certificate_verify,
 }
 
 criterion_main!(marlin_snark);
