@@ -86,7 +86,7 @@ version = "0.1.15"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.70"
+version = "1.0.71"
 
 [dependencies.bincode]
 version = "1"
