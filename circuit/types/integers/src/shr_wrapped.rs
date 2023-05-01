@@ -75,29 +75,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
-                    let dividend_unsigned = self.abs_wrapped().cast_as_dual();
-                    // Note that `divisor_unsigned` is greater than zero since `shift_in_field` is greater than zero.
-                    let divisor_unsigned = shift_as_divisor.cast_as_dual();
+                    let unsigned_divided = self.abs_wrapped().cast_as_dual();
+                    // Note that `unsigned_divisor` is greater than zero since `shift_in_field` is greater than zero.
+                    let unsigned_divisor = shift_as_divisor.cast_as_dual();
 
                     // Compute the quotient and remainder using wrapped, unsigned division.
                     // Note that we do not invoke `div_wrapped` since we need the quotient AND the remainder.
-                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
-                    let (quotient_unsigned, remainder_field) = if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64
-                    {
-                        let (quotient_integer, remainder_integer) =
-                            dividend_unsigned.unsigned_division_via_witness(&divisor_unsigned);
-                        (quotient_integer, remainder_integer.to_field())
-                    } else {
-                        dividend_unsigned.unsigned_binary_long_division(&divisor_unsigned)
-                    };
+                    let (unsigned_quotient, unsigned_remainder) =
+                        unsigned_divided.unsigned_division_via_witness(&unsigned_divisor);
 
                     // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
-                    let quotient = Self { bits_le: quotient_unsigned.bits_le, phantom: Default::default() };
+                    let quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
                     let negated_quotient = &(!&quotient).add_wrapped(&Self::one());
 
                     // Arithmetic shift uses a different rounding mode than division.
                     let rounded_negated_quotient = Self::ternary(
-                        &remainder_field.is_equal(&Field::zero()),
+                        &unsigned_remainder.to_field().is_equal(&Field::zero()),
                         negated_quotient,
                         &(negated_quotient).sub_wrapped(&Self::one()),
                     );
@@ -130,16 +123,16 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrWrapped<Intege
             (Mode::Constant, _) => {
                 match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
                     (true, true) => Count::less_than(5 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 19),
-                    (true, false) => Count::less_than(5 * I::BITS, 0, (137 * I::BITS) + 17, (138 * I::BITS) + 22),
-                    (false, true) => Count::less_than(2 * I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 7, (4 * I::BITS) + (2 * index(I::BITS)) + 11),
-                    (false, false) => Count::less_than(2 * I::BITS, 0, (131 * I::BITS) + 13, (132 * I::BITS) + 14),
+                    (true, false) => Count::less_than(5 * I::BITS, 0, 1752, 1957),
+                    (false, true) => Count::less_than(I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 6, (4 * I::BITS) + (2 * index(I::BITS)) + 10),
+                    (false, false) => Count::less_than(I::BITS, 0, 979, 1180),
                 }
             }
             (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
                 (true, true) => Count::is(4 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 19),
-                (true, false) => Count::is(4 * I::BITS, 0, (137 * I::BITS) + 17, (138 * I::BITS) + 22),
-                (false, true) => Count::is(2 * I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 7, (4 * I::BITS) + (2 * index(I::BITS)) + 11),
-                (false, false) => Count::is(2 * I::BITS, 0, (131 * I::BITS) + 13, (132 * I::BITS) + 14),
+                (true, false) => Count::is(4 * I::BITS, 0, 1752, 1957),
+                (false, true) => Count::is(I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 6, (4 * I::BITS) + (2 * index(I::BITS)) + 10),
+                (false, false) => Count::is(I::BITS, 0, 979, 1180),
             },
         }
     }

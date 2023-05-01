@@ -14,28 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
 use crate::{
+    process::{Deployment, Execution, FinalizeRegisters, Load, Store},
     program::finalize::Command,
-    ConsensusStorage,
-    Deployment,
-    Execution,
-    FinalizeRegisters,
-    Load,
-    Store,
+    store::{ConsensusStorage, FinalizeTree, MerkleTreeUpdate},
     Transaction,
     VM,
 };
+use console::{
+    network::prelude::*,
+    program::{Identifier, Plaintext, ProgramID, Value},
+    types::Field,
+};
+
+use indexmap::{IndexMap, IndexSet};
 
 // TODO (raychu86): Move this out of `store/program`
 
 /// The speculative executor for the program state.
 #[derive(Clone)]
 pub struct Speculate<N: Network> {
-    /// The latest storage root.
+    /// The latest finalize root.
     /// This is used to ensure that the speculate state is building off the same state.
-    pub latest_storage_root: Field<N>,
+    pub latest_finalize_root: Field<N>,
 
     /// The list of transactions that have been processed. Including ones that have been rejected.
     pub processed_transactions: Vec<N::TransactionID>,
@@ -52,9 +53,9 @@ pub struct Speculate<N: Network> {
 
 impl<N: Network> Speculate<N> {
     /// Initializes a new instance of `Speculate`.
-    pub fn new(latest_storage_root: Field<N>) -> Self {
+    pub fn new(latest_finalize_root: Field<N>) -> Self {
         Self {
-            latest_storage_root,
+            latest_finalize_root,
             processed_transactions: Default::default(),
             accepted_transactions: Default::default(),
             speculate_state: Default::default(),
@@ -226,7 +227,7 @@ impl<N: Network> Speculate<N> {
                         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
                         // Construct the update operation. If the key ID does not exist, insert it.
-                        let operation = match vm.program_store().get_key_index(program_id, set.mapping_name(), &key)? {
+                        let operation = match vm.finalize_store().get_key_index(program_id, set.mapping_name(), &key)? {
                             Some(key_index) => {
                                 // Add an update value operation.
                                 MerkleTreeUpdate::UpdateValue(mapping_id, key_index as usize, key_id, value_id)
@@ -244,7 +245,7 @@ impl<N: Network> Speculate<N> {
 
                     // TODO (raychu86): Catch the panics here.
                     // Perform the speculative execution on the command.
-                    command.speculate_finalize(stack, vm.program_store(), &mut registers, self)?;
+                    command.speculate_finalize(stack, vm.finalize_store(), &mut registers, self)?;
                 }
             }
         }
@@ -264,8 +265,8 @@ impl<N: Network> Speculate<N> {
         transaction: &Transaction<N>,
     ) -> Result<bool> {
         // Check that the `VM` state is correct.
-        if vm.program_store().current_storage_root() != self.latest_storage_root {
-            bail!("The latest storage root does not match the VM storage root");
+        if vm.finalize_store().current_finalize_root() != self.latest_finalize_root {
+            bail!("The latest finalize root does not match the VM finalize root");
         }
 
         // Check that the transaction has not been processed.
@@ -321,21 +322,22 @@ impl<N: Network> Speculate<N> {
     }
 
     /// Finalize the speculate and build the merkle trees.
-    pub fn commit<C: ConsensusStorage<N>>(&self, vm: &VM<N, C>) -> Result<StorageTree<N>> {
+    pub fn commit<C: ConsensusStorage<N>>(&self, vm: &VM<N, C>) -> Result<FinalizeTree<N>> {
         // Check that the `VM` state is correct.
-        if vm.program_store().current_storage_root() != self.latest_storage_root {
-            bail!("The latest storage root does not match the VM storage root");
+        if vm.finalize_store().current_finalize_root() != self.latest_finalize_root {
+            bail!("The latest finalize root does not match the VM finalize root");
         }
 
-        // Fetch the current storage tree.
-        let storage_tree = vm.program_store().tree.read();
+        // Fetch the current finalize tree.
+        let finalize_tree_lock = vm.finalize_store().get_finalize_tree();
+        let finalize_tree = finalize_tree_lock.read();
 
         // Collect the operations.
         let all_operations = self.operations.values().flatten().collect::<Vec<_>>();
 
-        // If there are no operations, return the current storage tree.
+        // If there are no operations, return the current finalize tree.
         if all_operations.is_empty() {
-            return Ok(storage_tree.clone());
+            return Ok(finalize_tree.clone());
         }
 
         // Filter the operations to see if there is any overlap that we can discard.
@@ -367,7 +369,7 @@ impl<N: Network> Speculate<N> {
         let mut updated_program_trees = IndexMap::with_capacity(final_operations.len());
         for (program_id, operations) in final_operations {
             // Construct the program tree.
-            let program_tree = vm.program_store().storage.to_program_tree(&program_id, Some(&operations))?;
+            let program_tree = vm.finalize_store().to_program_tree(&program_id, Some(&operations))?;
 
             updated_program_trees.insert(program_id, program_tree);
         }
@@ -376,36 +378,35 @@ impl<N: Network> Speculate<N> {
         let mut updates = Vec::new();
         let mut appends = Vec::new();
         for (program_id, program_tree) in updated_program_trees.iter() {
-            // Construct the leaf for the storage tree.
+            // Construct the leaf for the finalize tree.
             let leaf = program_tree.root().to_bits_le();
 
             // // Specify the update or append operation.
-            match vm.program_store().contains_program(program_id)? {
-                true => match vm.program_store().storage.program_index_map().get(program_id)? {
-                    Some(index) => updates.push((usize::try_from(*index)?, leaf)),
+            match vm.finalize_store().contains_program(program_id)? {
+                true => match vm.finalize_store().get_program_index(program_id)? {
+                    Some(index) => updates.push((usize::try_from(index)?, leaf)),
                     None => bail!("No index found for program_id: {program_id}"),
                 },
                 false => appends.push(leaf),
             }
         }
 
-        // Add new programs to the storage tree.
-        let mut updated_storage_tree = storage_tree.prepare_append(&appends)?;
+        // Add new programs to the finalize tree.
+        let mut updated_finalize_tree = finalize_tree.prepare_append(&appends)?;
 
-        // Apply updates to the storage tree.
+        // Apply updates to the finalize tree.
         if !updates.is_empty() {
             // Sort the updates by descending order of indexes.
             updates.sort_by(|(a, _), (b, _)| b.cmp(a));
 
             // Apply the updates
-            updated_storage_tree.update_many(&updates)?;
+            updated_finalize_tree.update_many(&updates)?;
         }
 
-        // Return the storage tree.
-        Ok(updated_storage_tree)
+        // Return the finalize tree.
+        Ok(updated_finalize_tree)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -422,6 +423,7 @@ mod tests {
     };
     use console::{
         account::{Address, PrivateKey, ViewKey},
+        program::{Ciphertext, Record},
         types::Field,
     };
 
@@ -436,6 +438,7 @@ mod tests {
         vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
         private_key: &PrivateKey<CurrentNetwork>,
         previous_block: &Block<CurrentNetwork>,
+        unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<(String, Block<CurrentNetwork>)> {
         let program_name = format!("a{}.aleo", Alphanumeric.sample_string(rng, 8));
@@ -484,21 +487,16 @@ finalize transfer_public:
     set r6 into account[r1];"
         ))?;
 
-        // Fetch the unspent records.
-        let records =
-            previous_block.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-        trace!("Unspent Records:\n{:#?}", records);
-
         // Prepare the additional fee.
         let view_key = ViewKey::<CurrentNetwork>::try_from(private_key)?;
-        let credits = records.values().next().unwrap().decrypt(&view_key)?;
+        let credits = unspent_records.pop().unwrap().decrypt(&view_key)?;
         let additional_fee = (credits, 10);
 
         // Deploy.
         let transaction = Transaction::deploy(vm, private_key, &program, additional_fee, None, rng)?;
 
         // Construct the new block.
-        let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, rng)?;
+        let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, unspent_records, rng)?;
 
         Ok((program_name, next_block))
     }
@@ -509,6 +507,7 @@ finalize transfer_public:
         private_key: &PrivateKey<CurrentNetwork>,
         transactions: &[Transaction<CurrentNetwork>],
         previous_block: &Block<CurrentNetwork>,
+        unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Construct the new block header.
@@ -531,10 +530,53 @@ finalize transfer_public:
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
             Field::zero(),
+            Field::zero(),
             metadata,
         )?;
 
-        Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
+        let block = Block::new(private_key, previous_block.hash(), header, transactions, None, rng)?;
+
+        // Track the new records.
+        let new_records = previous_block
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+        unspent_records.extend(new_records);
+
+        Ok(block)
+    }
+
+    /// Generate split transactions for the unspent records.
+    fn generate_splits<R: Rng + CryptoRng>(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        private_key: &PrivateKey<CurrentNetwork>,
+        previous_block: &Block<CurrentNetwork>,
+        unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
+        rng: &mut R,
+    ) -> Result<Block<CurrentNetwork>> {
+        // Prepare the additional fee.
+        let view_key = ViewKey::<CurrentNetwork>::try_from(private_key)?;
+
+        // Generate split transactions.
+        let mut transactions = Vec::new();
+        while !unspent_records.is_empty() {
+            let record = unspent_records.pop().unwrap().decrypt(&view_key)?;
+
+            // Prepare the inputs.
+            let inputs = [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("10u64").unwrap()]
+                .into_iter();
+
+            // Execute.
+            let transaction =
+                Transaction::execute(vm, private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+
+            transactions.push(transaction);
+        }
+
+        // Construct the new block.
+        sample_next_block(vm, private_key, &transactions, previous_block, unspent_records, rng)
     }
 
     /// Create an execution transaction.
@@ -544,16 +586,27 @@ finalize transfer_public:
         program_id: &str,
         function_name: &str,
         inputs: Vec<Value<CurrentNetwork>>,
+        unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut TestRng,
     ) -> Transaction<CurrentNetwork> {
         assert!(vm.contains_program(&ProgramID::from_str(program_id).unwrap()));
 
-        // Authorize.
-        let authorization =
-            vm.authorize(&caller_private_key, program_id, function_name, inputs.into_iter(), rng).unwrap();
+        // Prepare the additional fee.
+        let view_key = ViewKey::<CurrentNetwork>::try_from(caller_private_key).unwrap();
+        let credits = unspent_records.pop().unwrap().decrypt(&view_key).unwrap();
+        let additional_fee = (credits, 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(vm, authorization, None, None, rng).unwrap();
+        let transaction = Transaction::execute(
+            vm,
+            &caller_private_key,
+            (program_id, function_name),
+            inputs.into_iter(),
+            Some(additional_fee),
+            None,
+            rng,
+        )
+        .unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction));
 
@@ -568,6 +621,7 @@ finalize transfer_public:
         program_id: &str,
         recipient: Address<CurrentNetwork>,
         amount: u64,
+        unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut TestRng,
     ) -> Transaction<CurrentNetwork> {
         let inputs = vec![
@@ -575,7 +629,7 @@ finalize transfer_public:
             Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
         ];
 
-        create_execution(vm, caller_private_key, program_id, "mint_public", inputs, rng)
+        create_execution(vm, caller_private_key, program_id, "mint_public", inputs, unspent_records, rng)
     }
 
     /// Sample a public transfer transaction.
@@ -585,6 +639,7 @@ finalize transfer_public:
         program_id: &str,
         recipient: Address<CurrentNetwork>,
         amount: u64,
+        unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut TestRng,
     ) -> Transaction<CurrentNetwork> {
         let inputs = vec![
@@ -592,7 +647,7 @@ finalize transfer_public:
             Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
         ];
 
-        create_execution(vm, caller_private_key, program_id, "transfer_public", inputs, rng)
+        create_execution(vm, caller_private_key, program_id, "transfer_public", inputs, unspent_records, rng)
     }
 
     #[test]
@@ -605,14 +660,14 @@ finalize transfer_public:
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
 
         // Check that `speculate_transaction` will fail if you try with the same transaction.
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).is_err());
 
         // Check that `speculate_transactions` will fail if you try with duplicate transactions.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
         assert!(
             speculate.speculate_transactions(&vm, &[deployment_transaction.clone(), deployment_transaction]).is_err()
         );
@@ -630,24 +685,24 @@ finalize transfer_public:
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
 
-        // Construct the new storage tree.
-        let new_storage_tree = speculate.commit(&vm).unwrap();
+        // Construct the new finalize tree.
+        let new_finalize_tree = speculate.commit(&vm).unwrap();
 
         // Perform the naive vm finalize.
         let transactions = Transactions::from(&[deployment_transaction]);
         vm.finalize(&transactions, None).unwrap();
         duplicate_vm.finalize(&transactions, Some(speculate)).unwrap();
 
-        // Fetch the expected storage tree.
-        let expected_storage_tree = vm.program_store().tree.read();
-        let duplicate_storage_tree = duplicate_vm.program_store().tree.read();
+        // Fetch the expected finalize tree.
+        let expected_finalize_root = vm.finalize_store().current_finalize_root();
+        let duplicate_finalize_root = duplicate_vm.finalize_store().current_finalize_root();
 
-        // Ensure that the storage trees are the same.
-        assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
-        assert_eq!(expected_storage_tree.root(), duplicate_storage_tree.root());
+        // Ensure that the finalize trees are the same.
+        assert_eq!(expected_finalize_root, *new_finalize_tree.root());
+        assert_eq!(expected_finalize_root, duplicate_finalize_root);
     }
 
     #[test]
@@ -668,23 +723,42 @@ finalize transfer_public:
         // Deploy a new program.
         let genesis =
             vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
-        let (program_id, deployment_block) = new_program_deployment(&vm, &caller_private_key, &genesis, rng).unwrap();
+
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
+        // Construct the deployment block.
+        let (program_id, deployment_block) =
+            new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
 
         // Add the deployment block to the VM.
         vm.add_next_block(&deployment_block, None).unwrap();
 
         // Construct a mint and a transfer.
-        let mint_transaction = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, rng);
-        let transfer_transaction =
-            sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 10, rng);
+        let mint_transaction =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
+        let transfer_transaction = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            10,
+            &mut unspent_records,
+            rng,
+        );
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
         assert!(speculate.speculate_transaction(&vm, &mint_transaction).unwrap());
         assert!(speculate.speculate_transaction(&vm, &transfer_transaction).unwrap());
 
-        // Construct the new storage tree.
-        let new_storage_tree = speculate.commit(&vm).unwrap();
+        // Construct the new finalize tree.
+        let new_finalize_tree = speculate.commit(&vm).unwrap();
 
         // Construct the next block
         let next_block = sample_next_block(
@@ -692,6 +766,7 @@ finalize transfer_public:
             &caller_private_key,
             &[mint_transaction, transfer_transaction],
             &deployment_block,
+            &mut unspent_records,
             rng,
         )
         .unwrap();
@@ -699,13 +774,13 @@ finalize transfer_public:
         // Add the block to the vm.
         vm.add_next_block(&next_block, None).unwrap();
 
-        // Fetch the expected storage tree.
-        let expected_storage_tree = vm.program_store().tree.read();
-        let storage_tree_from_scratch = vm.program_store().storage.to_storage_tree().unwrap();
+        // Fetch the expected finalize tree.
+        let expected_finalize_root = vm.finalize_store().current_finalize_root();
+        let finalize_tree_from_scratch = vm.finalize_store().to_finalize_tree().unwrap();
 
-        // Ensure that the storage trees are the same.
-        assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
-        assert_eq!(expected_storage_tree.root(), storage_tree_from_scratch.root());
+        // Ensure that the finalize trees are the same.
+        assert_eq!(expected_finalize_root, *new_finalize_tree.root());
+        assert_eq!(expected_finalize_root, *finalize_tree_from_scratch.root());
     }
 
     #[test]
@@ -726,32 +801,78 @@ finalize transfer_public:
         // Deploy a new program.
         let genesis =
             vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
-        let (program_id, deployment_block) = new_program_deployment(&vm, &caller_private_key, &genesis, rng).unwrap();
+
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
+        // Construct the deployment block.
+        let (program_id, deployment_block) =
+            new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
 
         // Add the deployment block to the VM.
         vm.add_next_block(&deployment_block, None).unwrap();
 
+        // Generate more records to use for the next block.
+        let splits_block =
+            generate_splits(&vm, &caller_private_key, &deployment_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block, None).unwrap();
+
         // Construct the initial mint.
-        let initial_mint = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, rng);
+        let initial_mint =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
         let initial_mint_block =
-            sample_next_block(&vm, &caller_private_key, &[initial_mint], &deployment_block, rng).unwrap();
+            sample_next_block(&vm, &caller_private_key, &[initial_mint], &splits_block, &mut unspent_records, rng)
+                .unwrap();
 
         // Add the block to the vm.
         vm.add_next_block(&initial_mint_block, None).unwrap();
 
         // Construct a mint and a transfer.
-        let mint_10 = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, rng);
-        let mint_20 = sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, rng);
-        let transfer_10 = sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 10, rng);
-        let transfer_20 = sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 20, rng);
-        let transfer_30 = sample_transfer_public(&vm, caller_private_key, &program_id, recipient_address, 30, rng);
+        let mint_10 =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
+        let mint_20 =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
+        let transfer_10 = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            10,
+            &mut unspent_records,
+            rng,
+        );
+        let transfer_20 = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            20,
+            &mut unspent_records,
+            rng,
+        );
+        let transfer_30 = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            30,
+            &mut unspent_records,
+            rng,
+        );
 
         // Starting Balance = 20
         // Mint_10 -> Balance = 20 + 10  = 30
         // Transfer_10 -> Balance = 30 - 10 = 20
         // Transfer_20 -> Balance = 20 - 20
         {
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
 
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
 
@@ -768,7 +889,7 @@ finalize transfer_public:
         // Mint_20 -> Balance = 10 + 20 = 30
         // Transfer_30 -> Balance = 30 - 30 = 0
         {
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
 
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
 
@@ -786,7 +907,7 @@ finalize transfer_public:
             let transactions = [transfer_20.clone(), transfer_10.clone()];
 
             // Assert that the first transaction is valid.
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
             assert_eq!(vec![transfer_20.id()], speculate.speculate_transactions(&vm, &transactions).unwrap());
         }
 
@@ -799,7 +920,7 @@ finalize transfer_public:
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20, transfer_10.clone()];
 
             // Assert that the first transaction is valid.
-            let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+            let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
             assert_eq!(
                 vec![mint_20.id(), transfer_30.id(), transfer_10.id()],
                 speculate.speculate_transactions(&vm, &transactions).unwrap()
@@ -822,20 +943,40 @@ finalize transfer_public:
         let genesis =
             vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
 
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
         // Sample program 1.
-        let (program_1, block_1) = new_program_deployment(&vm, &caller_private_key, &genesis, rng).unwrap();
+        let (program_1, block_1) =
+            new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
         vm.add_next_block(&block_1, None).unwrap();
 
         // Sample program 2.
-        let (program_2, block_2) = new_program_deployment(&vm, &caller_private_key, &block_1, rng).unwrap();
+        let (program_2, block_2) =
+            new_program_deployment(&vm, &caller_private_key, &block_1, &mut unspent_records, rng).unwrap();
         vm.add_next_block(&block_2, None).unwrap();
 
         // Sample program 3.
-        let (program_3, block_3) = new_program_deployment(&vm, &caller_private_key, &block_2, rng).unwrap();
+        let (program_3, block_3) =
+            new_program_deployment(&vm, &caller_private_key, &block_2, &mut unspent_records, rng).unwrap();
         vm.add_next_block(&block_3, None).unwrap();
 
-        // Ensure that the storage trees are the same.
-        assert_eq!(vm.program_store().tree.read().root(), vm.program_store().storage.to_storage_tree().unwrap().root());
+        // Ensure that the finalize trees are the same.
+        assert_eq!(
+            vm.finalize_store().current_finalize_root(),
+            *vm.finalize_store().to_finalize_tree().unwrap().root()
+        );
+
+        // Generate more records to use for the next block.
+        let splits_block = generate_splits(&vm, &caller_private_key, &block_3, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block, None).unwrap();
 
         // Generate many transactions.
         let programs = [program_1, program_2, program_3];
@@ -848,19 +989,31 @@ finalize transfer_public:
 
             // Generate a mint or transfer transaction
             let transaction = match rng.gen() {
-                true => {
-                    sample_mint_public(&vm, caller_private_key, program, caller_address, rng.gen_range(50..100), rng)
-                }
-                false => {
-                    sample_transfer_public(&vm, caller_private_key, program, caller_address, rng.gen_range(1..50), rng)
-                }
+                true => sample_mint_public(
+                    &vm,
+                    caller_private_key,
+                    program,
+                    caller_address,
+                    rng.gen_range(50..100),
+                    &mut unspent_records,
+                    rng,
+                ),
+                false => sample_transfer_public(
+                    &vm,
+                    caller_private_key,
+                    program,
+                    caller_address,
+                    rng.gen_range(1..50),
+                    &mut unspent_records,
+                    rng,
+                ),
             };
 
             transactions.push(transaction);
         }
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
         let accepted_transactions = speculate.speculate_transactions(&vm, &transactions).unwrap();
 
         // Keep the transactions that are accepted.
@@ -868,12 +1021,17 @@ finalize transfer_public:
             transactions.into_iter().filter(|transaction| accepted_transactions.contains(&transaction.id())).collect();
 
         // Sample the next block with the transactions.
-        let next_block = sample_next_block(&vm, &caller_private_key, &transactions, &block_3, rng).unwrap();
+        let next_block =
+            sample_next_block(&vm, &caller_private_key, &transactions, &splits_block, &mut unspent_records, rng)
+                .unwrap();
 
         // Add the block to the vm.
         vm.add_next_block(&next_block, Some(speculate)).unwrap();
 
-        // Ensure that the storage trees are the same.
-        assert_eq!(vm.program_store().tree.read().root(), vm.program_store().storage.to_storage_tree().unwrap().root());
+        // Ensure that the finalize trees are the same.
+        assert_eq!(
+            vm.finalize_store().current_finalize_root(),
+            *vm.finalize_store().to_finalize_tree().unwrap().root()
+        );
     }
 }

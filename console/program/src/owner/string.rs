@@ -16,24 +16,24 @@
 
 use super::*;
 
-impl<N: Network> FromStr for Owner<N> {
+impl<N: Network> FromStr for ProgramOwner<N> {
     type Err = Error;
 
-    /// Initializes the owner from a JSON-string.
+    /// Initializes the program owner from a JSON-string.
     fn from_str(owner: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(owner)?)
     }
 }
 
-impl<N: Network> Debug for Owner<N> {
-    /// Prints the owner as a JSON-string.
+impl<N: Network> Debug for ProgramOwner<N> {
+    /// Prints the program owner as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Owner<N> {
-    /// Displays the owner as a JSON-string.
+impl<N: Network> Display for ProgramOwner<N> {
+    /// Displays the program owner as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }

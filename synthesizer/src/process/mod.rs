@@ -27,7 +27,7 @@ use crate::{
     block::{Input, Transition},
     program::{Instruction, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
-    store::{ProgramStorage, ProgramStore},
+    store::{FinalizeStorage, FinalizeStore},
 };
 use console::{
     account::PrivateKey,
@@ -403,7 +403,7 @@ function compute:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ProgramMemory;
+    use crate::FinalizeMemory;
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
@@ -840,7 +840,7 @@ function hello_world:
         authorize_execute_and_verify(
             &program,
             Identifier::from_str("program_id").unwrap(),
-            Value::from_str(&format!("{}", program.id().to_address().unwrap())).unwrap(),
+            Value::from_str(&program.id().to_address().unwrap().to_string()).unwrap(),
             &caller_private_key,
             rng,
         );
@@ -1195,8 +1195,8 @@ finalize compute:
         // Reset the process.
         let mut process = Process::load().unwrap();
 
-        // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+        // Initialize a new finalize store.
+        let store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1295,8 +1295,8 @@ finalize compute:
         // Reset the process.
         let mut process = Process::load().unwrap();
 
-        // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+        // Initialize a new finalize store.
+        let store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1409,8 +1409,8 @@ finalize mint_public:
         // Reset the process.
         let mut process = Process::load().unwrap();
 
-        // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+        // Initialize a new finalize store.
+        let store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
@@ -1525,8 +1525,8 @@ finalize mint_public:
         // Reset the process.
         let mut process = Process::load().unwrap();
 
-        // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+        // Initialize a new finalize store.
+        let store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program0, rng).unwrap();
@@ -1654,8 +1654,8 @@ finalize compute:
         // Reset the process.
         let mut process = Process::load().unwrap();
 
-        // Initialize a new program store.
-        let store = ProgramStore::<_, ProgramMemory<_>>::open(None).unwrap();
+        // Initialize a new finalize store.
+        let store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
         // Add the program to the process.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();

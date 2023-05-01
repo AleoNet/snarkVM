@@ -19,7 +19,7 @@ use crate::{
     block::Transaction,
     cow_to_cloned,
     cow_to_copied,
-    process::{Deployment, Fee, Owner},
+    process::{Deployment, Fee},
     program::Program,
     snark::{Certificate, Proof, VerifyingKey},
     store::{
@@ -31,7 +31,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, ProgramID},
+    program::{Identifier, ProgramID, ProgramOwner},
 };
 
 use anyhow::Result;
@@ -46,8 +46,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type EditionMap: for<'a> Map<'a, ProgramID<N>, u16>;
     /// The mapping of `(program ID, edition)` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, (ProgramID<N>, u16), N::TransactionID>;
-    /// The mapping of `(program ID, edition)` to `Owner`.
-    type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), Owner<N>>;
+    /// The mapping of `(program ID, edition)` to `ProgramOwner`.
+    type OwnerMap: for<'a> Map<'a, (ProgramID<N>, u16), ProgramOwner<N>>;
     /// The mapping of `(program ID, edition)` to `program`.
     type ProgramMap: for<'a> Map<'a, (ProgramID<N>, u16), Program<N>>;
     /// The mapping of `(program ID, function name, edition)` to `verifying key`.
@@ -71,6 +71,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn edition_map(&self) -> &Self::EditionMap;
     /// Returns the reverse ID map.
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the program map.
     fn program_map(&self) -> &Self::ProgramMap;
     /// Returns the verifying key map.
@@ -81,8 +83,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the reverse fee map.
     fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
-    /// Returns the owner map.
-    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
@@ -411,7 +411,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     }
 
     /// Returns the owner for the given `program ID`.
-    fn get_owner(&self, program_id: &ProgramID<N>) -> Result<Option<Owner<N>>> {
+    fn get_owner(&self, program_id: &ProgramID<N>) -> Result<Option<ProgramOwner<N>>> {
         // TODO (raychu86): Consider program upgrades and edition changes.
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
@@ -466,7 +466,7 @@ pub struct DeploymentMemory<N: Network> {
     /// The reverse ID map.
     reverse_id_map: MemoryMap<(ProgramID<N>, u16), N::TransactionID>,
     /// The owner map.
-    owner_map: MemoryMap<(ProgramID<N>, u16), Owner<N>>,
+    owner_map: MemoryMap<(ProgramID<N>, u16), ProgramOwner<N>>,
     /// The program map.
     program_map: MemoryMap<(ProgramID<N>, u16), Program<N>>,
     /// The verifying key map.
@@ -486,7 +486,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, ProgramID<N>>;
     type EditionMap = MemoryMap<ProgramID<N>, u16>;
     type ReverseIDMap = MemoryMap<(ProgramID<N>, u16), N::TransactionID>;
-    type OwnerMap = MemoryMap<(ProgramID<N>, u16), Owner<N>>;
+    type OwnerMap = MemoryMap<(ProgramID<N>, u16), ProgramOwner<N>>;
     type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
     type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;

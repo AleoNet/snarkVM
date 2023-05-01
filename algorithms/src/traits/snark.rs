@@ -20,11 +20,18 @@ use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToB
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use std::{borrow::Borrow, fmt::Debug, sync::atomic::AtomicBool};
+use std::{borrow::Borrow, collections::BTreeMap, fmt::Debug, sync::atomic::AtomicBool};
 
-/// Defines a trait that describes preparing from an unprepared version to a prepare version.
+/// Defines trait that describes preparing from an unprepared version to a prepare version.
 pub trait Prepare {
     type Prepared;
+    fn prepare(&self) -> Self::Prepared;
+}
+
+/// Defines trait that describes preparing from an unprepared version to an orderable prepare version.
+pub trait PrepareOrd {
+    // NOTE: we keep this separate from Prepare because we also have unordered Prepared types
+    type Prepared: Ord;
     fn prepare(&self) -> Self::Prepared;
 }
 
@@ -51,7 +58,7 @@ pub trait SNARK {
         + Send
         + Sync;
     type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
-    type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
+    type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync + Ord;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
     type UniversalSetupConfig: Clone;
@@ -63,11 +70,12 @@ pub trait SNARK {
         + Sync
         + ToBytes
         + FromBytes
-        + Prepare
+        + PrepareOrd
         + for<'a> From<&'a Self::ProvingKey>
         + From<Self::ProvingKey>
         + ToConstraintField<Self::BaseField>
-        + ToMinimalBits;
+        + ToMinimalBits
+        + Ord;
 
     type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;
@@ -87,26 +95,27 @@ pub trait SNARK {
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        proving_key: &Self::ProvingKey,
-        input_and_witness: &[C],
+        keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_batch_with_terminator(fs_parameters, proving_key, input_and_witness, &AtomicBool::new(false), rng)
+        Self::prove_batch_with_terminator(fs_parameters, keys_to_constraints, &AtomicBool::new(false), rng)
     }
 
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        constraints: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_batch(fs_parameters, proving_key, std::slice::from_ref(input_and_witness), rng)
+        let mut keys_to_constraints = BTreeMap::new();
+        let constraints = [constraints];
+        keys_to_constraints.insert(proving_key, &constraints[..]);
+        Self::prove_batch(fs_parameters, &keys_to_constraints, rng)
     }
 
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        proving_key: &Self::ProvingKey,
-        input_and_witness: &[C],
+        keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
@@ -114,17 +123,14 @@ pub trait SNARK {
     fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        constraints: &C,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_batch_with_terminator(
-            fs_parameters,
-            proving_key,
-            std::slice::from_ref(input_and_witness),
-            terminator,
-            rng,
-        )
+        let mut keys_to_constraints = BTreeMap::new();
+        let constraints = [constraints];
+        keys_to_constraints.insert(proving_key, &constraints[..]);
+        Self::prove_batch_with_terminator(fs_parameters, &keys_to_constraints, terminator, rng)
     }
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
@@ -136,21 +142,25 @@ pub trait SNARK {
 
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
-        input: &[B],
+        keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
     fn verify_batch<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
-        verifying_key: &Self::VerifyingKey,
-        input: &[B],
+        keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        let preparation_time = start_timer!(|| "Preparing vk");
-        let processed_verifying_key = verifying_key.prepare();
+        let preparation_time = start_timer!(|| "Preparing vks");
+        let prepared_keys_to_inputs = keys_to_inputs
+            .iter()
+            .map(|(key, inputs)| {
+                let prepared_key = key.prepare();
+                (prepared_key, *inputs)
+            })
+            .collect::<BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
         end_timer!(preparation_time);
-        Self::verify_batch_prepared(fs_parameters, &processed_verifying_key, input, proof)
+        Self::verify_batch_prepared(fs_parameters, &prepared_keys_to_inputs, proof)
     }
 
     fn verify<B: Borrow<Self::VerifierInput>>(
@@ -159,6 +169,9 @@ pub trait SNARK {
         input: B,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        Self::verify_batch(fs_parameters, verifying_key, &[input], proof)
+        let mut keys_to_inputs = BTreeMap::new();
+        let inputs = [input];
+        keys_to_inputs.insert(verifying_key, &inputs[..]);
+        Self::verify_batch(fs_parameters, &keys_to_inputs, proof)
     }
 }

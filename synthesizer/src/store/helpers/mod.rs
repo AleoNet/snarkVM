@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod memory_map;
+#[cfg(feature = "rocks")]
+pub mod rocksdb;
 
 use console::network::prelude::*;
 

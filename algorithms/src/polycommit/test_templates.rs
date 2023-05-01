@@ -20,12 +20,14 @@ use super::sonic_pc::{
     BatchLCProof,
     BatchProof,
     Commitment,
+    CommitterUnionKey,
     Evaluations,
     LabeledCommitment,
     QuerySet,
     Randomness,
     SonicKZG10,
     VerifierKey,
+    VerifierUnionKey,
 };
 use crate::{
     fft::DensePolynomial,
@@ -59,8 +61,8 @@ struct TestInfo {
 pub struct TestComponents<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
     pub verification_key: VerifierKey<E>,
     pub commitments: Vec<LabeledCommitment<Commitment<E>>>,
-    pub query_set: QuerySet<'static, E::Fr>,
-    pub evaluations: Evaluations<'static, E::Fr>,
+    pub query_set: QuerySet<E::Fr>,
+    pub evaluations: Evaluations<E::Fr>,
     pub batch_lc_proof: Option<BatchLCProof<E>>,
     pub batch_proof: Option<BatchProof<E>>,
     pub randomness: Vec<Randomness<E>>,
@@ -96,6 +98,9 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let (ck, vk) =
             SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_degree, Some(degree_bounds.as_slice()))?;
         println!("Trimmed");
+
+        let ck = CommitterUnionKey::union(std::iter::once(&ck));
+        let vk = VerifierUnionKey::union(std::iter::once(&vk));
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
@@ -167,7 +172,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         println!("supported degree: {supported_degree:?}");
         println!("supported hiding bound: {supported_hiding_bound:?}");
         println!("num_points_in_query_set: {num_points_in_query_set:?}");
-        let (ck, vk) = SonicKZG10::<E, S>::trim(
+        let (ck, vk_orig) = SonicKZG10::<E, S>::trim(
             &pp,
             supported_degree,
             supported_lagrange_sizes,
@@ -175,6 +180,9 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
             degree_bounds,
         )?;
         println!("Trimmed");
+
+        let ck = CommitterUnionKey::union(std::iter::once(&ck));
+        let vk = VerifierUnionKey::union(std::iter::once(&vk_orig));
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, lagrange_polynomials, Some(rng)).unwrap();
 
@@ -206,7 +214,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
 
         test_components.push(TestComponents {
-            verification_key: vk,
+            verification_key: vk_orig,
             commitments: comms,
             query_set,
             evaluations: values,
@@ -289,9 +297,12 @@ where
         println!("supported degree: {supported_degree:?}");
         println!("supported hiding bound: {supported_hiding_bound:?}");
         println!("num_points_in_query_set: {num_points_in_query_set:?}");
-        let (ck, vk) =
+        let (ck, vk_orig) =
             SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
+
+        let ck = CommitterUnionKey::union(std::iter::once(&ck));
+        let vk = VerifierUnionKey::union(std::iter::once(&vk_orig));
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
@@ -323,7 +334,7 @@ where
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
 
         test_components.push(TestComponents {
-            verification_key: vk,
+            verification_key: vk_orig,
             commitments: comms,
             query_set,
             evaluations: values,
@@ -408,9 +419,12 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         println!("{num_polynomials}");
         println!("{enforce_degree_bounds}");
 
-        let (ck, vk) =
+        let (ck, vk_orig) =
             SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
+
+        let ck = CommitterUnionKey::union(std::iter::once(&ck));
+        let vk = VerifierUnionKey::union(std::iter::once(&vk_orig));
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
@@ -488,7 +502,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         assert!(result, "proof was incorrect, equations: {linear_combinations:#?}");
 
         test_components.push(TestComponents {
-            verification_key: vk,
+            verification_key: vk_orig,
             commitments: comms,
             query_set,
             evaluations: values,

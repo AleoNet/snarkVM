@@ -148,7 +148,7 @@ mod test {
 
         let mut v = vec![];
         idx.serialize_compressed(&mut v).unwrap();
-        let idx2 = Index::deserialize_compressed(&mut &v[..]).unwrap();
+        let idx2 = Index::deserialize_compressed(&v[..]).unwrap();
         assert_eq!(idx, idx2);
     }
 }

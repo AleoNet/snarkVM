@@ -21,7 +21,7 @@ mod string;
 
 use crate::{
     block::Transition,
-    process::{Authorization, Deployment, Execution, Fee, Owner},
+    process::{Authorization, Deployment, Execution, Fee},
     program::Program,
     vm::VM,
     ConsensusStorage,
@@ -35,6 +35,7 @@ use console::{
         Identifier,
         Plaintext,
         ProgramID,
+        ProgramOwner,
         Record,
         TransactionLeaf,
         TransactionPath,
@@ -48,14 +49,14 @@ use console::{
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Owner<N>, Box<Deployment<N>>, Fee<N>),
+    Deploy(N::TransactionID, ProgramOwner<N>, Box<Deployment<N>>, Fee<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn from_deployment(owner: Owner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
+    pub fn from_deployment(owner: ProgramOwner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
@@ -98,7 +99,7 @@ impl<N: Network> Transaction<N> {
         let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = Owner::new(private_key, id.into(), rng)?;
+        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
 
         // Initialize the transaction.
         Self::from_deployment(owner, deployment, fee)
@@ -169,6 +170,28 @@ impl<N: Network> Transaction<N> {
                     // Check if it calls 'credits.aleo/mint'.
                     if transition.program_id().to_string() == "credits.aleo"
                         && transition.function_name().to_string() == "mint"
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Otherwise, return 'false'.
+        false
+    }
+
+    /// Returns `true` if this is a `split` transaction.
+    #[inline]
+    pub fn is_split(&self) -> bool {
+        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/split'.
+        if let Self::Execute(_, execution, _) = self {
+            // Ensure there is 1 transition.
+            if execution.len() == 1 {
+                // Retrieve the transition.
+                if let Ok(transition) = execution.get(0) {
+                    // Check if it calls 'credits.aleo/split'.
+                    if transition.program_id().to_string() == "credits.aleo"
+                        && transition.function_name().to_string() == "split"
                     {
                         return true;
                     }

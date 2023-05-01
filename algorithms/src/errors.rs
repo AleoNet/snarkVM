@@ -43,6 +43,9 @@ pub enum SNARKError {
     #[error("Batch size was different between public input and proof")]
     BatchSizeMismatch,
 
+    #[error("Circuit not found")]
+    CircuitNotFound,
+
     #[error("terminated")]
     Terminated,
 }

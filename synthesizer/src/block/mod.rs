@@ -149,6 +149,11 @@ impl<N: Network> Block<N> {
         self.header.transactions_root()
     }
 
+    /// Returns the finalize root in the block header.
+    pub const fn finalize_root(&self) -> Field<N> {
+        self.header.finalize_root()
+    }
+
     /// Returns the metadata in the block header.
     pub const fn metadata(&self) -> &Metadata<N> {
         self.header.metadata()

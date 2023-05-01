@@ -29,7 +29,7 @@ use crate::{
     process,
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
-    store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
+    store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
     Speculate,
 };
@@ -61,12 +61,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Check that the storage contains the credits mapping. If not, initialize it.
         let credits = Program::<N>::credits()?;
-        let program_store = store.program_store();
+        let finalize_store = store.finalize_store();
         for mapping in credits.mappings().values() {
             let program_id = credits.id();
             let mapping_name = mapping.name();
-            if !program_store.contains_mapping(program_id, mapping_name)? {
-                program_store.initialize_mapping(program_id, mapping_name)?;
+            if !finalize_store.contains_mapping(program_id, mapping_name)? {
+                finalize_store.initialize_mapping(program_id, mapping_name)?;
             }
         }
 
@@ -115,10 +115,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.process.clone()
     }
 
-    /// Returns the program store.
+    /// Returns the finalize store.
     #[inline]
-    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
-        self.store.program_store()
+    pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
+        self.store.finalize_store()
     }
 
     /// Returns the block store.
@@ -458,6 +458,7 @@ function compute:
         let header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
+            vm.finalize_store().current_finalize_root(),
             Field::zero(),
             metadata,
         )?;
