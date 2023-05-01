@@ -115,9 +115,9 @@ fn bench_multiple_operations(c: &mut Criterion) {
     workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
         Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
     }));
-    //workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
-    //    Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
-    //}));
+    workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
+        Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
+    }));
 
     bench_speculate(c, &workloads)
 }
@@ -133,9 +133,9 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
         Box::new(StaticGetOrInit::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
     }));
-    //workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
-    //    Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
-    //}));
+    workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
+        Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
+    }));
 
     bench_speculate(c, &workloads)
 }
