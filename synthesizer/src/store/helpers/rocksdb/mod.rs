@@ -23,8 +23,8 @@ pub use block::*;
 mod consensus;
 pub use consensus::*;
 
-mod finalize;
-pub use finalize::*;
+mod program;
+pub use program::*;
 
 mod transaction;
 pub use transaction::*;
