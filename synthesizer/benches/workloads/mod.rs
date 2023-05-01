@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod get;
+pub mod credits;
+pub use credits::*;
 
+pub mod get;
 pub use get::*;
-use itertools::Itertools;
-use std::iter;
 
 pub mod get_or_init;
 pub use get_or_init::*;
@@ -29,6 +29,9 @@ pub use set::*;
 use crate::utilities::{Operation, Workload};
 
 use console::prelude::Network;
+
+use itertools::Itertools;
+use std::iter;
 
 type Setups<N> = Vec<Vec<Operation<N>>>;
 type Benchmarks<N> = Vec<(String, Vec<Operation<N>>)>;

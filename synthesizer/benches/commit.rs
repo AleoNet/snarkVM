@@ -98,17 +98,12 @@ pub fn bench_commit(c: &mut Criterion, workloads: &[Box<dyn Workload<Testnet3>>]
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workloads.
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
-    //workloads.extend(NUM_COMMANDS.iter().map(|num_commands| Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>));
-    workloads.extend(
-        NUM_COMMANDS
-            .iter()
-            .map(|num_commands| Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>),
-    );
-    workloads.extend(
-        NUM_COMMANDS
-            .iter()
-            .map(|num_commands| Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>),
-    );
+    for num_commands in NUM_COMMANDS {
+        //workloads.push(Box::new(StaticGet::new(1, *num_commands, 1, 1) as Box<dyn Workload<Testnet3>>));
+        workloads.push(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(MintPublic::new(1)) as Box<dyn Workload<Testnet3>>);
+    }
 
     bench_commit(c, &workloads)
 }
@@ -117,13 +112,13 @@ fn bench_multiple_operations(c: &mut Criterion) {
     // Initialize the workloads.
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
     let max_commands = *NUM_COMMANDS.last().unwrap();
-    //workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| Box::new(StaticGet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>));
-    workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
-        Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
-    }));
-    workloads.extend(NUM_EXECUTIONS.iter().map(|num_executions| {
-        Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>
-    }));
+    for num_executions in NUM_EXECUTIONS {
+        //workloads.push(Box::new(StaticGet::new(1, max_commands, *num_executions, 1) as Box<dyn Workload<Testnet3>>));
+        workloads
+            .push(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Workload<Testnet3>>);
+        workloads.push(Box::new(MintPublic::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
+    }
 
     bench_commit(c, &workloads)
 }
@@ -133,15 +128,14 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     let max_commands = *NUM_COMMANDS.last().unwrap();
     let max_executions = *NUM_EXECUTIONS.last().unwrap();
     let mut workloads: Vec<Box<dyn Workload<Testnet3>>> = vec![];
-    //workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
-    //    Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
-    //}));
-    workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
-        Box::new(StaticGetOrInit::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
-    }));
-    workloads.extend(NUM_PROGRAMS.iter().map(|num_programs| {
-        Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
-    }));
+    for num_programs in NUM_PROGRAMS {
+        //workloads.push(Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs) as Box<dyn Workload<Testnet3>>));
+        workloads.push(Box::new(StaticGetOrInit::new(1, max_commands, max_executions, *num_programs))
+            as Box<dyn Workload<Testnet3>>);
+        workloads.push(
+            Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs)) as Box<dyn Workload<Testnet3>>
+        );
+    }
 
     bench_commit(c, &workloads)
 }
