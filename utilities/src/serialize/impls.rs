@@ -661,9 +661,9 @@ mod test {
         for (compress, validate) in combinations {
             let len = serialized_vec_size_without_len(&data, compress);
             let mut serialized = vec![0; len];
-            serialize_vec_without_len(data.iter(), &mut serialized[..], compress).unwrap();
+            serialize_vec_without_len(data.iter(), serialized.as_mut_slice(), compress).unwrap();
             let elements = if len > 0 { len / CanonicalSerialize::serialized_size(&data[0], compress) } else { 0 };
-            let de = deserialize_vec_without_len(&mut &serialized[..], compress, validate, elements).unwrap();
+            let de = deserialize_vec_without_len(serialized.as_slice(), compress, validate, elements).unwrap();
             assert_eq!(data, de);
         }
     }
