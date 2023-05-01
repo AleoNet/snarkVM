@@ -71,7 +71,7 @@ pub trait MapRead<
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
 >
 {
-    type BatchedIterator: Iterator<Item = (Cow<'a, K>, Option<Cow<'a, V>>)>;
+    type PendingIterator: Iterator<Item = (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Iterator: Iterator<Item = (Cow<'a, K>, Cow<'a, V>)>;
     type Keys: Iterator<Item = Cow<'a, K>>;
     type Values: Iterator<Item = Cow<'a, V>>;
@@ -79,7 +79,7 @@ pub trait MapRead<
     ///
     /// Returns `true` if the given key exists in the map.
     ///
-    fn contains_key<Q>(&self, key: &Q) -> Result<bool>
+    fn contains_key_confirmed<Q>(&self, key: &Q) -> Result<bool>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
@@ -87,7 +87,7 @@ pub trait MapRead<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
+    fn get_confirmed<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
@@ -100,15 +100,10 @@ pub trait MapRead<
     /// If the key is removed in the batch, returns `Some(None)`.
     /// If the key is inserted in the batch, returns `Some(Some(value))`.
     ///
-    fn get_batched<Q>(&self, key: &Q) -> Option<Option<V>>
+    fn get_pending<Q>(&self, key: &Q) -> Option<Option<V>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
-
-    ///
-    /// Returns an iterator visiting each key-value pair in the atomic batch.
-    ///
-    fn batched_iter(&'a self) -> Self::BatchedIterator;
 
     ///
     /// Returns the value for the given key from the atomic batch first, if it exists,
@@ -120,10 +115,10 @@ pub trait MapRead<
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         // Return early in case of errors in order to not conceal them.
-        let map_value = self.get(key)?;
+        let map_value = self.get_confirmed(key)?;
 
         // Retrieve the atomic batch value, if it exists.
-        let atomic_batch_value = self.get_batched(key);
+        let atomic_batch_value = self.get_pending(key);
 
         // Return the atomic batch value, if it exists, or the map value, otherwise.
         match atomic_batch_value {
@@ -134,19 +129,24 @@ pub trait MapRead<
     }
 
     ///
+    /// Returns an iterator visiting each key-value pair in the atomic batch.
+    ///
+    fn iter_pending(&'a self) -> Self::PendingIterator;
+
+    ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
-    fn iter(&'a self) -> Self::Iterator;
+    fn iter_confirmed(&'a self) -> Self::Iterator;
 
     ///
     /// Returns an iterator over each key in the map.
     ///
-    fn keys(&'a self) -> Self::Keys;
+    fn keys_confirmed(&'a self) -> Self::Keys;
 
     ///
     /// Returns an iterator over each value in the map.
     ///
-    fn values(&'a self) -> Self::Values;
+    fn values_confirmed(&'a self) -> Self::Values;
 }
 
 /// This macro executes the given block of operations as a new atomic write batch IFF there is no
