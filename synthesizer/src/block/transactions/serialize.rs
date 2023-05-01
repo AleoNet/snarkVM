@@ -95,7 +95,7 @@ mod tests {
             let transaction = if i % 2 == 0 {
                 crate::vm::test_helpers::sample_deployment_transaction(rng)
             } else {
-                crate::vm::test_helpers::sample_execution_transaction(rng)
+                crate::vm::test_helpers::sample_execution_transaction_with_fee(rng)
             };
 
             // Construct the transactions.
@@ -125,7 +125,7 @@ mod tests {
 
         for transaction in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::vm::test_helpers::sample_execution_transaction(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
         ] {
             for i in 0..ITERATIONS {
                 // Construct the transactions.

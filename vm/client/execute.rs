@@ -24,13 +24,14 @@ impl<N: Network> Client<N> {
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
         inputs: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>>,
-    ) -> Result<(Response<N>, Transaction<N>)> {
+        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+    ) -> Result<(Response<N>, Response<N>, Transaction<N>)> {
         let rng = &mut rand::thread_rng();
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
 
         // Initialize the query.
-        let query: Query<N, BlockMemory<_>> = (&self.base_url).into();
+        let query: Query<N, BlockMemory<_>> = (&self.node_url().to_string()).into();
         // Check if the program exists.
         if !self.vm.contains_program(&program_id) {
             match query.get_program(&program_id) {
@@ -43,15 +44,20 @@ impl<N: Network> Client<N> {
         // Compute the authorization.
         let authorization = self.vm.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Compute the execution.
-        let (response, execution, _) = self.vm.execute(authorization, Some(query), rng)?;
+        let (response, execution, _) = self.vm.execute(authorization, Some(query.clone()), rng)?;
+        // Execute the fee.
+        let (fee_response, fee, _) =
+            self.vm.execute_fee(private_key, credits, fee_in_microcredits, Some(query), rng)?;
+
         // Return the response and transaction.
-        Ok((response, Transaction::from_execution(execution, None)?))
+        Ok((response, fee_response, Transaction::from_execution(execution, Some(fee))?))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::console::program::{Entry, Literal, Plaintext};
 
     use core::str::FromStr;
     use std::convert::TryFrom;
@@ -71,16 +77,25 @@ mod tests {
 
         // Scan for the record.
         let records = client.scan(private_key, 14200..14300).unwrap();
-        assert_eq!(records.len(), 1);
+        assert_eq!(records.len(), 2);
         let (_commitment, record) = records[0].clone();
+        let (_commitment, fee_record) = records[0].clone();
 
         // Decrypt the record.
         let record = record.decrypt(&view_key).unwrap();
+        let amount = match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
+            Entry::Private(Plaintext::Literal(Literal::<N>::U64(amount), _)) => amount,
+            _ => unreachable!(),
+        };
+        //Decrypt the fee record.
+        let fee_record = fee_record.decrypt(&view_key).unwrap();
+
         // Prepare the inputs.
-        let inputs = [record.to_string(), address.to_string(), (**record.gates()).to_string()];
+        let inputs = [record.to_string(), address.to_string(), (**amount).to_string()];
         // Execute the program.
-        let (_response, transaction) = client.execute(&private_key, "credits.aleo", "transfer", inputs).unwrap();
-        assert_eq!(transaction.transitions().count(), 1);
+        let (_response, _fee_response, transaction) =
+            client.execute(&private_key, "credits.aleo", "transfer", inputs, (fee_record, 10)).unwrap();
+        assert_eq!(transaction.transitions().count(), 2);
 
         // let response = reqwest::blocking::Client::new()
         //     .post(format!("{}/testnet3/transaction/broadcast", client.base_url))

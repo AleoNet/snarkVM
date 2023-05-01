@@ -23,7 +23,6 @@ use std::borrow::Borrow;
 
 pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send>:
     From<T>
-    + Borrow<T>
     + Deref<Target = T>
     + Clone
     + Debug

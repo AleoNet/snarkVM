@@ -19,17 +19,17 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{FinalizeType, Register},
+    program::{PlaintextType, Register},
 };
 
 /// An input statement defines an input argument to finalize, and is of the form
-/// `input {register} as {finalize_type}`.
+/// `input {register} as {plaintext_type}`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.
     register: Register<N>,
-    /// The input finalize type.
-    finalize_type: FinalizeType<N>,
+    /// The input plaintext type.
+    plaintext_type: PlaintextType<N>,
 }
 
 impl<N: Network> Input<N> {
@@ -39,10 +39,10 @@ impl<N: Network> Input<N> {
         &self.register
     }
 
-    /// Returns the input finalize type.
+    /// Returns the input plaintext type.
     #[inline]
-    pub const fn finalize_type(&self) -> &FinalizeType<N> {
-        &self.finalize_type
+    pub const fn plaintext_type(&self) -> &PlaintextType<N> {
+        &self.plaintext_type
     }
 }
 

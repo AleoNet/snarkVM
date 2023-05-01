@@ -19,13 +19,9 @@ use super::*;
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Returns the entry from the given path.
     pub fn find(&self, path: &[Identifier<A>]) -> Result<Entry<A, Plaintext<A>>> {
-        // If the path is of length one, check if the path is requesting the `owner` or `gates`.
-        if path.len() == 1 {
-            if path[0] == Identifier::from_str("owner")? {
-                return Ok(self.owner.to_entry());
-            } else if path[0] == Identifier::from_str("gates")? {
-                return Ok(self.gates.to_entry());
-            }
+        // If the path is of length one, check if the path is requesting the `owner`.
+        if path.len() == 1 && path[0] == Identifier::from_str("owner")? {
+            return Ok(self.owner.to_entry());
         }
 
         // Ensure the path is not empty.

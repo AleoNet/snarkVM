@@ -38,11 +38,8 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
             equal = equal & name_a.is_equal(name_b) & entry_a.is_equal(entry_b);
         }
 
-        // Check the `owner`, `gates`, `data`, and `nonce`.
-        self.owner.is_equal(&other.owner)
-            & self.gates.is_equal(&other.gates)
-            & equal
-            & self.nonce.is_equal(&other.nonce)
+        // Check the `owner`, `data`, and `nonce`.
+        self.owner.is_equal(&other.owner) & equal & self.nonce.is_equal(&other.nonce)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
@@ -55,11 +52,8 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
             not_equal = not_equal | name_a.is_not_equal(name_b) | entry_a.is_not_equal(entry_b);
         }
 
-        // Check the `owner`, `gates`, `data`, and `nonce`.
-        self.owner.is_not_equal(&other.owner)
-            | self.gates.is_not_equal(&other.gates)
-            | not_equal
-            | self.nonce.is_not_equal(&other.nonce)
+        // Check the `owner`, `data`, and `nonce`.
+        self.owner.is_not_equal(&other.owner) | not_equal | self.nonce.is_not_equal(&other.nonce)
     }
 }
 
@@ -74,7 +68,6 @@ mod tests {
         Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
             r"{
     owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
-    gates: 0u64.private,
     a: true.private,
     b: 123456789field.public,
     c: 0group.private,
@@ -93,7 +86,6 @@ mod tests {
         Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
             r"{
     owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
-    gates: 0u64.private,
     a: true.public,
     b: 123456789field.public,
     c: 0group.private,

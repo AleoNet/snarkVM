@@ -23,7 +23,6 @@ use std::borrow::Borrow;
 
 pub trait Bech32ID<F: FieldTrait>:
     From<F>
-    + Borrow<F>
     + Deref<Target = F>
     + Into<Vec<F>>
     + Uniform

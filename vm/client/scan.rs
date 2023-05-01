@@ -41,7 +41,7 @@ impl<N: Network> Client<N> {
             let end_height = start_height + 50;
 
             // Prepare the URL.
-            let url = format!("{}/testnet3/blocks/phase2/{start_height}.{end_height}.blocks", self.base_url);
+            let url = format!("{}/testnet3/blocks/phase3/{start_height}.{end_height}.blocks", self.node_url());
             // Request the blocks.
             let blocks_bytes = match reqwest::blocking::get(&url) {
                 Ok(response) => match response.bytes() {

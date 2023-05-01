@@ -23,7 +23,7 @@ impl<N: Network> Serialize for Transition<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transition = serializer.serialize_struct("Transition", 10)?;
+                let mut transition = serializer.serialize_struct("Transition", 9)?;
                 transition.serialize_field("id", &self.id)?;
                 transition.serialize_field("program", &self.program_id)?;
                 transition.serialize_field("function", &self.function_name)?;
@@ -35,7 +35,6 @@ impl<N: Network> Serialize for Transition<N> {
                 transition.serialize_field("proof", &self.proof)?;
                 transition.serialize_field("tpk", &self.tpk)?;
                 transition.serialize_field("tcm", &self.tcm)?;
-                transition.serialize_field("fee", &self.fee)?;
                 transition.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -74,8 +73,6 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     DeserializeExt::take_from_value::<D>(&mut transition, "tpk")?,
                     // Retrieve the `tcm`.
                     DeserializeExt::take_from_value::<D>(&mut transition, "tcm")?,
-                    // Retrieve the fee.
-                    DeserializeExt::take_from_value::<D>(&mut transition, "fee")?,
                 )
                 .map_err(de::Error::custom)?;
 

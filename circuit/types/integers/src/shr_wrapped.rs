@@ -62,6 +62,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                 // Calculate the value of the shift directly in the field.
                 // Since 2^{rhs} < Integer::MAX, we know that the operation will not overflow Integer::MAX or the field modulus.
                 let two = Field::one() + Field::one();
+                // Note that `shift_in_field` is always greater than zero and does not wrap around the field modulus.
                 let mut shift_in_field = Field::one();
                 for bit in rhs.bits_le[..first_upper_bit_index].iter().rev() {
                     shift_in_field = shift_in_field.square();
@@ -74,39 +75,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
-                    let dividend_unsigned = self.abs_wrapped().cast_as_dual();
-                    let divisor_unsigned = shift_as_divisor.cast_as_dual();
+                    let unsigned_divided = self.abs_wrapped().cast_as_dual();
+                    // Note that `unsigned_divisor` is greater than zero since `shift_in_field` is greater than zero.
+                    let unsigned_divisor = shift_as_divisor.cast_as_dual();
 
-                    let dividend = dividend_unsigned.eject_value();
-                    let divisor = divisor_unsigned.eject_value();
-
-                    // Wrapping operations are safe since unsigned division never overflows.
-                    let quotient_unsigned = Integer::<E, I::Dual>::new(
-                        Mode::Private,
-                        console::Integer::new(dividend.wrapping_div(&divisor)),
-                    );
-                    let remainder_unsigned = Integer::<E, I::Dual>::new(
-                        Mode::Private,
-                        console::Integer::new(dividend.wrapping_rem(&divisor)),
-                    );
-
-                    // Ensure that Euclidean division holds for these values in the base field.
-                    let remainder_field = remainder_unsigned.to_field();
-                    E::assert_eq(
-                        dividend_unsigned.to_field(),
-                        quotient_unsigned.to_field() * divisor_unsigned.to_field() + &remainder_field,
-                    );
-
-                    // Ensure that the remainder is less than the divisor.
-                    E::assert(remainder_unsigned.is_less_than(&divisor_unsigned));
+                    // Compute the quotient and remainder using wrapped, unsigned division.
+                    // Note that we do not invoke `div_wrapped` since we need the quotient AND the remainder.
+                    let (unsigned_quotient, unsigned_remainder) =
+                        unsigned_divided.unsigned_division_via_witness(&unsigned_divisor);
 
                     // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
-                    let quotient = Self { bits_le: quotient_unsigned.bits_le, phantom: Default::default() };
+                    let quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
                     let negated_quotient = &(!&quotient).add_wrapped(&Self::one());
 
                     // Arithmetic shift uses a different rounding mode than division.
                     let rounded_negated_quotient = Self::ternary(
-                        &remainder_field.is_equal(&Field::zero()),
+                        &unsigned_remainder.to_field().is_equal(&Field::zero()),
                         negated_quotient,
                         &(negated_quotient).sub_wrapped(&Self::one()),
                     );
@@ -125,6 +109,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrWrapped<Intege
 {
     type Case = (Mode, Mode);
 
+    #[rustfmt::skip]
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
         let index = |num_bits: u64| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
@@ -132,31 +117,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrWrapped<Intege
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match I::is_signed() {
-            // Signed case
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) => Count::is(
-                    4 * I::BITS,
-                    0,
-                    (6 * I::BITS) + (2 * index(I::BITS)) + 9,
-                    (6 * I::BITS) + (2 * index(I::BITS)) + 14,
-                ),
-                (_, _) => Count::is(
-                    3 * I::BITS,
-                    0,
-                    (9 * I::BITS) + (2 * index(I::BITS)) + 10,
-                    (9 * I::BITS) + (2 * index(I::BITS)) + 16,
-                ),
-            },
-            // Unsigned case
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) | (_, _) => {
-                    Count::is(0, 0, (3 * I::BITS) + (2 * index(I::BITS)) + 5, (3 * I::BITS) + (2 * index(I::BITS)) + 7)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (Mode::Constant, _) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(5 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 19),
+                    (true, false) => Count::less_than(5 * I::BITS, 0, 1752, 1957),
+                    (false, true) => Count::less_than(I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 6, (4 * I::BITS) + (2 * index(I::BITS)) + 10),
+                    (false, false) => Count::less_than(I::BITS, 0, 979, 1180),
                 }
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(4 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 19),
+                (true, false) => Count::is(4 * I::BITS, 0, 1752, 1957),
+                (false, true) => Count::is(I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 6, (4 * I::BITS) + (2 * index(I::BITS)) + 10),
+                (false, false) => Count::is(I::BITS, 0, 979, 1180),
             },
         }
     }
@@ -199,9 +175,8 @@ mod tests {
             let candidate = a.shr_wrapped(&b);
             assert_eq!(expected, *candidate.eject_value());
             assert_eq!(console::Integer::new(expected), candidate.eject_value());
-            // assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-            // assert_output_mode!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+            assert_output_mode!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
         Circuit::reset();
     }

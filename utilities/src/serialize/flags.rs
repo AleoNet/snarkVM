@@ -36,10 +36,11 @@ impl Flags for EmptyFlags {
 
 /// Flags to be encoded into the serialization.
 /// The default flags (empty) should not change the binary representation.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub enum SWFlags {
     Infinity,
     PositiveY,
+    #[default]
     NegativeY,
 }
 
@@ -66,14 +67,6 @@ impl SWFlags {
             SWFlags::PositiveY => Some(true),
             SWFlags::NegativeY => Some(false),
         }
-    }
-}
-
-impl Default for SWFlags {
-    #[inline]
-    fn default() -> Self {
-        // NegativeY doesn't change the serialization
-        SWFlags::NegativeY
     }
 }
 
@@ -108,9 +101,10 @@ impl Flags for SWFlags {
 
 /// Flags to be encoded into the serialization.
 /// The default flags (empty) should not change the binary representation.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub enum EdwardsFlags {
     PositiveY,
+    #[default]
     NegativeY,
 }
 
@@ -126,14 +120,6 @@ impl EdwardsFlags {
             EdwardsFlags::PositiveY => true,
             EdwardsFlags::NegativeY => false,
         }
-    }
-}
-
-impl Default for EdwardsFlags {
-    #[inline]
-    fn default() -> Self {
-        // NegativeY doesn't change the serialization
-        EdwardsFlags::NegativeY
     }
 }
 

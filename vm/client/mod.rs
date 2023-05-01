@@ -25,7 +25,7 @@ use reqwest::Url;
 use crate::{
     console::{
         account::{PrivateKey, ViewKey},
-        program::{Ciphertext, Field, Identifier, Network, ProgramID, Record, Response, Value},
+        program::{Ciphertext, Field, Identifier, Network, Plaintext, ProgramID, Record, Response, Value},
     },
     synthesizer::{Block, BlockMemory, ConsensusMemory, ConsensusStore, Program, Query, Transaction, VM},
 };
@@ -48,7 +48,14 @@ impl<N: Network> Client<N> {
 
     /// Returns the node URL.
     pub fn node_url(&self) -> &str {
-        self.base_url.as_str()
+        let mut base_url_str = self.base_url.as_str();
+
+        // Remove the trailing slash if it exists.
+        if base_url_str.ends_with('/') {
+            base_url_str = &base_url_str[..base_url_str.len().saturating_sub(1)];
+        }
+
+        base_url_str
     }
 
     /// Returns the underlying REST client.
