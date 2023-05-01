@@ -71,6 +71,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn edition_map(&self) -> &Self::EditionMap;
     /// Returns the reverse ID map.
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the program map.
     fn program_map(&self) -> &Self::ProgramMap;
     /// Returns the verifying key map.
@@ -81,8 +83,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the reverse fee map.
     fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
-    /// Returns the owner map.
-    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the transition storage.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
 
