@@ -44,39 +44,35 @@ use std::{
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-/// The depth of the Merkle tree for the programs.
-pub const PROGRAMS_DEPTH: u8 = 32;
-/// The depth of the Merkle tree for each program.
-pub const PROGRAM_DEPTH: u8 = 5;
-// TODO (raychu86): Handle different Merkle tree depths for different keys types.
-//  i.e. `u8` and `address` keys should have different depths.
-/// The depth of the Merkle tree for each mapping.
-pub const MAPPING_DEPTH: u8 = 32;
+/// The depth of the finalize tree. See `FinalizeTree` for a description of the Merkle tree.
+pub const FINALIZE_TREE_DEPTH: u8 = 32;
+/// The depth of the program tree. See `ProgramTree` for a description of the Merkle tree.
+pub const PROGRAM_TREE_DEPTH: u8 = 5;
+/// The depth of the mapping tree. See `MappingTree` for a description of the Merkle tree.
+pub const MAPPING_TREE_DEPTH: u8 = 32;
 
-/// The Merkle tree for the program state.
-pub type StorageTree<N> = BHPMerkleTree<N, PROGRAMS_DEPTH>;
-/// The merkle tree for each program.
-pub type ProgramTree<N> = BHPMerkleTree<N, PROGRAM_DEPTH>;
-/// The merkle tree for the mapping state.
-pub type MappingTree<N> = BHPMerkleTree<N, MAPPING_DEPTH>;
+/// The Merkle tree that indexes all program trees.
+/// Each leaf contains the Merkle root for a program tree.
+pub type FinalizeTree<N> = BHPMerkleTree<N, FINALIZE_TREE_DEPTH>;
+/// The Merkle tree for a program that contains a finalize scope.
+/// Each leaf contains a Merkle root for a mapping tree.
+pub type ProgramTree<N> = BHPMerkleTree<N, PROGRAM_TREE_DEPTH>;
+/// The Merkle tree for a mapping within a program.
+/// Each leaf contains the hash of a key-value entry.
+pub type MappingTree<N> = BHPMerkleTree<N, MAPPING_TREE_DEPTH>;
 
-/// Enum to represent the update to the merkle trees.
+/// Enum to represent the allowed set of Merkle tree operations.
 #[derive(Clone, Copy, Debug)]
 pub enum MerkleTreeUpdate<N: Network> {
-    /// Insert a leaf to the merkle tree.
-    /// (`mapping ID`, `key ID`, `value ID`)
+    /// Insert a leaf into the tree, as (`mapping ID`, `key ID`, `value ID`).
     InsertValue(Field<N>, Field<N>, Field<N>),
-    /// Update the merkle tree leaf at the given index.
-    /// (`mapping ID`, `index`, `key ID`, `value ID`)
+    /// Update the leaf at the given index, as (`mapping ID`, `index`, `key ID`, `value ID`).
     UpdateValue(Field<N>, usize, Field<N>, Field<N>),
-    /// Remove the merkle tree leaf at the given index.
-    /// (`mapping ID`, `index`)
+    /// Remove the leaf at the given index, as (`mapping ID`, `index`).
     RemoveValue(Field<N>, usize),
-    /// Add the mapping to the merkle tree.
-    /// (`mapping ID`)
+    /// Add the mapping to the tree, as (`mapping ID`).
     InsertMapping(Field<N>),
-    /// Remove the mapping from the merkle tree.
-    /// (`mapping ID`)
+    /// Remove the mapping from the tree, as (`mapping ID`).
     RemoveMapping(Field<N>),
 }
 
@@ -646,7 +642,7 @@ pub trait ProgramStorage<N: Network>: 'static + Clone + Send + Sync {
 
     // TODO (raychu86): This depends on the `Map`s being deterministically ordered (by insertion).
     /// Returns the Merkle tree of program state.
-    fn to_storage_tree(&self) -> Result<StorageTree<N>> {
+    fn to_finalize_tree(&self) -> Result<FinalizeTree<N>> {
         // Initialize a list of program trees.
         let mut program_trees: IndexMap<u32, ProgramTree<N>> = IndexMap::new();
 
@@ -845,8 +841,8 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
 pub struct ProgramStore<N: Network, P: ProgramStorage<N>> {
     /// The program storage.
     storage: P,
-    /// The program storage tree.
-    pub(crate) tree: Arc<RwLock<StorageTree<N>>>,
+    /// The finalize tree.
+    pub(crate) tree: Arc<RwLock<FinalizeTree<N>>>,
 
     /// The speculate lock. This is used to prevent individual merkle tree operations in favor of
     ///  a batched update via `Speculate`.
@@ -862,16 +858,16 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
         // Initialize the program storage.
         let storage = P::open(dev)?;
 
-        // Compute the storage tree.
-        let tree = Arc::new(RwLock::new(storage.to_storage_tree()?));
+        // Compute the finalize tree.
+        let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
 
         Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
 
     /// Initializes a program store from storage.
     pub fn from(storage: P) -> Result<Self> {
-        // Compute the storage tree.
-        let tree = Arc::new(RwLock::new(storage.to_storage_tree()?));
+        // Compute the finalize tree.
+        let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
 
         Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
@@ -1176,7 +1172,7 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
 
             // TODO (raychu86): Have a "shift_update" method that shifts the leaves.
             // Construct the updated storage tree.
-            let updated_tree = self.storage.to_storage_tree()?;
+            let updated_tree = self.storage.to_finalize_tree()?;
 
             // TODO (raychu86) Make sure the operations are atomic.
             *tree = updated_tree;
@@ -1311,7 +1307,7 @@ mod tests {
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Insert a (key, value) pair.
         program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1324,7 +1320,7 @@ mod tests {
         // Ensure the value returns Some(value).
         assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the key succeeds.
         program_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
@@ -1337,7 +1333,7 @@ mod tests {
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the mapping succeeds.
         program_store.remove_mapping(&program_id, &mapping_name).unwrap();
@@ -1350,7 +1346,7 @@ mod tests {
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the program succeeds.
         program_store.remove_program(&program_id).unwrap();
@@ -1363,7 +1359,7 @@ mod tests {
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
     }
 
     /// Checks `initialize_mapping`, `update_key_value`, `remove_key_value`, and `remove_mapping`.
@@ -1394,7 +1390,7 @@ mod tests {
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Update a (key, value) pair.
         program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1407,7 +1403,7 @@ mod tests {
         // Ensure the value returns Some(value).
         assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure calling `insert_key_value` with the same key and value fails.
         assert!(program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
@@ -1416,7 +1412,7 @@ mod tests {
         // Ensure the value still returns Some(value).
         assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure calling `update_key_value` with the same key and value succeeds.
         program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1445,7 +1441,7 @@ mod tests {
             // Ensure the value returns Some(new_value).
             assert_eq!(new_value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
             // Ensure that the storage tree is updated correctly.
-            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
             // Ensure calling `update_key_value` with the same key and original value succeeds.
             program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
@@ -1454,7 +1450,7 @@ mod tests {
             // Ensure the value returns Some(value).
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
             // Ensure that the storage tree is updated correctly.
-            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
         }
 
         // Ensure removing the key succeeds.
@@ -1468,7 +1464,7 @@ mod tests {
         // Ensure the value returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the mapping succeeds.
         program_store.remove_mapping(&program_id, &mapping_name).unwrap();
@@ -1481,7 +1477,7 @@ mod tests {
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Ensure removing the program succeeds.
         program_store.remove_program(&program_id).unwrap();
@@ -1494,7 +1490,7 @@ mod tests {
         // Ensure the value still returns None.
         assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
     }
 
     #[test]
@@ -1568,7 +1564,7 @@ mod tests {
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Remove the list of keys and values.
         for item in 0..1000 {
@@ -1592,7 +1588,7 @@ mod tests {
             assert!(program_store.get_value(&program_id, &mapping_name, &key).unwrap().is_none());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
     }
 
     #[test]
@@ -1640,7 +1636,7 @@ mod tests {
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Remove the mapping.
         program_store.remove_mapping(&program_id, &mapping_name).unwrap();
@@ -1649,7 +1645,7 @@ mod tests {
         // Ensure the mapping name is no longer initialized.
         assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Check the list of keys and values.
         for item in 0..1000 {
@@ -1708,7 +1704,7 @@ mod tests {
             assert_eq!(value, program_store.get_value(&program_id, &mapping_name, &key).unwrap().unwrap());
         }
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Remove the program.
         program_store.remove_program(&program_id).unwrap();
@@ -1717,7 +1713,7 @@ mod tests {
         // Ensure the mapping name is no longer initialized.
         assert!(!program_store.contains_mapping(&program_id, &mapping_name).unwrap());
         // Ensure that the storage tree is updated correctly.
-        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+        assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
 
         // Check the list of keys and values.
         for item in 0..1000 {
@@ -1766,7 +1762,7 @@ mod tests {
             // Ensure removing an un-initialized mapping fails.
             assert!(program_store.remove_mapping(&program_id, &mapping_name).is_err());
             // Ensure that the storage tree is updated correctly.
-            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_storage_tree().unwrap().root());
+            assert_eq!(program_store.current_storage_root(), *program_store.storage.to_finalize_tree().unwrap().root());
         }
         {
             // Ensure updating a (key, value) before initializing the mapping fails.

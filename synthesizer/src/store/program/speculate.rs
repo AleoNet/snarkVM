@@ -321,7 +321,7 @@ impl<N: Network> Speculate<N> {
     }
 
     /// Finalize the speculate and build the merkle trees.
-    pub fn commit<C: ConsensusStorage<N>>(&self, vm: &VM<N, C>) -> Result<StorageTree<N>> {
+    pub fn commit<C: ConsensusStorage<N>>(&self, vm: &VM<N, C>) -> Result<FinalizeTree<N>> {
         // Check that the `VM` state is correct.
         if vm.program_store().current_storage_root() != self.latest_storage_root {
             bail!("The latest storage root does not match the VM storage root");
@@ -531,6 +531,7 @@ finalize transfer_public:
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
             Field::zero(),
+            Field::zero(),
             metadata,
         )?;
 
@@ -701,7 +702,7 @@ finalize transfer_public:
 
         // Fetch the expected storage tree.
         let expected_storage_tree = vm.program_store().tree.read();
-        let storage_tree_from_scratch = vm.program_store().storage.to_storage_tree().unwrap();
+        let storage_tree_from_scratch = vm.program_store().storage.to_finalize_tree().unwrap();
 
         // Ensure that the storage trees are the same.
         assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
@@ -835,7 +836,10 @@ finalize transfer_public:
         vm.add_next_block(&block_3, None).unwrap();
 
         // Ensure that the storage trees are the same.
-        assert_eq!(vm.program_store().tree.read().root(), vm.program_store().storage.to_storage_tree().unwrap().root());
+        assert_eq!(
+            vm.program_store().tree.read().root(),
+            vm.program_store().storage.to_finalize_tree().unwrap().root()
+        );
 
         // Generate many transactions.
         let programs = [program_1, program_2, program_3];
@@ -874,6 +878,9 @@ finalize transfer_public:
         vm.add_next_block(&next_block, Some(speculate)).unwrap();
 
         // Ensure that the storage trees are the same.
-        assert_eq!(vm.program_store().tree.read().root(), vm.program_store().storage.to_storage_tree().unwrap().root());
+        assert_eq!(
+            vm.program_store().tree.read().root(),
+            vm.program_store().storage.to_finalize_tree().unwrap().root()
+        );
     }
 }
