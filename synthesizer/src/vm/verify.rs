@@ -352,7 +352,7 @@ mod tests {
         // Initialize the genesis block.
         let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
 
         // Fetch a valid execution transaction.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
@@ -390,7 +390,7 @@ mod tests {
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
@@ -427,7 +427,7 @@ mod tests {
             Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, None, rng).unwrap();
 
         // Add the deployment block.
-        vm.add_next_block(&deployment_block, None).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
 
         // Fetch the unspent records.
         let records = deployment_block.records().collect::<indexmap::IndexMap<_, _>>();

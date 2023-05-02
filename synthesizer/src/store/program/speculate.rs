@@ -685,7 +685,6 @@ finalize transfer_public:
 
         // Initialize the VM.
         let vm = test_helpers::sample_vm_with_genesis_block(rng);
-        let duplicate_vm = test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a deployment transaction.
         let deployment_transaction = test_helpers::sample_deployment_transaction(rng);
@@ -699,16 +698,13 @@ finalize transfer_public:
 
         // Perform the naive vm finalize.
         let transactions = Transactions::from(&[deployment_transaction]);
-        vm.finalize(&transactions, None).unwrap();
-        duplicate_vm.finalize(&transactions, Some(speculate)).unwrap();
+        vm.finalize(&transactions).unwrap();
 
         // Fetch the expected finalize tree.
         let expected_finalize_root = vm.finalize_store().current_finalize_root();
-        let duplicate_finalize_root = duplicate_vm.finalize_store().current_finalize_root();
 
         // Ensure that the finalize trees are the same.
         assert_eq!(expected_finalize_root, *new_finalize_tree.root());
-        assert_eq!(expected_finalize_root, duplicate_finalize_root);
     }
 
     #[test]
@@ -743,7 +739,7 @@ finalize transfer_public:
             new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
 
         // Add the deployment block to the VM.
-        vm.add_next_block(&deployment_block, None).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
 
         // Construct a mint and a transfer.
         let mint_transaction =
@@ -778,7 +774,7 @@ finalize transfer_public:
         .unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&next_block, None).unwrap();
+        vm.add_next_block(&next_block).unwrap();
 
         // Fetch the expected finalize tree.
         let expected_finalize_root = vm.finalize_store().current_finalize_root();
@@ -821,14 +817,14 @@ finalize transfer_public:
             new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
 
         // Add the deployment block to the VM.
-        vm.add_next_block(&deployment_block, None).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
 
         // Generate more records to use for the next block.
         let splits_block =
             generate_splits(&vm, &caller_private_key, &deployment_block, &mut unspent_records, rng).unwrap();
 
         // Add the splits block to the VM.
-        vm.add_next_block(&splits_block, None).unwrap();
+        vm.add_next_block(&splits_block).unwrap();
 
         // Construct the initial mint.
         let initial_mint =
@@ -838,7 +834,7 @@ finalize transfer_public:
                 .unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&initial_mint_block, None).unwrap();
+        vm.add_next_block(&initial_mint_block).unwrap();
 
         // Construct a mint and a transfer.
         let mint_10 =
@@ -960,17 +956,17 @@ finalize transfer_public:
         // Sample program 1.
         let (program_1, block_1) =
             new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
-        vm.add_next_block(&block_1, None).unwrap();
+        vm.add_next_block(&block_1).unwrap();
 
         // Sample program 2.
         let (program_2, block_2) =
             new_program_deployment(&vm, &caller_private_key, &block_1, &mut unspent_records, rng).unwrap();
-        vm.add_next_block(&block_2, None).unwrap();
+        vm.add_next_block(&block_2).unwrap();
 
         // Sample program 3.
         let (program_3, block_3) =
             new_program_deployment(&vm, &caller_private_key, &block_2, &mut unspent_records, rng).unwrap();
-        vm.add_next_block(&block_3, None).unwrap();
+        vm.add_next_block(&block_3).unwrap();
 
         // Ensure that the finalize trees are the same.
         assert_eq!(
@@ -982,7 +978,7 @@ finalize transfer_public:
         let splits_block = generate_splits(&vm, &caller_private_key, &block_3, &mut unspent_records, rng).unwrap();
 
         // Add the splits block to the VM.
-        vm.add_next_block(&splits_block, None).unwrap();
+        vm.add_next_block(&splits_block).unwrap();
 
         // Generate many transactions.
         let programs = [program_1, program_2, program_3];
@@ -1032,7 +1028,7 @@ finalize transfer_public:
                 .unwrap();
 
         // Add the block to the vm.
-        vm.add_next_block(&next_block, Some(speculate)).unwrap();
+        vm.add_next_block(&next_block).unwrap();
 
         // Ensure that the finalize trees are the same.
         assert_eq!(

@@ -20,19 +20,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Finalizes the given transactions into the VM.
     /// This method assumes the given transactions **are valid**.
     #[inline]
-    pub fn finalize(&self, transactions: &Transactions<N>, speculate: Option<Speculate<N>>) -> Result<()> {
+    pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
         let timer = timer!("VM::finalize");
 
         // Initialize a new speculate struct if one was not provided.
-        let speculate = match speculate {
-            Some(speculate) => speculate,
-            None => {
-                // Perform the transaction speculation.
-                let mut speculate = Speculate::new(self.finalize_store().current_finalize_root());
-                speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
-                speculate
-            }
-        };
+        let mut speculate = Speculate::new(self.finalize_store().current_finalize_root());
+        speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
 
         // Ensure the transactions match the speculate transactions.
         if transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.processed_transactions() {
@@ -120,9 +113,9 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         // Finalize the transaction.
-        vm.finalize(&Transactions::from(&[deployment_transaction.clone()]), None).unwrap();
+        vm.finalize(&Transactions::from(&[deployment_transaction.clone()])).unwrap();
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(&Transactions::from(&[deployment_transaction]), None).is_err());
+        assert!(vm.finalize(&Transactions::from(&[deployment_transaction])).is_err());
     }
 }

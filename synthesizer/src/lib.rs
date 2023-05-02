@@ -94,7 +94,7 @@ pub(crate) mod test_helpers {
     impl<N: Network> TestLedger<N> {
         /// Adds the given block as the next block in the chain.
         pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
-            self.vm.add_next_block(block, None)
+            self.vm.add_next_block(block)
         }
 
         /// Returns the block for the given block height.

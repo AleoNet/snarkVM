@@ -93,11 +93,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Adds the given block into the VM.
     #[inline]
-    pub fn add_next_block(&self, block: &Block<N>, speculate: Option<Speculate<N>>) -> Result<()> {
+    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions(), speculate) {
+        match self.finalize(block.transactions()) {
             Ok(_) => Ok(()),
             Err(error) => {
                 // Rollback the block.
@@ -219,7 +219,7 @@ pub(crate) mod test_helpers {
         // Initialize the genesis block.
         let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
         // Return the VM.
         vm
     }
@@ -291,7 +291,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
@@ -326,7 +326,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Prepare the inputs.
                 let inputs = [
@@ -373,7 +373,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Prepare the inputs.
                 let inputs = [
@@ -423,7 +423,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
                 let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
@@ -496,7 +496,7 @@ function compute:
         // Initialize the VM.
         let vm = sample_vm();
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
 
         // Split once.
         let transaction = Transaction::execute(
@@ -513,7 +513,7 @@ function compute:
         let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
         let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
         let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
-        vm.add_next_block(&block, None).unwrap();
+        vm.add_next_block(&block).unwrap();
 
         // Split again.
         let mut transactions = Vec::new();
@@ -548,7 +548,7 @@ function compute:
         transactions.push(transaction);
         // Add the split transactions to a block and update the VM.
         let fee_block = sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
-        vm.add_next_block(&fee_block, None).unwrap();
+        vm.add_next_block(&fee_block).unwrap();
 
         // Deploy the programs.
         let first_program = r"
@@ -599,7 +599,7 @@ finalize getter:
         .unwrap();
         let deployment_block =
             sample_next_block(&vm, &caller_private_key, &[first_deployment, second_deployment], rng).unwrap();
-        vm.add_next_block(&deployment_block, None).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
 
         // Execute the programs.
         let first_execution = Transaction::execute(
@@ -624,6 +624,6 @@ finalize getter:
         .unwrap();
         let execution_block =
             sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
-        vm.add_next_block(&execution_block, None).unwrap();
+        vm.add_next_block(&execution_block).unwrap();
     }
 }

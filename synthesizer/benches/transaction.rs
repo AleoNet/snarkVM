@@ -54,7 +54,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
 
     // Update the VM.
-    vm.add_next_block(&genesis, None).unwrap();
+    vm.add_next_block(&genesis).unwrap();
 
     (vm, record)
 }

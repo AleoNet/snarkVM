@@ -174,7 +174,7 @@ mod tests {
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
 
         Ok((vm, records))
     }
