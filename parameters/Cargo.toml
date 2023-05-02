@@ -91,8 +91,9 @@ version = "1.0"
 version = "0.4"
 optional = true
 
-[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.curl]
+[dependencies.curl]
 version = "0.4.43"
+optional = true
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"

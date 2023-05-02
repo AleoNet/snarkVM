@@ -114,6 +114,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
             #[cfg(not(feature = "request"))]
+            #[cfg(not(feature = "wasm"))]
             _ => {
                 bail!("Unsupported request")
             }
