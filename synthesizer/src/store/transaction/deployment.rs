@@ -219,12 +219,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to locate the edition for program '{program_id}'"),
         };
         // Retrieve the program.
-        let program = match self.program_map().get(&(program_id, edition))? {
+        let program = match self.program_map().get_confirmed(&(program_id, edition))? {
             Some(program) => cow_to_cloned!(program),
             None => bail!("Failed to locate program '{program_id}' for transaction '{transaction_id}'"),
         };
         // Retrieve the fee transition ID.
-        let (transition_id, _, _) = match self.fee_map().get(transaction_id)? {
+        let (transition_id, _, _) = match self.fee_map().get_confirmed(transaction_id)? {
             Some(fee_id) => cow_to_cloned!(fee_id),
             None => bail!("Failed to locate the fee transition ID for transaction '{transaction_id}'"),
         };
@@ -271,7 +271,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the transaction ID.
-        match self.reverse_id_map().get(&(*program_id, edition))? {
+        match self.reverse_id_map().get_confirmed(&(*program_id, edition))? {
             Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
             None => bail!("Failed to find the transaction ID for program '{program_id}' (edition {edition})"),
         }
@@ -282,7 +282,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         &self,
         transition_id: &N::TransitionID,
     ) -> Result<Option<N::TransactionID>> {
-        match self.reverse_fee_map().get(transition_id)? {
+        match self.reverse_fee_map().get_confirmed(transition_id)? {
             Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
             None => Ok(None),
         }
@@ -291,7 +291,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Returns the program ID for the given `transaction ID`.
     fn get_program_id(&self, transaction_id: &N::TransactionID) -> Result<Option<ProgramID<N>>> {
         // Retrieve the program ID.
-        match self.id_map().get(transaction_id)? {
+        match self.id_map().get_confirmed(transaction_id)? {
             Some(program_id) => Ok(Some(cow_to_copied!(program_id))),
             None => Ok(None),
         }
@@ -299,7 +299,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the edition for the given `program ID`.
     fn get_edition(&self, program_id: &ProgramID<N>) -> Result<Option<u16>> {
-        match self.edition_map().get(program_id)? {
+        match self.edition_map().get_confirmed(program_id)? {
             Some(edition) => Ok(Some(cow_to_copied!(edition))),
             None => Ok(None),
         }
@@ -313,7 +313,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the program.
-        match self.program_map().get(&(*program_id, edition))? {
+        match self.program_map().get_confirmed(&(*program_id, edition))? {
             Some(program) => Ok(Some(cow_to_cloned!(program))),
             None => bail!("Failed to get program '{program_id}' (edition {edition})"),
         }
@@ -331,7 +331,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the verifying key.
-        match self.verifying_key_map().get(&(*program_id, *function_name, edition))? {
+        match self.verifying_key_map().get_confirmed(&(*program_id, *function_name, edition))? {
             Some(verifying_key) => Ok(Some(cow_to_cloned!(verifying_key))),
             None => bail!("Failed to get the verifying key for '{program_id}/{function_name}' (edition {edition})"),
         }
@@ -349,7 +349,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the certificate.
-        match self.certificate_map().get(&(*program_id, *function_name, edition))? {
+        match self.certificate_map().get_confirmed(&(*program_id, *function_name, edition))? {
             Some(certificate) => Ok(Some(cow_to_cloned!(certificate))),
             None => bail!("Failed to get the certificate for '{program_id}/{function_name}' (edition {edition})"),
         }
@@ -368,7 +368,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the edition for program '{program_id}'"),
         };
         // Retrieve the program.
-        let program = match self.program_map().get(&(program_id, edition))? {
+        let program = match self.program_map().get_confirmed(&(program_id, edition))? {
             Some(program) => cow_to_cloned!(program),
             None => bail!("Failed to get the deployed program '{program_id}' (edition {edition})"),
         };
@@ -379,12 +379,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the verifying keys and certificates.
         for function_name in program.functions().keys() {
             // Retrieve the verifying key.
-            let verifying_key = match self.verifying_key_map().get(&(program_id, *function_name, edition))? {
+            let verifying_key = match self.verifying_key_map().get_confirmed(&(program_id, *function_name, edition))? {
                 Some(verifying_key) => cow_to_cloned!(verifying_key),
                 None => bail!("Failed to get the verifying key for '{program_id}/{function_name}' (edition {edition})"),
             };
             // Retrieve the certificate.
-            let certificate = match self.certificate_map().get(&(program_id, *function_name, edition))? {
+            let certificate = match self.certificate_map().get_confirmed(&(program_id, *function_name, edition))? {
                 Some(certificate) => cow_to_cloned!(certificate),
                 None => bail!("Failed to get the certificate for '{program_id}/{function_name}' (edition {edition})"),
             };
@@ -399,10 +399,11 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Returns the fee for the given `transaction ID`.
     fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
         // Retrieve the fee transition ID.
-        let (fee_transition_id, global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
-            Some(fee) => cow_to_cloned!(fee),
-            None => return Ok(None),
-        };
+        let (fee_transition_id, global_state_root, inclusion_proof) =
+            match self.fee_map().get_confirmed(transaction_id)? {
+                Some(fee) => cow_to_cloned!(fee),
+                None => return Ok(None),
+            };
         // Retrieve the fee transition.
         match self.transition_store().get_transition(&fee_transition_id)? {
             Some(transition) => Ok(Some(Fee::from(transition, global_state_root, inclusion_proof))),
@@ -420,7 +421,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Retrieve the owner.
-        match self.owner_map().get(&(*program_id, edition))? {
+        match self.owner_map().get_confirmed(&(*program_id, edition))? {
             Some(owner) => Ok(Some(cow_to_copied!(owner))),
             None => bail!("Failed to find the Owner for program '{program_id}' (edition {edition})"),
         }
@@ -688,19 +689,19 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns `true` if the given program ID exists.
     pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
-        self.storage.edition_map().contains_key(program_id)
+        self.storage.edition_map().contains_key_confirmed(program_id)
     }
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
     pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.id_map().keys()
+        self.storage.id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the program IDs, for all deployments.
     pub fn program_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, ProgramID<N>>> {
-        self.storage.id_map().values().map(|id| match id {
+        self.storage.id_map().values_confirmed().map(|id| match id {
             Cow::Borrowed(id) => Cow::Borrowed(id),
             Cow::Owned(id) => Cow::Owned(id),
         })
@@ -708,7 +709,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 
     /// Returns an iterator over the programs, for all deployments.
     pub fn programs(&self) -> impl '_ + Iterator<Item = Cow<'_, Program<N>>> {
-        self.storage.program_map().values().map(|program| match program {
+        self.storage.program_map().values_confirmed().map(|program| match program {
             Cow::Borrowed(program) => Cow::Borrowed(program),
             Cow::Owned(program) => Cow::Owned(program),
         })
@@ -718,14 +719,14 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     pub fn verifying_keys(
         &self,
     ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, VerifyingKey<N>>)> {
-        self.storage.verifying_key_map().iter()
+        self.storage.verifying_key_map().iter_confirmed()
     }
 
     /// Returns an iterator over the `((program ID, function name, edition), certificate)`, for all deployments.
     pub fn certificates(
         &self,
     ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, Certificate<N>>)> {
-        self.storage.certificate_map().iter()
+        self.storage.certificate_map().iter_confirmed()
     }
 }
 

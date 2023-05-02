@@ -228,17 +228,17 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Failed to remove block: missing block height for block hash '{block_hash}'"),
         };
         // Retrieve the state root.
-        let state_root = match self.state_root_map().get(&block_height)? {
+        let state_root = match self.state_root_map().get_confirmed(&block_height)? {
             Some(state_root) => cow_to_copied!(state_root),
             None => bail!("Failed to remove block: missing state root for block height '{block_height}'"),
         };
         // Retrieve the transaction IDs.
-        let transaction_ids = match self.transactions_map().get(block_hash)? {
+        let transaction_ids = match self.transactions_map().get_confirmed(block_hash)? {
             Some(transaction_ids) => transaction_ids,
             None => bail!("Failed to remove block: missing transactions for block '{block_height}' ('{block_hash}')"),
         };
         // Retrieve the coinbase solution.
-        let coinbase = match self.coinbase_solution_map().get(block_hash)? {
+        let coinbase = match self.coinbase_solution_map().get_confirmed(block_hash)? {
             Some(coinbase_solution) => cow_to_cloned!(coinbase_solution),
             None => {
                 bail!("Failed to remove block: missing coinbase solution for block '{block_height}' ('{block_hash}')")
@@ -290,7 +290,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block height that contains the given `state root`.
     fn find_block_height_from_state_root(&self, state_root: N::StateRoot) -> Result<Option<u32>> {
-        match self.reverse_state_root_map().get(&state_root)? {
+        match self.reverse_state_root_map().get_confirmed(&state_root)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
             None => Ok(None),
         }
@@ -298,7 +298,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block hash that contains the given `transaction ID`.
     fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
-        match self.reverse_transactions_map().get(transaction_id)? {
+        match self.reverse_transactions_map().get_confirmed(transaction_id)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
             None => Ok(None),
         }
@@ -309,7 +309,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         &self,
         puzzle_commitment: &PuzzleCommitment<N>,
     ) -> Result<Option<N::BlockHash>> {
-        match self.coinbase_puzzle_commitment_map().get(puzzle_commitment)? {
+        match self.coinbase_puzzle_commitment_map().get_confirmed(puzzle_commitment)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
             None => Ok(None),
         }
@@ -317,7 +317,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the state root that contains the given `block height`.
     fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
-        match self.state_root_map().get(&block_height)? {
+        match self.state_root_map().get_confirmed(&block_height)? {
             Some(state_root) => Ok(Some(cow_to_copied!(state_root))),
             None => Ok(None),
         }
@@ -359,7 +359,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
 
         // Ensure the global state root exists in storage.
-        if !self.reverse_state_root_map().contains_key(&global_state_root.into())? {
+        if !self.reverse_state_root_map().contains_key_confirmed(&global_state_root.into())? {
             bail!("The global state root '{global_state_root}' for commitment '{commitment}' is missing in storage");
         }
 
@@ -409,7 +409,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn get_previous_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
         match height.is_zero() {
             true => Ok(Some(N::BlockHash::default())),
-            false => match self.id_map().get(&(height - 1))? {
+            false => match self.id_map().get_confirmed(&(height - 1))? {
                 Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
                 None => Ok(None),
             },
@@ -418,7 +418,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block hash for the given `block height`.
     fn get_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
-        match self.id_map().get(&height)? {
+        match self.id_map().get_confirmed(&height)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
             None => Ok(None),
         }
@@ -426,7 +426,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block height for the given `block hash`.
     fn get_block_height(&self, block_hash: &N::BlockHash) -> Result<Option<u32>> {
-        match self.reverse_id_map().get(block_hash)? {
+        match self.reverse_id_map().get_confirmed(block_hash)? {
             Some(height) => Ok(Some(cow_to_copied!(height))),
             None => Ok(None),
         }
@@ -434,7 +434,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block header for the given `block hash`.
     fn get_block_header(&self, block_hash: &N::BlockHash) -> Result<Option<Header<N>>> {
-        match self.header_map().get(block_hash)? {
+        match self.header_map().get_confirmed(block_hash)? {
             Some(header) => Ok(Some(cow_to_cloned!(header))),
             None => Ok(None),
         }
@@ -443,7 +443,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the block transactions for the given `block hash`.
     fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         // Retrieve the transaction IDs.
-        let transaction_ids = match self.transactions_map().get(block_hash)? {
+        let transaction_ids = match self.transactions_map().get_confirmed(block_hash)? {
             Some(transaction_ids) => transaction_ids,
             None => return Ok(None),
         };
@@ -462,7 +462,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block coinbase solution for the given `block hash`.
     fn get_block_coinbase(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
-        match self.coinbase_solution_map().get(block_hash)? {
+        match self.coinbase_solution_map().get_confirmed(block_hash)? {
             Some(coinbase_solution) => Ok(cow_to_cloned!(coinbase_solution)),
             None => bail!("Missing coinbase solution for block ('{block_hash}')"),
         }
@@ -470,7 +470,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block signature for the given `block hash`.
     fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        match self.signature_map().get(block_hash)? {
+        match self.signature_map().get_confirmed(block_hash)? {
             Some(signature) => Ok(Some(cow_to_cloned!(signature))),
             None => Ok(None),
         }
@@ -658,7 +658,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         // Compute the block tree.
         let tree = {
             // Prepare an iterator over the block heights.
-            let heights = storage.id_map().keys();
+            let heights = storage.id_map().keys_confirmed();
             // Prepare the leaves of the block tree.
             let hashes = match heights.max() {
                 Some(height) => cfg_into_iter!(0..=cow_to_copied!(height))
@@ -704,7 +704,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         let mut tree = self.tree.write();
 
         // Determine the block heights to remove.
-        let heights = match self.storage.id_map().keys().max() {
+        let heights = match self.storage.id_map().keys_confirmed().max() {
             Some(height) => {
                 // Determine the end block height to remove.
                 let end_height = cow_to_copied!(height);
@@ -866,44 +866,44 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &N::StateRoot) -> Result<bool> {
-        self.storage.reverse_state_root_map().contains_key(state_root)
+        self.storage.reverse_state_root_map().contains_key_confirmed(state_root)
     }
 
     /// Returns `true` if the given block height exists.
     pub fn contains_block_height(&self, height: u32) -> Result<bool> {
-        self.storage.id_map().contains_key(&height)
+        self.storage.id_map().contains_key_confirmed(&height)
     }
 
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
-        self.storage.reverse_id_map().contains_key(block_hash)
+        self.storage.reverse_id_map().contains_key_confirmed(block_hash)
     }
 
     /// Returns `true` if the given puzzle commitment exists.
     pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
-        self.storage.coinbase_puzzle_commitment_map().contains_key(puzzle_commitment)
+        self.storage.coinbase_puzzle_commitment_map().contains_key_confirmed(puzzle_commitment)
     }
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns an iterator over the state roots, for all blocks in `self`.
     pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, N::StateRoot>> {
-        self.storage.reverse_state_root_map().keys()
+        self.storage.reverse_state_root_map().keys_confirmed()
     }
 
     /// Returns an iterator over the block heights, for all blocks in `self`.
     pub fn heights(&self) -> impl '_ + Iterator<Item = Cow<'_, u32>> {
-        self.storage.id_map().keys()
+        self.storage.id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the block hashes, for all blocks in `self`.
     pub fn hashes(&self) -> impl '_ + Iterator<Item = Cow<'_, N::BlockHash>> {
-        self.storage.reverse_id_map().keys()
+        self.storage.reverse_id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the puzzle commitments, for all blocks in `self`.
     pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
-        self.storage.coinbase_puzzle_commitment_map().keys()
+        self.storage.coinbase_puzzle_commitment_map().keys_confirmed()
     }
 }
 

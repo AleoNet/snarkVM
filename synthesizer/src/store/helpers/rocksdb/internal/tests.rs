@@ -58,8 +58,8 @@ fn test_insert_and_contains_key() {
         RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
-    assert!(map.contains_key(&123456789).expect("Failed to call contains key"));
-    assert!(!map.contains_key(&000000000).expect("Failed to call contains key"));
+    assert!(map.contains_key_confirmed(&123456789).expect("Failed to call contains key"));
+    assert!(!map.contains_key_confirmed(&000000000).expect("Failed to call contains key"));
 }
 
 #[test]
@@ -69,9 +69,12 @@ fn test_insert_and_get() {
         RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
-    assert_eq!(Some("123456789".to_string()), map.get(&123456789).expect("Failed to get").map(|v| v.to_string()));
+    assert_eq!(
+        Some("123456789".to_string()),
+        map.get_confirmed(&123456789).expect("Failed to get").map(|v| v.to_string())
+    );
 
-    assert_eq!(None, map.get(&000000000).expect("Failed to get"));
+    assert_eq!(None, map.get_confirmed(&000000000).expect("Failed to get"));
 }
 
 #[test]
@@ -81,10 +84,13 @@ fn test_insert_and_remove() {
         RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
-    assert_eq!(map.get(&123456789).expect("Failed to get").map(|v| v.to_string()), Some("123456789".to_string()));
+    assert_eq!(
+        map.get_confirmed(&123456789).expect("Failed to get").map(|v| v.to_string()),
+        Some("123456789".to_string())
+    );
 
     map.remove(&123456789).expect("Failed to remove");
-    assert!(map.get(&123456789).expect("Failed to get").is_none());
+    assert!(map.get_confirmed(&123456789).expect("Failed to get").is_none());
 }
 
 #[test]
@@ -95,7 +101,7 @@ fn test_insert_and_iter() {
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
 
-    let mut iter = map.iter();
+    let mut iter = map.iter_confirmed();
     assert_eq!(Some((123456789, "123456789".to_string())), iter.next().map(|(k, v)| (*k, v.to_string())));
     assert_eq!(None, iter.next());
 }
@@ -108,7 +114,7 @@ fn test_insert_and_keys() {
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
 
-    let mut keys = map.keys();
+    let mut keys = map.keys_confirmed();
     assert_eq!(Some(123456789), keys.next().map(|k| *k));
     assert_eq!(None, keys.next());
 }
@@ -121,7 +127,7 @@ fn test_insert_and_values() {
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
 
-    let mut values = map.values();
+    let mut values = map.values_confirmed();
     assert_eq!(Some("123456789".to_string()), values.next().map(|v| v.to_string()));
     assert_eq!(None, values.next());
 }
@@ -138,7 +144,7 @@ fn test_reopen() {
     {
         let map: TestMap =
             RocksDB::open_map_testing(directory, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
-        match map.get(&123456789).expect("Failed to get") {
+        match map.get_confirmed(&123456789).expect("Failed to get") {
             Some(Cow::Borrowed(value)) => assert_eq!(value.to_string(), "123456789".to_string()),
             Some(Cow::Owned(value)) => assert_eq!(value, "123456789".to_string()),
             None => panic!("Failed to get value"),
@@ -191,7 +197,7 @@ fn test_scalar_mul() {
     let timer = std::time::Instant::now();
 
     // Execute scalar multiplication for each stored element.
-    for value in map.values() {
+    for value in map.values_confirmed() {
         let _group = CurrentNetwork::g_scalar_multiply(&*value);
     }
 
@@ -228,7 +234,7 @@ fn test_iterator_ordering() {
     ];
 
     // Check that the order of the iterator is lexicographical.
-    for ((k1, v1), (k2, v2)) in map.iter().zip(expected_order.iter()) {
+    for ((k1, v1), (k2, v2)) in map.iter_confirmed().zip(expected_order.iter()) {
         assert_eq!(&*k1, k2);
         assert_eq!(&*v1, v2);
     }

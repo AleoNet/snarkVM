@@ -194,16 +194,16 @@ impl<
     V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > MapRead<'a, K, V> for MemoryMap<K, V>
 {
-    type BatchedIterator =
-        core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Iterator = core::iter::Map<btree_map::IntoIter<Vec<u8>, V>, fn((Vec<u8>, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
     type Keys = core::iter::Map<btree_map::IntoKeys<Vec<u8>, V>, fn(Vec<u8>) -> Cow<'a, K>>;
+    type PendingIterator =
+        core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
 
     ///
     /// Returns `true` if the given key exists in the map.
     ///
-    fn contains_key<Q>(&self, key: &Q) -> Result<bool>
+    fn contains_key_confirmed<Q>(&self, key: &Q) -> Result<bool>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
@@ -214,7 +214,7 @@ impl<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
+    fn get_confirmed<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
@@ -230,7 +230,7 @@ impl<
     /// If the key is removed in the batch, returns `Some(None)`.
     /// If the key is inserted in the batch, returns `Some(Some(value))`.
     ///
-    fn get_batched<Q>(&self, key: &Q) -> Option<Option<V>>
+    fn get_pending<Q>(&self, key: &Q) -> Option<Option<V>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
@@ -242,14 +242,14 @@ impl<
     ///
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
-    fn batched_iter(&'a self) -> Self::BatchedIterator {
+    fn iter_pending(&'a self) -> Self::PendingIterator {
         self.atomic_batch.lock().clone().into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
-    fn iter(&'a self) -> Self::Iterator {
+    fn iter_confirmed(&'a self) -> Self::Iterator {
         // Note: The 'unwrap' is safe here, because the keys are defined by us.
         self.map.read().clone().into_iter().map(|(k, v)| (Cow::Owned(bincode::deserialize(&k).unwrap()), Cow::Owned(v)))
     }
@@ -257,7 +257,7 @@ impl<
     ///
     /// Returns an iterator over each key in the map.
     ///
-    fn keys(&'a self) -> Self::Keys {
+    fn keys_confirmed(&'a self) -> Self::Keys {
         // Note: The 'unwrap' is safe here, because the keys are defined by us.
         self.map.read().clone().into_keys().map(|k| Cow::Owned(bincode::deserialize(&k).unwrap()))
     }
@@ -265,7 +265,7 @@ impl<
     ///
     /// Returns an iterator over each value in the map.
     ///
-    fn values(&'a self) -> Self::Values {
+    fn values_confirmed(&'a self) -> Self::Values {
         self.map.read().clone().into_values().map(Cow::Owned)
     }
 }
@@ -302,7 +302,7 @@ mod tests {
 
         // Initialize a map.
         let map: MemoryMap<Address<CurrentNetwork>, ()> = [(address, ())].into_iter().collect();
-        assert!(map.contains_key(&address).unwrap());
+        assert!(map.contains_key_confirmed(&address).unwrap());
     }
 
     #[test]
@@ -311,7 +311,7 @@ mod tests {
         let map: MemoryMap<usize, String> = Default::default();
 
         // Sanity check.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         /* test atomic insertions */
 
@@ -322,9 +322,9 @@ mod tests {
         map.insert(0, "0".to_string()).unwrap();
 
         // Check that the item is not yet in the map.
-        assert!(map.get(&0).unwrap().is_none());
+        assert!(map.get_confirmed(&0).unwrap().is_none());
         // Check that the item is in the batch.
-        assert_eq!(map.get_batched(&0), Some(Some("0".to_string())));
+        assert_eq!(map.get_pending(&0), Some(Some("0".to_string())));
         // Check that the item can be speculatively retrieved.
         assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("0".to_string())));
 
@@ -334,23 +334,23 @@ mod tests {
             map.insert(0, i.to_string()).unwrap();
 
             // Check that the item is not yet in the map.
-            assert!(map.get(&0).unwrap().is_none());
+            assert!(map.get_confirmed(&0).unwrap().is_none());
             // Check that the updated item is in the batch.
-            assert_eq!(map.get_batched(&0), Some(Some(i.to_string())));
+            assert_eq!(map.get_pending(&0), Some(Some(i.to_string())));
             // Check that the updated item can be speculatively retrieved.
             assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned(i.to_string())));
         }
 
         // The map should still contain no items.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         // Finish the current atomic write batch.
         map.finish_atomic().unwrap();
 
         // Check that the item is present in the map now.
-        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("9".to_string())));
+        assert_eq!(map.get_confirmed(&0).unwrap(), Some(Cow::Owned("9".to_string())));
         // Check that the item is not in the batch.
-        assert_eq!(map.get_batched(&0), None);
+        assert_eq!(map.get_pending(&0), None);
         // Check that the item can be speculatively retrieved.
         assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("9".to_string())));
     }
@@ -361,15 +361,15 @@ mod tests {
         let map: MemoryMap<usize, String> = Default::default();
 
         // Sanity check.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         // Insert an item into the map.
         map.insert(0, "0".to_string()).unwrap();
 
         // Check that the item is present in the map .
-        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_confirmed(&0).unwrap(), Some(Cow::Owned("0".to_string())));
         // Check that the item is not in the batch.
-        assert_eq!(map.get_batched(&0), None);
+        assert_eq!(map.get_pending(&0), None);
         // Check that the item can be speculatively retrieved.
         assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("0".to_string())));
 
@@ -382,9 +382,9 @@ mod tests {
         map.remove(&0).unwrap();
 
         // Check that the item still exists in the map.
-        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_confirmed(&0).unwrap(), Some(Cow::Owned("0".to_string())));
         // Check that the item is removed in the batch.
-        assert_eq!(map.get_batched(&0), Some(None));
+        assert_eq!(map.get_pending(&0), Some(None));
         // Check that the item is removed when speculatively retrieved.
         assert_eq!(map.get_speculative(&0).unwrap(), None);
 
@@ -392,9 +392,9 @@ mod tests {
         map.remove(&0).unwrap();
 
         // Check that the item still exists in the map.
-        assert_eq!(map.get(&0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_confirmed(&0).unwrap(), Some(Cow::Owned("0".to_string())));
         // Check that the item is removed in the batch.
-        assert_eq!(map.get_batched(&0), Some(None));
+        assert_eq!(map.get_pending(&0), Some(None));
         // Check that the item is removed when speculatively retrieved.
         assert_eq!(map.get_speculative(&0).unwrap(), None);
 
@@ -402,14 +402,14 @@ mod tests {
         map.finish_atomic().unwrap();
 
         // Check that the item is not present in the map now.
-        assert!(map.get(&0).unwrap().is_none());
+        assert!(map.get_confirmed(&0).unwrap().is_none());
         // Check that the item is not in the batch.
-        assert_eq!(map.get_batched(&0), None);
+        assert_eq!(map.get_pending(&0), None);
         // Check that the item is removed when speculatively retrieved.
         assert_eq!(map.get_speculative(&0).unwrap(), None);
 
         // Check that the map is empty now.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
     }
 
     #[test]
@@ -421,7 +421,7 @@ mod tests {
         let map: MemoryMap<usize, String> = Default::default();
 
         // Sanity check.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         /* test atomic insertions */
 
@@ -432,20 +432,20 @@ mod tests {
         for i in 0..NUM_ITEMS {
             map.insert(i, i.to_string()).unwrap();
             // Ensure that the item is queued for insertion.
-            assert_eq!(map.get_batched(&i), Some(Some(i.to_string())));
+            assert_eq!(map.get_pending(&i), Some(Some(i.to_string())));
             // Ensure that the item can be found with a speculative get.
             assert_eq!(map.get_speculative(&i).unwrap(), Some(Cow::Owned(i.to_string())));
         }
 
         // The map should still contain no items.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         // Finish the current atomic write batch.
         map.finish_atomic().unwrap();
 
         // Check that the items are present in the map now.
         for i in 0..NUM_ITEMS {
-            assert_eq!(map.get(&i).unwrap(), Some(Cow::Borrowed(&i.to_string())));
+            assert_eq!(map.get_confirmed(&i).unwrap(), Some(Cow::Borrowed(&i.to_string())));
         }
 
         /* test atomic removals */
@@ -457,17 +457,17 @@ mod tests {
         for i in 0..NUM_ITEMS {
             map.remove(&i).unwrap();
             // Ensure that the item is NOT queued for insertion.
-            assert_eq!(map.get_batched(&i), Some(None));
+            assert_eq!(map.get_pending(&i), Some(None));
         }
 
         // The map should still contains all the items.
-        assert_eq!(map.iter().count(), NUM_ITEMS);
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
 
         // Finish the current atomic write batch.
         map.finish_atomic().unwrap();
 
         // Check that the map is empty now.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
     }
 
     #[test]
@@ -479,7 +479,7 @@ mod tests {
         let map: MemoryMap<usize, String> = Default::default();
 
         // Sanity check.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         // Start an atomic write batch.
         map.start_atomic();
@@ -490,13 +490,13 @@ mod tests {
         }
 
         // The map should still contain no items.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         // Abort the current atomic write batch.
         map.abort_atomic();
 
         // The map should still contain no items.
-        assert!(map.iter().next().is_none());
+        assert!(map.iter_confirmed().next().is_none());
 
         // Start another atomic write batch.
         map.start_atomic();
@@ -510,6 +510,6 @@ mod tests {
         map.finish_atomic().unwrap();
 
         // The map should contain NUM_ITEMS items now.
-        assert_eq!(map.iter().count(), NUM_ITEMS);
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
     }
 }

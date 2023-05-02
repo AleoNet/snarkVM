@@ -152,7 +152,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     /// Removes the input for the given `transition ID`.
     fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         // Retrieve the input IDs.
-        let input_ids: Vec<_> = match self.id_map().get(transition_id)? {
+        let input_ids: Vec<_> = match self.id_map().get_confirmed(transition_id)? {
             Some(Cow::Borrowed(ids)) => ids.to_vec(),
             Some(Cow::Owned(ids)) => ids.into_iter().collect(),
             None => return Ok(()),
@@ -168,7 +168,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
                 self.reverse_id_map().remove(&input_id)?;
 
                 // If the input is a record, remove the record tag.
-                if let Some(tag) = self.record_map().get(&input_id)? {
+                if let Some(tag) = self.record_map().get_confirmed(&input_id)? {
                     self.record_tag_map().remove(&tag)?;
                 }
 
@@ -188,7 +188,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the transition ID that contains the given `input ID`.
     fn find_transition_id(&self, input_id: &Field<N>) -> Result<Option<N::TransitionID>> {
-        match self.reverse_id_map().get(input_id)? {
+        match self.reverse_id_map().get_confirmed(input_id)? {
             Some(Cow::Borrowed(transition_id)) => Ok(Some(*transition_id)),
             Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
             None => Ok(None),
@@ -198,7 +198,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     /// Returns the input IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
         // Retrieve the input IDs.
-        match self.id_map().get(transition_id)? {
+        match self.id_map().get_confirmed(transition_id)? {
             Some(Cow::Borrowed(inputs)) => Ok(inputs.to_vec()),
             Some(Cow::Owned(inputs)) => Ok(inputs),
             None => Ok(vec![]),
@@ -225,11 +225,11 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
 
         // A helper function to construct the input given the input ID.
         let construct_input = |input_id| {
-            let constant = self.constant_map().get(&input_id)?;
-            let public = self.public_map().get(&input_id)?;
-            let private = self.private_map().get(&input_id)?;
-            let record = self.record_map().get(&input_id)?;
-            let external_record = self.external_record_map().get(&input_id)?;
+            let constant = self.constant_map().get_confirmed(&input_id)?;
+            let public = self.public_map().get_confirmed(&input_id)?;
+            let private = self.private_map().get_confirmed(&input_id)?;
+            let record = self.record_map().get_confirmed(&input_id)?;
+            let external_record = self.external_record_map().get_confirmed(&input_id)?;
 
             // Retrieve the input.
             let input = match (constant, public, private, record, external_record) {
@@ -246,7 +246,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Retrieve the input IDs.
-        match self.id_map().get(transition_id)? {
+        match self.id_map().get_confirmed(transition_id)? {
             Some(Cow::Borrowed(ids)) => ids.iter().map(|input_id| construct_input(*input_id)).collect(),
             Some(Cow::Owned(ids)) => ids.iter().map(|input_id| construct_input(*input_id)).collect(),
             None => Ok(vec![]),
@@ -456,56 +456,56 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Returns `true` if the given input ID exists.
     pub fn contains_input_id(&self, input_id: &Field<N>) -> Result<bool> {
-        self.storage.reverse_id_map().contains_key(input_id)
+        self.storage.reverse_id_map().contains_key_confirmed(input_id)
     }
 
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
-        self.record.contains_key(serial_number)
+        self.record.contains_key_confirmed(serial_number)
     }
 
     /// Returns `true` if the given tag exists.
     pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
-        self.record_tag.contains_key(tag)
+        self.record_tag.contains_key_confirmed(tag)
     }
 }
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Returns an iterator over the input IDs, for all transition inputs.
     pub fn input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.storage.reverse_id_map().keys()
+        self.storage.reverse_id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the constant input IDs, for all transition inputs that are constant.
     pub fn constant_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.constant.keys()
+        self.constant.keys_confirmed()
     }
 
     /// Returns an iterator over the public input IDs, for all transition inputs that are public.
     pub fn public_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.public.keys()
+        self.public.keys_confirmed()
     }
 
     /// Returns an iterator over the private input IDs, for all transition inputs that are private.
     pub fn private_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.private.keys()
+        self.private.keys_confirmed()
     }
 
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.record.keys()
+        self.record.keys_confirmed()
     }
 
     /// Returns an iterator over the external record input IDs, for all transition inputs that are external records.
     pub fn external_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.external_record.keys()
+        self.external_record.keys_confirmed()
     }
 }
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Returns an iterator over the constant inputs, for all transitions.
     pub fn constant_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
-        self.constant.values().flat_map(|input| match input {
+        self.constant.values_confirmed().flat_map(|input| match input {
             Cow::Borrowed(Some(input)) => Some(Cow::Borrowed(input)),
             Cow::Owned(Some(input)) => Some(Cow::Owned(input)),
             _ => None,
@@ -514,7 +514,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 
     /// Returns an iterator over the constant inputs, for all transitions.
     pub fn public_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
-        self.public.values().flat_map(|input| match input {
+        self.public.values_confirmed().flat_map(|input| match input {
             Cow::Borrowed(Some(input)) => Some(Cow::Borrowed(input)),
             Cow::Owned(Some(input)) => Some(Cow::Owned(input)),
             _ => None,
@@ -523,7 +523,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 
     /// Returns an iterator over the private inputs, for all transitions.
     pub fn private_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Ciphertext<N>>> {
-        self.private.values().flat_map(|input| match input {
+        self.private.values_confirmed().flat_map(|input| match input {
             Cow::Borrowed(Some(input)) => Some(Cow::Borrowed(input)),
             Cow::Owned(Some(input)) => Some(Cow::Owned(input)),
             _ => None,
@@ -532,7 +532,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.record_tag.keys()
+        self.record_tag.keys_confirmed()
     }
 }
 

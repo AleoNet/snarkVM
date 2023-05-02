@@ -158,7 +158,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// Removes the execution transaction for the given `transaction ID`.
     fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         // Retrieve the transition IDs and fee transition ID.
-        let (transition_ids, fee_transition_id) = match self.id_map().get(transaction_id)? {
+        let (transition_ids, fee_transition_id) = match self.id_map().get_confirmed(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
             None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
         };
@@ -199,7 +199,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         &self,
         transition_id: &N::TransitionID,
     ) -> Result<Option<N::TransactionID>> {
-        match self.reverse_id_map().get(transition_id)? {
+        match self.reverse_id_map().get_confirmed(transition_id)? {
             Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
             None => Ok(None),
         }
@@ -208,13 +208,13 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// Returns the execution for the given `transaction ID`.
     fn get_execution(&self, transaction_id: &N::TransactionID) -> Result<Option<Execution<N>>> {
         // Retrieve the transition IDs.
-        let (transition_ids, _) = match self.id_map().get(transaction_id)? {
+        let (transition_ids, _) = match self.id_map().get_confirmed(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
             None => return Ok(None),
         };
 
         // Retrieve the global state root and inclusion proof.
-        let (global_state_root, inclusion_proof) = match self.inclusion_map().get(transaction_id)? {
+        let (global_state_root, inclusion_proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
             Some(inclusion) => cow_to_cloned!(inclusion),
             None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
         };
@@ -237,13 +237,13 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// Returns the transaction for the given `transaction ID`.
     fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
         // Retrieve the transition IDs and fee transition ID.
-        let (transition_ids, fee_transition_id) = match self.id_map().get(transaction_id)? {
+        let (transition_ids, fee_transition_id) = match self.id_map().get_confirmed(transaction_id)? {
             Some(ids) => cow_to_cloned!(ids),
             None => return Ok(None),
         };
 
         // Retrieve the global state root and inclusion proof.
-        let (global_state_root, inclusion_proof) = match self.inclusion_map().get(transaction_id)? {
+        let (global_state_root, inclusion_proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
             Some(inclusion) => cow_to_cloned!(inclusion),
             None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
         };
@@ -271,7 +271,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                     None => bail!("Failed to get the fee transition for transaction '{transaction_id}'"),
                 };
                 // Retrieve the fee.
-                let (global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
+                let (global_state_root, inclusion_proof) = match self.fee_map().get_confirmed(transaction_id)? {
                     Some(fee) => cow_to_cloned!(fee),
                     None => bail!("Failed to get the fee for transaction '{transaction_id}'"),
                 };
@@ -442,7 +442,7 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns an iterator over the execution transaction IDs, for all executions.
     pub fn execution_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.id_map().keys()
+        self.storage.id_map().keys_confirmed()
     }
 }
 

@@ -137,7 +137,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     /// Removes the transaction for the given `transaction ID`.
     fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         // Retrieve the transaction type.
-        let transaction_type = match self.id_map().get(transaction_id)? {
+        let transaction_type = match self.id_map().get_confirmed(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
@@ -175,7 +175,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     /// Returns the transaction for the given `transaction ID`.
     fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
         // Retrieve the transaction type.
-        let transaction_type = match self.id_map().get(transaction_id)? {
+        let transaction_type = match self.id_map().get_confirmed(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
             None => return Ok(None),
         };
@@ -306,7 +306,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the deployment for the given `transaction ID`.
     pub fn get_deployment(&self, transaction_id: &N::TransactionID) -> Result<Option<Deployment<N>>> {
         // Retrieve the transaction type.
-        let transaction_type = match self.transaction_ids.get(transaction_id)? {
+        let transaction_type = match self.transaction_ids.get_confirmed(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
@@ -322,7 +322,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the execution for the given `transaction ID`.
     pub fn get_execution(&self, transaction_id: &N::TransactionID) -> Result<Option<Execution<N>>> {
         // Retrieve the transaction type.
-        let transaction_type = match self.transaction_ids.get(transaction_id)? {
+        let transaction_type = match self.transaction_ids.get_confirmed(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
@@ -338,7 +338,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the edition for the given `transaction ID`.
     pub fn get_edition(&self, transaction_id: &N::TransactionID) -> Result<Option<u16>> {
         // Retrieve the transaction type.
-        let transaction_type = match self.transaction_ids.get(transaction_id)? {
+        let transaction_type = match self.transaction_ids.get_confirmed(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
@@ -413,7 +413,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns `true` if the given transaction ID exists.
     pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
-        self.transaction_ids.contains_key(transaction_id)
+        self.transaction_ids.contains_key_confirmed(transaction_id)
     }
 
     /// Returns `true` if the given program ID exists.
@@ -425,7 +425,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns an iterator over the transaction IDs, for all transactions.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.transaction_ids.keys()
+        self.transaction_ids.keys_confirmed()
     }
 
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
