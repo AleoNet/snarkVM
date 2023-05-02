@@ -320,6 +320,26 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         Ok(Self::from(storage))
     }
 
+    #[cfg(feature = "test-utilities")]
+    /// Initializes the transition storage for testing.
+    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        // Initialize the transition storage.
+        let storage = T::open_testing(temp_dir, dev)?;
+        // Return the transition store.
+        Ok(Self {
+            locator: storage.locator_map().clone(),
+            inputs: (*storage.input_store()).clone(),
+            outputs: (*storage.output_store()).clone(),
+            finalize: storage.finalize_map().clone(),
+            proof: storage.proof_map().clone(),
+            tpk: storage.tpk_map().clone(),
+            reverse_tpk: storage.reverse_tpk_map().clone(),
+            tcm: storage.tcm_map().clone(),
+            reverse_tcm: storage.reverse_tcm_map().clone(),
+            storage,
+        })
+    }
+
     /// Initializes a transition store from storage.
     pub fn from(storage: T) -> Self {
         Self {

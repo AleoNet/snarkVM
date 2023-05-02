@@ -319,6 +319,23 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
         Ok(Self::from(storage))
     }
 
+    #[cfg(feature = "test-utilities")]
+    /// Initializes the transition output storage for testing.
+    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        // Initialize a new transition output storage.
+        let storage = O::open_testing(temp_dir, dev)?;
+        // Return the transition output store.
+        Ok(Self {
+            constant: storage.constant_map().clone(),
+            public: storage.public_map().clone(),
+            private: storage.private_map().clone(),
+            record: storage.record_map().clone(),
+            record_nonce: storage.record_nonce_map().clone(),
+            external_record: storage.external_record_map().clone(),
+            storage,
+        })
+    }
+
     /// Initializes a transition output store from storage.
     pub fn from(storage: O) -> Self {
         Self {
