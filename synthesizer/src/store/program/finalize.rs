@@ -209,14 +209,14 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the given `program ID` and `mapping name` in storage.
     fn initialize_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
         // Ensure the mapping name does not already exist.
-        if self.mapping_id_map().contains_key(&(*program_id, *mapping_name))? {
+        if self.mapping_id_map().contains_key_confirmed(&(*program_id, *mapping_name))? {
             bail!("Illegal operation: mapping '{mapping_name}' already exists in storage - cannot initialize again.")
         }
 
         // Compute the mapping ID.
         let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
         // Ensure the mapping ID does not already exist.
-        if self.key_value_id_map().contains_key(&mapping_id)? {
+        if self.key_value_id_map().contains_key_confirmed(&mapping_id)? {
             bail!("Illegal operation: mapping ID '{mapping_id}' already exists in storage - cannot initialize again.")
         }
 
@@ -230,13 +230,33 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Insert the new mapping name.
         mapping_names.insert(*mapping_name);
 
-        // Retrieve the program index.
+        // Retrieve the program index. If the program ID does not exist, initialize the program index
+        // by first checking if there are any existing program indices and incrementing the maximum.
         let program_index = match self.program_index_map().get_speculative(program_id)? {
             Some(program_index) => cow_to_cloned!(program_index),
-            None => match self.program_index_map().values().max() {
-                Some(max_program_index) => max_program_index.saturating_add(1),
-                None => 0,
-            },
+            None => {
+                // Get the maximum program index.
+                let max_program_index = self.program_index_map().values_confirmed().max();
+                // Get the maximum program index in the atomic batch.
+                let max_batched_index = self
+                    .program_index_map()
+                    .iter_pending()
+                    .map(|(_, index)| index)
+                    .max_by(|index_1, index_2| index_1.cmp(index_2));
+
+                // Find the next program index.
+                match (max_program_index, max_batched_index) {
+                    // If both the program index and batched index exist, take the maximum and increment.
+                    (Some(program_index), Some(Some(batched_index))) => {
+                        std::cmp::max(program_index, batched_index).saturating_add(1)
+                    }
+                    // If only the batched index exists, increment.
+                    (None, Some(Some(batched_index))) => batched_index.saturating_add(1),
+                    // If only the program index exists, increment.
+                    (Some(program_index), None) => program_index.saturating_add(1),
+                    _ => 0,
+                }
+            }
         };
 
         atomic_write_batch!(self, {
@@ -275,7 +295,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
         // Ensure the key ID does not already exist.
-        if self.key_map().contains_key(&key_id)? {
+        if self.key_map().contains_key_confirmed(&key_id)? {
             bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot insert again.")
         }
         // Retrieve the key-value IDs for the mapping ID.
@@ -464,7 +484,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             self.program_index_map().remove(program_id)?;
 
             // Update each subsequent deployment index.
-            for (program_id, index) in self.program_index_map().iter() {
+            for (program_id, index) in self.program_index_map().iter_confirmed() {
                 if *index > *deployment_index {
                     self.program_index_map().insert(*program_id, index.saturating_sub(1))?;
                 }
@@ -508,12 +528,14 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns `true` if the given `program ID` exist.
     fn contains_program(&self, program_id: &ProgramID<N>) -> Result<bool> {
-        self.program_id_map().contains_key(program_id).and(self.program_index_map().contains_key(program_id))
+        self.program_id_map()
+            .contains_key_confirmed(program_id)
+            .and(self.program_index_map().contains_key_confirmed(program_id))
     }
 
     /// Returns `true` if the given `program ID` and `mapping name` exist.
     fn contains_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<bool> {
-        self.mapping_id_map().contains_key(&(*program_id, *mapping_name))
+        self.mapping_id_map().contains_key_confirmed(&(*program_id, *mapping_name))
     }
 
     /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
@@ -531,7 +553,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Compute the key ID.
         let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
         // Return whether the key ID exists.
-        self.key_map().contains_key(&key_id)
+        self.key_map().contains_key_confirmed(&key_id)
     }
 
     /// Returns the mapping names for the given `program ID`.
@@ -566,7 +588,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Compute the key ID.
         let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
         // Ensure the key ID exists.
-        match self.key_map().contains_key(&key_id)? {
+        match self.key_map().contains_key_confirmed(&key_id)? {
             true => Ok(Some(key_id)),
             false => Ok(None),
         }
@@ -620,7 +642,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Compute all mapping checksums.
         let preimage: BTreeMap<_, _> = self
             .key_value_id_map()
-            .iter()
+            .iter_confirmed()
             .map(|(mapping_id, key_value_ids)| {
                 // Convert the mapping ID and all value IDs to concatenated bits.
                 let preimage = mapping_id
@@ -644,7 +666,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // TODO (raychu86): Parallelize this.
         // Iterate through all the programs and construct the program trees.
-        for (program_id, index) in self.program_index_map().iter() {
+        for (program_id, index) in self.program_index_map().iter_confirmed() {
             // Construct the program tree.
             let program_tree = self.to_program_tree(&program_id, None)?;
 
@@ -887,7 +909,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                 let program_tree =
                     self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::InsertMapping(mapping_id)]))?;
 
-                match self.storage.program_index_map().get(program_id)? {
+                match self.storage.program_index_map().get_confirmed(program_id)? {
                     Some(program_id_index) => {
                         // Construct the updated finalize tree.
                         tree.prepare_update(usize::try_from(*program_id_index)?, &program_tree.root().to_bits_le())?
@@ -950,7 +972,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                 )?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                let program_id_index = match self.storage.program_index_map().get_confirmed(program_id)? {
                     Some(program_id_index) => *program_id_index,
                     None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
@@ -1008,7 +1030,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                 let key_value_map = self
                     .storage
                     .key_value_id_map()
-                    .get(&mapping_id)?
+                    .get_confirmed(&mapping_id)?
                     .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
 
                 // Construct the update operation. If the key ID does not exist, insert it.
@@ -1021,7 +1043,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                 let program_tree = self.storage.to_program_tree(program_id, Some(&[update]))?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                let program_id_index = match self.storage.program_index_map().get_confirmed(program_id)? {
                     Some(program_id_index) => *program_id_index,
                     None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
@@ -1074,7 +1096,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                 let key_value_map = self
                     .storage
                     .key_value_id_map()
-                    .get(&mapping_id)?
+                    .get_confirmed(&mapping_id)?
                     .ok_or_else(|| anyhow!("Missing mapping ID {mapping_id}"))?;
                 let key_id_index = key_value_map
                     .get_index_of(&key_id)
@@ -1086,7 +1108,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                     .to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveValue(mapping_id, key_id_index)]))?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                let program_id_index = match self.storage.program_index_map().get_confirmed(program_id)? {
                     Some(program_id_index) => *program_id_index,
                     None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
@@ -1133,7 +1155,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
                     self.storage.to_program_tree(program_id, Some(&[MerkleTreeUpdate::RemoveMapping(mapping_id)]))?;
 
                 // Fetch the index of the program ID.
-                let program_id_index = match self.storage.program_index_map().get(program_id)? {
+                let program_id_index = match self.storage.program_index_map().get_confirmed(program_id)? {
                     Some(program_id_index) => *program_id_index,
                     None => bail!("Missing program ID '{program_id}' in program index map"),
                 };
@@ -1243,7 +1265,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 
     /// Returns the index of the given `program ID` if it exists.
     pub fn get_program_index(&self, program_id: &ProgramID<N>) -> Result<Option<u32>> {
-        match self.storage.program_index_map().get(program_id) {
+        match self.storage.program_index_map().get_confirmed(program_id) {
             Ok(Some(index)) => Ok(Some(*index)),
             Ok(None) => Ok(None),
             Err(err) => Err(err),
@@ -1258,7 +1280,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         key: &Plaintext<N>,
     ) -> Result<Option<u32>> {
         match self.storage.get_mapping_id(program_id, mapping_name)? {
-            Some(mapping_id) => match self.storage.key_value_id_map().get(&mapping_id)? {
+            Some(mapping_id) => match self.storage.key_value_id_map().get_confirmed(&mapping_id)? {
                 Some(key_value_map) => {
                     // Compute the key ID.
                     let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
