@@ -51,7 +51,7 @@ pub use vm::*;
 pub(crate) mod test_helpers {
     use crate::{
         block::Block,
-        store::{ConsensusMemory, ConsensusStore},
+        store::{helpers::memory::ConsensusMemory, ConsensusStore},
         vm::VM,
     };
     use console::{

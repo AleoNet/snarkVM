@@ -22,8 +22,7 @@ use crate::{
     process::{Execution, Fee},
     snark::Proof,
     store::{
-        helpers::{memory::MemoryMap, Map, MapRead},
-        TransitionMemory,
+        helpers::{Map, MapRead},
         TransitionStorage,
         TransitionStore,
     },
@@ -292,67 +291,6 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     }
 }
 
-/// An in-memory execution storage.
-#[derive(Clone)]
-#[allow(clippy::type_complexity)]
-pub struct ExecutionMemory<N: Network> {
-    /// The ID map.
-    id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    /// The reverse ID map.
-    reverse_id_map: MemoryMap<N::TransitionID, N::TransactionID>,
-    /// The transition store.
-    transition_store: TransitionStore<N, TransitionMemory<N>>,
-    /// The inclusion map.
-    inclusion_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
-    /// The fee map.
-    fee_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
-    type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type TransitionStorage = TransitionMemory<N>;
-    type InclusionMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
-    type FeeMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
-
-    /// Initializes the execution storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
-        Ok(Self {
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            transition_store,
-            inclusion_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
-        })
-    }
-
-    /// Returns the ID map.
-    fn id_map(&self) -> &Self::IDMap {
-        &self.id_map
-    }
-
-    /// Returns the reverse ID map.
-    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
-        &self.reverse_id_map
-    }
-
-    /// Returns the transition store.
-    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
-        &self.transition_store
-    }
-
-    /// Returns the inclusion map.
-    fn inclusion_map(&self) -> &Self::InclusionMap {
-        &self.inclusion_map
-    }
-
-    /// Returns the fee map.
-    fn fee_map(&self) -> &Self::FeeMap {
-        &self.fee_map
-    }
-}
-
 /// The execution store.
 #[derive(Clone)]
 pub struct ExecutionStore<N: Network, E: ExecutionStorage<N>> {
@@ -449,6 +387,7 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::ExecutionMemory;
 
     use crate::vm::test_helpers::CurrentNetwork;
 

@@ -18,7 +18,7 @@ use crate::{
     atomic_write_batch,
     cow_to_cloned,
     cow_to_copied,
-    store::helpers::{memory::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::{prelude::*, BHPMerkleTree},
@@ -777,83 +777,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 }
 
-/// An in-memory program state storage.
-#[derive(Clone)]
-pub struct FinalizeMemory<N: Network> {
-    /// The program ID map.
-    program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
-    /// The program index map.
-    program_index_map: MemoryMap<ProgramID<N>, u32>,
-    /// The mapping ID map.
-    mapping_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>,
-    /// The key-value ID map.
-    key_value_id_map: MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>,
-    /// The key map.
-    key_map: MemoryMap<Field<N>, Plaintext<N>>,
-    /// The value map.
-    value_map: MemoryMap<Field<N>, Value<N>>,
-    /// The optional development ID.
-    dev: Option<u16>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
-    type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type ProgramIndexMap = MemoryMap<ProgramID<N>, u32>;
-    type MappingIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>;
-    type KeyValueIDMap = MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
-    type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
-    type ValueMap = MemoryMap<Field<N>, Value<N>>;
-
-    /// Initializes the program state storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        Ok(Self {
-            program_id_map: MemoryMap::default(),
-            program_index_map: MemoryMap::default(),
-            mapping_id_map: MemoryMap::default(),
-            key_value_id_map: MemoryMap::default(),
-            key_map: MemoryMap::default(),
-            value_map: MemoryMap::default(),
-            dev,
-        })
-    }
-
-    /// Returns the program ID map.
-    fn program_id_map(&self) -> &Self::ProgramIDMap {
-        &self.program_id_map
-    }
-
-    /// Returns the program index map.
-    fn program_index_map(&self) -> &Self::ProgramIndexMap {
-        &self.program_index_map
-    }
-
-    /// Returns the mapping ID map.
-    fn mapping_id_map(&self) -> &Self::MappingIDMap {
-        &self.mapping_id_map
-    }
-
-    /// Returns the key-value ID map.
-    fn key_value_id_map(&self) -> &Self::KeyValueIDMap {
-        &self.key_value_id_map
-    }
-
-    /// Returns the key map.
-    fn key_map(&self) -> &Self::KeyMap {
-        &self.key_map
-    }
-
-    /// Returns the value map.
-    fn value_map(&self) -> &Self::ValueMap {
-        &self.value_map
-    }
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
-    }
-}
-
 /// The finalize store.
 #[derive(Clone)]
 pub struct FinalizeStore<N: Network, P: FinalizeStorage<N>> {
@@ -1323,6 +1246,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::FinalizeMemory;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

@@ -403,7 +403,7 @@ function compute:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FinalizeMemory;
+    use crate::store::helpers::memory::FinalizeMemory;
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},

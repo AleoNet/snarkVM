@@ -15,16 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::store::{
-    BlockMemory,
     BlockStorage,
     BlockStore,
-    FinalizeMemory,
     FinalizeStorage,
     FinalizeStore,
-    TransactionMemory,
     TransactionStorage,
     TransactionStore,
-    TransitionMemory,
     TransitionStorage,
     TransitionStore,
 };
@@ -87,46 +83,6 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     fn finish_atomic(&self) -> Result<()> {
         self.finalize_store().finish_atomic()?;
         self.block_store().finish_atomic()
-    }
-}
-
-/// An in-memory consensus storage.
-#[derive(Clone)]
-pub struct ConsensusMemory<N: Network> {
-    /// The finalize store.
-    finalize_store: FinalizeStore<N, FinalizeMemory<N>>,
-    /// The block store.
-    block_store: BlockStore<N, BlockMemory<N>>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
-    type FinalizeStorage = FinalizeMemory<N>;
-    type BlockStorage = BlockMemory<N>;
-    type TransactionStorage = TransactionMemory<N>;
-    type TransitionStorage = TransitionMemory<N>;
-
-    /// Initializes the consensus storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        // Initialize the finalize store.
-        let finalize_store = FinalizeStore::<N, FinalizeMemory<N>>::open(dev)?;
-        // Initialize the block store.
-        let block_store = BlockStore::<N, BlockMemory<N>>::open(dev)?;
-        // Return the consensus storage.
-        Ok(Self {
-            finalize_store,
-            block_store,
-        })
-    }
-
-    /// Returns the finalize store.
-    fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage> {
-        &self.finalize_store
-    }
-
-    /// Returns the block store.
-    fn block_store(&self) -> &BlockStore<N, Self::BlockStorage> {
-        &self.block_store
     }
 }
 

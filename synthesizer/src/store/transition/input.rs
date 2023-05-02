@@ -17,7 +17,7 @@
 use crate::{
     atomic_write_batch,
     block::Input,
-    store::helpers::{memory::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -254,101 +254,6 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
     }
 }
 
-/// An in-memory transition input storage.
-#[derive(Clone)]
-pub struct InputMemory<N: Network> {
-    /// The mapping of `transition ID` to `input IDs`.
-    id_map: MemoryMap<N::TransitionID, Vec<Field<N>>>,
-    /// The mapping of `input ID` to `transition ID`.
-    reverse_id_map: MemoryMap<Field<N>, N::TransitionID>,
-    /// The mapping of `plaintext hash` to `(optional) plaintext`.
-    constant: MemoryMap<Field<N>, Option<Plaintext<N>>>,
-    /// The mapping of `plaintext hash` to `(optional) plaintext`.
-    public: MemoryMap<Field<N>, Option<Plaintext<N>>>,
-    /// The mapping of `ciphertext hash` to `(optional) ciphertext`.
-    private: MemoryMap<Field<N>, Option<Ciphertext<N>>>,
-    /// The mapping of `serial number` to `tag`.
-    record: MemoryMap<Field<N>, Field<N>>,
-    /// The mapping of `record tag` to `serial number`.
-    record_tag: MemoryMap<Field<N>, Field<N>>,
-    /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
-    external_record: MemoryMap<Field<N>, ()>,
-    /// The optional development ID.
-    dev: Option<u16>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> InputStorage<N> for InputMemory<N> {
-    type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;
-    type ReverseIDMap = MemoryMap<Field<N>, N::TransitionID>;
-    type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
-    type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
-    type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
-    type RecordMap = MemoryMap<Field<N>, Field<N>>;
-    type RecordTagMap = MemoryMap<Field<N>, Field<N>>;
-    type ExternalRecordMap = MemoryMap<Field<N>, ()>;
-
-    /// Initializes the transition input storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        Ok(Self {
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            constant: MemoryMap::default(),
-            public: MemoryMap::default(),
-            private: MemoryMap::default(),
-            record: MemoryMap::default(),
-            record_tag: MemoryMap::default(),
-            external_record: MemoryMap::default(),
-            dev,
-        })
-    }
-
-    /// Returns the ID map.
-    fn id_map(&self) -> &Self::IDMap {
-        &self.id_map
-    }
-
-    /// Returns the reverse ID map.
-    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
-        &self.reverse_id_map
-    }
-
-    /// Returns the constant map.
-    fn constant_map(&self) -> &Self::ConstantMap {
-        &self.constant
-    }
-
-    /// Returns the public map.
-    fn public_map(&self) -> &Self::PublicMap {
-        &self.public
-    }
-
-    /// Returns the private map.
-    fn private_map(&self) -> &Self::PrivateMap {
-        &self.private
-    }
-
-    /// Returns the record map.
-    fn record_map(&self) -> &Self::RecordMap {
-        &self.record
-    }
-
-    /// Returns the record tag map.
-    fn record_tag_map(&self) -> &Self::RecordTagMap {
-        &self.record_tag
-    }
-
-    /// Returns the external record map.
-    fn external_record_map(&self) -> &Self::ExternalRecordMap {
-        &self.external_record
-    }
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
-    }
-}
-
 /// The transition input store.
 #[derive(Clone)]
 pub struct InputStore<N: Network, I: InputStorage<N>> {
@@ -539,6 +444,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::InputMemory;
 
     #[test]
     fn test_insert_get_remove() {

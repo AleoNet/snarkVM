@@ -23,7 +23,14 @@ use snarkvm_console::{
     program::{Identifier, StatePath},
     types::Field,
 };
-use snarkvm_synthesizer::{snark::UniversalSRS, Block, ConsensusMemory, ConsensusStore, InclusionAssignment, VM};
+use snarkvm_synthesizer::{
+    snark::UniversalSRS,
+    store::helpers::memory::ConsensusMemory,
+    Block,
+    ConsensusStore,
+    InclusionAssignment,
+    VM,
+};
 
 use anyhow::{anyhow, Result};
 use rand::thread_rng;

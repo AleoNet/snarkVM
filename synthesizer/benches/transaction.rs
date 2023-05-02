@@ -23,9 +23,9 @@ use console::{
     program::{Plaintext, Record, Value},
 };
 use snarkvm_synthesizer::{
+    store::helpers::memory::ConsensusMemory,
     Authorization,
     Block,
-    ConsensusMemory,
     ConsensusStore,
     Program,
     Transaction,

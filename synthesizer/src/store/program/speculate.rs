@@ -411,9 +411,9 @@ impl<N: Network> Speculate<N> {
 mod tests {
     use super::*;
     use crate::{
+        store::helpers::memory::ConsensusMemory,
         vm::test_helpers,
         Block,
-        ConsensusMemory,
         Header,
         Metadata,
         Program,
