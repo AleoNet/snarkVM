@@ -431,7 +431,7 @@ mod tests {
 
     type CurrentNetwork = test_helpers::CurrentNetwork;
 
-    pub const ITERATIONS: u32 = 10;
+    pub const ITERATIONS: u32 = 8;
 
     /// Sample a new program and deploy it to the VM. Returns the program name.
     fn new_program_deployment<R: Rng + CryptoRng>(
@@ -537,7 +537,7 @@ finalize transfer_public:
         let block = Block::new(private_key, previous_block.hash(), header, transactions, None, rng)?;
 
         // Track the new records.
-        let new_records = previous_block
+        let new_records = block
             .transitions()
             .cloned()
             .flat_map(Transition::into_records)
@@ -565,8 +565,9 @@ finalize transfer_public:
             let record = unspent_records.pop().unwrap().decrypt(&view_key)?;
 
             // Prepare the inputs.
-            let inputs = [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("10u64").unwrap()]
-                .into_iter();
+            let inputs =
+                [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("100u64").unwrap()]
+                    .into_iter();
 
             // Execute.
             let transaction =
