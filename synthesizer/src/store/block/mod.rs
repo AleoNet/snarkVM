@@ -21,7 +21,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
+        helpers::{memory::MemoryMap, Map, MapRead},
         TransactionMemory,
         TransactionStorage,
         TransactionStore,

@@ -22,7 +22,7 @@ use crate::{
     process::{Execution, Fee},
     snark::Proof,
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
+        helpers::{memory::MemoryMap, Map, MapRead},
         TransitionMemory,
         TransitionStorage,
         TransitionStore,

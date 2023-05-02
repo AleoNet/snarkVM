@@ -17,7 +17,7 @@
 use crate::{
     atomic_write_batch,
     block::Input,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{memory::MemoryMap, Map, MapRead},
 };
 use console::{
     network::prelude::*,

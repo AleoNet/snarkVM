@@ -28,7 +28,7 @@ use crate::{
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
+        helpers::{memory::MemoryMap, Map, MapRead},
         TransitionMemory,
         TransitionStorage,
         TransitionStore,

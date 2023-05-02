@@ -26,7 +26,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     snark::Proof,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{memory::MemoryMap, Map, MapRead},
 };
 use console::{
     network::prelude::*,

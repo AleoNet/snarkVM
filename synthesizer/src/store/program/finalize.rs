@@ -18,7 +18,7 @@ use crate::{
     atomic_write_batch,
     cow_to_cloned,
     cow_to_copied,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{memory::MemoryMap, Map, MapRead},
 };
 use console::{
     network::{prelude::*, BHPMerkleTree},
