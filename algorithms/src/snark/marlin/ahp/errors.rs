@@ -21,6 +21,8 @@ pub enum AHPError {
     ConstraintSystemError(snarkvm_r1cs::errors::SynthesisError),
     /// The instance generated during proving does not match that in the index.
     InstanceDoesNotMatchIndex,
+    /// Could not convert from int.
+    IntError(std::num::TryFromIntError),
     /// The number of public inputs is incorrect.
     InvalidPublicInputLength,
     /// During verification, a required evaluation is missing
@@ -34,5 +36,11 @@ pub enum AHPError {
 impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {
     fn from(other: snarkvm_r1cs::errors::SynthesisError) -> Self {
         AHPError::ConstraintSystemError(other)
+    }
+}
+
+impl From<std::num::TryFromIntError> for AHPError {
+    fn from(other: std::num::TryFromIntError) -> Self {
+        Self::IntError(other)
     }
 }

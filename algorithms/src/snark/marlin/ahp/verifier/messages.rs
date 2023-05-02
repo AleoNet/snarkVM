@@ -16,7 +16,7 @@ use snarkvm_fields::PrimeField;
 
 use crate::snark::marlin::{witness_label, CircuitId, MarlinMode};
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, num::TryFromIntError};
 
 /// Randomizers used to combine circuit-specific and instance-specific elements in the AHP sumchecks
 #[derive(Clone, Debug)]
@@ -80,7 +80,7 @@ pub struct QuerySet<F: PrimeField> {
 }
 
 impl<F: PrimeField> QuerySet<F> {
-    pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
+    pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Result<Self, TryFromIntError> {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
@@ -91,8 +91,12 @@ impl<F: PrimeField> QuerySet<F> {
         // Note that z is the interpolation of x || w, so it equals x + v_X * w
         // We also use an optimization: instead of explicitly calculating z_c, we
         // use the "virtual oracle" z_a * z_b
-        Self {
-            batch_sizes: state.circuit_specific_states.iter().map(|(c, s)| (*c, s.batch_size)).collect(),
+        Ok(Self {
+            batch_sizes: state
+                .circuit_specific_states
+                .iter()
+                .map(|(c, s)| Ok::<_, TryFromIntError>((*c, usize::try_from(s.batch_size)?)))
+                .try_collect()?,
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
@@ -101,7 +105,7 @@ impl<F: PrimeField> QuerySet<F> {
             g_b_query: ("gamma".into(), gamma),
             g_c_query: ("gamma".into(), gamma),
             matrix_sumcheck_query: ("gamma".into(), gamma),
-        }
+        })
     }
 
     /// Returns a `BTreeSet` containing elements of the form

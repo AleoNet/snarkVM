@@ -66,7 +66,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize>: Clone + Debug {
         self.absorb_native_field_elements(&elements);
     }
 
-    /// Takes in field elements.
+    /// Takes out field elements.
     fn squeeze_native_field_elements(&mut self, num: usize) -> SmallVec<[F; 10]>;
 
     /// Takes out field elements.

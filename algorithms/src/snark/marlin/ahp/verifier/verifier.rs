@@ -30,7 +30,7 @@ use crate::{
 };
 use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, num::TryFromIntError};
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
@@ -102,7 +102,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 non_zero_a_domain,
                 non_zero_b_domain,
                 non_zero_c_domain,
-                batch_size: *batch_size,
+                batch_size: (*batch_size).try_into()?,
             };
             circuit_specific_states.insert(*circuit_id, circuit_specific_state);
         }
@@ -182,7 +182,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField>, State<TargetField, MM>) {
-        (QuerySet::new(&state), state)
+    pub fn verifier_query_set(
+        state: State<TargetField, MM>,
+    ) -> Result<(QuerySet<TargetField>, State<TargetField, MM>), TryFromIntError> {
+        Ok((QuerySet::new(&state)?, state))
     }
 }
