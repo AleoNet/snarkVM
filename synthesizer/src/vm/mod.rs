@@ -59,14 +59,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize a new process.
         let mut process = Process::load()?;
 
-        // Check that the storage contains the credits mapping. If not, initialize it.
+        // Initialize the store for 'credits.aleo'.
         let credits = Program::<N>::credits()?;
-        let finalize_store = store.finalize_store();
         for mapping in credits.mappings().values() {
-            let program_id = credits.id();
-            let mapping_name = mapping.name();
-            if !finalize_store.contains_mapping(program_id, mapping_name)? {
-                finalize_store.initialize_mapping(program_id, mapping_name)?;
+            // Ensure that all mappings are initialized.
+            if !store.finalize_store().contains_mapping(credits.id(), mapping.name())? {
+                // Initialize the mappings for 'credits.aleo'.
+                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
             }
         }
 

@@ -38,11 +38,10 @@ pub struct Speculate<N: Network> {
     /// This is used to ensure that the speculate state is building off the same state.
     pub latest_finalize_root: Field<N>,
 
-    /// The list of transactions that have been processed. Including ones that have been rejected.
-    pub processed_transactions: Vec<N::TransactionID>,
-
     /// The list of accepted transactions that have been processed.
     pub accepted_transactions: Vec<N::TransactionID>,
+    /// The list of transactions that have been processed. Including ones that have been rejected.
+    pub processed_transactions: Vec<N::TransactionID>,
 
     /// The values updated in the speculate state. (`program ID`, (`mapping name`, (`key`, `value`)))
     pub speculate_state: IndexMap<ProgramID<N>, IndexMap<Identifier<N>, IndexMap<Vec<u8>, Value<N>>>>,
@@ -56,8 +55,9 @@ impl<N: Network> Speculate<N> {
     pub fn new(latest_finalize_root: Field<N>) -> Self {
         Self {
             latest_finalize_root,
-            processed_transactions: Default::default(),
             accepted_transactions: Default::default(),
+            processed_transactions: Default::default(),
+
             speculate_state: Default::default(),
             operations: Default::default(),
         }
@@ -65,14 +65,19 @@ impl<N: Network> Speculate<N> {
 
     /// Returns `true` if the transaction has been processed.
     pub fn contains_transaction(&self, transaction_id: &N::TransactionID) -> bool {
-        self.processed_transactions.contains(transaction_id)
-            || self.accepted_transactions.contains(transaction_id)
+        self.accepted_transactions.contains(transaction_id)
+            || self.processed_transactions.contains(transaction_id)
             || self.operations.contains_key(transaction_id)
     }
 
-    /// Returns `true` if the speculate state is complete.
+    /// Returns the accepted transactions.
     pub fn accepted_transactions(&self) -> &[N::TransactionID] {
         &self.accepted_transactions
+    }
+
+    /// Returns the processed transactions.
+    pub fn processed_transactions(&self) -> &[N::TransactionID] {
+        &self.processed_transactions
     }
 
     pub fn operations(&self) -> &IndexMap<N::TransactionID, Vec<(ProgramID<N>, MerkleTreeUpdate<N>)>> {

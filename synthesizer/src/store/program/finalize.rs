@@ -232,29 +232,29 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Retrieve the program index. If the program ID does not exist, initialize the program index
         // by first checking if there are any existing program indices and incrementing the maximum.
-        let program_index = match self.program_index_map().get_speculative(program_id)? {
-            Some(program_index) => cow_to_cloned!(program_index),
-            None => {
-                // Get the maximum program index.
-                let max_program_index = self.program_index_map().values_confirmed().max();
-                // Get the maximum program index in the atomic batch.
-                let max_batched_index = self
-                    .program_index_map()
-                    .iter_pending()
-                    .map(|(_, index)| index)
-                    .max_by(|index_1, index_2| index_1.cmp(index_2));
+        let program_index = if program_id == &ProgramID::from_str("credits.aleo")? {
+            0u32
+        } else {
+            match self.program_index_map().get_speculative(program_id)? {
+                Some(program_index) => cow_to_cloned!(program_index),
+                None => {
+                    // Get the maximum confirmed program index.
+                    let max_confirmed_index = self.program_index_map().values_confirmed().max();
+                    // Get the maximum pending program index.
+                    let max_pending_index = self.program_index_map().iter_pending().map(|(_, index)| index).max();
 
-                // Find the next program index.
-                match (max_program_index, max_batched_index) {
-                    // If both the program index and batched index exist, take the maximum and increment.
-                    (Some(program_index), Some(Some(batched_index))) => {
-                        std::cmp::max(program_index, batched_index).saturating_add(1)
+                    // Find the next program index.
+                    match (max_confirmed_index, max_pending_index) {
+                        // If both the confirmed index and pending index exist, take the maximum and increment.
+                        (Some(confirmed_index), Some(Some(pending_index))) => {
+                            core::cmp::max(confirmed_index, pending_index).saturating_add(1)
+                        }
+                        // If only the pending index exists, increment.
+                        (None, Some(Some(pending_index))) => pending_index.saturating_add(1),
+                        // If only the confirmed index exists, increment.
+                        (Some(confirmed_index), None) => confirmed_index.saturating_add(1),
+                        _ => 1u32,
                     }
-                    // If only the batched index exists, increment.
-                    (None, Some(Some(batched_index))) => batched_index.saturating_add(1),
-                    // If only the program index exists, increment.
-                    (Some(program_index), None) => program_index.saturating_add(1),
-                    _ => 0,
                 }
             }
         };
@@ -662,26 +662,20 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the Merkle tree of the finalize state.
     fn to_finalize_tree(&self) -> Result<FinalizeTree<N>> {
         // Initialize a list of program trees.
-        let mut program_trees: IndexMap<u32, ProgramTree<N>> = IndexMap::new();
+        let mut program_trees: BTreeMap<u32, ProgramTree<N>> = BTreeMap::new();
 
         // TODO (raychu86): Parallelize this.
         // Iterate through all the programs and construct the program trees.
         for (program_id, index) in self.program_index_map().iter_confirmed() {
-            // Construct the program tree.
-            let program_tree = self.to_program_tree(&program_id, None)?;
-
-            // Insert the program tree to the list of program trees.
-            program_trees.insert(*index, program_tree);
+            // Compute and store the program tree.
+            program_trees.insert(*index, self.to_program_tree(&program_id, None)?);
         }
-
-        // Sort the program trees by index.
-        program_trees.sort_keys();
 
         // Construct the finalize tree.
         N::merkle_tree_bhp(&cfg_iter!(program_trees).map(|(_, tree)| tree.root().to_bits_le()).collect::<Vec<_>>())
     }
 
-    /// Returns the Merkle tree of the given program's mapping state.
+    /// Returns the Merkle tree of the mappings for the given program.
     fn to_program_tree(
         &self,
         program_id: &ProgramID<N>,
@@ -715,7 +709,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Construct the program tree with the mapping_trees.
         let mapping_roots = cfg_iter!(mapping_trees).map(|(_, tree)| tree.root().to_bits_le()).collect::<Vec<_>>();
-
         // Construct the program tree.
         N::merkle_tree_bhp(&mapping_roots)
     }
@@ -797,19 +790,14 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
     pub fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the finalize storage.
-        let storage = P::open(dev)?;
-
-        // Compute the finalize tree.
-        let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
-
-        Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
+        Self::from(P::open(dev)?)
     }
 
     /// Initializes a finalize store from storage.
     pub fn from(storage: P) -> Result<Self> {
         // Compute the finalize tree.
         let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
-
+        // Return the finalize store.
         Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
 
@@ -817,9 +805,13 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     pub fn initialize_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
         // If we are in speculate mode, then we do not need to update the finalize tree.
         if self.is_speculate.load(Ordering::SeqCst) {
+            // Ensure that storage is in atomic mode.
+            ensure!(self.storage.is_atomic_in_progress());
             // Initialize the mapping
             self.storage.initialize_mapping(program_id, mapping_name)?;
         } else {
+            // // Ensure that storage is *not* in atomic mode.
+            // ensure!(!self.storage.is_atomic_in_progress());
             // Acquire the write lock on the finalize tree.
             let mut tree = self.tree.write();
 

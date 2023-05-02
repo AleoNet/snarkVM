@@ -30,14 +30,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Perform the transaction speculation.
                 let mut speculate = Speculate::new(self.finalize_store().current_finalize_root());
                 speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
-
                 speculate
             }
         };
 
         // Ensure the transactions match the speculate transactions.
-        if transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.accepted_transactions() {
-            return Err(anyhow!("Speculate transactions do not match block transactions transactions"));
+        if transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.processed_transactions() {
+            return Err(anyhow!("Speculate transactions do not match block transactions"));
         }
 
         // Finalize the transactions.
