@@ -618,4 +618,82 @@ finalize getter:
             sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
         vm.add_next_block(&execution_block, None).unwrap();
     }
+
+    #[test]
+    fn test_deploy_same_program_twice_with_different_fees() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis, None).unwrap();
+
+        // Split once.
+        let transaction = Transaction::execute(
+            &vm,
+            &caller_private_key,
+            ("credits.aleo", "split"),
+            [Value::Record(record), Value::from_str("10000000u64").unwrap()].iter(),
+            None,
+            None,
+            rng,
+        )
+        .unwrap();
+        let records = transaction.records().collect_vec();
+        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+        vm.add_next_block(&block, None).unwrap();
+
+        // Deploy the programs.
+        let program = r"
+program test.aleo;
+mapping map_0:
+    key left as field.public;
+    value right as field.public;
+function init:
+    finalize;
+finalize init:
+    set 0field into map_0[0field];
+function getter:
+    finalize;
+finalize getter:
+    get map_0[0field] into r0;
+        ";
+        let first_deployment = Transaction::deploy(
+            &vm,
+            &caller_private_key,
+            &Program::from_str(program).unwrap(),
+            (first_record, 1000000),
+            None,
+            rng,
+        )
+        .unwrap();
+        let second_deployment = Transaction::deploy(
+            &vm,
+            &caller_private_key,
+            &Program::from_str(program).unwrap(),
+            (second_record, 999999),
+            None,
+            rng,
+        )
+        .unwrap();
+        let deployment_block =
+            sample_next_block(&vm, &caller_private_key, &[first_deployment, second_deployment], rng).unwrap();
+        vm.add_next_block(&deployment_block, None).unwrap();
+    }
 }
