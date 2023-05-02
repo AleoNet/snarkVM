@@ -67,6 +67,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ok(cast_ref!(authorization as Authorization<N>).clone())
             }};
         }
+
         // Process the logic.
         process!(self, logic)
     }

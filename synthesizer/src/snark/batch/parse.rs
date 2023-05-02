@@ -14,36 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
+use super::*;
 
-use console::{
-    network::{prelude::*, FiatShamir},
-    program::Identifier,
-};
-use snarkvm_algorithms::{snark::marlin, traits::SNARK};
+static TAG: &str = "batch";
 
-use once_cell::sync::OnceCell;
-use std::sync::Arc;
+impl<N: Network> Debug for KeyBatch<N> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
 
-#[cfg(feature = "aleo-cli")]
-use colored::Colorize;
-
-type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode>;
-
-mod batch;
-pub use batch::{Key, KeyBatch, KeyMode};
-
-mod certificate;
-pub use certificate::Certificate;
-
-mod proof;
-pub use proof::Proof;
-
-mod proving_key;
-pub use proving_key::ProvingKey;
-
-mod universal_srs;
-pub use universal_srs::UniversalSRS;
-
-mod verifying_key;
-pub use verifying_key::VerifyingKey;
+impl<N: Network> Display for KeyBatch<N> {
+    /// Writes the batch as a bech32m string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // Convert the batch to bytes.
+        let bytes = self.to_bytes_le().map_err(|_| fmt::Error)?;
+        // Encode the bytes into bech32m.
+        let string = bech32::encode(TAG, bytes.to_base32(), bech32::Variant::Bech32m).map_err(|_| fmt::Error)?;
+        // Output the string.
+        Display::fmt(&string, f)
+    }
+}

@@ -15,73 +15,56 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::{Key, KeyBatch, KeyMode};
 
 impl<N: Network> Process<N> {
-    /// Executes the fee given the credits record and the fee amount (in microcredits).
+    /// Executes the given fee.
     #[inline]
     pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        private_key: &PrivateKey<N>,
-        credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
+        fee: &mut Fee<N>,
+        fee_assignments: &Vec<&Assignment<N::Field>>,
+        inclusion_assignments: Option<Vec<&Assignment<N::Field>>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<()> {
         let timer = timer!("Process::execute_fee");
 
+        let fee_program_id = fee.transition().program_id();
+        let fee_function_name = *fee.transition().function_name();
+        let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
+
         // Ensure the fee has the correct program ID.
-        let program_id = ProgramID::from_str("credits.aleo")?;
+        let fee_program_id_test = ProgramID::from_str("credits.aleo")?;
+        ensure!(*fee_program_id == fee_program_id_test, "Incorrect program ID for fee");
+
         // Ensure the fee has the correct function.
-        let function_name = Identifier::from_str("fee")?;
+        let fee_function = Identifier::from_str("fee")?;
+        ensure!(fee_function_name == fee_function, "Incorrect function name for fee");
 
-        // Retrieve the input types.
-        let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
-        // Construct the inputs.
-        let inputs = [Value::Record(credits), Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?];
-        lap!(timer, "Construct the inputs");
-        // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
-        lap!(timer, "Compute the request");
-        // Initialize the authorization.
-        let authorization = Authorization::new(&[request.clone()]);
-        lap!(timer, "Initialize the authorization");
-        // Construct the call stack.
-        let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
-        // Construct the authorization from the function.
-        let _response = self.get_stack(program_id)?.execute_function::<A, R>(call_stack, rng)?;
-        lap!(timer, "Construct the authorization from the function");
+        // Ensure the assignments are not empty.
+        if fee_assignments.is_empty() {
+            bail!("Expected the assignments for the fee to *not* be empty")
+        }
 
-        // Retrieve the main request (without popping it).
-        let request = authorization.peek_next()?;
-        // Prepare the stack.
-        let stack = self.get_stack(request.program_id())?;
+        let mut batch = KeyBatch::new(2, KeyMode::Proving);
+        let mut assignments = Vec::with_capacity(2);
+        let mut function_names = Vec::with_capacity(2);
+        let proving_key = self.get_proving_key(fee_program_id, fee_function_name)?;
+        batch.add(Key::ProvingKey(proving_key))?;
+        assignments.push(fee_assignments);
+        function_names.push(&fee_function_name);
 
-        #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        if let Some(inclusion_assignments) = inclusion_assignments.as_ref() {
+            let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+            batch.add(Key::ProvingKey(proving_key))?;
+            assignments.push(inclusion_assignments);
+            function_names.push(&inclusion_name);
+        }
 
-        // Initialize the execution.
-        let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
-        // Initialize the metrics.
-        let metrics = Arc::new(RwLock::new(Vec::new()));
-        // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
-        // Execute the circuit.
-        let response = stack.execute_function::<A, R>(call_stack, rng)?;
-        lap!(timer, "Execute the circuit");
-
-        // Extract the execution.
-        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
-        // Ensure the execution contains 1 transition.
-        ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
-        // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
-        // Extract the metrics.
-        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
+        fee.prove(batch, assignments.as_slice(), function_names, rng)?;
 
         finish!(timer);
-
-        Ok((response, execution.peek()?.clone(), inclusion, metrics))
+        Ok(())
     }
 
     /// Verifies the given fee is valid.
@@ -121,6 +104,10 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the inputs");
 
+        // We need to verify 2 parts: the transition and inclusion
+        let mut batch = KeyBatch::<N>::new(2, KeyMode::Verifying);
+        let mut all_inputs = Vec::with_capacity(2);
+
         // Ensure each output is valid.
         let num_inputs = fee.inputs().len();
         if fee
@@ -132,10 +119,6 @@ impl<N: Network> Process<N> {
             bail!("Failed to verify a fee output")
         }
         lap!(timer, "Verify the outputs");
-
-        // Ensure the inclusion proof is valid.
-        Inclusion::verify_fee(fee)?;
-        lap!(timer, "Verify the inclusion proof");
 
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
@@ -168,11 +151,23 @@ impl<N: Network> Process<N> {
 
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-        // Ensure the transition proof is valid.
-        ensure!(
-            verifying_key.verify(function.name(), &inputs, fee.proof()),
-            "Fee is invalid - failed to verify transition proof"
-        );
+        batch.add(Key::VerifyingKey(verifying_key))?;
+        all_inputs.push(vec![inputs]);
+
+        // Get inclusion proof vk and inputs.
+        if fee.proves_inclusion() {
+            let (inclusion_vk, inclusion_inputs) = Inclusion::prepare_verify_fee(fee)?;
+            batch.add(Key::VerifyingKey(inclusion_vk))?;
+            all_inputs.push(inclusion_inputs);
+        }
+        lap!(timer, "Get the inclusion proof vk and inputs");
+
+        // Ensure there is a proof.
+        let proof = fee.proof();
+        ensure!(proof.is_some(), "Fee is invalid - missing proof");
+
+        ensure!(fee.verify(batch, all_inputs.as_slice())?, "Fee is invalid - failed to verify proof");
+
         lap!(timer, "Verify the transition proof");
 
         finish!(timer);

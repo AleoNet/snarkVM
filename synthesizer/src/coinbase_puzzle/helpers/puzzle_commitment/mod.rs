@@ -24,7 +24,7 @@ use super::*;
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct PuzzleCommitment<N: Network> {
     /// The commitment for the solution.
-    commitment: KZGCommitment<<N as Environment>::PairingCurve>,
+    commitment: KZGCommitment<N::PairingCurve>,
 }
 
 impl<N: Network> PuzzleCommitment<N> {

@@ -94,23 +94,23 @@ mod tests {
         let import4 = Import::<CurrentNetwork>::from_str("import foo.aleo;")?;
 
         assert_eq!(import1.partial_cmp(&import1), Some(Ordering::Equal));
-        assert_eq!(import1.partial_cmp(&import2), Some(Ordering::Less));
+        assert_eq!(import1.partial_cmp(&import2), Some(Ordering::Greater));
         assert_eq!(import1.partial_cmp(&import3), Some(Ordering::Equal));
-        assert_eq!(import1.partial_cmp(&import4), Some(Ordering::Less));
+        assert_eq!(import1.partial_cmp(&import4), Some(Ordering::Greater));
 
-        assert_eq!(import2.partial_cmp(&import1), Some(Ordering::Greater));
+        assert_eq!(import2.partial_cmp(&import1), Some(Ordering::Less));
         assert_eq!(import2.partial_cmp(&import2), Some(Ordering::Equal));
-        assert_eq!(import2.partial_cmp(&import3), Some(Ordering::Greater));
+        assert_eq!(import2.partial_cmp(&import3), Some(Ordering::Less));
         assert_eq!(import2.partial_cmp(&import4), Some(Ordering::Equal));
 
         assert_eq!(import3.partial_cmp(&import1), Some(Ordering::Equal));
-        assert_eq!(import3.partial_cmp(&import2), Some(Ordering::Less));
+        assert_eq!(import3.partial_cmp(&import2), Some(Ordering::Greater));
         assert_eq!(import3.partial_cmp(&import3), Some(Ordering::Equal));
-        assert_eq!(import3.partial_cmp(&import4), Some(Ordering::Less));
+        assert_eq!(import3.partial_cmp(&import4), Some(Ordering::Greater));
 
-        assert_eq!(import4.partial_cmp(&import1), Some(Ordering::Greater));
+        assert_eq!(import4.partial_cmp(&import1), Some(Ordering::Less));
         assert_eq!(import4.partial_cmp(&import2), Some(Ordering::Equal));
-        assert_eq!(import4.partial_cmp(&import3), Some(Ordering::Greater));
+        assert_eq!(import4.partial_cmp(&import3), Some(Ordering::Less));
         assert_eq!(import4.partial_cmp(&import4), Some(Ordering::Equal));
 
         Ok(())

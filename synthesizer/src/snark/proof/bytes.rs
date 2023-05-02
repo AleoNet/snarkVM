@@ -26,9 +26,11 @@ impl<N: Network> FromBytes for Proof<N> {
             return Err(error("Invalid proof version"));
         }
         // Read the proof.
+        let proves_inclusion = bool::read_le(&mut reader)?;
+        // Read the proof.
         let proof = FromBytes::read_le(&mut reader)?;
         // Return the proof.
-        Ok(Self { proof })
+        Ok(Self { proof, proves_inclusion })
     }
 }
 
@@ -37,6 +39,8 @@ impl<N: Network> ToBytes for Proof<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u8.write_le(&mut writer)?;
+        // Write whether we prove inclusion
+        self.proves_inclusion.write_le(&mut writer)?;
         // Write the bytes.
         self.proof.write_le(&mut writer)
     }

@@ -114,7 +114,13 @@ pub enum CallStack<N: Network> {
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
-    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Inclusion<N>>>, Arc<RwLock<Vec<CallMetrics<N>>>>),
+    Prepare(
+        Authorization<N>,
+        Arc<RwLock<Execution<N>>>,
+        Arc<RwLock<Inclusion<N>>>,
+        Arc<RwLock<Vec<CallMetrics<N>>>>,
+        Assignments<N>,
+    ),
 }
 
 impl<N: Network> CallStack<N> {
@@ -123,14 +129,15 @@ impl<N: Network> CallStack<N> {
         Ok(CallStack::Evaluate(authorization))
     }
 
-    /// Initializes a call stack as `Self::Execute`.
-    pub fn execute(
+    /// Initializes a call stack as `Self::Prepare`.
+    pub fn prepare(
         authorization: Authorization<N>,
         execution: Arc<RwLock<Execution<N>>>,
         inclusion: Arc<RwLock<Inclusion<N>>>,
         metrics: Arc<RwLock<Vec<CallMetrics<N>>>>,
+        assignments: Assignments<N>,
     ) -> Result<Self> {
-        Ok(CallStack::Execute(authorization, execution, inclusion, metrics))
+        Ok(CallStack::Prepare(authorization, execution, inclusion, metrics, assignments))
     }
 }
 
@@ -150,11 +157,12 @@ impl<N: Network> CallStack<N> {
                 Arc::new(RwLock::new(assignments.read().clone())),
             ),
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
-            CallStack::Execute(authorization, execution, inclusion, metrics) => CallStack::Execute(
+            CallStack::Prepare(authorization, execution, inclusion, metrics, assignments) => CallStack::Prepare(
                 authorization.replicate(),
                 Arc::new(RwLock::new(execution.read().clone())),
                 Arc::new(RwLock::new(inclusion.read().clone())),
                 Arc::new(RwLock::new(metrics.read().clone())),
+                Arc::new(RwLock::new(assignments.read().clone())),
             ),
         }
     }
@@ -166,7 +174,7 @@ impl<N: Network> CallStack<N> {
             CallStack::Synthesize(requests, ..) => requests.push(request),
             CallStack::CheckDeployment(requests, ..) => requests.push(request),
             CallStack::Evaluate(authorization) => authorization.push(request),
-            CallStack::Execute(authorization, ..) => authorization.push(request),
+            CallStack::Prepare(authorization, ..) => authorization.push(request),
         }
         Ok(())
     }
@@ -180,7 +188,7 @@ impl<N: Network> CallStack<N> {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.next(),
-            CallStack::Execute(authorization, ..) => authorization.next(),
+            CallStack::Prepare(authorization, ..) => authorization.next(),
         }
     }
 
@@ -193,7 +201,7 @@ impl<N: Network> CallStack<N> {
                 requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.peek_next(),
-            CallStack::Execute(authorization, ..) => authorization.peek_next(),
+            CallStack::Prepare(authorization, ..) => authorization.peek_next(),
         }
     }
 }

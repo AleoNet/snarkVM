@@ -38,7 +38,6 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Response, Value},
-    types::Field,
 };
 
 use aleo_std::prelude::{finish, lap, timer};
@@ -148,20 +147,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{
-        program::Program,
-        store::helpers::memory::ConsensusMemory,
-        Block,
-        Fee,
-        Header,
-        Inclusion,
-        Metadata,
-        Transition,
-    };
+    use crate::{program::Program, store::helpers::memory::ConsensusMemory, Block, Fee, Header, Metadata, Transition};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::Value,
+        types::Field,
     };
 
     use indexmap::IndexMap;
@@ -352,9 +343,11 @@ function compute:
                 let records =
                     genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
+                let mut records_iter = records.values();
 
                 // Select a record to spend.
-                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+                let record = records_iter.next().unwrap().decrypt(&caller_view_key).unwrap();
+                let record_for_fee = records_iter.next().unwrap().decrypt(&caller_view_key).unwrap();
 
                 // Initialize the VM.
                 let vm = sample_vm();
@@ -363,17 +356,18 @@ function compute:
 
                 // Prepare the inputs.
                 let inputs = [
+                    Value::<CurrentNetwork>::Record(record),
                     Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
                     Value::<CurrentNetwork>::from_str("1u64").unwrap(),
                 ]
                 .into_iter();
 
                 // Authorize.
-                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "mint", inputs, rng).unwrap();
+                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
                 // Execute the fee.
-                let fee = Transaction::execute_fee(&vm, &caller_private_key, record, 100, None, rng).unwrap();
+                let fee = Transaction::execute_fee(&vm, &caller_private_key, record_for_fee, 100, None, rng).unwrap();
 
                 // Execute.
                 let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
@@ -410,10 +404,9 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_, fee, _) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee));
-                assert!(Inclusion::verify_fee(&fee).is_ok());
                 // Return the fee.
                 fee
             })

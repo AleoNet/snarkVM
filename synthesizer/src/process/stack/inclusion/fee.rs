@@ -75,9 +75,8 @@ macro_rules! prepare_fee_impl {
             bail!("Inclusion expected the global state root in the fee to *not* be zero")
         }
         // Ensure the assignments are not empty.
-        if assignments.is_empty() {
-            bail!("Inclusion expected the assignments for the fee to *not* be empty")
-        }
+        ensure!(!assignments.is_empty(), "Inclusion expected the assignments for the fee to *not* be empty");
+
         // Return the assignments.
         Ok(assignments)
     }};
@@ -104,50 +103,38 @@ impl<N: Network> Inclusion<N> {
         prepare_fee_impl!(self, fee_transition, query, get_state_path_for_commitment_async, await)
     }
 
-    /// Returns a new fee with an inclusion proof, for the given transition.
-    pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        fee_transition: Transition<N>,
-        assignments: &[InclusionAssignment<N>],
-        rng: &mut R,
-    ) -> Result<Fee<N>> {
-        // Ensure the fee has the correct program ID.
-        let fee_program_id = ProgramID::from_str("credits.aleo")?;
-        ensure!(*fee_transition.program_id() == fee_program_id, "Incorrect program ID for fee");
+    pub fn fee_global_state_root(assignments: &Vec<InclusionAssignment<N>>) -> Result<N::StateRoot> {
+        // Initialize the global state root.
+        let mut global_state_root = N::StateRoot::default();
 
-        // Ensure the fee has the correct function.
-        let fee_function = Identifier::from_str("fee")?;
-        ensure!(*fee_transition.function_name() == fee_function, "Incorrect function name for fee");
-
-        // Ensure the assignments are not empty.
-        if assignments.is_empty() {
-            bail!("Inclusion expected the assignments for the fee to *not* be empty")
+        for assignment in assignments {
+            // Ensure the global state root is the same across iterations.
+            let assignment_global_state_root = assignment.global_state_root();
+            if *global_state_root != Field::zero() && global_state_root != assignment_global_state_root {
+                bail!("Inclusion expected the global state root to be the same across iterations")
+            }
+            // Update the global state root.
+            global_state_root = assignment_global_state_root;
         }
 
-        // Fetch the inclusion proving key.
-        let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
 
-        // Compute the inclusion batch proof.
-        let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
-        // Return the fee.
-        Ok(Fee::from(fee_transition, global_state_root, Some(inclusion_proof)))
+        Ok(global_state_root)
     }
 
     /// Checks the inclusion proof for the fee.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_fee(fee: &Fee<N>) -> Result<()> {
+    pub fn prepare_verify_fee(fee: &Fee<N>) -> Result<(VerifyingKey<N>, Vec<Vec<N::Field>>)> {
         // Retrieve the global state root.
         let global_state_root = fee.global_state_root();
+
         // Ensure the global state root is not zero.
         if *global_state_root == Field::zero() {
             bail!("Inclusion expected the global state root in the fee to *not* be zero")
         }
-
-        // Retrieve the inclusion proof.
-        let inclusion_proof = match fee.inclusion_proof() {
-            Some(inclusion_proof) => inclusion_proof,
-            None => bail!("Inclusion expected the fee to contain an inclusion proof"),
-        };
 
         // Initialize an empty transaction tree.
         let transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
@@ -178,13 +165,7 @@ impl<N: Network> Inclusion<N> {
 
         // Fetch the inclusion verifying key.
         let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-        // Verify the inclusion proof.
-        ensure!(
-            verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
-            "Inclusion proof is invalid"
-        );
-
-        Ok(())
+        Ok((verifying_key, batch_verifier_inputs))
     }
 }
 
@@ -201,7 +182,11 @@ mod tests {
 
         match deployment_transaction {
             Transaction::Deploy(_, _, _, fee) => {
-                assert!(Inclusion::verify_fee(&fee).is_ok());
+                let result = Inclusion::prepare_verify_fee(&fee);
+                assert!(result.is_ok());
+                let (_vk, inputs) = result.unwrap();
+                assert_eq!(inputs.len(), 1);
+                // We do not test inclusion individually, as we have tests to batch verify it with transitions elsewhere
             }
             _ => panic!("Expected a deployment transaction"),
         }

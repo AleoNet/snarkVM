@@ -15,6 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::ProvingKeyId;
+use circuit::AleoV0;
+use std::collections::BTreeMap;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a call to the program function for the given inputs.
@@ -37,40 +40,56 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
+
                 // Prepare the authorization.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
                 lap!(timer, "Prepare the authorization");
 
-                // Execute the call.
-                let (response, execution, inclusion, metrics) =
-                    $process.execute::<$aleo, _>(authorization.clone(), rng)?;
-                lap!(timer, "Execute the call");
+                // Call prepare
+                let (response, mut execution, inclusion, metrics, function_assignments) =
+                    $process.prepare_function::<$aleo>(authorization.clone())?;
+                lap!(timer, "Prepare the execution");
 
-                // Prepare the assignments.
-                let (assignments, global_state_root) = {
-                    let execution = cast_ref!(execution as Execution<N>);
+                let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
+                for (i, transition) in execution.transitions().enumerate() {
+                    let pk_id = ProvingKeyId{
+                        program_id: *transition.program_id(),
+                        function_name: *transition.function_name(),
+                    };
+                    transition_assignments
+                    .entry(pk_id)
+                    .and_modify(|assignments| assignments.push(&function_assignments[i]))
+                    .or_insert(vec![&function_assignments[i]]);
+                }
+
+                let (inclusion_assignments, global_state_root) = {
+                    let execution = cast_ref!(&mut execution as Execution<N>);
+                    // TODO: it may be more efficient if we can cast query into $network land, but C is not a concrete type...
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_execution(execution, query)?
+                    inclusion.prepare_execution(&execution, query)?
                 };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                let global_state_root = *cast_ref!((*global_state_root) as Field<$network>);
 
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and update the execution.
-                let execution =
-                    inclusion.prove_execution::<$aleo, _>(execution, assignments, global_state_root.into(), rng)?;
-                lap!(timer, "Compute the inclusion proof");
+                let inclusion_assignments = cast_ref!(inclusion_assignments as Vec<InclusionAssignment<$network>>);
+                let inclusion_assignments = inclusion_assignments.into_iter().map(|a| a.to_circuit_assignment::<AleoV0>().unwrap()).collect_vec();
+                // TODO: we're passing every single circuit by reference, we should try adjusting the function signature of prove_batch and verify_batch
+                let inclusion_assignments = inclusion_assignments.iter().collect::<Vec<_>>();
+                let inclusion_assignments = if inclusion_assignments.len() == 0 { None } else {
+                    // TODO: do we have to check if any of the transitions is exactly the inclusion circuit? By function_name, assignments and/or proving key.
+                    Some(inclusion_assignments)
+                };
 
-                // Prepare the return.
+                // Execute the call.
+                $process.execute::<$aleo, _>(&mut execution, transition_assignments, inclusion_assignments, rng)?;
+
                 let response = cast_ref!(response as Response<N>).clone();
-                let execution = cast_ref!(execution as Execution<N>).clone();
+                let mut execution = cast_ref!(execution as Execution<N>).clone();
+                execution.update_global_state_root(global_state_root);
                 let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
-                lap!(timer, "Prepare the response and execution");
 
-                finish!(timer);
+                lap!(timer, "Execute the call");
 
-                // Return the response, execution, and metrics.
                 Ok((response, execution, metrics))
             }};
         }
@@ -119,32 +138,42 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, fee_transition, inclusion, metrics) =
-                    $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
+                let (response, fee_transition, inclusion, fee_assignments, metrics) =
+                    $process.prepare_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
                 lap!(timer, "Execute the call to fee");
 
+                // TODO: this is because we're passing every single circuit by reference, we should try adjusting the function signature of prove_batch and verify_batch
+                let fee_assignments = fee_assignments.iter().collect::<Vec<_>>();
+
                 // Prepare the assignments.
-                let assignments = {
+                let inclusion_assignments = {
                     let fee_transition = cast_ref!(fee_transition as Transition<N>);
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
                     inclusion.prepare_fee(fee_transition, query)?
                 };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
+                let inclusion_assignments = cast_ref!(inclusion_assignments as Vec<InclusionAssignment<$network>>);
+
+                let global_state_root = Inclusion::fee_global_state_root(inclusion_assignments)?;
+
+                let inclusion_assignments = inclusion_assignments.into_iter().map(|ia|ia.to_circuit_assignment::<AleoV0>().unwrap()).collect_vec();
+                // TODO: we're passing every single circuit by reference, we should try adjusting the function signature of prove_batch and verify_batch
+                let inclusion_assignments = inclusion_assignments.iter().collect::<Vec<_>>();
+                let inclusion_assignments = if inclusion_assignments.len() == 0 { None } else {
+                    Some(inclusion_assignments)
+                };
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and construct the fee.
-                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, rng)?;
-                lap!(timer, "Compute the inclusion proof and construct the fee");
+                let mut fee = Fee::from(fee_transition, global_state_root, None);
+
+                // Execute the call.
+                $process.execute_fee::<$aleo, _>(&mut fee, &fee_assignments, inclusion_assignments, rng)?;
+                lap!(timer, "Execute the call");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let fee = cast_ref!(fee as Fee<N>).clone();
                 let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
-                lap!(timer, "Prepare the response, fee, and metrics");
 
-                finish!(timer);
-
-                // Return the response, fee, metrics.
                 Ok((response, fee, metrics))
             }};
         }
@@ -161,6 +190,7 @@ mod tests {
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Ciphertext, Value},
+        types::Field,
     };
 
     use indexmap::IndexMap;
@@ -214,13 +244,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(1387, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1389, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(1352, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(1354, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -254,13 +284,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2595, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2216, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2560, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2181, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -289,13 +319,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2480, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2101, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2445, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2066, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -323,13 +353,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2492, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2113, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2457, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2078, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -352,6 +382,6 @@ mod tests {
 
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(2247, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1867, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }

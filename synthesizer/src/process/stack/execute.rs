@@ -55,7 +55,7 @@ impl<N: Network> Stack<N> {
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // If the circuit is in execute mode, then store the console input.
-            if let CallStack::Execute(..) = registers.call_stack() {
+            if let CallStack::Prepare(..) = registers.call_stack() {
                 use circuit::Eject;
                 // Assign the console input to the register.
                 registers.store(self, register, input.eject_value())?;
@@ -68,7 +68,7 @@ impl<N: Network> Stack<N> {
         // Execute the instructions.
         for instruction in closure.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
-            if let CallStack::Execute(..) = registers.call_stack() {
+            if let CallStack::Prepare(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = instruction.evaluate(self, &mut registers) {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
@@ -122,11 +122,7 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        mut call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<Response<N>> {
+    pub fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the call stack is not `Evaluate`.
@@ -207,7 +203,7 @@ impl<N: Network> Stack<N> {
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
             // If the circuit is in execute mode, then store the console input.
-            if let CallStack::Execute(..) = registers.call_stack() {
+            if let CallStack::Prepare(..) = registers.call_stack() {
                 // Assign the console input to the register.
                 registers.store(self, register, input.eject_value())?;
             }
@@ -222,7 +218,7 @@ impl<N: Network> Stack<N> {
         // Execute the instructions.
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
-            if let CallStack::Execute(..) = registers.call_stack() {
+            if let CallStack::Prepare(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = instruction.evaluate(self, &mut registers) {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
@@ -314,7 +310,7 @@ impl<N: Network> Stack<N> {
         // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
         let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
             || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
+            || matches!(registers.call_stack(), CallStack::Prepare(..))
         {
             // If this function has the finalize command, then construct the finalize inputs.
             if let Some(command) = function.finalize_command() {
@@ -389,8 +385,8 @@ impl<N: Network> Stack<N> {
             self.matches_value_type(output, output_type)
         })?;
 
-        // If the circuit is in `Execute` mode, then ensure the circuit is satisfied.
-        if let CallStack::Execute(..) = registers.call_stack() {
+        // If the circuit is in `Prepare` mode, then ensure the circuit is satisfied.
+        if let CallStack::Prepare(..) = registers.call_stack() {
             // If the circuit is empty or not satisfied, then throw an error.
             ensure!(
                 A::num_constraints() > 0 && A::is_satisfied(),
@@ -404,9 +400,9 @@ impl<N: Network> Stack<N> {
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
 
-        // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
+        // If the circuit is in `Synthesize` or `Prepare` mode, synthesize the circuit key, if it does not exist.
         if matches!(registers.call_stack(), CallStack::Synthesize(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
+            || matches!(registers.call_stack(), CallStack::Prepare(..))
         {
             // If the proving key does not exist, then synthesize it.
             if !self.contains_proving_key(function.name()) {
@@ -416,31 +412,22 @@ impl<N: Network> Stack<N> {
             }
         }
 
-        // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        // If the circuit is in `Prepare` mode, then save the assignment.
+        if let CallStack::Prepare(_, ref execution, ref inclusion, ref metrics, ref assignments) =
+            registers.call_stack()
+        {
+            registers.ensure_console_and_circuit_registers_match()?;
+
             // Add the assignment to the assignments.
             assignments.write().push(assignment);
             lap!(timer, "Save the circuit assignment");
-        }
-        // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution, ref inclusion, ref metrics) = registers.call_stack() {
-            registers.ensure_console_and_circuit_registers_match()?;
-
-            // Retrieve the proving key.
-            let proving_key = self.get_proving_key(function.name())?;
-            // Execute the circuit.
-            let proof = match proving_key.prove(function.name(), &assignment, rng) {
-                Ok(proof) => proof,
-                Err(error) => bail!("Execution proof failed - {error}"),
-            };
-            lap!(timer, "Execute the circuit");
 
             // Construct the transition.
-            let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof)?;
+            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
 
             // Add the transition commitments.
             inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
+
             // Add the transition to the execution.
             execution.write().push(transition);
 
@@ -453,6 +440,12 @@ impl<N: Network> Stack<N> {
                 num_function_constraints,
                 num_response_constraints,
             });
+        }
+        // If the circuit is in `CheckDeployment` mode, then save the assignment.
+        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+            // Add the assignment to the assignments.
+            assignments.write().push(assignment);
+            lap!(timer, "Save the circuit assignment");
         }
 
         finish!(timer);

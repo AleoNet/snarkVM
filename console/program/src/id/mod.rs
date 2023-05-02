@@ -106,8 +106,8 @@ impl<N: Network> Ord for ProgramID<N> {
     /// Ordering is determined by the network first, then the program name second.
     fn cmp(&self, other: &Self) -> Ordering {
         match self.network == other.network {
-            true => self.name.to_string().cmp(&other.name.to_string()),
-            false => self.network.to_string().cmp(&other.network.to_string()),
+            true => self.name.cmp(&other.name),
+            false => self.network.cmp(&other.network),
         }
     }
 }
@@ -135,23 +135,23 @@ mod tests {
         let import4 = ProgramID::<CurrentNetwork>::from_str("foo.aleo")?;
 
         assert_eq!(import1.partial_cmp(&import1), Some(Ordering::Equal));
-        assert_eq!(import1.partial_cmp(&import2), Some(Ordering::Less));
+        assert_eq!(import1.partial_cmp(&import2), Some(Ordering::Greater));
         assert_eq!(import1.partial_cmp(&import3), Some(Ordering::Equal));
-        assert_eq!(import1.partial_cmp(&import4), Some(Ordering::Less));
+        assert_eq!(import1.partial_cmp(&import4), Some(Ordering::Greater));
 
-        assert_eq!(import2.partial_cmp(&import1), Some(Ordering::Greater));
+        assert_eq!(import2.partial_cmp(&import1), Some(Ordering::Less));
         assert_eq!(import2.partial_cmp(&import2), Some(Ordering::Equal));
-        assert_eq!(import2.partial_cmp(&import3), Some(Ordering::Greater));
+        assert_eq!(import2.partial_cmp(&import3), Some(Ordering::Less));
         assert_eq!(import2.partial_cmp(&import4), Some(Ordering::Equal));
 
         assert_eq!(import3.partial_cmp(&import1), Some(Ordering::Equal));
-        assert_eq!(import3.partial_cmp(&import2), Some(Ordering::Less));
+        assert_eq!(import3.partial_cmp(&import2), Some(Ordering::Greater));
         assert_eq!(import3.partial_cmp(&import3), Some(Ordering::Equal));
-        assert_eq!(import3.partial_cmp(&import4), Some(Ordering::Less));
+        assert_eq!(import3.partial_cmp(&import4), Some(Ordering::Greater));
 
-        assert_eq!(import4.partial_cmp(&import1), Some(Ordering::Greater));
+        assert_eq!(import4.partial_cmp(&import1), Some(Ordering::Less));
         assert_eq!(import4.partial_cmp(&import2), Some(Ordering::Equal));
-        assert_eq!(import4.partial_cmp(&import3), Some(Ordering::Greater));
+        assert_eq!(import4.partial_cmp(&import3), Some(Ordering::Less));
         assert_eq!(import4.partial_cmp(&import4), Some(Ordering::Equal));
 
         Ok(())

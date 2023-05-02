@@ -73,6 +73,20 @@ impl<N: Network> TryFrom<&str> for Identifier<N> {
     }
 }
 
+impl<N: Network> Ord for Identifier<N> {
+    /// Ordering is determined by the field element.
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl<N: Network> PartialOrd for Identifier<N> {
+    /// Ordering is determined by the field element.
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;

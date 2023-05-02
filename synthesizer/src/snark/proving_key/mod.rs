@@ -20,9 +20,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use std::collections::BTreeMap;
-
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
     proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
@@ -47,35 +45,12 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Compute the proof.
-        let proof = Proof::new(Marlin::<N>::prove(N::marlin_fs_parameters(), self, assignment, rng)?);
+        const PROVES_INCLUSION: bool = false;
+        let proof = Proof::new(Marlin::<N>::prove(N::marlin_fs_parameters(), self, assignment, rng)?, PROVES_INCLUSION);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(proof)
-    }
-
-    /// Returns a proof for the given batch of assignments on the circuit.
-    pub fn prove_batch<R: Rng + CryptoRng>(
-        &self,
-        function_name: &str,
-        assignments: &[circuit::Assignment<N::Field>],
-        rng: &mut R,
-    ) -> Result<Proof<N>> {
-        #[cfg(feature = "aleo-cli")]
-        let timer = std::time::Instant::now();
-
-        // Compute the batch proof.
-        let mut assignment_refs: Vec<&circuit::Assignment<N::Field>> = vec![];
-        for assignment in assignments {
-            assignment_refs.push(assignment);
-        }
-        let mut keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(self.deref(), assignment_refs.as_slice());
-        let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &keys_to_constraints, rng)?);
-
-        #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
-        Ok(batch_proof)
     }
 }
 

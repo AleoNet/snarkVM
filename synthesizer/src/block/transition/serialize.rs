@@ -32,7 +32,6 @@ impl<N: Network> Serialize for Transition<N> {
                 if let Some(finalize) = &self.finalize {
                     transition.serialize_field("finalize", &finalize)?;
                 }
-                transition.serialize_field("proof", &self.proof)?;
                 transition.serialize_field("tpk", &self.tpk)?;
                 transition.serialize_field("tcm", &self.tcm)?;
                 transition.end()
@@ -67,8 +66,6 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                         Some(finalize) => Some(serde_json::from_value(finalize.clone()).map_err(de::Error::custom)?),
                         None => None,
                     },
-                    // Retrieve the proof.
-                    DeserializeExt::take_from_value::<D>(&mut transition, "proof")?,
                     // Retrieve the `tpk`.
                     DeserializeExt::take_from_value::<D>(&mut transition, "tpk")?,
                     // Retrieve the `tcm`.

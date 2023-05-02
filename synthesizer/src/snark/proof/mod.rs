@@ -24,12 +24,19 @@ mod serialize;
 pub struct Proof<N: Network> {
     /// The proof.
     proof: marlin::Proof<N::PairingCurve>,
+    /// Does the proof prove inclusion?
+    proves_inclusion: bool,
 }
 
 impl<N: Network> Proof<N> {
     /// Initializes a new proof.
-    pub(super) const fn new(proof: marlin::Proof<N::PairingCurve>) -> Self {
-        Self { proof }
+    pub(super) const fn new(proof: marlin::Proof<N::PairingCurve>, proves_inclusion: bool) -> Self {
+        Self { proof, proves_inclusion }
+    }
+
+    /// Returns whether we prove inclusion.
+    pub const fn proves_inclusion(&self) -> bool {
+        self.proves_inclusion
     }
 }
 
@@ -54,10 +61,10 @@ mod tests {
         static INSTANCE: OnceCell<Proof<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                // Sample a transition.
-                let transition = crate::process::test_helpers::sample_transition();
+                // Sample an execution transition.
+                let execution = crate::process::test_helpers::sample_execution();
                 // Return the proof.
-                transition.proof().clone()
+                execution.proof().unwrap().clone()
             })
             .clone()
     }

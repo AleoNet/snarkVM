@@ -16,51 +16,50 @@
 
 use super::*;
 
+use crate::{Key, KeyBatch, KeyMode, ProvingKeyId};
+
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        authorization: Authorization<N>,
+        execution: &mut Execution<N>,
+        transition_assignments: BTreeMap<ProvingKeyId<N>, Vec<&Assignment<N::Field>>>,
+        inclusion_assignments: Option<Vec<&Assignment<N::Field>>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<()> {
         let timer = timer!("Process::execute");
 
-        // Retrieve the main request (without popping it).
-        let request = authorization.peek_next()?;
+        // Retrieve the proving keys and fill the batch.
+        let mut batch = KeyBatch::new(1 + transition_assignments.len(), KeyMode::Proving);
+        let mut assignments = Vec::with_capacity(1 + transition_assignments.len());
+        let mut function_names = Vec::with_capacity(1 + transition_assignments.len());
+        for (proving_key_id, transition_assignments) in transition_assignments.iter() {
+            let proving_key = self.get_proving_key(proving_key_id.program_id, proving_key_id.function_name)?;
+            // NOTE: consistent ordering of keys and assignments is crucial
+            batch.add(Key::ProvingKey(proving_key))?;
+            assignments.push(transition_assignments);
+            function_names.push(&proving_key_id.function_name);
+        }
 
-        #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executing '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
+        if let Some(inclusion_assignments) = inclusion_assignments.as_ref() {
+            let inclusion_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+            batch.add(Key::ProvingKey(inclusion_key))?;
+            assignments.push(inclusion_assignments);
+            function_names.push(&inclusion_name);
+        }
 
-        // Initialize the execution.
-        let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
-        // Initialize the metrics.
-        let metrics = Arc::new(RwLock::new(Vec::new()));
-        // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
-        lap!(timer, "Initialize call stack");
-        // Execute the circuit.
-        let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
-        lap!(timer, "Execute the function");
-        // Extract the execution.
-        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
-        // Ensure the execution is not empty.
-        ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
-        // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
-        // Extract the metrics.
-        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
+        execution.prove(batch, assignments.as_slice(), function_names.as_slice(), rng)?;
 
         finish!(timer);
-        Ok((response, execution, inclusion, metrics))
+        Ok(())
     }
 
     /// Verifies the given execution is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
         let timer = timer!("Process::verify_execution");
 
         // Ensure the execution contains transitions.
@@ -82,14 +81,11 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the number of transitions");
 
-        // Ensure the inclusion proof is valid.
-        if VERIFY_INCLUSION {
-            Inclusion::verify_execution(execution)?;
-            lap!(timer, "Verify the inclusion proof");
-        }
-
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();
+        let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
+        let mut batch = KeyBatch::<N>::new(1 + execution.transitions().len(), KeyMode::Verifying);
+        let mut all_inputs = Vec::with_capacity(1 + execution.transitions().len());
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
@@ -203,21 +199,39 @@ impl<N: Network> Process<N> {
                 }
             }
 
+            let pk_id =
+                ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
+            if let Some(assignment) = transition_assignments.get_mut(&pk_id) {
+                assignment.push(inputs);
+            } else {
+                transition_assignments.insert(pk_id, vec![inputs]);
+            }
+
             lap!(timer, "Construct the verifier inputs");
 
             #[cfg(debug_assertions)]
-            println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
+            println!("Transition public inputs ({} elements): {:#?}", all_inputs.len(), all_inputs);
 
-            // Retrieve the verifying key.
-            let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-            // Ensure the transition proof is valid.
-            ensure!(
-                verifying_key.verify(function.name(), &inputs, transition.proof()),
-                "Transition is invalid - failed to verify transition proof"
-            );
-
-            lap!(timer, "Verify transition proof for {}", function.name());
+            lap!(timer, "Verify transition for {}", function.name());
         }
+
+        for (pkid, circuit_inputs) in transition_assignments {
+            // Retrieve the verifying key.
+            let verifying_key = self.get_verifying_key(pkid.program_id, pkid.function_name)?;
+            batch.add(Key::VerifyingKey(verifying_key))?;
+            all_inputs.push(circuit_inputs);
+        }
+
+        // Ensure the inclusion proof is valid.
+        if execution.proves_inclusion() {
+            let (inclusion_vk, inclusion_inputs) = Inclusion::prepare_verify_execution(execution)?;
+            batch.add(Key::VerifyingKey(inclusion_vk))?;
+            all_inputs.push(inclusion_inputs);
+        }
+
+        // Ensure the transition proofs are all valid.
+        ensure!(execution.verify(batch, all_inputs.as_slice())?, "Execution is invalid - failed to verify proof");
+        lap!(timer, "Verify execution proof");
 
         finish!(timer);
         Ok(())

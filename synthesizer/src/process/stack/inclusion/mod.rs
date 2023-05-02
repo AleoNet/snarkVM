@@ -25,7 +25,6 @@ use crate::{
     Fee,
     Input,
     Output,
-    Proof,
     ProvingKey,
     Query,
     Transaction,
@@ -104,40 +103,6 @@ impl<N: Network> Inclusion<N> {
 
         Ok(())
     }
-
-    /// Returns the global state root and inclusion proof for the given assignments.
-    fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        proving_key: &ProvingKey<N>,
-        assignments: &[InclusionAssignment<N>],
-        rng: &mut R,
-    ) -> Result<(N::StateRoot, Proof<N>)> {
-        // Initialize the global state root.
-        let mut global_state_root = N::StateRoot::default();
-        // Initialize a vector for the batch assignments.
-        let mut batch_assignments = vec![];
-
-        for assignment in assignments.iter() {
-            // Ensure the global state root is the same across iterations.
-            if *global_state_root != Field::zero() && global_state_root != assignment.state_path.global_state_root() {
-                bail!("Inclusion expected the global state root to be the same across iterations")
-            }
-            // Update the global state root.
-            global_state_root = assignment.state_path.global_state_root();
-
-            // Add the assignment to the assignments.
-            batch_assignments.push(assignment.to_circuit_assignment::<A>()?);
-        }
-
-        // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
-            bail!("Inclusion expected the global state root in the execution to *not* be zero")
-        }
-
-        // Generate the inclusion batch proof.
-        let inclusion_proof = proving_key.prove_batch(N::INCLUSION_FUNCTION_NAME, &batch_assignments, rng)?;
-        // Return the global state root and inclusion proof.
-        Ok((global_state_root, inclusion_proof))
-    }
 }
 
 pub struct InclusionAssignment<N: Network> {
@@ -160,6 +125,10 @@ impl<N: Network> InclusionAssignment<N> {
         is_global: bool,
     ) -> Self {
         Self { state_path, commitment, gamma, serial_number, local_state_root, is_global }
+    }
+
+    pub fn global_state_root(&self) -> N::StateRoot {
+        self.state_path.global_state_root()
     }
 
     /// The circuit for state path verification.

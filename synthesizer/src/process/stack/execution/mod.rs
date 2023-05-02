@@ -18,10 +18,16 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{snark::Proof, Transition};
+use crate::{
+    process::Identifier,
+    snark::{KeyBatch, Proof},
+    Transition,
+};
+use circuit::Assignment;
 use console::{account::Field, network::prelude::*};
-
 use indexmap::IndexMap;
+
+// type ProvesInclusion = bool;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Execution<N: Network> {
@@ -29,25 +35,24 @@ pub struct Execution<N: Network> {
     transitions: IndexMap<N::TransitionID, Transition<N>>,
     /// The global state root.
     global_state_root: N::StateRoot,
-    /// The inclusion proof.
-    inclusion_proof: Option<Proof<N>>,
+    /// The batch proof of transitions and optionally inclusion
+    proof: Option<Proof<N>>,
 }
 
 impl<N: Network> Execution<N> {
     /// Initialize a new `Execution` instance.
     pub fn new() -> Self {
-        Self { transitions: Default::default(), global_state_root: Default::default(), inclusion_proof: None }
+        Self { transitions: Default::default(), global_state_root: Default::default(), proof: None }
     }
 
     /// Initializes a new `Execution` instance with the given transitions.
     pub fn from(
         transitions: impl Iterator<Item = Transition<N>>,
         global_state_root: N::StateRoot,
-        inclusion_proof: Option<Proof<N>>,
+        proof: Option<Proof<N>>,
     ) -> Result<Self> {
         // Construct the execution.
-        let execution =
-            Self { transitions: transitions.map(|t| (*t.id(), t)).collect(), global_state_root, inclusion_proof };
+        let execution = Self { transitions: transitions.map(|t| (*t.id(), t)).collect(), global_state_root, proof };
         // Ensure the transitions are not empty.
         ensure!(!execution.transitions.is_empty(), "Execution cannot initialize from empty list of transitions");
         // Return the new `Execution` instance.
@@ -60,13 +65,60 @@ impl<N: Network> Execution<N> {
     }
 
     /// Returns the global state root.
-    pub const fn global_state_root(&self) -> N::StateRoot {
+    pub fn global_state_root(&self) -> N::StateRoot {
         self.global_state_root
     }
 
-    /// Returns the inclusion proof.
-    pub const fn inclusion_proof(&self) -> Option<&Proof<N>> {
-        self.inclusion_proof.as_ref()
+    /// Returns the proof.
+    pub const fn proof(&self) -> Option<&Proof<N>> {
+        self.proof.as_ref()
+    }
+
+    /// Returns whether we prove inclusion.
+    pub const fn proves_inclusion(&self) -> bool {
+        match self.proof.as_ref() {
+            Some(proof) => proof.proves_inclusion(),
+            None => false,
+        }
+    }
+
+    /// Proves the execution.
+    pub fn prove<R: Rng + CryptoRng>(
+        &mut self,
+        batch: KeyBatch<N>,
+        assignments: &[&Vec<&Assignment<N::Field>>],
+        function_names: &[&Identifier<N>],
+        rng: &mut R,
+    ) -> Result<()> {
+        if self.proof.is_some() {
+            bail!("Proof already exists!")
+        }
+        if assignments.len() != function_names.len() {
+            bail!("Number of assignments and function names must be equal!")
+        }
+        if assignments.is_empty() {
+            bail!("Number of assignments must be greater than zero!")
+        }
+        let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
+        let proves_inclusion = *function_names[function_names.len() - 1] == inclusion_name;
+        let proof = batch.prove(function_names, assignments, proves_inclusion, rng)?;
+
+        self.proof = Some(proof);
+
+        Ok(())
+    }
+
+    /// Verifies the execution.
+    pub fn verify(&self, batch: KeyBatch<N>, inputs: &[Vec<Vec<N::Field>>]) -> Result<bool> {
+        if self.proof.is_none() {
+            bail!("Proof missing!")
+        }
+        let mut function_names = self.transitions.values().map(|t| t.function_name()).collect::<Vec<_>>();
+        let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
+        function_names.push(&inclusion_name);
+        batch.verify(function_names.as_slice(), inputs, self.proof.as_ref().unwrap())?;
+
+        Ok(true)
     }
 }
 
@@ -132,5 +184,10 @@ impl<N: Network> Execution<N> {
     /// Returns an iterator over the commitments.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions.values().flat_map(Transition::commitments)
+    }
+
+    /// Inserts the global_state_root.
+    pub fn update_global_state_root(&mut self, global_state_root: N::StateRoot) {
+        self.global_state_root = global_state_root;
     }
 }

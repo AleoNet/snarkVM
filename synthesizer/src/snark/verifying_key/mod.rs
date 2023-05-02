@@ -19,7 +19,6 @@ use super::*;
 mod bytes;
 mod parse;
 mod serialize;
-use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct VerifyingKey<N: Network> {
@@ -42,32 +41,6 @@ impl<N: Network> VerifyingKey<N> {
 
         // Verify the proof.
         match Marlin::<N>::verify(N::marlin_fs_parameters(), self, inputs, proof) {
-            Ok(is_valid) => {
-                #[cfg(feature = "aleo-cli")]
-                {
-                    let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
-                }
-
-                is_valid
-            }
-            Err(error) => {
-                #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verifier failed: {error}").dimmed());
-                false
-            }
-        }
-    }
-
-    /// Returns `true` if the batch proof is valid for the given public inputs.
-    pub fn verify_batch(&self, function_name: &str, inputs: &[Vec<N::Field>], proof: &Proof<N>) -> bool {
-        #[cfg(feature = "aleo-cli")]
-        let timer = std::time::Instant::now();
-
-        // Verify the batch proof.
-        let mut keys_to_inputs = BTreeMap::new();
-        keys_to_inputs.insert(self.deref(), inputs);
-        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {

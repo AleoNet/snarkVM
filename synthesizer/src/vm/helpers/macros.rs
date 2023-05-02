@@ -23,6 +23,12 @@ macro_rules! cast_ref {
             .downcast_ref::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
+    // Example: cast_ref!(&mut bar as Bar<Testnet3>)
+    (&mut $variable:ident as $object:ident<$($traits:path),+>) => {{
+        (&mut $variable as &mut dyn std::any::Any)
+            .downcast_mut::<$object<$($traits),+>>()
+            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
+    }};
     // Example: cast_ref!(bar as Bar<Testnet3>)
     ($variable:ident as $object:ident<$($traits:path),+>) => {{
         (&$variable as &dyn std::any::Any)

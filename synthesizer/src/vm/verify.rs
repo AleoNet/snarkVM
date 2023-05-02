@@ -190,7 +190,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::verify_execution");
 
         // Verify the execution.
-        let verification = self.process.read().verify_execution::<true>(execution);
+        let verification = self.process.read().verify_execution(execution);
         finish!(timer);
 
         match verification {
@@ -229,7 +229,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, Header, Inclusion, Metadata, Transaction};
+    use crate::{Block, Header, Metadata, Transaction};
     use console::{
         account::{Address, ViewKey},
         types::Field,
@@ -287,11 +287,9 @@ mod tests {
 
         match transaction {
             Transaction::Execute(_, execution, _) => {
-                // Ensure the inclusion proof *does not* exist.
-                assert!(execution.inclusion_proof().is_none()); // This is 'None', because this execution called 'credits.aleo/mint'.
-                // Verify the inclusion.
-                assert!(Inclusion::verify_execution(&execution).is_ok());
-                // Verify the execution.
+                // Ensure the inclusion proof exists.
+                assert!(execution.proves_inclusion()); // This is true, because this execution called 'credits.aleo/transfer'.
+                // Verify the execution and inclusion.
                 assert!(vm.check_execution(&execution).is_ok());
                 assert!(vm.verify_execution(&execution));
 
@@ -316,11 +314,10 @@ mod tests {
 
         match transaction {
             Transaction::Execute(_, _, Some(fee)) => {
-                // Ensure the inclusion proof exists.
-                assert!(fee.inclusion_proof().is_some());
-                // Verify the inclusion.
-                assert!(Inclusion::verify_fee(&fee).is_ok());
-                // Verify the fee.
+                // Ensure the proof exists.
+                assert!(fee.proof().is_some());
+                assert!(fee.proves_inclusion()); // This is true, because this execution called 'credits.aleo/transfer'.
+                // Verify the fee and inclusion.
                 assert!(vm.check_fee(&fee).is_ok());
                 assert!(vm.verify_fee(&fee));
 

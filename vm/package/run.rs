@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_synthesizer::CallMetrics;
+use snarkvm_synthesizer::{CallMetrics, ProvingKeyId};
+use std::collections::BTreeMap;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
@@ -96,8 +97,20 @@ impl<N: Network> Package<N> {
         // Adds the verifying key to the process.
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
+        let (response, mut execution, inclusion, metrics, function_assignments) =
+            process.prepare_function::<A>(authorization)?;
+        let mut transition_assignments: BTreeMap<ProvingKeyId<N>, Vec<_>> = BTreeMap::new();
+        for (i, transition) in execution.transitions().enumerate() {
+            let pk_id =
+                ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
+            transition_assignments
+                .entry(pk_id)
+                .and_modify(|assignments| assignments.push(&function_assignments[i]))
+                .or_insert(vec![&function_assignments[i]]);
+        }
+
         // Execute the circuit.
-        let (response, execution, inclusion, metrics) = process.execute::<A, R>(authorization, rng)?;
+        process.execute::<A, R>(&mut execution, transition_assignments, None, rng)?;
 
         Ok((response, execution, inclusion, metrics))
     }

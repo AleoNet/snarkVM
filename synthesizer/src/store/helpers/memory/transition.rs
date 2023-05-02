@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    snark::Proof,
-    store::{helpers::memory::MemoryMap, InputStorage, InputStore, OutputStorage, OutputStore, TransitionStorage},
+use crate::store::{
+    helpers::memory::MemoryMap,
+    InputStorage,
+    InputStore,
+    OutputStorage,
+    OutputStore,
+    TransitionStorage,
 };
 use console::{
     prelude::*,
@@ -35,8 +39,6 @@ pub struct TransitionMemory<N: Network> {
     output_store: OutputStore<N, OutputMemory<N>>,
     /// The transition finalize inputs.
     finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
-    /// The transition proofs.
-    proof_map: MemoryMap<N::TransitionID, Proof<N>>,
     /// The transition public keys.
     tpk_map: MemoryMap<N::TransitionID, Group<N>>,
     /// The reverse `tpk` map.
@@ -53,7 +55,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type InputStorage = InputMemory<N>;
     type OutputStorage = OutputMemory<N>;
     type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
-    type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
@@ -66,7 +67,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             input_store: InputStore::open(dev)?,
             output_store: OutputStore::open(dev)?,
             finalize_map: MemoryMap::default(),
-            proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
@@ -92,11 +92,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     /// Returns the transition finalize inputs.
     fn finalize_map(&self) -> &Self::FinalizeMap {
         &self.finalize_map
-    }
-
-    /// Returns the transition proofs.
-    fn proof_map(&self) -> &Self::ProofMap {
-        &self.proof_map
     }
 
     /// Returns the transition public keys.

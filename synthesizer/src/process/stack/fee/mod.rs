@@ -18,7 +18,9 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{snark::Proof, Input, Transition};
+// use circuit::{Aleo, Identifier};
+use crate::{process::Identifier, snark::Proof, Input, KeyBatch, Transition};
+use circuit::Assignment;
 use console::{
     network::prelude::*,
     program::{Literal, Plaintext},
@@ -31,15 +33,15 @@ pub struct Fee<N: Network> {
     transition: Transition<N>,
     /// The global state root.
     global_state_root: N::StateRoot,
-    /// The inclusion proof.
-    inclusion_proof: Option<Proof<N>>,
+    /// The proof of transition and optional inclusion.
+    proof: Option<Proof<N>>,
 }
 
 impl<N: Network> Fee<N> {
     /// Initializes a new `Fee` instance with the given transition, global state root, and inclusion proof.
-    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, inclusion_proof: Option<Proof<N>>) -> Self {
+    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Self {
         // Return the new `Fee` instance.
-        Self { transition, global_state_root, inclusion_proof }
+        Self { transition, global_state_root, proof }
     }
 
     /// Returns 'true' if the fee amount is zero.
@@ -76,9 +78,51 @@ impl<N: Network> Fee<N> {
         self.global_state_root
     }
 
-    /// Returns the inclusion proof.
-    pub const fn inclusion_proof(&self) -> Option<&Proof<N>> {
-        self.inclusion_proof.as_ref()
+    /// Returns whether the fee proves inclusion
+    pub fn proves_inclusion(&self) -> bool {
+        if let Some(proof) = &self.proof { proof.proves_inclusion() } else { false }
+    }
+
+    /// Returns the fee proof.
+    pub const fn proof(&self) -> Option<&Proof<N>> {
+        self.proof.as_ref()
+    }
+
+    pub fn prove<R: Rng + CryptoRng>(
+        &mut self,
+        batch: KeyBatch<N>,
+        assignments: &[&Vec<&Assignment<N::Field>>],
+        function_names: Vec<&Identifier<N>>,
+        rng: &mut R,
+    ) -> Result<()> {
+        if assignments.is_empty() || assignments.len() > 2 {
+            bail!("Expected 1 or 2 assignments, got {}", assignments.len())
+        }
+        let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
+        if assignments.len() == 2 && *function_names[1] != inclusion_name {
+            bail!("Expected 2nd assignment to belong to inclusion")
+        }
+        let proves_inclusion = *function_names[function_names.len() - 1] == inclusion_name;
+        let proof = batch.prove(function_names.as_slice(), assignments, proves_inclusion, rng)?;
+
+        self.proof = Some(proof);
+
+        Ok(())
+    }
+
+    /// Verifies the fee.
+    pub fn verify(&self, batch: KeyBatch<N>, inputs: &[Vec<Vec<N::Field>>]) -> Result<bool> {
+        if self.proof.is_none() {
+            bail!("Proof missing!")
+        }
+        let mut function_names = vec![self.transition().function_name()];
+        let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
+        if inputs.len() > 1 {
+            function_names.push(&inclusion_name);
+        }
+        batch.verify(function_names.as_slice(), inputs, self.proof.as_ref().unwrap())?;
+
+        Ok(true)
     }
 }
 

@@ -23,6 +23,7 @@ mod evaluate;
 mod execute;
 mod execute_fee;
 mod finalize;
+mod prepare;
 
 #[cfg(test)]
 mod tests;
@@ -42,9 +43,10 @@ use console::{
 };
 
 use aleo_std::prelude::{finish, lap, timer};
+use circuit::Assignment;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg(test)]
 use std::collections::HashMap;
@@ -309,7 +311,8 @@ impl<N: Network> Process<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program, Transition};
+    use crate::{Process, Program, ProvingKeyId, Transition};
+
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};
 
     use once_cell::sync::OnceCell;
@@ -401,8 +404,20 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution, _inclusion, _metrics) =
-                    process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, mut execution, _inclusion, _metrics, function_assignments) =
+                    process.prepare_function::<CurrentAleo>(authorization).unwrap();
+                let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
+                for (i, transition) in execution.transitions().enumerate() {
+                    let pk_id = ProvingKeyId {
+                        program_id: *transition.program_id(),
+                        function_name: *transition.function_name(),
+                    };
+                    transition_assignments
+                        .entry(pk_id)
+                        .and_modify(|assignments| assignments.push(&function_assignments[i]))
+                        .or_insert(vec![&function_assignments[i]]);
+                }
+                process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.
                 execution

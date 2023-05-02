@@ -21,10 +21,8 @@ macro_rules! prepare_execution_impl {
         // Ensure the number of leaves is within the Merkle tree size.
         Transaction::check_execution_size($execution)?;
 
-        // Ensure the inclusion proof in the execution is 'None'.
-        if $execution.inclusion_proof().is_some() {
-            bail!("Inclusion proof in the execution should not be set in 'Inclusion::prepare_execution'")
-        }
+        // Ensure the proof in the execution is 'None'.
+        ensure!($execution.proof().is_none(), "Proof in the execution should not be set yet");
 
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
@@ -132,48 +130,16 @@ impl<N: Network> Inclusion<N> {
 }
 
 impl<N: Network> Inclusion<N> {
-    /// Returns a new execution with an inclusion proof, for the given execution.
-    pub fn prove_execution<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        execution: Execution<N>,
-        assignments: &[InclusionAssignment<N>],
-        global_state_root: N::StateRoot,
-        rng: &mut R,
-    ) -> Result<Execution<N>> {
-        match assignments.is_empty() {
-            true => {
-                // Ensure the global state root is not zero.
-                if *global_state_root == Field::zero() {
-                    bail!("Inclusion expected the global state root in the execution to *not* be zero")
-                }
-
-                // Ensure the inclusion proof in the execution is 'None'.
-                if execution.inclusion_proof().is_some() {
-                    bail!("Inclusion expected the inclusion proof in the execution to be 'None'")
-                }
-                // Return the execution.
-                Execution::from(execution.into_transitions(), global_state_root, None)
-            }
-            false => {
-                // Fetch the inclusion proving key.
-                let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
-
-                // Compute the inclusion batch proof.
-                let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
-                // Return the execution.
-                Execution::from(execution.into_transitions(), global_state_root, Some(inclusion_proof))
-            }
-        }
-    }
-
     /// Checks the inclusion proof for the execution.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_execution(execution: &Execution<N>) -> Result<()> {
+    pub fn prepare_verify_execution(execution: &Execution<N>) -> Result<(VerifyingKey<N>, Vec<Vec<N::Field>>)> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
 
-        // Retrieve the inclusion proof.
-        let inclusion_proof = execution.inclusion_proof();
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
 
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
@@ -205,32 +171,9 @@ impl<N: Network> Inclusion<N> {
             transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
         }
 
-        // If there are no batch verifier inputs, then ensure the inclusion proof is 'None'.
-        if batch_verifier_inputs.is_empty() && inclusion_proof.is_some() {
-            bail!("No input records in the execution. Expected the inclusion proof to be 'None'")
-        }
-        // If there are batch verifier inputs, then ensure the inclusion proof is 'Some'.
-        if !batch_verifier_inputs.is_empty() && inclusion_proof.is_none() {
-            bail!("Missing inclusion proof for the execution")
-        }
-
-        // Verify the inclusion proof.
-        if let Some(inclusion_proof) = inclusion_proof {
-            // Ensure the global state root is not zero.
-            if *global_state_root == Field::zero() {
-                bail!("Inclusion expected the global state root in the execution to *not* be zero")
-            }
-
-            // Fetch the inclusion verifying key.
-            let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-            // Verify the inclusion proof.
-            ensure!(
-                verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
-                "Inclusion proof is invalid"
-            );
-        }
-
-        Ok(())
+        // Fetch the inclusion verifying key.
+        let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
+        Ok((verifying_key, batch_verifier_inputs))
     }
 }
 
@@ -247,7 +190,11 @@ mod tests {
 
         match execution_transaction {
             Transaction::Execute(_, execution, _) => {
-                assert!(Inclusion::verify_execution(&execution).is_ok());
+                let result = Inclusion::prepare_verify_execution(&execution);
+                assert!(result.is_ok());
+                let (_vk, inputs) = result.unwrap();
+                assert_eq!(inputs.len(), 1);
+                // We do not test inclusion individually, as we have tests to batch verify it with transitions elsewhere
             }
             _ => panic!("Expected an execution transaction"),
         }

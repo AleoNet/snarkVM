@@ -314,7 +314,7 @@ impl<N: Network> Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, _>(call_stack, rng)?;
+                        let response = substack.execute_function::<A>(call_stack)?;
 
                         // Return the request and response.
                         (request, response)
@@ -336,7 +336,7 @@ impl<N: Network> Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, _>(call_stack, rng)?;
+                        let response = substack.execute_function::<A>(call_stack)?;
                         // Return the request and response.
                         (request, response)
                     }
@@ -345,7 +345,7 @@ impl<N: Network> Call<N> {
                         bail!("Cannot 'execute' a function in 'evaluate' mode.")
                     }
                     // If the circuit is in execute mode, then evaluate and execute the instructions.
-                    CallStack::Execute(authorization, ..) => {
+                    CallStack::Prepare(authorization, ..) => {
                         // Retrieve the next request (without popping it).
                         let request = authorization.peek_next()?;
                         // Ensure the inputs match the original inputs.
@@ -357,7 +357,8 @@ impl<N: Network> Call<N> {
                         // Evaluate the function, and load the outputs.
                         let console_response = substack.evaluate_function::<A>(registers.call_stack().replicate())?;
                         // Execute the request.
-                        let response = substack.execute_function::<A, _>(registers.call_stack(), rng)?;
+                        let response = substack.execute_function::<A>(registers.call_stack())?;
+
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]
