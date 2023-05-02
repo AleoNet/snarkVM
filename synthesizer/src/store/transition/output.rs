@@ -17,7 +17,7 @@
 use crate::{
     atomic_write_batch,
     block::Output,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -258,102 +258,6 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
     }
 }
 
-/// An in-memory transition output storage.
-#[derive(Clone)]
-#[allow(clippy::type_complexity)]
-pub struct OutputMemory<N: Network> {
-    /// The mapping of `transition ID` to `output IDs`.
-    id_map: MemoryMap<N::TransitionID, Vec<Field<N>>>,
-    /// The mapping of `output ID` to `transition ID`.
-    reverse_id_map: MemoryMap<Field<N>, N::TransitionID>,
-    /// The mapping of `plaintext hash` to `(optional) plaintext`.
-    constant: MemoryMap<Field<N>, Option<Plaintext<N>>>,
-    /// The mapping of `plaintext hash` to `(optional) plaintext`.
-    public: MemoryMap<Field<N>, Option<Plaintext<N>>>,
-    /// The mapping of `ciphertext hash` to `(optional) ciphertext`.
-    private: MemoryMap<Field<N>, Option<Ciphertext<N>>>,
-    /// The mapping of `commitment` to `(checksum, (optional) record ciphertext)`.
-    record: MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>,
-    /// The mapping of `record nonce` to `commitment`.
-    record_nonce: MemoryMap<Group<N>, Field<N>>,
-    /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
-    external_record: MemoryMap<Field<N>, ()>,
-    /// The optional development ID.
-    dev: Option<u16>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> OutputStorage<N> for OutputMemory<N> {
-    type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;
-    type ReverseIDMap = MemoryMap<Field<N>, N::TransitionID>;
-    type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
-    type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
-    type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
-    type RecordMap = MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
-    type RecordNonceMap = MemoryMap<Group<N>, Field<N>>;
-    type ExternalRecordMap = MemoryMap<Field<N>, ()>;
-
-    /// Initializes the transition output storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        Ok(Self {
-            id_map: Default::default(),
-            reverse_id_map: Default::default(),
-            constant: Default::default(),
-            public: Default::default(),
-            private: Default::default(),
-            record: Default::default(),
-            record_nonce: Default::default(),
-            external_record: Default::default(),
-            dev,
-        })
-    }
-
-    /// Returns the ID map.
-    fn id_map(&self) -> &Self::IDMap {
-        &self.id_map
-    }
-
-    /// Returns the reverse ID map.
-    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
-        &self.reverse_id_map
-    }
-
-    /// Returns the constant map.
-    fn constant_map(&self) -> &Self::ConstantMap {
-        &self.constant
-    }
-
-    /// Returns the public map.
-    fn public_map(&self) -> &Self::PublicMap {
-        &self.public
-    }
-
-    /// Returns the private map.
-    fn private_map(&self) -> &Self::PrivateMap {
-        &self.private
-    }
-
-    /// Returns the record map.
-    fn record_map(&self) -> &Self::RecordMap {
-        &self.record
-    }
-
-    /// Returns the record nonce map.
-    fn record_nonce_map(&self) -> &Self::RecordNonceMap {
-        &self.record_nonce
-    }
-
-    /// Returns the external record map.
-    fn external_record_map(&self) -> &Self::ExternalRecordMap {
-        &self.external_record
-    }
-
-    /// Returns the optional development ID.
-    fn dev(&self) -> Option<u16> {
-        self.dev
-    }
-}
-
 /// The transition output store.
 #[derive(Clone)]
 pub struct OutputStore<N: Network, O: OutputStorage<N>> {
@@ -582,6 +486,7 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::OutputMemory;
 
     #[test]
     fn test_insert_get_remove() {

@@ -26,7 +26,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     snark::Proof,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -248,102 +248,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             }
             _ => bail!("Transition '{transition_id}' is missing some data (possible corruption)"),
         }
-    }
-}
-
-/// An in-memory transition storage.
-#[derive(Clone)]
-pub struct TransitionMemory<N: Network> {
-    /// The transition program IDs and function names.
-    locator_map: MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>,
-    /// The transition input store.
-    input_store: InputStore<N, InputMemory<N>>,
-    /// The transition output store.
-    output_store: OutputStore<N, OutputMemory<N>>,
-    /// The transition finalize inputs.
-    finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
-    /// The transition proofs.
-    proof_map: MemoryMap<N::TransitionID, Proof<N>>,
-    /// The transition public keys.
-    tpk_map: MemoryMap<N::TransitionID, Group<N>>,
-    /// The reverse `tpk` map.
-    reverse_tpk_map: MemoryMap<Group<N>, N::TransitionID>,
-    /// The transition commitments.
-    tcm_map: MemoryMap<N::TransitionID, Field<N>>,
-    /// The reverse `tcm` map.
-    reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
-    type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
-    type InputStorage = InputMemory<N>;
-    type OutputStorage = OutputMemory<N>;
-    type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
-    type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
-    type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
-    type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
-    type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
-    type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
-
-    /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        Ok(Self {
-            locator_map: MemoryMap::default(),
-            input_store: InputStore::open(dev)?,
-            output_store: OutputStore::open(dev)?,
-            finalize_map: MemoryMap::default(),
-            proof_map: MemoryMap::default(),
-            tpk_map: MemoryMap::default(),
-            reverse_tpk_map: MemoryMap::default(),
-            tcm_map: MemoryMap::default(),
-            reverse_tcm_map: MemoryMap::default(),
-        })
-    }
-
-    /// Returns the transition program IDs and function names.
-    fn locator_map(&self) -> &Self::LocatorMap {
-        &self.locator_map
-    }
-
-    /// Returns the transition input store.
-    fn input_store(&self) -> &InputStore<N, Self::InputStorage> {
-        &self.input_store
-    }
-
-    /// Returns the transition output store.
-    fn output_store(&self) -> &OutputStore<N, Self::OutputStorage> {
-        &self.output_store
-    }
-
-    /// Returns the transition finalize inputs.
-    fn finalize_map(&self) -> &Self::FinalizeMap {
-        &self.finalize_map
-    }
-
-    /// Returns the transition proofs.
-    fn proof_map(&self) -> &Self::ProofMap {
-        &self.proof_map
-    }
-
-    /// Returns the transition public keys.
-    fn tpk_map(&self) -> &Self::TPKMap {
-        &self.tpk_map
-    }
-
-    /// Returns the reverse `tpk` map.
-    fn reverse_tpk_map(&self) -> &Self::ReverseTPKMap {
-        &self.reverse_tpk_map
-    }
-
-    /// Returns the transition commitments.
-    fn tcm_map(&self) -> &Self::TCMMap {
-        &self.tcm_map
-    }
-
-    /// Returns the reverse `tcm` map.
-    fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap {
-        &self.reverse_tcm_map
     }
 }
 
@@ -725,6 +629,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::TransitionMemory;
 
     #[test]
     fn test_insert_get_remove() {

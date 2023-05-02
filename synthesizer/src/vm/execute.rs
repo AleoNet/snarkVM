@@ -145,7 +145,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ConsensusMemory;
+    use crate::store::helpers::memory::ConsensusMemory;
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,

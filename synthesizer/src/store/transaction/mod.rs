@@ -28,8 +28,7 @@ use crate::{
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransitionMemory,
+        helpers::{Map, MapRead},
         TransitionStorage,
         TransitionStore,
     },
@@ -186,50 +185,6 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             // Return the execution transaction.
             TransactionType::Execute => self.execution_store().get_transaction(transaction_id),
         }
-    }
-}
-
-/// An in-memory transaction storage.
-#[derive(Clone)]
-pub struct TransactionMemory<N: Network> {
-    /// The mapping of `transaction ID` to `transaction type`.
-    id_map: MemoryMap<N::TransactionID, TransactionType>,
-    /// The deployment store.
-    deployment_store: DeploymentStore<N, DeploymentMemory<N>>,
-    /// The execution store.
-    execution_store: ExecutionStore<N, ExecutionMemory<N>>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, TransactionType>;
-    type DeploymentStorage = DeploymentMemory<N>;
-    type ExecutionStorage = ExecutionMemory<N>;
-    type TransitionStorage = TransitionMemory<N>;
-
-    /// Initializes the transaction storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
-        // Initialize the deployment store.
-        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(transition_store.clone())?;
-        // Initialize the execution store.
-        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(transition_store)?;
-        // Return the transaction storage.
-        Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store })
-    }
-
-    /// Returns the ID map.
-    fn id_map(&self) -> &Self::IDMap {
-        &self.id_map
-    }
-
-    /// Returns the deployment store.
-    fn deployment_store(&self) -> &DeploymentStore<N, Self::DeploymentStorage> {
-        &self.deployment_store
-    }
-
-    /// Returns the execution store.
-    fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage> {
-        &self.execution_store
     }
 }
 
@@ -466,6 +421,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::{TransactionMemory, TransitionMemory};
 
     #[test]
     fn test_insert_get_remove() {

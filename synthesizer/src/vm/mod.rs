@@ -163,7 +163,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ConsensusMemory, Fee, Header, Inclusion, Metadata, Transition};
+    use crate::{
+        program::Program,
+        store::helpers::memory::ConsensusMemory,
+        Block,
+        Fee,
+        Header,
+        Inclusion,
+        Metadata,
+        Transition,
+    };
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
