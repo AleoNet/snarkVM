@@ -104,9 +104,9 @@ checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
 name = "anyhow"
-version = "1.0.70"
+version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7de8ce5e0f9f8d88245311066a578d72b7af3e7088f32783804676302df237e4"
+checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
 
 [[package]]
 name = "arrayref"
@@ -1687,9 +1687,9 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "reqwest"
-version = "0.11.16"
+version = "0.11.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27b71749df584b7f4cac2c426c127a7c785a5106cc98f7a8feb044115f0fa254"
+checksum = "13293b639a097af28fc8a90f22add145a9c954e49d77da06263d58cf44d5fb91"
 dependencies = [
  "base64 0.21.0",
  "bytes",
@@ -2008,7 +2008,7 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "snarkvm"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -2041,7 +2041,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2076,7 +2076,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms-cuda"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "blst",
  "cc",
@@ -2086,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-account",
  "snarkvm-circuit-algorithms",
@@ -2099,7 +2099,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-account"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "snarkvm-circuit-algorithms",
@@ -2111,7 +2111,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-algorithms"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "snarkvm-circuit-types",
@@ -2123,7 +2123,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-collections"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "snarkvm-circuit-algorithms",
@@ -2137,7 +2137,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-environment"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2158,11 +2158,11 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-environment-witness"
-version = "0.10.2"
+version = "0.10.3"
 
 [[package]]
 name = "snarkvm-circuit-network"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-collections",
@@ -2173,7 +2173,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-program"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "rand",
@@ -2188,7 +2188,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-address",
@@ -2202,7 +2202,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-address"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2214,7 +2214,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-boolean"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "criterion",
  "snarkvm-circuit-environment",
@@ -2223,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-field"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2232,7 +2232,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-group"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2244,7 +2244,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-integers"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "paste",
  "snarkvm-circuit-environment",
@@ -2256,7 +2256,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-scalar"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2266,7 +2266,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-circuit-types-string"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "rand",
  "snarkvm-circuit-environment",
@@ -2279,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-algorithms",
@@ -2291,7 +2291,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-account"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "bs58",
@@ -2303,7 +2303,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-algorithms"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "blake2s_simd",
  "criterion",
@@ -2320,7 +2320,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-collections"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "aleo-std",
  "criterion",
@@ -2333,7 +2333,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-network"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -2355,7 +2355,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-network-environment"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "bech32",
@@ -2371,7 +2371,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-program"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "enum_index",
@@ -2390,7 +2390,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "snarkvm-console-network-environment",
  "snarkvm-console-types-address",
@@ -2404,7 +2404,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-address"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2416,7 +2416,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-boolean"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2425,7 +2425,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-field"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2435,7 +2435,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-group"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2447,7 +2447,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-integers"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2458,7 +2458,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-scalar"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2469,7 +2469,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-console-types-string"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "serde_json",
@@ -2481,7 +2481,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "bincode",
  "criterion",
@@ -2496,7 +2496,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-fields"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2512,7 +2512,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "aleo-std-storage",
  "anyhow",
@@ -2542,7 +2542,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-r1cs"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -2557,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-synthesizer"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2587,7 +2587,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2605,7 +2605,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities-derives"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.26",
@@ -2614,7 +2614,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-wasm"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "getrandom",
  "rand",
@@ -2867,11 +2867,10 @@ checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 
 [[package]]
 name = "tracing"
-version = "0.1.37"
+version = "0.1.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ce8c33a8d48bd45d624a6e523445fd21ec13d3653cd51f681abf67418f54eb8"
+checksum = "cf9cf6a813d3f40c88b0b6b6f29a5c95c6cdbf97c1f9cc53fb820200f5ad814d"
 dependencies = [
- "cfg-if",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
@@ -2879,13 +2878,13 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4017f8f45139870ca7e672686113917c71c7a6e02d4924eda67186083c03081a"
+checksum = "0f57e3ca2a01450b1a921183a9c9cbfda207fd822cef4ccb00a65402cbba7a74"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.26",
- "syn 1.0.109",
+ "syn 2.0.15",
 ]
 
 [[package]]
