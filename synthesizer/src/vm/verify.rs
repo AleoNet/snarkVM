@@ -114,6 +114,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Invalid transaction size (deployment): {error}");
                 }
                 // TODO (howardwu): Remove during Phase 3.
+                #[cfg(not(debug_assertions))]
                 {
                     // Temporarily restrict programs that contain mappings.
                     if !deployment.program().mappings().is_empty() {
