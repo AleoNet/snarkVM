@@ -60,7 +60,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         })
     }
 
-
     /// Initializes the program state storage for testing.
     #[cfg(feature = "testing")]
     fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
