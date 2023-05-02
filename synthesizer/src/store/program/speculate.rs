@@ -338,7 +338,6 @@ impl<N: Network> Speculate<N> {
         let finalize_tree_lock = vm.finalize_store().get_finalize_tree();
         let finalize_tree = finalize_tree_lock.read();
 
-
         // Collect the operations.
         let all_operations = self.operations.values().flatten().collect::<Vec<_>>();
 
@@ -428,6 +427,7 @@ mod tests {
         Transaction,
         Transactions,
         Transition,
+        PROGRAM_TREE_DEPTH,
     };
     use console::{
         account::{Address, PrivateKey, ViewKey},
@@ -1051,7 +1051,7 @@ finalize transfer_public:
         // Fetch a deployment transaction.
         let deployment_transaction = {
             let mut program_string = "program test.aleo;".to_string();
-            for i in 0..(2.pow(PROGRAM_DEPTH as u32)) {
+            for i in 0..(2.pow(PROGRAM_TREE_DEPTH as u32)) {
                 program_string
                     .push_str(&format!("mapping map_{i}:key left as field.public;value right as field.public;"));
             }
@@ -1082,7 +1082,7 @@ finalize transfer_public:
         };
 
         // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
         assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
 
         // Construct the new storage tree.
@@ -1093,18 +1093,16 @@ finalize transfer_public:
         vm.finalize(&transactions, None).unwrap();
         duplicate_vm.finalize(&transactions, Some(speculate)).unwrap();
 
-        // Fetch the expected storage tree.
-        let expected_storage_tree = vm.program_store().tree.read();
-        let duplicate_storage_tree = duplicate_vm.program_store().tree.read();
-
         // Ensure that the storage trees are the same.
-        assert_eq!(expected_storage_tree.root(), new_storage_tree.root());
-        assert_eq!(expected_storage_tree.root(), duplicate_storage_tree.root());
+        let expected_root = vm.finalize_store().current_finalize_root();
+        let duplicate_root = duplicate_vm.finalize_store().current_finalize_root();
+        assert_eq!(expected_root, *new_storage_tree.root());
+        assert_eq!(expected_root, duplicate_root);
 
         // Check that the storage tree contains the mappings.
-        for i in 0..(2.pow(PROGRAM_DEPTH as u32)) {
+        for i in 0..(2.pow(PROGRAM_TREE_DEPTH as u32)) {
             assert!(
-                vm.program_store()
+                vm.finalize_store()
                     .contains_mapping(
                         &ProgramID::from_str("test.aleo").unwrap(),
                         &Identifier::from_str(&format!("map_{i}")).unwrap()

@@ -1188,7 +1188,7 @@ mod tests {
 
         // Initialize a new program store.
         let program_memory = FinalizeMemory::open(None).unwrap();
-        let program_store = FinalizeMemory::from(program_memory).unwrap();
+        let program_store = FinalizeStore::from(program_memory).unwrap();
         // Ensure the program ID does not exist.
         assert!(!program_store.contains_program(&program_id).unwrap());
 
@@ -1217,7 +1217,7 @@ mod tests {
 
         // Initialize a new program store.
         let program_memory = FinalizeMemory::open(None).unwrap();
-        let program_store = FinalizeMemory::from(program_memory).unwrap();
+        let program_store = FinalizeStore::from(program_memory).unwrap();
         // Set the `is_speculating` flag to true.
         program_store.is_speculate.store(true, Ordering::SeqCst);
         // Ensure the program ID does not exist.

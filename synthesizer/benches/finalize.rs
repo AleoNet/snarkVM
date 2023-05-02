@@ -30,6 +30,7 @@ use snarkvm_synthesizer::{Transaction, Transactions};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
+use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
@@ -47,7 +48,7 @@ pub fn bench_finalize(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet
     let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
 
     // Initialize the VM.
-    let (vm, record) = initialize_vm(&private_key, rng);
+    let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
 
     // Prepare the benchmarks.
     let (setup_operations, benchmarks) = prepare_benchmarks(workloads);

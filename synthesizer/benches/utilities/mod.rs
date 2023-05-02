@@ -26,7 +26,7 @@ use console::{
 use snarkvm_synthesizer::{
     Block,
     Certificate,
-    ConsensusMemory,
+    ConsensusStorage,
     ConsensusStore,
     Deployment,
     Fee,
@@ -49,13 +49,14 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
+use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 use std::{borrow::Borrow, iter, str::FromStr};
 
 /// A helper function to initialize a VM with a genesis block.
-pub fn initialize_vm<R: Rng + CryptoRng>(
+pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
-) -> (VM<Testnet3, ConsensusMemory<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>) {
+) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>) {
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
@@ -76,8 +77,8 @@ pub fn initialize_vm<R: Rng + CryptoRng>(
 
 #[allow(unused)]
 /// Construct a new block based on the given transactions.
-pub fn construct_next_block<R: Rng + CryptoRng>(
-    vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
+pub fn construct_next_block<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
+    vm: &VM<Testnet3, C>,
     private_key: &PrivateKey<Testnet3>,
     transactions: &[Transaction<Testnet3>],
     rng: &mut R,
@@ -103,8 +104,13 @@ pub fn construct_next_block<R: Rng + CryptoRng>(
         Testnet3::GENESIS_TIMESTAMP + 1,
     )?;
 
-    let header =
-        Header::from(*vm.block_store().current_state_root(), transactions.to_root().unwrap(), Field::zero(), metadata)?;
+    let header = Header::from(
+        *vm.block_store().current_state_root(),
+        transactions.to_root().unwrap(),
+        Field::zero(),
+        Field::zero(),
+        metadata,
+    )?;
 
     // Construct the new block.
     Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
@@ -112,8 +118,8 @@ pub fn construct_next_block<R: Rng + CryptoRng>(
 
 #[allow(unused)]
 /// A helper function that deploys and executes programs.
-pub fn setup(
-    vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
+pub fn setup<C: ConsensusStorage<Testnet3>>(
+    vm: &VM<Testnet3, C>,
     private_key: &PrivateKey<Testnet3>,
     batches: &[Vec<Operation<Testnet3>>],
     rng: &mut TestRng,
@@ -146,8 +152,8 @@ pub fn setup(
 
 #[allow(unused)]
 /// A helper function to invoke the `split` function an a credits.aleo record.
-pub fn split(
-    vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
+pub fn split<C: ConsensusStorage<Testnet3>>(
+    vm: &VM<Testnet3, C>,
     private_key: &PrivateKey<Testnet3>,
     record: Record<Testnet3, Plaintext<Testnet3>>,
     amount: u64,
@@ -183,7 +189,7 @@ pub fn sample_proof() -> Proof<Testnet3> {
         .get_or_init(|| {
             let rng = &mut TestRng::default();
             let private_key = PrivateKey::new(rng).unwrap();
-            let (vm, record) = initialize_vm(&private_key, rng);
+            let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
             // Sample a fee.
             let (_, fee, _) = vm.execute_fee(&private_key, record, 1u64, None, rng).unwrap();
             // Return the proof.

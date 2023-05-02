@@ -30,6 +30,7 @@ use snarkvm_synthesizer::{Speculate, Transaction};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
+use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
@@ -47,7 +48,7 @@ pub fn bench_commit(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet3>
     let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
 
     // Initialize the VM.
-    let (vm, record) = initialize_vm(&private_key, rng);
+    let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
 
     // Prepare the benchmarks.
     let (setup_operations, benchmarks) = prepare_benchmarks(workloads);
@@ -77,7 +78,7 @@ pub fn bench_commit(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet3>
         }
 
         // Construct a `Speculate` object.
-        let mut speculate = Speculate::new(vm.program_store().current_storage_root());
+        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
 
         // Speculate the transactions.
         speculate.speculate_transactions(&vm, &transactions).unwrap();

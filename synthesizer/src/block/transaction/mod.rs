@@ -73,7 +73,7 @@ impl<N: Network> Transaction<N> {
     #[cfg(any(test, feature = "test-utilities"))]
     pub fn from_deployment_unchecked(
         id: N::TransactionID,
-        owner: Owner<N>,
+        owner: ProgramOwner<N>,
         deployment: Deployment<N>,
         fee: Fee<N>,
     ) -> Self {
@@ -90,7 +90,7 @@ impl<N: Network> Transaction<N> {
     ) -> Result<Self> {
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = Owner::new(private_key, id.into(), rng)?;
+        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
         // Initialize the deployment transaction.
         Ok(Self::Deploy(id.into(), owner, Box::new(deployment), fee))
     }
