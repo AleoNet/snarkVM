@@ -277,17 +277,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(v_X_at_beta_time);
 
         let z_b_s_at_beta = z_b_s
-            .iter()
-            .map(|(circuit_id, z_b_i)| {
-                let z_b_i_s = z_b_i.iter().map(|z_b| evals.get_lc_eval(z_b, beta).unwrap()).collect::<Vec<F>>();
-                (*circuit_id, z_b_i_s)
+            .values()
+            .map(|z_b_i| {
+                let z_b_i_s = z_b_i.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<F>, _>>();
+                z_b_i_s
             })
-            .collect::<BTreeMap<_, _>>();
+            .collect::<Result<Vec<_>, _>>()?;
+
         let batch_z_b_s_at_beta = z_b_s_at_beta
             .iter()
-            .zip_eq(batch_combiners.values())
+            .zip_eq(batch_combiners.iter())
             .zip_eq(r_alpha_at_beta_s.values())
-            .map(|(((circuit_id, z_b_i_at_beta), combiners), &r_alpha_at_beta)| {
+            .map(|((z_b_i_at_beta, (circuit_id, combiners)), &r_alpha_at_beta)| {
                 let z_b_at_beta = z_b_i_at_beta
                     .iter()
                     .zip_eq(&combiners.instance_combiners)
@@ -322,13 +323,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            for (id, c) in batch_combiners.iter() {
+            for (i, (id, c)) in batch_combiners.iter().enumerate() {
                 let mut circuit_term = LinearCombination::empty(format!("lincheck_sumcheck term {id}"));
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
                     let z_a_j = witness_label(*id, "z_a", j);
                     let w_j = witness_label(*id, "w", j);
                     circuit_term
-                        .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[id][j]), z_a_j)
+                        .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[i][j]), z_a_j)
                         .add(-t_at_beta_s[id] * v_X_at_beta[id] * instance_combiner, w_j);
                 }
                circuit_term
