@@ -45,7 +45,7 @@ pub struct CircuitInfo<F: Sync + Send> {
 
 impl<F: PrimeField> CircuitInfo<F> {
     /// The maximum degree of polynomial required to represent this index in the AHP.
-    pub fn max_degree<MM: MarlinMode>(&self) -> usize {
+    pub fn max_degree<MM: MarlinMode>(&self) -> u32 {
         let max_non_zero = self.num_non_zero_a.max(self.num_non_zero_b).max(self.num_non_zero_c);
         AHPForR1CS::<F, MM>::max_degree(self.num_constraints, self.num_variables, max_non_zero).unwrap()
     }

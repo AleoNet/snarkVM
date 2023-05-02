@@ -22,29 +22,35 @@ pub enum SNARKError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
+    #[error("Batch size was different between public input and proof")]
+    BatchSizeMismatch,
+
+    #[error("Circuit not found")]
+    CircuitNotFound,
+
     #[error("{}", _0)]
     ConstraintFieldError(#[from] ConstraintFieldError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
+    #[error("Batch size was zero; must be at least 1")]
+    EmptyBatch,
+
     #[error("Expected a circuit-specific SRS in SNARK")]
     ExpectedCircuitSpecificSRS,
+
+    #[error(transparent)]
+    IntError(#[from] std::num::TryFromIntError),
 
     #[error("{}", _0)]
     Message(String),
 
+    #[error(transparent)]
+    ParseIntError(#[from] std::num::ParseIntError),
+
     #[error("{}", _0)]
     SynthesisError(SynthesisError),
-
-    #[error("Batch size was zero; must be at least 1")]
-    EmptyBatch,
-
-    #[error("Batch size was different between public input and proof")]
-    BatchSizeMismatch,
-
-    #[error("Circuit not found")]
-    CircuitNotFound,
 
     #[error("terminated")]
     Terminated,

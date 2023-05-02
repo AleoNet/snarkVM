@@ -31,7 +31,7 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::SynthesisError;
 
 use core::{borrow::Borrow, marker::PhantomData};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, num::TryFromIntError};
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
@@ -91,7 +91,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// of this protocol.
     /// The number of the variables must include the "one" variable. That is, it
     /// must be with respect to the number of formatted public inputs.
-    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, AHPError> {
+    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<u32, AHPError> {
         let padded_matrix_dim = matrices::padded_matrix_dim(num_variables, num_constraints);
         let zk_bound = Self::zk_bound().unwrap_or(0);
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
@@ -99,16 +99,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let non_zero_domain_size =
             EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
-        Ok(*[
-            2 * constraint_domain_size + zk_bound - 2,
-            if MM::ZK { constraint_domain_size + 3 } else { 0 }, //  mask_poly
-            constraint_domain_size,
-            constraint_domain_size,
-            non_zero_domain_size - 1, // non-zero polynomials
-        ]
-        .iter()
-        .max()
-        .unwrap())
+        Ok(u32::try_from(
+            *[
+                2 * constraint_domain_size + zk_bound - 2,
+                if MM::ZK { constraint_domain_size + 3 } else { 0 }, //  mask_poly
+                constraint_domain_size,
+                constraint_domain_size,
+                non_zero_domain_size - 1, // non-zero polynomials
+            ]
+            .iter()
+            .max()
+            .unwrap(),
+        )?)
     }
 
     /// Get all the strict degree bounds enforced in the AHP.
@@ -243,13 +245,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|(&circuit_id, circuit_state)| {
                 let z_b_i = (0..circuit_state.batch_size)
                     .map(|i| {
-                        let z_b = witness_label(circuit_id, "z_b", i);
-                        LinearCombination::new(z_b.clone(), [(F::one(), z_b)])
+                        let z_b = witness_label(circuit_id, "z_b", usize::try_from(i)?);
+                        Ok::<_, TryFromIntError>(LinearCombination::new(z_b.clone(), [(F::one(), z_b)]))
                     })
-                    .collect::<Vec<_>>();
-                (circuit_id, z_b_i)
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok((circuit_id, z_b_i))
             })
-            .collect::<BTreeMap<_, _>>();
+            .collect::<Result<BTreeMap<CircuitId, _>, TryFromIntError>>()?;
 
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
@@ -279,18 +281,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(v_X_at_beta_time);
 
         let z_b_s_at_beta = z_b_s
-            .values()
-            .map(|z_b_i| {
-                let z_b_i_s = z_b_i.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<F>, _>>();
-                z_b_i_s
+            .iter()
+            .map(|(circuit_id, z_b_i)| {
+                let z_b_i_s = z_b_i.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).try_collect()?;
+                Ok((*circuit_id, z_b_i_s))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<BTreeMap<CircuitId, Vec<F>>, AHPError>>()?;
 
         let batch_z_b_s_at_beta = z_b_s_at_beta
             .iter()
-            .zip_eq(batch_combiners.iter())
+            .zip_eq(batch_combiners.values())
             .zip_eq(r_alpha_at_beta_s.values())
-            .map(|((z_b_i_at_beta, (circuit_id, combiners)), &r_alpha_at_beta)| {
+            .map(|(((circuit_id, z_b_i_at_beta), combiners), &r_alpha_at_beta)| {
                 let z_b_at_beta = z_b_i_at_beta
                     .iter()
                     .zip_eq(&combiners.instance_combiners)
@@ -325,13 +327,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            for (i, (id, c)) in batch_combiners.iter().enumerate() {
+            for (id, c) in batch_combiners.iter() {
                 let mut circuit_term = LinearCombination::empty(format!("lincheck_sumcheck term {id}"));
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
                     let z_a_j = witness_label(*id, "z_a", j);
                     let w_j = witness_label(*id, "w", j);
                     circuit_term
-                        .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[i][j]), z_a_j)
+                        .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[id][j]), z_a_j)
                         .add(-t_at_beta_s[id] * v_X_at_beta[id] * instance_combiner, w_j);
                 }
                circuit_term

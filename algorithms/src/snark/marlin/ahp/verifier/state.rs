@@ -37,7 +37,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
     pub(crate) non_zero_c_domain: EvaluationDomain<F>,
 
     /// The number of instances being proved in this batch.
-    pub(in crate::snark::marlin) batch_size: usize,
+    pub(in crate::snark::marlin) batch_size: u32,
 }
 /// State of the AHP verifier.
 #[derive(Debug)]

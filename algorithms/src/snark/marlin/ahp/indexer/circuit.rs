@@ -115,7 +115,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     }
 
     /// The maximum degree required to represent polynomials of this index.
-    pub fn max_degree(&self) -> usize {
+    pub fn max_degree(&self) -> u32 {
         self.index_info.max_degree::<MM>()
     }
 

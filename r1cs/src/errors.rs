@@ -31,24 +31,27 @@ pub enum SynthesisError {
     /// During synthesis, we divided by zero.
     #[error("Division by zero during synthesis")]
     DivisionByZero,
-    /// During synthesis, we constructed an unsatisfiable constraint system.
-    #[error("Unsatisfiable constraint system")]
-    Unsatisfiable,
-    /// During synthesis, our polynomials ended up being too high of degree
-    #[error("Polynomial degree is too large")]
-    PolynomialDegreeTooLarge,
-    /// During proof generation, we encountered an identity in the CRS
-    #[error("Encountered an identity element in the CRS")]
-    UnexpectedIdentity,
+    /// During synthesis, we could not recover our desired int.
+    #[error(transparent)]
+    IntError(#[from] std::num::TryFromIntError),
     /// During proof generation, we encountered an I/O error with the CRS
     #[error("Encountered an I/O error")]
     IoError(std::io::Error),
     /// During verification, our verifying key was malformed.
     #[error("Malformed verifying key, public input count was {} but expected {}", _0, _1)]
     MalformedVerifyingKey(usize, usize),
+    /// During synthesis, our polynomials ended up being too high of degree
+    #[error("Polynomial degree is too large")]
+    PolynomialDegreeTooLarge,
     /// During CRS generation, we observed an unconstrained auxiliary variable
     #[error("Auxiliary variable was unconstrained")]
     UnconstrainedVariable,
+    /// During proof generation, we encountered an identity in the CRS
+    #[error("Encountered an identity element in the CRS")]
+    UnexpectedIdentity,
+    /// During synthesis, we constructed an unsatisfiable constraint system.
+    #[error("Unsatisfiable constraint system")]
+    Unsatisfiable,
 }
 
 impl From<std::io::Error> for SynthesisError {

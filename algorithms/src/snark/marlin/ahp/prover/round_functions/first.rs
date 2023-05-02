@@ -51,9 +51,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the first round.
     pub fn first_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
+        batch_sizes: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let mut polynomials = circuits
+        let mut polynomials = batch_sizes
             .flat_map(|(&circuit_id, &batch_size)| {
                 (0..batch_size).flat_map(move |i| {
                     [
@@ -74,13 +74,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     #[allow(clippy::type_complexity)]
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: prover::State<'a, F, MM>,
+        batch_sizes: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let mut r_b_s = Vec::with_capacity(state.circuit_specific_states.len());
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_instances);
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity((3 * state.total_instances).try_into()?);
         for (circuit, circuit_state) in state.circuit_specific_states.iter_mut() {
-            let batch_size = circuit_state.batch_size;
+            let batch_size = usize::try_from(circuit_state.batch_size)?;
 
             let z_a = circuit_state.z_a.take().unwrap();
             let z_b = circuit_state.z_b.take().unwrap();
@@ -123,20 +124,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
             })
             .collect::<Vec<_>>();
-        assert_eq!(batches.len(), state.total_instances);
+        assert_eq!(batches.len(), usize::try_from(state.total_instances)?);
 
         let mut circuit_specific_batches = BTreeMap::new();
         for ((circuit, state), r_b_s) in state.circuit_specific_states.iter_mut().zip(r_b_s) {
-            let batches = batches.drain(0..state.batch_size).collect_vec();
+            let batches = batches.drain(0..state.batch_size.try_into()?).collect_vec();
             circuit_specific_batches.insert(circuit.id, batches);
             state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
             end_timer!(round_time);
         }
         let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(
-            state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
-        )));
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_sizes)));
         state.first_round_oracles = Some(Arc::new(oracles));
         Ok(state)
     }
