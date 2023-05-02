@@ -50,14 +50,14 @@ use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
-use std::{borrow::Borrow, iter, str::FromStr};
+use std::{borrow::Borrow, fs, iter, path::PathBuf, str::FromStr};
 
 /// A helper function to initialize a VM with a genesis block.
 pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
 ) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>) {
-    let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
+    let vm = VM::from(ConsensusStore::open(Some(0)).unwrap()).unwrap();
 
     // Initialize the genesis block.
     let genesis = Block::genesis(&vm, private_key, rng).unwrap();
@@ -238,4 +238,14 @@ pub fn mock_fee(rng: &mut TestRng) -> Fee<Testnet3> {
         <Testnet3 as Network>::StateRoot::default(),
         None,
     )
+}
+
+#[allow(unused)]
+/// Cleans up the development storage used by the database.
+/// This assumes that the path is `.../snarkVM/synthesizer/.ledger-3-0`.
+pub fn cleanup_storage() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".ledger-3-0");
+    if path.exists() {
+        fs::remove_dir_all(path).unwrap();
+    }
 }

@@ -20,13 +20,15 @@
 extern crate criterion;
 
 mod utilities;
+
+use std::fmt::Display;
 use utilities::*;
 
 mod workloads;
 use workloads::*;
 
 use console::{account::PrivateKey, network::Testnet3};
-use snarkvm_synthesizer::{Speculate, Transaction};
+use snarkvm_synthesizer::{ConsensusStorage, Speculate, Transaction};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
@@ -40,7 +42,11 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 /// A helper function for benchmarking `Speculate::speculate`.
 #[cfg(feature = "test-utilities")]
 #[allow(unused)]
-pub fn bench_speculate(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet3>>>) {
+pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(
+    c: &mut Criterion,
+    header: impl Display,
+    workloads: Vec<Box<dyn Workload<Testnet3>>>,
+) {
     // Initialize the RNG.
     let rng = &mut TestRng::default();
 
@@ -48,7 +54,7 @@ pub fn bench_speculate(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testne
     let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
 
     // Initialize the VM.
-    let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
+    let (vm, record) = initialize_vm::<C, _>(&private_key, rng);
 
     // Prepare the benchmarks.
     let (setup_operations, benchmarks) = prepare_benchmarks(workloads);
@@ -81,7 +87,7 @@ pub fn bench_speculate(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testne
         let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
 
         // Benchmark speculation.
-        c.bench_function(&format!("{}/speculate", name), |b| {
+        c.bench_function(&format!("{header}/{name}/speculate"), |b| {
             b.iter_batched(
                 || speculate.clone(),
                 |mut speculate| {
@@ -107,7 +113,14 @@ fn bench_one_operation(c: &mut Criterion) {
     workloads.push(Box::new(TransferPublic::new(1)) as Box<dyn Workload<Testnet3>>);
     workloads.push(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Workload<Testnet3>>);
 
-    bench_speculate(c, workloads)
+    #[cfg(not(any(feature = "rocks")))]
+    bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workloads);
+    #[cfg(any(feature = "rocks"))]
+    {
+        bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
+        cleanup_storage();
+        println!("Cleaned up storage.");
+    }
 }
 
 fn bench_multiple_operations(c: &mut Criterion) {
@@ -125,7 +138,13 @@ fn bench_multiple_operations(c: &mut Criterion) {
         workloads.push(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
     }
 
-    bench_speculate(c, workloads)
+    #[cfg(not(any(feature = "rocks")))]
+    bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workloads);
+    #[cfg(any(feature = "rocks"))]
+    {
+        bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
+        cleanup_storage();
+    }
 }
 
 fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
@@ -142,7 +161,13 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
         );
     }
 
-    bench_speculate(c, workloads)
+    #[cfg(not(any(feature = "rocks")))]
+    bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workloads);
+    #[cfg(any(feature = "rocks"))]
+    {
+        bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
+        cleanup_storage();
+    }
 }
 
 criterion_group! {
