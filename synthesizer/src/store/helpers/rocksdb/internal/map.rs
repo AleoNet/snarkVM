@@ -31,6 +31,36 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     pub(super) atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
 }
 
+// This object is needed, as there currently is no way to "normally" iterate over
+// rocksdb::WriteBatch, and the only way of doing so is via rocksdb::WriteBatchIterator,
+// which needs to be implemented by some dedicated object.
+struct CheckpointWriteBatch {
+    // The partial/truncated write batch.
+    batch: rocksdb::WriteBatch,
+    // The number of items indicated by the checkpoint.
+    limit: usize,
+}
+
+impl CheckpointWriteBatch {
+    fn new(limit: usize) -> Self {
+        Self { batch: Default::default(), limit }
+    }
+}
+
+impl rocksdb::WriteBatchIterator for CheckpointWriteBatch {
+    fn put(&mut self, key: Box<[u8]>, value: Box<[u8]>) {
+        if self.batch.len() < self.limit {
+            self.batch.put(key, value);
+        }
+    }
+
+    fn delete(&mut self, key: Box<[u8]>) {
+        if self.batch.len() < self.limit {
+            self.batch.delete(key);
+        }
+    }
+}
+
 impl<
     'a,
     K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
@@ -92,6 +122,15 @@ impl<
     }
 
     ///
+    /// Schedules the writes already collected in the current atomic batch to be executed even
+    /// if the atomic operation eventually gets aborted.
+    ///
+    fn atomic_checkpoint(&self) {
+        let idx = self.database.atomic_batch.lock().len();
+        self.database.checkpoint.store(idx, Ordering::SeqCst);
+    }
+
+    ///
     /// Checks whether an atomic operation is currently in progress. This can be done to ensure
     /// that lower-level operations don't start and finish their individual atomic write batch
     /// if they are already part of a larger one.
@@ -109,13 +148,29 @@ impl<
 
         // Check if this is the final depth of the batch.
         // Subtraction happens separately from the check, as we don't want to perform it too
-        // early in case this is the final depth and the batch still needs to be cleared first.
+        // early in case this is the final depth and the batch still needs to be cleared first,
+        // or partially executed in case there was a checkpoint.
         if self.database.batch_depth.load(Ordering::SeqCst) == 1 {
-            // Clear the low-level atomic batch.
-            self.database.atomic_batch.lock().clear();
-            // Subtract the batch depth (bringing it to 0).
-            self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
+            // Retrieve the atomic batch.
+            let batch = core::mem::take(&mut *self.database.atomic_batch.lock());
+
+            // Retrieve the checkpoint index.
+            let idx = self.database.checkpoint.swap(0, Ordering::SeqCst);
+
+            if !batch.is_empty() && idx > 0 {
+                // Truncate the batch to the last checkpoint.
+                let mut partial_batch = CheckpointWriteBatch::new(idx);
+                batch.iterate(&mut partial_batch);
+
+                // Execute the operations from the partial batch atomically.
+                if let Err(e) = self.database.rocksdb.write(partial_batch.batch) {
+                    tracing::error!("Failed to execute an atomic batch up to a checkpoint: {e}");
+                }
+            }
         }
+
+        // Subtract the batch depth.
+        self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
     }
 
     ///
@@ -143,6 +198,8 @@ impl<
 
         // Subtract the batch depth (bringing it to 0).
         self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
+        // Reset any atomic checkpoints we might have registered.
+        self.database.checkpoint.store(0, Ordering::SeqCst);
 
         Ok(())
     }
@@ -529,5 +586,48 @@ mod tests {
 
         // The map should contain NUM_ITEMS items now.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
+    }
+
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_abort_with_checkpoint() {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+
+        // Start an atomic write batch.
+        map.start_atomic();
+
+        // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+        for i in 0..NUM_ITEMS / 2 {
+            map.insert(i, i.to_string()).unwrap();
+        }
+
+        // Perform a checkpoint.
+        map.atomic_checkpoint();
+
+        // Queue (since a batch is in progress) the other NUM_ITEMS / 2 insertions.
+        for i in 0..NUM_ITEMS / 2 {
+            map.insert(i, i.to_string()).unwrap();
+        }
+
+        // Abort the current atomic write batch.
+        map.abort_atomic();
+
+        // The map should contain NUM_ITEMS / 2.
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS / 2);
+
+        // Make sure the checkpoint index is cleared.
+        assert_eq!(map.database.checkpoint.load(Ordering::SeqCst), 0);
+
+        // Make sure the pending batch is empty.
+        assert!(map.database.atomic_batch.lock().is_empty());
     }
 }
