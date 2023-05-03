@@ -613,4 +613,51 @@ mod tests {
         // Make sure the pending batch is empty.
         assert!(map.database.atomic_batch.lock().is_empty());
     }
+
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_nested_atomic_write_batch() -> Result<()> {
+        // Initialize a map.
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+
+        // Ensure the batch depth is 0.
+        assert_eq!(0, map.database.batch_depth.load(Ordering::SeqCst));
+
+        // Start an atomic write batch.
+        crate::atomic_write_batch!(map, {
+
+            // Ensure the batch depth is 1.
+            assert_eq!(1, map.database.batch_depth.load(Ordering::SeqCst));
+
+            // Write the first item.
+            map.insert(0, 0.to_string()).unwrap();
+
+            // Start another atomic write batch.
+            crate::atomic_write_batch!(map, {
+
+                // Ensure the batch depth is 2.
+                assert_eq!(2, map.database.batch_depth.load(Ordering::SeqCst));
+
+                // Write the second item.
+                map.insert(1, 1.to_string()).unwrap();
+
+                Ok(())
+            });
+
+            // Ensure the batch depth is 1.
+            assert_eq!(1, map.database.batch_depth.load(Ordering::SeqCst));
+
+            Ok(())
+        });
+
+        // Ensure the batch depth is 0.
+        assert_eq!(0, map.database.batch_depth.load(Ordering::SeqCst));
+
+        Ok(())
+    }
 }
