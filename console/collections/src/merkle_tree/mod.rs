@@ -309,12 +309,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Check that there are updates to perform.
         ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
 
-        // Note that this unwrap is safe since updates is guaranteed to be non-empty.
-        let last = updates.last_key_value().unwrap();
-
         // Check that the latest leaf index is less than number of leaves in the Merkle tree.
+        // Note: This unwrap is safe since updates is guaranteed to be non-empty.
         ensure!(
-            *last.0 < self.number_of_leaves,
+            *updates.last_key_value().unwrap().0 < self.number_of_leaves,
             "Leaf index must be less than the number of leaves in the Merkle tree"
         );
 
