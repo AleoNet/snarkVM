@@ -24,7 +24,7 @@ use std::{
     borrow::Cow,
     collections::{btree_map, BTreeMap},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -40,6 +40,7 @@ pub struct MemoryMap<
     map: Arc<RwLock<BTreeMap<Vec<u8>, V>>>,
     batch_in_progress: Arc<AtomicBool>,
     atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
+    checkpoint: Arc<AtomicUsize>,
 }
 
 impl<
@@ -48,7 +49,12 @@ impl<
 > Default for MemoryMap<K, V>
 {
     fn default() -> Self {
-        Self { map: Default::default(), batch_in_progress: Default::default(), atomic_batch: Default::default() }
+        Self {
+            map: Default::default(),
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+            checkpoint: Default::default(),
+        }
     }
 }
 
@@ -67,6 +73,7 @@ impl<
             map: Arc::new(RwLock::new(map)),
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
+            checkpoint: Default::default(),
         }
     }
 }
@@ -131,6 +138,15 @@ impl<
     }
 
     ///
+    /// Schedules the writes already collected in the current atomic batch to be executed even
+    /// if the atomic operation eventually gets aborted.
+    ///
+    fn atomic_checkpoint(&self) {
+        let idx = self.atomic_batch.lock().len();
+        self.checkpoint.store(idx, Ordering::SeqCst);
+    }
+
+    ///
     /// Checks whether an atomic operation is currently in progress. This can be done to ensure
     /// that lower-level operations don't start and finish their individual atomic write batch
     /// if they are already part of a larger one.
@@ -143,6 +159,45 @@ impl<
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
+        // Retrieve the atomic batch.
+        let mut operations = core::mem::take(&mut *self.atomic_batch.lock());
+
+        // Ignore all operations beyond the last checkpoint, and reset the checkpoint.
+        let idx = self.checkpoint.swap(0, Ordering::SeqCst);
+        operations.truncate(idx);
+
+        // Execute the operations up to the last checkpoint as if MemoryMap::finish
+        // was called at that point in time.
+        if !operations.is_empty() {
+            // Acquire a write lock on the map.
+            let mut locked_map = self.map.write();
+
+            // Prepare the key and value for each queued operation.
+            //
+            // Note: This step is taken to ensure (with 100% certainty) that there will be
+            // no chance to fail partway through committing the queued operations.
+            //
+            // The expected behavior is that either all the operations will be committed
+            // or none of them will be.
+            let prepared_operations = if let Ok(ops) = operations
+                .into_iter()
+                .map(|(key, value)| bincode::serialize(&key).map(|k| (k, value)))
+                .collect::<bincode::Result<Vec<_>>>()
+            {
+                ops
+            } else {
+                return;
+            };
+
+            // Perform all the queued operations.
+            for (key, value) in prepared_operations {
+                match value {
+                    Some(value) => locked_map.insert(key, value),
+                    None => locked_map.remove(&key),
+                };
+            }
+        }
+
         // Clear the atomic batch.
         *self.atomic_batch.lock() = Default::default();
         // Set the atomic batch flag to `false`.
@@ -183,6 +238,8 @@ impl<
 
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
+        // Reset any atomic checkpoints we might have registered.
+        self.checkpoint.store(0, Ordering::SeqCst);
 
         Ok(())
     }
@@ -511,5 +568,45 @@ mod tests {
 
         // The map should contain NUM_ITEMS items now.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
+    }
+
+    #[test]
+    fn test_abort_with_checkpoint() {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+
+        // Start an atomic write batch.
+        map.start_atomic();
+
+        // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+        for i in 0..NUM_ITEMS / 2 {
+            map.insert(i, i.to_string()).unwrap();
+        }
+
+        // Perform a checkpoint.
+        map.atomic_checkpoint();
+
+        // Queue (since a batch is in progress) the other NUM_ITEMS / 2 insertions.
+        for i in (NUM_ITEMS / 2)..NUM_ITEMS {
+            map.insert(i, i.to_string()).unwrap();
+        }
+
+        // The map should still contain no items.
+        assert!(map.iter_confirmed().next().is_none());
+
+        // Abort the current atomic write batch.
+        map.abort_atomic();
+
+        // The map should contain NUM_ITEMS / 2.
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS / 2);
+
+        // Make sure the checkpoint index is cleared.
+        assert_eq!(map.checkpoint.load(Ordering::SeqCst), 0)
     }
 }
