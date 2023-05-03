@@ -50,7 +50,7 @@ use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
-use std::{borrow::Borrow, fs, iter, path::PathBuf, str::FromStr};
+use std::{borrow::Borrow, iter, path::PathBuf, str::FromStr};
 
 /// A helper function to create a temporary directory.
 pub fn temp_dir() -> PathBuf {

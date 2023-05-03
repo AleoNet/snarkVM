@@ -20,21 +20,8 @@ extern crate criterion;
 mod utilities;
 use utilities::initialize_vm;
 
-use console::{
-    account::*,
-    network::Testnet3,
-    program::{Plaintext, Record, Value},
-};
-use snarkvm_synthesizer::{
-    store::helpers::memory::ConsensusMemory,
-    Authorization,
-    Block,
-    ConsensusStore,
-    Program,
-    Transaction,
-    Transition,
-    VM,
-};
+use console::{account::*, network::Testnet3, program::Value};
+use snarkvm_synthesizer::{store::helpers::memory::ConsensusMemory, Authorization, Program, Transaction};
 
 use criterion::Criterion;
 
