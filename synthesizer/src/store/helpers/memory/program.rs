@@ -60,6 +60,13 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         })
     }
 
+
+    /// Initializes the program state storage for testing.
+    #[cfg(feature = "testing")]
+    fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
+        Self::open(None)
+    }
+
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map

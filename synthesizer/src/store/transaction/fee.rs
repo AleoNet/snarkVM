@@ -44,6 +44,10 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
     /// Initializes the fee storage.
     fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
 
+    /// Initializes the fee storage for testing.
+    #[cfg(feature = "testing")]
+    fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap;
     /// Returns the reverse fee map.
@@ -177,7 +181,16 @@ impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
         // Initialize the fee storage.
         let storage = F::open(transition_store)?;
         // Return the fee store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
+    }
+
+    /// Initializes the fee store for testing.
+    #[cfg(feature = "testing")]
+    pub fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, F::TransitionStorage>) -> Result<Self> {
+        // Initialize the fee storage.
+        let storage = F::open_testing(path, transition_store)?;
+        // Return the fee store.
+        Ok(Self::from(storage))
     }
 
     /// Initializes a fee store from storage.

@@ -74,6 +74,12 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
         })
     }
 
+    #[cfg(feature = "testing")]
+    /// Initializes the transition storage for testing.
+    fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
+        Self::open(None)
+    }
+
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap {
         &self.locator_map
@@ -167,6 +173,12 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
             external_record: MemoryMap::default(),
             dev,
         })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the transition input storage for testing.
+    fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
+        Self::open(None)
     }
 
     /// Returns the ID map.
@@ -263,6 +275,12 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
             external_record: Default::default(),
             dev,
         })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the transition output storage for testing.
+    fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
+        Self::open(None)
     }
 
     /// Returns the ID map.

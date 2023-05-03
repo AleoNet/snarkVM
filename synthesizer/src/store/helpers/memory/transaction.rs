@@ -68,6 +68,17 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
         Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store, fee_store })
     }
 
+    #[cfg(feature = "testing")]
+    /// Initializes the transaction storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        // Initialize the deployment store.
+        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open_testing(path.clone(), transition_store.clone())?;
+        // Initialize the execution store.
+        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open_testing(path, transition_store)?;
+        // Return the transaction storage.
+        Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store })
+    }
+
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
         &self.id_map
@@ -134,6 +145,12 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             certificate_map: MemoryMap::default(),
             fee_store,
         })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the deployment storage for testing.
+    fn open_testing(_: Option<std::path::PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
+        Self::open(fee_store)
     }
 
     /// Returns the ID map.
@@ -208,6 +225,12 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
         })
     }
 
+    #[cfg(feature = "testing")]
+    /// Initializes the execution storage for testing.
+    fn open_testing(_: Option<std::path::PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
+        Self::open(fee_store)
+    }
+
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
         &self.id_map
@@ -256,6 +279,12 @@ impl<N: Network> FeeStorage<N> for FeeMemory<N> {
         })
     }
 
+    /// Initializes the fee storage for testing.
+    #[cfg(feature = "testing")]
+    fn open_testing(_: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        Self::open(transition_store)
+    }
+
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap {
         &self.fee_map
@@ -271,3 +300,4 @@ impl<N: Network> FeeStorage<N> for FeeMemory<N> {
         &self.transition_store
     }
 }
+
