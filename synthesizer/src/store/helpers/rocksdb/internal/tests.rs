@@ -16,8 +16,9 @@
 
 #![cfg(feature = "testing")]
 
-use crate::store::helpers::{
-    rocksdb::{DataMap, MapID, RocksDB, TestMap as TestMapID},
+use crate::{
+    helpers::{Map, MapRead},
+    store::helpers::rocksdb::{DataMap, MapID, RocksDB, TestMap as TestMapID},
 };
 use console::{
     network::{Network, Testnet3},

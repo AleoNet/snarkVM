@@ -52,6 +52,7 @@ serial = [
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
+testing = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [ ]
 

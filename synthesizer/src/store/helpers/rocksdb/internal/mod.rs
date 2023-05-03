@@ -28,11 +28,11 @@ mod tests;
 
 use anyhow::{bail, Result};
 use core::{fmt::Debug, hash::Hash};
-use once_cell::sync::{OnceCell};
+use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    borrow::{Borrow},
+    borrow::Borrow,
     marker::PhantomData,
     ops::Deref,
     sync::{atomic::AtomicBool, Arc},
@@ -139,6 +139,9 @@ impl Database for RocksDB {
 impl RocksDB {
     /// Opens the test database.
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        use once_cell::sync::Lazy;
+        use std::collections::HashMap;
+
         // A global mapping of test databases.
         static DATABASES: Lazy<Mutex<HashMap<std::path::PathBuf, RocksDB>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
