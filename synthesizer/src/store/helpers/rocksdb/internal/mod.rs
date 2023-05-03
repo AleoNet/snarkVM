@@ -28,11 +28,13 @@ mod tests;
 
 use anyhow::{bail, Result};
 use core::{fmt::Debug, hash::Hash};
-use once_cell::sync::OnceCell;
+use indexmap::IndexMap;
+use once_cell::sync::{Lazy, OnceCell};
 use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    borrow::Borrow,
+    borrow::{Borrow, BorrowMut},
+    collections::HashMap,
     marker::PhantomData,
     ops::Deref,
     sync::{atomic::AtomicBool, Arc},
@@ -135,50 +137,64 @@ impl Database for RocksDB {
     }
 }
 
+#[cfg(feature = "testing")]
 impl RocksDB {
     /// Opens the test database.
-    #[cfg(test)]
-    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        let database = {
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        // A global mapping of test databases.
+        static DATABASES: Lazy<Mutex<HashMap<std::path::PathBuf, RocksDB>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+        // Get the path to the test database.
+        let path = match path {
+            Some(path) => path,
+            None => bail!("Missing path to test database"),
+        };
+
+        // A helper to construct DB options.
+        let construct_options = || {
             // Customize database options.
             let mut options = rocksdb::Options::default();
             options.set_compression_type(rocksdb::DBCompressionType::Lz4);
 
             // Register the prefix length.
             let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
+
             options.set_prefix_extractor(prefix_extractor);
+            options.increase_parallelism(2);
+            options.create_if_missing(true);
 
-            // Construct the directory for the test database.
-            let primary = match dev {
-                Some(dev) => temp_dir.join(dev.to_string()),
-                None => temp_dir,
+            options
+        };
+
+        // Get the database from the global mapping.
+        // If it doesn't exist, create it.
+        let mut lock = DATABASES.lock();
+        let database = lock.get(&path).cloned().unwrap_or_else(|| {
+            let database = {
+                let options = construct_options();
+                let rocksdb = Arc::new(rocksdb::DB::open(&options, path.clone()).unwrap());
+                RocksDB { rocksdb, network_id: u16::MAX, dev: None }
             };
 
-            let rocksdb = {
-                options.increase_parallelism(2);
-                options.create_if_missing(true);
-                Arc::new(rocksdb::DB::open(&options, primary)?)
-            };
+            lock.insert(path.clone(), database.clone());
+            database
+        });
+        drop(lock);
 
-            Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id: u16::MAX, dev })
-        }?;
-
-        // Ensure the database development ID match.
-        match database.dev == dev {
+        // Ensure the database ID is correct.
+        match database.dev.is_none() && database.network_id == u16::MAX && database.path().eq(&path) {
             true => Ok(database),
-            false => bail!("Mismatching development ID in the test database"),
+            false => bail!("Unexpected test database"),
         }
     }
 
     /// Opens the test map.
-    #[cfg(test)]
-    fn open_map_testing<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
-        temp_dir: std::path::PathBuf,
-        dev: Option<u16>,
+    pub fn open_map_testing<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+        path: Option<std::path::PathBuf>,
         map_id: T,
     ) -> Result<DataMap<K, V>> {
         // Open the RocksDB test database.
-        let database = Self::open_testing(temp_dir, dev)?;
+        let database = Self::open_testing(path)?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();

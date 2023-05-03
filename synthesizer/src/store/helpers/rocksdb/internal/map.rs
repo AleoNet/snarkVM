@@ -89,7 +89,7 @@ impl<
     ///
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
-        self.batch_in_progress.store(true, Ordering::SeqCst);
+        self.batch_in_progress.store(true, Ordering::Relaxed);
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
     }
@@ -100,7 +100,7 @@ impl<
     /// if they are already part of a larger one.
     ///
     fn is_atomic_in_progress(&self) -> bool {
-        self.batch_in_progress.load(Ordering::SeqCst)
+        self.batch_in_progress.load(Ordering::Acquire)
     }
 
     ///
@@ -141,7 +141,7 @@ impl<
         // Clear the checkpoint stack.
         *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::SeqCst);
+        self.batch_in_progress.store(false, Ordering::Release);
     }
 
     ///
@@ -185,7 +185,7 @@ impl<
         // Clear the checkpoint stack.
         *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::SeqCst);
+        self.batch_in_progress.store(false, Ordering::Release);
 
         Ok(())
     }
@@ -354,7 +354,7 @@ mod tests {
 
         // Initialize a map.
         let map: DataMap<Address<CurrentNetwork>, ()> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+            RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMap::Test)).expect("Failed to open data map");
         map.insert(address, ()).expect("Failed to insert into data map");
         assert!(map.contains_key_confirmed(&address).unwrap());
     }
@@ -365,7 +365,7 @@ mod tests {
     fn test_insert_and_get_speculative() {
         // Initialize a map.
         let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+            RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
@@ -418,7 +418,7 @@ mod tests {
     fn test_remove_and_get_speculative() {
         // Initialize a map.
         let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+            RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
@@ -481,7 +481,7 @@ mod tests {
 
         // Initialize a map.
         let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+            RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
@@ -542,7 +542,7 @@ mod tests {
 
         // Initialize a map.
         let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+            RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMap::Test)).expect("Failed to open data map");
 
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());

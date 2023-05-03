@@ -41,13 +41,13 @@ pub(crate) fn temp_dir() -> std::path::PathBuf {
 #[test]
 #[serial]
 fn test_open() {
-    let _storage = RocksDB::open_testing(temp_dir(), None).expect("Failed to open storage");
+    let _storage = RocksDB::open_testing(Some(temp_dir())).expect("Failed to open storage");
 }
 
 #[test]
 #[serial]
 fn test_open_map() {
-    let _map = RocksDB::open_map_testing::<u32, String, _>(temp_dir(), None, MapID::Test(TestMapID::Test))
+    let _map = RocksDB::open_map_testing::<u32, String, _>(Some(temp_dir()), MapID::Test(TestMapID::Test))
         .expect("Failed to open data map");
 }
 
@@ -55,7 +55,7 @@ fn test_open_map() {
 #[serial]
 fn test_insert_and_contains_key() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
     assert!(map.contains_key_confirmed(&123456789).expect("Failed to call contains key"));
@@ -66,7 +66,7 @@ fn test_insert_and_contains_key() {
 #[serial]
 fn test_insert_and_get() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
     assert_eq!(
@@ -81,7 +81,7 @@ fn test_insert_and_get() {
 #[serial]
 fn test_insert_and_remove() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
     assert_eq!(
@@ -97,7 +97,7 @@ fn test_insert_and_remove() {
 #[serial]
 fn test_insert_and_iter() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
 
@@ -110,7 +110,7 @@ fn test_insert_and_iter() {
 #[serial]
 fn test_insert_and_keys() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
 
@@ -123,7 +123,7 @@ fn test_insert_and_keys() {
 #[serial]
 fn test_insert_and_values() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
 
@@ -137,13 +137,13 @@ fn test_insert_and_values() {
 fn test_reopen() {
     let directory = temp_dir();
     {
-        let map = RocksDB::open_map_testing(directory.clone(), None, MapID::Test(TestMapID::Test))
+        let map = RocksDB::open_map_testing(Some(directory.clone()), MapID::Test(TestMapID::Test))
             .expect("Failed to open data map");
         map.insert(123456789, "123456789".to_string()).expect("Failed to insert");
     }
     {
         let map: TestMap =
-            RocksDB::open_map_testing(directory, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+            RocksDB::open_map_testing(Some(directory), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
         match map.get_confirmed(&123456789).expect("Failed to get") {
             Some(Cow::Borrowed(value)) => assert_eq!(value.to_string(), "123456789".to_string()),
             Some(Cow::Owned(value)) => assert_eq!(value, "123456789".to_string()),
@@ -186,7 +186,7 @@ fn test_scalar_mul() {
     const ITERATIONS: u32 = 1_000_000u32;
 
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     // Sample `ITERATION` random field elements to store.
     for i in 0..ITERATIONS {
@@ -209,7 +209,7 @@ fn test_scalar_mul() {
 #[serial]
 fn test_iterator_ordering() {
     let map =
-        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+        RocksDB::open_map_testing(Some(temp_dir()), MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
     // Insert values into the map.
     map.insert(5, "d".to_string()).expect("Failed to insert");
