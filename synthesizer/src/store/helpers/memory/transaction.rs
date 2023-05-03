@@ -81,8 +81,8 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
         Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store, fee_store })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transaction storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         // Initialize the deployment store.
         let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open_testing(path.clone(), transition_store.clone())?;
