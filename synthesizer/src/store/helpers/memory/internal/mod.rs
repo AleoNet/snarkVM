@@ -169,9 +169,6 @@ impl<
         // Execute the operations up to the last checkpoint as if MemoryMap::finish
         // was called at that point in time.
         if !operations.is_empty() {
-            // Acquire a write lock on the map.
-            let mut locked_map = self.map.write();
-
             // Prepare the key and value for each queued operation.
             //
             // Note: This step is taken to ensure (with 100% certainty) that there will be
@@ -188,6 +185,9 @@ impl<
             } else {
                 return;
             };
+
+            // Acquire a write lock on the map.
+            let mut locked_map = self.map.write();
 
             // Perform all the queued operations.
             for (key, value) in prepared_operations {
@@ -212,9 +212,6 @@ impl<
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         if !operations.is_empty() {
-            // Acquire a write lock on the map.
-            let mut locked_map = self.map.write();
-
             // Prepare the key and value for each queued operation.
             //
             // Note: This step is taken to ensure (with 100% certainty) that there will be
@@ -226,6 +223,9 @@ impl<
                 .into_iter()
                 .map(|(key, value)| Ok((bincode::serialize(&key)?, value)))
                 .collect::<Result<Vec<_>>>()?;
+
+            // Acquire a write lock on the map.
+            let mut locked_map = self.map.write();
 
             // Perform all the queued operations.
             for (key, value) in prepared_operations {
