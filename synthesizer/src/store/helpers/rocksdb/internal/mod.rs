@@ -67,6 +67,9 @@ pub struct RocksDB {
     pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
     /// Allows to check whether a database transaction is in progress.
     pub(super) batch_depth: Arc<AtomicUsize>,
+    /// Indicates the number of batched operations to perform even if the
+    /// atomic batch is aborted.
+    pub(super) checkpoint: Arc<AtomicUsize>,
 }
 
 impl Deref for RocksDB {
@@ -110,6 +113,7 @@ impl Database for RocksDB {
                     dev,
                     atomic_batch: Default::default(),
                     batch_depth: Default::default(),
+                    checkpoint: Default::default(),
                 })
             })?
             .clone();
@@ -170,6 +174,7 @@ impl RocksDB {
                 dev,
                 atomic_batch: Default::default(),
                 batch_depth: Default::default(),
+                checkpoint: Default::default(),
             })
         }?;
 
