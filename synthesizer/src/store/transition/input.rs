@@ -315,11 +315,11 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "test-utilities")]
+    #[cfg(feature = "testing")]
     /// Initializes the transition input store.
-    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize a new transition input storage.
-        let storage = I::open_testing(temp_dir, dev)?;
+        let storage = I::open_testing(path)?;
         // Return the transition input store.
         Ok(Self {
             constant: storage.constant_map().clone(),

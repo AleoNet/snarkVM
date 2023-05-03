@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(feature = "test-utilities")]
+#![cfg(feature = "testing")]
 
 #[macro_use]
 extern crate criterion;
@@ -38,7 +38,7 @@ const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64];
 const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function for benchmarking `VM::finalize`.
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 #[allow(unused)]
 pub fn bench_finalize(c: &mut Criterion, workloads: Vec<Box<dyn Workload<Testnet3>>>) {
     // Initialize the RNG.
@@ -148,7 +148,7 @@ criterion_group! {
     config = Criterion::default().sample_size(10);
     targets = bench_multiple_operations_with_multiple_programs
 }
-#[cfg(all(feature = "test-utilities", feature = "long-benchmarks"))]
+#[cfg(all(feature = "testing", feature = "long-benchmarks"))]
 criterion_main!(long_benchmarks);
-#[cfg(all(feature = "test-utilities", not(any(feature = "long-benchmarks"))))]
+#[cfg(all(feature = "testing", not(any(feature = "long-benchmarks"))))]
 criterion_main!(benchmarks);

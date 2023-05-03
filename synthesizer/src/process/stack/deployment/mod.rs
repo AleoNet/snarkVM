@@ -50,7 +50,7 @@ impl<N: Network> Deployment<N> {
     }
 
     /// Initializes a new deployment, without checking the order.
-    #[cfg(any(test, feature = "test-utilities"))]
+    #[cfg(any(test, feature = "testing"))]
     pub fn new_unchecked(
         edition: u16,
         program: Program<N>,

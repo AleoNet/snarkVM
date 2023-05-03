@@ -70,7 +70,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new deployment transaction, without checking for correctness.
-    #[cfg(any(test, feature = "test-utilities"))]
+    #[cfg(any(test, feature = "testing"))]
     pub fn from_deployment_unchecked(
         id: N::TransactionID,
         owner: ProgramOwner<N>,
@@ -81,7 +81,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new deployment transaction, given a deployment and a fee.
-    #[cfg(any(test, feature = "test-utilities"))]
+    #[cfg(any(test, feature = "testing"))]
     pub fn from_deployment_and_fee<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         deployment: Deployment<N>,

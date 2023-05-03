@@ -52,12 +52,32 @@ use rand::{CryptoRng, Rng};
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 use std::{borrow::Borrow, fs, iter, path::PathBuf, str::FromStr};
 
+/// A helper function to create a temporary directory.
+pub fn temp_dir() -> PathBuf {
+    tempfile::tempdir().expect("Failed to open temporary directory").into_path()
+}
+
 /// A helper function to initialize a VM with a genesis block.
 pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
 ) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>) {
-    let vm = VM::from(ConsensusStore::open(Some(0)).unwrap()).unwrap();
+    // If the `rocks` feature is enabled, then we are benchmarking using the DB backend.
+    // This block creates a temporary directory for the database.
+    let temp_dir = match cfg!(feature = "rocks") {
+        false => None,
+        true => {
+            let temp_dir = temp_dir();
+            println!("Using the following temporary directory {:?}", temp_dir);
+            //println!("Initializing a VM with a database at {:?}", temp_dir);
+            Some(temp_dir)
+        }
+    };
+
+    // Initialize the VM.
+    let vm = VM::from(ConsensusStore::open_testing(temp_dir).unwrap()).unwrap();
+
+    println!("Initialized VM: {:?}", vm.block_store().hashes().collect_vec());
 
     // Initialize the genesis block.
     let genesis = Block::genesis(&vm, private_key, rng).unwrap();
@@ -71,6 +91,8 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
 
     // Update the VM.
     vm.add_next_block(&genesis, None).unwrap();
+
+    println!("Added genesis block: {:?}", vm.block_store().hashes().collect_vec());
 
     (vm, record)
 }
@@ -198,7 +220,7 @@ pub fn sample_proof() -> Proof<Testnet3> {
         .clone()
 }
 
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 /// Constructs a deployment transaction without the overhead of synthesis.
 pub fn mock_deployment_transaction(
     private_key: &PrivateKey<Testnet3>,
@@ -238,14 +260,4 @@ pub fn mock_fee(rng: &mut TestRng) -> Fee<Testnet3> {
         <Testnet3 as Network>::StateRoot::default(),
         None,
     )
-}
-
-#[allow(unused)]
-/// Cleans up the development storage used by the database.
-/// This assumes that the path is `.../snarkVM/synthesizer/.ledger-3-0`.
-pub fn cleanup_storage() {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".ledger-3-0");
-    if path.exists() {
-        fs::remove_dir_all(path).unwrap();
-    }
 }

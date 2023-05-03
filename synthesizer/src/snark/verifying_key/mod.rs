@@ -35,7 +35,7 @@ impl<N: Network> VerifyingKey<N> {
         Self { verifying_key }
     }
 
-    #[cfg(feature = "test-utilities")]
+    #[cfg(feature = "testing")]
     /// Returns a mock verifying key.
     pub fn mock() -> Self {
         Self::new(N::inclusion_verifying_key().clone())

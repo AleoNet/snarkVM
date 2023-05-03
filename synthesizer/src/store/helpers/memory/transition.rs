@@ -23,7 +23,6 @@ use console::{
     program::{Ciphertext, Identifier, Plaintext, ProgramID, Record, Value},
     types::{Field, Group},
 };
-use std::path::PathBuf;
 
 /// An in-memory transition storage.
 #[derive(Clone)]

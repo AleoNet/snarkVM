@@ -27,7 +27,7 @@ edition = "2021"
 #name = "add_next_block"
 #path = "benches/add_next_block.rs"
 #harness = false
-#required-features = [ "test-utilities" ]
+#required-features = [ "testing" ]
 #
 #[[bench]]
 #name = "block"
@@ -40,23 +40,23 @@ edition = "2021"
 #harness = false
 #required-features = [ "setup" ]
 #
-[[bench]]
-name = "commit"
-path = "benches/commit.rs"
-harness = false
-required-features = [ "test-utilities" ]
-#
-[[bench]]
-name = "finalize"
-path = "benches/finalize.rs"
-harness = false
-required-features = [ "test-utilities"]
+#[[bench]]
+#name = "commit"
+#path = "benches/commit.rs"
+#harness = false
+#required-features = [ "testing" ]
+##
+#[[bench]]
+#name = "finalize"
+#path = "benches/finalize.rs"
+#harness = false
+#required-features = [ "testing"]
 
 [[bench]]
 name = "speculate"
 path = "benches/speculate.rs"
 harness = false
-required-features = [ "test-utilities" ]
+required-features = [ "testing" ]
 
 #[[bench]]
 #name = "transaction"
@@ -77,7 +77,7 @@ serial = [
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
-test-utilities = [ ]
+testing = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [ ]
 

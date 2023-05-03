@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(feature = "test-utilities")]
+#![cfg(feature = "testing")]
 
 #[macro_use]
 extern crate criterion;
@@ -32,6 +32,7 @@ use snarkvm_synthesizer::{ConsensusStorage, Speculate, Transaction};
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
+use itertools::Itertools;
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
@@ -40,11 +41,11 @@ const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64];
 const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function for benchmarking `Speculate::speculate`.
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 #[allow(unused)]
 pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(
     c: &mut Criterion,
-    header: impl Display,
+    tag: impl Display,
     workloads: Vec<Box<dyn Workload<Testnet3>>>,
 ) {
     // Initialize the RNG.
@@ -61,6 +62,8 @@ pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(
 
     // Deploy and execute programs to get the VM in the desired state.
     setup(&vm, &private_key, &setup_operations, rng);
+
+    println!("Finished setup: {:?}", vm.block_store().hashes().collect_vec());
 
     // Benchmark each of the programs.
     for (name, operations) in benchmarks {
@@ -87,7 +90,7 @@ pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(
         let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
 
         // Benchmark speculation.
-        c.bench_function(&format!("{header}/{name}/speculate"), |b| {
+        c.bench_function(&format!("{name}/{tag}/speculate"), |b| {
             b.iter_batched(
                 || speculate.clone(),
                 |mut speculate| {
@@ -116,11 +119,9 @@ fn bench_one_operation(c: &mut Criterion) {
     #[cfg(not(any(feature = "rocks")))]
     bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workloads);
     #[cfg(any(feature = "rocks"))]
-    {
-        bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
-        cleanup_storage();
-        println!("Cleaned up storage.");
-    }
+    bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
+
+    println!("bench_one_operation complete");
 }
 
 fn bench_multiple_operations(c: &mut Criterion) {
@@ -138,16 +139,18 @@ fn bench_multiple_operations(c: &mut Criterion) {
         workloads.push(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Workload<Testnet3>>);
     }
 
+    println!("constructed workloads");
+
     #[cfg(not(any(feature = "rocks")))]
     bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workloads);
     #[cfg(any(feature = "rocks"))]
-    {
-        bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
-        cleanup_storage();
-    }
+    bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
+
+    println!("Finished bench_multiple_operations")
 }
 
 fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
+    println!("bench_multiple_operations_with_multiple_programs");
     // Initialize the workloads.
     let max_commands = *NUM_COMMANDS.last().unwrap();
     let max_executions = *NUM_EXECUTIONS.last().unwrap();
@@ -161,13 +164,12 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
         );
     }
 
+    println!("Constructed workloads");
+
     #[cfg(not(any(feature = "rocks")))]
     bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workloads);
     #[cfg(any(feature = "rocks"))]
-    {
-        bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
-        cleanup_storage();
-    }
+    bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workloads);
 }
 
 criterion_group! {
@@ -180,7 +182,7 @@ criterion_group! {
     config = Criterion::default().sample_size(10);
     targets = bench_multiple_operations_with_multiple_programs
 }
-#[cfg(all(feature = "test-utilities", feature = "long-benchmarks"))]
+#[cfg(all(feature = "testing", feature = "long-benchmarks"))]
 criterion_main!(long_benchmarks);
-#[cfg(all(feature = "test-utilities", not(any(feature = "long-benchmarks"))))]
+#[cfg(all(feature = "testing", not(any(feature = "long-benchmarks"))))]
 criterion_main!(benchmarks);

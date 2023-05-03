@@ -112,7 +112,7 @@ function split:
         .unwrap()
 }
 
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 fn bench_mint_public(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
@@ -145,7 +145,7 @@ fn bench_mint_public(c: &mut Criterion) {
     );
 }
 
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 fn bench_transfer_public(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
@@ -187,11 +187,11 @@ fn bench_transfer_public(c: &mut Criterion) {
     );
 }
 
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 criterion_group! {
     name = credits;
     config = Criterion::default().sample_size(10);
     targets = bench_mint_public, bench_transfer_public,
 }
-#[cfg(feature = "test-utilities")]
+#[cfg(feature = "testing")]
 criterion_main!(credits);

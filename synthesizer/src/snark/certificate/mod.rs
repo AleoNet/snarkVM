@@ -32,7 +32,7 @@ impl<N: Network> Certificate<N> {
         Self { certificate }
     }
 
-    #[cfg(feature = "test-utilities")]
+    #[cfg(feature = "testing")]
     /// Initializes a mock certificate.
     pub fn mock(identifier: &Identifier<N>) -> Result<Self> {
         Self::certify(identifier, &ProvingKey::mock(), &VerifyingKey::mock())

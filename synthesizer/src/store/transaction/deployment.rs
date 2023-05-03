@@ -466,14 +466,14 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "test-utilities")]
+    #[cfg(feature = "testing")]
     /// Initializes the deployment storage for testing.
     pub fn open_testing(
-        temp_dir: std::path::PathBuf,
+        path: Option<std::path::PathBuf>,
         transition_store: TransitionStore<N, D::TransitionStorage>,
     ) -> Result<Self> {
         // Initialize the deployment storage.
-        let storage = D::open_testing(temp_dir, transition_store)?;
+        let storage = D::open_testing(path, transition_store)?;
         // Return the deployment store.
         Ok(Self { storage, _phantom: PhantomData })
     }
