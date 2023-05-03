@@ -188,7 +188,10 @@ macro_rules! atomic_write_batch {
         // is an early return (via `?`) here, in order for any higher-level atomic write batch to
         // also abort, cascading to all the owned storage objects.
         run_atomic_ops().map_err(|err| {
-            $self.abort_atomic();
+            // Only run abort_atomic once, from the outermost call to the macro.
+            if !is_part_of_atomic_batch {
+                $self.abort_atomic();
+            }
             err
         })?;
 
