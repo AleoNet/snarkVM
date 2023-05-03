@@ -27,6 +27,8 @@ use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
 
+use std::collections::BTreeMap;
+
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
@@ -302,17 +304,17 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     #[inline]
     /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
     /// The leaf indices must be sorted in descending order and must be unique.
-    pub fn update_many(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
+    pub fn update_many(&mut self, updates: &BTreeMap<usize, LH::Leaf>) -> Result<()> {
         let timer = timer!("MerkleTree::update_many");
 
         // Check that there are updates to perform.
         ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
 
         // Note that this unwrap is safe since updates is guaranteed to be non-empty.
-        let (first, rest) = updates.split_first().unwrap();
+        let first = updates.last_key_value().unwrap();
 
         // Assign to the most recently seen leaf index.
-        let mut latest_leaf_index = first.0;
+        let mut latest_leaf_index = *first.0;
 
         // Check that the latest leaf index is less than number of leaves in the Merkle tree.
         ensure!(
@@ -321,7 +323,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         );
 
         // Check that the rest of the leaf hashes are in descending order.
-        for (leaf_index, _) in rest {
+        for (leaf_index, _) in updates.iter().rev().skip(1) {
             ensure!(*leaf_index < latest_leaf_index, "Leaf indices must be sorted in strictly descending order");
             // Update the latest leaf index.
             latest_leaf_index = *leaf_index;
@@ -334,14 +336,14 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         };
 
         // A helper to compute the leaf hash.
-        let hash_update = |(leaf_index, leaf): &(usize, LH::Leaf)| {
-            self.leaf_hasher.hash_leaf(leaf).map(|hash| (start + leaf_index, hash))
+        let hash_update = |(leaf_index, leaf): &(&usize, &LH::Leaf)| {
+            self.leaf_hasher.hash_leaf(leaf).map(|hash| (start + **leaf_index, hash))
         };
 
         // Hash the leaves and add them to the updated hashes.
         let leaf_hashes: Vec<(usize, LH::Hash)> = match updates.len() {
-            0..=100 => updates.iter().map(|update| hash_update(update)).collect::<Result<Vec<_>>>()?,
-            _ => cfg_iter!(updates).map(|update| hash_update(update)).collect::<Result<Vec<_>>>()?,
+            0..=100 => updates.iter().map(|update| hash_update(&update)).collect::<Result<Vec<_>>>()?,
+            _ => cfg_iter!(updates).map(|update| hash_update(&update)).collect::<Result<Vec<_>>>()?,
         };
         lap!(timer, "Hashed {} new leaves", leaf_hashes.len());
 

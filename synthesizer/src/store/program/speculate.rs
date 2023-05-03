@@ -28,6 +28,7 @@ use console::{
 };
 
 use indexmap::{IndexMap, IndexSet};
+use std::collections::BTreeMap;
 
 // TODO (raychu86): Move this out of `store/program`
 
@@ -375,7 +376,7 @@ impl<N: Network> Speculate<N> {
         }
 
         // Iterate through all the programs and construct the program trees.
-        let mut updates = Vec::new();
+        let mut updates = BTreeMap::new();
         let mut appends = Vec::new();
         for (program_id, program_tree) in updated_program_trees.iter() {
             // Construct the leaf for the finalize tree.
@@ -384,7 +385,11 @@ impl<N: Network> Speculate<N> {
             // // Specify the update or append operation.
             match vm.finalize_store().contains_program(program_id)? {
                 true => match vm.finalize_store().get_program_index(program_id)? {
-                    Some(index) => updates.push((usize::try_from(index)?, leaf)),
+                    Some(index) => {
+                        if updates.insert(usize::try_from(index)?, leaf).is_none() {
+                            bail!("Failed to insert update index: {index}");
+                        }
+                    }
                     None => bail!("No index found for program_id: {program_id}"),
                 },
                 false => appends.push(leaf),
@@ -396,9 +401,6 @@ impl<N: Network> Speculate<N> {
 
         // Apply updates to the finalize tree.
         if !updates.is_empty() {
-            // Sort the updates by descending order of indexes.
-            updates.sort_by(|(a, _), (b, _)| b.cmp(a));
-
             // Apply the updates
             updated_finalize_tree.update_many(&updates)?;
         }
