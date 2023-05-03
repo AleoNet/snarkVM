@@ -303,7 +303,6 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
     #[inline]
     /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
-    /// The leaf indices must be sorted in descending order and must be unique.
     pub fn update_many(&mut self, updates: &BTreeMap<usize, LH::Leaf>) -> Result<()> {
         let timer = timer!("MerkleTree::update_many");
 
@@ -311,23 +310,13 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
 
         // Note that this unwrap is safe since updates is guaranteed to be non-empty.
-        let first = updates.last_key_value().unwrap();
-
-        // Assign to the most recently seen leaf index.
-        let mut latest_leaf_index = *first.0;
+        let last = updates.last_key_value().unwrap();
 
         // Check that the latest leaf index is less than number of leaves in the Merkle tree.
         ensure!(
-            latest_leaf_index < self.number_of_leaves,
+            *last.0 < self.number_of_leaves,
             "Leaf index must be less than the number of leaves in the Merkle tree"
         );
-
-        // Check that the rest of the leaf hashes are in descending order.
-        for (leaf_index, _) in updates.iter().rev().skip(1) {
-            ensure!(*leaf_index < latest_leaf_index, "Leaf indices must be sorted in strictly descending order");
-            // Update the latest leaf index.
-            latest_leaf_index = *leaf_index;
-        }
 
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
         let start = match self.number_of_leaves.checked_next_power_of_two() {
