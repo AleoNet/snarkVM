@@ -81,6 +81,22 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
         })
     }
 
+    #[cfg(feature = "testing")]
+    /// Initializes the transition storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        Ok(Self {
+            locator_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::Locator))?,
+            input_store: InputStore::open_testing(path.clone())?,
+            output_store: OutputStore::open_testing(path.clone())?,
+            finalize_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::Finalize))?,
+            proof_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::Proof))?,
+            tpk_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::TPK))?,
+            reverse_tpk_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::ReverseTPK))?,
+            tcm_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::TCM))?,
+            reverse_tcm_map: rocksdb::RocksDB::open_map_testing(path, MapID::Transition(TransitionMap::ReverseTCM))?,
+        })
+    }
+
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap {
         &self.locator_map
@@ -173,6 +189,22 @@ impl<N: Network> InputStorage<N> for InputDB<N> {
             record_tag: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionInput(TransitionInputMap::RecordTag))?,
             external_record: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionInput(TransitionInputMap::ExternalRecord))?,
             dev,
+        })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the transition input storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        Ok(Self {
+            id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::ID))?,
+            reverse_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::ReverseID))?,
+            constant: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::Constant))?,
+            public: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::Public))?,
+            private: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::Private))?,
+            record: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::Record))?,
+            record_tag: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::RecordTag))?,
+            external_record: rocksdb::RocksDB::open_map_testing(path, MapID::TransitionInput(TransitionInputMap::ExternalRecord))?,
+            dev: None,
         })
     }
 
@@ -269,6 +301,22 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
             record_nonce: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionOutput(TransitionOutputMap::RecordNonce))?,
             external_record: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionOutput(TransitionOutputMap::ExternalRecord))?,
             dev,
+        })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the transition output storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        Ok(Self {
+            id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::ID))?,
+            reverse_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::ReverseID))?,
+            constant: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::Constant))?,
+            public: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::Public))?,
+            private: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::Private))?,
+            record: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::Record))?,
+            record_nonce: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::RecordNonce))?,
+            external_record: rocksdb::RocksDB::open_map_testing(path, MapID::TransitionOutput(TransitionOutputMap::ExternalRecord))?,
+            dev: None,
         })
     }
 

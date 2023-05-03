@@ -63,6 +63,20 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         })
     }
 
+    #[cfg(feature = "testing")]
+    /// Opens the test database.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        Ok(Self {
+            program_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Program(ProgramMap::ProgramID))?,
+            program_index_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Program(ProgramMap::ProgramIndex))?,
+            mapping_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Program(ProgramMap::MappingID))?,
+            key_value_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Program(ProgramMap::KeyValueID))?,
+            key_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Program(ProgramMap::Key))?,
+            value_map: rocksdb::RocksDB::open_map_testing(path, MapID::Program(ProgramMap::Value))?,
+            dev: None,
+        })
+    }
+
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map

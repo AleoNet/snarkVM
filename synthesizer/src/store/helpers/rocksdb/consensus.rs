@@ -51,6 +51,20 @@ impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
         })
     }
 
+    #[cfg(feature = "testing")]
+    /// Initializes the consensus storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        // Initialize the finalize store.
+        let finalize_store = FinalizeStore::<N, FinalizeDB<N>>::open_testing(path.clone())?;
+        // Initialize the block store.
+        let block_store = BlockStore::<N, BlockDB<N>>::open_testing(path)?;
+        // Return the consensus storage.
+        Ok(Self {
+            finalize_store,
+            block_store,
+        })
+    }
+
     /// Returns the finalize store.
     fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage> {
         &self.finalize_store

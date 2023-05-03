@@ -97,6 +97,29 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         })
     }
 
+    #[cfg(feature = "testing")]
+    /// Initializes the block storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        // Initialize the transition store.
+        let transition_store = TransitionStore::<N, TransitionDB<N>>::open_testing(path.clone())?;
+        // Initialize the transaction store.
+        let transaction_store = TransactionStore::<N, TransactionDB<N>>::open_testing(path.clone(), transition_store)?;
+        // Return the block storage.
+        Ok(Self {
+            state_root_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::StateRoot))?,
+            reverse_state_root_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ReverseStateRoot))?,
+            id_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ID))?,
+            reverse_id_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ReverseID))?,
+            header_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::Header))?,
+            transactions_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::Transactions))?,
+            reverse_transactions_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ReverseTransactions))?,
+            transaction_store,
+            coinbase_solution_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::CoinbaseSolution))?,
+            coinbase_puzzle_commitment_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
+            signature_map: internal::RocksDB::open_map_testing(path, MapID::Block(BlockMap::Signature))?,
+        })
+    }
+
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap {
         &self.state_root_map

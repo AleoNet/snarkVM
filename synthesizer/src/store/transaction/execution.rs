@@ -52,7 +52,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// Initializes the execution storage for testing.
     fn open_testing(
         path: Option<std::path::PathBuf>,
-        transition_store: TransitionStore<N, Self::TransitionStorage>,
+        fee_store: FeeStore<N, Self::FeeStorage>,
     ) -> Result<Self>;
 
     /// Returns the ID map.
@@ -304,19 +304,19 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
         // Initialize the execution storage.
         let storage = E::open(fee_store)?;
         // Return the execution store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
     }
 
     #[cfg(feature = "testing")]
     /// Initializes the execution storage for testing.
     pub fn open_testing(
         path: Option<std::path::PathBuf>,
-        transition_store: TransitionStore<N, E::TransitionStorage>,
+        fee_store: FeeStore<N, E::FeeStorage>,
     ) -> Result<Self> {
         // Initialize the execution storage.
-        let storage = E::open_testing(path, transition_store)?;
+        let storage = E::open_testing(path, fee_store)?;
         // Return the execution store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
     }
 
     /// Initializes an execution store from storage.
