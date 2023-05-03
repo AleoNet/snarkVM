@@ -71,6 +71,13 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     /// Initializes the transaction storage.
     fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
 
+    #[cfg(feature = "testing")]
+    /// Initializes the transaction storage for testing.
+    fn open_testing(
+        path: Option<std::path::PathBuf>,
+        transition_store: TransitionStore<N, Self::TransitionStorage>,
+    ) -> Result<Self>;
+
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
     /// Returns the deployment store.
@@ -239,6 +246,18 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     pub fn open(transition_store: TransitionStore<N, T::TransitionStorage>) -> Result<Self> {
         // Initialize the transaction storage.
         let storage = T::open(transition_store)?;
+        // Return the transaction store.
+        Ok(Self { transaction_ids: storage.id_map().clone(), storage })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the transaction storage for testing.
+    pub fn open_testing(
+        path: Option<std::path::PathBuf>,
+        transition_store: TransitionStore<N, T::TransitionStorage>,
+    ) -> Result<Self> {
+        // Initialize the transaction storage.
+        let storage = T::open_testing(path, transition_store)?;
         // Return the transaction store.
         Ok(Self { transaction_ids: storage.id_map().clone(), storage })
     }

@@ -59,6 +59,10 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    #[cfg(feature = "testing")]
+    /// Initializes the program state storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self>;
+
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap;
     /// Returns the mapping ID map.
@@ -544,6 +548,17 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
     pub fn open(dev: Option<u16>) -> Result<Self> {
         Self::from(P::open(dev)?)
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes a finalize store for testing.
+    pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        // Initialize the finalize storage.
+        let storage = P::open_testing(path)?;
+        // Compute the finalize tree.
+        let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
+
+        Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
     }
 
     /// Initializes a finalize store from storage.

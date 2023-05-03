@@ -61,6 +61,10 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     /// Initializes the transition storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    #[cfg(feature = "testing")]
+    /// Initializes the transition storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self>;
+
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
     /// Returns the transition input store.
@@ -303,6 +307,26 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     pub fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the transition storage.
         let storage = T::open(dev)?;
+        // Return the transition store.
+        Ok(Self {
+            locator: storage.locator_map().clone(),
+            inputs: (*storage.input_store()).clone(),
+            outputs: (*storage.output_store()).clone(),
+            finalize: storage.finalize_map().clone(),
+            proof: storage.proof_map().clone(),
+            tpk: storage.tpk_map().clone(),
+            reverse_tpk: storage.reverse_tpk_map().clone(),
+            tcm: storage.tcm_map().clone(),
+            reverse_tcm: storage.reverse_tcm_map().clone(),
+            storage,
+        })
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the transition storage for testing.
+    pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        // Initialize the transition storage.
+        let storage = T::open_testing(path)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),

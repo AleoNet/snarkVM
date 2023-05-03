@@ -149,6 +149,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    #[cfg(feature = "testing")]
+    /// Initializes the block storage for testing.
+    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self>;
+
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap;
     /// Returns the reverse state root map.
@@ -647,6 +651,33 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     pub fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the block storage.
         let storage = B::open(dev)?;
+
+        // Compute the block tree.
+        let tree = {
+            // Prepare an iterator over the block heights.
+            let heights = storage.id_map().keys_confirmed();
+            // Prepare the leaves of the block tree.
+            let hashes = match heights.max() {
+                Some(height) => cfg_into_iter!(0..=cow_to_copied!(height))
+                    .map(|height| match storage.get_block_hash(height)? {
+                        Some(hash) => Ok(hash.to_bits_le()),
+                        None => bail!("Missing block hash for block {height}"),
+                    })
+                    .collect::<Result<Vec<Vec<bool>>>>()?,
+                None => vec![],
+            };
+            // Construct the block tree.
+            Arc::new(RwLock::new(N::merkle_tree_bhp(&hashes)?))
+        };
+
+        // Return the block store.
+        Ok(Self { storage, tree })
+    }
+
+    /// Initializes the block store for testign
+    pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+        // Initialize the block storage.
+        let storage = B::open_testing(path)?;
 
         // Compute the block tree.
         let tree = {
