@@ -63,6 +63,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     /// Initializes the deployment storage for testing.
     fn open_testing(path: Option<std::path::PathBuf>, transition_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
 
+    #[cfg(feature = "testing")]
+    /// Initializes the deployment storage for testing.
+    fn open_testing(
+        path: Option<std::path::PathBuf>,
+        transition_store: TransitionStore<N, Self::TransitionStorage>,
+    ) -> Result<Self>;
+
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
     /// Returns the edition map.
@@ -457,6 +464,18 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         let storage = D::open_testing(path, fee_store)?;
         // Return the deployment store.
         Ok(Self::from(storage))
+    }
+
+    #[cfg(feature = "testing")]
+    /// Initializes the deployment storage for testing.
+    pub fn open_testing(
+        path: Option<std::path::PathBuf>,
+        transition_store: TransitionStore<N, D::TransitionStorage>,
+    ) -> Result<Self> {
+        // Initialize the deployment storage.
+        let storage = D::open_testing(path, transition_store)?;
+        // Return the deployment store.
+        Ok(Self { storage, _phantom: PhantomData })
     }
 
     /// Initializes a deployment store from storage.
