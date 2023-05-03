@@ -33,7 +33,7 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
-    updates: &[(usize, LH::Leaf)],
+    updates: &BTreeMap<usize, LH::Leaf>,
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
     let mut merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
@@ -86,7 +86,7 @@ fn check_updated_merkle_tree_is_consistent<
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: Vec<LH::Leaf>,
-    updates: Vec<(usize, LH::Leaf)>,
+    updates: BTreeMap<usize, LH::Leaf>,
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
     let mut merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, &leaves)?;
@@ -127,7 +127,7 @@ fn check_merkle_tree_depth_3_single_update<
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
-    updates: &[(usize, LH::Leaf)],
+    updates: &BTreeMap<usize, LH::Leaf>,
 ) -> Result<()> {
     assert_eq!(4, leaves.len(), "Padded depth-3 test requires 4 leaves (out of 8)");
     assert_eq!(1, updates.len(), "Padded depth-3 test requires 1 update");
@@ -167,25 +167,25 @@ fn check_merkle_tree_depth_3_single_update<
     // ------------------------------------------------------------------------------------------ //
 
     // Update the Merkle tree.
-    let (leaf_index, leaf) = &updates[0];
+    let (leaf_index, leaf) = &updates.first_key_value().unwrap();
     merkle_tree.update_many(updates)?;
     assert_eq!(7, merkle_tree.tree.len());
     assert_eq!(4, merkle_tree.number_of_leaves);
 
     // Depth 3.
-    let expected_leaf0 = match *leaf_index == 0 {
+    let expected_leaf0 = match **leaf_index == 0 {
         true => LeafHash::hash_leaf(leaf_hasher, leaf)?,
         false => LeafHash::hash_leaf(leaf_hasher, &leaves[0])?,
     };
-    let expected_leaf1 = match *leaf_index == 1 {
+    let expected_leaf1 = match **leaf_index == 1 {
         true => LeafHash::hash_leaf(leaf_hasher, leaf)?,
         false => LeafHash::hash_leaf(leaf_hasher, &leaves[1])?,
     };
-    let expected_leaf2 = match *leaf_index == 2 {
+    let expected_leaf2 = match **leaf_index == 2 {
         true => LeafHash::hash_leaf(leaf_hasher, leaf)?,
         false => LeafHash::hash_leaf(leaf_hasher, &leaves[2])?,
     };
-    let expected_leaf3 = match *leaf_index == 3 {
+    let expected_leaf3 = match **leaf_index == 3 {
         true => LeafHash::hash_leaf(leaf_hasher, leaf)?,
         false => LeafHash::hash_leaf(leaf_hasher, &leaves[3])?,
     };
@@ -236,7 +236,7 @@ fn test_merkle_tree_bhp() -> Result<()> {
                     &(0..num_updates)
                         .rev()
                         .map(|i| ((i % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le()))
-                        .collect::<Vec<(usize, Vec<bool>)>>(),
+                        .collect::<BTreeMap<usize, Vec<bool>>>(),
                 )?;
             }
         }
@@ -276,7 +276,7 @@ fn test_merkle_tree_poseidon() -> Result<()> {
                     &(0..num_additional_leaves)
                         .rev()
                         .map(|i| ((i % num_leaves) as usize, vec![Uniform::rand(rng)]))
-                        .collect::<Vec<_>>(),
+                        .collect::<BTreeMap<_, _>>(),
                 )?;
             }
         }
@@ -306,15 +306,12 @@ fn test_merkle_tree_bhp_update_many_is_consistent() -> Result<()> {
             let num_leaves = 2u128.pow(DEPTH as u32);
 
             // Construct the random updates.
-            let mut updates = (0..num_leaves)
+            let updates = (0..num_leaves)
                 .map(|_| {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le())
                 })
-                .collect::<Vec<(usize, Vec<bool>)>>();
-            updates.sort_by_key(|(a, _)| *a);
-            updates.reverse();
-            updates.dedup_by_key(|(a, _)| *a);
+                .collect::<BTreeMap<usize, Vec<bool>>>();
 
             // Check the Merkle tree.
             check_updated_merkle_tree_is_consistent::<CurrentEnvironment, LH, PH, DEPTH>(
@@ -352,15 +349,12 @@ fn test_merkle_tree_poseidon_update_many_is_consistent() -> Result<()> {
             let num_leaves = 2u128.pow(DEPTH as u32);
 
             // Construct the random updates.
-            let mut updates = (0..num_leaves)
+            let updates = (0..num_leaves)
                 .map(|_| {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, vec![Uniform::rand(rng)])
                 })
-                .collect::<Vec<(usize, Vec<_>)>>();
-            updates.sort_by_key(|(a, _)| *a);
-            updates.reverse();
-            updates.dedup_by_key(|(a, _)| *a);
+                .collect::<BTreeMap<usize, Vec<_>>>();
 
             // Check the Merkle tree.
             check_updated_merkle_tree_is_consistent::<CurrentEnvironment, LH, PH, DEPTH>(
@@ -406,13 +400,10 @@ fn test_merkle_tree_bhp_update_and_update_many_match() -> Result<()> {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le())
                 })
-                .collect::<Vec<(usize, Vec<bool>)>>();
+                .collect::<BTreeMap<usize, Vec<bool>>>();
 
             // Construct the batch updates for the single updates.
-            let mut batch_updates = single_updates.clone();
-            batch_updates.sort_by_key(|(a, _)| *a);
-            batch_updates.reverse();
-            batch_updates.dedup_by_key(|(a, _)| *a);
+            let batch_updates = single_updates.clone();
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =
@@ -465,13 +456,10 @@ fn test_merkle_tree_poseidon_update_and_update_many_match() -> Result<()> {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, vec![Uniform::rand(rng)])
                 })
-                .collect::<Vec<(usize, Vec<_>)>>();
+                .collect::<BTreeMap<usize, Vec<_>>>();
 
             // Construct the batch updates for the single updates.
-            let mut batch_updates = single_updates.clone();
-            batch_updates.sort_by_key(|(a, _)| *a);
-            batch_updates.reverse();
-            batch_updates.dedup_by_key(|(a, _)| *a);
+            let batch_updates = single_updates.clone();
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =
@@ -517,7 +505,7 @@ fn test_merkle_tree_depth_3_poseidon() -> Result<()> {
         &leaf_hasher,
         &path_hasher,
         &(0..4).map(|_| vec![Uniform::rand(&mut rng)]).collect::<Vec<_>>(),
-        &[(0, vec![Uniform::rand(&mut rng)])],
+        &[(0, vec![Uniform::rand(&mut rng)])].into(),
     )
 }
 
@@ -536,7 +524,7 @@ fn test_merkle_tree_depth_3_bhp() -> Result<()> {
         &leaf_hasher,
         &path_hasher,
         &(0..4).map(|_| Field::<CurrentEnvironment>::rand(&mut rng).to_bits_le()).collect::<Vec<Vec<bool>>>(),
-        &[(0, Field::<CurrentEnvironment>::rand(&mut rng).to_bits_le())],
+        &[(0, Field::<CurrentEnvironment>::rand(&mut rng).to_bits_le())].into(),
     )
 }
 
@@ -574,7 +562,7 @@ fn test_profiler() -> Result<()> {
                 (index % num_leaves, leaf)
             })
             .for_each(|(index, leaf)| {
-                merkle_tree.update_many(&[(index, leaf)]).unwrap();
+                merkle_tree.update_many(&[(index, leaf)].into()).unwrap();
             });
     }
 
