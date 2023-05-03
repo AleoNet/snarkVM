@@ -28,13 +28,11 @@ mod tests;
 
 use anyhow::{bail, Result};
 use core::{fmt::Debug, hash::Hash};
-use indexmap::IndexMap;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::{OnceCell};
 use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    borrow::{Borrow, BorrowMut},
-    collections::HashMap,
+    borrow::{Borrow},
     marker::PhantomData,
     ops::Deref,
     sync::{atomic::AtomicBool, Arc},

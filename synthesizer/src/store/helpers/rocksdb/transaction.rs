@@ -78,8 +78,8 @@ impl<N: Network> TransactionStorage<N> for TransactionDB<N> {
         Ok(Self { id_map: rocksdb::RocksDB::open_map(N::ID, execution_store.dev(), MapID::Transaction(TransactionMap::ID))?, deployment_store, execution_store, fee_store })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transaction storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         // Initialize the deployment store.
         let deployment_store = DeploymentStore::<N, DeploymentDB<N>>::open_testing(path.clone(), transition_store.clone())?;
@@ -159,8 +159,8 @@ impl<N: Network> DeploymentStorage<N> for DeploymentDB<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the deployment storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         Ok(Self {
             id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Deployment(DeploymentMap::ID))?,

@@ -81,8 +81,8 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         Ok(Self {
             locator_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Transition(TransitionMap::Locator))?,
@@ -192,8 +192,8 @@ impl<N: Network> InputStorage<N> for InputDB<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition input storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         Ok(Self {
             id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionInput(TransitionInputMap::ID))?,
@@ -304,8 +304,8 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition output storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         Ok(Self {
             id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::TransitionOutput(TransitionOutputMap::ID))?,

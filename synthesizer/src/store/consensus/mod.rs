@@ -43,8 +43,8 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the consensus storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
-    #[cfg(feature = "testing")]
     /// Initializes the consensus storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self>;
 
     /// Returns the finalize storage.
@@ -120,8 +120,8 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
         Ok(Self { storage, _phantom: PhantomData })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the consensus storage for testing.
+    #[cfg(feature = "testing")]
     pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize the consensus storage.
         let storage = C::open_testing(path)?;

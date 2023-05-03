@@ -74,8 +74,8 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
         Self::open(None)
     }
@@ -175,8 +175,8 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition input storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
         Self::open(None)
     }
@@ -277,8 +277,8 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition output storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
         Self::open(None)
     }

@@ -149,8 +149,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
-    #[cfg(feature = "testing")]
     /// Initializes the block storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self>;
 
     /// Returns the state root map.
@@ -674,7 +674,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         Ok(Self { storage, tree })
     }
 
-    /// Initializes the block store for testign
+    /// Initializes the block store for testing.
+    #[cfg(feature = "testing")]
     pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize the block storage.
         let storage = B::open_testing(path)?;

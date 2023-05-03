@@ -329,6 +329,7 @@ impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> fmt::Debu
 }
 
 #[cfg(test)]
+#[cfg(features = "testing")]
 mod tests {
     use super::*;
     use crate::{

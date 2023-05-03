@@ -97,8 +97,8 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the block storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize the transition store.
         let transition_store = TransitionStore::<N, TransitionDB<N>>::open_testing(path.clone())?;

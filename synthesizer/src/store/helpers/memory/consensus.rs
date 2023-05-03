@@ -51,8 +51,8 @@ impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the consensus storage for testing.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize the finalize store.
         let finalize_store = FinalizeStore::<N, FinalizeMemory<N>>::open_testing(path.clone())?;

@@ -63,8 +63,8 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         })
     }
 
-    #[cfg(feature = "testing")]
     /// Opens the test database.
+    #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         Ok(Self {
             program_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Program(ProgramMap::ProgramID))?,
