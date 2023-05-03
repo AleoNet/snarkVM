@@ -47,6 +47,12 @@ pub trait Map<
     fn start_atomic(&self);
 
     ///
+    /// Schedules the writes already collected in the current atomic batch to be executed even
+    /// if the atomic operation eventually gets aborted.
+    ///
+    fn atomic_checkpoint(&self);
+
+    ///
     /// Checks whether an atomic operation is currently in progress. This can be done to ensure
     /// that lower-level operations don't start or finish their individual atomic write batch
     /// if they are already part of a larger one.
