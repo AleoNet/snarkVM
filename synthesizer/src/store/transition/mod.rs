@@ -321,7 +321,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     #[cfg(feature = "testing")]
-    /// Initializes the transition storage for testing.
+    /// Initializes the transition store for testing.
     pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize the transition storage.
         let storage = T::open_testing(path)?;

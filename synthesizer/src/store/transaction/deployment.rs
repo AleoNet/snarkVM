@@ -467,7 +467,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     }
 
     #[cfg(feature = "testing")]
-    /// Initializes the deployment storage for testing.
+    /// Initializes the deployment store for testing.
     pub fn open_testing(
         path: Option<std::path::PathBuf>,
         transition_store: TransitionStore<N, D::TransitionStorage>,
