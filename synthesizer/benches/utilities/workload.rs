@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use console::{prelude::Network, program::Value};
-use snarkvm_synthesizer::Program;
+use snarkvm_synthesizer::{Program, Transaction};
 
 /// An operation executed in a workload.
 #[derive(Clone, Debug)]
@@ -27,12 +27,15 @@ pub enum Operation<N: Network> {
     Execute(String, String, Vec<Value<N>>),
 }
 
+/// Batches of setup operations for the workload.
+pub type SetupOperations<N> = Vec<Vec<Operation<N>>>;
+/// Benchmark transactions for the workload.
+pub type BenchmarkOperations<N> = Vec<Operation<N>>;
+
 /// A trait for workloads.
 pub trait Workload<N: Network> {
     /// The name of the workload.
     fn name(&self) -> String;
-    /// The sequence of operations to be run when setting up the workload.
-    fn setup(&mut self) -> Vec<Vec<Operation<N>>>;
-    /// The sequence of operations to be run when benchmarking the workload.
-    fn run(&mut self) -> Vec<Operation<N>>;
+    /// Initialize the workload.
+    fn init(&mut self) -> (SetupOperations<N>, BenchmarkOperations<N>);
 }

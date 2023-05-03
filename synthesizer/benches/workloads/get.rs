@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{Operation, Workload};
+use crate::{BenchmarkOperations, Operation, SetupOperations, Workload};
 
 use console::network::Network;
-
 use snarkvm_synthesizer::Program;
+
 use std::{marker::PhantomData, str::FromStr};
 
 pub struct StaticGet<N: Network> {
@@ -43,7 +43,7 @@ impl<N: Network> Workload<N> for StaticGet<N> {
         )
     }
 
-    fn setup(&mut self) -> Vec<Vec<Operation<N>>> {
+    fn init(&mut self) -> (SetupOperations<N>, BenchmarkOperations<N>) {
         // Initialize storage for the setup operations.
         let mut deploy_operations = Vec::with_capacity(self.num_programs);
         let mut init_operations = Vec::with_capacity(self.num_programs);
@@ -79,24 +79,20 @@ impl<N: Network> Workload<N> for StaticGet<N> {
                 vec![],
             ));
         }
-        // Return the setup operations.
-        vec![deploy_operations, init_operations]
-    }
+        let setups = vec![deploy_operations, init_operations];
 
-    fn run(&mut self) -> Vec<Operation<N>> {
-        // Initialize storage for the run operations.
-        let mut operations = Vec::with_capacity(self.num_programs * self.num_executions);
+        // Initialize storage for the benchmark operations.
+        let mut benchmarks = Vec::with_capacity(self.num_programs * self.num_executions);
         // Construct the operations.
         for i in 0..self.num_programs {
             for _ in 0..self.num_executions {
-                operations.push(Operation::Execute(
+                benchmarks.push(Operation::Execute(
                     format!("get_{}_{}_{}_{i}.aleo", self.num_mappings, self.num_commands, self.num_executions),
                     "getter".to_string(),
                     vec![],
                 ));
             }
         }
-        // Return the run operations.
-        operations
+        (setups, benchmarks)
     }
 }

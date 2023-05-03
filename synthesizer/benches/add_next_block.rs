@@ -82,7 +82,7 @@ pub fn bench_add_next_block<C: ConsensusStorage<Testnet3>>(
         }
 
         // Benchmark speculation.
-        c.bench_function(&format!("{}/add_next_block", name), |b| {
+        c.bench_function(&format!("{header}/{name}/add_next_block"), |b| {
             b.iter_batched(
                 || construct_next_block(&vm, &private_key, &transactions, rng).unwrap(),
                 |block| {

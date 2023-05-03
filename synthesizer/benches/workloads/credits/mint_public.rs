@@ -14,32 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// Copyright (C) 2019-2023 Aleo Systems Inc.
-// This file is part of the snarkVM library.
-
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::utilities::{Operation, Workload};
+use crate::{BenchmarkOperations, Operation, SetupOperations, Workload};
 
 use console::{
     network::Network,
-    program::{Address, Literal, Plaintext, Value, U64},
+    program::{Address, Literal, Plaintext, Value, Zero, U64},
 };
 use snarkvm_synthesizer::Program;
 use snarkvm_utilities::TestRng;
 
-use console::program::Zero;
 use std::{marker::PhantomData, str::FromStr};
 
 pub struct MintPublic<N: Network> {
@@ -58,7 +41,7 @@ impl<N: Network> Workload<N> for MintPublic<N> {
         format!("mint_public/{}_executions", self.num_executions)
     }
 
-    fn setup(&mut self) -> Vec<Vec<Operation<N>>> {
+    fn init(&mut self) -> (SetupOperations<N>, BenchmarkOperations<N>) {
         // Construct the program.
         let program = Program::from_str(&format!(
             r"
@@ -80,18 +63,15 @@ finalize mint_public:
             self.num_executions
         ))
         .unwrap();
-        // Return the setup operations.
-        vec![vec![Operation::Deploy(Box::new(program))]]
-    }
+        let setups = vec![vec![Operation::Deploy(Box::new(program))]];
 
-    fn run(&mut self) -> Vec<Operation<N>> {
-        // Initialize storage for the run operations.
-        let mut operations = Vec::with_capacity(self.num_executions);
+        // Initialize storage for the benchmark operations.
+        let mut benchmarks = Vec::with_capacity(self.num_executions);
         // Initialize an RNG for generating the operations.
         let rng = &mut TestRng::default();
         // Construct the operations.
         for _ in 0..self.num_executions {
-            operations.push(Operation::Execute(
+            benchmarks.push(Operation::Execute(
                 format!("mint_public_{}.aleo", self.num_executions),
                 "mint_public".to_string(),
                 vec![
@@ -100,7 +80,7 @@ finalize mint_public:
                 ],
             ));
         }
-        // Return the run operations.
-        operations
+
+        (setups, benchmarks)
     }
 }
