@@ -308,7 +308,7 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     }
 
     #[cfg(feature = "testing")]
-    /// Initializes the execution storage for testing.
+    /// Initializes the execution store for testing.
     pub fn open_testing(
         path: Option<std::path::PathBuf>,
         fee_store: FeeStore<N, E::FeeStorage>,
