@@ -19,16 +19,15 @@ use crate::store::helpers::{Map, MapRead};
 
 use core::{fmt, fmt::Debug, hash::Hash};
 use indexmap::IndexMap;
-use rocksdb::WriteBatch;
 use std::{borrow::Cow, sync::atomic::Ordering};
 
 #[derive(Clone)]
 pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     pub(super) database: RocksDB,
     pub(super) context: Vec<u8>,
-    /// The tracker for whether a database transaction is in progress.
-    pub(super) batch_in_progress: Arc<AtomicBool>,
-    /// The database transaction.
+    /// The part of the atomic batch belonging to the current map; it's typed for
+    /// convenience and query performance, while the actual low-level atomic batch
+    /// is untyped and stored in the database.
     pub(super) atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
 }
 
@@ -42,17 +41,18 @@ impl<
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
-        // Determine if an atomic batch is in progress.
+        // Prepare the prefixed key and serialized value.
+        let raw_key = self.create_prefixed_key(&key)?;
+        let raw_value = bincode::serialize(&value)?;
+
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key-value pair to the batch.
             true => {
                 self.atomic_batch.lock().insert(key, Some(value));
+                self.database.atomic_batch.lock().put(raw_key, raw_value);
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
-                // Prepare the prefixed key and serialized value.
-                let raw_key = self.create_prefixed_key(&key)?;
-                let raw_value = bincode::serialize(&value)?;
                 self.database.put(raw_key, raw_value)?;
             }
         }
@@ -64,16 +64,17 @@ impl<
     /// Removes the key-value pair for the given key from the map.
     ///
     fn remove(&self, key: &K) -> Result<()> {
-        // Determine if an atomic batch is in progress.
+        // Prepare the prefixed key.
+        let raw_key = self.create_prefixed_key(key)?;
+
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key to the batch.
             true => {
                 self.atomic_batch.lock().insert(*key, None);
+                self.database.atomic_batch.lock().delete(raw_key);
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                // Prepare the prefixed key.
-                let raw_key = self.create_prefixed_key(key)?;
                 self.database.delete(raw_key)?;
             }
         }
@@ -86,10 +87,8 @@ impl<
     /// without an actual write taking place until `finish_atomic` is called.
     ///
     fn start_atomic(&self) {
-        // Set the atomic batch flag to `true`.
-        self.batch_in_progress.store(true, Ordering::SeqCst);
-        // Ensure that the atomic batch is empty.
-        assert!(self.atomic_batch.lock().is_empty());
+        // Increase the atomic batch depth.
+        self.database.batch_depth.fetch_add(1, Ordering::SeqCst);
     }
 
     ///
@@ -98,59 +97,52 @@ impl<
     /// if they are already part of a larger one.
     ///
     fn is_atomic_in_progress(&self) -> bool {
-        self.batch_in_progress.load(Ordering::SeqCst)
+        self.database.batch_depth.load(Ordering::SeqCst) != 0
     }
 
     ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
-        // Clear the atomic batch.
-        *self.atomic_batch.lock() = Default::default();
-        // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::SeqCst);
+        // Clear the typed atomic batch.
+        self.atomic_batch.lock().clear();
+
+        // Check if this is the final depth of the batch.
+        // Subtraction happens separately from the check, as we don't want to perform it too
+        // early in case this is the final depth and the batch still needs to be cleared first.
+        if self.database.batch_depth.load(Ordering::SeqCst) == 1 {
+            // Clear the low-level atomic batch.
+            self.database.atomic_batch.lock().clear();
+            // Subtract the batch depth (bringing it to 0).
+            self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
+        }
     }
 
     ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
+        // Clear the typed atomic batch.
+        self.atomic_batch.lock().clear();
+
+        // If the whole atomic operation is not unrolled yet, subtract the depth and return.
+        // Subtraction happens separately from the check, as we don't want to perform it too
+        // early in case this is the final depth and the batch still needs to be executed first.
+        if self.database.batch_depth.load(Ordering::SeqCst) != 1 {
+            self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
+            return Ok(());
+        }
+
         // Retrieve the atomic batch.
-        let operations = core::mem::take(&mut *self.atomic_batch.lock());
+        let batch = core::mem::take(&mut *self.database.atomic_batch.lock());
 
-        if !operations.is_empty() {
-            // Prepare the key and value for each queued operation.
-            //
-            // Note: This step is taken to ensure (with 100% certainty) that there will be
-            // no chance to fail partway through committing the queued operations.
-            //
-            // The expected behavior is that either all the operations will be committed
-            // or none of them will be.
-            let prepared_operations = operations
-                .into_iter()
-                .map(|(key, value)| match value {
-                    Some(value) => Ok((self.create_prefixed_key(&key)?, Some(bincode::serialize(&value)?))),
-                    None => Ok((self.create_prefixed_key(&key)?, None)),
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            // Prepare operations batch for underlying database.
-            let mut batch = WriteBatch::default();
-
-            // Perform all the queued operations.
-            for (raw_key, raw_value) in prepared_operations {
-                match raw_value {
-                    Some(raw_value) => batch.put(raw_key, raw_value),
-                    None => batch.delete(raw_key),
-                };
-            }
-
+        if !batch.is_empty() {
             // Execute all the operations atomically.
             self.database.rocksdb.write(batch)?;
         }
 
-        // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::SeqCst);
+        // Subtract the batch depth (bringing it to 0).
+        self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
 
         Ok(())
     }

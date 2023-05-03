@@ -35,7 +35,7 @@ use std::{
     borrow::Borrow,
     marker::PhantomData,
     ops::Deref,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{atomic::AtomicUsize, Arc},
 };
 
 pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
@@ -63,6 +63,10 @@ pub struct RocksDB {
     network_id: u16,
     /// The optional development ID.
     dev: Option<u16>,
+    /// The database transaction.
+    pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
+    /// Allows to check whether a database transaction is in progress.
+    pub(super) batch_depth: Arc<AtomicUsize>,
 }
 
 impl Deref for RocksDB {
@@ -100,7 +104,13 @@ impl Database for RocksDB {
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
 
-                Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id, dev })
+                Ok::<_, anyhow::Error>(RocksDB {
+                    rocksdb,
+                    network_id,
+                    dev,
+                    atomic_batch: Default::default(),
+                    batch_depth: Default::default(),
+                })
             })?
             .clone();
 
@@ -125,7 +135,7 @@ impl Database for RocksDB {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        Ok(DataMap { database, context, batch_in_progress: Default::default(), atomic_batch: Default::default() })
+        Ok(DataMap { database, context, atomic_batch: Default::default() })
     }
 }
 
@@ -154,7 +164,13 @@ impl RocksDB {
                 Arc::new(rocksdb::DB::open(&options, primary)?)
             };
 
-            Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id: u16::MAX, dev })
+            Ok::<_, anyhow::Error>(RocksDB {
+                rocksdb,
+                network_id: u16::MAX,
+                dev,
+                atomic_batch: Default::default(),
+                batch_depth: Default::default(),
+            })
         }?;
 
         // Ensure the database development ID match.
@@ -179,7 +195,7 @@ impl RocksDB {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        Ok(DataMap { database, context, batch_in_progress: Default::default(), atomic_batch: Default::default() })
+        Ok(DataMap { database, context, atomic_batch: Default::default() })
     }
 }
 
