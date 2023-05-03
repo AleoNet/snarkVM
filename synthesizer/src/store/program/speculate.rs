@@ -386,8 +386,8 @@ impl<N: Network> Speculate<N> {
             match vm.finalize_store().contains_program(program_id)? {
                 true => match vm.finalize_store().get_program_index(program_id)? {
                     Some(index) => {
-                        if updates.insert(usize::try_from(index)?, leaf).is_none() {
-                            bail!("Failed to insert update index: {index}");
+                        if updates.insert(usize::try_from(index)?, leaf).is_some() {
+                            bail!("Can't insert multiple leaves in the same index: {index}");
                         }
                     }
                     None => bail!("No index found for program_id: {program_id}"),
