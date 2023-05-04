@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Operation, Benchmark};
+use crate::{Benchmark, Operation};
 
 use console::{
     network::Network,
@@ -62,7 +62,7 @@ finalize transfer_public_to_private:
 ",
             self.num_executions
         ))
-            .unwrap();
+        .unwrap();
         vec![vec![Operation::Deploy(Box::new(program))]]
     }
 

@@ -19,8 +19,8 @@ use crate::{Operation, Workload};
 use console::network::Network;
 use snarkvm_synthesizer::Program;
 
-use std::{marker::PhantomData, str::FromStr};
 use crate::utilities::Benchmark;
+use std::{marker::PhantomData, str::FromStr};
 
 pub struct StaticGetOrInit<N: Network> {
     num_mappings: usize,

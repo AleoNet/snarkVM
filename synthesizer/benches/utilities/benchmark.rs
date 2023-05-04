@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{initialize_vm, ObjectStore, split};
+use crate::utilities::{initialize_vm, split, ObjectStore};
 
+use console::account::PrivateKey;
 use console::{network::Testnet3, prelude::Network, program::Value};
 use snarkvm_synthesizer::{Program, Transaction};
-
-use itertools::Itertools;
-use std::{collections::hash_map::DefaultHasher, hash::Hash, iter, path::PathBuf};
-use console::account::PrivateKey;
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
-use snarkvm_utilities::TestRng;
+use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
+
+use std::{collections::hash_map::DefaultHasher, hash::Hash, iter, path::PathBuf};
+use std::io::{Read, Result, Write};
+use console::prelude::IoResult;
 
 /// An operation executed in a benchmark.
 #[derive(Clone, Debug)]
@@ -35,20 +36,37 @@ pub enum Operation<N: Network> {
     Execute(String, String, Vec<Value<N>>),
 }
 
-impl<N: Network> Operation<N> {
-    /// Returns a unique identifier for the operation.
-    pub fn uid(&self) -> String {
-        let string = match self {
-            Operation::Deploy(program) => format!("deploy({})", program),
-            Operation::Execute(program, function, values) => {
-                format!("execute({}, {}, {})", program, function, values.join(","))
-            }
-        };
-        string.hash(&mut DefaultHasher::new()).to_string()
+/// A set of transactions to be run in a benchmark.
+/// This is a wrapper around a vector of transactions, used to implement `FromBytes` and `ToBytes`.
+pub struct BenchmarkTransactions(pub Vec<Transaction<Testnet3>>);
+
+impl FromBytes for BenchmarkTransactions {
+    fn read_le<R: Read>(mut reader: R) -> Result<Self> where Self: Sized {
+        // Read the number of transactions.
+        let num_transactions = u64::read_le(&mut reader)? as usize;
+        // Initialize the vector for the transactions.
+        let mut transactions = Vec::with_capacity(num_transactions);
+        // Read the transactions.
+        for _ in 0..num_transactions {
+            transactions.push(Transaction::read_le(&mut reader)?);
+        }
+        Ok(Self(transactions))
+    }
+}
+
+impl ToBytes for BenchmarkTransactions {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> where Self: Sized {
+        // Write the number of transactions.
+        (self.0.len() as u64).write_le(&mut writer)?;
+        // Write the transactions.
+        self.0.iter().try_for_each(|transaction| transaction.write_le(&mut writer))
     }
 }
 
 /// A trait for benchmarks.
+/// Note that `name` must be unique for each benchmark.
+/// Note that `setup_operations` and `benchmark_operations` must be deterministic.
+/// Note that each operation must be independent of the others.
 pub trait Benchmark<N: Network> {
     /// The name of the benchmark.
     fn name(&self) -> String;

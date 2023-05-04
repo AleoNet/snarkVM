@@ -14,36 +14,57 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{Benchmark, initialize_vm, ObjectStore, split};
+use crate::utilities::{construct_next_block, initialize_vm, split, Benchmark, ObjectStore, Operation, initialize_object_store, BenchmarkTransactions};
 
-use console::{network::Testnet3, prelude::Network, program::Value};
-use snarkvm_synthesizer::{Program, Transaction};
+use console::{network::Testnet3, prelude::Network, program::{Value, Literal, Identifier}};
+use snarkvm_synthesizer::{ConsensusStorage, Program, Transaction, VM};
 
+use console::{
+    account::PrivateKey,
+    program::{Plaintext, Record},
+};
+
+use anyhow::Result;
 use itertools::Itertools;
-use std::{collections::hash_map::DefaultHasher, hash::Hash, iter, path::PathBuf};
-use console::account::PrivateKey;
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
-use snarkvm_utilities::TestRng;
+use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
+use std::{borrow::BorrowMut, collections::hash_map::DefaultHasher, hash::Hash, iter, path::PathBuf};
+use std::borrow::Borrow;
+use std::path::Path;
+use std::str::FromStr;
+use rand::Rng;
+use console::prelude::IoResult;
+use console::program::Entry;
 
-/// Batches of setup operations for the workload.
-pub type SetupTransactions<N> = Vec<Vec<Transaction<N>>>;
-/// Benchmark transactions for the workload.
-pub type BenchmarkTransactions<N> = Vec<(String, Vec<Transaction<N>>)>;
-
-
+/// A batch of benchmarks for the workload.
+pub type BenchmarkBatch = Vec<(String, Vec<Transaction<Testnet3>>)>;
 
 /// A `Workload` is a collection of benchmarks to be run together.
-struct Workload<N: Network> {
+pub struct Workload {
     /// The name of the workload.
     name: String,
     /// The benchmarks to be run.
-    benchmarks: Vec<Box<dyn Benchmark<N>>>,
+    benchmarks: Vec<Box<dyn Benchmark<Testnet3>>>,
+    /// An object store to cache objects for the workload.
+    object_store: ObjectStore,
 }
 
-impl<N: Network> Workload<N> {
+impl Workload {
     /// Constructs a new workload.
-    pub fn new(name: String, benchmarks: Vec<Box<dyn Benchmark<N>>>) -> Self {
-        Self { name, benchmarks }
+    pub fn new(name: String, benchmarks: Vec<Box<dyn Benchmark<Testnet3>>>) -> Result<Self> {
+        // Construct the path to a directory to store workload objects.
+        let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        root.push(".resources");
+        root.push(&name);
+        // Construct the object store.
+        let object_store = ObjectStore::new(root)?;
+        // Construct the workload.
+        Ok(Self { name, benchmarks, object_store })
+    }
+
+    /// Adds a benchmark to the workload.
+    pub fn add(&mut self, benchmark: Box<dyn Benchmark<Testnet3>>) {
+        self.benchmarks.push(benchmark);
     }
 
     /// Returns the name of the workload.
@@ -51,111 +72,77 @@ impl<N: Network> Workload<N> {
         &self.name
     }
 
-
-}
-
-/// A helper function for preparing benchmarks.
-/// This function takes a number of workloads and returns the setup operations and the benchmarks.
-/// Note that setup operations are aggregated across all workloads.
-pub fn prepare_benchmarks<N: Network>(
-    workloads: Vec<Box<dyn Workload<N>>>,
-) -> (SetupTransactions<N>, BenchmarkTransactions<N>) {
-    let mut setup_transactions = vec![];
-    let mut benchmarks = vec![];
-    for mut workload in workloads {
-        let (setup_operations, benchmark_operations) = workload.init();
-        let mut object_store = ObjectStore::new(resources_directory(&workload.name())).unwrap();
-        let transactions_are_stored = setup_operations.iter().flatten().chain(benchmark.iter()).all(|operation| {
-            let uid = operation.uid();
-            object_store.contains(&uid)
-        });
-        // If all transactions are not stored, clear the object store and initialize them
-        if !transactions_are_stored {
-            object_store.clear().unwrap();
-            // Initialize the object store.
-            initialize_object_store(setup_operations, benchmark, &mut object_store);
+    /// Constructs batches of setup transactions and benchmark transactions from the benchmarks in the workload.
+    /// Note that setup operations are aggregated across all benchmarks.
+    pub fn setup<C: ConsensusStorage<Testnet3>>(&mut self) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
+        // Check that the seed to the RNG is stored in the object store.
+        let mut all_data_is_stored = self.object_store.contains("seed");
+        // Check that the relevant blocks are stored in the object store.
+        all_data_is_stored &= match self.object_store.get("num_blocks") {
+            Err(_) => false,
+            Ok(num_blocks) => {
+                let num_blocks: u64 = num_blocks;
+                (0..num_blocks).all(|i| self.object_store.contains(&format!("block_{}", i)))
+            }
+        };
+        // Check that the benchmark transactions are stored in the object store.
+        for benchmark in &self.benchmarks {
+            all_data_is_stored &= self.object_store.contains(benchmark.name())
         }
-        // For each setup operation, get its corresponding transaction.
-        let setup = setup_operations
-            .into_iter()
-            .map(|operations| {
-                operations
-                    .into_iter()
-                    .map(|operation| object_store.get::<Transaction<N>, _>(&operation.uid()).unwrap())
-                    .collect_vec()
-            })
-            .collect_vec();
-        // For each benchmark operation, get its corresponding transaction.
-        let benchmark = benchmark_operations
-            .into_iter()
-            .map(|operation| object_store.get::<Transaction<N>, _>(&operation.uid()).unwrap())
-            .collect_vec();
 
-        setup_transactions.push(setup);
-        benchmarks.push((workload.name(), benchmark));
-    }
+        // If all of the required items are not stored, clear the object store and initialize them.
+        if !all_data_is_stored {
+            let mut setup_operations = vec![];
+            let mut benchmark_operations = vec![];
 
-    // Aggregate the batches for each setup operation.
-    let max_num_batches = setup_transactions.iter().map(|operations| operations.len()).max().unwrap_or(0);
-    let mut batches = iter::repeat_with(Vec::new).take(max_num_batches).collect_vec();
-    for setup in setup_transactions {
-        for (i, batch) in setup.into_iter().enumerate() {
-            batches[i].extend(batch);
-        }
-    }
+            // Collect the operations for each benchmark.
+            for benchmark in &mut self.benchmarks {
+                let setup_ops = benchmark.setup_operations();
+                let benchmark_ops = benchmark.benchmark_operations();
+                setup_operations.push(setup_ops);
+                benchmark_operations.push((benchmark.name(), benchmark_ops));
+            }
 
-    (batches, benchmarks)
-}
-
-/// A helper function to get the path to a resource directory for a workload.
-pub fn resources_directory(name: &str) -> PathBuf {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push(".resources");
-    path.push(name);
-    path
-}
-
-/// A helper function to initialize an object store with transactions corresponding to a workload.
-pub fn initialize_object_store(
-    object_store: &mut ObjectStore,
-    setup_operations: SetupOperations<Testnet3>,
-    benchmark_operations: BenchmarkOperations<Testnet3>,
-) {
-    // Initialize the RNG.
-    let rng = &mut TestRng::default();
-
-    // Sample a new private key.
-    let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
-
-    // Initialize the VM.
-    let (vm, mut record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
-
-    // For each batch of setup operations, construct and add a block.
-    for operations in setup_operations {
-        // Storage for the transactions.
-        let mut transactions = Vec::with_capacity(operations.len());
-        // Construct transactions for the operations.
-        for operation in operations {
-            // Split out a record for the fee.
-
-            match operation {
-                Operation::Deploy(program) => {
-                    // Construct a transaction for the deployment.
-                    let transaction = Transaction::deploy(&vm, &private_key, )
-                    transactions.push(mock_deployment_transaction(private_key, *program.clone(), rng));
-                }
-                Operation::Execute(program_id, function_name, inputs) => {
-                    let transaction - Transaction::execute()
-                    let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng).unwrap();
-                    let (_, execution, _) = vm.execute(authorization, None, rng).unwrap();
-                    transactions.push(Transaction::from_execution(execution, Some(mock_fee(rng))).unwrap());
+            // Fold the batches of setup operations across all benchmarks into a single sequence of batches.
+            let max_num_batches = setup_operations.iter().map(|operations| operations.len()).max().unwrap_or(0);
+            let mut aggregated_setup_operations = iter::repeat_with(Vec::new).take(max_num_batches).collect_vec();
+            for setup_ops in setup_operations {
+                for (i, operations) in setup_ops.into_iter().enumerate() {
+                    aggregated_setup_operations[i].extend(operations);
                 }
             }
-        }
-        // Create and add a block for the transactions, if any
-        if !transactions.is_empty() {
-            let block = construct_next_block(vm, private_key, &transactions, rng).unwrap();
-            vm.add_next_block(&block, None).unwrap();
+            // Clear the object store.
+            self.object_store.clear().unwrap();
+            // Initialize the object store.
+            initialize_object_store(&mut self.object_store, aggregated_setup_operations, benchmark_operations)
+        } else {
+            // Otherwise, load the items for the object store, initialize the VM, and return the VM, benchmark transactions, and rng.
+            // Initialize the RNG.
+            let mut rng = TestRng::fixed(self.object_store.get("seed").unwrap());
+
+            // Sample the private key.
+            let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+
+            // Initialize the VM.
+            let (vm, _) = initialize_vm::<C, _>(&private_key, &mut rng);
+
+            // Load the blocks.
+            let num_blocks: u64 = self.object_store.get("num_blocks").unwrap();
+            let blocks = (0..num_blocks).map(|i| self.object_store.get(&format!("block_{}", i)).unwrap()).collect_vec();
+
+            // Add the blocks to the VM.
+            for block in &blocks {
+                vm.add_next_block(block, None).unwrap();
+            }
+
+            // Load the benchmark transactions.
+            let benchmark_transactions = self.benchmarks.iter().map(|benchmark| {
+                let name = benchmark.name();
+                let transactions = self.object_store.get::<BenchmarkTransactions, _>(&name).unwrap().0;
+                (name, transactions)
+            }).collect_vec();
+
+            (vm, private_key, benchmark_transactions, rng)
         }
     }
 }
