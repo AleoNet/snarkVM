@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use parking_lot::Mutex;
 
 impl<N: Network> Process<N> {
     /// Deploys the given program ID, if it does not exist.
@@ -63,50 +62,6 @@ impl<N: Network> Process<N> {
         finish!(timer);
 
         verification
-    }
-
-    /// Finalizes the deployment.
-    /// This method assumes the given deployment **is valid**.
-    #[inline]
-    pub fn finalize_deployment<P: FinalizeStorage<N>>(
-        &mut self,
-        store: &FinalizeStore<N, P>,
-        deployment: &Deployment<N>,
-    ) -> Result<Vec<FinalizeOperation<N>>> {
-        let timer = timer!("Process::finalize_deployment");
-
-        // Compute the program stack.
-        let stack = Stack::new(self, deployment.program())?;
-        lap!(timer, "Compute the stack");
-
-        // Insert the verifying keys.
-        for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-            stack.insert_verifying_key(function_name, verifying_key.clone())?;
-        }
-        lap!(timer, "Insert the verifying keys");
-
-        // Retrieve the program ID.
-        let program_id = deployment.program_id();
-
-        // Initialize a list for the finalize operations.
-        let finalize_operations = Arc::new(Mutex::new(Vec::with_capacity(deployment.program().mappings().len())));
-
-        // Initialize the program mappings, and retrieve the finalize operations.
-        atomic_write_batch!(store, {
-            for mapping in deployment.program().mappings().values() {
-                finalize_operations.lock().push(store.initialize_mapping(program_id, mapping.name())?);
-            }
-            Ok(())
-        });
-        lap!(timer, "Initialize the program mappings");
-
-        // Add the stack to the process.
-        self.stacks.insert(*deployment.program_id(), stack);
-
-        finish!(timer);
-
-        // Return the finalize operations.
-        Ok(Arc::try_unwrap(finalize_operations).unwrap().into_inner())
     }
 
     /// Adds the newly-deployed program.

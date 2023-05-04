@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use parking_lot::Mutex;
 
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
@@ -222,93 +221,5 @@ impl<N: Network> Process<N> {
 
         finish!(timer);
         Ok(())
-    }
-
-    /// Finalizes the execution.
-    /// This method assumes the given execution **is valid**.
-    #[inline]
-    pub fn finalize_execution<P: FinalizeStorage<N>>(
-        &self,
-        store: &FinalizeStore<N, P>,
-        execution: &Execution<N>,
-    ) -> Result<Vec<FinalizeOperation<N>>> {
-        let timer = timer!("Program::finalize_execution");
-
-        // Ensure the execution contains transitions.
-        ensure!(!execution.is_empty(), "There are no transitions in the execution");
-
-        // Ensure the number of transitions matches the program function.
-        {
-            // Retrieve the transition (without popping it).
-            let transition = execution.peek()?;
-            // Retrieve the stack.
-            let stack = self.get_stack(transition.program_id())?;
-            // Ensure the number of calls matches the number of transitions.
-            let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
-            ensure!(
-                number_of_calls == execution.len(),
-                "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
-                execution.len()
-            );
-        }
-        lap!(timer, "Verify the number of transitions");
-
-        // Initialize a list for finalize operations.
-        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
-
-        atomic_write_batch!(store, {
-            // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
-            //  Currently this loop assumes a linearly execution stack.
-            // Finalize each transition, starting from the last one.
-            for transition in execution.transitions().rev() {
-                #[cfg(debug_assertions)]
-                println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
-
-                // Retrieve the stack.
-                let stack = self.get_stack(transition.program_id())?;
-                // Retrieve the function name.
-                let function_name = transition.function_name();
-
-                // If there is a finalize scope, finalize the function.
-                if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
-                    // Retrieve the finalize inputs.
-                    let inputs = match transition.finalize() {
-                        Some(inputs) => inputs,
-                        // Ensure the transition contains finalize inputs.
-                        None => bail!("The transition is missing inputs for 'finalize'"),
-                    };
-
-                    // Initialize the registers.
-                    let mut registers = FinalizeRegisters::<N>::new(stack.get_finalize_types(finalize.name())?.clone());
-
-                    // Store the inputs.
-                    finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(
-                        |(register, input)| {
-                            // Assign the input value to the register.
-                            registers.store(stack, register, input.clone())
-                        },
-                    )?;
-
-                    // Evaluate the commands.
-                    for command in finalize.commands() {
-                        match command.finalize(stack, store, &mut registers) {
-                            // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Some(finalize_operation)) => finalize_operations.lock().push(finalize_operation),
-                            // If the evaluation succeeds with no operation, continue.
-                            Ok(None) => (),
-                            // If the evaluation fails, bail and return the error.
-                            Err(error) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
-                        }
-                    }
-
-                    lap!(timer, "Finalize transition for {function_name}");
-                }
-            }
-            Ok(())
-        });
-        finish!(timer);
-
-        // Return the finalize operations.
-        Ok(Arc::try_unwrap(finalize_operations).unwrap().into_inner())
     }
 }
