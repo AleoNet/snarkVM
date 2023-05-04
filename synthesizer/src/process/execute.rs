@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use parking_lot::Mutex;
 use super::*;
 
 impl<N: Network> Process<N> {
@@ -253,7 +254,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Verify the number of transitions");
 
         // Initialize a list for finalize operations.
-        let mut finalize_operations = Vec::new();
+        let mut finalize_operations = Arc::new(Mutex::new(Vec::new()));
 
         atomic_write_batch!(store, {
             // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
@@ -292,7 +293,7 @@ impl<N: Network> Process<N> {
                     for command in finalize.commands() {
                         match command.finalize(stack, store, &mut registers) {
                             // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Some(finalize_operation)) => finalize_operations.push(finalize_operation),
+                            Ok(Some(finalize_operation)) => finalize_operations.lock().push(finalize_operation),
                             // If the evaluation succeeds with no operation, continue.
                             Ok(None) => (),
                             // If the evaluation fails, bail and return the error.
@@ -308,6 +309,6 @@ impl<N: Network> Process<N> {
         finish!(timer);
 
         // Return the finalize operations.
-        Ok(finalize_operations)
+        Ok(Arc::try_unwrap(finalize_operations).unwrap().into_inner())
     }
 }
