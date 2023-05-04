@@ -16,16 +16,20 @@
 
 use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
 
+use crate::utilities::{construct_next_block, initialize_vm, split, BenchmarkBatch, BenchmarkTransactions, Operation};
 use anyhow::{bail, Result};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use console::{
+    account::PrivateKey,
+    network::Testnet3,
+    program::{Entry, Identifier, Literal, Plaintext, Record},
+};
 use itertools::Itertools;
 use rand::Rng;
-use console::account::PrivateKey;
-use console::network::Testnet3;
-use console::program::{Entry, Identifier, Literal, Plaintext, Record};
 use snarkvm_synthesizer::{ConsensusStorage, Transaction, VM};
-use crate::utilities::{BenchmarkBatch, BenchmarkTransactions, construct_next_block, initialize_vm, Operation, split};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 pub struct ObjectStore {
     root: PathBuf,
@@ -47,14 +51,14 @@ impl ObjectStore {
 
     pub fn get<O: FromBytes, P: AsRef<Path>>(&mut self, path: P) -> Result<O> {
         let full_path = self.root.join(path);
-        let bytes = std::fs::read(&full_path)?;
+        let bytes = std::fs::read(full_path)?;
         O::from_bytes_le(&bytes)
     }
 
     pub fn insert<O: ToBytes, P: AsRef<Path>>(&mut self, path: P, object: &O) -> Result<()> {
         let full_path = self.root.join(path);
         let bytes = object.to_bytes_le()?;
-        std::fs::write(&full_path, &bytes)?;
+        std::fs::write(&full_path, bytes)?;
         self.keys.push(full_path);
         Ok(())
     }
@@ -71,7 +75,6 @@ impl ObjectStore {
         Ok(())
     }
 }
-
 
 /// A helper function to initialize an object store with transactions corresponding to a workload.
 pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
@@ -136,7 +139,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
                 Transaction::deploy(
                     &vm,
                     &private_key,
-                    &*program,
+                    &**program,
                     fee_records.pop().expect("Not enough fee records provided."),
                     None,
                     rng,

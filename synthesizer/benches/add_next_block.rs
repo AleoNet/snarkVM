@@ -109,7 +109,8 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     // Initialize the workloads.
     let max_commands = *NUM_COMMANDS.last().unwrap();
     let max_executions = *NUM_EXECUTIONS.last().unwrap();
-    let mut workload = Workload::new("add_next_block_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
+    let mut workload =
+        Workload::new("add_next_block_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
     for num_programs in NUM_PROGRAMS {
         workload
             .add(Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs))

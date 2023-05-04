@@ -25,9 +25,8 @@ use benchmarks::*;
 mod utilities;
 use utilities::*;
 
-use console::{account::PrivateKey, network::Testnet3};
-use snarkvm_synthesizer::{helpers::memory::ConsensusMemory, ConsensusStorage, Speculate, Transaction};
-use snarkvm_utilities::TestRng;
+use console::{network::Testnet3};
+use snarkvm_synthesizer::{ConsensusStorage, Speculate};
 
 use criterion::{BatchSize, Criterion};
 use std::fmt::Display;
@@ -40,11 +39,7 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 /// A helper function for benchmarking `Speculate::speculate`.
 #[cfg(feature = "testing")]
 #[allow(unused)]
-pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(
-    c: &mut Criterion,
-    header: impl Display,
-    mut workload: Workload,
-) {
+pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: impl Display, mut workload: Workload) {
     // Setup the workload.
     let (vm, private_key, benchmark_transactions, rng) = workload.setup::<C>();
 
@@ -83,7 +78,7 @@ fn bench_one_operation(c: &mut Criterion) {
     workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
 
     #[cfg(not(any(feature = "rocks")))]
-    bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workload);
+    bench_speculate::<snarkvm_synthesizer::helpers::memory::ConsensusMemory<Testnet3>>(c, "memory", workload);
     #[cfg(any(feature = "rocks"))]
     bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
 }
@@ -113,7 +108,8 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     // Initialize the workloads.
     let max_commands = *NUM_COMMANDS.last().unwrap();
     let max_executions = *NUM_EXECUTIONS.last().unwrap();
-    let mut workload = Workload::new("speculate_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
+    let mut workload =
+        Workload::new("speculate_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
     for num_programs in NUM_PROGRAMS {
         workload
             .add(Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs))

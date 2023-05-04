@@ -21,8 +21,8 @@ extern crate criterion;
 
 mod benchmarks;
 
-use std::borrow::BorrowMut;
 use benchmarks::*;
+use std::borrow::BorrowMut;
 
 mod utilities;
 use utilities::*;
@@ -42,11 +42,7 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 /// A helper function for benchmarking `Speculate::commit`.
 #[cfg(feature = "testing")]
 #[allow(unused)]
-pub fn bench_commit<C: ConsensusStorage<Testnet3>>(
-    c: &mut Criterion,
-    header: impl Display,
-    mut workload: Workload,
-) {
+pub fn bench_commit<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: impl Display, mut workload: Workload) {
     // Setup the workload.
     let (vm, private_key, benchmark_transactions, rng) = workload.setup::<C>();
 

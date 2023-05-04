@@ -152,12 +152,14 @@ pub fn setup<C: ConsensusStorage<Testnet3>>(
     for transactions in batches {
         // Create and add a block for the transactions, if any
         if !transactions.is_empty() {
-            let block = construct_next_block(vm, private_key, &transactions, rng).unwrap();
+            let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
             vm.add_next_block(&block, None).unwrap();
         }
     }
 }
 
+#[allow(unused)]
+type SplitOutput = (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>);
 #[allow(unused)]
 /// A helper function to invoke the `split` function an a credits.aleo record.
 pub fn split<C: ConsensusStorage<Testnet3>>(
@@ -166,7 +168,7 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
     record: Record<Testnet3, Plaintext<Testnet3>>,
     amount: u64,
     rng: &mut TestRng,
-) -> (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>) {
+) -> SplitOutput {
     let authorization = vm
         .authorize(
             private_key,

@@ -40,11 +40,7 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 /// A helper function for benchmarking `VM::finalize`.
 #[cfg(feature = "testing")]
 #[allow(unused)]
-pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(
-    c: &mut Criterion,
-    header: impl Display,
-    mut workload: Workload,
-) {
+pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: impl Display, mut workload: Workload) {
     // Setup the workload.
     let (vm, private_key, benchmark_transactions, mut rng) = workload.setup::<C>();
 
@@ -106,7 +102,8 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     // Initialize the workloads.
     let max_commands = *NUM_COMMANDS.last().unwrap();
     let max_executions = *NUM_EXECUTIONS.last().unwrap();
-    let mut workload = Workload::new("finalize_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
+    let mut workload =
+        Workload::new("finalize_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
     for num_programs in NUM_PROGRAMS {
         workload
             .add(Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs))

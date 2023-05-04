@@ -16,15 +16,18 @@
 
 use crate::utilities::{initialize_vm, split, ObjectStore};
 
-use console::account::PrivateKey;
-use console::{network::Testnet3, prelude::Network, program::Value};
-use snarkvm_synthesizer::{Program, Transaction};
-use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
+use console::{account::PrivateKey, network::Testnet3, prelude::Network, program::Value};
+use snarkvm_synthesizer::{helpers::memory::ConsensusMemory, Program, Transaction};
 use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
 
-use std::{collections::hash_map::DefaultHasher, hash::Hash, iter, path::PathBuf};
-use std::io::{Read, Result, Write};
 use console::prelude::IoResult;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::Hash,
+    io::{Read, Result, Write},
+    iter,
+    path::PathBuf,
+};
 
 /// An operation executed in a benchmark.
 #[derive(Clone, Debug)]
@@ -41,7 +44,10 @@ pub enum Operation<N: Network> {
 pub struct BenchmarkTransactions(pub Vec<Transaction<Testnet3>>);
 
 impl FromBytes for BenchmarkTransactions {
-    fn read_le<R: Read>(mut reader: R) -> Result<Self> where Self: Sized {
+    fn read_le<R: Read>(mut reader: R) -> Result<Self>
+    where
+        Self: Sized,
+    {
         // Read the number of transactions.
         let num_transactions = u64::read_le(&mut reader)? as usize;
         // Initialize the vector for the transactions.
@@ -55,7 +61,10 @@ impl FromBytes for BenchmarkTransactions {
 }
 
 impl ToBytes for BenchmarkTransactions {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> where Self: Sized {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
         // Write the number of transactions.
         (self.0.len() as u64).write_le(&mut writer)?;
         // Write the transactions.

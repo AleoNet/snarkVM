@@ -14,9 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{construct_next_block, initialize_vm, split, Benchmark, ObjectStore, Operation, initialize_object_store, BenchmarkTransactions};
+#![allow(unused)]
 
-use console::{network::Testnet3, prelude::Network, program::{Value, Literal, Identifier}};
+use crate::utilities::{
+    construct_next_block,
+    initialize_object_store,
+    initialize_vm,
+    split,
+    Benchmark,
+    BenchmarkTransactions,
+    ObjectStore,
+    Operation,
+};
+
+use console::{
+    network::Testnet3,
+    prelude::Network,
+    program::{Identifier, Literal, Value},
+};
 use snarkvm_synthesizer::{ConsensusStorage, Program, Transaction, VM};
 
 use console::{
@@ -25,16 +40,19 @@ use console::{
 };
 
 use anyhow::Result;
+use console::{prelude::IoResult, program::Entry};
 use itertools::Itertools;
+use rand::Rng;
 use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
-use std::{borrow::BorrowMut, collections::hash_map::DefaultHasher, hash::Hash, iter, path::PathBuf};
-use std::borrow::Borrow;
-use std::path::Path;
-use std::str::FromStr;
-use rand::Rng;
-use console::prelude::IoResult;
-use console::program::Entry;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    collections::hash_map::DefaultHasher,
+    hash::Hash,
+    iter,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 /// A batch of benchmarks for the workload.
 pub type BenchmarkBatch = Vec<(String, Vec<Transaction<Testnet3>>)>;
@@ -74,7 +92,9 @@ impl Workload {
 
     /// Constructs batches of setup transactions and benchmark transactions from the benchmarks in the workload.
     /// Note that setup operations are aggregated across all benchmarks.
-    pub fn setup<C: ConsensusStorage<Testnet3>>(&mut self) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
+    pub fn setup<C: ConsensusStorage<Testnet3>>(
+        &mut self,
+    ) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
         // Check that the seed to the RNG is stored in the object store.
         let mut all_data_is_stored = self.object_store.contains("seed");
         // Check that the relevant blocks are stored in the object store.
@@ -82,7 +102,7 @@ impl Workload {
             Err(_) => false,
             Ok(num_blocks) => {
                 let num_blocks: u64 = num_blocks;
-                (0..num_blocks).all(|i| self.object_store.contains(&format!("block_{}", i)))
+                (0..num_blocks).all(|i| self.object_store.contains(format!("block_{}", i)))
             }
         };
         // Check that the benchmark transactions are stored in the object store.
@@ -136,11 +156,15 @@ impl Workload {
             }
 
             // Load the benchmark transactions.
-            let benchmark_transactions = self.benchmarks.iter().map(|benchmark| {
-                let name = benchmark.name();
-                let transactions = self.object_store.get::<BenchmarkTransactions, _>(&name).unwrap().0;
-                (name, transactions)
-            }).collect_vec();
+            let benchmark_transactions = self
+                .benchmarks
+                .iter()
+                .map(|benchmark| {
+                    let name = benchmark.name();
+                    let transactions = self.object_store.get::<BenchmarkTransactions, _>(&name).unwrap().0;
+                    (name, transactions)
+                })
+                .collect_vec();
 
             (vm, private_key, benchmark_transactions, rng)
         }
