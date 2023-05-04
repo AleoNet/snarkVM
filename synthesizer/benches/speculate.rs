@@ -55,31 +55,14 @@ pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(
     let (vm, record) = initialize_vm::<C, _>(&private_key, rng);
 
     // Prepare the benchmarks.
-    let (setup_operations, benchmarks) = prepare_benchmarks(workloads);
+    let (setup_transactions, benchmark_transactions) = prepare_benchmarks(workloads);
 
     // Deploy and execute programs to get the VM in the desired state.
-    setup(&vm, &private_key, &setup_operations, rng);
+    setup(&vm, &private_key, &setup_transactions, rng);
 
     // Benchmark each of the programs.
-    for (name, operations) in benchmarks {
-        assert!(!operations.is_empty(), "There must be at least one operation to benchmark.");
-
-        // Construct the transactions.
-        let mut transactions = Vec::with_capacity(operations.len());
-        for operation in operations.iter() {
-            match operation {
-                Operation::Deploy(program) => {
-                    // Construct a transaction for the deployment.
-                    transactions.push(mock_deployment_transaction(&private_key, *program.clone(), rng));
-                }
-                Operation::Execute(program_id, function_name, inputs) => {
-                    let authorization = vm.authorize(&private_key, program_id, function_name, inputs, rng).unwrap();
-                    let (_, execution, _) = vm.execute(authorization, None, rng).unwrap();
-                    let transaction = Transaction::from_execution(execution, Some(mock_fee(rng))).unwrap();
-                    transactions.push(transaction)
-                }
-            }
-        }
+    for (name, transactions) in benchmark_transactions {
+        assert!(!transactions.is_empty(), "There must be at least one transaction to benchmark.");
 
         // Construct a `Speculate` object.
         let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());

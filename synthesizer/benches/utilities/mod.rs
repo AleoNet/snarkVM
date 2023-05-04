@@ -146,27 +146,11 @@ pub fn construct_next_block<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
 pub fn setup<C: ConsensusStorage<Testnet3>>(
     vm: &VM<Testnet3, C>,
     private_key: &PrivateKey<Testnet3>,
-    batches: &[Vec<Operation<Testnet3>>],
+    batches: &[Vec<Transaction<Testnet3>>],
     rng: &mut TestRng,
 ) {
     // For each batch of setup operations, construct and add a block.
-    for operations in batches {
-        // Storage for the transactions.
-        let mut transactions = Vec::with_capacity(operations.len());
-        // Construct transactions for the operations.
-        for operation in operations {
-            match operation {
-                Operation::Deploy(program) => {
-                    // Construct a transaction for the deployment.
-                    transactions.push(mock_deployment_transaction(private_key, *program.clone(), rng));
-                }
-                Operation::Execute(program_id, function_name, inputs) => {
-                    let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng).unwrap();
-                    let (_, execution, _) = vm.execute(authorization, None, rng).unwrap();
-                    transactions.push(Transaction::from_execution(execution, Some(mock_fee(rng))).unwrap());
-                }
-            }
-        }
+    for transactions in batches {
         // Create and add a block for the transactions, if any
         if !transactions.is_empty() {
             let block = construct_next_block(vm, private_key, &transactions, rng).unwrap();
@@ -183,7 +167,7 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
     record: Record<Testnet3, Plaintext<Testnet3>>,
     amount: u64,
     rng: &mut TestRng,
-) -> (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>) {
+) -> (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>) {
     let authorization = vm
         .authorize(
             private_key,
@@ -195,13 +179,15 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
         .unwrap();
     let (response, execution, _) = vm.execute(authorization, None, rng).unwrap();
 
+    let mut transactions = vec![Transaction::from_execution(execution, None).unwrap()]
+
     // Create and add a block for the fee transaction.
     let block =
-        construct_next_block(vm, private_key, &[Transaction::from_execution(execution, None).unwrap()], rng).unwrap();
+        construct_next_block(vm, private_key, &transactions, rng).unwrap();
     vm.add_next_block(&block, None).unwrap();
 
     match (response.outputs()[0].clone(), response.outputs()[1].clone()) {
-        (Value::Record(fee_record), Value::Record(remaining_record)) => (fee_record, remaining_record),
+        (Value::Record(fee_record), Value::Record(remaining_record)) => (fee_record, remaining_record, transactions.pop().unwrap()),
         _ => unreachable!("`split` always returns a record"),
     }
 }

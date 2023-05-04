@@ -51,7 +51,11 @@ impl ObjectStore {
         Ok(())
     }
 
-    fn clear(&mut self) -> Result<()> {
+    pub fn contains<P: AsRef<Path>>(&self, path: P) -> bool {
+        self.root.join(path).exists()
+    }
+
+    pub fn clear(&mut self) -> Result<()> {
         for key in self.keys() {
             std::fs::remove_file(key)?;
         }

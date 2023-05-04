@@ -31,44 +31,6 @@ use crate::{BenchmarkOperations, Operation, SetupOperations, Workload};
 use console::prelude::Network;
 use snarkvm_synthesizer::Transaction;
 
+use crate::utilities::ObjectStore;
 use itertools::Itertools;
 use std::{iter, path::PathBuf};
-
-/// Batches of setup operations for the workload.
-pub type SetupTransactions<N> = Vec<Vec<Operation<N>>>;
-/// Benchmark transactions for the workload.
-pub type BenchmarkTransactions<N> = Vec<(String, Vec<Operation<N>>)>;
-
-/// A helper function for preparing benchmarks.
-/// This function takes a number of workloads and returns the setup operations and the benchmarks.
-/// Note that setup operations are aggregated across all workloads.
-pub fn prepare_benchmarks<N: Network>(
-    workloads: Vec<Box<dyn Workload<N>>>,
-) -> (SetupTransactions<N>, BenchmarkTransactions<N>) {
-    let mut setup_operations = vec![];
-    let mut benchmarks = vec![];
-    for mut workload in workloads {
-        let (setup, benchmark) = workload.init();
-        setup_operations.push(setup);
-        benchmarks.push((workload.name(), benchmark));
-    }
-
-    // Aggregate the batches for each setup operation.
-    let max_num_batches = setup_operations.iter().map(|operations| operations.len()).max().unwrap_or(0);
-    let mut batches = iter::repeat_with(Vec::new).take(max_num_batches).collect_vec();
-    for setup in setup_operations {
-        for (i, batch) in setup.into_iter().enumerate() {
-            batches[i].extend(batch);
-        }
-    }
-
-    (batches, benchmarks)
-}
-
-/// A helper function to get the path to a resource directory for a workload.
-pub fn resources_directory(name: &str) -> PathBuf {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push(".resources");
-    path.push(name);
-    path
-}
