@@ -25,12 +25,3 @@ pub use get_or_init::*;
 
 pub mod set;
 pub use set::*;
-
-use crate::{BenchmarkOperations, Operation, SetupOperations, Workload};
-
-use console::prelude::Network;
-use snarkvm_synthesizer::Transaction;
-
-use crate::utilities::ObjectStore;
-use itertools::Itertools;
-use std::{iter, path::PathBuf};

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BenchmarkOperations, Operation, SetupOperations, Workload};
+use crate::{Operation, Benchmark};
 
 use console::network::Network;
 use snarkvm_synthesizer::Program;
@@ -35,7 +35,7 @@ impl<N: Network> StaticGet<N> {
     }
 }
 
-impl<N: Network> Workload<N> for StaticGet<N> {
+impl<N: Network> Benchmark<N> for StaticGet<N> {
     fn name(&self) -> String {
         format!(
             "static_get/{}_mappings/{}_commands/{}_executions/{}_programs",
@@ -43,7 +43,7 @@ impl<N: Network> Workload<N> for StaticGet<N> {
         )
     }
 
-    fn init(&mut self) -> (SetupOperations<N>, BenchmarkOperations<N>) {
+    fn setup_operations(&mut self) -> Vec<Vec<Operation<N>>> {
         // Initialize storage for the setup operations.
         let mut deploy_operations = Vec::with_capacity(self.num_programs);
         let mut init_operations = Vec::with_capacity(self.num_programs);
@@ -79,8 +79,10 @@ impl<N: Network> Workload<N> for StaticGet<N> {
                 vec![],
             ));
         }
-        let setups = vec![deploy_operations, init_operations];
+        vec![deploy_operations, init_operations]
+    }
 
+    fn benchmark_operations(&mut self) -> Vec<Operation<N>> {
         // Initialize storage for the benchmark operations.
         let mut benchmarks = Vec::with_capacity(self.num_programs * self.num_executions);
         // Construct the operations.
@@ -93,6 +95,6 @@ impl<N: Network> Workload<N> for StaticGet<N> {
                 ));
             }
         }
-        (setups, benchmarks)
+        benchmarks
     }
 }

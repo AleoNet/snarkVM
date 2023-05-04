@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{initialize_vm, ObjectStore, split};
+use crate::utilities::{Benchmark, initialize_vm, ObjectStore, split};
 
 use console::{network::Testnet3, prelude::Network, program::Value};
 use snarkvm_synthesizer::{Program, Transaction};
@@ -26,43 +26,32 @@ use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
 use snarkvm_utilities::TestRng;
 
 /// Batches of setup operations for the workload.
-pub type SetupOperations<N> = Vec<Vec<Operation<N>>>;
-/// Benchmark transactions for the workload.
-pub type BenchmarkOperations<N> = Vec<Operation<N>>;
-/// Batches of setup operations for the workload.
 pub type SetupTransactions<N> = Vec<Vec<Transaction<N>>>;
 /// Benchmark transactions for the workload.
 pub type BenchmarkTransactions<N> = Vec<(String, Vec<Transaction<N>>)>;
 
-/// An operation executed in a workload.
-#[derive(Clone, Debug)]
-#[allow(unused)]
-pub enum Operation<N: Network> {
-    /// Deploy a program.
-    Deploy(Box<Program<N>>),
-    /// Execute a program.
-    Execute(String, String, Vec<Value<N>>),
-}
 
-impl<N: Network> Operation<N> {
-    /// Returns a unique identifier for the operation.
-    pub fn uid(&self) -> String {
-        let string = match self {
-            Operation::Deploy(program) => format!("deploy({})", program),
-            Operation::Execute(program, function, values) => {
-                format!("execute({}, {}, {})", program, function, values.join(","))
-            }
-        };
-        string.hash(&mut DefaultHasher::new()).to_string()
-    }
-}
 
-/// A trait for workloads.
-pub trait Workload<N: Network> {
+/// A `Workload` is a collection of benchmarks to be run together.
+struct Workload<N: Network> {
     /// The name of the workload.
-    fn name(&self) -> String;
-    /// Initialize the workload.
-    fn init(&mut self) -> (SetupOperations<N>, BenchmarkOperations<N>);
+    name: String,
+    /// The benchmarks to be run.
+    benchmarks: Vec<Box<dyn Benchmark<N>>>,
+}
+
+impl<N: Network> Workload<N> {
+    /// Constructs a new workload.
+    pub fn new(name: String, benchmarks: Vec<Box<dyn Benchmark<N>>>) -> Self {
+        Self { name, benchmarks }
+    }
+
+    /// Returns the name of the workload.
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+
 }
 
 /// A helper function for preparing benchmarks.
