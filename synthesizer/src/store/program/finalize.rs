@@ -22,7 +22,7 @@ use crate::{
     FinalizeOperation,
 };
 use console::{
-    network::{prelude::*, BHPMerkleTree},
+    network::prelude::*,
     program::{Identifier, Plaintext, ProgramID, Value},
     types::Field,
 };
@@ -30,17 +30,6 @@ use console::{
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
-use parking_lot::RwLock;
-use std::{
-    collections::BTreeMap,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
-
-#[cfg(not(feature = "serial"))]
-use rayon::prelude::*;
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///

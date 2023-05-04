@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::Mutex;
 use super::*;
+use parking_lot::Mutex;
 
 impl<N: Network> Process<N> {
     /// Deploys the given program ID, if it does not exist.
@@ -89,7 +89,7 @@ impl<N: Network> Process<N> {
         let program_id = deployment.program_id();
 
         // Initialize a list for the finalize operations.
-        let mut finalize_operations = Arc::new(Mutex::new(Vec::with_capacity(deployment.program().mappings().len())));
+        let finalize_operations = Arc::new(Mutex::new(Vec::with_capacity(deployment.program().mappings().len())));
 
         // Initialize the program mappings, and retrieve the finalize operations.
         atomic_write_batch!(store, {

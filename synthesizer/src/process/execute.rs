@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::Mutex;
 use super::*;
+use parking_lot::Mutex;
 
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
@@ -254,7 +254,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Verify the number of transitions");
 
         // Initialize a list for finalize operations.
-        let mut finalize_operations = Arc::new(Mutex::new(Vec::new()));
+        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
 
         atomic_write_batch!(store, {
             // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.

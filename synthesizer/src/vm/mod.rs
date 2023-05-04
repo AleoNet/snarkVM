@@ -23,7 +23,6 @@ mod finalize;
 mod verify;
 
 use crate::{
-    atomic_write_batch,
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
@@ -31,7 +30,6 @@ use crate::{
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
-    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,
@@ -42,7 +40,7 @@ use console::{
 
 use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -65,8 +63,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure that all mappings are initialized.
             if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
                 // Initialize the mappings for 'credits.aleo'.
-                let finalize_operation = store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
-                // TODO: PROCESS THE finalize operation.
+                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
             }
         }
 
@@ -447,7 +444,9 @@ function compute:
         let header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
-            vm.finalize_store().current_finalize_root(),
+            Field::zero(),
+            // TODO (howardwu): Revisit this.
+            // vm.finalize_store().current_finalize_root(),
             Field::zero(),
             metadata,
         )?;
