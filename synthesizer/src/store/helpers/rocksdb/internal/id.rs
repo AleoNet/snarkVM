@@ -205,7 +205,6 @@ enum DataID {
     TransitionReverseTCMMap,
     // Program
     ProgramIDMap,
-    ProgramIndexMap,
     MappingIDMap,
     KeyValueIDMap,
     KeyMap,

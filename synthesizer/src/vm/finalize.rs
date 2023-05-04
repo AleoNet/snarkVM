@@ -43,11 +43,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // The finalize operation here involves appending the 'stack',
                 // and adding the program to the finalize tree.
                 Transaction::Deploy(_, _, deployment, _) => {
-                    process.finalize_deployment(self.finalize_store(), &deployment)
+                    process.finalize_deployment(self.finalize_store(), deployment)
                 }
                 // The finalize operation here involves calling 'update_key_value',
                 // and update the respective leaves of the finalize tree.
-                Transaction::Execute(_, execution, _) => process.finalize_execution(self.finalize_store(), &execution),
+                Transaction::Execute(_, execution, _) => process.finalize_execution(self.finalize_store(), execution),
             };
             lap!(timer, "Finalizing transaction {}", transaction.id());
 
