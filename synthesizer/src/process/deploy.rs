@@ -113,7 +113,7 @@ mod tests {
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));
         // Finalize the deployment.
-        process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
+        process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(vm.finalize_store(), &deployment).unwrap();
         // Ensure the program exists.
         assert!(process.contains_program(program.id()));
     }

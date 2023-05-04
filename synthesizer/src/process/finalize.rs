@@ -16,11 +16,40 @@
 
 use super::*;
 
+#[derive(Copy, Clone, Debug)]
+pub enum FinalizeMode {
+    /// Invoke finalize as a real run.
+    RealRun,
+    /// Invoke finalize as a dry run.
+    DryRun,
+}
+
+impl FinalizeMode {
+    /// Returns the u8 value of the finalize mode.
+    #[inline]
+    pub const fn to_u8(self) -> u8 {
+        match self {
+            Self::RealRun => 0,
+            Self::DryRun => 1,
+        }
+    }
+
+    /// Returns a finalize mode from a given u8.
+    #[inline]
+    pub fn from_u8(value: u8) -> Result<Self> {
+        match value {
+            0 => Ok(Self::RealRun),
+            1 => Ok(Self::DryRun),
+            _ => bail!("Invalid finalize mode of '{value}'"),
+        }
+    }
+}
+
 impl<N: Network> Process<N> {
     /// Finalizes the deployment.
     /// This method assumes the given deployment **is valid**.
     #[inline]
-    pub fn finalize_deployment<P: FinalizeStorage<N>>(
+    pub fn finalize_deployment<P: FinalizeStorage<N>, const FINALIZE_MODE: u8>(
         &mut self,
         store: &FinalizeStore<N, P>,
         deployment: &Deployment<N>,
@@ -43,17 +72,29 @@ impl<N: Network> Process<N> {
         // Initialize a list for the finalize operations.
         let finalize_operations = Arc::new(Mutex::new(Vec::with_capacity(deployment.program().mappings().len())));
 
-        // Initialize the program mappings, and retrieve the finalize operations.
+        // Initialize the mappings, and store their finalize operations.
         atomic_write_batch!(store, {
+            // Iterate over the mappings.
             for mapping in deployment.program().mappings().values() {
+                // Initialize the mapping.
                 finalize_operations.lock().push(store.initialize_mapping(program_id, mapping.name())?);
             }
-            Ok(())
+
+            // Handle the atomic batch, based on the finalize mode.
+            match FinalizeMode::from_u8(FINALIZE_MODE)? {
+                // If this is a real run, commit the atomic batch.
+                FinalizeMode::RealRun => Ok(()),
+                // If this is a dry run, abort the atomic batch.
+                FinalizeMode::DryRun => bail!("Dry run of finalize deployment for '{program_id}'"),
+            }
         });
         lap!(timer, "Initialize the program mappings");
 
-        // Add the stack to the process.
-        self.stacks.insert(*deployment.program_id(), stack);
+        // If this is a real run, update the stack.
+        if FINALIZE_MODE == FinalizeMode::RealRun.to_u8() {
+            // Add the stack to the process.
+            self.stacks.insert(*deployment.program_id(), stack);
+        }
 
         finish!(timer);
 

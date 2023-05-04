@@ -807,7 +807,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment(&store, &deployment).unwrap();
+    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -908,7 +908,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment(&store, &deployment).unwrap();
+    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1023,7 +1023,7 @@ finalize mint_public:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment(&store, &deployment).unwrap();
+    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
 
     // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
     //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
@@ -1140,7 +1140,7 @@ finalize mint_public:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment(&store, &deployment).unwrap();
+    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
 
     // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
     //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
@@ -1270,7 +1270,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment(&store, &deployment).unwrap();
+    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();

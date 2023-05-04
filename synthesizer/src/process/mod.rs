@@ -24,6 +24,8 @@ mod execute;
 mod execute_fee;
 mod finalize;
 
+pub use finalize::FinalizeMode;
+
 #[cfg(test)]
 mod tests;
 
