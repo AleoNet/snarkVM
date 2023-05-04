@@ -230,7 +230,7 @@ impl<N: Network> Process<N> {
         &self,
         store: &FinalizeStore<N, P>,
         execution: &Execution<N>,
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("Program::finalize_execution");
 
         // Ensure the execution contains transitions.
@@ -252,49 +252,62 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the number of transitions");
 
-        // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
-        //  Currently this loop assumes a linearly execution stack.
-        // Finalize each transition, starting from the last one.
-        for transition in execution.transitions().rev() {
-            #[cfg(debug_assertions)]
-            println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
+        // Initialize a list for finalize operations.
+        let mut finalize_operations = Vec::new();
 
-            // Retrieve the stack.
-            let stack = self.get_stack(transition.program_id())?;
-            // Retrieve the function name.
-            let function_name = transition.function_name();
+        atomic_write_batch!(store, {
+            // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
+            //  Currently this loop assumes a linearly execution stack.
+            // Finalize each transition, starting from the last one.
+            for transition in execution.transitions().rev() {
+                #[cfg(debug_assertions)]
+                println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
 
-            // If there is a finalize scope, finalize the function.
-            if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
-                // Retrieve the finalize inputs.
-                let inputs = match transition.finalize() {
-                    Some(inputs) => inputs,
-                    // Ensure the transition contains finalize inputs.
-                    None => bail!("The transition is missing inputs for 'finalize'"),
-                };
+                // Retrieve the stack.
+                let stack = self.get_stack(transition.program_id())?;
+                // Retrieve the function name.
+                let function_name = transition.function_name();
 
-                // Initialize the registers.
-                let mut registers = FinalizeRegisters::<N>::new(stack.get_finalize_types(finalize.name())?.clone());
+                // If there is a finalize scope, finalize the function.
+                if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
+                    // Retrieve the finalize inputs.
+                    let inputs = match transition.finalize() {
+                        Some(inputs) => inputs,
+                        // Ensure the transition contains finalize inputs.
+                        None => bail!("The transition is missing inputs for 'finalize'"),
+                    };
 
-                // Store the inputs.
-                finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-                    // Assign the input value to the register.
-                    registers.store(stack, register, input.clone())
-                })?;
+                    // Initialize the registers.
+                    let mut registers = FinalizeRegisters::<N>::new(stack.get_finalize_types(finalize.name())?.clone());
 
-                // Evaluate the commands.
-                for command in finalize.commands() {
-                    // If the evaluation fails, bail and return the error.
-                    if let Err(error) = command.finalize(stack, store, &mut registers) {
-                        bail!("'finalize' failed to evaluate command ({command}): {error}");
+                    // Store the inputs.
+                    finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(
+                        |(register, input)| {
+                            // Assign the input value to the register.
+                            registers.store(stack, register, input.clone())
+                        },
+                    )?;
+
+                    // Evaluate the commands.
+                    for command in finalize.commands() {
+                        match command.finalize(stack, store, &mut registers) {
+                            // If the evaluation succeeds with an operation, add it to the list.
+                            Ok(Some(finalize_operation)) => finalize_operations.push(finalize_operation),
+                            // If the evaluation succeeds with no operation, continue.
+                            Ok(None) => (),
+                            // If the evaluation fails, bail and return the error.
+                            Err(error) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        }
                     }
-                }
 
-                lap!(timer, "Finalize transition for {function_name}");
+                    lap!(timer, "Finalize transition for {function_name}");
+                }
             }
-        }
+            Ok(())
+        });
         finish!(timer);
 
-        Ok(())
+        // Return the finalize operations.
+        Ok(finalize_operations)
     }
 }

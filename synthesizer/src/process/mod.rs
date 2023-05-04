@@ -24,10 +24,11 @@ mod execute;
 mod execute_fee;
 
 use crate::{
+    atomic_write_batch,
     block::{Input, Transition},
     program::{Instruction, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},
-    store::{FinalizeStorage, FinalizeStore},
+    store::{FinalizeOperation, FinalizeStorage, FinalizeStore},
 };
 use console::{
     account::PrivateKey,
@@ -1242,8 +1243,10 @@ finalize compute:
         process.finalize_execution(&store, &execution).unwrap();
 
         // Check that the account balance is now 8.
-        let candidate =
-            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        let candidate = store
+            .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+            .unwrap()
+            .unwrap();
         assert_eq!(candidate, Value::from_str("8u64").unwrap());
     }
 
@@ -1342,8 +1345,10 @@ finalize compute:
         process.finalize_execution(&store, &execution).unwrap();
 
         // Check that the account balance is now 0.
-        let candidate =
-            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        let candidate = store
+            .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+            .unwrap()
+            .unwrap();
         assert_eq!(candidate, Value::from_str("0u64").unwrap());
     }
 
@@ -1460,8 +1465,10 @@ finalize mint_public:
         process.finalize_execution(&store, &execution).unwrap();
 
         // Check the account balance.
-        let candidate =
-            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        let candidate = store
+            .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+            .unwrap()
+            .unwrap();
         assert_eq!(candidate, Value::from_str("3u64").unwrap());
     }
 
@@ -1599,8 +1606,10 @@ function mint:
         process.finalize_execution(&store, &execution).unwrap();
 
         // Check the account balance.
-        let candidate =
-            store.get_value(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        let candidate = store
+            .get_value_speculative(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller)))
+            .unwrap()
+            .unwrap();
         assert_eq!(candidate, Value::from_str("100u64").unwrap());
     }
 
@@ -1701,8 +1710,10 @@ finalize compute:
         process.finalize_execution(&store, &execution).unwrap();
 
         // Check that the account balance is now 8.
-        let candidate =
-            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        let candidate = store
+            .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+            .unwrap()
+            .unwrap();
         assert_eq!(candidate, Value::from_str("16u64").unwrap());
     }
 }

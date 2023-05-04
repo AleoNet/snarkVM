@@ -71,11 +71,8 @@ impl<N: Network> Process<N> {
         &mut self,
         store: &FinalizeStore<N, P>,
         deployment: &Deployment<N>,
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("Process::finalize_deployment");
-
-        // TODO (howardwu): Make this function atomic.
-        // TODO (howardwu): Check the program ID and all mappings don't exist in the 'store'. (add this to verify_deployment too)
 
         // Compute the program stack.
         let stack = Stack::new(self, deployment.program())?;
@@ -89,10 +86,17 @@ impl<N: Network> Process<N> {
 
         // Retrieve the program ID.
         let program_id = deployment.program_id();
-        // Iterate through the program mappings.
-        for mapping in deployment.program().mappings().values() {
-            store.initialize_mapping(program_id, mapping.name())?;
-        }
+
+        // Initialize a list for the finalize operations.
+        let mut finalize_operations = Vec::with_capacity(deployment.program().mappings().len());
+
+        // Initialize the program mappings, and retrieve the finalize operations.
+        atomic_write_batch!(store, {
+            for mapping in deployment.program().mappings().values() {
+                finalize_operations.push(store.initialize_mapping(program_id, mapping.name())?);
+            }
+            Ok(())
+        });
         lap!(timer, "Initialize the program mappings");
 
         // Add the stack to the process.
@@ -100,7 +104,8 @@ impl<N: Network> Process<N> {
 
         finish!(timer);
 
-        Ok(())
+        // Return the finalize operations.
+        Ok(finalize_operations)
     }
 
     /// Adds the newly-deployed program.

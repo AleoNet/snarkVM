@@ -31,7 +31,7 @@ use crate::{
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
-    Speculate,
+    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,
@@ -63,9 +63,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let credits = Program::<N>::credits()?;
         for mapping in credits.mappings().values() {
             // Ensure that all mappings are initialized.
-            if !store.finalize_store().contains_mapping(credits.id(), mapping.name())? {
+            if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
                 // Initialize the mappings for 'credits.aleo'.
-                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
+                let finalize_operation = store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
+                // TODO: PROCESS THE finalize operation.
             }
         }
 
@@ -136,26 +137,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
         self.store.transition_store()
-    }
-
-    /// Starts an atomic batch write operation.
-    pub fn start_atomic(&self) {
-        self.store.start_atomic();
-    }
-
-    /// Checks if an atomic batch is in progress.
-    pub fn is_atomic_in_progress(&self) -> bool {
-        self.store.is_atomic_in_progress()
-    }
-
-    /// Aborts an atomic batch write operation.
-    pub fn abort_atomic(&self) {
-        self.store.abort_atomic();
-    }
-
-    /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) -> Result<()> {
-        self.store.finish_atomic()
     }
 }
 

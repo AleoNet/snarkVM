@@ -387,7 +387,7 @@ impl<N: Network> Speculate<N> {
             let leaf = program_tree.root().to_bits_le();
 
             // // Specify the update or append operation.
-            match vm.finalize_store().contains_program(program_id)? {
+            match vm.finalize_store().contains_program_confirmed(program_id)? {
                 true => match vm.finalize_store().get_program_index(program_id)? {
                     Some(index) => updates.push((usize::try_from(index)?, leaf)),
                     None => bail!("No index found for program_id: {program_id}"),

@@ -17,5 +17,22 @@
 mod finalize;
 pub use finalize::*;
 
-mod speculate;
-pub use speculate::*;
+use console::{network::Network, types::Field};
+
+/// Enum to represent the allowed set of Merkle tree operations.
+#[derive(Clone, Debug)]
+pub enum FinalizeOperation<N: Network> {
+    /// Appends a mapping to the program tree, as (`mapping ID`).
+    InitializeMapping(Field<N>),
+    /// Inserts a key-value leaf into the mapping tree,
+    /// as (`mapping ID`, `key ID`, `value ID`).
+    InsertKeyValue(Field<N>, Field<N>, Field<N>),
+    /// Updates the key-value leaf at the given index in the mapping tree,
+    /// as (`mapping ID`, `index`, `key ID`, `value ID`).
+    UpdateKeyValue(Field<N>, usize, Field<N>, Field<N>),
+    /// Removes the key-value leaf at the given index in the mapping tree,
+    /// as (`mapping ID`, `index`).
+    RemoveKeyValue(Field<N>, usize),
+    /// Removes a mapping from the program tree, as (`mapping ID`).
+    RemoveMapping(Field<N>),
+}

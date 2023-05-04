@@ -132,7 +132,6 @@ pub enum TransitionMap {
 #[repr(u16)]
 pub enum ProgramMap {
     ProgramID = DataID::ProgramIDMap as u16,
-    ProgramIndex = DataID::ProgramIndexMap as u16,
     MappingID = DataID::MappingIDMap as u16,
     KeyValueID = DataID::KeyValueIDMap as u16,
     Key = DataID::KeyMap as u16,

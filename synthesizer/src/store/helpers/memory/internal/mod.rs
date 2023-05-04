@@ -82,9 +82,7 @@ impl<
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
         // Determine if an atomic batch is in progress.
-        let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
-
-        match is_batch {
+        match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key-value pair to the batch.
             true => {
                 self.atomic_batch.lock().insert(key, Some(value));
@@ -103,9 +101,7 @@ impl<
     ///
     fn remove(&self, key: &K) -> Result<()> {
         // Determine if an atomic batch is in progress.
-        let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
-
-        match is_batch {
+        match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key-None pair to the batch.
             true => {
                 self.atomic_batch.lock().insert(*key, None);
@@ -212,6 +208,29 @@ impl<
     }
 
     ///
+    /// Returns `true` if the given key exists in the map.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the map.
+    ///
+    fn contains_key_speculative<Q>(&self, key: &Q) -> Result<bool>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
+    {
+        // If a batch is in progress, check the atomic batch first.
+        if self.is_atomic_in_progress() {
+            // If the key is present in the atomic batch, then check if the value is 'Some(V)'.
+            if let Some(value) = self.atomic_batch.lock().get(key) {
+                // If the value is 'Some(V)', then the key exists.
+                // If the value is 'Some(None)', then the key is scheduled to be removed.
+                return Ok(value.is_some());
+            }
+        }
+
+        // Otherwise, check the map for the key.
+        self.contains_key_confirmed(key)
+    }
+
+    ///
     /// Returns the value for the given key from the map, if it exists.
     ///
     fn get_confirmed<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
@@ -236,7 +255,7 @@ impl<
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         // Return early if there is no atomic batch in progress.
-        if self.batch_in_progress.load(Ordering::SeqCst) { self.atomic_batch.lock().get(key).cloned() } else { None }
+        if self.is_atomic_in_progress() { self.atomic_batch.lock().get(key).cloned() } else { None }
     }
 
     ///

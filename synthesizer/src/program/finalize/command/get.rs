@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FinalizeStorage, FinalizeStore, Load as LoadTrait, Opcode, Operand, Speculate, Stack, Store};
+use crate::{FinalizeStorage, FinalizeStore, Load as LoadTrait, Opcode, Operand, Stack, Store};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},
@@ -74,7 +74,7 @@ impl<N: Network> Get<N> {
         registers: &mut (impl LoadTrait<N> + Store<N>),
     ) -> Result<()> {
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
+        if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
@@ -82,48 +82,9 @@ impl<N: Network> Get<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
+        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get' a 'record'"),
-            // If a key does not exist, then bail.
-            None => bail!("Key '{}' does not exist in mapping '{}/{}'", key, stack.program_id(), self.mapping),
-        };
-
-        // Assign the value to the destination register.
-        registers.store(stack, &self.destination, value)?;
-
-        Ok(())
-    }
-
-    /// Speculatively evaluate the command.
-    #[inline]
-    pub fn speculate_finalize<P: FinalizeStorage<N>>(
-        &self,
-        stack: &Stack<N>,
-        store: &FinalizeStore<N, P>,
-        registers: &mut (impl LoadTrait<N> + Store<N>),
-        speculate: &mut Speculate<N>,
-    ) -> Result<()> {
-        // Ensure the mapping exists in storage.
-        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
-            bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
-        }
-
-        // Load the operand as a plaintext.
-        let key = registers.load_plaintext(stack, &self.key)?;
-
-        // Attempt to retrieve the value from the `Speculate` store.
-        let mut stored_value = speculate.get_value(stack.program_id(), &self.mapping, &key)?;
-
-        // If the value does not exist in the `Speculate` state, retrieve the value from storage as a literal.
-        if stored_value.is_none() {
-            stored_value = store.get_value(stack.program_id(), &self.mapping, &key)?;
-        }
-
-        // Extract the value as a literal.
-        let value = match stored_value {
-            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'load' a 'record'"),
             // If a key does not exist, then bail.
             None => bail!("Key '{}' does not exist in mapping '{}/{}'", key, stack.program_id(), self.mapping),
         };
