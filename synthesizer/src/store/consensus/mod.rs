@@ -117,7 +117,7 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
         // Initialize the consensus storage.
         let storage = C::open(dev)?;
         // Return the consensus store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
     }
 
     /// Initializes the consensus store for testing.
@@ -126,7 +126,7 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
         // Initialize the consensus storage.
         let storage = C::open_testing(path)?;
         // Return the consensus store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
     }
 
     /// Initializes a consensus store from storage.

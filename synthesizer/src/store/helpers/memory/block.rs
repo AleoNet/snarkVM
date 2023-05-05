@@ -93,11 +93,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
 
     /// Initializes the block storage for testing.
     #[cfg(feature = "testing")]
-    fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
+    fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open_testing(path.clone())?;
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open_testing(None)?;
         // Initialize the transaction store.
-        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open_testing(path, transition_store)?;
+        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open_testing(None, transition_store)?;
         // Return the block storage.
         Ok(Self {
             state_root_map: MemoryMap::default(),

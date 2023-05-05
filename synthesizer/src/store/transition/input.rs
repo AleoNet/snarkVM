@@ -303,15 +303,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
         // Initialize a new transition input storage.
         let storage = I::open(dev)?;
         // Return the transition input store.
-        Ok(Self {
-            constant: storage.constant_map().clone(),
-            public: storage.public_map().clone(),
-            private: storage.private_map().clone(),
-            record: storage.record_map().clone(),
-            record_tag: storage.record_tag_map().clone(),
-            external_record: storage.external_record_map().clone(),
-            storage,
-        })
+        Ok(Self::from(storage))
     }
 
     #[cfg(feature = "testing")]
@@ -320,15 +312,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
         // Initialize a new transition input storage.
         let storage = I::open_testing(path)?;
         // Return the transition input store.
-        Ok(Self {
-            constant: storage.constant_map().clone(),
-            public: storage.public_map().clone(),
-            private: storage.private_map().clone(),
-            record: storage.record_map().clone(),
-            record_tag: storage.record_tag_map().clone(),
-            external_record: storage.external_record_map().clone(),
-            storage,
-        })
+        Ok(Self::from(storage))
     }
 
     /// Initializes a transition input store from storage.

@@ -247,7 +247,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         // Initialize the transaction storage.
         let storage = T::open(transition_store)?;
         // Return the transaction store.
-        Ok(Self { transaction_ids: storage.id_map().clone(), storage })
+        Ok(Self::from(storage))
     }
 
     #[cfg(feature = "testing")]
@@ -259,7 +259,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         // Initialize the transaction storage.
         let storage = T::open_testing(path, transition_store)?;
         // Return the transaction store.
-        Ok(Self { transaction_ids: storage.id_map().clone(), storage })
+        Ok(Self::from(storage))
     }
 
     /// Initializes a transaction store from storage.

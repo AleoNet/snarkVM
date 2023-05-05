@@ -450,7 +450,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         // Initialize the deployment storage.
         let storage = D::open(fee_store)?;
         // Return the deployment store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
     }
 
     #[cfg(feature = "testing")]
@@ -462,7 +462,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         // Initialize the deployment storage.
         let storage = D::open_testing(path, transition_store)?;
         // Return the deployment store.
-        Ok(Self { storage, _phantom: PhantomData })
+        Ok(Self::from(storage))
     }
 
     /// Initializes a deployment store from storage.

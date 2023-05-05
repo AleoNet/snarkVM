@@ -308,18 +308,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         // Initialize the transition storage.
         let storage = T::open(dev)?;
         // Return the transition store.
-        Ok(Self {
-            locator: storage.locator_map().clone(),
-            inputs: (*storage.input_store()).clone(),
-            outputs: (*storage.output_store()).clone(),
-            finalize: storage.finalize_map().clone(),
-            proof: storage.proof_map().clone(),
-            tpk: storage.tpk_map().clone(),
-            reverse_tpk: storage.reverse_tpk_map().clone(),
-            tcm: storage.tcm_map().clone(),
-            reverse_tcm: storage.reverse_tcm_map().clone(),
-            storage,
-        })
+        Ok(Self::from(storage))
     }
 
     #[cfg(feature = "testing")]
@@ -328,18 +317,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         // Initialize the transition storage.
         let storage = T::open_testing(path)?;
         // Return the transition store.
-        Ok(Self {
-            locator: storage.locator_map().clone(),
-            inputs: (*storage.input_store()).clone(),
-            outputs: (*storage.output_store()).clone(),
-            finalize: storage.finalize_map().clone(),
-            proof: storage.proof_map().clone(),
-            tpk: storage.tpk_map().clone(),
-            reverse_tpk: storage.reverse_tpk_map().clone(),
-            tcm: storage.tcm_map().clone(),
-            reverse_tcm: storage.reverse_tcm_map().clone(),
-            storage,
-        })
+        Ok(Self::from(storage))
     }
 
     /// Initializes a transition store from storage.
