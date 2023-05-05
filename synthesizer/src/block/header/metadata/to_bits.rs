@@ -24,7 +24,7 @@ impl<N: Network> ToBits for Metadata<N> {
             self.round.to_bits_le(),                        // 8 bytes
             self.height.to_bits_le(),                       // 4 bytes
             self.total_supply_in_microcredits.to_bits_le(), // 8 bytes
-            self.cumulative_proof_target.to_bits_le(),      // 16 bytes
+            self.cumulative_weight.to_bits_le(),            // 16 bytes
             self.coinbase_target.to_bits_le(),              // 8 bytes
             self.proof_target.to_bits_le(),                 // 8 bytes
             self.last_coinbase_target.to_bits_le(),         // 8 bytes
@@ -41,7 +41,7 @@ impl<N: Network> ToBits for Metadata<N> {
             self.round.to_bits_be(),                        // 8 bytes
             self.height.to_bits_be(),                       // 4 bytes
             self.total_supply_in_microcredits.to_bits_be(), // 8 bytes
-            self.cumulative_proof_target.to_bits_be(),      // 16 bytes
+            self.cumulative_weight.to_bits_be(),            // 16 bytes
             self.coinbase_target.to_bits_be(),              // 8 bytes
             self.proof_target.to_bits_be(),                 // 8 bytes
             self.last_coinbase_target.to_bits_be(),         // 8 bytes
