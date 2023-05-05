@@ -116,7 +116,7 @@ impl<N: Network> Function<N> {
         ensure!(self.outputs.is_empty(), "Cannot add inputs after outputs have been added");
 
         // Ensure the maximum number of inputs has not been exceeded.
-        ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
+        ensure!(self.inputs.len() < N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
         // Ensure the input statement was not previously added.
         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
 
@@ -144,7 +144,7 @@ impl<N: Network> Function<N> {
 
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
-            self.instructions.len() <= N::MAX_INSTRUCTIONS,
+            self.instructions.len() < N::MAX_INSTRUCTIONS,
             "Cannot add more than {} instructions",
             N::MAX_INSTRUCTIONS
         );
@@ -170,7 +170,7 @@ impl<N: Network> Function<N> {
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
         // Ensure the maximum number of outputs has not been exceeded.
-        ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
+        ensure!(self.outputs.len() < N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
         // Ensure the output statement was not previously added.
         ensure!(!self.outputs.contains(&output), "Cannot add duplicate output statement");
 
