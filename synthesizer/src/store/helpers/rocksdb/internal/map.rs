@@ -89,7 +89,7 @@ impl<
     ///
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
-        self.batch_in_progress.store(true, Ordering::Relaxed);
+        self.batch_in_progress.store(true, Ordering::SeqCst);
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
     }
@@ -100,7 +100,7 @@ impl<
     /// if they are already part of a larger one.
     ///
     fn is_atomic_in_progress(&self) -> bool {
-        self.batch_in_progress.load(Ordering::Acquire)
+        self.batch_in_progress.load(Ordering::SeqCst)
     }
 
     ///
@@ -141,7 +141,7 @@ impl<
         // Clear the checkpoint stack.
         *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::Release);
+        self.batch_in_progress.store(false, Ordering::SeqCst);
     }
 
     ///
@@ -185,7 +185,7 @@ impl<
         // Clear the checkpoint stack.
         *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
-        self.batch_in_progress.store(false, Ordering::Release);
+        self.batch_in_progress.store(false, Ordering::SeqCst);
 
         Ok(())
     }
