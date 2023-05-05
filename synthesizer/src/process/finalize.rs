@@ -105,7 +105,7 @@ impl<N: Network> Process<N> {
     /// Finalizes the execution.
     /// This method assumes the given execution **is valid**.
     #[inline]
-    pub fn finalize_execution<P: FinalizeStorage<N>>(
+    pub fn finalize_execution<P: FinalizeStorage<N>, const FINALIZE_MODE: u8>(
         &self,
         store: &FinalizeStore<N, P>,
         execution: &Execution<N>,
@@ -182,7 +182,14 @@ impl<N: Network> Process<N> {
                     lap!(timer, "Finalize transition for {function_name}");
                 }
             }
-            Ok(())
+
+            // Handle the atomic batch, based on the finalize mode.
+            match FinalizeMode::from_u8(FINALIZE_MODE)? {
+                // If this is a real run, commit the atomic batch.
+                FinalizeMode::RealRun => Ok(()),
+                // If this is a dry run, abort the atomic batch.
+                FinalizeMode::DryRun => bail!("Dry run of finalize execution"),
+            }
         });
         finish!(timer);
 

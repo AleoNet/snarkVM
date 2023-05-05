@@ -105,7 +105,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions()) {
+        match self.finalize::<{ FinalizeMode::RealRun.to_u8() }>(block.transactions()) {
             Ok(_) => Ok(()),
             Err(error) => {
                 // Rollback the block.

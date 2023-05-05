@@ -842,7 +842,7 @@ finalize compute:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&store, &execution).unwrap();
+    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = store
@@ -943,7 +943,7 @@ finalize compute:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&store, &execution).unwrap();
+    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
 
     // Check that the account balance is now 0.
     let candidate = store
@@ -1062,7 +1062,7 @@ finalize mint_public:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&store, &execution).unwrap();
+    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
 
     // Check the account balance.
     let candidate = store
@@ -1202,7 +1202,7 @@ function mint:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&store, &execution).unwrap();
+    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
 
     // Check the account balance.
     let candidate = store
@@ -1305,7 +1305,7 @@ finalize compute:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&store, &execution).unwrap();
+    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = store

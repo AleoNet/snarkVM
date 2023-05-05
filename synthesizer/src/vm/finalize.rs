@@ -20,7 +20,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Finalizes the given transactions into the VM.
     /// This method assumes the given transactions **are valid**.
     #[inline]
-    pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
+    pub fn finalize<const FINALIZE_MODE: u8>(&self, transactions: &Transactions<N>) -> Result<()> {
         let timer = timer!("VM::finalize");
 
         // Acquire the write lock on the process.
@@ -42,11 +42,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let outcome = match transaction {
                 // The finalize operation here involves appending the 'stack',
                 // and adding the program to the finalize tree.
-                Transaction::Deploy(_, _, deployment, _) => process
-                    .finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(self.finalize_store(), deployment),
+                Transaction::Deploy(_, _, deployment, _) => {
+                    process.finalize_deployment::<_, FINALIZE_MODE>(self.finalize_store(), deployment)
+                }
                 // The finalize operation here involves calling 'update_key_value',
                 // and update the respective leaves of the finalize tree.
-                Transaction::Execute(_, execution, _) => process.finalize_execution(self.finalize_store(), execution),
+                Transaction::Execute(_, execution, _) => {
+                    process.finalize_execution::<_, FINALIZE_MODE>(self.finalize_store(), execution)
+                }
             };
             lap!(timer, "Finalizing transaction {}", transaction.id());
 
@@ -96,9 +99,12 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         // Finalize the transaction.
-        vm.finalize(&Transactions::from(&[deployment_transaction.clone()])).unwrap();
+        vm.finalize::<{ FinalizeMode::RealRun.to_u8() }>(&Transactions::from(&[deployment_transaction.clone()]))
+            .unwrap();
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(&Transactions::from(&[deployment_transaction])).is_err());
+        assert!(
+            vm.finalize::<{ FinalizeMode::RealRun.to_u8() }>(&Transactions::from(&[deployment_transaction])).is_err()
+        );
     }
 }
