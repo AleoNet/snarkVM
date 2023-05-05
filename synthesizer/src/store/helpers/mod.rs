@@ -85,6 +85,15 @@ pub trait MapRead<
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
 
     ///
+    /// Returns `true` if the given key exists in the map.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the map.
+    ///
+    fn contains_key_speculative<Q>(&self, key: &Q) -> Result<bool>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
     /// Returns the value for the given key from the map, if it exists.
     ///
     fn get_confirmed<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>

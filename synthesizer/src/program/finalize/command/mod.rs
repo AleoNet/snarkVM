@@ -26,7 +26,7 @@ pub use get_or_init::*;
 mod set;
 pub use set::*;
 
-use crate::{program::Instruction, FinalizeRegisters, FinalizeStorage, FinalizeStore, Speculate, Stack};
+use crate::{program::Instruction, FinalizeOperation, FinalizeRegisters, FinalizeStorage, FinalizeStore, Stack};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -50,31 +50,16 @@ impl<N: Network> Command<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
-    ) -> Result<()> {
+    ) -> Result<Option<FinalizeOperation<N>>> {
         match self {
-            Command::Instruction(instruction) => instruction.finalize(stack, registers),
-            Command::Get(get) => get.finalize(stack, store, registers),
+            // Finalize the instruction, and return no finalize operation.
+            Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
+            // Finalize the 'get' command, and return no finalize operation.
+            Command::Get(get) => get.finalize(stack, store, registers).map(|_| None),
+            // Finalize the 'get.or_init' command, and return the (optional) finalize operation.
             Command::GetOrInit(get_or_init) => get_or_init.finalize(stack, store, registers),
-            Command::Set(set) => set.finalize(stack, store, registers),
-        }
-    }
-
-    /// Speculatively evaluate the command.
-    #[inline]
-    pub fn speculate_finalize<P: FinalizeStorage<N>>(
-        &self,
-        stack: &Stack<N>,
-        finalize_store: &FinalizeStore<N, P>,
-        registers: &mut FinalizeRegisters<N>,
-        speculate: &mut Speculate<N>,
-    ) -> Result<()> {
-        match self {
-            Command::Instruction(instruction) => instruction.finalize(stack, registers),
-            Command::Get(get) => get.speculate_finalize(stack, finalize_store, registers, speculate),
-            Command::GetOrInit(get_or_init) => {
-                get_or_init.speculate_finalize(stack, finalize_store, registers, speculate)
-            }
-            Command::Set(set) => set.speculate_finalize(stack, finalize_store, registers, speculate),
+            // Finalize the 'set' command, and return the finalize operation.
+            Command::Set(set) => set.finalize(stack, store, registers).map(Some),
         }
     }
 }

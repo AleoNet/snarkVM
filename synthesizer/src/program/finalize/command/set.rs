@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FinalizeStorage, FinalizeStore, Load, Opcode, Operand, Speculate, Stack};
+use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Load, Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
     program::{Identifier, Value},
@@ -72,9 +72,9 @@ impl<N: Network> Set<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut impl Load<N>,
-    ) -> Result<()> {
+    ) -> Result<FinalizeOperation<N>> {
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
+        if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
@@ -83,35 +83,8 @@ impl<N: Network> Set<N> {
         // Load the value operand as a plaintext.
         let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
 
-        // Update the value in storage.
-        store.update_key_value(stack.program_id(), &self.mapping, key, value)?;
-
-        Ok(())
-    }
-
-    /// Speculatively evaluate the command.
-    #[inline]
-    pub fn speculate_finalize<P: FinalizeStorage<N>>(
-        &self,
-        stack: &Stack<N>,
-        store: &FinalizeStore<N, P>,
-        registers: &mut impl Load<N>,
-        speculate: &mut Speculate<N>,
-    ) -> Result<()> {
-        // Ensure the mapping exists in storage.
-        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
-            bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
-        }
-
-        // Load the key operand as a plaintext.
-        let key = registers.load_plaintext(stack, &self.key)?;
-        // Load the value operand as a plaintext.
-        let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
-
-        // Update the value in storage.
-        speculate.update_key_value(stack.program_id(), &self.mapping, key, value)?;
-
-        Ok(())
+        // Update the value in storage, and return the finalize operation.
+        store.update_key_value(stack.program_id(), &self.mapping, key, value)
     }
 }
 

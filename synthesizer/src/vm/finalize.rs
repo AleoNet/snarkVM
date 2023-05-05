@@ -17,92 +17,73 @@
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Finalizes the given transactions into the VM.
-    /// This method assumes the given transactions **are valid**.
+    /// Finalizes the given transactions into the VM,
+    /// returning the list of accepted transaction IDs, rejected transaction IDs, and finalize operations.
     #[inline]
-    pub fn finalize(&self, transactions: &Transactions<N>, speculate: Option<Speculate<N>>) -> Result<()> {
+    pub fn finalize<const FINALIZE_MODE: u8>(
+        &self,
+        transactions: &Transactions<N>,
+    ) -> Result<(Vec<N::TransactionID>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::finalize");
 
-        // Initialize a new speculate struct if one was not provided.
-        let speculate = match speculate {
-            Some(speculate) => speculate,
-            None => {
-                // Perform the transaction speculation.
-                let mut speculate = Speculate::new(self.finalize_store().current_finalize_root());
-                speculate.speculate_transactions(self, &transactions.iter().cloned().collect::<Vec<_>>())?;
+        // Acquire the write lock on the process.
+        let mut process = self.process.write();
 
-                speculate
-            }
-        };
+        // Initialize a list for the finalize operations.
+        let mut finalize_operations = Vec::new();
 
-        // Ensure the transactions match the speculate transactions.
-        if transactions.transaction_ids().copied().collect::<Vec<_>>() != speculate.accepted_transactions() {
-            return Err(anyhow!("Speculate transactions do not match block transactions transactions"));
-        }
+        // Initialize a list of the accepted transactions.
+        let mut accepted = Vec::with_capacity(transactions.len());
+        // Initialize a list of the rejected transactions.
+        let mut rejected = Vec::with_capacity(transactions.len());
 
         // Finalize the transactions.
-        atomic_write_batch!(self, {
-            // Acquire the write lock on the process.
-            let mut process = self.process.write();
+        for transaction in transactions.values() {
+            // Process the transaction in an isolated atomic batch.
+            // - If the transaction succeeds, the finalize operations are stored.
+            // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
+            let outcome = match transaction {
+                // The finalize operation here involves appending the 'stack',
+                // and adding the program to the finalize tree.
+                Transaction::Deploy(_, _, deployment, _) => {
+                    process.finalize_deployment::<_, FINALIZE_MODE>(self.finalize_store(), deployment)
+                }
+                // The finalize operation here involves calling 'update_key_value',
+                // and update the respective leaves of the finalize tree.
+                Transaction::Execute(_, execution, _) => {
+                    process.finalize_execution::<_, FINALIZE_MODE>(self.finalize_store(), execution)
+                }
+            };
+            lap!(timer, "Finalizing transaction {}", transaction.id());
 
-            // Update the finalize tree.
-            if !speculate.operations.is_empty() {
-                // Construct the new finalize tree.
-                let new_finalize_tree = match speculate.commit(self) {
-                    Ok(new_finalize_tree) => new_finalize_tree,
-                    Err(err) => {
-                        // If the commit failed, set the speculate flag to `false`.
-                        self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
-
-                        bail!("Failed to commit speculate: {err}")
-                    }
-                };
-
-                // Acquire the write lock on the tree.
-                let finalize_tree_lock = self.finalize_store().get_finalize_tree();
-                let mut finalize_tree = finalize_tree_lock.write();
-
-                // Update the finalize tree.
-                *finalize_tree = new_finalize_tree;
-            }
-
-            // Update the `is_speculate` flag.
-            self.finalize_store().is_speculate.store(true, Ordering::SeqCst);
-
-            // TODO (raychu86): Use the `Speculate` struct to finalize the transactions. This will
-            //  reduce the re-execution of the transactions.
-            for transaction in transactions.values() {
-                // Finalize the transaction.
-                match transaction {
-                    Transaction::Deploy(_, _, deployment, _) => {
-                        if let Err(err) = process.finalize_deployment(self.finalize_store(), deployment) {
-                            // If the commit failed, set the speculate flag to `false`.
-                            self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
-
-                            bail!("Failed to finalize deployment: {err}")
-                        }
-                        lap!(timer, "Finalize deployment");
-                    }
-                    Transaction::Execute(_, execution, _) => {
-                        if let Err(err) = process.finalize_execution(self.finalize_store(), execution) {
-                            // If the commit failed, set the speculate flag to `false`.
-                            self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
-
-                            bail!("Failed to finalize execution: {err}")
-                        }
-                        lap!(timer, "Finalize execution");
-                    }
+            match outcome {
+                // If the transaction succeeded to finalize, continue to the next transaction.
+                Ok(operations) => {
+                    // Store the finalize operations.
+                    finalize_operations.extend(operations);
+                    // Store the transaction ID in the accepted list.
+                    accepted.push(transaction.id());
+                }
+                // If the transaction failed to finalize, abort and continue to the next transaction.
+                Err(error) => {
+                    warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
+                    // Store the transaction ID in the rejected list.
+                    rejected.push(transaction.id());
+                    // Abort the atomic batch and continue to the next transaction.
+                    continue;
                 }
             }
+        }
 
-            self.finalize_store().is_speculate.store(false, Ordering::SeqCst);
-
-            Ok(())
-        });
+        // Ensure all transactions were processed.
+        if accepted.len() + rejected.len() != transactions.len() {
+            // TODO (howardwu): Identify which transactions in 'transactions' were not processed,
+            //  and attempt to process them again (because they came from the block, so we can't remove them now).
+            unreachable!("Not all transactions were processed");
+        }
 
         finish!(timer);
-
-        Ok(())
+        Ok((accepted, rejected, finalize_operations))
     }
 }
 
@@ -121,9 +102,12 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         // Finalize the transaction.
-        vm.finalize(&Transactions::from(&[deployment_transaction.clone()]), None).unwrap();
+        vm.finalize::<{ FinalizeMode::RealRun.to_u8() }>(&Transactions::from(&[deployment_transaction.clone()]))
+            .unwrap();
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(&Transactions::from(&[deployment_transaction]), None).is_err());
+        assert!(
+            vm.finalize::<{ FinalizeMode::RealRun.to_u8() }>(&Transactions::from(&[deployment_transaction])).is_err()
+        );
     }
 }

@@ -23,15 +23,24 @@ mod finalize;
 mod verify;
 
 use crate::{
-    atomic_write_batch,
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
+    process::{
+        Authorization,
+        Deployment,
+        Execution,
+        Fee,
+        FinalizeMode,
+        Inclusion,
+        InclusionAssignment,
+        Process,
+        Query,
+    },
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
-    Speculate,
+    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,
@@ -42,7 +51,7 @@ use console::{
 
 use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
@@ -59,14 +68,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize a new process.
         let mut process = Process::load()?;
 
-        // Check that the storage contains the credits mapping. If not, initialize it.
+        // Initialize the store for 'credits.aleo'.
         let credits = Program::<N>::credits()?;
-        let finalize_store = store.finalize_store();
         for mapping in credits.mappings().values() {
-            let program_id = credits.id();
-            let mapping_name = mapping.name();
-            if !finalize_store.contains_mapping(program_id, mapping_name)? {
-                finalize_store.initialize_mapping(program_id, mapping_name)?;
+            // Ensure that all mappings are initialized.
+            if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
+                // Initialize the mappings for 'credits.aleo'.
+                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
             }
         }
 
@@ -94,12 +102,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Adds the given block into the VM.
     #[inline]
-    pub fn add_next_block(&self, block: &Block<N>, speculate: Option<Speculate<N>>) -> Result<()> {
+    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions(), speculate) {
-            Ok(_) => Ok(()),
+        match self.finalize::<{ FinalizeMode::RealRun.to_u8() }>(block.transactions()) {
+            Ok(_) => {
+                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
+                Ok(())
+            }
             Err(error) => {
                 // Rollback the block.
                 self.block_store().remove_last_n(1)?;
@@ -137,26 +148,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
         self.store.transition_store()
-    }
-
-    /// Starts an atomic batch write operation.
-    pub fn start_atomic(&self) {
-        self.store.start_atomic();
-    }
-
-    /// Checks if an atomic batch is in progress.
-    pub fn is_atomic_in_progress(&self) -> bool {
-        self.store.is_atomic_in_progress()
-    }
-
-    /// Aborts an atomic batch write operation.
-    pub fn abort_atomic(&self) {
-        self.store.abort_atomic();
-    }
-
-    /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) -> Result<()> {
-        self.store.finish_atomic()
     }
 }
 
@@ -220,7 +211,7 @@ pub(crate) mod test_helpers {
         // Initialize the genesis block.
         let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
         // Return the VM.
         vm
     }
@@ -292,7 +283,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
@@ -327,7 +318,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Prepare the inputs.
                 let inputs = [
@@ -374,7 +365,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Prepare the inputs.
                 let inputs = [
@@ -424,7 +415,7 @@ function compute:
                 // Initialize the VM.
                 let vm = sample_vm();
                 // Update the VM.
-                vm.add_next_block(&genesis, None).unwrap();
+                vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
                 let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
@@ -467,7 +458,9 @@ function compute:
         let header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
-            vm.finalize_store().current_finalize_root(),
+            Field::zero(),
+            // TODO (howardwu): Revisit this.
+            // vm.finalize_store().current_finalize_root(),
             Field::zero(),
             metadata,
         )?;
@@ -497,7 +490,7 @@ function compute:
         // Initialize the VM.
         let vm = sample_vm();
         // Update the VM.
-        vm.add_next_block(&genesis, None).unwrap();
+        vm.add_next_block(&genesis).unwrap();
 
         // Split once.
         let transaction = Transaction::execute(
@@ -514,7 +507,7 @@ function compute:
         let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
         let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
         let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
-        vm.add_next_block(&block, None).unwrap();
+        vm.add_next_block(&block).unwrap();
 
         // Split again.
         let mut transactions = Vec::new();
@@ -549,7 +542,7 @@ function compute:
         transactions.push(transaction);
         // Add the split transactions to a block and update the VM.
         let fee_block = sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
-        vm.add_next_block(&fee_block, None).unwrap();
+        vm.add_next_block(&fee_block).unwrap();
 
         // Deploy the programs.
         let first_program = r"
@@ -600,7 +593,7 @@ finalize getter:
         .unwrap();
         let deployment_block =
             sample_next_block(&vm, &caller_private_key, &[first_deployment, second_deployment], rng).unwrap();
-        vm.add_next_block(&deployment_block, None).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
 
         // Execute the programs.
         let first_execution = Transaction::execute(
@@ -625,6 +618,6 @@ finalize getter:
         .unwrap();
         let execution_block =
             sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
-        vm.add_next_block(&execution_block, None).unwrap();
+        vm.add_next_block(&execution_block).unwrap();
     }
 }

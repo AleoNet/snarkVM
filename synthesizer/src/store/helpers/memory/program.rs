@@ -28,8 +28,6 @@ use indexmap::{IndexMap, IndexSet};
 pub struct FinalizeMemory<N: Network> {
     /// The program ID map.
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
-    /// The program index map.
-    program_index_map: MemoryMap<ProgramID<N>, u32>,
     /// The mapping ID map.
     mapping_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>,
     /// The key-value ID map.
@@ -45,7 +43,6 @@ pub struct FinalizeMemory<N: Network> {
 #[rustfmt::skip]
 impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type ProgramIndexMap = MemoryMap<ProgramID<N>, u32>;
     type MappingIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>;
     type KeyValueIDMap = MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
     type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
@@ -55,7 +52,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     fn open(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
             program_id_map: MemoryMap::default(),
-            program_index_map: MemoryMap::default(),
             mapping_id_map: MemoryMap::default(),
             key_value_id_map: MemoryMap::default(),
             key_map: MemoryMap::default(),
@@ -67,11 +63,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map
-    }
-
-    /// Returns the program index map.
-    fn program_index_map(&self) -> &Self::ProgramIndexMap {
-        &self.program_index_map
     }
 
     /// Returns the mapping ID map.

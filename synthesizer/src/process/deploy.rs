@@ -64,45 +64,6 @@ impl<N: Network> Process<N> {
         verification
     }
 
-    /// Finalizes the deployment.
-    /// This method assumes the given deployment **is valid**.
-    #[inline]
-    pub fn finalize_deployment<P: FinalizeStorage<N>>(
-        &mut self,
-        store: &FinalizeStore<N, P>,
-        deployment: &Deployment<N>,
-    ) -> Result<()> {
-        let timer = timer!("Process::finalize_deployment");
-
-        // TODO (howardwu): Make this function atomic.
-        // TODO (howardwu): Check the program ID and all mappings don't exist in the 'store'. (add this to verify_deployment too)
-
-        // Compute the program stack.
-        let stack = Stack::new(self, deployment.program())?;
-        lap!(timer, "Compute the stack");
-
-        // Insert the verifying keys.
-        for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-            stack.insert_verifying_key(function_name, verifying_key.clone())?;
-        }
-        lap!(timer, "Insert the verifying keys");
-
-        // Retrieve the program ID.
-        let program_id = deployment.program_id();
-        // Iterate through the program mappings.
-        for mapping in deployment.program().mappings().values() {
-            store.initialize_mapping(program_id, mapping.name())?;
-        }
-        lap!(timer, "Initialize the program mappings");
-
-        // Add the stack to the process.
-        self.stacks.insert(*deployment.program_id(), stack);
-
-        finish!(timer);
-
-        Ok(())
-    }
-
     /// Adds the newly-deployed program.
     /// This method assumes the given deployment **is valid**.
     #[inline]
@@ -152,7 +113,7 @@ mod tests {
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));
         // Finalize the deployment.
-        process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
+        process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(vm.finalize_store(), &deployment).unwrap();
         // Ensure the program exists.
         assert!(process.contains_program(program.id()));
     }
