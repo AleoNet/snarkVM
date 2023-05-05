@@ -197,3 +197,33 @@ impl<N: Network> Process<N> {
         Ok(Arc::try_unwrap(finalize_operations).unwrap().into_inner())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::TestRng;
+
+    type CurrentAleo = circuit::network::AleoV0;
+
+    #[test]
+    fn test_finalize_deployment() {
+        let rng = &mut TestRng::default();
+
+        // Fetch the program from the deployment.
+        let program = crate::vm::test_helpers::sample_program();
+        // Initialize a new process.
+        let mut process = Process::load().unwrap();
+        // Deploy the program.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+
+        // Initialize a new VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Ensure the program does not exist.
+        assert!(!process.contains_program(program.id()));
+        // Finalize the deployment.
+        process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(vm.finalize_store(), &deployment).unwrap();
+        // Ensure the program exists.
+        assert!(process.contains_program(program.id()));
+    }
+}
