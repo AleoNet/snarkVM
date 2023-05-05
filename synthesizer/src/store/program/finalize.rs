@@ -553,12 +553,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     #[cfg(feature = "testing")]
     /// Initializes a finalize store for testing.
     pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
-        // Initialize the finalize storage.
-        let storage = P::open_testing(path)?;
-        // Compute the finalize tree.
-        let tree = Arc::new(RwLock::new(storage.to_finalize_tree()?));
-
-        Ok(Self { storage, tree, is_speculate: Default::default(), _phantom: PhantomData })
+        Self::from(P::open_testing(path)?)
     }
 
     /// Initializes a finalize store from storage.
