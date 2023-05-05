@@ -182,19 +182,17 @@ macro_rules! atomic_write_batch {
         let is_atomic_in_progress = $self.is_atomic_in_progress();
 
         // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_atomic_in_progress {
-            $self.start_atomic();
-        } else {
-            $self.atomic_checkpoint();
+        match is_atomic_in_progress {
+            true => $self.atomic_checkpoint(),
+            false => $self.start_atomic(),
         }
 
-        // Wrap the operations that should be batched in a closure to be able to abort the entire
-        // write batch if any of them fails.
+        // Wrap the operations that should be batched in a closure to be able to rewind the batch on error.
         let run_atomic_ops = || -> Result<()> { $ops };
 
-        // Abort the batch if any of the associated operations has failed. It's crucial that there
+        // Rewind the batch if any of the associated operations has failed. It's crucial that there
         // is an early return (via `?`) here, in order for any higher-level atomic write batch to
-        // also abort, cascading to all the owned storage objects.
+        // also rewind, cascading to all the owned storage objects.
         run_atomic_ops().map_err(|err| {
             $self.atomic_rewind();
             err
@@ -205,4 +203,36 @@ macro_rules! atomic_write_batch {
             $self.finish_atomic()?;
         }
     };
+}
+
+/// A top-level helper macro to perform the finalize operation on a list of transactions.
+#[macro_export]
+macro_rules! atomic_finalize {
+    ($self:expr, $ops:block) => {{
+        // Ensure that there is no atomic batch write in progress.
+        if $self.is_atomic_in_progress() {
+            bail!("Cannot start an atomic batch write operation while another one is already in progress.")
+        }
+
+        // Start the atomic batch.
+        $self.start_atomic();
+
+        // Wrap the operations that should be batched in a closure to be able to abort the entire
+        // write batch if any of them fails.
+        let run_atomic_ops = || -> Result<()> { $ops };
+
+        // Run the atomic operations.
+        match run_atomic_ops() {
+            // Finalize the batch if all operations have succeeded.
+            Ok(result) => {
+                $self.finish_atomic()?;
+                Ok(result)
+            }
+            // Abort the batch if any of the associated operations has failed.
+            Err(err) => {
+                $self.abort_atomic();
+                Err(err)
+            }
+        }
+    }};
 }

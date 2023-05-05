@@ -25,7 +25,7 @@ mod verify;
 pub use finalize::FinalizeMode;
 
 use crate::{
-    atomic_write_batch,
+    atomic_finalize,
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,

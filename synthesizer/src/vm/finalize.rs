@@ -55,6 +55,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<(Vec<N::TransactionID>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::finalize");
 
+        // Determine the finalize mode.
+        let finalize_mode = FinalizeMode::from_u8(FINALIZE_MODE)?;
+
         // Initialize a list for the deployed stacks.
         let stacks = Arc::new(Mutex::new(Vec::new()));
         // Initialize a list for the finalize operations.
@@ -65,7 +68,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize a list of the rejected transactions.
         let rejected = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
 
-        atomic_write_batch!(self.finalize_store(), {
+        let outcome = atomic_finalize!(self.finalize_store(), {
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
@@ -115,7 +118,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
 
             // Handle the atomic batch, based on the finalize mode.
-            match FinalizeMode::from_u8(FINALIZE_MODE)? {
+            match finalize_mode {
                 // If this is a real run, commit the atomic batch.
                 FinalizeMode::RealRun => {
                     // Commit the deployed stacks.
@@ -129,6 +132,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 FinalizeMode::DryRun => bail!("Dry run of finalize"),
             }
         });
+
+        // Handle the outcome of the atomic batch.
+        match (finalize_mode, outcome) {
+            (FinalizeMode::RealRun, Ok(())) | (FinalizeMode::DryRun, Err(_)) => {}
+            // This case is technically unreachable. If for any reason it is hit, we should fail immediately.
+            (FinalizeMode::RealRun, Err(error)) => return Err(error),
+            // This case is technically unreachable. If for any reason it is hit, we should fail immediately.
+            (FinalizeMode::DryRun, Ok(())) => bail!("VM::finalize wrote to storage in a dry run, check for corruption"),
+        }
 
         // Retrieve the accepted transactions, rejected transactions, and finalize operations.
         let accepted = accepted.lock().clone();

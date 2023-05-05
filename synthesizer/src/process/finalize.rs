@@ -165,7 +165,7 @@ mod tests {
         // Fetch the program from the deployment.
         let program = crate::vm::test_helpers::sample_program();
         // Initialize a new process.
-        let process = Process::load().unwrap();
+        let mut process = Process::load().unwrap();
         // Deploy the program.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
 
@@ -174,8 +174,12 @@ mod tests {
 
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));
+
         // Finalize the deployment.
-        process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
+        let (stack, _) = process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
+        // Add the stack *manually* to the process.
+        process.add_stack(stack);
+
         // Ensure the program exists.
         assert!(process.contains_program(program.id()));
     }
