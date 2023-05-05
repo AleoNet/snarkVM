@@ -94,6 +94,30 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             || self.external_record_map().is_atomic_in_progress()
     }
 
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.id_map().atomic_checkpoint();
+        self.reverse_id_map().atomic_checkpoint();
+        self.constant_map().atomic_checkpoint();
+        self.public_map().atomic_checkpoint();
+        self.private_map().atomic_checkpoint();
+        self.record_map().atomic_checkpoint();
+        self.record_nonce_map().atomic_checkpoint();
+        self.external_record_map().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.id_map().atomic_rewind();
+        self.reverse_id_map().atomic_rewind();
+        self.constant_map().atomic_rewind();
+        self.public_map().atomic_rewind();
+        self.private_map().atomic_rewind();
+        self.record_map().atomic_rewind();
+        self.record_nonce_map().atomic_rewind();
+        self.external_record_map().atomic_rewind();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -325,6 +349,16 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.

@@ -118,6 +118,34 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             || self.transition_store().is_atomic_in_progress()
     }
 
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.id_map().atomic_checkpoint();
+        self.edition_map().atomic_checkpoint();
+        self.reverse_id_map().atomic_checkpoint();
+        self.owner_map().atomic_checkpoint();
+        self.program_map().atomic_checkpoint();
+        self.verifying_key_map().atomic_checkpoint();
+        self.certificate_map().atomic_checkpoint();
+        self.fee_map().atomic_checkpoint();
+        self.reverse_fee_map().atomic_checkpoint();
+        self.transition_store().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.id_map().atomic_rewind();
+        self.edition_map().atomic_rewind();
+        self.reverse_id_map().atomic_rewind();
+        self.owner_map().atomic_rewind();
+        self.program_map().atomic_rewind();
+        self.verifying_key_map().atomic_rewind();
+        self.certificate_map().atomic_rewind();
+        self.fee_map().atomic_rewind();
+        self.reverse_fee_map().atomic_rewind();
+        self.transition_store().atomic_rewind();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -496,6 +524,16 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.

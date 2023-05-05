@@ -22,7 +22,7 @@ use core::{borrow::Borrow, hash::Hash};
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap},
+    collections::{btree_map, BTreeMap, VecDeque},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -40,6 +40,7 @@ pub struct MemoryMap<
     map: Arc<RwLock<BTreeMap<Vec<u8>, V>>>,
     batch_in_progress: Arc<AtomicBool>,
     atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
+    checkpoint: Arc<Mutex<VecDeque<usize>>>,
 }
 
 impl<
@@ -48,7 +49,12 @@ impl<
 > Default for MemoryMap<K, V>
 {
     fn default() -> Self {
-        Self { map: Default::default(), batch_in_progress: Default::default(), atomic_batch: Default::default() }
+        Self {
+            map: Default::default(),
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+            checkpoint: Default::default(),
+        }
     }
 }
 
@@ -67,6 +73,7 @@ impl<
             map: Arc::new(RwLock::new(map)),
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
+            checkpoint: Default::default(),
         }
     }
 }
@@ -136,11 +143,42 @@ impl<
     }
 
     ///
+    /// Saves the current list of pending operations, so that if `atomic_rewind` is called,
+    /// we roll back all future operations, and return to the start of this checkpoint.
+    ///
+    fn atomic_checkpoint(&self) {
+        // Push the current length of the atomic batch to the checkpoint stack.
+        self.checkpoint.lock().push_back(self.atomic_batch.lock().len());
+    }
+
+    ///
+    /// Removes all pending operations to the last `atomic_checkpoint`
+    /// (or to `start_atomic` if no checkpoints have been created).
+    ///
+    fn atomic_rewind(&self) {
+        // Acquire the write lock on the atomic batch.
+        let mut atomic_batch = self.atomic_batch.lock();
+
+        // Retrieve the last checkpoint.
+        let checkpoint = self.checkpoint.lock().pop_back().unwrap_or(0);
+
+        // Remove all operations after the checkpoint.
+        atomic_batch.truncate(checkpoint);
+
+        // If the atomic batch is now empty, set the atomic batch flag to `false`.
+        if atomic_batch.is_empty() {
+            self.batch_in_progress.store(false, Ordering::SeqCst);
+        }
+    }
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
         // Clear the atomic batch.
         *self.atomic_batch.lock() = Default::default();
+        // Clear the checkpoint stack.
+        *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
     }
@@ -177,6 +215,8 @@ impl<
             }
         }
 
+        // Clear the checkpoint stack.
+        *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
 
@@ -530,5 +570,78 @@ mod tests {
 
         // The map should contain NUM_ITEMS items now.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
+    }
+
+    #[test]
+    fn test_checkpoint_and_rewind() {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Start an atomic write batch.
+        map.start_atomic();
+
+        {
+            // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+            for i in 0..NUM_ITEMS / 2 {
+                map.insert(i, i.to_string()).unwrap();
+            }
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS / 2 items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+            // Make sure the checkpoint index is None.
+            assert_eq!(map.checkpoint.lock().back(), None);
+        }
+
+        // Run the same sequence of checks 3 times.
+        for _ in 0..3 {
+            // Perform a checkpoint.
+            map.atomic_checkpoint();
+            // Make sure the checkpoint index is NUM_ITEMS / 2.
+            assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+            {
+                // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
+                for i in (NUM_ITEMS / 2)..NUM_ITEMS {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+                // Make sure the checkpoint index is NUM_ITEMS / 2.
+                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+            }
+
+            // Abort the current atomic write batch.
+            map.atomic_rewind();
+            // Make sure the checkpoint index is None.
+            assert_eq!(map.checkpoint.lock().back(), None);
+
+            {
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS / 2 items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+                // Make sure the checkpoint index is None.
+                assert_eq!(map.checkpoint.lock().back(), None);
+            }
+        }
+
+        // Finish the atomic batch.
+        map.finish_atomic().unwrap();
+        // The map should contain NUM_ITEMS / 2.
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS / 2);
+        // The pending batch should contain no items.
+        assert!(map.iter_pending().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
     }
 }

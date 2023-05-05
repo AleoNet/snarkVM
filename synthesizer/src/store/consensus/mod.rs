@@ -73,6 +73,18 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
         self.finalize_store().is_atomic_in_progress() || self.block_store().is_atomic_in_progress()
     }
 
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.finalize_store().atomic_checkpoint();
+        self.block_store().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.finalize_store().atomic_rewind();
+        self.block_store().atomic_rewind();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.finalize_store().abort_atomic();
@@ -137,6 +149,16 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.

@@ -112,6 +112,32 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             || self.reverse_tcm_map().is_atomic_in_progress()
     }
 
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.locator_map().atomic_checkpoint();
+        self.input_store().atomic_checkpoint();
+        self.output_store().atomic_checkpoint();
+        self.finalize_map().atomic_checkpoint();
+        self.proof_map().atomic_checkpoint();
+        self.tpk_map().atomic_checkpoint();
+        self.reverse_tpk_map().atomic_checkpoint();
+        self.tcm_map().atomic_checkpoint();
+        self.reverse_tcm_map().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.locator_map().atomic_rewind();
+        self.input_store().atomic_rewind();
+        self.output_store().atomic_rewind();
+        self.finalize_map().atomic_rewind();
+        self.proof_map().atomic_rewind();
+        self.tpk_map().atomic_rewind();
+        self.reverse_tpk_map().atomic_rewind();
+        self.tcm_map().atomic_rewind();
+        self.reverse_tcm_map().atomic_rewind();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.locator_map().abort_atomic();
@@ -330,6 +356,16 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.

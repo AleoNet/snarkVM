@@ -54,6 +54,18 @@ pub trait Map<
     fn is_atomic_in_progress(&self) -> bool;
 
     ///
+    /// Saves the current list of pending operations, so that if `atomic_rewind` is called,
+    /// we roll back all future operations, and return to the start of this checkpoint.
+    ///
+    fn atomic_checkpoint(&self);
+
+    ///
+    /// Removes all pending operations to the last `atomic_checkpoint`
+    /// (or to `start_atomic` if no checkpoints have been created).
+    ///
+    fn atomic_rewind(&self);
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self);
@@ -167,11 +179,13 @@ macro_rules! atomic_write_batch {
     ($self:expr, $ops:block) => {
         // Check if an atomic batch write is already in progress. If there isn't one, this means
         // this operation is a "top-level" one and is the one to start and finalize the batch.
-        let is_part_of_atomic_batch = $self.is_atomic_in_progress();
+        let is_atomic_in_progress = $self.is_atomic_in_progress();
 
         // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
+        if !is_atomic_in_progress {
             $self.start_atomic();
+        } else {
+            $self.atomic_checkpoint();
         }
 
         // Wrap the operations that should be batched in a closure to be able to abort the entire
@@ -182,12 +196,12 @@ macro_rules! atomic_write_batch {
         // is an early return (via `?`) here, in order for any higher-level atomic write batch to
         // also abort, cascading to all the owned storage objects.
         run_atomic_ops().map_err(|err| {
-            $self.abort_atomic();
+            $self.atomic_rewind();
             err
         })?;
 
         // Finish an atomic batch write operation IFF it's not already part of a larger one.
-        if !is_part_of_atomic_batch {
+        if !is_atomic_in_progress {
             $self.finish_atomic()?;
         }
     };

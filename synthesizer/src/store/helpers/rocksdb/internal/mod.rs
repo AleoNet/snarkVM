@@ -125,7 +125,13 @@ impl Database for RocksDB {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        Ok(DataMap { database, context, batch_in_progress: Default::default(), atomic_batch: Default::default() })
+        Ok(DataMap {
+            database,
+            context,
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+            checkpoint: Default::default(),
+        })
     }
 }
 
@@ -179,7 +185,13 @@ impl RocksDB {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        Ok(DataMap { database, context, batch_in_progress: Default::default(), atomic_batch: Default::default() })
+        Ok(DataMap {
+            database,
+            context,
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+            checkpoint: Default::default(),
+        })
     }
 }
 
