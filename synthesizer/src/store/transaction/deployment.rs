@@ -457,25 +457,13 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the deployment store for testing.
+    #[cfg(feature = "testing")]
     pub fn open_testing(path: Option<std::path::PathBuf>, fee_store: FeeStore<N, D::FeeStorage>) -> Result<Self> {
         // Initialize the deployment storage.
         let storage = D::open_testing(path, fee_store)?;
         // Return the deployment store.
         Ok(Self::from(storage))
-    }
-
-    #[cfg(feature = "testing")]
-    /// Initializes the deployment store for testing.
-    pub fn open_testing(
-        path: Option<std::path::PathBuf>,
-        transition_store: TransitionStore<N, D::TransitionStorage>,
-    ) -> Result<Self> {
-        // Initialize the deployment storage.
-        let storage = D::open_testing(path, transition_store)?;
-        // Return the deployment store.
-        Ok(Self { storage, _phantom: PhantomData })
     }
 
     /// Initializes a deployment store from storage.

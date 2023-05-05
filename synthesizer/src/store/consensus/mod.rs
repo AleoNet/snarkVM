@@ -129,15 +129,6 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
         Ok(Self::from(storage))
     }
 
-    /// Initializes the consensus store for testing.
-    #[cfg(feature = "testing")]
-    pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
-        // Initialize the consensus storage.
-        let storage = C::open_testing(path)?;
-        // Return the consensus store.
-        Ok(Self { storage, _phantom: PhantomData })
-    }
-
     /// Initializes a consensus store from storage.
     pub fn from(storage: C) -> Self {
         Self { storage, _phantom: PhantomData }
