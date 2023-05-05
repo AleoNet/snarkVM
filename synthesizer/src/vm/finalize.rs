@@ -58,21 +58,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Determine the finalize mode.
         let finalize_mode = FinalizeMode::from_u8(FINALIZE_MODE)?;
 
-        // Initialize a list for the deployed stacks.
-        let stacks = Arc::new(Mutex::new(Vec::new()));
-        // Initialize a list for the finalize operations.
-        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
-
         // Initialize a list of the accepted transactions.
         let accepted = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
         // Initialize a list of the rejected transactions.
         let rejected = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
+        // Initialize a list for the finalize operations.
+        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
 
         let outcome = atomic_finalize!(self.finalize_store(), {
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
             let mut process = self.process.write();
+
+            // Initialize a list for the deployed stacks.
+            let mut stacks = Vec::new();
 
             // Finalize the transactions.
             for transaction in transactions.values() {
@@ -85,7 +85,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     Transaction::Deploy(_, _, deployment, _) => {
                         process.finalize_deployment(self.finalize_store(), deployment).map(|(stack, operations)| {
                             // Store the stack.
-                            stacks.lock().push(stack);
+                            stacks.push(stack);
                             // Return the finalize operations.
                             operations
                         })
@@ -121,10 +121,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             match finalize_mode {
                 // If this is a real run, commit the atomic batch.
                 FinalizeMode::RealRun => {
-                    // Commit the deployed stacks.
-                    for stack in stacks.lock().drain(..) {
-                        // Add the stack to the process.
-                        process.add_stack(stack);
+                    // Add all of the stacks to the process.
+                    if !stacks.is_empty() {
+                        stacks.into_iter().for_each(|stack| process.add_stack(stack))
                     }
                     Ok(())
                 }
