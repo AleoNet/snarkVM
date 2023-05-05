@@ -47,10 +47,16 @@ pub trait Map<
     fn start_atomic(&self);
 
     ///
-    /// Schedules the writes already collected in the current atomic batch to be executed even
-    /// if the atomic operation eventually gets aborted.
+    /// Saves the current list of pending operations, so that in case `atomic_rewind` is called,
+    /// they are not affected by it.
     ///
     fn atomic_checkpoint(&self);
+
+    ///
+    /// Removes all the recent pending operations unless `atomic_checkpoint` has been called,
+    /// in which case it removes them only back to that point.
+    ///
+    fn atomic_rewind(&self);
 
     ///
     /// Checks whether an atomic operation is currently in progress. This can be done to ensure

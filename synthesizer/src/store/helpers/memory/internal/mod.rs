@@ -134,12 +134,23 @@ impl<
     }
 
     ///
-    /// Schedules the writes already collected in the current atomic batch to be executed even
-    /// if the atomic operation eventually gets aborted.
+    /// Saves the current list of pending operations, so that in case `atomic_rewind` is called,
+    /// they are not affected by it.
     ///
     fn atomic_checkpoint(&self) {
         let idx = self.atomic_batch.lock().len();
         self.checkpoint.store(idx, Ordering::SeqCst);
+    }
+
+    ///
+    /// Removes all the recent pending operations unless `atomic_checkpoint` has been called,
+    /// in which case it removes them only back to that point.
+    ///
+    fn atomic_rewind(&self) {
+        // Load the last checkpoint.
+        let idx = self.checkpoint.load(Ordering::SeqCst);
+        // Drop all the pending operations beyond it.
+        self.atomic_batch.lock().truncate(idx);
     }
 
     ///
@@ -155,47 +166,10 @@ impl<
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
-        // Retrieve the atomic batch.
-        let mut operations = core::mem::take(&mut *self.atomic_batch.lock());
-
-        // Ignore all operations beyond the last checkpoint, and reset the checkpoint.
-        let idx = self.checkpoint.swap(0, Ordering::SeqCst);
-        operations.truncate(idx);
-
-        // Execute the operations up to the last checkpoint as if MemoryMap::finish
-        // was called at that point in time.
-        if !operations.is_empty() {
-            // Prepare the key and value for each queued operation.
-            //
-            // Note: This step is taken to ensure (with 100% certainty) that there will be
-            // no chance to fail partway through committing the queued operations.
-            //
-            // The expected behavior is that either all the operations will be committed
-            // or none of them will be.
-            let prepared_operations = if let Ok(ops) = operations
-                .into_iter()
-                .map(|(key, value)| bincode::serialize(&key).map(|k| (k, value)))
-                .collect::<bincode::Result<Vec<_>>>()
-            {
-                ops
-            } else {
-                return;
-            };
-
-            // Acquire a write lock on the map.
-            let mut locked_map = self.map.write();
-
-            // Perform all the queued operations.
-            for (key, value) in prepared_operations {
-                match value {
-                    Some(value) => locked_map.insert(key, value),
-                    None => locked_map.remove(&key),
-                };
-            }
-        }
-
         // Clear the atomic batch.
         *self.atomic_batch.lock() = Default::default();
+        // Clear any checkpoint.
+        self.checkpoint.store(0, Ordering::SeqCst);
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
     }
@@ -590,7 +564,7 @@ mod tests {
     }
 
     #[test]
-    fn test_abort_with_checkpoint() {
+    fn test_heckpoint_and_rewind() {
         // The number of items that will be queued to be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
@@ -620,7 +594,10 @@ mod tests {
         assert!(map.iter_confirmed().next().is_none());
 
         // Abort the current atomic write batch.
-        map.abort_atomic();
+        map.atomic_rewind();
+
+        // Finish the atomic batch.
+        map.finish_atomic().unwrap();
 
         // The map should contain NUM_ITEMS / 2.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS / 2);

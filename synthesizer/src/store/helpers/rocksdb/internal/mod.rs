@@ -67,8 +67,8 @@ pub struct RocksDB {
     pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
     /// Allows to check whether a database transaction is in progress.
     pub(super) batch_depth: Arc<AtomicUsize>,
-    /// Indicates the number of batched operations to perform even if the
-    /// atomic batch is aborted.
+    /// Indicates the number of batched operations to perform even if
+    /// `atomic_rewind` is called.
     pub(super) checkpoint: Arc<AtomicUsize>,
 }
 
@@ -139,7 +139,7 @@ impl Database for RocksDB {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        Ok(DataMap { database, context, atomic_batch: Default::default() })
+        Ok(DataMap { database, context, atomic_batch: Default::default(), checkpoint: Default::default() })
     }
 }
 
@@ -200,7 +200,7 @@ impl RocksDB {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        Ok(DataMap { database, context, atomic_batch: Default::default() })
+        Ok(DataMap { database, context, atomic_batch: Default::default(), checkpoint: Default::default() })
     }
 }
 

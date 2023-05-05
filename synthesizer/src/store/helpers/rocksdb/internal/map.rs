@@ -29,6 +29,9 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     /// convenience and query performance, while the actual low-level atomic batch
     /// is untyped and stored in the database.
     pub(super) atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
+    /// Indicates the number of batched operations of this type to perform even if
+    /// `atomic_rewind` is called.
+    pub(super) checkpoint: Arc<AtomicUsize>,
 }
 
 // This object is needed, as there currently is no way to "normally" iterate over
@@ -122,12 +125,46 @@ impl<
     }
 
     ///
-    /// Schedules the writes already collected in the current atomic batch to be executed even
-    /// if the atomic operation eventually gets aborted.
+    /// Saves the current list of pending operations, so that in case `atomic_rewind` is called,
+    /// they are not affected by it.
     ///
     fn atomic_checkpoint(&self) {
-        let idx = self.database.atomic_batch.lock().len();
-        self.database.checkpoint.store(idx, Ordering::SeqCst);
+        // The untyped checkpoint.
+        let untyped_idx = self.database.atomic_batch.lock().len();
+        self.database.checkpoint.store(untyped_idx, Ordering::SeqCst);
+
+        // The typed checkpoint.
+        let typed_idx = self.atomic_batch.lock().len();
+        self.checkpoint.store(typed_idx, Ordering::SeqCst);
+    }
+
+    ///
+    /// Removes all the recent pending operations unless `atomic_checkpoint` has been called,
+    /// in which case it removes them only back to that point.
+    ///
+    fn atomic_rewind(&self) {
+        // Retrieve the typed checkpoint index.
+        let typed_idx = self.checkpoint.load(Ordering::SeqCst);
+
+        // If it exists, truncate the typed write batch.
+        if typed_idx > 0 {
+            self.atomic_batch.lock().truncate(typed_idx);
+        }
+
+        // Retrieve the untyped checkpoint index.
+        let untyped_idx = self.database.checkpoint.load(Ordering::SeqCst);
+
+        // If it exists, recreate the untyped write batch.
+        if untyped_idx > 0 {
+            // Lock the current atomic batch.
+            let mut locked_batch = self.database.atomic_batch.lock();
+            // Collect a list of all the operations until the checkpoint.
+            let mut partial_batch = CheckpointWriteBatch::new(untyped_idx);
+            locked_batch.iterate(&mut partial_batch);
+
+            // Truncate the untyped batch.
+            *locked_batch = partial_batch.batch;
+        }
     }
 
     ///
@@ -143,42 +180,23 @@ impl<
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
-        // Clear the typed atomic batch.
+        // Clear the typed atomic batch and checkpoint.
         self.atomic_batch.lock().clear();
-
-        // Check if this is the final depth of the batch.
-        // Subtraction happens separately from the check, as we don't want to perform it too
-        // early in case this is the final depth and the batch still needs to be cleared first,
-        // or partially executed in case there was a checkpoint.
-        if self.database.batch_depth.load(Ordering::SeqCst) == 1 {
-            // Retrieve the atomic batch.
-            let batch = core::mem::take(&mut *self.database.atomic_batch.lock());
-
-            // Retrieve the checkpoint index.
-            let idx = self.database.checkpoint.swap(0, Ordering::SeqCst);
-
-            if !batch.is_empty() && idx > 0 {
-                // Truncate the batch to the last checkpoint.
-                let mut partial_batch = CheckpointWriteBatch::new(idx);
-                batch.iterate(&mut partial_batch);
-
-                // Execute the operations from the partial batch atomically.
-                if let Err(e) = self.database.rocksdb.write(partial_batch.batch) {
-                    tracing::error!("Failed to execute an atomic batch up to a checkpoint: {e}");
-                }
-            }
-        }
+        self.checkpoint.store(0, Ordering::SeqCst);
 
         // Subtract the batch depth.
         self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
+        // Reset the untyped checkpoint.
+        self.database.checkpoint.store(0, Ordering::SeqCst);
     }
 
     ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
-        // Clear the typed atomic batch.
+        // Clear the typed atomic batch and checkpoint.
         self.atomic_batch.lock().clear();
+        self.checkpoint.store(0, Ordering::SeqCst);
 
         // If the whole atomic operation is not unrolled yet, subtract the depth and return.
         // Subtraction happens separately from the check, as we don't want to perform it too
@@ -198,7 +216,7 @@ impl<
 
         // Subtract the batch depth (bringing it to 0).
         self.database.batch_depth.fetch_sub(1, Ordering::SeqCst);
-        // Reset any atomic checkpoints we might have registered.
+        // Reset the untyped checkpoint.
         self.database.checkpoint.store(0, Ordering::SeqCst);
 
         Ok(())
@@ -348,7 +366,6 @@ mod tests {
     use crate::store::helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap};
     use console::{account::Address, network::Testnet3, prelude::FromStr};
 
-    use anyhow::bail;
     use serial_test::serial;
     use tracing_test::traced_test;
 
@@ -366,7 +383,7 @@ mod tests {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        DataMap { database, context, atomic_batch: Default::default() }
+        DataMap { database, context, atomic_batch: Default::default(), checkpoint: Default::default() }
     }
 
     struct TestStorage {
@@ -717,7 +734,7 @@ mod tests {
     #[test]
     #[serial]
     #[traced_test]
-    fn test_abort_with_checkpoint() {
+    fn test_checkpoint_and_rewind() {
         // The number of items that will be queued to be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
@@ -745,9 +762,12 @@ mod tests {
         }
 
         // Abort the current atomic write batch.
-        map.abort_atomic();
+        map.atomic_rewind();
 
-        // The map should contain NUM_ITEMS / 2.
+        // Finish the atomic write batch.
+        map.finish_atomic().unwrap();
+
+        // The map should only contain NUM_ITEMS / 2.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS / 2);
 
         // Make sure the checkpoint index is cleared.
@@ -844,67 +864,7 @@ mod tests {
     #[test]
     #[serial]
     #[traced_test]
-    fn test_nested_atomic_write_batch_abort() {
-        // We'll want to execute the atomic write batch in its own function, in order to be able to
-        // inspect the aftermatch after an error, as opposed to returning from the whole test.
-        fn execute_atomic_write_batch(test_storage: &TestStorage) -> Result<()> {
-            // Start an atomic write batch.
-            crate::atomic_write_batch!(test_storage, {
-                // Ensure the batch depth is 4, as all of the underlying maps have called start_atomic.
-                assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
-                assert!(test_storage.is_atomic_in_progress_everywhere());
-
-                // Write an item into the first map.
-                test_storage.own_map.insert(0, 0.to_string()).unwrap();
-
-                // Start another atomic write batch.
-                crate::atomic_write_batch!(test_storage.extra_maps.own_map1, {
-                    // Ensure the batch depth is still 4, as only the first, outermost call triggers this increase.
-                    assert_eq!(4, test_storage.extra_maps.own_map1.database.batch_depth.load(Ordering::SeqCst));
-                    assert!(test_storage.is_atomic_in_progress_everywhere());
-
-                    // Write an item into the second map.
-                    test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
-
-                    // Perform an atomic checkpoint.
-                    test_storage.extra_maps.own_map1.atomic_checkpoint();
-
-                    // Write an item into the third map.
-                    test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
-
-                    // Start another atomic write batch.
-                    crate::atomic_write_batch!(test_storage.extra_maps.extra_maps.own_map, {
-                        // Ensure the batch depth is still 4.
-                        assert_eq!(
-                            4,
-                            test_storage.extra_maps.extra_maps.own_map.database.batch_depth.load(Ordering::SeqCst)
-                        );
-                        assert!(test_storage.is_atomic_in_progress_everywhere());
-
-                        // Write an item into the fourth map.
-                        test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
-
-                        // Abort the atomic batch via a simulated error.
-                        bail!("An error that will trigger a cascade abort.");
-                    });
-
-                    // Ensure the batch depth is still 4, as only the last, outermost call triggers the decrease.
-                    assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
-                    assert!(test_storage.is_atomic_in_progress_everywhere());
-
-                    Ok(())
-                });
-
-                // Ensure the batch depth is still 4.
-                assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
-                assert!(test_storage.is_atomic_in_progress_everywhere());
-
-                Ok(())
-            });
-
-            Ok(())
-        }
-
+    fn test_nested_atomic_write_batch_checkpoint_and_rewind() -> Result<()> {
         // Initialize a multi-layer test storage.
         let test_storage = TestStorage::open();
 
@@ -921,8 +881,61 @@ mod tests {
         assert_eq!(0, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
         assert!(!test_storage.is_atomic_in_progress_everywhere());
 
-        // Perform the atomic operations defined in the free function at the beginning of the test.
-        assert!(execute_atomic_write_batch(&test_storage).is_err());
+        // Start an atomic write batch.
+        crate::atomic_write_batch!(test_storage, {
+            // Ensure the batch depth is 4, as all of the underlying maps have called start_atomic.
+            assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+            assert!(test_storage.is_atomic_in_progress_everywhere());
+
+            // Write an item into the first map.
+            test_storage.own_map.insert(0, 0.to_string()).unwrap();
+
+            // Start another atomic write batch.
+            crate::atomic_write_batch!(test_storage.extra_maps.own_map1, {
+                // Ensure the batch depth is still 4, as only the first, outermost call triggers this increase.
+                assert_eq!(4, test_storage.extra_maps.own_map1.database.batch_depth.load(Ordering::SeqCst));
+                assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                // Write an item into the second map.
+                test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
+
+                // Perform an atomic checkpoint.
+                test_storage.extra_maps.own_map1.atomic_checkpoint();
+
+                // Write an item into the third map.
+                test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
+
+                // Start another atomic write batch.
+                crate::atomic_write_batch!(test_storage.extra_maps.extra_maps.own_map, {
+                    // Ensure the batch depth is still 4.
+                    assert_eq!(
+                        4,
+                        test_storage.extra_maps.extra_maps.own_map.database.batch_depth.load(Ordering::SeqCst)
+                    );
+                    assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                    // Write an item into the fourth map.
+                    test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
+
+                    // Perform a rewind.
+                    test_storage.extra_maps.extra_maps.own_map.atomic_rewind();
+
+                    Ok(())
+                });
+
+                // Ensure the batch depth is still 4, as only the last, outermost call triggers the decrease.
+                assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+                assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                Ok(())
+            });
+
+            // Ensure the batch depth is still 4.
+            assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+            assert!(test_storage.is_atomic_in_progress_everywhere());
+
+            Ok(())
+        });
 
         // Ensure the batch depth is 0 now.
         assert_eq!(0, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
@@ -935,5 +948,9 @@ mod tests {
         // Ensure that all the items after the checkpoint are not present.
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 0);
         assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 0);
+
+        // Ensure that the checkpoints are cleared.
+
+        Ok(())
     }
 }
