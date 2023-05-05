@@ -22,22 +22,14 @@ mod execute;
 mod finalize;
 mod verify;
 
+pub use finalize::FinalizeMode;
+
 use crate::{
     atomic_write_batch,
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
-    process::{
-        Authorization,
-        Deployment,
-        Execution,
-        Fee,
-        FinalizeMode,
-        Inclusion,
-        InclusionAssignment,
-        Process,
-        Query,
-    },
+    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
