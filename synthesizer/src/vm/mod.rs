@@ -23,6 +23,7 @@ mod finalize;
 mod verify;
 
 use crate::{
+    atomic_write_batch,
     block::{Block, Transaction, Transactions, Transition},
     cast_ref,
     process,
@@ -50,7 +51,7 @@ use console::{
 };
 
 use aleo_std::prelude::{finish, lap, timer};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
 
 #[derive(Clone)]

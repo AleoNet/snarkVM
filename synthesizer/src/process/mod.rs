@@ -88,7 +88,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Synthesize credits program keys");
 
         // Add the 'credits.aleo' stack to the process.
-        process.stacks.insert(*program.id(), stack);
+        process.add_stack(stack);
 
         finish!(timer);
         // Return the process.
@@ -99,12 +99,17 @@ impl<N: Network> Process<N> {
     /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Compute the program stack.
-        let stack = Stack::new(self, program)?;
-        // Add the stack to the process.
-        self.stacks.insert(*program.id(), stack);
-        // Return success.
+        // Compute the program stack, and add it to the process.
+        self.add_stack(Stack::new(self, program)?);
         Ok(())
+    }
+
+    /// Adds a new stack to the process.
+    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
+    #[inline]
+    pub fn add_stack(&mut self, stack: Stack<N>) {
+        // Add the stack to the process.
+        self.stacks.insert(*stack.program_id(), stack);
     }
 }
 
@@ -149,7 +154,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Load inclusion verifying key");
 
         // Add the stack to the process.
-        process.stacks.insert(*program.id(), stack);
+        process.add_stack(stack);
 
         finish!(timer, "Process::load");
         // Return the process.
@@ -186,7 +191,7 @@ impl<N: Network> Process<N> {
         }
 
         // Add the stack to the process.
-        process.stacks.insert(*program.id(), stack);
+        process.add_stack(stack);
         // Return the process.
         Ok(process)
     }

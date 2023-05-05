@@ -26,54 +26,85 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<(Vec<N::TransactionID>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::finalize");
 
-        // Acquire the write lock on the process.
-        let mut process = self.process.write();
-
+        // Initialize a list for the deployed stacks.
+        let stacks = Arc::new(Mutex::new(Vec::new()));
         // Initialize a list for the finalize operations.
-        let mut finalize_operations = Vec::new();
+        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
 
         // Initialize a list of the accepted transactions.
-        let mut accepted = Vec::with_capacity(transactions.len());
+        let accepted = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
         // Initialize a list of the rejected transactions.
-        let mut rejected = Vec::with_capacity(transactions.len());
+        let rejected = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
 
-        // Finalize the transactions.
-        for transaction in transactions.values() {
-            // Process the transaction in an isolated atomic batch.
-            // - If the transaction succeeds, the finalize operations are stored.
-            // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
-            let outcome = match transaction {
-                // The finalize operation here involves appending the 'stack',
-                // and adding the program to the finalize tree.
-                Transaction::Deploy(_, _, deployment, _) => {
-                    process.finalize_deployment::<_, FINALIZE_MODE>(self.finalize_store(), deployment)
-                }
-                // The finalize operation here involves calling 'update_key_value',
-                // and update the respective leaves of the finalize tree.
-                Transaction::Execute(_, execution, _) => {
-                    process.finalize_execution::<_, FINALIZE_MODE>(self.finalize_store(), execution)
-                }
-            };
-            lap!(timer, "Finalizing transaction {}", transaction.id());
+        atomic_write_batch!(self.finalize_store(), {
+            // Acquire the write lock on the process.
+            // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
+            // we choose to acquire the write lock for the entire duration of this atomic batch.
+            let mut process = self.process.write();
 
-            match outcome {
-                // If the transaction succeeded to finalize, continue to the next transaction.
-                Ok(operations) => {
-                    // Store the finalize operations.
-                    finalize_operations.extend(operations);
-                    // Store the transaction ID in the accepted list.
-                    accepted.push(transaction.id());
-                }
-                // If the transaction failed to finalize, abort and continue to the next transaction.
-                Err(error) => {
-                    warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
-                    // Store the transaction ID in the rejected list.
-                    rejected.push(transaction.id());
-                    // Abort the atomic batch and continue to the next transaction.
-                    continue;
+            // Finalize the transactions.
+            for transaction in transactions.values() {
+                // Process the transaction in an isolated atomic batch.
+                // - If the transaction succeeds, the finalize operations are stored.
+                // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
+                let outcome = match transaction {
+                    // The finalize operation here involves appending the 'stack',
+                    // and adding the program to the finalize tree.
+                    Transaction::Deploy(_, _, deployment, _) => {
+                        process.finalize_deployment(self.finalize_store(), deployment).map(|(stack, operations)| {
+                            // Store the stack.
+                            stacks.lock().push(stack);
+                            // Return the finalize operations.
+                            operations
+                        })
+                    }
+                    // The finalize operation here involves calling 'update_key_value',
+                    // and update the respective leaves of the finalize tree.
+                    Transaction::Execute(_, execution, _) => {
+                        process.finalize_execution(self.finalize_store(), execution)
+                    }
+                };
+                lap!(timer, "Finalizing transaction {}", transaction.id());
+
+                match outcome {
+                    // If the transaction succeeded to finalize, continue to the next transaction.
+                    Ok(operations) => {
+                        // Store the finalize operations.
+                        finalize_operations.lock().extend(operations);
+                        // Store the transaction ID in the accepted list.
+                        accepted.lock().push(transaction.id());
+                    }
+                    // If the transaction failed to finalize, abort and continue to the next transaction.
+                    Err(error) => {
+                        warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
+                        // Store the transaction ID in the rejected list.
+                        rejected.lock().push(transaction.id());
+                        // Abort the atomic batch and continue to the next transaction.
+                        continue;
+                    }
                 }
             }
-        }
+
+            // Handle the atomic batch, based on the finalize mode.
+            match FinalizeMode::from_u8(FINALIZE_MODE)? {
+                // If this is a real run, commit the atomic batch.
+                FinalizeMode::RealRun => {
+                    // Commit the deployed stacks.
+                    for stack in stacks.lock().drain(..) {
+                        // Add the stack to the process.
+                        process.add_stack(stack);
+                    }
+                    Ok(())
+                }
+                // If this is a dry run, abort the atomic batch.
+                FinalizeMode::DryRun => bail!("Dry run of finalize"),
+            }
+        });
+
+        // Retrieve the accepted transactions, rejected transactions, and finalize operations.
+        let accepted = accepted.lock().clone();
+        let rejected = rejected.lock().clone();
+        let finalize_operations = finalize_operations.lock().clone();
 
         // Ensure all transactions were processed.
         if accepted.len() + rejected.len() != transactions.len() {
@@ -83,6 +114,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         finish!(timer);
+
         Ok((accepted, rejected, finalize_operations))
     }
 }

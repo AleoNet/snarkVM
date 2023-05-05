@@ -807,7 +807,9 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -842,7 +844,7 @@ finalize compute:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
+    process.finalize_execution(&store, &execution).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = store
@@ -908,7 +910,9 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -943,7 +947,7 @@ finalize compute:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
+    process.finalize_execution(&store, &execution).unwrap();
 
     // Check that the account balance is now 0.
     let candidate = store
@@ -1023,7 +1027,9 @@ finalize mint_public:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
 
     // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
     //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
@@ -1062,7 +1068,7 @@ finalize mint_public:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
+    process.finalize_execution(&store, &execution).unwrap();
 
     // Check the account balance.
     let candidate = store
@@ -1140,7 +1146,9 @@ finalize mint_public:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
 
     // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
     //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
@@ -1202,7 +1210,7 @@ function mint:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
+    process.finalize_execution(&store, &execution).unwrap();
 
     // Check the account balance.
     let candidate = store
@@ -1270,7 +1278,9 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1305,7 +1315,7 @@ finalize compute:
     process.verify_execution::<true>(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution::<_, { FinalizeMode::RealRun.to_u8() }>(&store, &execution).unwrap();
+    process.finalize_execution(&store, &execution).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = store

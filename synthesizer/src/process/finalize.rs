@@ -48,12 +48,13 @@ impl FinalizeMode {
 impl<N: Network> Process<N> {
     /// Finalizes the deployment.
     /// This method assumes the given deployment **is valid**.
+    /// This method should **only** be called by `VM::finalize()`.
     #[inline]
-    pub fn finalize_deployment<P: FinalizeStorage<N>, const FINALIZE_MODE: u8>(
-        &mut self,
+    pub(crate) fn finalize_deployment<P: FinalizeStorage<N>>(
+        &self,
         store: &FinalizeStore<N, P>,
         deployment: &Deployment<N>,
-    ) -> Result<Vec<FinalizeOperation<N>>> {
+    ) -> Result<(Stack<N>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("Process::finalize_deployment");
 
         // Compute the program stack.
@@ -79,33 +80,21 @@ impl<N: Network> Process<N> {
                 // Initialize the mapping.
                 finalize_operations.lock().push(store.initialize_mapping(program_id, mapping.name())?);
             }
-
-            // Handle the atomic batch, based on the finalize mode.
-            match FinalizeMode::from_u8(FINALIZE_MODE)? {
-                // If this is a real run, commit the atomic batch.
-                FinalizeMode::RealRun => Ok(()),
-                // If this is a dry run, abort the atomic batch.
-                FinalizeMode::DryRun => bail!("Dry run of finalize deployment for '{program_id}'"),
-            }
+            Ok(())
         });
         lap!(timer, "Initialize the program mappings");
 
-        // If this is a real run, update the stack.
-        if FINALIZE_MODE == FinalizeMode::RealRun.to_u8() {
-            // Add the stack to the process.
-            self.stacks.insert(*deployment.program_id(), stack);
-        }
-
         finish!(timer);
 
-        // Return the finalize operations.
-        Ok(Arc::try_unwrap(finalize_operations).unwrap().into_inner())
+        // Return the stack and finalize operations.
+        Ok((stack, Arc::try_unwrap(finalize_operations).unwrap().into_inner()))
     }
 
     /// Finalizes the execution.
     /// This method assumes the given execution **is valid**.
+    /// This method should **only** be called by `VM::finalize()`.
     #[inline]
-    pub fn finalize_execution<P: FinalizeStorage<N>, const FINALIZE_MODE: u8>(
+    pub(crate) fn finalize_execution<P: FinalizeStorage<N>>(
         &self,
         store: &FinalizeStore<N, P>,
         execution: &Execution<N>,
@@ -182,14 +171,7 @@ impl<N: Network> Process<N> {
                     lap!(timer, "Finalize transition for {function_name}");
                 }
             }
-
-            // Handle the atomic batch, based on the finalize mode.
-            match FinalizeMode::from_u8(FINALIZE_MODE)? {
-                // If this is a real run, commit the atomic batch.
-                FinalizeMode::RealRun => Ok(()),
-                // If this is a dry run, abort the atomic batch.
-                FinalizeMode::DryRun => bail!("Dry run of finalize execution"),
-            }
+            Ok(())
         });
         finish!(timer);
 
@@ -212,7 +194,7 @@ mod tests {
         // Fetch the program from the deployment.
         let program = crate::vm::test_helpers::sample_program();
         // Initialize a new process.
-        let mut process = Process::load().unwrap();
+        let process = Process::load().unwrap();
         // Deploy the program.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
 
@@ -222,7 +204,7 @@ mod tests {
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));
         // Finalize the deployment.
-        process.finalize_deployment::<_, { FinalizeMode::RealRun.to_u8() }>(vm.finalize_store(), &deployment).unwrap();
+        process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
         // Ensure the program exists.
         assert!(process.contains_program(program.id()));
     }

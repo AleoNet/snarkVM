@@ -81,7 +81,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Insert the verifying keys");
 
         // Add the stack to the process.
-        self.stacks.insert(*deployment.program_id(), stack);
+        self.add_stack(stack);
 
         finish!(timer);
 
