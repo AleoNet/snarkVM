@@ -61,15 +61,15 @@ pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: 
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workload.
     let mut workload = Workload::new("finalize_one_operation".to_string(), vec![]).unwrap();
-    for num_commands in NUM_COMMANDS {
-        workload.add(Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-    }
+    // for num_commands in NUM_COMMANDS {
+    //     workload.add(Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    //     workload.add(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    //     workload.add(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    // }
     workload.add(Box::new(MintPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    workload.add(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    workload.add(Box::new(TransferPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    // workload.add(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    // workload.add(Box::new(TransferPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    // workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
 
     #[cfg(not(any(feature = "rocks")))]
     bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
@@ -83,13 +83,13 @@ fn bench_multiple_operations(c: &mut Criterion) {
     let max_commands = *NUM_COMMANDS.last().unwrap();
     for num_executions in NUM_EXECUTIONS {
         workload.add(Box::new(StaticGet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload
-            .add(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(MintPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(TransferPrivateToPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        // workload
+        //     .add(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
+        // workload.add(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
+        // workload.add(Box::new(MintPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        // workload.add(Box::new(TransferPrivateToPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        // workload.add(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        // workload.add(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
     }
 
     #[cfg(not(any(feature = "rocks")))]

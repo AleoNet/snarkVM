@@ -32,7 +32,7 @@ use console::{
     prelude::Network,
     program::{Identifier, Literal, Value},
 };
-use snarkvm_synthesizer::{ConsensusStorage, Program, Transaction, VM};
+use snarkvm_synthesizer::{Block, ConsensusStorage, Program, Transaction, VM};
 
 use console::{
     account::PrivateKey,
@@ -97,18 +97,26 @@ impl Workload {
     ) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
         // Check that the seed to the RNG is stored in the object store.
         let mut all_data_is_stored = self.object_store.contains("seed");
+        println!("seed is stored: {}", all_data_is_stored);
         // Check that the relevant blocks are stored in the object store.
+        println!("object_store contains num_blocks: {}", self.object_store.contains("num_blocks"));
         all_data_is_stored &= match self.object_store.get("num_blocks") {
-            Err(_) => false,
+            Err(err) => {
+                println!("num_blocks is not stored: {:?}", err);
+                false
+            },
             Ok(num_blocks) => {
                 let num_blocks: u64 = num_blocks;
+                println!("num_blocks is stored: {}", num_blocks);
                 (0..num_blocks).all(|i| self.object_store.contains(format!("block_{}", i)))
             }
         };
+        println!("blocks are stored: {}", all_data_is_stored);
         // Check that the benchmark transactions are stored in the object store.
         for benchmark in &self.benchmarks {
             all_data_is_stored &= self.object_store.contains(benchmark.name())
         }
+        println!("benchmarks are stored: {}", all_data_is_stored);
 
         // If all of the required items are not stored, clear the object store and initialize them.
         if !all_data_is_stored {
@@ -131,6 +139,36 @@ impl Workload {
                     aggregated_setup_operations[i].extend(operations);
                 }
             }
+            println!("\n\naggregated_setup_operations:");
+            for (i, operations) in aggregated_setup_operations.iter().enumerate() {
+                println!("  batch {}: {} operations", i, operations.len());
+                for operation in operations {
+                    match operation {
+                        Operation::Deploy(program) => {
+                            println!("    deploy program: {}", program.id())
+                        }
+                        Operation::Execute(program_name, function_name, inputs) => {
+                            println!("    execute program: {}, function: {}", program_name, function_name)
+                        }
+                    }
+                }
+            }
+
+            println!("\n\nbenchmark_operations:");
+            for (name, operations) in benchmark_operations.iter() {
+                println!("  benchmark: {}", name);
+                for operation in operations {
+                    match operation {
+                        Operation::Deploy(program) => {
+                            println!("    deploy program: {}", (**program).id())
+                        }
+                        Operation::Execute(program_name, function_name, inputs) => {
+                            println!("    execute program: {}, function: {}", program_name, function_name)
+                        }
+                    }
+                }
+            }
+
             // Clear the object store.
             self.object_store.clear().unwrap();
             // Initialize the object store.
@@ -146,12 +184,23 @@ impl Workload {
             // Initialize the VM.
             let (vm, _) = initialize_vm::<C, _>(&private_key, &mut rng);
 
+            println!("vm height: {:?}", vm.block_store().heights().collect_vec());
+
             // Load the blocks.
             let num_blocks: u64 = self.object_store.get("num_blocks").unwrap();
-            let blocks = (0..num_blocks).map(|i| self.object_store.get(&format!("block_{}", i)).unwrap()).collect_vec();
+            let blocks: Vec<Block<Testnet3>> = (0..num_blocks).map(|i| self.object_store.get(&format!("block_{}", i)).unwrap()).collect_vec();
+
+            println!("Collected {} blocks", blocks.len());
+
+            // Print the heights of the blocks.
+            for (i, block) in blocks.iter().enumerate() {
+                println!("block {} height: {:?}", i, block.height());
+            }
 
             // Add the blocks to the VM.
-            for block in &blocks {
+            for (i, block) in blocks.iter().enumerate() {
+                println!("Adding block {} of {}", i, blocks.len());
+                println!("  block height: {:?}", block.height());
                 vm.add_next_block(block).unwrap();
             }
 

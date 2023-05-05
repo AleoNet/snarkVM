@@ -95,6 +95,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        println!("Adding block: {:#?}", block.height());
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.

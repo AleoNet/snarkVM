@@ -50,12 +50,13 @@ impl ObjectStore {
     }
 
     pub fn get<O: FromBytes, P: AsRef<Path>>(&mut self, path: P) -> Result<O> {
+        println!("Getting object from object store at path: {:?}", path.as_ref());
         let full_path = self.root.join(path);
         let bytes = std::fs::read(full_path)?;
         O::from_bytes_le(&bytes)
     }
 
-    pub fn insert<O: ToBytes, P: AsRef<Path>>(&mut self, path: P, object: &O) -> Result<()> {
+    pub fn insert<O: ToBytes + FromBytes, P: AsRef<Path>>(&mut self, path: P, object: &O) -> Result<()> {
         let full_path = self.root.join(path);
         if !full_path.parent().expect("parent directory exists").exists() {
             std::fs::create_dir_all(full_path.parent().expect("parent directory exists"))?;
@@ -71,10 +72,7 @@ impl ObjectStore {
     }
 
     pub fn clear(&mut self) -> Result<()> {
-        for key in self.keys() {
-            std::fs::remove_file(key)?;
-        }
-        self.keys.clear();
+        std::fs::remove_dir_all(&self.root)?;
         Ok(())
     }
 }
@@ -103,6 +101,8 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     // Initialize the VM.
     let (vm, record) = initialize_vm::<C, _>(&private_key, &mut rng);
 
+    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
+
     println!("Initialized the VM.");
 
     // Calculate the number of fee records needed for the workload.
@@ -118,10 +118,11 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     };
 
     // Initialize a counter for each block added to the VM.
-    let mut block_counter = 0;
+    let mut block_counter = 0u64;
 
     println!("Splitting the initial fee record into {} fee records.", num_fee_records);
 
+    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
     // Construct fee records for the workload, storing the relevant data in the object store.
     let balance = get_balance(&record);
     let mut fee_records = vec![(record, balance)];
@@ -145,12 +146,13 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
         // Create a block for the fee transactions and add them to the VM.
         let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
         object_store.insert(format!("block_{}", block_counter), &block).unwrap();
+        println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
         vm.add_next_block(&block).unwrap();
+        println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
         block_counter += 1;
     }
 
-    // Store the number of blocks in the object store.
-    object_store.insert("num_blocks", &block_counter).unwrap();
+
 
     println!("Constructed fee records for the workload.");
 
@@ -202,6 +204,9 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
             block_counter += 1;
         }
     }
+
+    // Store the number of blocks in the object store.
+    object_store.insert("num_blocks", &block_counter).unwrap();
 
     println!("Constructed and added blocks for the setup operations.");
 

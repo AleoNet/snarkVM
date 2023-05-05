@@ -83,8 +83,12 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     // Initialize the VM.
     let vm = VM::from(ConsensusStore::open_testing(temp_dir).unwrap()).unwrap();
 
+    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
+
     // Initialize the genesis block.
     let genesis = Block::genesis(&vm, private_key, rng).unwrap();
+
+    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
 
     // Fetch the unspent records.
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
@@ -93,8 +97,12 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     let view_key = ViewKey::try_from(private_key).unwrap();
     let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
 
+    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
+
     // Update the VM.
     vm.add_next_block(&genesis).unwrap();
+
+    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
 
     (vm, record)
 }
@@ -181,15 +189,11 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
         .unwrap();
     let (response, execution, _) = vm.execute(authorization, None, rng).unwrap();
 
-    let mut transactions = vec![Transaction::from_execution(execution, None).unwrap()];
-
-    // Create and add a block for the fee transaction.
-    let block = construct_next_block(vm, private_key, &transactions, rng).unwrap();
-    vm.add_next_block(&block).unwrap();
+    let transaction = Transaction::from_execution(execution, None).unwrap();
 
     match (response.outputs()[0].clone(), response.outputs()[1].clone()) {
         (Value::Record(fee_record), Value::Record(remaining_record)) => {
-            (fee_record, remaining_record, transactions.pop().unwrap())
+            (fee_record, remaining_record, transaction)
         }
         _ => unreachable!("`split` always returns a record"),
     }
