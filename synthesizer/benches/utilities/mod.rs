@@ -169,6 +169,7 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
     amount: u64,
     rng: &mut TestRng,
 ) -> SplitOutput {
+
     let authorization = vm
         .authorize(
             private_key,

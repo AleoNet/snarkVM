@@ -4,6 +4,7 @@
 **/.DS_Store
 **storage_db
 **/*.prover.*
+**/*.resources/
 **/*.verifier.*
 *.usrs
 !**/powers-of-beta-15.usrs*

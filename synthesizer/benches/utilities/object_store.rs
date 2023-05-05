@@ -57,6 +57,9 @@ impl ObjectStore {
 
     pub fn insert<O: ToBytes, P: AsRef<Path>>(&mut self, path: P, object: &O) -> Result<()> {
         let full_path = self.root.join(path);
+        if !full_path.parent().expect("parent directory exists").exists() {
+            std::fs::create_dir_all(full_path.parent().expect("parent directory exists"))?;
+        }
         let bytes = object.to_bytes_le()?;
         std::fs::write(&full_path, bytes)?;
         self.keys.push(full_path);
@@ -82,10 +85,15 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     setup_operations: Vec<Vec<Operation<Testnet3>>>,
     benchmark_operations: Vec<(String, Vec<Operation<Testnet3>>)>,
 ) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
+
+    println!("Initializing object store...");
+
     // Select a random seed for the RNG.
     // Store the seed in the object store.
     let seed: u64 = rand::thread_rng().gen();
     object_store.insert("seed", &seed).unwrap();
+
+    println!("Stored the seed in the object store.");
 
     // Initialize the RNG.
     let mut rng = TestRng::fixed(seed);
@@ -96,45 +104,62 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     // Initialize the VM.
     let (vm, record) = initialize_vm::<C, _>(&private_key, &mut rng);
 
+    println!("Initialized the VM.");
+
     // Calculate the number of fee records needed for the workload.
     let num_fee_records = setup_operations.iter().flatten().count() + benchmark_operations.len();
     let num_levels_of_splits = num_fee_records.next_power_of_two().ilog2();
 
     // Helper function to get the balance of a `credits.aleo` record.
     let get_balance = |record: &Record<Testnet3, Plaintext<Testnet3>>| -> u64 {
-        match record.data().get(&Identifier::from_str("credits.aleo").unwrap()).unwrap() {
+        match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
             Entry::Private(Plaintext::Literal(Literal::U64(amount), ..)) => **amount,
             _ => unreachable!("Invalid entry type for credits.aleo."),
         }
     };
 
     // Initialize a counter for each block added to the VM.
-    let mut counter = 0;
+    let mut block_counter = 0;
+
+    println!("Splitting the initial fee record into {} fee records.", num_fee_records);
 
     // Construct fee records for the workload, storing the relevant data in the object store.
     let balance = get_balance(&record);
     let mut fee_records = vec![(record, balance)];
+    let mut fee_counter = 1;
     for _ in 0..num_levels_of_splits {
         let mut transactions = Vec::with_capacity(fee_records.len());
         for (fee_record, balance) in fee_records.drain(..).collect_vec() {
-            let (first, second, fee_transaction) = split(&vm, &private_key, fee_record, balance / 2, &mut rng);
-            let balance = get_balance(&first);
-            fee_records.push((first, balance));
-            let balance = get_balance(&second);
-            fee_records.push((second, balance));
-            transactions.push(fee_transaction);
+            if fee_counter < num_fee_records {
+                println!("Splitting out the {}-th record of size {}.", fee_counter, balance / 2);
+                let (first, second, fee_transaction) = split(&vm, &private_key, fee_record, balance / 2, &mut rng);
+                let balance = get_balance(&first);
+                fee_records.push((first, balance));
+                let balance = get_balance(&second);
+                fee_records.push((second, balance));
+                transactions.push(fee_transaction);
+                fee_counter += 1;
+            } else {
+                fee_records.push((fee_record, balance));
+            }
         }
         // Create a block for the fee transactions and add them to the VM.
         let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
-        object_store.insert(format!("block_{}", counter), &block).unwrap();
+        object_store.insert(format!("block_{}", block_counter), &block).unwrap();
         vm.add_next_block(&block, None).unwrap();
-        counter += 1;
+        block_counter += 1;
     }
+
+    // Store the number of blocks in the object store.
+    object_store.insert("num_blocks", &block_counter).unwrap();
+
+    println!("Constructed fee records for the workload.");
 
     // A helper to construct transactions from an operation.
     let mut construct_transaction = |operation: &Operation<Testnet3>, rng: &mut TestRng| {
         match &operation {
             Operation::Deploy(program) => {
+                println!("Deploying program: {}", (**program).id());
                 // Construct a transaction for the deployment.
                 Transaction::deploy(
                     &vm,
@@ -146,6 +171,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
                 )
             }
             Operation::Execute(program_id, function_name, inputs) => {
+                println!("Executing function: {}.{}", program_id, function_name);
                 // Construct a transaction for the execution.
                 Transaction::execute(
                     &vm,
@@ -172,11 +198,13 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
         // Create and add a block for the transactions, if any
         if !transactions.is_empty() {
             let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
-            object_store.insert(format!("block_{}", counter), &block).unwrap();
+            object_store.insert(format!("block_{}", block_counter), &block).unwrap();
             vm.add_next_block(&block, None).unwrap();
-            counter += 1;
+            block_counter += 1;
         }
     }
+
+    println!("Constructed and added blocks for the setup operations.");
 
     // For each set of benchmark operations, construct the corresponding transactions.
     let mut benchmark_transactions = Vec::with_capacity(benchmark_operations.len());
@@ -190,6 +218,8 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
         object_store.insert(name.clone(), &object).unwrap();
         benchmark_transactions.push((name.clone(), object.0));
     }
+
+    println!("Constructed transactions for the benchmark operations.");
 
     (vm, private_key, benchmark_transactions, rng)
 }

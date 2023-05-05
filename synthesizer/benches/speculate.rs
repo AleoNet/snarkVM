@@ -67,15 +67,15 @@ pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header:
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workload.
     let mut workload = Workload::new("speculate_one_operation".to_string(), vec![]).unwrap();
-    for num_commands in NUM_COMMANDS {
-        workload.add(Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-    }
+    // for num_commands in NUM_COMMANDS {
+    //     workload.add(Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    //     workload.add(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    //     workload.add(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    // }
     workload.add(Box::new(MintPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    workload.add(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    workload.add(Box::new(TransferPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    // workload.add(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    // workload.add(Box::new(TransferPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    // workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
 
     #[cfg(not(any(feature = "rocks")))]
     bench_speculate::<snarkvm_synthesizer::helpers::memory::ConsensusMemory<Testnet3>>(c, "memory", workload);
