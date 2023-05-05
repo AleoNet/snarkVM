@@ -27,36 +27,25 @@ use console::{
     account::{PrivateKey, ViewKey},
     network::Testnet3,
     prelude::Network,
-    program::{Field, Identifier, Literal, Plaintext, ProgramID, Record, Value, Zero, U64},
+    program::{Field, Literal, Plaintext, Record, Value, Zero, U64},
 };
 use snarkvm_synthesizer::{
     Block,
-    Certificate,
     ConsensusStorage,
     ConsensusStore,
-    Deployment,
-    Fee,
     Header,
-    Input,
     Metadata,
-    Output,
-    Program,
-    Proof,
     Transaction,
     Transactions,
     Transition,
-    VerifyingKey,
     VM,
 };
-use snarkvm_utilities::{TestRng, Uniform};
+use snarkvm_utilities::TestRng;
 
 use anyhow::Result;
 use indexmap::IndexMap;
-use itertools::Itertools;
-use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
-use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
-use std::{borrow::Borrow, iter, path::PathBuf, str::FromStr};
+use std::{borrow::Borrow, path::PathBuf};
 
 /// A helper function to create a temporary directory.
 pub fn temp_dir() -> PathBuf {
@@ -168,63 +157,4 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
         (Value::Record(fee_record), Value::Record(remaining_record)) => (fee_record, remaining_record, transaction),
         _ => unreachable!("`split` always returns a record"),
     }
-}
-
-#[allow(unused)]
-/// Samples a proof for a fee transition.
-pub fn sample_proof() -> Proof<Testnet3> {
-    static INSTANCE: OnceCell<Proof<Testnet3>> = OnceCell::new();
-    INSTANCE
-        .get_or_init(|| {
-            let rng = &mut TestRng::default();
-            let private_key = PrivateKey::new(rng).unwrap();
-            let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
-            // Sample a fee.
-            let (_, fee, _) = vm.execute_fee(&private_key, record, 1u64, None, rng).unwrap();
-            // Return the proof.
-            fee.transition().proof().clone()
-        })
-        .clone()
-}
-
-/// Constructs a deployment transaction without the overhead of synthesis.
-#[cfg(feature = "testing")]
-pub fn mock_deployment_transaction(
-    private_key: &PrivateKey<Testnet3>,
-    program: Program<Testnet3>,
-    rng: &mut TestRng,
-) -> Transaction<Testnet3> {
-    // Construct a mock fee for the deployment.
-    let fee = mock_fee(rng);
-    // Construct mock verifying keys.
-    let verifying_keys = program
-        .functions()
-        .iter()
-        .map(|(identifier, _)| (*identifier, (VerifyingKey::mock(), Certificate::mock(identifier).unwrap())))
-        .collect_vec();
-    // Construct an unchecked deployment.
-    let deployment = Deployment::new_unchecked(Testnet3::EDITION, program, verifying_keys);
-    // Construct a transaction for the deployment.
-    Transaction::from_deployment_and_fee(private_key, deployment, fee, rng).unwrap()
-}
-
-#[allow(unused)]
-/// Constructs a mock fee without the overhead of execution.
-pub fn mock_fee(rng: &mut TestRng) -> Fee<Testnet3> {
-    let proof = sample_proof();
-    Fee::from(
-        Transition::new(
-            ProgramID::from_str("credits.aleo").unwrap(),
-            Identifier::from_str("fee").unwrap(),
-            iter::repeat_with(|| Input::Private(Field::rand(rng), None)).take(Testnet3::MAX_INPUTS).collect_vec(),
-            iter::repeat_with(|| Output::Private(Field::rand(rng), None)).take(Testnet3::MAX_OUTPUTS).collect_vec(),
-            None,
-            proof,
-            console::types::Group::zero(),
-            Field::zero(),
-        )
-        .unwrap(),
-        <Testnet3 as Network>::StateRoot::default(),
-        None,
-    )
 }

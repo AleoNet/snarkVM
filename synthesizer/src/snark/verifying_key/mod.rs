@@ -35,12 +35,6 @@ impl<N: Network> VerifyingKey<N> {
         Self { verifying_key }
     }
 
-    #[cfg(feature = "testing")]
-    /// Returns a mock verifying key.
-    pub fn mock() -> Self {
-        Self::new(N::inclusion_verifying_key().clone())
-    }
-
     /// Returns `true` if the proof is valid for the given public inputs.
     pub fn verify(&self, function_name: &Identifier<N>, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
