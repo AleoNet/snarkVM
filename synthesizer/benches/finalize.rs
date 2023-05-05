@@ -53,7 +53,7 @@ pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: 
 
         // Benchmark speculation.
         c.bench_function(&format!("{header}/{name}/finalize"), |b| {
-            b.iter_batched(|| {}, |speculate| vm.finalize(&transactions, None).unwrap(), BatchSize::SmallInput)
+            b.iter_batched(|| {}, |speculate| vm.finalize::<0>(&transactions).unwrap(), BatchSize::SmallInput)
         });
     }
 }

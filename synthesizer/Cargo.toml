@@ -46,17 +46,13 @@ edition = "2021"
 #harness = false
 #required-features = [ "testing" ]
 ##
-#[[bench]]
-#name = "finalize"
-#path = "benches/finalize.rs"
-#harness = false
-#required-features = [ "testing"]
 
 [[bench]]
-name = "speculate"
-path = "benches/speculate.rs"
+name = "finalize"
+path = "benches/finalize.rs"
 harness = false
-required-features = [ "testing" ]
+required-features = [ "testing"]
+
 
 #[[bench]]
 #name = "transaction"

@@ -57,7 +57,7 @@ pub fn bench_add_next_block<C: ConsensusStorage<Testnet3>>(
             b.iter_batched(
                 || construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap(),
                 |block| {
-                    vm.add_next_block(&block, None).unwrap();
+                    vm.add_next_block(&block).unwrap();
                 },
                 BatchSize::PerIteration,
             )

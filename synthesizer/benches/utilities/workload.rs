@@ -152,7 +152,7 @@ impl Workload {
 
             // Add the blocks to the VM.
             for block in &blocks {
-                vm.add_next_block(block, None).unwrap();
+                vm.add_next_block(block).unwrap();
             }
 
             // Load the benchmark transactions.

@@ -94,7 +94,7 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
 
     // Update the VM.
-    vm.add_next_block(&genesis, None).unwrap();
+    vm.add_next_block(&genesis).unwrap();
 
     (vm, record)
 }
@@ -153,13 +153,14 @@ pub fn setup<C: ConsensusStorage<Testnet3>>(
         // Create and add a block for the transactions, if any
         if !transactions.is_empty() {
             let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
-            vm.add_next_block(&block, None).unwrap();
+            vm.add_next_block(&block).unwrap();
         }
     }
 }
 
 #[allow(unused)]
-type SplitOutput = (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>);
+type SplitOutput =
+    (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>);
 #[allow(unused)]
 /// A helper function to invoke the `split` function an a credits.aleo record.
 pub fn split<C: ConsensusStorage<Testnet3>>(
@@ -169,7 +170,6 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
     amount: u64,
     rng: &mut TestRng,
 ) -> SplitOutput {
-
     let authorization = vm
         .authorize(
             private_key,
@@ -185,7 +185,7 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
 
     // Create and add a block for the fee transaction.
     let block = construct_next_block(vm, private_key, &transactions, rng).unwrap();
-    vm.add_next_block(&block, None).unwrap();
+    vm.add_next_block(&block).unwrap();
 
     match (response.outputs()[0].clone(), response.outputs()[1].clone()) {
         (Value::Record(fee_record), Value::Record(remaining_record)) => {

@@ -85,7 +85,6 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     setup_operations: Vec<Vec<Operation<Testnet3>>>,
     benchmark_operations: Vec<(String, Vec<Operation<Testnet3>>)>,
 ) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
-
     println!("Initializing object store...");
 
     // Select a random seed for the RNG.
@@ -146,7 +145,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
         // Create a block for the fee transactions and add them to the VM.
         let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
         object_store.insert(format!("block_{}", block_counter), &block).unwrap();
-        vm.add_next_block(&block, None).unwrap();
+        vm.add_next_block(&block).unwrap();
         block_counter += 1;
     }
 
@@ -199,7 +198,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
         if !transactions.is_empty() {
             let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
             object_store.insert(format!("block_{}", block_counter), &block).unwrap();
-            vm.add_next_block(&block, None).unwrap();
+            vm.add_next_block(&block).unwrap();
             block_counter += 1;
         }
     }
