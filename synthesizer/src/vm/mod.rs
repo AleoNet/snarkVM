@@ -40,6 +40,7 @@ use crate::{
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
+    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,
@@ -106,7 +107,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize::<{ FinalizeMode::RealRun.to_u8() }>(block.transactions()) {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
+                Ok(())
+            }
             Err(error) => {
                 // Rollback the block.
                 self.block_store().remove_last_n(1)?;

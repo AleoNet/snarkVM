@@ -17,10 +17,13 @@
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Finalizes the given transactions into the VM.
-    /// This method assumes the given transactions **are valid**.
+    /// Finalizes the given transactions into the VM,
+    /// returning the list of accepted transaction IDs, rejected transaction IDs, and finalize operations.
     #[inline]
-    pub fn finalize<const FINALIZE_MODE: u8>(&self, transactions: &Transactions<N>) -> Result<()> {
+    pub fn finalize<const FINALIZE_MODE: u8>(
+        &self,
+        transactions: &Transactions<N>,
+    ) -> Result<(Vec<N::TransactionID>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::finalize");
 
         // Acquire the write lock on the process.
@@ -64,8 +67,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // If the transaction failed to finalize, abort and continue to the next transaction.
                 Err(error) => {
                     warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
-                    // Store the transaction ID and error in the rejected list.
-                    rejected.push((transaction.id(), error));
+                    // Store the transaction ID in the rejected list.
+                    rejected.push(transaction.id());
                     // Abort the atomic batch and continue to the next transaction.
                     continue;
                 }
@@ -80,7 +83,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         finish!(timer);
-        Ok(())
+        Ok((accepted, rejected, finalize_operations))
     }
 }
 
