@@ -17,7 +17,7 @@
 use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
 
 use crate::utilities::{construct_next_block, initialize_vm, split, BenchmarkBatch, BenchmarkTransactions, Operation};
-use anyhow::{bail, Result};
+use anyhow::Result;
 use console::{
     account::PrivateKey,
     network::Testnet3,
@@ -33,7 +33,6 @@ use std::{
 
 pub struct ObjectStore {
     root: PathBuf,
-    keys: Vec<PathBuf>,
 }
 
 impl ObjectStore {
@@ -42,15 +41,10 @@ impl ObjectStore {
         if !root.try_exists()? {
             std::fs::create_dir_all(&root)?;
         }
-        Ok(Self { root, keys: Vec::new() })
-    }
-
-    pub fn keys(&self) -> impl Iterator<Item = &PathBuf> {
-        self.keys.iter()
+        Ok(Self { root })
     }
 
     pub fn get<O: FromBytes, P: AsRef<Path>>(&mut self, path: P) -> Result<O> {
-        println!("Getting object from object store at path: {:?}", path.as_ref());
         let full_path = self.root.join(path);
         let bytes = std::fs::read(full_path)?;
         O::from_bytes_le(&bytes)
@@ -63,7 +57,6 @@ impl ObjectStore {
         }
         let bytes = object.to_bytes_le()?;
         std::fs::write(&full_path, bytes)?;
-        self.keys.push(full_path);
         Ok(())
     }
 
@@ -101,12 +94,9 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     // Initialize the VM.
     let (vm, record) = initialize_vm::<C, _>(&private_key, &mut rng);
 
-    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
-
-    println!("Initialized the VM.");
-
     // Calculate the number of fee records needed for the workload.
-    let num_fee_records = setup_operations.iter().flatten().count() + benchmark_operations.len();
+    let num_fee_records = setup_operations.iter().flatten().count()
+        + benchmark_operations.iter().flat_map(|(_, operations)| operations).count();
     let num_levels_of_splits = num_fee_records.next_power_of_two().ilog2();
 
     // Helper function to get the balance of a `credits.aleo` record.
@@ -122,7 +112,6 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
 
     println!("Splitting the initial fee record into {} fee records.", num_fee_records);
 
-    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
     // Construct fee records for the workload, storing the relevant data in the object store.
     let balance = get_balance(&record);
     let mut fee_records = vec![(record, balance)];
@@ -146,13 +135,9 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
         // Create a block for the fee transactions and add them to the VM.
         let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
         object_store.insert(format!("block_{}", block_counter), &block).unwrap();
-        println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
         vm.add_next_block(&block).unwrap();
-        println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
         block_counter += 1;
     }
-
-
 
     println!("Constructed fee records for the workload.");
 
@@ -160,7 +145,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     let mut construct_transaction = |operation: &Operation<Testnet3>, rng: &mut TestRng| {
         match &operation {
             Operation::Deploy(program) => {
-                println!("Deploying program: {}", (**program).id());
+                println!("  Deploying program: {}", (**program).id());
                 // Construct a transaction for the deployment.
                 Transaction::deploy(
                     &vm,
@@ -172,7 +157,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
                 )
             }
             Operation::Execute(program_id, function_name, inputs) => {
-                println!("Executing function: {}.{}", program_id, function_name);
+                println!("  Executing function: {}.{}", program_id, function_name);
                 // Construct a transaction for the execution.
                 Transaction::execute(
                     &vm,
@@ -186,6 +171,8 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
             }
         }
     };
+
+    println!("Constructing blocks for the setup operations.");
 
     // For each batch of setup operations, construct and add a block.
     for operations in setup_operations {
@@ -209,6 +196,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     object_store.insert("num_blocks", &block_counter).unwrap();
 
     println!("Constructed and added blocks for the setup operations.");
+    println!("Constructing transactions for the benchmark operations.");
 
     // For each set of benchmark operations, construct the corresponding transactions.
     let mut benchmark_transactions = Vec::with_capacity(benchmark_operations.len());

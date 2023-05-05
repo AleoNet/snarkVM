@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Operation, Workload};
+use crate::{Benchmark, Operation};
 
 use console::network::Network;
 use snarkvm_synthesizer::Program;
 
-use crate::utilities::Benchmark;
 use std::{marker::PhantomData, str::FromStr};
 
 pub struct StaticGetOrInit<N: Network> {

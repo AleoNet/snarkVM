@@ -75,7 +75,6 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
         true => {
             let temp_dir = temp_dir();
             println!("Using the following temporary directory {:?}", temp_dir);
-            //println!("Initializing a VM with a database at {:?}", temp_dir);
             Some(temp_dir)
         }
     };
@@ -83,12 +82,8 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     // Initialize the VM.
     let vm = VM::from(ConsensusStore::open_testing(temp_dir).unwrap()).unwrap();
 
-    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
-
     // Initialize the genesis block.
     let genesis = Block::genesis(&vm, private_key, rng).unwrap();
-
-    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
 
     // Fetch the unspent records.
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
@@ -97,12 +92,8 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     let view_key = ViewKey::try_from(private_key).unwrap();
     let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
 
-    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
-
     // Update the VM.
     vm.add_next_block(&genesis).unwrap();
-
-    println!("VM heights: {:?}", vm.block_store().heights().collect_vec());
 
     (vm, record)
 }
@@ -149,24 +140,6 @@ pub fn construct_next_block<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
 }
 
 #[allow(unused)]
-/// A helper function that deploys and executes programs.
-pub fn setup<C: ConsensusStorage<Testnet3>>(
-    vm: &VM<Testnet3, C>,
-    private_key: &PrivateKey<Testnet3>,
-    batches: &[Vec<Transaction<Testnet3>>],
-    rng: &mut TestRng,
-) {
-    // For each batch of setup operations, construct and add a block.
-    for transactions in batches {
-        // Create and add a block for the transactions, if any
-        if !transactions.is_empty() {
-            let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
-            vm.add_next_block(&block).unwrap();
-        }
-    }
-}
-
-#[allow(unused)]
 type SplitOutput =
     (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>);
 #[allow(unused)]
@@ -192,9 +165,7 @@ pub fn split<C: ConsensusStorage<Testnet3>>(
     let transaction = Transaction::from_execution(execution, None).unwrap();
 
     match (response.outputs()[0].clone(), response.outputs()[1].clone()) {
-        (Value::Record(fee_record), Value::Record(remaining_record)) => {
-            (fee_record, remaining_record, transaction)
-        }
+        (Value::Record(fee_record), Value::Record(remaining_record)) => (fee_record, remaining_record, transaction),
         _ => unreachable!("`split` always returns a record"),
     }
 }
@@ -216,8 +187,8 @@ pub fn sample_proof() -> Proof<Testnet3> {
         .clone()
 }
 
-#[cfg(feature = "testing")]
 /// Constructs a deployment transaction without the overhead of synthesis.
+#[cfg(feature = "testing")]
 pub fn mock_deployment_transaction(
     private_key: &PrivateKey<Testnet3>,
     program: Program<Testnet3>,

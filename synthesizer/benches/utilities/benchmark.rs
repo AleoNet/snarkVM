@@ -14,20 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{initialize_vm, split, ObjectStore};
-
-use console::{account::PrivateKey, network::Testnet3, prelude::Network, program::Value};
-use snarkvm_synthesizer::{helpers::memory::ConsensusMemory, Program, Transaction};
-use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
+use console::{network::Testnet3, prelude::Network, program::Value};
+use snarkvm_synthesizer::{Program, Transaction};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use console::prelude::IoResult;
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::Hash,
-    io::{Read, Result, Write},
-    iter,
-    path::PathBuf,
-};
+use std::io::{Read, Result, Write};
 
 /// An operation executed in a benchmark.
 #[derive(Clone, Debug)]

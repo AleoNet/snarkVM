@@ -25,3 +25,64 @@ pub use get_or_init::*;
 
 pub mod set;
 pub use set::*;
+
+use crate::utilities::{Benchmark, Workload};
+
+use console::network::Testnet3;
+
+/// A helper execution to create a workload that benches executions individually.
+pub fn one_execution_workload(config: &[usize]) -> Workload {
+    // Initialize the workload.
+    let mut workload = Workload::new("one_execution".to_string(), vec![]).unwrap();
+    for num_commands in config {
+        workload.add(Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
+    }
+    workload.add(Box::new(MintPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    workload.add(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    workload.add(Box::new(TransferPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
+
+    workload
+}
+
+/// A helper execution to create a workload that benches multiple executions of the same program.
+pub fn multiple_executions_workload(config: &[usize], max_commands: usize) -> Workload {
+    // Initialize the workloads.
+    let mut workload = Workload::new("multiple_executions".to_string(), vec![]).unwrap();
+    for num_executions in config {
+        workload.add(Box::new(StaticGet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
+        workload
+            .add(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(MintPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(TransferPrivateToPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
+    }
+
+    workload
+}
+
+/// A helper execution to create a workload that benches multiple executions of the multiple programs.
+pub fn multiple_executions_multiple_programs_workload(
+    config: &[usize],
+    max_commands: usize,
+    max_executions: usize,
+) -> Workload {
+    // Initialize the workloads.
+    let mut workload = Workload::new("multiple_executions_multiple_programs".to_string(), vec![]).unwrap();
+    for num_programs in config {
+        workload
+            .add(Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs))
+                as Box<dyn Benchmark<Testnet3>>);
+        workload.add(Box::new(StaticGetOrInit::new(1, max_commands, max_executions, *num_programs))
+            as Box<dyn Benchmark<Testnet3>>);
+        workload
+            .add(Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs))
+                as Box<dyn Benchmark<Testnet3>>);
+    }
+
+    workload
+}

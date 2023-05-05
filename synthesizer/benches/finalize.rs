@@ -25,9 +25,8 @@ use benchmarks::*;
 mod utilities;
 use utilities::*;
 
-use console::{account::PrivateKey, network::Testnet3};
-use snarkvm_synthesizer::{helpers::memory::ConsensusMemory, ConsensusStorage, Transaction, Transactions};
-use snarkvm_utilities::TestRng;
+use console::network::Testnet3;
+use snarkvm_synthesizer::{ConsensusStorage, Transactions};
 
 use criterion::{BatchSize, Criterion};
 use std::fmt::Display;
@@ -60,16 +59,7 @@ pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: 
 
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workload.
-    let mut workload = Workload::new("finalize_one_operation".to_string(), vec![]).unwrap();
-    // for num_commands in NUM_COMMANDS {
-    //     workload.add(Box::new(StaticGet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-    //     workload.add(Box::new(StaticGetOrInit::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-    //     workload.add(Box::new(StaticSet::new(1, *num_commands, 1, 1)) as Box<dyn Benchmark<Testnet3>>);
-    // }
-    workload.add(Box::new(MintPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    // workload.add(Box::new(TransferPrivateToPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    // workload.add(Box::new(TransferPublic::new(1)) as Box<dyn Benchmark<Testnet3>>);
-    // workload.add(Box::new(TransferPublicToPrivate::new(1)) as Box<dyn Benchmark<Testnet3>>);
+    let workload = one_execution_workload(NUM_COMMANDS);
 
     #[cfg(not(any(feature = "rocks")))]
     bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
@@ -78,19 +68,8 @@ fn bench_one_operation(c: &mut Criterion) {
 }
 
 fn bench_multiple_operations(c: &mut Criterion) {
-    // Initialize the workloads.
-    let mut workload = Workload::new("finalize_multiple_operations".to_string(), vec![]).unwrap();
-    let max_commands = *NUM_COMMANDS.last().unwrap();
-    for num_executions in NUM_EXECUTIONS {
-        workload.add(Box::new(StaticGet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
-        // workload
-        //     .add(Box::new(StaticGetOrInit::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
-        // workload.add(Box::new(StaticSet::new(1, max_commands, *num_executions, 1)) as Box<dyn Benchmark<Testnet3>>);
-        // workload.add(Box::new(MintPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-        // workload.add(Box::new(TransferPrivateToPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-        // workload.add(Box::new(TransferPublic::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-        // workload.add(Box::new(TransferPublicToPrivate::new(*num_executions)) as Box<dyn Benchmark<Testnet3>>);
-    }
+    // Initialize the workload.
+    let workload = multiple_executions_workload(NUM_EXECUTIONS, *NUM_COMMANDS.last().unwrap());
 
     #[cfg(not(any(feature = "rocks")))]
     bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
@@ -99,21 +78,12 @@ fn bench_multiple_operations(c: &mut Criterion) {
 }
 
 fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
-    // Initialize the workloads.
-    let max_commands = *NUM_COMMANDS.last().unwrap();
-    let max_executions = *NUM_EXECUTIONS.last().unwrap();
-    let mut workload =
-        Workload::new("finalize_multiple_operations_with_multiple_programs".to_string(), vec![]).unwrap();
-    for num_programs in NUM_PROGRAMS {
-        workload
-            .add(Box::new(StaticGet::new(1, max_commands, max_executions, *num_programs))
-                as Box<dyn Benchmark<Testnet3>>);
-        workload.add(Box::new(StaticGetOrInit::new(1, max_commands, max_executions, *num_programs))
-            as Box<dyn Benchmark<Testnet3>>);
-        workload
-            .add(Box::new(StaticSet::new(1, max_commands, max_executions, *num_programs))
-                as Box<dyn Benchmark<Testnet3>>);
-    }
+    // Initialize the workload.
+    let workload = multiple_executions_multiple_programs_workload(
+        NUM_PROGRAMS,
+        *NUM_COMMANDS.last().unwrap(),
+        *NUM_EXECUTIONS.last().unwrap(),
+    );
 
     #[cfg(not(any(feature = "rocks")))]
     bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
