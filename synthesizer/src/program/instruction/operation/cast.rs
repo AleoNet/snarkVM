@@ -475,13 +475,11 @@ impl<N: Network> Cast<N> {
         // Initialize the struct members.
         let mut members = IndexMap::new();
         for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
-            // Compute the register type.
-            let register_type = RegisterType::Plaintext(*member_type);
             // Retrieve the plaintext value from the entry.
             let plaintext = match member {
                 Value::Plaintext(plaintext) => {
-                    // Ensure the member matches the register type.
-                    stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                    // Ensure the plaintext matches the member type.
+                    stack.matches_plaintext(plaintext, member_type)?;
                     // Output the plaintext.
                     plaintext.clone()
                 }

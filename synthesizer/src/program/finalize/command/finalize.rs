@@ -354,6 +354,7 @@ mod tests {
     //     // Prepare the test.
     //     let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
     //     let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+    //     // TODO: Enable once constant inputs to programs are supported.
     //     let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //     let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //
@@ -379,6 +380,7 @@ mod tests {
     //     // Prepare the test.
     //     let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
     //     let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+    //     // TODO: Enable once constant inputs to programs are supported.
     //     let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //     let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
     //

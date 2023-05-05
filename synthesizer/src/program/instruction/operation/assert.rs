@@ -491,6 +491,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
+        // TODO: Enable once constant inputs to programs are supported.
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -520,6 +521,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
+        // TODO: Enable once constant inputs to programs are supported.
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -555,6 +557,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
+        // TODO: Enable once constant inputs to programs are supported.
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
@@ -584,6 +587,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
+        // TODO: Enable once constant inputs to programs are supported.
         let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 

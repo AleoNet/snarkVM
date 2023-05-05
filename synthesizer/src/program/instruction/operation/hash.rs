@@ -419,6 +419,7 @@ mod tests {
                     let mut rng = TestRng::default();
 
                     // Prepare the test.
+                    // TODO: Enable once constant inputs to programs are supported.
                     let modes = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
                     // Prepare the key cache.
@@ -456,6 +457,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
+        // TODO: Enable once constant inputs to programs are supported.
         let modes = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
@@ -490,6 +492,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
+        // TODO: Enable once constant inputs to programs are supported.
         let modes = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
