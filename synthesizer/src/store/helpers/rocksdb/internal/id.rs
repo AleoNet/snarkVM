@@ -143,6 +143,9 @@ pub enum ProgramMap {
 #[repr(u16)]
 pub enum TestMap {
     Test = DataID::Test as u16,
+    Test2 = DataID::Test2 as u16,
+    Test3 = DataID::Test3 as u16,
+    Test4 = DataID::Test4 as u16,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -213,4 +216,10 @@ enum DataID {
     // Testing
     #[cfg(test)]
     Test,
+    #[cfg(test)]
+    Test2,
+    #[cfg(test)]
+    Test3,
+    #[cfg(test)]
+    Test4,
 }

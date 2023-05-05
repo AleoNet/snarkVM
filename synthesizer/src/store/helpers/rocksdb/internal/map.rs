@@ -348,10 +348,136 @@ mod tests {
     use crate::store::helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap};
     use console::{account::Address, network::Testnet3, prelude::FromStr};
 
+    use anyhow::bail;
     use serial_test::serial;
     use tracing_test::traced_test;
 
     type CurrentNetwork = Testnet3;
+
+    // Below are a few objects that mimic the way our DataMaps are organized,
+    // in order to provide a more accurate test setup for some scenarios.
+
+    fn open_map_testing_from_db<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+        database: RocksDB,
+        map_id: T,
+    ) -> DataMap<K, V> {
+        // Combine contexts to create a new scope.
+        let mut context = database.network_id.to_le_bytes().to_vec();
+        context.extend_from_slice(&(map_id.into()).to_le_bytes());
+
+        // Return the DataMap.
+        DataMap { database, context, atomic_batch: Default::default() }
+    }
+
+    struct TestStorage {
+        own_map: DataMap<usize, String>,
+        extra_maps: TestStorage2,
+    }
+
+    impl TestStorage {
+        fn open() -> Self {
+            // Initialize a database.
+            let database = RocksDB::open_testing(temp_dir(), None).expect("Failed to open a test database");
+
+            Self {
+                own_map: open_map_testing_from_db(database.clone(), MapID::Test(TestMap::Test)),
+                extra_maps: TestStorage2::open(database),
+            }
+        }
+
+        fn start_atomic(&self) {
+            self.own_map.start_atomic();
+            self.extra_maps.start_atomic();
+        }
+
+        fn is_atomic_in_progress(&self) -> bool {
+            self.own_map.is_atomic_in_progress() || self.extra_maps.is_atomic_in_progress()
+        }
+
+        fn abort_atomic(&self) {
+            self.own_map.abort_atomic();
+            self.extra_maps.abort_atomic();
+        }
+
+        fn finish_atomic(&self) -> Result<()> {
+            self.own_map.finish_atomic()?;
+            self.extra_maps.finish_atomic()
+        }
+
+        // While the methods above mimic the typical snarkVM ones, this method is purely for testing.
+        fn is_atomic_in_progress_everywhere(&self) -> bool {
+            self.own_map.is_atomic_in_progress()
+                && self.extra_maps.own_map1.is_atomic_in_progress()
+                && self.extra_maps.own_map1.is_atomic_in_progress()
+                && self.extra_maps.extra_maps.own_map.is_atomic_in_progress()
+        }
+    }
+
+    struct TestStorage2 {
+        own_map1: DataMap<usize, String>,
+        own_map2: DataMap<usize, String>,
+        extra_maps: TestStorage3,
+    }
+
+    impl TestStorage2 {
+        fn open(database: RocksDB) -> Self {
+            Self {
+                own_map1: open_map_testing_from_db(database.clone(), MapID::Test(TestMap::Test2)),
+                own_map2: open_map_testing_from_db(database.clone(), MapID::Test(TestMap::Test3)),
+                extra_maps: TestStorage3::open(database),
+            }
+        }
+
+        fn start_atomic(&self) {
+            self.own_map1.start_atomic();
+            self.own_map2.start_atomic();
+            self.extra_maps.start_atomic();
+        }
+
+        fn is_atomic_in_progress(&self) -> bool {
+            self.own_map1.is_atomic_in_progress()
+                || self.own_map2.is_atomic_in_progress()
+                || self.extra_maps.is_atomic_in_progress()
+        }
+
+        fn abort_atomic(&self) {
+            self.own_map1.abort_atomic();
+            self.own_map2.abort_atomic();
+            self.extra_maps.abort_atomic();
+        }
+
+        fn finish_atomic(&self) -> Result<()> {
+            self.own_map1.finish_atomic()?;
+            self.own_map2.finish_atomic()?;
+            self.extra_maps.finish_atomic()
+        }
+    }
+
+    struct TestStorage3 {
+        own_map: DataMap<usize, String>,
+    }
+
+    impl TestStorage3 {
+        fn open(database: RocksDB) -> Self {
+            Self { own_map: open_map_testing_from_db(database, MapID::Test(TestMap::Test4)) }
+        }
+
+        fn start_atomic(&self) {
+            self.own_map.start_atomic();
+        }
+
+        fn is_atomic_in_progress(&self) -> bool {
+            self.own_map.is_atomic_in_progress()
+        }
+
+        fn abort_atomic(&self) {
+            self.own_map.abort_atomic();
+        }
+
+        fn finish_atomic(&self) -> Result<()> {
+            self.own_map.finish_atomic()
+        }
+    }
 
     #[test]
     #[serial]
@@ -614,7 +740,7 @@ mod tests {
         map.atomic_checkpoint();
 
         // Queue (since a batch is in progress) the other NUM_ITEMS / 2 insertions.
-        for i in 0..NUM_ITEMS / 2 {
+        for i in (NUM_ITEMS / 2)..NUM_ITEMS {
             map.insert(i, i.to_string()).unwrap();
         }
 
@@ -629,5 +755,185 @@ mod tests {
 
         // Make sure the pending batch is empty.
         assert!(map.database.atomic_batch.lock().is_empty());
+    }
+
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_nested_atomic_write_batch_success() -> Result<()> {
+        // Initialize a multi-layer test storage.
+        let test_storage = TestStorage::open();
+
+        // Sanity check.
+        assert!(test_storage.own_map.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.own_map1.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
+
+        // Note: all the checks going through .database can be performed on any one
+        // of the objects, as all of them share the same instance of the database.
+
+        // Ensure the batch depth is 0, meaning the atomic operation has not started yet.
+        assert_eq!(0, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+        assert!(!test_storage.is_atomic_in_progress_everywhere());
+
+        // Start an atomic write batch.
+        crate::atomic_write_batch!(test_storage, {
+            // Ensure the batch depth is 4, as all of the underlying maps have called start_atomic.
+            assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+            assert!(test_storage.is_atomic_in_progress_everywhere());
+
+            // Write an item into the first map.
+            test_storage.own_map.insert(0, 0.to_string()).unwrap();
+
+            // Start another atomic write batch.
+            crate::atomic_write_batch!(test_storage.extra_maps.own_map1, {
+                // Ensure the batch depth is still 4, as only the first, outermost call triggers this increase.
+                assert_eq!(4, test_storage.extra_maps.own_map1.database.batch_depth.load(Ordering::SeqCst));
+                assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                // Write an item into the second map.
+                test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
+
+                // Write an item into the third map.
+                test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
+
+                // Start another atomic write batch.
+                crate::atomic_write_batch!(test_storage.extra_maps.extra_maps.own_map, {
+                    // Ensure the batch depth is still 4.
+                    assert_eq!(
+                        4,
+                        test_storage.extra_maps.extra_maps.own_map.database.batch_depth.load(Ordering::SeqCst)
+                    );
+                    assert!(test_storage.extra_maps.extra_maps.own_map.is_atomic_in_progress());
+
+                    // Write an item into the fourth map.
+                    test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
+
+                    Ok(())
+                });
+
+                // Ensure the batch depth is still 4, as only the last, outermost call triggers the decrease.
+                assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+                assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                Ok(())
+            });
+
+            // Ensure the batch depth is still 4.
+            assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+            assert!(test_storage.is_atomic_in_progress_everywhere());
+
+            Ok(())
+        });
+
+        // Ensure the batch depth is 0 now, meaning the atomic operation has concluded.
+        assert_eq!(0, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+        assert!(!test_storage.is_atomic_in_progress_everywhere());
+
+        // Ensure that all the items are present.
+        assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 1);
+
+        // The atomic_write_batch macro uses ?, so the test returns a Result for simplicity.
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_nested_atomic_write_batch_abort() {
+        // We'll want to execute the atomic write batch in its own function, in order to be able to
+        // inspect the aftermatch after an error, as opposed to returning from the whole test.
+        fn execute_atomic_write_batch(test_storage: &TestStorage) -> Result<()> {
+            // Start an atomic write batch.
+            crate::atomic_write_batch!(test_storage, {
+                // Ensure the batch depth is 4, as all of the underlying maps have called start_atomic.
+                assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+                assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                // Write an item into the first map.
+                test_storage.own_map.insert(0, 0.to_string()).unwrap();
+
+                // Start another atomic write batch.
+                crate::atomic_write_batch!(test_storage.extra_maps.own_map1, {
+                    // Ensure the batch depth is still 4, as only the first, outermost call triggers this increase.
+                    assert_eq!(4, test_storage.extra_maps.own_map1.database.batch_depth.load(Ordering::SeqCst));
+                    assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                    // Write an item into the second map.
+                    test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
+
+                    // Perform an atomic checkpoint.
+                    test_storage.extra_maps.own_map1.atomic_checkpoint();
+
+                    // Write an item into the third map.
+                    test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
+
+                    // Start another atomic write batch.
+                    crate::atomic_write_batch!(test_storage.extra_maps.extra_maps.own_map, {
+                        // Ensure the batch depth is still 4.
+                        assert_eq!(
+                            4,
+                            test_storage.extra_maps.extra_maps.own_map.database.batch_depth.load(Ordering::SeqCst)
+                        );
+                        assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                        // Write an item into the fourth map.
+                        test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
+
+                        // Abort the atomic batch via a simulated error.
+                        bail!("An error that will trigger a cascade abort.");
+                    });
+
+                    // Ensure the batch depth is still 4, as only the last, outermost call triggers the decrease.
+                    assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+                    assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                    Ok(())
+                });
+
+                // Ensure the batch depth is still 4.
+                assert_eq!(4, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+                assert!(test_storage.is_atomic_in_progress_everywhere());
+
+                Ok(())
+            });
+
+            Ok(())
+        }
+
+        // Initialize a multi-layer test storage.
+        let test_storage = TestStorage::open();
+
+        // Sanity check.
+        assert!(test_storage.own_map.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.own_map1.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
+        assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
+
+        // Note: all the checks going through .database can be performed on any one
+        // of the objects, as all of them share the same instance of the database.
+
+        // Ensure the batch depth is 0.
+        assert_eq!(0, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+        assert!(!test_storage.is_atomic_in_progress_everywhere());
+
+        // Perform the atomic operations defined in the free function at the beginning of the test.
+        assert!(execute_atomic_write_batch(&test_storage).is_err());
+
+        // Ensure the batch depth is 0 now.
+        assert_eq!(0, test_storage.own_map.database.batch_depth.load(Ordering::SeqCst));
+        assert!(!test_storage.is_atomic_in_progress_everywhere());
+
+        // Ensure that all the items up until the checkpoint are present.
+        assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
+
+        // Ensure that all the items after the checkpoint are not present.
+        assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 0);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 0);
     }
 }
