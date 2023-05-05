@@ -16,7 +16,7 @@
 
 use super::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FinalizeMode {
     /// Invoke finalize as a real run.
     RealRun,
@@ -84,8 +84,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // and adding the program to the finalize tree.
                     Transaction::Deploy(_, _, deployment, _) => {
                         process.finalize_deployment(self.finalize_store(), deployment).map(|(stack, operations)| {
-                            // Store the stack.
-                            stacks.push(stack);
+                            // Store the stack, if this is a real run.
+                            if finalize_mode == FinalizeMode::RealRun {
+                                stacks.push(stack);
+                            }
                             // Return the finalize operations.
                             operations
                         })
