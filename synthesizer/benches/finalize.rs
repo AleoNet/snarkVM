@@ -33,7 +33,9 @@ use std::fmt::Display;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
+const NUM_DEPLOYMENTS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
 const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64];
+const NUM_MAPPINGS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 256];
 const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function for benchmarking `VM::finalize`.
@@ -77,6 +79,26 @@ fn bench_multiple_operations(c: &mut Criterion) {
     bench_finalize::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
 }
 
+fn bench_single_deployment(c: &mut Criterion) {
+    // Initialize the workload.
+    let workload = single_deployment_workload(NUM_MAPPINGS);
+
+    #[cfg(not(any(feature = "rocks")))]
+    bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
+    #[cfg(any(feature = "rocks"))]
+    bench_finalize::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
+}
+
+fn bench_multiple_deployments(c: &mut Criterion) {
+    // Initialize the workload.
+    let workload = multiple_deployments_workload(NUM_DEPLOYMENTS, *NUM_MAPPINGS.last().unwrap());
+
+    #[cfg(not(any(feature = "rocks")))]
+    bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
+    #[cfg(any(feature = "rocks"))]
+    bench_finalize::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
+}
+
 fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
     // Initialize the workload.
     let workload = multiple_executions_multiple_programs_workload(
@@ -94,7 +116,7 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
 criterion_group! {
     name = benchmarks;
     config = Criterion::default().sample_size(10);
-    targets = bench_one_operation, bench_multiple_operations,
+    targets = bench_one_operation, bench_multiple_operations, bench_single_deployment, bench_multiple_deployments
 }
 criterion_group! {
     name = long_benchmarks;
