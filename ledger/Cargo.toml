@@ -20,8 +20,8 @@ license = "GPL-3.0"
 edition = "2021"
 
 [features]
-default = [ "parallel" ]
-parallel = [ "rayon" ]
+default = [ "rayon" ]
+serial = [ "console/serial", "synthesizer/serial" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
