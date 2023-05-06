@@ -17,6 +17,9 @@
 pub mod credits;
 pub use credits::*;
 
+pub mod deploy;
+pub use deploy::*;
+
 pub mod get;
 pub use get::*;
 
@@ -30,7 +33,12 @@ use crate::utilities::{Benchmark, Workload};
 
 use console::network::Testnet3;
 
-/// A helper execution to create a workload that benches executions individually.
+// WARNING:
+// - Deleting or modifying ANY of these workloads will require to regenerate them from scratch.
+// - This will delete the existing saved workload and may take hours to complete.
+// - To create new workloads, it is advised to create a new function with a unique name for the workload.
+
+/// A helper function to create a workload that benches executions individually.
 pub fn one_execution_workload(config: &[usize]) -> Workload {
     // Initialize the workload.
     let mut workload = Workload::new("one_execution".to_string(), vec![]).unwrap();
@@ -47,7 +55,7 @@ pub fn one_execution_workload(config: &[usize]) -> Workload {
     workload
 }
 
-/// A helper execution to create a workload that benches multiple executions of the same program.
+/// A helper function to create a workload that benches multiple executions of the same program.
 pub fn multiple_executions_workload(config: &[usize], max_commands: usize) -> Workload {
     // Initialize the workloads.
     let mut workload = Workload::new("multiple_executions".to_string(), vec![]).unwrap();
@@ -65,7 +73,7 @@ pub fn multiple_executions_workload(config: &[usize], max_commands: usize) -> Wo
     workload
 }
 
-/// A helper execution to create a workload that benches multiple executions of the multiple programs.
+/// A helper function to create a workload that benches multiple executions of the multiple programs.
 pub fn multiple_executions_multiple_programs_workload(
     config: &[usize],
     max_commands: usize,
@@ -84,5 +92,25 @@ pub fn multiple_executions_multiple_programs_workload(
                 as Box<dyn Benchmark<Testnet3>>);
     }
 
+    workload
+}
+
+/// A helper function to create a workload that benches the deployment of a single program.
+pub fn single_deployment_workload(config: &[usize]) -> Workload {
+    // Initialize the workloads.
+    let mut workload = Workload::new("single_deployment".to_string(), vec![]).unwrap();
+    for num_mappings in config {
+        workload.add(Box::new(DeploySingle::new(*num_mappings)) as Box<dyn Benchmark<Testnet3>>);
+    }
+    workload
+}
+
+/// A helper function to create a workload that benches the deployment of multiple programs.
+pub fn multiple_deployments_workload(config: &[usize], max_mappings: usize) -> Workload {
+    // Initialize the workloads.
+    let mut workload = Workload::new("multiple_deployments".to_string(), vec![]).unwrap();
+    for num_deployments in config {
+        workload.add(Box::new(DeployMultiple::new(max_mappings, *num_deployments)) as Box<dyn Benchmark<Testnet3>>);
+    }
     workload
 }
