@@ -223,6 +223,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     }
                     // Retrieve the last N accepted transactions, where N is the number of rejected transactions.
                     let accepted_fees = accepted.iter().rev().take(rejected.len()).rev();
+                    // Ensure the number of accepted fees is equal to the number of rejected transactions.
+                    if accepted_fees.len() != rejected.len() {
+                        // Note: This will abort the entire atomic batch.
+                        return Err("The # of accepted fees is not equal to the # of rejected transactions");
+                    }
                     // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
                     // in the accepted transactions, with the same fee transition, and in the same order.
                     for ((_, reject_fee), fee_transaction) in rejected.iter().zip_eq(accepted_fees) {
