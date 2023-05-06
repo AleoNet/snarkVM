@@ -35,7 +35,7 @@ program deploy_{num_mappings}_{i}.aleo;
     );
     // Add the desired number of mappings.
     for i in 0..num_mappings {
-        program_string.push_str(&format!("map_{i};key left as field.public;value right as field.public;"));
+        program_string.push_str(&format!("mapping map_{i}:key left as field.public;value right as field.public;"));
     }
     // Add a dummy function.
     program_string.push_str("function foo:");

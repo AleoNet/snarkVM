@@ -262,18 +262,6 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "testing")]
-    /// Initializes the transaction storage for testing.
-    pub fn open_testing(
-        path: Option<std::path::PathBuf>,
-        transition_store: TransitionStore<N, T::TransitionStorage>,
-    ) -> Result<Self> {
-        // Initialize the transaction storage.
-        let storage = T::open_testing(path, transition_store)?;
-        // Return the transaction store.
-        Ok(Self { transaction_ids: storage.id_map().clone(), storage })
-    }
-
     /// Initializes a transaction store from storage.
     pub fn from(storage: T) -> Self {
         Self { transaction_ids: storage.id_map().clone(), storage }

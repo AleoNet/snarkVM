@@ -16,9 +16,9 @@
 
 use crate::store::helpers::{Map, MapRead};
 use console::network::prelude::*;
-use indexmap::IndexMap;
 
 use core::{borrow::Borrow, hash::Hash};
+use indexmap::IndexMap;
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,

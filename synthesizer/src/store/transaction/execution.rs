@@ -320,18 +320,6 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "testing")]
-    /// Initializes the execution storage for testing.
-    pub fn open_testing(
-        path: Option<std::path::PathBuf>,
-        transition_store: TransitionStore<N, E::TransitionStorage>,
-    ) -> Result<Self> {
-        // Initialize the execution storage.
-        let storage = E::open_testing(path, transition_store)?;
-        // Return the execution store.
-        Ok(Self { storage, _phantom: PhantomData })
-    }
-
     /// Initializes an execution store from storage.
     pub fn from(storage: E) -> Self {
         Self { storage, _phantom: PhantomData }

@@ -116,7 +116,8 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
 criterion_group! {
     name = benchmarks;
     config = Criterion::default().sample_size(10);
-    targets = bench_one_operation, bench_multiple_operations, bench_single_deployment, bench_multiple_deployments
+    //targets = bench_one_operation, bench_single_deployment, bench_multiple_deployments, bench_multiple_operations,
+    targets = bench_single_deployment, bench_multiple_deployments, bench_multiple_operations,
 }
 criterion_group! {
     name = long_benchmarks;

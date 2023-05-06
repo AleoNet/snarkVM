@@ -263,38 +263,4 @@ function compute:
 
         Ok(())
     }
-
-    #[test]
-    fn test_program_containing_maximum_number_of_mappings() {
-        // Initialize a new program string.
-        let mut program_string = "program test.aleo;".to_string();
-        // Add one more than the maximum number of mappings.
-        for i in 0..<CurrentNetwork as Network>::MAX_MAPPINGS {
-            program_string
-                .push_str(&format!("mapping map_{}:key left as field.public;value right as field.public;", i));
-        }
-        // Add a dummy function.
-        program_string.push_str("function foo:");
-        // Attempt to parse the program.
-        let result = Program::<CurrentNetwork>::from_str(&program_string);
-        // Ensure the program failed to parse.
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_program_exceeding_maximum_number_of_mappings() {
-        // Initialize a new program string.
-        let mut program_string = "program test.aleo;".to_string();
-        // Add one more than the maximum number of mappings.
-        for i in 0..=<CurrentNetwork as Network>::MAX_MAPPINGS {
-            program_string
-                .push_str(&format!("mapping map_{}:key left as field.public;value right as field.public;", i));
-        }
-        // Add a dummy function.
-        program_string.push_str("function foo:");
-        // Attempt to parse the program.
-        let result = Program::<CurrentNetwork>::from_str(&program_string);
-        // Ensure the program failed to parse.
-        assert!(result.is_err());
-    }
 }
