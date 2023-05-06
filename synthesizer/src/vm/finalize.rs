@@ -317,8 +317,8 @@ finalize transfer_public:
             let record = unspent_records.pop().unwrap().decrypt(&view_key)?;
 
             // Fetch the record balance and divide it in half.
-            let split_balance = match record.data().get(&Identifier::from_str("microcredits")?) {
-                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => **amount / 2,
+            let split_balance = match record.find(&[Identifier::from_str("microcredits")?]) {
+                Ok(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => *amount / 2,
                 _ => bail!("fee record does not contain a microcredits entry"),
             };
 

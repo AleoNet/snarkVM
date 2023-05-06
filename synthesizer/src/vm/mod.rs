@@ -38,7 +38,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Response, Value},
     types::Field,
 };
 
