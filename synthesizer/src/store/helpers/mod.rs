@@ -212,7 +212,7 @@ macro_rules! atomic_batch_scope {
 /// A top-level helper macro to perform the finalize operation on a list of transactions.
 #[macro_export]
 macro_rules! atomic_finalize {
-    ($self:expr, $ops:block) => {{
+    ($self:expr, $finalize_mode:expr, $ops:block) => {{
         // Ensure that there is no atomic batch write in progress.
         if $self.is_atomic_in_progress() {
             // We intentionally 'bail!' here instead of passing an Err() to the caller because
@@ -225,19 +225,19 @@ macro_rules! atomic_finalize {
 
         // Wrap the operations that should be batched in a closure to be able to abort the entire
         // write batch if any of them fails.
-        let run_atomic_ops = || -> Result<()> { $ops };
+        let run_atomic_ops = || -> _ { $ops };
 
         // Run the atomic operations.
-        match run_atomic_ops() {
-            // Finalize the batch if all operations have succeeded.
-            Ok(result) => {
+        match ($finalize_mode, run_atomic_ops()) {
+            // If this is a real run, commit the atomic batch.
+            (FinalizeMode::RealRun, result) => {
                 $self.finish_atomic()?;
-                Ok(result)
+                result
             }
-            // Abort the batch if any of the associated operations has failed.
-            Err(err) => {
+            // If this is a dry run, abort the atomic batch.
+            (FinalizeMode::DryRun, result) => {
                 $self.abort_atomic();
-                Err(err)
+                result
             }
         }
     }};

@@ -761,6 +761,8 @@ mod tests {
 
     #[test]
     fn test_atomic_finalize() -> Result<()> {
+        use crate::FinalizeMode;
+
         // The number of items that will be queued to be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
@@ -772,7 +774,7 @@ mod tests {
         assert_eq!(map.checkpoint.lock().back(), None);
 
         // Start an atomic finalize.
-        let outcome = atomic_finalize!(map, {
+        let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
@@ -786,7 +788,8 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&0));
 
                 Ok(())
-            })?;
+            })
+            .unwrap();
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -809,7 +812,8 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
-            })?;
+            })
+            .unwrap();
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -818,11 +822,11 @@ mod tests {
             // Make sure the checkpoint index is NUM_ITEMS / 2.
             assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
-            Ok(())
+            (true, 0, "a")
         });
 
-        // The atomic finalize should have succeeded.
-        assert!(outcome.is_ok());
+        // The atomic finalize should have passed the result through.
+        assert_eq!(outcome, (true, 0, "a"));
 
         // The map should contain NUM_ITEMS.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);

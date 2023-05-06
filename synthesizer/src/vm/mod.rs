@@ -43,7 +43,8 @@ use console::{
 };
 
 use aleo_std::prelude::{finish, lap, timer};
-use parking_lot::{Mutex, RwLock};
+use indexmap::IndexSet;
+use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]

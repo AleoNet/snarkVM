@@ -58,21 +58,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Determine the finalize mode.
         let finalize_mode = FinalizeMode::from_u8(FINALIZE_MODE)?;
 
-        // Initialize a list of the accepted transactions.
-        let accepted = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
-        // Initialize a list of the rejected transactions.
-        let rejected = Arc::new(Mutex::new(Vec::with_capacity(transactions.len())));
-        // Initialize a list for the finalize operations.
-        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
-
-        let outcome = atomic_finalize!(self.finalize_store(), {
+        // Perform the finalize operation on the preset finalize mode.
+        let (accepted, rejected, finalize_operations) = atomic_finalize!(self.finalize_store(), finalize_mode, {
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
             let mut process = self.process.write();
 
-            // Initialize a list for the deployed stacks.
-            let mut stacks = Vec::new();
+            // Initialize a list of the accepted transactions.
+            let mut accepted = IndexSet::with_capacity(transactions.len());
+            // Initialize a list of the rejected transactions.
+            let mut rejected = Vec::with_capacity(transactions.len());
+            // Initialize a list for the finalize operations.
+            let mut finalize_operations = Vec::new();
 
             // Finalize the transactions.
             for transaction in transactions.values() {
@@ -86,7 +84,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         process.finalize_deployment(self.finalize_store(), deployment).map(|(stack, operations)| {
                             // Store the stack, if this is a real run.
                             if finalize_mode == FinalizeMode::RealRun {
-                                stacks.push(stack);
+                                process.add_stack(stack);
                             }
                             // Return the finalize operations.
                             Some(operations)
@@ -108,53 +106,36 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     Ok(operations) => {
                         // Store the finalize operations.
                         if let Some(operations) = operations {
-                            finalize_operations.lock().extend(operations);
+                            finalize_operations.extend(operations);
                         }
                         // Store the transaction ID in the accepted list.
-                        accepted.lock().push(transaction.id());
+                        accepted.insert(transaction.id());
                     }
                     // If the transaction failed to finalize, abort and continue to the next transaction.
                     Err(error) => {
                         warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
                         // Store the transaction ID in the rejected list.
-                        rejected.lock().push(transaction.id());
+                        rejected.push(transaction.id());
                         // Abort the atomic batch and continue to the next transaction.
                         continue;
                     }
                 }
             }
 
-            // Handle the atomic batch, based on the finalize mode.
-            match finalize_mode {
-                // If this is a real run, commit the atomic batch.
-                FinalizeMode::RealRun => {
-                    // Add all of the stacks to the process.
-                    if !stacks.is_empty() {
-                        stacks.into_iter().for_each(|stack| process.add_stack(stack))
-                    }
-                    Ok(())
-                }
-                // If this is a dry run, abort the atomic batch.
-                FinalizeMode::DryRun => bail!("Dry run of finalize"),
-            }
+            // Handles the atomic batch, based on the 'finalize_mode'.
+            // If this is a real run, 'atomic_finalize!' will commit the atomic batch.
+            // If this is a dry run, 'atomic_finalize!' will abort the atomic batch.
+            (accepted, rejected, finalize_operations)
         });
 
-        // Handle the outcome of the atomic batch.
-        match (finalize_mode, outcome) {
-            (FinalizeMode::RealRun, Ok(())) | (FinalizeMode::DryRun, Err(_)) => {}
-            // This case is technically unreachable. If for any reason it is hit, we should fail immediately.
-            (FinalizeMode::RealRun, Err(error)) => return Err(error),
-            // This case is technically unreachable. If for any reason it is hit, we should fail immediately.
-            (FinalizeMode::DryRun, Ok(())) => bail!("VM::finalize wrote to storage in a dry run, check for corruption"),
-        }
-
-        // Retrieve the accepted transactions, rejected transactions, and finalize operations.
-        let accepted = accepted.lock().clone();
-        let rejected = rejected.lock().clone();
-        let finalize_operations = finalize_operations.lock().clone();
+        // // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
+        // // in the accepted transactions, with the same fee transition.
+        // for reject in rejected.iter() {
+        //     accepted.contains(reject)
+        // }
 
         // Ensure all transactions were processed.
-        if accepted.len() + rejected.len() != transactions.len() {
+        if accepted.len() != transactions.len() {
             // TODO (howardwu): Identify which transactions in 'transactions' were not processed,
             //  and attempt to process them again (because they came from the block, so we can't remove them now).
             unreachable!("Not all transactions were processed");
@@ -162,7 +143,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         finish!(timer);
 
-        Ok((accepted, rejected, finalize_operations))
+        Ok((accepted.into_iter().collect(), rejected, finalize_operations))
     }
 }
 
