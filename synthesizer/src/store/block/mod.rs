@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::{Block, Header, Transactions},
     coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     cow_to_cloned,
@@ -205,7 +205,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Stores the given `(state root, block)` pair into storage.
     fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
             // Store the (state root, block height) pair.
@@ -273,7 +273,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the (block height, state root) pair.
             self.state_root_map().remove(&block_height)?;
             // Remove the (state root, block height) pair.
@@ -639,7 +639,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         // Prepare an updated Merkle tree removing the last 'n' block hashes.
         let updated_tree = tree.prepare_remove_last_n(usize::try_from(n)?)?;
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the blocks, in descending order.
             for block_hash in hashes.iter().rev() {
                 self.storage.remove(block_hash)?;

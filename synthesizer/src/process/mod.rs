@@ -28,7 +28,7 @@ mod finalize;
 mod tests;
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::{Input, Transition},
     program::{Instruction, Program},
     snark::{ProvingKey, UniversalSRS, VerifyingKey},

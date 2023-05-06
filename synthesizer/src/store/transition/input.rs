@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::Input,
     store::helpers::{Map, MapRead},
 };
@@ -144,7 +144,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `(transition ID, input)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Store the input IDs.
             self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
 
@@ -182,7 +182,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(()),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the input IDs.
             self.id_map().remove(transition_id)?;
 

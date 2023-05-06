@@ -45,7 +45,7 @@ impl<N: Network> Process<N> {
         let finalize_operations = Arc::new(Mutex::new(Vec::with_capacity(deployment.program().mappings().len())));
 
         // Initialize the mappings, and store their finalize operations.
-        atomic_write_batch!(store, {
+        atomic_batch_scope!(store, {
             // Iterate over the mappings.
             for mapping in deployment.program().mappings().values() {
                 // Initialize the mapping.
@@ -94,7 +94,7 @@ impl<N: Network> Process<N> {
         // Initialize a list for finalize operations.
         let finalize_operations = Arc::new(Mutex::new(Vec::new()));
 
-        atomic_write_batch!(store, {
+        atomic_batch_scope!(store, {
             // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
             //  Currently this loop assumes a linearly execution stack.
             // Finalize each transition, starting from the last one.

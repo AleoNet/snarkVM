@@ -175,7 +175,7 @@ pub trait MapRead<
 /// multiple lower-level operations - which might also need to be atomic if executed individually -
 /// are executed as a single large atomic operation regardless.
 #[macro_export]
-macro_rules! atomic_write_batch {
+macro_rules! atomic_batch_scope {
     ($self:expr, $ops:block) => {
         // Check if an atomic batch write is already in progress. If there isn't one, this means
         // this operation is a "top-level" one and is the one to start and finalize the batch.

@@ -21,7 +21,7 @@ mod output;
 pub use output::*;
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
@@ -166,7 +166,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `transition` into storage.
     fn insert(&self, transition: &Transition<N>) -> Result<()> {
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Retrieve the transition ID.
             let transition_id = *transition.id();
             // Store the program ID and function name.
@@ -207,7 +207,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(()),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the program ID and function name.
             self.locator_map().remove(transition_id)?;
             // Remove the inputs.

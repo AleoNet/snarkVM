@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::{Transaction, Transition},
     cow_to_cloned,
     cow_to_copied,
@@ -141,7 +141,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the fee ID.
         let fee_id = fee.as_ref().map(|fee| *fee.id());
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Store the transition IDs.
             self.id_map().insert(*transaction_id, (transition_ids, fee_id))?;
 
@@ -180,7 +180,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the transition IDs.
             self.id_map().remove(transaction_id)?;
 

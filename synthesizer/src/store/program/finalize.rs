@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     cow_to_cloned,
     cow_to_copied,
     store::helpers::{Map, MapRead},
@@ -177,7 +177,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Insert the new mapping name.
         mapping_names.insert(*mapping_name);
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Update the program ID map with the new mapping name.
             self.program_id_map().insert(*program_id, mapping_names)?;
             // Initialize the mapping ID map.
@@ -228,7 +228,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Insert the new key-value ID.
         key_value_ids.insert(key_id, value_id);
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Update the key-value ID map with the new key-value ID.
             self.key_value_id_map().insert(mapping_id, key_value_ids)?;
             // Insert the key.
@@ -288,7 +288,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot finalize."),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Update the key-value ID map with the new key-value ID.
             self.key_value_id_map().insert(mapping_id, key_value_ids)?;
             // Insert the key.
@@ -336,7 +336,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Remove the key ID.
         key_value_ids.remove(&key_id);
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Update the key-value ID map with the new key ID.
             self.key_value_id_map().insert(mapping_id, key_value_ids)?;
             // Remove the key.
@@ -377,7 +377,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Remove the mapping name.
         mapping_names.remove(mapping_name);
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Update the mapping names.
             self.program_id_map().insert(*program_id, mapping_names)?;
             // Remove the mapping ID.
@@ -406,7 +406,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Update the mapping names.
             self.program_id_map().remove(program_id)?;
 
