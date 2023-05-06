@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for StatePath<N> {
     /// Reads the path from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
             return Err(error("Invalid block version"));
@@ -66,7 +66,7 @@ impl<N: Network> ToBytes for StatePath<N> {
     /// Writes the path to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        0u8.write_le(&mut writer)?;
 
         // Write the state path.
         self.global_state_root.write_le(&mut writer)?;
