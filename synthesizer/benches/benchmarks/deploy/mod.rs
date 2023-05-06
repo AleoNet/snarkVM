@@ -14,16 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod multiple;
+pub use multiple::*;
+
 pub mod single;
 pub use single::*;
 
-use console::network::Testnet3;
+use console::network::Network;
 use snarkvm_synthesizer::Program;
 
 use std::str::FromStr;
 
 /// A helper to construct benchmark programs.
-pub(crate) fn construct_program(i: usize, num_mappings: usize) -> Program<Testnet3> {
+pub(crate) fn construct_program<N: Network>(i: usize, num_mappings: usize) -> Program<N> {
     // Define the fixed portion of the program.
     let mut program_string = format!(
         r"
