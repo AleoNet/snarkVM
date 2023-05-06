@@ -47,7 +47,7 @@ impl FinalizeMode {
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions with the VM,
-    /// returning the list of accepted transactions, rejected transaction IDs & fees, and finalize operations.
+    /// returning the list of accepted transactions, rejected transaction IDs, and finalize operations.
     #[inline]
     pub fn speculate<'a>(
         &self,
