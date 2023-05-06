@@ -18,10 +18,13 @@ use super::*;
 
 impl<N: Network> Inclusion<N> {
     /// Returns the inclusion assignments for the given execution.
+    ///
+    /// * `execution` - The function execution to prepare the inclusion proof for.
+    /// * `aleo_api_url` - URL of an Aleo beacon node running the Aleo API to fetch inclusion data from.
     pub async fn prepare_execution_wasm(
         &self,
         execution: &Execution<N>,
-        url: &str,
+        aleo_api_url: &str,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
         // Ensure the number of leaves is within the Merkle tree size.
         Transaction::check_execution_size(execution)?;
@@ -37,7 +40,7 @@ impl<N: Network> Inclusion<N> {
         let mut assignments = vec![];
 
         // Retrieve the global state root.
-        let global_state_root: N::StateRoot = reqwest::get(&format!("{url}/testnet3/latest/stateRoot"))
+        let global_state_root: N::StateRoot = reqwest::get(&format!("{aleo_api_url}/testnet3/latest/stateRoot"))
             .await
             .map_err(|e| anyhow!("Failed to get state path from the server: {}", e))?
             .json()
@@ -81,7 +84,7 @@ impl<N: Network> Inclusion<N> {
                             }
                             false => {
                                 let commitment = &task.commitment;
-                                reqwest::get(&format!("{url}/testnet3/statePath/{commitment}"))
+                                reqwest::get(&format!("{aleo_api_url}/testnet3/statePath/{commitment}"))
                                     .await
                                     .map_err(|e| anyhow!("Failed to get state path from the server: {}", e))?
                                     .json()
@@ -119,10 +122,13 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the inclusion assignments for the given fee transition.
+    ///
+    /// * `fee_transition` - The transition containing the fee execution.
+    /// * `aleo_api_url` - URL of an Aleo beacon node running the Aleo API to fetch inclusion data from.
     pub async fn prepare_fee_wasm(
         &self,
         fee_transition: &Transition<N>,
-        url: &str,
+        aleo_api_url: &str,
     ) -> Result<Vec<InclusionAssignment<N>>> {
         // Ensure the fee has the correct program ID.
         let fee_program_id = ProgramID::from_str("credits.aleo")?;
@@ -147,11 +153,12 @@ impl<N: Network> Inclusion<N> {
                     let local_state_root = (*transaction_tree.root()).into();
                     // Construct the state path.
                     let commitment = &task.commitment;
-                    let state_path: StatePath<N> = reqwest::get(&format!("{url}/testnet3/statePath/{commitment}"))
-                        .await
-                        .map_err(|e| anyhow!("Failed to get state path from the server: {}", e))?
-                        .json()
-                        .await?;
+                    let state_path: StatePath<N> =
+                        reqwest::get(&format!("{aleo_api_url}/testnet3/statePath/{commitment}"))
+                            .await
+                            .map_err(|e| anyhow!("Failed to get state path from the server: {}", e))?
+                            .json()
+                            .await?;
 
                     // Ensure the global state root is the same across iterations.
                     if *global_state_root != Field::zero() && global_state_root != state_path.global_state_root() {
