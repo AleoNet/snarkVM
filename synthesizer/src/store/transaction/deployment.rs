@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::Transaction,
     cow_to_cloned,
     cow_to_copied,
@@ -196,7 +196,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the program ID.
         let program_id = *program.id();
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Store the program ID.
             self.id_map().insert(*transaction_id, program_id)?;
             // Store the edition.
@@ -228,9 +228,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.transition_store().insert(fee)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the deployment transaction for the given `transaction ID`.
@@ -256,7 +254,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to locate the fee transition ID for transaction '{transaction_id}'"),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the program ID.
             self.id_map().remove(transaction_id)?;
             // Remove the edition.
@@ -285,9 +283,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.transition_store().remove(&transition_id)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transaction ID that contains the given `program ID`.

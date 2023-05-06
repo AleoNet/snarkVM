@@ -21,7 +21,7 @@ mod execution;
 pub use execution::*;
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::Transaction,
     cow_to_copied,
     process::{Deployment, Execution},
@@ -125,7 +125,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
 
     /// Stores the given `transaction` into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             match transaction {
                 Transaction::Deploy(..) => {
                     // Store the transaction type.
@@ -142,9 +142,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the transaction for the given `transaction ID`.
@@ -155,7 +153,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the transaction type.
             self.id_map().remove(transaction_id)?;
             // Remove the transaction.
@@ -167,9 +165,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             };
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.

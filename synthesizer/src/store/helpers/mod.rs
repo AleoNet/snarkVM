@@ -175,8 +175,8 @@ pub trait MapRead<
 /// multiple lower-level operations - which might also need to be atomic if executed individually -
 /// are executed as a single large atomic operation regardless.
 #[macro_export]
-macro_rules! atomic_write_batch {
-    ($self:expr, $ops:block) => {
+macro_rules! atomic_batch_scope {
+    ($self:expr, $ops:block) => {{
         // Check if an atomic batch write is already in progress. If there isn't one, this means
         // this operation is a "top-level" one and is the one to start and finalize the batch.
         let is_atomic_in_progress = $self.is_atomic_in_progress();
@@ -188,21 +188,25 @@ macro_rules! atomic_write_batch {
         }
 
         // Wrap the operations that should be batched in a closure to be able to rewind the batch on error.
-        let run_atomic_ops = || -> Result<()> { $ops };
+        let run_atomic_ops = || -> Result<_> { $ops };
 
-        // Rewind the batch if any of the associated operations has failed. It's crucial that there
-        // is an early return (via `?`) here, in order for any higher-level atomic write batch to
-        // also rewind, cascading to all the owned storage objects.
-        run_atomic_ops().map_err(|err| {
-            $self.atomic_rewind();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of a larger one.
-        if !is_atomic_in_progress {
-            $self.finish_atomic()?;
+        // Run the atomic operations.
+        match run_atomic_ops() {
+            // Save this atomic batch scope and return.
+            Ok(result) => match is_atomic_in_progress {
+                // A 'true' implies this is a nested atomic batch scope.
+                true => Ok(result),
+                // A 'false' implies this is the top-level calling scope.
+                // Commit the atomic batch IFF it's the top-level calling scope.
+                false => $self.finish_atomic().map(|_| result),
+            },
+            // Rewind this atomic batch scope.
+            Err(err) => {
+                $self.atomic_rewind();
+                Err(err)
+            }
         }
-    };
+    }};
 }
 
 /// A top-level helper macro to perform the finalize operation on a list of transactions.
@@ -211,6 +215,8 @@ macro_rules! atomic_finalize {
     ($self:expr, $ops:block) => {{
         // Ensure that there is no atomic batch write in progress.
         if $self.is_atomic_in_progress() {
+            // We intentionally 'bail!' here instead of passing an Err() to the caller because
+            // this is a top-level operation and the caller must fix the issue.
             bail!("Cannot start an atomic batch write operation while another one is already in progress.")
         }
 

@@ -344,6 +344,7 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{atomic_batch_scope, atomic_finalize};
     use console::{account::Address, network::Testnet3};
 
     type CurrentNetwork = Testnet3;
@@ -643,5 +644,193 @@ mod tests {
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoint.lock().back(), None);
+    }
+
+    #[test]
+    fn test_nested_atomic_batch_scope() -> Result<()> {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Start an atomic write batch.
+        atomic_batch_scope!(map, {
+            // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+            for i in 0..NUM_ITEMS / 2 {
+                map.insert(i, i.to_string()).unwrap();
+            }
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS / 2 items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+            // Make sure the checkpoint index is None.
+            assert_eq!(map.checkpoint.lock().back(), None);
+
+            // Start a nested atomic write batch that completes correctly.
+            atomic_batch_scope!(map, {
+                // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
+                for i in (NUM_ITEMS / 2)..NUM_ITEMS {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+                // Make sure the checkpoint index is NUM_ITEMS / 2.
+                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+                Ok(())
+            })?;
+
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+            // Make sure the checkpoint index is NUM_ITEMS / 2.
+            assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+            Ok(())
+        })?;
+
+        // The map should contain NUM_ITEMS.
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
+        // The pending batch should contain no items.
+        assert!(map.iter_pending().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_failed_nested_atomic_batch_scope() {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Start an atomic write batch.
+        let run_nested_atomic_batch_scope = || -> Result<()> {
+            atomic_batch_scope!(map, {
+                // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+                for i in 0..NUM_ITEMS / 2 {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS / 2 items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+                // Make sure the checkpoint index is None.
+                assert_eq!(map.checkpoint.lock().back(), None);
+
+                // Start a nested atomic write batch that completes correctly.
+                atomic_batch_scope!(map, {
+                    // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
+                    for i in (NUM_ITEMS / 2)..NUM_ITEMS {
+                        map.insert(i, i.to_string()).unwrap();
+                    }
+                    // The map should still contain no items.
+                    assert!(map.iter_confirmed().next().is_none());
+                    // The pending batch should contain NUM_ITEMS items.
+                    assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+                    // Make sure the checkpoint index is NUM_ITEMS / 2.
+                    assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+                    bail!("This batch should fail.");
+                })?;
+
+                unreachable!("The atomic write batch should fail before reaching this point.")
+            })?;
+
+            unreachable!("The atomic write batch should fail before reaching this point.")
+        };
+
+        // Ensure that the nested atomic write batch fails.
+        assert!(run_nested_atomic_batch_scope().is_err());
+    }
+
+    #[test]
+    fn test_atomic_finalize() -> Result<()> {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Start an atomic finalize.
+        let outcome = atomic_finalize!(map, {
+            atomic_batch_scope!(map, {
+                // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+                for i in 0..NUM_ITEMS / 2 {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS / 2 items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+                // Make sure the checkpoint index is 0.
+                assert_eq!(map.checkpoint.lock().back(), Some(&0));
+
+                Ok(())
+            })?;
+
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS / 2 items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+            // Make sure the checkpoint index is 0.
+            assert_eq!(map.checkpoint.lock().back(), Some(&0));
+
+            // Start a nested atomic write batch that completes correctly.
+            atomic_batch_scope!(map, {
+                // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
+                for i in (NUM_ITEMS / 2)..NUM_ITEMS {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+                // Make sure the checkpoint index is NUM_ITEMS / 2.
+                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+                Ok(())
+            })?;
+
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+            // Make sure the checkpoint index is NUM_ITEMS / 2.
+            assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+            Ok(())
+        });
+
+        // The atomic finalize should have succeeded.
+        assert!(outcome.is_ok());
+
+        // The map should contain NUM_ITEMS.
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
+        // The pending batch should contain no items.
+        assert!(map.iter_pending().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        Ok(())
     }
 }
