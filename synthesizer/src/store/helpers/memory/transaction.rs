@@ -23,6 +23,8 @@ use crate::{
         DeploymentStore,
         ExecutionStorage,
         ExecutionStore,
+        FeeStorage,
+        FeeStore,
         TransactionStorage,
         TransactionType,
         TransitionStore,
@@ -42,6 +44,8 @@ pub struct TransactionMemory<N: Network> {
     deployment_store: DeploymentStore<N, DeploymentMemory<N>>,
     /// The execution store.
     execution_store: ExecutionStore<N, ExecutionMemory<N>>,
+    /// The fee store.
+    fee_store: FeeStore<N, FeeMemory<N>>,
 }
 
 #[rustfmt::skip]
@@ -49,16 +53,19 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, TransactionType>;
     type DeploymentStorage = DeploymentMemory<N>;
     type ExecutionStorage = ExecutionMemory<N>;
+    type FeeStorage = FeeMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the transaction storage.
     fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        // Initialize the fee store.
+        let fee_store = FeeStore::<N, FeeMemory<N>>::open(transition_store)?;
         // Initialize the deployment store.
-        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(transition_store.clone())?;
+        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(fee_store.clone())?;
         // Initialize the execution store.
-        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(transition_store)?;
+        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(fee_store.clone())?;
         // Return the transaction storage.
-        Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store })
+        Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store, fee_store })
     }
 
     /// Returns the ID map.
@@ -74,6 +81,11 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     /// Returns the execution store.
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage> {
         &self.execution_store
+    }
+
+    /// Returns the fee store.
+    fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage> {
+        &self.fee_store
     }
 }
 
@@ -95,12 +107,8 @@ pub struct DeploymentMemory<N: Network> {
     verifying_key_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>,
     /// The certificate map.
     certificate_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>,
-    /// The fee map.
-    fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
-    /// The reverse fee map.
-    reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
-    /// The transition store.
-    transition_store: TransitionStore<N, TransitionMemory<N>>,
+    /// The fee store.
+    fee_store: FeeStore<N, FeeMemory<N>>,
 }
 
 #[rustfmt::skip]
@@ -112,12 +120,10 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
     type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
-    type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
-    type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type TransitionStorage = TransitionMemory<N>;
+    type FeeStorage = FeeMemory<N>;
 
     /// Initializes the deployment storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             edition_map: MemoryMap::default(),
@@ -126,9 +132,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             program_map: MemoryMap::default(),
             verifying_key_map: MemoryMap::default(),
             certificate_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
-            reverse_fee_map: MemoryMap::default(),
-            transition_store,
+            fee_store,
         })
     }
 
@@ -167,19 +171,9 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
         &self.certificate_map
     }
 
-    /// Returns the fee map.
-    fn fee_map(&self) -> &Self::FeeMap {
-        &self.fee_map
-    }
-
-    /// Returns the reverse fee map.
-    fn reverse_fee_map(&self) -> &Self::ReverseFeeMap {
-        &self.reverse_fee_map
-    }
-
-    /// Returns the transition store.
-    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
-        &self.transition_store
+    /// Returns the fee store.
+    fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage> {
+        &self.fee_store
     }
 }
 
@@ -188,33 +182,29 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
 #[allow(clippy::type_complexity)]
 pub struct ExecutionMemory<N: Network> {
     /// The ID map.
-    id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
+    id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, bool)>,
     /// The reverse ID map.
     reverse_id_map: MemoryMap<N::TransitionID, N::TransactionID>,
-    /// The transition store.
-    transition_store: TransitionStore<N, TransitionMemory<N>>,
     /// The inclusion map.
     inclusion_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
-    /// The fee map.
-    fee_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
+    /// The fee store.
+    fee_store: FeeStore<N, FeeMemory<N>>,
 }
 
 #[rustfmt::skip]
 impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, bool)>;
     type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type TransitionStorage = TransitionMemory<N>;
     type InclusionMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
-    type FeeMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
+    type FeeStorage = FeeMemory<N>;
 
     /// Initializes the execution storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
-            transition_store,
             inclusion_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
+            fee_store
         })
     }
 
@@ -228,18 +218,56 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
         &self.reverse_id_map
     }
 
-    /// Returns the transition store.
-    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
-        &self.transition_store
-    }
-
     /// Returns the inclusion map.
     fn inclusion_map(&self) -> &Self::InclusionMap {
         &self.inclusion_map
     }
 
+    /// Returns the fee store.
+    fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage> {
+        &self.fee_store
+    }
+}
+
+/// An in-memory fee storage.
+#[derive(Clone)]
+#[allow(clippy::type_complexity)]
+pub struct FeeMemory<N: Network> {
+    /// The fee map.
+    fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
+    /// The reverse fee map.
+    reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
+    /// The transition store.
+    transition_store: TransitionStore<N, TransitionMemory<N>>,
+}
+
+#[rustfmt::skip]
+impl<N: Network> FeeStorage<N> for FeeMemory<N> {
+    type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
+    type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
+    type TransitionStorage = TransitionMemory<N>;
+
+    /// Initializes the fee storage.
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        Ok(Self {
+            fee_map: MemoryMap::default(),
+            reverse_fee_map: MemoryMap::default(),
+            transition_store,
+        })
+    }
+
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap {
         &self.fee_map
+    }
+
+    /// Returns the reverse fee map.
+    fn reverse_fee_map(&self) -> &Self::ReverseFeeMap {
+        &self.reverse_fee_map
+    }
+
+    /// Returns the transition store.
+    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
+        &self.transition_store
     }
 }

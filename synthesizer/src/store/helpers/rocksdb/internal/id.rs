@@ -20,6 +20,7 @@ pub enum MapID {
     Block(BlockMap),
     Deployment(DeploymentMap),
     Execution(ExecutionMap),
+    Fee(FeeMap),
     Transaction(TransactionMap),
     Transition(TransitionMap),
     TransitionInput(TransitionInputMap),
@@ -35,6 +36,7 @@ impl From<MapID> for u16 {
             MapID::Block(id) => id as u16,
             MapID::Deployment(id) => id as u16,
             MapID::Execution(id) => id as u16,
+            MapID::Fee(id) => id as u16,
             MapID::Transaction(id) => id as u16,
             MapID::Transition(id) => id as u16,
             MapID::TransitionInput(id) => id as u16,
@@ -71,8 +73,6 @@ pub enum DeploymentMap {
     Program = DataID::DeploymentProgramMap as u16,
     VerifyingKey = DataID::DeploymentVerifyingKeyMap as u16,
     Certificate = DataID::DeploymentCertificateMap as u16,
-    Fee = DataID::DeploymentFeeMap as u16,
-    ReverseFee = DataID::DeploymentReverseFeeMap as u16,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -81,7 +81,13 @@ pub enum ExecutionMap {
     ID = DataID::ExecutionIDMap as u16,
     ReverseID = DataID::ExecutionReverseIDMap as u16,
     Inclusion = DataID::ExecutionInclusionMap as u16,
-    Fee = DataID::ExecutionFeeMap as u16,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum FeeMap {
+    Fee = DataID::FeeFeeMap as u16,
+    ReverseFee = DataID::FeeReverseFeeMap as u16,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -168,13 +174,13 @@ enum DataID {
     DeploymentProgramMap,
     DeploymentVerifyingKeyMap,
     DeploymentCertificateMap,
-    DeploymentFeeMap,
-    DeploymentReverseFeeMap,
     // Execution
     ExecutionIDMap,
     ExecutionReverseIDMap,
     ExecutionInclusionMap,
-    ExecutionFeeMap,
+    // Fee
+    FeeFeeMap,
+    FeeReverseFeeMap,
     // Input
     InputIDMap,
     InputReverseIDMap,

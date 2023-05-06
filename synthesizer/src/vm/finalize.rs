@@ -89,14 +89,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 stacks.push(stack);
                             }
                             // Return the finalize operations.
-                            operations
+                            Some(operations)
                         })
                     }
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
                     Transaction::Execute(_, execution, _) => {
-                        process.finalize_execution(self.finalize_store(), execution)
+                        process.finalize_execution(self.finalize_store(), execution).map(Some)
                     }
+                    // There are no finalize operations here.
+                    // TODO (howardwu): Check that the fee transaction corresponds to a rejected transaction.
+                    Transaction::Fee(..) => Ok(None),
                 };
                 lap!(timer, "Finalizing transaction {}", transaction.id());
 
@@ -104,7 +107,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // If the transaction succeeded to finalize, continue to the next transaction.
                     Ok(operations) => {
                         // Store the finalize operations.
-                        finalize_operations.lock().extend(operations);
+                        if let Some(operations) = operations {
+                            finalize_operations.lock().extend(operations);
+                        }
                         // Store the transaction ID in the accepted list.
                         accepted.lock().push(transaction.id());
                     }
