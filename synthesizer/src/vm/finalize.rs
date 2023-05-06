@@ -46,14 +46,79 @@ impl FinalizeMode {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Speculates on the given list of transactions with the VM,
+    /// returning the list of accepted transactions, rejected transaction IDs & fees, and finalize operations.
+    #[inline]
+    pub fn speculate<'a>(
+        &self,
+        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
+    ) -> Result<(Vec<Transaction<N>>, Vec<(N::TransactionID, Fee<N>)>, Vec<FinalizeOperation<N>>)> {
+        let timer = timer!("VM::speculate");
+
+        // // Ensure the list of transactions does not contain any fee transactions.
+        // for transaction in transactions {
+        //     if matches!(transaction, Transaction::Fee(..)) {
+        //         bail!("Cannot speculate on fee transaction '{}'", transaction.id())
+        //     }
+        // }
+
+        // Performs a **dry-run** of finalize over the list of transactions.
+        let (mut accepted, rejected, finalize_operations) =
+            self.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions)?;
+        lap!(timer, "Finished dry-run of finalize");
+
+        #[cfg(debug_assertions)]
+        {
+            // Ensure the list of accepted transactions does not contain any fee transactions.
+            for transaction in &accepted {
+                if matches!(transaction, Transaction::Fee(..)) {
+                    bail!("Cannot include a fee transaction '{}' beforehand", transaction.id())
+                }
+            }
+        }
+
+        // Add the rejected fees to the list of accepted transactions.
+        for (_, fee) in &rejected {
+            accepted.push(Transaction::from_fee(fee.clone())?);
+        }
+        lap!(timer, "Finished adding rejected fees to accepted transactions");
+
+        finish!(timer);
+
+        // Return the list of accepted transactions, rejected transaction IDs, and finalize operations.
+        Ok((accepted, rejected, finalize_operations))
+    }
+
     /// Finalizes the given transactions into the VM,
     /// returning the list of accepted transaction IDs, rejected transaction IDs, and finalize operations.
     #[inline]
-    pub fn finalize<'a, const FINALIZE_MODE: u8>(
+    pub fn finalize<'a>(
         &self,
         transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
     ) -> Result<(Vec<N::TransactionID>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::finalize");
+
+        // Performs a **real-run** of finalize over the list of transactions.
+        let (accepted, rejected, finalize_operations) =
+            self.atomic_finalize::<{ FinalizeMode::RealRun.to_u8() }>(transactions)?;
+        lap!(timer, "Finished real-run of finalize");
+
+        finish!(timer);
+
+        // Ok((accepted, rejected, finalize_operations))
+        Ok((Vec::new(), Vec::new(), Vec::new()))
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Performs atomic finalization over a list of transactions and returns the list of
+    /// accepted transactions, rejected transaction IDs + fees, and finalize operations.
+    #[inline]
+    fn atomic_finalize<'a, const FINALIZE_MODE: u8>(
+        &self,
+        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
+    ) -> Result<(Vec<Transaction<N>>, Vec<(N::TransactionID, Fee<N>)>, Vec<FinalizeOperation<N>>)> {
+        let timer = timer!("VM::atomic_finalize");
 
         // Retrieve the number of transactions.
         let num_transactions = transactions.len();
@@ -71,8 +136,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut accepted = Vec::with_capacity(num_transactions);
             // Initialize a list of the rejected transactions.
             let mut rejected = Vec::with_capacity(num_transactions);
-            // Initialize a list of the fees from rejected transactions.
-            let mut rejected_fees = Vec::with_capacity(num_transactions);
             // Initialize a list for the finalize operations.
             let mut finalize_operations = Vec::new();
             // Initialize a list for the deployed stacks.
@@ -114,17 +177,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             finalize_operations.extend(operations);
                         }
                         // Store the transaction in the accepted list.
-                        accepted.push(transaction.id());
+                        accepted.push(transaction.clone());
                     }
                     // If the transaction failed to finalize, abort and continue to the next transaction.
                     Err(error) => {
                         warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
-                        // Store the transaction ID in the rejected list.
-                        rejected.push(transaction.id());
                         // Store the fee in the rejected fee list.
                         match transaction {
-                            Transaction::Deploy(_, _, _, fee) => rejected_fees.push(fee),
-                            Transaction::Execute(_, _, Some(fee)) => rejected_fees.push(fee),
+                            Transaction::Deploy(_, _, _, fee) => rejected.push((transaction.id(), fee.clone())),
+                            Transaction::Execute(_, _, Some(fee)) => rejected.push((transaction.id(), fee.clone())),
                             // This is a foundational bug - the caller is violating protocol rules.
                             // Note: This will abort the entire atomic batch.
                             Transaction::Execute(_, _, None) => return Err("Rejected execute transaction has no fee"),
@@ -138,17 +199,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
             }
 
-            // TODO (howardwu): Check that the fee transaction corresponds to a rejected transaction.
-            // // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
-            // // in the accepted transactions, with the same fee transition.
-            // for reject in rejected.iter() {
-            //     accepted.contains(reject);
-            // }
-
             // Ensure all transactions were processed.
-            if accepted.len() != num_transactions {
-                // Note: This will abort the entire atomic batch.
-                return Err("Not all transactions were processed in 'VM::finalize'");
+            match finalize_mode {
+                FinalizeMode::RealRun => {
+                    if accepted.len() != num_transactions {
+                        // Note: This will abort the entire atomic batch.
+                        return Err("Not all transactions were processed in 'VM::atomic_finalize(real)'");
+                    }
+
+                    // TODO (howardwu): Check that the fee transaction corresponds to a rejected transaction.
+                    // // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
+                    // // in the accepted transactions, with the same fee transition.
+                    // for reject in rejected.iter() {
+                    //     accepted.contains(reject);
+                    // }
+                }
+                FinalizeMode::DryRun => {
+                    if accepted.len() + rejected.len() != num_transactions {
+                        // Note: This will abort the entire atomic batch.
+                        return Err("Not all transactions were processed in 'VM::atomic_finalize(dry)'");
+                    }
+                }
             }
 
             /* Start the commit process. */
@@ -410,8 +481,15 @@ finalize transfer_public:
         create_execution(vm, caller_private_key, program_id, "transfer_public", inputs, unspent_records, rng)
     }
 
+    /// A helper method to construct the rejected transaction format for `atomic_finalize`.
+    fn reject(
+        transaction: &Transaction<CurrentNetwork>,
+    ) -> (<CurrentNetwork as Network>::TransactionID, Fee<CurrentNetwork>) {
+        (transaction.id(), transaction.fee_transition().unwrap().clone())
+    }
+
     #[test]
-    fn test_finalize_duplicate_deployment() {
+    fn test_atomic_finalize_duplicate_deployment() {
         let rng = &mut TestRng::default();
 
         let vm = crate::vm::test_helpers::sample_vm();
@@ -421,25 +499,25 @@ finalize transfer_public:
 
         // Finalize the transaction.
         let (accepted_transactions, rejected_transactions, _) =
-            vm.finalize::<{ FinalizeMode::RealRun.to_u8() }>([deployment_transaction.clone()].iter()).unwrap();
-        assert_eq!(accepted_transactions, vec![deployment_transaction.id()]);
+            vm.atomic_finalize::<{ FinalizeMode::RealRun.to_u8() }>([deployment_transaction.clone()].iter()).unwrap();
+        assert_eq!(accepted_transactions, vec![deployment_transaction.clone()]);
         assert!(rejected_transactions.is_empty());
 
         // Ensure the VM can't redeploy the same transaction.
         let (accepted_transactions, rejected_transactions, _) =
-            vm.finalize::<{ FinalizeMode::RealRun.to_u8() }>([deployment_transaction.clone()].iter()).unwrap();
+            vm.atomic_finalize::<{ FinalizeMode::RealRun.to_u8() }>([deployment_transaction.clone()].iter()).unwrap();
         assert!(accepted_transactions.is_empty());
-        assert_eq!(rejected_transactions, vec![deployment_transaction.id()]);
+        assert_eq!(rejected_transactions, vec![reject(&deployment_transaction)]);
 
         // Ensure the dry run of the redeployment will also fail.
         let (accepted_transactions, rejected_transactions, _) =
-            vm.finalize::<{ FinalizeMode::DryRun.to_u8() }>([deployment_transaction.clone()].iter()).unwrap();
+            vm.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>([deployment_transaction.clone()].iter()).unwrap();
         assert!(accepted_transactions.is_empty());
-        assert_eq!(rejected_transactions, vec![deployment_transaction.id()]);
+        assert_eq!(rejected_transactions, vec![reject(&deployment_transaction)]);
     }
 
     #[test]
-    fn test_finalize_many() {
+    fn test_atomic_finalize_many() {
         let rng = &mut TestRng::default();
 
         // Sample a private key and address for the caller.
@@ -531,10 +609,10 @@ finalize transfer_public:
         {
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
             let (accepted_transactions, rejected_transactions, _) =
-                vm.finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
+                vm.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
-            assert_eq!(accepted_transactions, vec![mint_10.id(), transfer_10.id(), transfer_20.id()]);
+            assert_eq!(accepted_transactions, vec![mint_10.clone(), transfer_10.clone(), transfer_20.clone()]);
             assert!(rejected_transactions.is_empty());
         }
 
@@ -546,10 +624,15 @@ finalize transfer_public:
         {
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
             let (accepted_transactions, rejected_transactions, _) =
-                vm.finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
+                vm.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
-            assert_eq!(accepted_transactions, vec![transfer_20.id(), mint_10.id(), mint_20.id(), transfer_30.id()]);
+            assert_eq!(accepted_transactions, vec![
+                transfer_20.clone(),
+                mint_10.clone(),
+                mint_20.clone(),
+                transfer_30.clone()
+            ]);
             assert!(rejected_transactions.is_empty());
         }
 
@@ -559,11 +642,11 @@ finalize transfer_public:
         {
             let transactions = [transfer_20.clone(), transfer_10.clone()];
             let (accepted_transactions, rejected_transactions, _) =
-                vm.finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
+                vm.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
-            assert_eq!(accepted_transactions, vec![transfer_20.id()]);
-            assert_eq!(rejected_transactions, vec![transfer_10.id()]);
+            assert_eq!(accepted_transactions, vec![transfer_20.clone()]);
+            assert_eq!(rejected_transactions, vec![reject(&transfer_10)]);
         }
 
         // Starting Balance = 20
@@ -574,11 +657,11 @@ finalize transfer_public:
         {
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
             let (accepted_transactions, rejected_transactions, _) =
-                vm.finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
+                vm.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
-            assert_eq!(accepted_transactions, vec![mint_20.id(), transfer_30.id(), transfer_10.id()]);
-            assert_eq!(rejected_transactions, vec![transfer_20.id()]);
+            assert_eq!(accepted_transactions, vec![mint_20.clone(), transfer_30.clone(), transfer_10.clone()]);
+            assert_eq!(rejected_transactions, vec![reject(&transfer_20)]);
         }
     }
 }

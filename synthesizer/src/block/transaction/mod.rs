@@ -272,6 +272,15 @@ impl<N: Network> Transaction<N> {
             Self::Fee(_, fee) => fee.amount(),
         }
     }
+
+    /// Returns the fee transition.
+    pub fn fee_transition(&self) -> Option<Fee<N>> {
+        match self {
+            Self::Deploy(_, _, _, fee) => Some(fee.clone()),
+            Self::Execute(_, _, fee) => fee.clone(),
+            Self::Fee(_, fee) => Some(fee.clone()),
+        }
+    }
 }
 
 impl<N: Network> Transaction<N> {
