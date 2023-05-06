@@ -221,6 +221,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Note: This will abort the entire atomic batch.
                         return Err("The # of accepted transactions is below the # of rejected transactions");
                     }
+
+                    /* Check the first-half of the accepted transactions. */
+
+                    // Retrieve the first N accepted transactions, where N excludes the number of rejected transactions.
+                    let accepted_deploys_executes = accepted.iter().take(accepted.len() - rejected.len());
+                    // Ensure there are no fee transactions in the accepted transactions.
+                    if accepted_deploys_executes.clone().any(|transaction| matches!(transaction, Transaction::Fee(..)))
+                    {
+                        // Note: This will abort the entire atomic batch.
+                        return Err("Accepted deployments and executions contain a fee transaction");
+                    }
+
+                    /* Check the second-half of the accepted transactions. */
+
                     // Retrieve the last N accepted transactions, where N is the number of rejected transactions.
                     let accepted_fees = accepted.iter().rev().take(rejected.len()).rev();
                     // Ensure the number of accepted fees is equal to the number of rejected transactions.
