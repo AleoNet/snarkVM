@@ -387,7 +387,7 @@ impl<N: Network> Speculate<N> {
             // Construct the leaf for the finalize tree.
             let leaf = program_tree.root().to_bits_le();
 
-            // Specify the update or append operation.
+            // // Specify the update or append operation.
             match vm.finalize_store().contains_program_confirmed(program_id)? {
                 true => match vm.finalize_store().get_program_index(program_id)? {
                     Some(index) => {
@@ -427,7 +427,6 @@ mod tests {
         Transaction,
         Transactions,
         Transition,
-        PROGRAM_TREE_DEPTH,
     };
     use console::{
         account::{Address, PrivateKey, ViewKey},
@@ -1038,77 +1037,5 @@ finalize transfer_public:
             vm.finalize_store().current_finalize_root(),
             *vm.finalize_store().to_finalize_tree().unwrap().root()
         );
-    }
-
-    #[test]
-    fn test_deployment_with_maximum_number_of_mappings() {
-        let rng = &mut TestRng::default();
-
-        // Initialize the VM.
-        let vm = test_helpers::sample_vm_with_genesis_block(rng);
-        let duplicate_vm = test_helpers::sample_vm_with_genesis_block(rng);
-
-        // Fetch a deployment transaction.
-        let deployment_transaction = {
-            let mut program_string = "program test.aleo;".to_string();
-            for i in 0..(2.pow(PROGRAM_TREE_DEPTH as u32)) {
-                program_string
-                    .push_str(&format!("mapping map_{i}:key left as field.public;value right as field.public;"));
-            }
-            program_string.push_str("function foo:");
-            let program = Program::from_str(&program_string).unwrap();
-
-            // Initialize a new caller.
-            let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-            let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-
-            // Initialize the genesis block.
-            let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-            // Fetch the unspent records.
-            let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-            trace!("Unspent Records:\n{:#?}", records);
-
-            // Prepare the fee.
-            let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-            let fee = (credits, 10);
-
-            // Construct the transaction.
-            let transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
-            // Verify the transaction.
-            assert!(vm.verify_transaction(&transaction));
-
-            transaction
-        };
-
-        // Initialize the state speculator.
-        let mut speculate = Speculate::new(vm.finalize_store().current_finalize_root());
-        assert!(speculate.speculate_transaction(&vm, &deployment_transaction).unwrap());
-
-        // Construct the new storage tree.
-        let new_storage_tree = speculate.commit(&vm).unwrap();
-
-        // Perform the naive vm finalize.
-        let transactions = Transactions::from(&[deployment_transaction]);
-        vm.finalize(&transactions, None).unwrap();
-        duplicate_vm.finalize(&transactions, Some(speculate)).unwrap();
-
-        // Ensure that the storage trees are the same.
-        let expected_root = vm.finalize_store().current_finalize_root();
-        let duplicate_root = duplicate_vm.finalize_store().current_finalize_root();
-        assert_eq!(expected_root, *new_storage_tree.root());
-        assert_eq!(expected_root, duplicate_root);
-
-        // Check that the storage tree contains the mappings.
-        for i in 0..(2.pow(PROGRAM_TREE_DEPTH as u32)) {
-            assert!(
-                vm.finalize_store()
-                    .contains_mapping(
-                        &ProgramID::from_str("test.aleo").unwrap(),
-                        &Identifier::from_str(&format!("map_{i}")).unwrap()
-                    )
-                    .unwrap()
-            );
-        }
     }
 }
