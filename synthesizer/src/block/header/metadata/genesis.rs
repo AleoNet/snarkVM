@@ -82,7 +82,7 @@ mod tests {
     /// Update this method if the contents of the metadata have changed.
     fn get_expected_size() -> usize {
         // Metadata size.
-        2 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
+        1 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
             + 2
     }
