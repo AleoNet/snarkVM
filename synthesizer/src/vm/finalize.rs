@@ -52,15 +52,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn speculate<'a>(
         &self,
         transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
-    ) -> Result<(Vec<Transaction<N>>, Vec<(N::TransactionID, Fee<N>)>, Vec<FinalizeOperation<N>>)> {
+    ) -> Result<(Vec<Transaction<N>>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
-
-        // // Ensure the list of transactions does not contain any fee transactions.
-        // for transaction in transactions {
-        //     if matches!(transaction, Transaction::Fee(..)) {
-        //         bail!("Cannot speculate on fee transaction '{}'", transaction.id())
-        //     }
-        // }
 
         // Performs a **dry-run** of finalize over the list of transactions.
         let (mut accepted, rejected, finalize_operations) =
@@ -86,7 +79,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         finish!(timer);
 
         // Return the list of accepted transactions, rejected transaction IDs, and finalize operations.
-        Ok((accepted, rejected, finalize_operations))
+        Ok((accepted, rejected.into_iter().map(|(id, _)| id).collect(), finalize_operations))
     }
 
     /// Finalizes the given transactions into the VM,
@@ -105,8 +98,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         finish!(timer);
 
-        // Ok((accepted, rejected, finalize_operations))
-        Ok((Vec::new(), Vec::new(), Vec::new()))
+        // Return the list of accepted transaction IDs, rejected transaction IDs, and finalize operations.
+        Ok((
+            accepted.into_iter().map(|transaction| transaction.id()).collect(),
+            rejected.into_iter().map(|(id, _)| id).collect(),
+            finalize_operations,
+        ))
     }
 }
 
@@ -143,6 +140,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Finalize the transactions.
             for transaction in transactions {
+                // Pre-condition checks.
+                match finalize_mode {
+                    FinalizeMode::RealRun => {}
+                    FinalizeMode::DryRun => {
+                        // Ensure the list of transactions does not contain any fee transactions.
+                        if matches!(transaction, Transaction::Fee(..)) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Cannot speculate on a fee transaction");
+                        }
+                    }
+                }
+
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
@@ -199,22 +208,39 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
             }
 
-            // Ensure all transactions were processed.
+            // Post-condition checks.
             match finalize_mode {
                 FinalizeMode::RealRun => {
+                    // Ensure all transactions were processed.
                     if accepted.len() != num_transactions {
                         // Note: This will abort the entire atomic batch.
                         return Err("Not all transactions were processed in 'VM::atomic_finalize(real)'");
                     }
-
-                    // TODO (howardwu): Check that the fee transaction corresponds to a rejected transaction.
-                    // // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
-                    // // in the accepted transactions, with the same fee transition.
-                    // for reject in rejected.iter() {
-                    //     accepted.contains(reject);
-                    // }
+                    // Ensure the number of accepted transactions is '>=' to the number of rejected transactions.
+                    if accepted.len() < rejected.len() {
+                        // Note: This will abort the entire atomic batch.
+                        return Err("The # of accepted transactions is below the # of rejected transactions");
+                    }
+                    // Retrieve the last N accepted transactions, where N is the number of rejected transactions.
+                    let accepted_fees = accepted.iter().rev().take(rejected.len()).rev();
+                    // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
+                    // in the accepted transactions, with the same fee transition, and in the same order.
+                    for ((_, reject_fee), fee_transaction) in rejected.iter().zip_eq(accepted_fees) {
+                        match (reject_fee, fee_transaction) {
+                            (reject_fee, Transaction::Fee(_, accept_fee)) => {
+                                if reject_fee != accept_fee {
+                                    // Note: This will abort the entire atomic batch.
+                                    return Err("Rejected transaction fee does not match accepted transaction fee");
+                                }
+                            }
+                            // This is a foundational bug - the caller is violating protocol rules.
+                            // Note: This will abort the entire atomic batch.
+                            _ => return Err("Rejected transaction does not match accepted transaction"),
+                        }
+                    }
                 }
                 FinalizeMode::DryRun => {
+                    // Ensure all transactions were processed.
                     if accepted.len() + rejected.len() != num_transactions {
                         // Note: This will abort the entire atomic batch.
                         return Err("Not all transactions were processed in 'VM::atomic_finalize(dry)'");
