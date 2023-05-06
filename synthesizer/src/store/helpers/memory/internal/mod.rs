@@ -822,11 +822,11 @@ mod tests {
             // Make sure the checkpoint index is NUM_ITEMS / 2.
             assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
-            (true, 0, "a")
+            Ok((true, 0, "a"))
         });
 
         // The atomic finalize should have passed the result through.
-        assert_eq!(outcome, (true, 0, "a"));
+        assert_eq!(outcome.unwrap(), (true, 0, "a"));
 
         // The map should contain NUM_ITEMS.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);

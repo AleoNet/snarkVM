@@ -225,19 +225,29 @@ macro_rules! atomic_finalize {
 
         // Wrap the operations that should be batched in a closure to be able to abort the entire
         // write batch if any of them fails.
-        let run_atomic_ops = || -> _ { $ops };
+        let run_atomic_ops = || -> Result<_, &str> { $ops };
 
         // Run the atomic operations.
         match ($finalize_mode, run_atomic_ops()) {
-            // If this is a real run, commit the atomic batch.
-            (FinalizeMode::RealRun, result) => {
+            // If this is a successful real run, commit the atomic batch.
+            (FinalizeMode::RealRun, Ok(result)) => {
                 $self.finish_atomic()?;
-                result
+                Ok(result)
             }
-            // If this is a dry run, abort the atomic batch.
-            (FinalizeMode::DryRun, result) => {
+            // If this is a failed real run, abort the atomic batch.
+            (FinalizeMode::RealRun, Err(error_msg)) => {
                 $self.abort_atomic();
-                result
+                Err(anyhow!("Failed to finalize transactions: {error_msg}"))
+            }
+            // If this is a successful dry run, abort the atomic batch.
+            (FinalizeMode::DryRun, Ok(result)) => {
+                $self.abort_atomic();
+                Ok(result)
+            }
+            // If this is a failed dry run, abort the atomic batch.
+            (FinalizeMode::DryRun, Err(error_msg)) => {
+                $self.abort_atomic();
+                Err(anyhow!("Failed to finalize transactions: {error_msg}"))
             }
         }
     }};

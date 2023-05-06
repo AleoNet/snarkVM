@@ -26,7 +26,7 @@ pub use finalize::FinalizeMode;
 
 use crate::{
     atomic_finalize,
-    block::{Block, Transaction, Transactions, Transition},
+    block::{Block, Transaction, Transition},
     cast_ref,
     process,
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
@@ -43,7 +43,6 @@ use console::{
 };
 
 use aleo_std::prelude::{finish, lap, timer};
-use indexmap::IndexSet;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -100,7 +99,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize::<{ FinalizeMode::RealRun.to_u8() }>(block.transactions()) {
+        match self.finalize::<{ FinalizeMode::RealRun.to_u8() }>(block.transactions().values()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
@@ -119,7 +118,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns the finalize store.
     #[inline]
     pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
@@ -156,6 +157,7 @@ pub(crate) mod test_helpers {
         Header,
         Inclusion,
         Metadata,
+        Transactions,
         Transition,
     };
     use console::{
