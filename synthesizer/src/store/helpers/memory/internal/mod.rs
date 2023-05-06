@@ -344,8 +344,8 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{atomic_batch_scope, atomic_finalize};
-    use console::{account::Address, network::Testnet3};
+    use crate::{atomic_batch_scope, atomic_finalize, FinalizeMode};
+    use console::{account::Address, network::Testnet3, prelude::*};
 
     type CurrentNetwork = Testnet3;
 
@@ -658,7 +658,7 @@ mod tests {
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoint.lock().back(), None);
 
-        // Start an atomic write batch.
+        // Start a nested atomic batch scope that completes successfully.
         atomic_batch_scope!(map, {
             // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
             for i in 0..NUM_ITEMS / 2 {
@@ -671,7 +671,7 @@ mod tests {
             // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoint.lock().back(), None);
 
-            // Start a nested atomic write batch that completes correctly.
+            // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                 for i in (NUM_ITEMS / 2)..NUM_ITEMS {
@@ -721,6 +721,7 @@ mod tests {
 
         // Start an atomic write batch.
         let run_nested_atomic_batch_scope = || -> Result<()> {
+            // Start an atomic batch scope that fails.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
@@ -761,8 +762,6 @@ mod tests {
 
     #[test]
     fn test_atomic_finalize() -> Result<()> {
-        use crate::FinalizeMode;
-
         // The number of items that will be queued to be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
@@ -775,6 +774,7 @@ mod tests {
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
+            // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
@@ -837,4 +837,110 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_atomic_finalize_failing_internal_scope() -> Result<()> {
+        // The number of items that will be queued to be inserted into the map.
+        const NUM_ITEMS: usize = 10;
+
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Start an atomic finalize.
+        let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
+            // Start a nested atomic batch scope that completes successfully.
+            atomic_batch_scope!(map, {
+                // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
+                for i in 0..NUM_ITEMS / 2 {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS / 2 items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+                // Make sure the checkpoint index is 0.
+                assert_eq!(map.checkpoint.lock().back(), Some(&0));
+
+                Ok(())
+            })
+            .unwrap();
+
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS / 2 items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+            // Make sure the checkpoint index is 0.
+            assert_eq!(map.checkpoint.lock().back(), Some(&0));
+
+            // Start a nested atomic write batch that fails.
+            let result: Result<()> = atomic_batch_scope!(map, {
+                // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
+                for i in (NUM_ITEMS / 2)..NUM_ITEMS {
+                    map.insert(i, i.to_string()).unwrap();
+                }
+                // The map should still contain no items.
+                assert!(map.iter_confirmed().next().is_none());
+                // The pending batch should contain NUM_ITEMS items.
+                assert_eq!(map.iter_pending().count(), NUM_ITEMS);
+                // Make sure the checkpoint index is NUM_ITEMS / 2.
+                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+
+                bail!("This batch scope should fail.");
+            });
+
+            // Ensure that the batch scope failed.
+            assert!(result.is_err());
+
+            // The map should still contain no items.
+            assert!(map.iter_confirmed().next().is_none());
+            // The pending batch should contain NUM_ITEMS items.
+            assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
+            // Make sure the checkpoint index is 0.
+            assert_eq!(map.checkpoint.lock().back(), Some(&0));
+
+            Ok(())
+        });
+
+        // The atomic finalize should have succeeded.
+        assert!(outcome.is_ok());
+
+        // The map should contain NUM_ITEMS / 2.
+        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS / 2);
+        // The pending batch should contain no items.
+        assert!(map.iter_pending().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        Ok(())
+    }
+
+    // #[test]
+    // fn test_nested_atomic_finalize() -> Result<()> {
+    //     // Initialize a map.
+    //     let map: MemoryMap<usize, String> = Default::default();
+    //     // Sanity check.
+    //     assert!(map.iter_confirmed().next().is_none());
+    //     // Make sure the checkpoint index is None.
+    //     assert_eq!(map.checkpoint.lock().back(), None);
+    //
+    //     // Start an atomic finalize.
+    //     let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
+    //         // Start a nested atomic finalize. This should return an error.
+    //         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, { Ok(()) });
+    //
+    //         // Ensure that the internal atomic finalize failed.
+    //         assert!(outcome.is_err());
+    //
+    //         Ok(())
+    //     });
+    //
+    //     // Ensure that the external atomic finalize also fails.
+    //     assert!(outcome.is_err());
+    //
+    //     Ok(())
+    // }
 }
