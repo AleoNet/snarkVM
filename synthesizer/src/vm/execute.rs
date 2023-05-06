@@ -78,12 +78,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         process!(self, logic)
     }
 
-    /// Executes a fee for the given private key, credits record, and fee amount (in microcredits).
+    /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
     #[inline]
     pub fn execute_fee<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        credits: Record<N, Plaintext<N>>,
+        fee_record: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
@@ -102,14 +102,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             ($process:expr, $network:path, $aleo:path) => {{
                 type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
 
-                // Prepare the private key and credits record.
+                // Prepare the private key and fee record.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
-                let credits = cast_ref!(credits as RecordPlaintext<$network>);
-                lap!(timer, "Prepare the private key and credits record");
+                let fee_record = cast_ref!(fee_record as RecordPlaintext<$network>);
+                lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
                 let (response, fee_transition, inclusion, metrics) =
-                    $process.execute_fee::<$aleo, _>(private_key, credits.clone(), fee_in_microcredits, rng)?;
+                    $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
                 lap!(timer, "Execute the call to fee");
 
                 // Prepare the assignments.

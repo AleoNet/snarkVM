@@ -83,11 +83,13 @@ impl<N: Network> Transaction<N> {
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
     /// Initializes a new deployment transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
-        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -95,8 +97,17 @@ impl<N: Network> Transaction<N> {
         let deployment = vm.deploy(program, rng)?;
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+
+        // Determine the fee.
+        let fee_in_microcredits = deployment
+            .size_in_bytes()?
+            .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
+            .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
+            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
+
         // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
+        let (_, fee, _) = vm.execute_fee(private_key, fee_record, fee_in_microcredits, query, rng)?;
+
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
         let owner = ProgramOwner::new(private_key, id.into(), rng)?;
@@ -106,6 +117,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
@@ -122,7 +135,13 @@ impl<N: Network> Transaction<N> {
         // Compute the fee.
         let fee = match fee {
             None => None,
-            Some((credits, fee_in_microcredits)) => {
+            Some((credits, priority_fee_in_microcredits)) => {
+                // Determine the fee.
+                let fee_in_microcredits = execution
+                    .size_in_bytes()?
+                    .checked_add(priority_fee_in_microcredits)
+                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the fee.
                 Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
             }
         };
