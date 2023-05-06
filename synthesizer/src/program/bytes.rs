@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> FromBytes for Program<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
             return Err(error("Invalid program version"));
@@ -67,7 +67,7 @@ impl<N: Network> FromBytes for Program<N> {
 impl<N: Network> ToBytes for Program<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        0u8.write_le(&mut writer)?;
 
         // Write the program ID.
         self.id.write_le(&mut writer)?;

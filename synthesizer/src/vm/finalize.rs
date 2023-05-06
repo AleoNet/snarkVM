@@ -321,10 +321,18 @@ finalize transfer_public:
         while !unspent_records.is_empty() {
             let record = unspent_records.pop().unwrap().decrypt(&view_key)?;
 
+            // Fetch the record balance and divide it in half.
+            let split_balance = match record.find(&[Identifier::from_str("microcredits")?]) {
+                Ok(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => *amount / 2,
+                _ => bail!("fee record does not contain a microcredits entry"),
+            };
+
             // Prepare the inputs.
-            let inputs =
-                [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("100u64").unwrap()]
-                    .into_iter();
+            let inputs = [
+                Value::<CurrentNetwork>::Record(record),
+                Value::<CurrentNetwork>::from_str(&format!("{split_balance}u64")).unwrap(),
+            ]
+            .into_iter();
 
             // Execute.
             let transaction =

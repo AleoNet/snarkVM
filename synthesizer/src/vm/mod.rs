@@ -38,7 +38,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Response, Value},
     types::Field,
 };
 
@@ -500,7 +500,7 @@ function compute:
             &vm,
             &caller_private_key,
             ("credits.aleo", "split"),
-            [Value::Record(record), Value::from_str("10000000u64").unwrap()].iter(),
+            [Value::Record(record), Value::from_str("1000000000u64").unwrap()].iter(), // 1000 credits
             None,
             None,
             rng,
@@ -518,7 +518,7 @@ function compute:
             &vm,
             &caller_private_key,
             ("credits.aleo", "split"),
-            [Value::Record(first_record), Value::from_str("1000000u64").unwrap()].iter(),
+            [Value::Record(first_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
             None,
             None,
             rng,
@@ -533,7 +533,7 @@ function compute:
             &vm,
             &caller_private_key,
             ("credits.aleo", "split"),
-            [Value::Record(second_record), Value::from_str("1000000u64").unwrap()].iter(),
+            [Value::Record(second_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
             None,
             None,
             rng,
@@ -580,7 +580,7 @@ finalize getter:
             &vm,
             &caller_private_key,
             &Program::from_str(first_program).unwrap(),
-            (first_record, 1000000),
+            (first_record, 1),
             None,
             rng,
         )
@@ -589,7 +589,7 @@ finalize getter:
             &vm,
             &caller_private_key,
             &Program::from_str(second_program).unwrap(),
-            (second_record, 1000000),
+            (second_record, 1),
             None,
             rng,
         )
@@ -604,7 +604,7 @@ finalize getter:
             &caller_private_key,
             ("test_1.aleo", "init"),
             Vec::<Value<Testnet3>>::new().iter(),
-            Some((third_record, 1000000)),
+            Some((third_record, 1)),
             None,
             rng,
         )
@@ -614,7 +614,7 @@ finalize getter:
             &caller_private_key,
             ("test_2.aleo", "init"),
             Vec::<Value<Testnet3>>::new().iter(),
-            Some((fourth_record, 1000000)),
+            Some((fourth_record, 1)),
             None,
             rng,
         )
