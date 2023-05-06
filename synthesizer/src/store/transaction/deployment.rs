@@ -228,9 +228,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.transition_store().insert(fee)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the deployment transaction for the given `transaction ID`.
@@ -285,9 +283,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             self.transition_store().remove(&transition_id)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transaction ID that contains the given `program ID`.

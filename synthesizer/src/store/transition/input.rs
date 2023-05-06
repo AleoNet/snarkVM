@@ -168,9 +168,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the input for the given `transition ID`.
@@ -205,9 +203,7 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transition ID that contains the given `input ID`.

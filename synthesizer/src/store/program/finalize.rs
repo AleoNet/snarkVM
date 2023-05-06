@@ -186,7 +186,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             self.key_value_id_map().insert(mapping_id, IndexMap::new())?;
 
             Ok(())
-        });
+        })?;
 
         // Return the finalize operation.
         Ok(FinalizeOperation::InitializeMapping(mapping_id))
@@ -237,7 +237,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             self.value_map().insert(key_id, value)?;
 
             Ok(())
-        });
+        })?;
 
         // Return the finalize operation.
         Ok(FinalizeOperation::InsertKeyValue(mapping_id, key_id, value_id))
@@ -297,7 +297,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             self.value_map().insert(key_id, value)?;
 
             Ok(())
-        });
+        })?;
 
         // Return the finalize operation.
         Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id))
@@ -345,7 +345,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             self.value_map().remove(&key_id)?;
 
             Ok(())
-        });
+        })?;
 
         // Return the finalize operation.
         Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index))
@@ -391,7 +391,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             Ok(())
-        });
+        })?;
 
         // Return the finalize operation.
         Ok(FinalizeOperation::RemoveMapping(mapping_id))
@@ -441,9 +441,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns `true` if the given `program ID` exist.

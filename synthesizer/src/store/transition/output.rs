@@ -170,9 +170,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the output for the given `transition ID`.
@@ -209,9 +207,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transition ID that contains the given `output ID`.

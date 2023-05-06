@@ -685,7 +685,7 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
-            });
+            })?;
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -695,7 +695,7 @@ mod tests {
             assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
             Ok(())
-        });
+        })?;
 
         // The map should contain NUM_ITEMS.
         assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
@@ -747,10 +747,10 @@ mod tests {
                     assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
                     bail!("This batch should fail.");
-                });
+                })?;
 
                 unreachable!("The atomic write batch should fail before reaching this point.")
-            });
+            })?;
 
             unreachable!("The atomic write batch should fail before reaching this point.")
         };
@@ -786,7 +786,7 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&0));
 
                 Ok(())
-            });
+            })?;
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -809,7 +809,7 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
-            });
+            })?;
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());

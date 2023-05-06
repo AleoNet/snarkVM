@@ -243,9 +243,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.signature_map().insert(block.hash(), *block.signature())?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the block for the given `block hash`.
@@ -311,9 +309,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.signature_map().remove(block_hash)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the block height that contains the given `state root`.
@@ -645,7 +641,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
                 self.storage.remove(block_hash)?;
             }
             Ok(())
-        });
+        })?;
 
         // Update the block tree.
         *tree = updated_tree;

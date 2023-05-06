@@ -167,9 +167,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the execution transaction for the given `transaction ID`.
@@ -206,9 +204,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.

@@ -142,9 +142,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             }
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the transaction for the given `transaction ID`.
@@ -167,9 +165,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             };
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.

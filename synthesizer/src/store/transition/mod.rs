@@ -189,9 +189,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the input for the given `transition ID`.
@@ -228,9 +226,7 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.reverse_tcm_map().remove(&tcm)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transition for the given `transition ID`.

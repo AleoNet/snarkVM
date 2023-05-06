@@ -41,24 +41,23 @@ impl<N: Network> Process<N> {
         // Retrieve the program ID.
         let program_id = deployment.program_id();
 
-        // Initialize a list for the finalize operations.
-        let finalize_operations = Arc::new(Mutex::new(Vec::with_capacity(deployment.program().mappings().len())));
-
         // Initialize the mappings, and store their finalize operations.
         atomic_batch_scope!(store, {
+            // Initialize a list for the finalize operations.
+            let mut finalize_operations = Vec::with_capacity(deployment.program().mappings().len());
+
             // Iterate over the mappings.
             for mapping in deployment.program().mappings().values() {
                 // Initialize the mapping.
-                finalize_operations.lock().push(store.initialize_mapping(program_id, mapping.name())?);
+                finalize_operations.push(store.initialize_mapping(program_id, mapping.name())?);
             }
-            Ok(())
-        });
-        lap!(timer, "Initialize the program mappings");
+            lap!(timer, "Initialize the program mappings");
 
-        finish!(timer);
+            finish!(timer);
 
-        // Return the stack and finalize operations.
-        Ok((stack, Arc::try_unwrap(finalize_operations).unwrap().into_inner()))
+            // Return the stack and finalize operations.
+            Ok((stack, finalize_operations))
+        })
     }
 
     /// Finalizes the execution.
@@ -91,14 +90,14 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the number of transitions");
 
-        // Initialize a list for finalize operations.
-        let finalize_operations = Arc::new(Mutex::new(Vec::new()));
-
         atomic_batch_scope!(store, {
+            // Initialize a list for finalize operations.
+            let mut finalize_operations = Vec::new();
+
             // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
             //  Currently this loop assumes a linearly execution stack.
             // Finalize each transition, starting from the last one.
-            for transition in execution.transitions().rev() {
+            for transition in execution.transitions() {
                 #[cfg(debug_assertions)]
                 println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
 
@@ -131,7 +130,7 @@ impl<N: Network> Process<N> {
                     for command in finalize.commands() {
                         match command.finalize(stack, store, &mut registers) {
                             // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Some(finalize_operation)) => finalize_operations.lock().push(finalize_operation),
+                            Ok(Some(finalize_operation)) => finalize_operations.push(finalize_operation),
                             // If the evaluation succeeds with no operation, continue.
                             Ok(None) => (),
                             // If the evaluation fails, bail and return the error.
@@ -142,12 +141,11 @@ impl<N: Network> Process<N> {
                     lap!(timer, "Finalize transition for {function_name}");
                 }
             }
-            Ok(())
-        });
-        finish!(timer);
+            finish!(timer);
 
-        // Return the finalize operations.
-        Ok(Arc::try_unwrap(finalize_operations).unwrap().into_inner())
+            // Return the finalize operations.
+            Ok(finalize_operations)
+        })
     }
 }
 
