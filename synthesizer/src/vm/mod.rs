@@ -384,12 +384,10 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_fee() -> Fee<CurrentNetwork> {
+    pub(crate) fn sample_fee(rng: &mut TestRng) -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                let rng = &mut TestRng::default();
-
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
@@ -417,6 +415,18 @@ function compute:
                 assert!(Inclusion::verify_fee(&fee).is_ok());
                 // Return the fee.
                 fee
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a fee.
+                let fee = crate::vm::test_helpers::sample_fee(rng);
+                // Return the fee transaction.
+                Transaction::from_fee(fee).unwrap()
             })
             .clone()
     }

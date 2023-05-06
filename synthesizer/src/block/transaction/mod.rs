@@ -48,10 +48,12 @@ use console::{
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
-    /// The transaction deployment publishes an Aleo program to the network.
+    /// The deploy transaction publishes an Aleo program to the network.
     Deploy(N::TransactionID, ProgramOwner<N>, Box<Deployment<N>>, Fee<N>),
-    /// The transaction execution represents a call to an Aleo program.
+    /// The execute transaction represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
+    /// The fee transaction represents a fee paid to the network, used for rejected transactions.
+    Fee(N::TransactionID, Fee<N>),
 }
 
 impl<N: Network> Transaction<N> {
@@ -75,6 +77,16 @@ impl<N: Network> Transaction<N> {
         let id = *Self::execution_tree(&execution, &fee)?.root();
         // Construct the execution transaction.
         Ok(Self::Execute(id.into(), execution, fee))
+    }
+
+    /// Initializes a new fee transaction.
+    pub fn from_fee(fee: Fee<N>) -> Result<Self> {
+        // Ensure the fee is nonzero.
+        ensure!(!fee.is_zero()?, "Attempted to create a zero fee transaction");
+        // Compute the transaction ID.
+        let id = *Self::fee_tree(&fee)?.root();
+        // Construct the execution transaction.
+        Ok(Self::Fee(id.into(), fee))
     }
 }
 
@@ -223,18 +235,20 @@ impl<N: Network> Transaction<N> {
 }
 
 /// A helper enum for iterators and consuming iterators over a transaction.
-enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
+enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> {
     Deploy(I1),
     Execute(I2),
+    Fee(I3),
 }
 
-impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
+impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2, I3> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Deploy(iter) => iter.next(),
             Self::Execute(iter) => iter.next(),
+            Self::Fee(iter) => iter.next(),
         }
     }
 }
@@ -245,6 +259,7 @@ impl<N: Network> Transaction<N> {
         match self {
             Self::Deploy(id, ..) => *id,
             Self::Execute(id, ..) => *id,
+            Self::Fee(id, ..) => *id,
         }
     }
 
@@ -254,6 +269,7 @@ impl<N: Network> Transaction<N> {
             Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
             Self::Execute(_, _, None) => Ok(U64::zero()),
+            Self::Fee(_, fee) => fee.amount(),
         }
     }
 }
@@ -269,6 +285,8 @@ impl<N: Network> Transaction<N> {
                 execution.contains_transition(transition_id)
                     || fee.as_ref().map_or(false, |fee| fee.id() == transition_id)
             }
+            // Check the fee.
+            Self::Fee(_, fee) => fee.id() == transition_id,
         }
     }
 
@@ -299,6 +317,11 @@ impl<N: Network> Transaction<N> {
                     false => None,
                 })
             }),
+            // Check the fee.
+            Self::Fee(_, fee) => match fee.id() == transition_id {
+                true => Some(fee.transition()),
+                false => None,
+            },
         }
     }
 
@@ -331,6 +354,7 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.transitions().chain(fee.as_ref().map(|fee| fee.transition())))
             }
+            Self::Fee(_, fee) => IterWrap::Fee(Some(fee.transition()).into_iter()),
         }
     }
 
@@ -397,6 +421,7 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.into_transitions().chain(fee.map(|fee| fee.into_transition())))
             }
+            Self::Fee(_, fee) => IterWrap::Fee(Some(fee.into_transition()).into_iter()),
         }
     }
 

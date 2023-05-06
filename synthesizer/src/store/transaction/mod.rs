@@ -20,6 +20,9 @@ pub use deployment::*;
 mod execution;
 pub use execution::*;
 
+mod fee;
+pub use fee::*;
+
 use crate::{
     atomic_batch_scope,
     block::Transaction,
@@ -48,6 +51,8 @@ pub enum TransactionType {
     Deploy,
     /// A transaction that is an execution.
     Execute,
+    /// A transaction that is a fee.
+    Fee,
 }
 
 /// A trait for transaction storage.
@@ -55,9 +60,11 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `transaction ID` to `transaction type`.
     type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType>;
     /// The deployment storage.
-    type DeploymentStorage: DeploymentStorage<N, TransitionStorage = Self::TransitionStorage>;
+    type DeploymentStorage: DeploymentStorage<N, FeeStorage = Self::FeeStorage>;
     /// The execution storage.
-    type ExecutionStorage: ExecutionStorage<N, TransitionStorage = Self::TransitionStorage>;
+    type ExecutionStorage: ExecutionStorage<N, FeeStorage = Self::FeeStorage>;
+    /// The fee storage.
+    type FeeStorage: FeeStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
 
@@ -70,10 +77,13 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
     fn deployment_store(&self) -> &DeploymentStore<N, Self::DeploymentStorage>;
     /// Returns the execution store.
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage>;
+    /// Returns the fee store.
+    fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage>;
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
         debug_assert!(self.deployment_store().dev() == self.execution_store().dev());
-        self.execution_store().transition_store()
+        debug_assert!(self.execution_store().dev() == self.fee_store().dev());
+        self.fee_store().transition_store()
     }
 
     /// Returns the optional development ID.
@@ -86,6 +96,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
         self.id_map().start_atomic();
         self.deployment_store().start_atomic();
         self.execution_store().start_atomic();
+        self.fee_store().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -93,6 +104,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
         self.id_map().is_atomic_in_progress()
             || self.deployment_store().is_atomic_in_progress()
             || self.execution_store().is_atomic_in_progress()
+            || self.fee_store().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -100,6 +112,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
         self.id_map().atomic_checkpoint();
         self.deployment_store().atomic_checkpoint();
         self.execution_store().atomic_checkpoint();
+        self.fee_store().atomic_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -107,6 +120,7 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
         self.id_map().atomic_rewind();
         self.deployment_store().atomic_rewind();
         self.execution_store().atomic_rewind();
+        self.fee_store().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -114,13 +128,15 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
         self.id_map().abort_atomic();
         self.deployment_store().abort_atomic();
         self.execution_store().abort_atomic();
+        self.fee_store().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
         self.id_map().finish_atomic()?;
         self.deployment_store().finish_atomic()?;
-        self.execution_store().finish_atomic()
+        self.execution_store().finish_atomic()?;
+        self.fee_store().finish_atomic()
     }
 
     /// Stores the given `transaction` into storage.
@@ -139,8 +155,13 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
                     // Store the execution transaction.
                     self.execution_store().insert(transaction)?;
                 }
+                Transaction::Fee(_, fee) => {
+                    // Store the transaction type.
+                    self.id_map().insert(transaction.id(), TransactionType::Fee)?;
+                    // Store the fee transaction.
+                    self.fee_store().insert(transaction.id(), fee)?;
+                }
             }
-
             Ok(())
         })
     }
@@ -162,8 +183,9 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
                 TransactionType::Deploy => self.deployment_store().remove(transaction_id)?,
                 // Remove the execution transaction.
                 TransactionType::Execute => self.execution_store().remove(transaction_id)?,
-            };
-
+                // Remove the fee transaction.
+                TransactionType::Fee => self.fee_store().remove(transaction_id)?,
+            }
             Ok(())
         })
     }
@@ -194,6 +216,11 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
             TransactionType::Deploy => self.deployment_store().get_transaction(transaction_id),
             // Return the execution transaction.
             TransactionType::Execute => self.execution_store().get_transaction(transaction_id),
+            // Return the fee transaction.
+            TransactionType::Fee => match self.fee_store().get_fee(transaction_id)? {
+                Some(fee) => Ok(Some(Transaction::Fee(*transaction_id, fee))),
+                None => bail!("Failed to get fee for transaction '{transaction_id}'"),
+            },
         }
     }
 }
@@ -291,6 +318,8 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
             TransactionType::Deploy => self.storage.deployment_store().get_deployment(transaction_id),
             // Throw an error.
             TransactionType::Execute => bail!("Tried to get a deployment for execution transaction '{transaction_id}'"),
+            // Throw an error.
+            TransactionType::Fee => bail!("Tried to get a deployment for fee transaction '{transaction_id}'"),
         }
     }
 
@@ -307,6 +336,8 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
             TransactionType::Deploy => bail!("Tried to get an execution for deployment transaction '{transaction_id}'"),
             // Return the execution.
             TransactionType::Execute => self.storage.execution_store().get_execution(transaction_id),
+            // Throw an error.
+            TransactionType::Fee => bail!("Tried to get an execution for fee transaction '{transaction_id}'"),
         }
     }
 
@@ -328,8 +359,10 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
                     None => bail!("Failed to get the program ID for deployment transaction '{transaction_id}'"),
                 }
             }
-            // Return the edition.
+            // Return 'None'.
             TransactionType::Execute => Ok(None),
+            // Return 'None'.
+            TransactionType::Fee => Ok(None),
         }
     }
 
@@ -373,15 +406,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         &self,
         transition_id: &N::TransitionID,
     ) -> Result<Option<N::TransactionID>> {
-        // Check if the transaction id exists in the execution store.
-        let execution_transaction =
-            self.storage.execution_store().find_transaction_id_from_transition_id(transition_id);
-
-        // Check if the transaction id exists in the transition store.
-        match execution_transaction {
-            Ok(None) => self.storage.deployment_store().find_transaction_id_from_transition_id(transition_id),
-            _ => execution_transaction,
-        }
+        self.storage.find_transaction_id_from_transition_id(transition_id)
     }
 }
 
@@ -451,6 +476,7 @@ mod tests {
         for transaction in [
             crate::vm::test_helpers::sample_deployment_transaction(rng),
             crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::vm::test_helpers::sample_fee_transaction(rng),
         ] {
             let transaction_id = transaction.id();
 
