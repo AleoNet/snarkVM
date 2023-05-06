@@ -69,6 +69,8 @@ pub struct Workload {
 
 impl Workload {
     /// Constructs a new workload.
+    /// Note that the name of the workload is used to construct a directory to store workload objects.
+    /// The directory is located at `.resources/<name>`.
     pub fn new(name: String, benchmarks: Vec<Box<dyn Benchmark<Testnet3>>>) -> Result<Self> {
         // Construct the path to a directory to store workload objects.
         let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

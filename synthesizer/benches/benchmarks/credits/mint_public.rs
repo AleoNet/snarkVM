@@ -77,7 +77,10 @@ finalize mint_public:
                 format!("mint_public_{}.aleo", self.num_executions),
                 "mint_public".to_string(),
                 vec![
-                    Value::Plaintext(Plaintext::from(Literal::Address(Address::rand(rng)))),
+                    Value::Plaintext(Plaintext::from(Literal::Address(
+                        #[allow(deprecated)]
+                        Address::rand(rng),
+                    ))),
                     Value::Plaintext(Plaintext::from(Literal::U64(U64::zero()))),
                 ],
             ));

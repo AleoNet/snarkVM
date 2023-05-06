@@ -49,11 +49,10 @@ pub fn bench_add_next_block<C: ConsensusStorage<Testnet3>>(
     // Setup the workload.
     let (vm, private_key, benchmark_transactions, mut rng) = workload.setup::<C>();
 
-    // Benchmark each of the programs.
+    // Run the benchmarks
     for (name, transactions) in benchmark_transactions {
         assert!(!transactions.is_empty(), "There must be at least one operation to benchmark.");
 
-        // Benchmark speculation.
         c.bench_function(&format!("{header}/{name}/add_next_block"), |b| {
             b.iter_batched(
                 || construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap(),

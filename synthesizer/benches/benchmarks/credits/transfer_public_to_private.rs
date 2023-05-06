@@ -73,6 +73,7 @@ finalize transfer_public_to_private:
         let rng = &mut TestRng::default();
         // Construct the operations.
         for _ in 0..self.num_executions {
+            #[allow(deprecated)]
             let sender = Address::rand(rng);
             benchmarks.push(Operation::Execute(
                 format!("transfer_public_to_private_{}.aleo", self.num_executions),
