@@ -36,6 +36,7 @@ use console::{
 use synthesizer::{
     block::{Block, Header, Transaction, Transactions},
     coinbase_puzzle::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
+    process::Query,
     program::Program,
     store::{ConsensusStorage, ConsensusStore},
     vm::VM,
@@ -289,41 +290,63 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .collect::<IndexMap<_, _>>())
     }
 
-    /// Creates a transfer transaction.
-    pub fn create_transfer(
+    /// Creates a deploy transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
+    pub fn create_deploy(
         &self,
         private_key: &PrivateKey<N>,
-        to: Address<N>,
-        amount: u64,
-        fee_amount: u64,
+        program: &Program<N>,
+        priority_fee_in_microcredits: u64,
+        query: Option<Query<N, C::BlockStorage>>,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
         let records = self.find_unspent_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
+        let mut records = records.values();
+
+        // Initialize an RNG.
+        let rng = &mut ::rand::thread_rng();
+
+        // Prepare the fee.
+        let fee_record = records.next().unwrap().clone();
+        let fee = (fee_record, priority_fee_in_microcredits);
+
+        // Create a new deploy transaction.
+        Transaction::deploy(&self.vm, private_key, program, fee, query, rng)
+    }
+
+    /// Creates a transfer transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the execution fee.
+    pub fn create_transfer(
+        &self,
+        private_key: &PrivateKey<N>,
+        to: Address<N>,
+        amount_in_microcredits: u64,
+        priority_fee_in_microcredits: u64,
+        query: Option<Query<N, C::BlockStorage>>,
+    ) -> Result<Transaction<N>> {
+        // Fetch the unspent records.
+        let records = self.find_unspent_records(&ViewKey::try_from(private_key)?)?;
+        ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
+        let mut records = records.values();
 
         // Initialize an RNG.
         let rng = &mut rand::thread_rng();
 
         // Prepare the inputs.
-        let mut records = records.values();
         let inputs = [
             Value::Record(records.next().unwrap().clone()),
             Value::from_str(&format!("{to}"))?,
-            Value::from_str(&format!("{amount}u64"))?,
+            Value::from_str(&format!("{amount_in_microcredits}u64"))?,
         ];
 
-        // Prepare the fee record.
+        // Prepare the fee.
         let fee_record = records.next().unwrap().clone();
+        let fee = Some((fee_record, priority_fee_in_microcredits));
 
-        // Create a new transaction.
-        Transaction::execute(
-            &self.vm,
-            private_key,
-            ("credits.aleo", "transfer"),
-            inputs.iter(),
-            Some((fee_record, fee_amount)),
-            None,
-            rng,
-        )
+        // Create a new execute transaction.
+        Transaction::execute(&self.vm, private_key, ("credits.aleo", "transfer"), inputs.iter(), fee, query, rng)
     }
 }
