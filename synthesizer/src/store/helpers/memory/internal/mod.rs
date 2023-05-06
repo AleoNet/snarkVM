@@ -658,7 +658,7 @@ mod tests {
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoint.lock().back(), None);
 
-        // Start an atomic write batch.
+        // Start a nested atomic batch scope that completes successfully.
         atomic_batch_scope!(map, {
             // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
             for i in 0..NUM_ITEMS / 2 {
@@ -671,7 +671,7 @@ mod tests {
             // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoint.lock().back(), None);
 
-            // Start a nested atomic write batch that completes correctly.
+            // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                 for i in (NUM_ITEMS / 2)..NUM_ITEMS {
@@ -721,6 +721,7 @@ mod tests {
 
         // Start an atomic write batch.
         let run_nested_atomic_batch_scope = || -> Result<()> {
+            // Start an atomic batch scope that fails.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
@@ -773,6 +774,7 @@ mod tests {
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, {
+            // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
@@ -848,6 +850,7 @@ mod tests {
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, {
+            // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
