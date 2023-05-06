@@ -929,30 +929,36 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_nested_atomic_finalize() -> Result<()> {
-    //     // Initialize a map.
-    //     let map: DataMap<usize, String> =
-    //         RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
-    //     // Sanity check.
-    //     assert!(map.iter_confirmed().next().is_none());
-    //     // Make sure the checkpoint index is None.
-    //     assert_eq!(map.checkpoint.lock().back(), None);
-    //
-    //     // Start an atomic finalize.
-    //     let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
-    //         // Start a nested atomic finalize. This should return an error.
-    //         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, { Ok(()) });
-    //
-    //         // Ensure that the internal atomic finalize failed.
-    //         assert!(outcome.is_err());
-    //
-    //         Ok(())
-    //     });
-    //
-    //     // Ensure that the external atomic finalize also fails.
-    //     assert!(outcome.is_err());
-    //
-    //     Ok(())
-    // }
+    #[test]
+    fn test_atomic_finalize_fails_to_start() {
+        // Initialize a map.
+        let map: DataMap<usize, String> =
+            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Construct an atomic batch scope.
+        let outcome: Result<()> = atomic_batch_scope!(map, {
+            // Start an atomic finalize.
+            let outcome = atomic_finalize!(map, FinalizeMode::RealRun, { Ok(()) });
+            // Ensure that the atomic finalize fails.
+            assert!(outcome.is_err());
+
+            unreachable!("The batch scope should fail before we reach this point.");
+        });
+
+        // Ensure that the atomic batch scope fails.
+        assert!(outcome.is_err());
+
+        // Start an atomic operation.
+        map.start_atomic();
+
+        // We need to catch the `atomic_finalize` here, otherwise it will end the test early.
+        let outcome = || atomic_finalize!(map, FinalizeMode::RealRun, { Ok(()) });
+
+        // Ensure that the atomic finalize fails if an atomic batch is in progress.
+        assert!(outcome().is_err());
+    }
 }
