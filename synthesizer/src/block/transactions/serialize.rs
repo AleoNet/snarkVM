@@ -68,7 +68,6 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FinalizeOperation;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

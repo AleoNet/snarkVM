@@ -73,14 +73,14 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTransaction<N> {
                 // Parse the confirmed transaction from a string into a value.
                 let mut object = serde_json::Value::deserialize(deserializer)?;
 
-                // Parse the status and type.
-                let status = object.get("status").and_then(|t| t.as_str());
-                let type_ = object.get("type").and_then(|t| t.as_str());
-
                 // Parse the index.
                 let index: u32 = DeserializeExt::take_from_value::<D>(&mut object, "index")?;
                 // Parse the transaction.
                 let transaction: Transaction<N> = DeserializeExt::take_from_value::<D>(&mut object, "transaction")?;
+
+                // Parse the status and type.
+                let status = object.get("status").and_then(|t| t.as_str());
+                let type_ = object.get("type").and_then(|t| t.as_str());
 
                 // Recover the confirmed transaction.
                 match (status, type_) {

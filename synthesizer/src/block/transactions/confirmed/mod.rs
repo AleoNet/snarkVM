@@ -200,7 +200,7 @@ impl<N: Network> Deref for ConfirmedTransaction<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, program::Literal};
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 

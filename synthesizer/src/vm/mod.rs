@@ -33,7 +33,6 @@ use crate::{
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
-    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,

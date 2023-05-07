@@ -33,7 +33,6 @@ mod string;
 
 use crate::{
     coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
-    process::{Deployment, Execution},
     vm::VM,
 };
 use console::{

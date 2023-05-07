@@ -22,10 +22,7 @@ mod merkle;
 mod serialize;
 mod string;
 
-use crate::{
-    block::{Transaction, Transition},
-    process::{Deployment, Execution},
-};
+use crate::block::{Transaction, Transition};
 use console::{
     network::prelude::*,
     program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
@@ -38,8 +35,6 @@ use indexmap::IndexMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-#[cfg(not(feature = "serial"))]
-use rayon::prelude::ParallelIterator;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
@@ -69,9 +64,19 @@ impl<'a, N: Network> FromIterator<&'a ConfirmedTransaction<N>> for Transactions<
 }
 
 impl<N: Network> Transactions<N> {
+    /// Returns the transaction for the given transaction ID.
+    pub fn get(&self, transaction_id: &N::TransactionID) -> Option<&ConfirmedTransaction<N>> {
+        self.transactions.get(transaction_id)
+    }
+
     /// Returns 'true' if there are no accepted or rejected transactions.
     pub fn is_empty(&self) -> bool {
         self.transactions.is_empty()
+    }
+
+    /// Returns the number of confirmed transactions.
+    pub fn len(&self) -> usize {
+        self.transactions.len()
     }
 
     /// Returns the number of accepted transactions.

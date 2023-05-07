@@ -95,7 +95,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
-            let mut process = self.process.write();
+            let process = self.process.write();
 
             // Retrieve the finalize store.
             let store = self.finalize_store();
@@ -117,7 +117,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // and adding the program to the finalize tree.
                     Transaction::Deploy(_, _, deployment, fee) => match process.finalize_deployment(store, deployment) {
                         // Construct the accepted deploy transaction.
-                        Ok((stack, finalize)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
+                        Ok((_, finalize)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
                         // Construct the rejected deploy transaction.
                         Err(error) => {
                             // Construct the fee transaction.
@@ -261,7 +261,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedDeploy(idx, fee_transaction, deployment) => {
+                    ConfirmedTransaction::RejectedDeploy(idx, _fee_transaction, deployment) => {
                         // Ensure the index matches the expected index.
                         if index != *idx {
                             // Note: This will abort the entire atomic batch.
@@ -275,7 +275,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedExecute(idx, fee_transaction, execution) => {
+                    ConfirmedTransaction::RejectedExecute(idx, _fee_transaction, execution) => {
                         // Ensure the index matches the expected index.
                         if index != *idx {
                             // Note: This will abort the entire atomic batch.
