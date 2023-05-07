@@ -285,13 +285,13 @@ impl<N: Network> Block<N> {
         self.transactions.transaction_ids()
     }
 
-    /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
+    /// Returns an iterator over all transactions in `self` that are accepted deploy transactions.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.deployments()
     }
 
-    /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
+    /// Returns an iterator over all transactions in `self` that are accepted execute transactions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.executions()
     }
 

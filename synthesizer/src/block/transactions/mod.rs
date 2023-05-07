@@ -147,13 +147,13 @@ impl<N: Network> Transactions<N> {
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
-    pub fn iter(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
-        self.transactions.values().map(ConfirmedTransaction::transaction)
+    pub fn iter(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
+        self.transactions.values()
     }
 
     /// Returns a parallel iterator over all transactions, for all transactions in `self`.
-    pub fn par_iter(&self) -> impl '_ + ParallelIterator<Item = &Transaction<N>> {
-        self.transactions.par_values().map(ConfirmedTransaction::transaction)
+    pub fn par_iter(&self) -> impl '_ + ParallelIterator<Item = &ConfirmedTransaction<N>> {
+        self.transactions.par_values()
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
@@ -161,65 +161,59 @@ impl<N: Network> Transactions<N> {
         self.transactions.keys()
     }
 
-    /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
-        self.iter().filter_map(|transaction| match transaction {
-            Transaction::Deploy(_, _, deployment, _) => Some(deployment.as_ref()),
-            _ => None,
-        })
+    /// Returns an iterator over all transactions in `self` that are accepted deploy transactions.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
+        self.iter().filter(|tx| tx.is_accepted() && tx.is_deploy())
     }
 
-    /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
-        self.iter().filter_map(|transaction| match transaction {
-            Transaction::Execute(_, execution, _) => Some(execution),
-            _ => None,
-        })
+    /// Returns an iterator over all transactions in `self` that are accepted execute transactions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
+        self.iter().filter(|tx| tx.is_accepted() && tx.is_execute())
     }
 
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
-        self.iter().flat_map(Transaction::transitions)
+        self.iter().flat_map(|tx| tx.transitions())
     }
 
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.iter().flat_map(Transaction::transition_ids)
+        self.iter().flat_map(|tx| tx.transition_ids())
     }
 
     /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.iter().flat_map(Transaction::transition_public_keys)
+        self.iter().flat_map(|tx| tx.transition_public_keys())
     }
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.iter().flat_map(Transaction::tags)
+        self.iter().flat_map(|tx| tx.tags())
     }
 
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.iter().flat_map(Transaction::serial_numbers)
+        self.iter().flat_map(|tx| tx.serial_numbers())
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.iter().flat_map(Transaction::commitments)
+        self.iter().flat_map(|tx| tx.commitments())
     }
 
     /// Returns an iterator over the records, for all transition outputs that are records.
     pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
-        self.iter().flat_map(Transaction::records)
+        self.iter().flat_map(|tx| tx.records())
     }
 
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.iter().flat_map(Transaction::nonces)
+        self.iter().flat_map(|tx| tx.nonces())
     }
 
     /// Returns an iterator over the transaction fees, for all transactions.
     pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
-        self.iter().map(Transaction::fee)
+        self.iter().map(|tx| tx.fee())
     }
 }
 

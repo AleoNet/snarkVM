@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::{ConfirmedTransaction, Transactions};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FinalizeMode {
@@ -46,111 +47,67 @@ impl FinalizeMode {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Speculates on the given list of transactions with the VM,
-    /// returning the list of accepted transactions, rejected transaction IDs, and finalize operations.
+    /// Speculates on the given list of transactions in the VM, returning the confirmed transactions.
     #[inline]
     pub fn speculate<'a>(
         &self,
         transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
-    ) -> Result<(Vec<Transaction<N>>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
+    ) -> Result<Transactions<N>> {
         let timer = timer!("VM::speculate");
 
-        // Performs a **dry-run** of finalize over the list of transactions.
-        let (mut accepted, rejected, finalize_operations) =
-            self.atomic_finalize::<{ FinalizeMode::DryRun.to_u8() }>(transactions)?;
-        lap!(timer, "Finished dry-run of finalize");
+        // Performs a **dry-run** over the list of transactions.
+        let confirmed_transactions = self.atomic_speculate(transactions)?;
 
-        #[cfg(debug_assertions)]
-        {
-            // Ensure the list of accepted transactions does not contain any fee transactions.
-            for transaction in &accepted {
-                if matches!(transaction, Transaction::Fee(..)) {
-                    bail!("Cannot include a fee transaction '{}' beforehand", transaction.id())
-                }
-            }
-        }
+        finish!(timer, "Finished dry-run of the transactions");
 
-        // Add the rejected fees to the list of accepted transactions.
-        for (_, fee) in &rejected {
-            accepted.push(Transaction::from_fee(fee.clone())?);
-        }
-        lap!(timer, "Finished adding rejected fees to accepted transactions");
-
-        finish!(timer);
-
-        // Return the list of accepted transactions, rejected transaction IDs, and finalize operations.
-        Ok((accepted, rejected.into_iter().map(|(id, _)| id).collect(), finalize_operations))
+        // Return the transactions.
+        Ok(confirmed_transactions.into_iter().collect())
     }
 
-    /// Finalizes the given transactions into the VM,
-    /// returning the list of accepted transaction IDs, rejected transaction IDs, and finalize operations.
+    /// Finalizes the given transactions into the VM.
     #[inline]
-    pub fn finalize<'a>(
-        &self,
-        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
-    ) -> Result<(Vec<N::TransactionID>, Vec<N::TransactionID>, Vec<FinalizeOperation<N>>)> {
+    pub fn finalize<'a>(&self, transactions: Transactions<N>) -> Result<()> {
         let timer = timer!("VM::finalize");
 
         // Performs a **real-run** of finalize over the list of transactions.
-        let (accepted, rejected, finalize_operations) =
-            self.atomic_finalize::<{ FinalizeMode::RealRun.to_u8() }>(transactions)?;
-        lap!(timer, "Finished real-run of finalize");
+        self.atomic_finalize(transactions)?;
 
-        finish!(timer);
-
-        // Return the list of accepted transaction IDs, rejected transaction IDs, and finalize operations.
-        Ok((
-            accepted.into_iter().map(|transaction| transaction.id()).collect(),
-            rejected.into_iter().map(|(id, _)| id).collect(),
-            finalize_operations,
-        ))
+        finish!(timer, "Finished real-run of finalize");
+        Ok(())
     }
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Performs atomic finalization over a list of transactions and returns the list of
-    /// accepted transactions, rejected transaction IDs + fees, and finalize operations.
+    /// Performs atomic speculation over a list of transactions, and returns the confirmed transactions.
     #[inline]
-    fn atomic_finalize<'a, const FINALIZE_MODE: u8>(
+    #[rustfmt::skip]
+    fn atomic_speculate<'a>(
         &self,
         transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
-    ) -> Result<(Vec<Transaction<N>>, Vec<(N::TransactionID, Fee<N>)>, Vec<FinalizeOperation<N>>)> {
-        let timer = timer!("VM::atomic_finalize");
+    ) -> Result<Vec<ConfirmedTransaction<N>>> {
+        let timer = timer!("VM::atomic_speculate");
 
         // Retrieve the number of transactions.
         let num_transactions = transactions.len();
-        // Determine the finalize mode.
-        let finalize_mode = FinalizeMode::from_u8(FINALIZE_MODE)?;
 
         // Perform the finalize operation on the preset finalize mode.
-        atomic_finalize!(self.finalize_store(), finalize_mode, {
+        atomic_finalize!(self.finalize_store(), FinalizeMode::DryRun, {
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
             let mut process = self.process.write();
 
-            // Initialize a list of the accepted transactions.
-            let mut accepted = Vec::with_capacity(num_transactions);
-            // Initialize a list of the rejected transactions.
-            let mut rejected = Vec::with_capacity(num_transactions);
-            // Initialize a list for the finalize operations.
-            let mut finalize_operations = Vec::new();
-            // Initialize a list for the deployed stacks.
-            let mut stacks = Vec::new();
+            // Retrieve the finalize store.
+            let store = self.finalize_store();
+
+            // Initialize a list of the confirmed transactions.
+            let mut confirmed = Vec::with_capacity(num_transactions);
 
             // Finalize the transactions.
-            for transaction in transactions {
-                // Pre-condition checks.
-                match finalize_mode {
-                    FinalizeMode::RealRun => {}
-                    FinalizeMode::DryRun => {
-                        // Ensure the list of transactions does not contain any fee transactions.
-                        if matches!(transaction, Transaction::Fee(..)) {
-                            // Note: This will abort the entire atomic batch.
-                            return Err("Cannot speculate on a fee transaction");
-                        }
-                    }
-                }
+            for (index, transaction) in transactions.enumerate() {
+                // Convert the transaction index to a u32.
+                // Note: On failure, this will abort the entire atomic batch.
+                let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
 
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
@@ -158,111 +115,191 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let outcome = match transaction {
                     // The finalize operation here involves appending the 'stack',
                     // and adding the program to the finalize tree.
-                    Transaction::Deploy(_, _, deployment, _) => {
-                        process.finalize_deployment(self.finalize_store(), deployment).map(|(stack, operations)| {
-                            // Store the stack, if this is a real run.
-                            if finalize_mode == FinalizeMode::RealRun {
-                                stacks.push(stack);
-                            }
-                            // Return the finalize operations.
-                            Some(operations)
-                        })
+                    Transaction::Deploy(_, _, deployment, fee) => match process.finalize_deployment(store, deployment) {
+                        // Construct the accepted deploy transaction.
+                        Ok((stack, finalize)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
+                        // Construct the rejected deploy transaction.
+                        Err(error) => {
+                            // Construct the fee transaction.
+                            // Note: On failure, this will abort the entire atomic batch.
+                            let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
+                            // Construct the rejected deploy transaction.
+                            ConfirmedTransaction::rejected_deploy(index, fee_tx, *deployment.clone()).map_err(|e| e.to_string())
+                        }
                     }
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
-                    Transaction::Execute(_, execution, _) => {
-                        process.finalize_execution(self.finalize_store(), execution).map(Some)
+                    Transaction::Execute(_, execution, fee) => match process.finalize_execution(store, execution) {
+                        // Construct the accepted execute transaction.
+                        Ok(finalize) => ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
+                        // Construct the rejected execute transaction.
+                        Err(error) => match fee {
+                            Some(fee) => {
+                                // Construct the fee transaction.
+                                // Note: On failure, this will abort the entire atomic batch.
+                                let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
+                                // Construct the rejected execute transaction.
+                                ConfirmedTransaction::rejected_execute(index, fee_tx, execution.clone()).map_err(|e| e.to_string())
+                            },
+                            // This is a foundational bug - the caller is violating protocol rules.
+                            // Note: This will abort the entire atomic batch.
+                            None => Err("Rejected execute transaction has no fee".to_string()),
+                        },
                     }
                     // There are no finalize operations here.
-                    Transaction::Fee(..) => Ok(None),
+                    // Note: This will abort the entire atomic batch.
+                    Transaction::Fee(..) => Err("Cannot speculate on a fee transaction".to_string()),
+                };
+                lap!(timer, "Speculated on transaction '{}'", transaction.id());
+
+                match outcome {
+                    // If the transaction succeeded, store it and continue to the next transaction.
+                    Ok(confirmed_transaction) => confirmed.push(confirmed_transaction),
+                    // If the transaction failed, abort the entire batch.
+                    Err(error) => {
+                        eprintln!("Critical bug in speculate: {error}\n\n{transaction}");
+                        // Note: This will abort the entire atomic batch.
+                        return Err(format!("Failed to speculate on transaction - {error}"));
+                    }
+                }
+            }
+
+            // Ensure all transactions were processed.
+            if confirmed.len() != num_transactions {
+                // Note: This will abort the entire atomic batch.
+                return Err("Not all transactions were processed in 'VM::atomic_speculate'".to_string());
+            }
+
+            finish!(timer);
+
+            // On return, 'atomic_finalize!' will abort the batch, and return the confirmed transactions.
+            Ok(confirmed)
+        })
+    }
+
+    /// Performs atomic finalization over a list of transactions.
+    #[inline]
+    fn atomic_finalize(&self, transactions: Transactions<N>) -> Result<()> {
+        let timer = timer!("VM::atomic_finalize");
+
+        // Perform the finalize operation on the preset finalize mode.
+        atomic_finalize!(self.finalize_store(), FinalizeMode::RealRun, {
+            // Acquire the write lock on the process.
+            // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
+            // we choose to acquire the write lock for the entire duration of this atomic batch.
+            let mut process = self.process.write();
+
+            // Retrieve the finalize store.
+            let store = self.finalize_store();
+
+            // Initialize a list for the deployed stacks.
+            let mut stacks = Vec::new();
+
+            // Finalize the transactions.
+            for (index, transaction) in transactions.iter().enumerate() {
+                // Convert the transaction index to a u32.
+                // Note: On failure, this will abort the entire atomic batch.
+                let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
+
+                // Process the transaction in an isolated atomic batch.
+                // - If the transaction succeeds, the finalize operations are stored.
+                // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
+                let outcome: Result<(), String> = match transaction {
+                    ConfirmedTransaction::AcceptedDeploy(idx, transaction, finalize) => {
+                        // Ensure the index matches the expected index.
+                        if index != *idx {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in accepted deploy transaction index".to_string());
+                        }
+                        // Extract the deployment from the transaction.
+                        let deployment = match transaction {
+                            Transaction::Deploy(_, _, deployment, _) => deployment,
+                            // Note: This will abort the entire atomic batch.
+                            _ => return Err("Expected deploy transaction".to_string()),
+                        };
+                        // The finalize operation here involves appending the 'stack',
+                        // and adding the program to the finalize tree.
+                        match process.finalize_deployment(store, deployment) {
+                            // Ensure the finalize operations match the expected.
+                            Ok((stack, finalize_operations)) => match finalize == &finalize_operations {
+                                // Store the stack.
+                                true => stacks.push(stack),
+                                // Note: This will abort the entire atomic batch.
+                                false => {
+                                    return Err("Mismatch in finalize operations for an accepted deploy".to_string());
+                                }
+                            },
+                            // Note: This will abort the entire atomic batch.
+                            Err(error) => return Err("Failed to finalize an accepted deploy transaction".to_string()),
+                        };
+                        Ok(())
+                    }
+                    ConfirmedTransaction::AcceptedExecute(idx, transaction, finalize) => {
+                        // Ensure the index matches the expected index.
+                        if index != *idx {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in accepted execute transaction index".to_string());
+                        }
+                        // Extract the execution from the transaction.
+                        let execution = match transaction {
+                            Transaction::Execute(_, execution, _) => execution,
+                            // Note: This will abort the entire atomic batch.
+                            _ => return Err("Expected execute transaction".to_string()),
+                        };
+                        // The finalize operation here involves calling 'update_key_value',
+                        // and update the respective leaves of the finalize tree.
+                        match process.finalize_execution(store, execution) {
+                            // Ensure the finalize operations match the expected.
+                            Ok(finalize_operations) => {
+                                if finalize != &finalize_operations {
+                                    // Note: This will abort the entire atomic batch.
+                                    return Err("Mismatch in finalize operations for an accepted execute".to_string());
+                                }
+                            }
+                            // Note: This will abort the entire atomic batch.
+                            Err(error) => return Err("Failed to finalize an accepted execute transaction".to_string()),
+                        }
+                        Ok(())
+                    }
+                    ConfirmedTransaction::RejectedDeploy(idx, fee_transaction, deployment) => {
+                        // Ensure the index matches the expected index.
+                        if index != *idx {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in rejected deploy transaction index".to_string());
+                        }
+                        // TODO (howardwu): Ensure this fee corresponds to the deployment.
+                        // Attempt to finalize the deployment, which should fail.
+                        if let Ok(..) = process.finalize_deployment(store, deployment) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to reject a rejected deploy transaction".to_string());
+                        }
+                        Ok(())
+                    }
+                    ConfirmedTransaction::RejectedExecute(idx, fee_transaction, execution) => {
+                        // Ensure the index matches the expected index.
+                        if index != *idx {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in rejected execute transaction index".to_string());
+                        }
+                        // TODO (howardwu): Ensure this fee corresponds to the execution.
+                        // Attempt to finalize the execution, which should fail.
+                        if let Ok(..) = process.finalize_execution(store, execution) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to reject a rejected execute transaction".to_string());
+                        }
+                        Ok(())
+                    }
                 };
                 lap!(timer, "Finalizing transaction {}", transaction.id());
 
                 match outcome {
                     // If the transaction succeeded to finalize, continue to the next transaction.
-                    Ok(operations) => {
-                        // Store the finalize operations.
-                        if let Some(operations) = operations {
-                            finalize_operations.extend(operations);
-                        }
-                        // Store the transaction in the accepted list.
-                        accepted.push(transaction.clone());
-                    }
+                    Ok(()) => (),
                     // If the transaction failed to finalize, abort and continue to the next transaction.
                     Err(error) => {
-                        warn!("Rejected transaction '{}': (in finalize) {error}", transaction.id());
-                        // Store the fee in the rejected fee list.
-                        match transaction {
-                            Transaction::Deploy(_, _, _, fee) => rejected.push((transaction.id(), fee.clone())),
-                            Transaction::Execute(_, _, Some(fee)) => rejected.push((transaction.id(), fee.clone())),
-                            // This is a foundational bug - the caller is violating protocol rules.
-                            // Note: This will abort the entire atomic batch.
-                            Transaction::Execute(_, _, None) => return Err("Rejected execute transaction has no fee"),
-                            // This is a foundational bug - the caller is violating protocol rules.
-                            // Note: This will abort the entire atomic batch.
-                            Transaction::Fee(..) => return Err("Fee transactions cannot be rejected"),
-                        }
-                        // Rewind the atomic batch to the previous transaction and continue to the next transaction.
-                        continue;
-                    }
-                }
-            }
-
-            // Post-condition checks.
-            match finalize_mode {
-                FinalizeMode::RealRun => {
-                    // Ensure all transactions were processed.
-                    if accepted.len() != num_transactions {
+                        eprintln!("Critical bug in finalize: {error}\n\n{transaction}");
                         // Note: This will abort the entire atomic batch.
-                        return Err("Not all transactions were processed in 'VM::atomic_finalize(real)'");
-                    }
-                    // Ensure the number of accepted transactions is '>=' to the number of rejected transactions.
-                    if accepted.len() < rejected.len() {
-                        // Note: This will abort the entire atomic batch.
-                        return Err("The # of accepted transactions is below the # of rejected transactions");
-                    }
-
-                    /* Check the first-half of the accepted transactions. */
-
-                    // Retrieve the first N accepted transactions, where N excludes the number of rejected transactions.
-                    let accepted_deploys_executes = accepted.iter().take(accepted.len() - rejected.len());
-                    // Ensure there are no fee transactions in the accepted transactions.
-                    if accepted_deploys_executes.clone().any(|transaction| matches!(transaction, Transaction::Fee(..)))
-                    {
-                        // Note: This will abort the entire atomic batch.
-                        return Err("Accepted deployments and executions contain a fee transaction");
-                    }
-
-                    /* Check the second-half of the accepted transactions. */
-
-                    // Retrieve the last N accepted transactions, where N is the number of rejected transactions.
-                    let accepted_fees = accepted.iter().rev().take(rejected.len()).rev();
-                    // Ensure the number of accepted fees is equal to the number of rejected transactions.
-                    if accepted_fees.len() != rejected.len() {
-                        // Note: This will abort the entire atomic batch.
-                        return Err("The # of accepted fees is not equal to the # of rejected transactions");
-                    }
-                    // Ensure that all rejected transactions have a corresponding 'Transaction::Fee' type
-                    // in the accepted transactions, with the same fee transition, and in the same order.
-                    for ((_, reject_fee), fee_transaction) in rejected.iter().zip_eq(accepted_fees) {
-                        match (reject_fee, fee_transaction) {
-                            (reject_fee, Transaction::Fee(_, accept_fee)) => {
-                                if reject_fee != accept_fee {
-                                    // Note: This will abort the entire atomic batch.
-                                    return Err("Rejected transaction fee does not match accepted transaction fee");
-                                }
-                            }
-                            // This is a foundational bug - the caller is violating protocol rules.
-                            // Note: This will abort the entire atomic batch.
-                            _ => return Err("Rejected transaction does not match accepted transaction"),
-                        }
-                    }
-                }
-                FinalizeMode::DryRun => {
-                    // Ensure all transactions were processed.
-                    if accepted.len() + rejected.len() != num_transactions {
-                        // Note: This will abort the entire atomic batch.
-                        return Err("Not all transactions were processed in 'VM::atomic_finalize(dry)'");
+                        return Err(format!("Failed to finalize on transaction - {error}"));
                     }
                 }
             }
@@ -276,10 +313,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             finish!(timer); // <- Note: This timer does **not** include the time to write batch to DB.
 
-            // Handles the atomic batch, based on the 'finalize_mode'.
-            // If this is a real run, 'atomic_finalize!' will commit the atomic batch.
-            // If this is a dry run, 'atomic_finalize!' will abort the atomic batch.
-            Ok((accepted, rejected, finalize_operations))
+            Ok(())
         })
     }
 }
