@@ -90,9 +90,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
     /// Returns the header map.
     fn header_map(&self) -> &Self::HeaderMap;
-    /// Returns the transactions map.
+    /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
-    /// Returns the reverse transactions map.
+    /// Returns the reverse accepted transactions map.
     fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap;
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
@@ -863,7 +863,7 @@ mod tests {
         // Sample the block.
         let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         let block_hash = block.hash();
-        assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
+        assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
 
         // Initialize a new block store.
         let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();

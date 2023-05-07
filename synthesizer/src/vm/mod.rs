@@ -446,7 +446,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = Transactions::from(transactions);
+        let transactions = Transactions::from(transactions.to_vec(), vec![], vec![]);
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,

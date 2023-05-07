@@ -386,7 +386,7 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Construct the new block header.
-        let transactions = Transactions::from(transactions);
+        let transactions = Transactions::from(transactions.to_vec(), vec![], vec![]);
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             CurrentNetwork::ID,
