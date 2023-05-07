@@ -38,6 +38,8 @@ use indexmap::IndexMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::ParallelIterator;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
@@ -84,7 +86,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the number of finalize operations.
     pub fn num_finalize(&self) -> usize {
-        self.transactions.par_values().map(|tx| tx.num_finalize()).sum()
+        cfg_values!(self.transactions).map(|tx| tx.num_finalize()).sum()
     }
 }
 
@@ -152,6 +154,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns a parallel iterator over all transactions, for all transactions in `self`.
+    #[cfg(not(feature = "serial"))]
     pub fn par_iter(&self) -> impl '_ + ParallelIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.par_values()
     }
