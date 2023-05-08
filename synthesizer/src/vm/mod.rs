@@ -156,7 +156,6 @@ pub(crate) mod test_helpers {
         Header,
         Inclusion,
         Metadata,
-        Transactions,
         Transition,
     };
     use console::{

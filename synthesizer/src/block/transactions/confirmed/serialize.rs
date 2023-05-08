@@ -108,7 +108,7 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTransaction<N> {
                         // Return the rejected execute transaction.
                         Self::rejected_execute(index, transaction, rejected).map_err(de::Error::custom)
                     }
-                    _ => return Err(de::Error::custom("Invalid confirmed transaction type")),
+                    _ => Err(de::Error::custom("Invalid confirmed transaction type")),
                 }
             }
             false => {

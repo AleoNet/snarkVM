@@ -46,7 +46,7 @@ pub enum ConfirmedTransaction<N: Network> {
     /// The accepted execute transaction is composed of `(index, execute_transaction, finalize_operations)`.
     AcceptedExecute(u32, Transaction<N>, Vec<FinalizeOperation<N>>),
     /// The rejected deploy transaction is composed of `(index, fee_transaction, rejected_deployment)`.
-    RejectedDeploy(u32, Transaction<N>, Rejected<Deployment<N>>),
+    RejectedDeploy(u32, Transaction<N>, Box<Rejected<Deployment<N>>>),
     /// The rejected execute transaction is composed of `(index, fee_transaction, rejected_execution)`.
     RejectedExecute(u32, Transaction<N>, Rejected<Execution<N>>),
 }
@@ -117,7 +117,9 @@ impl<N: Network> ConfirmedTransaction<N> {
     ) -> Result<Self> {
         // Ensure the transaction is a fee transaction.
         match transaction.is_fee() {
-            true => Ok(ConfirmedTransaction::RejectedDeploy(index, transaction, Rejected(rejected_deployment))),
+            true => {
+                Ok(ConfirmedTransaction::RejectedDeploy(index, transaction, Box::new(Rejected(rejected_deployment))))
+            }
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
@@ -243,7 +245,7 @@ pub(crate) mod test_helpers {
 
         // Extract the execution.
         let execute = match crate::vm::test_helpers::sample_execution_transaction_with_fee(rng) {
-            Transaction::Execute(_, execute, _) => execute.clone(),
+            Transaction::Execute(_, execute, _) => execute,
             _ => unreachable!(),
         };
 

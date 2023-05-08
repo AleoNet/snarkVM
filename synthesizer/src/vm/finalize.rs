@@ -66,7 +66,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Finalizes the given transactions into the VM.
     #[inline]
-    pub fn finalize<'a>(&self, transactions: &Transactions<N>) -> Result<()> {
+    pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
         let timer = timer!("VM::finalize");
 
         // Performs a **real-run** of finalize over the list of transactions.
@@ -230,7 +230,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 }
                             },
                             // Note: This will abort the entire atomic batch.
-                            Err(error) => return Err("Failed to finalize an accepted deploy transaction".to_string()),
+                            Err(error) => {
+                                return Err(format!("Failed to finalize an accepted deploy transaction - {error}"));
+                            }
                         };
                         Ok(())
                     }
@@ -257,7 +259,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 }
                             }
                             // Note: This will abort the entire atomic batch.
-                            Err(error) => return Err("Failed to finalize an accepted execute transaction".to_string()),
+                            Err(error) => {
+                                return Err(format!("Failed to finalize an accepted execute transaction - {error}"));
+                            }
                         }
                         Ok(())
                     }
@@ -329,7 +333,6 @@ mod tests {
         Metadata,
         Program,
         Transaction,
-        Transactions,
         Transition,
     };
     use console::{

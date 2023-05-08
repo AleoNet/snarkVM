@@ -84,7 +84,7 @@ impl<N: Network> FromBytes for FinalizeOperation<N> {
                 // Return the finalize operation.
                 Ok(FinalizeOperation::RemoveMapping(mapping_id))
             }
-            5.. => return Err(error(format!("Failed to decode finalize operation variant {variant}"))),
+            5.. => Err(error(format!("Failed to decode finalize operation variant {variant}"))),
         }
     }
 }

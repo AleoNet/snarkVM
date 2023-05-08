@@ -67,7 +67,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 // Return the confirmed transaction.
                 Self::rejected_execute(index, transaction, rejected).map_err(|e| error(e.to_string()))
             }
-            4.. => return Err(error(format!("Failed to decode confirmed transaction variant {variant}"))),
+            4.. => Err(error(format!("Failed to decode confirmed transaction variant {variant}"))),
         }
     }
 }
