@@ -575,7 +575,7 @@ finalize transfer_public:
     fn reject(
         transaction: &Transaction<CurrentNetwork>,
     ) -> (<CurrentNetwork as Network>::TransactionID, Fee<CurrentNetwork>) {
-        (transaction.id(), transaction.fee_transition().unwrap().clone())
+        (transaction.id(), transaction.fee_transition().unwrap())
     }
 
     #[test]
@@ -609,7 +609,7 @@ finalize transfer_public:
         assert!(vm.contains_program(&program_id));
 
         // Ensure the dry run of the redeployment will cause a reject transaction to be created.
-        let candidate_transactions = vm.atomic_speculate([deployment_transaction.clone()].iter()).unwrap();
+        let candidate_transactions = vm.atomic_speculate([deployment_transaction].iter()).unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
     }
