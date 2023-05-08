@@ -151,7 +151,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
                     &vm,
                     &private_key,
                     &**program,
-                    fee_records.pop().expect("Not enough fee records provided."),
+                    (fee_records.pop().expect("Not enough fee records provided.").0, 0),
                     None,
                     rng,
                 )
@@ -164,7 +164,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
                     &private_key,
                     (program_id, function_name),
                     inputs.iter(),
-                    Some(fee_records.pop().expect("Not enough fee records provided.")),
+                    Some((fee_records.pop().expect("Not enough fee records provided.").0, 0)),
                     None,
                     rng,
                 )
