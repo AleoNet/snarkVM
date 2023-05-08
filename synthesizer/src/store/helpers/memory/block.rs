@@ -114,29 +114,6 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         })
     }
 
-    /// Initializes the block storage for testing.
-    #[cfg(feature = "testing")]
-    fn open_testing(_: Option<std::path::PathBuf>) -> Result<Self> {
-        // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open_testing(None)?;
-        // Initialize the transaction store.
-        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open_testing(None, transition_store)?;
-        // Return the block storage.
-        Ok(Self {
-            state_root_map: MemoryMap::default(),
-            reverse_state_root_map: MemoryMap::default(),
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            header_map: MemoryMap::default(),
-            transactions_map: MemoryMap::default(),
-            reverse_transactions_map: MemoryMap::default(),
-            transaction_store,
-            coinbase_solution_map: MemoryMap::default(),
-            coinbase_puzzle_commitment_map: MemoryMap::default(),
-            signature_map: MemoryMap::default(),
-        })
-    }
-
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap {
         &self.state_root_map

@@ -28,23 +28,26 @@ use crate::utilities::{
 };
 
 use console::{
+    account::PrivateKey,
     network::Testnet3,
     prelude::Network,
-    program::{Identifier, Literal, Value},
+    program::{Identifier, Literal, Plaintext, Record, Value},
 };
-use snarkvm_synthesizer::{Block, ConsensusStorage, Program, Transaction, VM};
-
-use console::{
-    account::PrivateKey,
-    program::{Plaintext, Record},
+use snarkvm_synthesizer::{
+    helpers::memory::ConsensusMemory,
+    Block,
+    ConfirmedTransaction,
+    ConsensusStorage,
+    Program,
+    Transaction,
+    VM,
 };
+use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
 
 use anyhow::Result;
 use console::{prelude::IoResult, program::Entry};
 use itertools::Itertools;
 use rand::Rng;
-use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
-use snarkvm_utilities::{FromBytes, TestRng, ToBytes};
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::hash_map::DefaultHasher,

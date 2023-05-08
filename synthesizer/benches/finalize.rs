@@ -26,7 +26,7 @@ mod utilities;
 use utilities::*;
 
 use console::network::Testnet3;
-use snarkvm_synthesizer::{ConsensusStorage, Transactions};
+use snarkvm_synthesizer::ConsensusStorage;
 
 use criterion::{BatchSize, Criterion};
 use std::fmt::Display;
@@ -50,11 +50,11 @@ pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: 
         assert!(!transactions.is_empty(), "There must be at least one operation to benchmark.");
 
         // Construct a `Transactions` object.
-        let transactions = Transactions::from(&transactions);
+        let transactions = vm.speculate(transactions.iter()).unwrap();
 
         // Benchmark speculation.
         c.bench_function(&format!("{header}/{name}/finalize"), |b| {
-            b.iter_batched(|| {}, |_| vm.finalize::<0>(&transactions).unwrap(), BatchSize::SmallInput)
+            b.iter_batched(|| {}, |_| vm.finalize(&transactions).unwrap(), BatchSize::SmallInput)
         });
     }
 }

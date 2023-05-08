@@ -29,17 +29,7 @@ use console::{
     prelude::Network,
     program::{Field, Literal, Plaintext, Record, Value, Zero, U64},
 };
-use snarkvm_synthesizer::{
-    Block,
-    ConsensusStorage,
-    ConsensusStore,
-    Header,
-    Metadata,
-    Transaction,
-    Transactions,
-    Transition,
-    VM,
-};
+use snarkvm_synthesizer::{Block, ConsensusStorage, ConsensusStore, Header, Metadata, Transaction, Transition, VM};
 use snarkvm_utilities::TestRng;
 
 use anyhow::Result;
@@ -100,7 +90,7 @@ pub fn construct_next_block<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
     // Construct the new block header.
-    let transactions = Transactions::from(transactions);
+    let transactions = vm.speculate(transactions.iter())?;
     // Construct the metadata associated with the block.
     let metadata = Metadata::new(
         Testnet3::ID,
