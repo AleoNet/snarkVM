@@ -230,7 +230,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, ConfirmedTransaction, Header, Inclusion, Metadata, Transaction, Transactions};
+    use crate::{
+        Block,
+        ConfirmedTransaction,
+        FinalizeOperation,
+        Header,
+        Inclusion,
+        Metadata,
+        Transaction,
+        Transactions,
+    };
     use console::{
         account::{Address, ViewKey},
         types::Field,
@@ -390,7 +399,10 @@ mod tests {
 
         // Construct the new block header.
         let transactions =
-            Transactions::from(&[ConfirmedTransaction::accepted_deploy(0, deployment_transaction, vec![]).unwrap()]);
+            Transactions::from(&[ConfirmedTransaction::accepted_deploy(0, deployment_transaction, vec![
+                FinalizeOperation::InitializeMapping(Uniform::rand(rng)),
+            ])
+            .unwrap()]);
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
             CurrentNetwork::ID,
