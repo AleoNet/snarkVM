@@ -46,7 +46,10 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
 
     /// Initializes the fee storage for testing.
     #[cfg(feature = "testing")]
-    fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open_testing(
+        path: Option<std::path::PathBuf>,
+        transition_store: TransitionStore<N, Self::TransitionStorage>,
+    ) -> Result<Self>;
 
     /// Returns the fee map.
     fn fee_map(&self) -> &Self::FeeMap;
@@ -186,7 +189,10 @@ impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
 
     /// Initializes the fee store for testing.
     #[cfg(feature = "testing")]
-    pub fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, F::TransitionStorage>) -> Result<Self> {
+    pub fn open_testing(
+        path: Option<std::path::PathBuf>,
+        transition_store: TransitionStore<N, F::TransitionStorage>,
+    ) -> Result<Self> {
         // Initialize the fee storage.
         let storage = F::open_testing(path, transition_store)?;
         // Return the fee store.

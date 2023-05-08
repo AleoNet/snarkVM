@@ -106,7 +106,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
-            reverse_transactions_map: MemoryMap::default(),
+            confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),

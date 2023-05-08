@@ -112,7 +112,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             reverse_id_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ReverseID))?,
             header_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::Header))?,
             transactions_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::Transactions))?,
-            reverse_transactions_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ReverseTransactions))?,
+            confirmed_transactions_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::ConfirmedTransactions))?,
             transaction_store,
             coinbase_solution_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::CoinbaseSolution))?,
             coinbase_puzzle_commitment_map: internal::RocksDB::open_map_testing(path.clone(), MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,

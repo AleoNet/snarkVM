@@ -50,10 +50,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
 
     #[cfg(feature = "testing")]
     /// Initializes the execution storage for testing.
-    fn open_testing(
-        path: Option<std::path::PathBuf>,
-        fee_store: FeeStore<N, Self::FeeStorage>,
-    ) -> Result<Self>;
+    fn open_testing(path: Option<std::path::PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -309,10 +306,7 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
 
     #[cfg(feature = "testing")]
     /// Initializes the execution store for testing.
-    pub fn open_testing(
-        path: Option<std::path::PathBuf>,
-        fee_store: FeeStore<N, E::FeeStorage>,
-    ) -> Result<Self> {
+    pub fn open_testing(path: Option<std::path::PathBuf>, fee_store: FeeStore<N, E::FeeStorage>) -> Result<Self> {
         // Initialize the execution storage.
         let storage = E::open_testing(path, fee_store)?;
         // Return the execution store.

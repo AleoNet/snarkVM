@@ -81,12 +81,14 @@ impl<N: Network> TransactionStorage<N> for TransactionDB<N> {
     /// Initializes the transaction storage for testing.
     #[cfg(feature = "testing")]
     fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        // Initialize the fee store.
+        let fee_store = FeeStore::<N, FeeDB<N>>::open_testing(path.clone(), transition_store)?;
         // Initialize the deployment store.
-        let deployment_store = DeploymentStore::<N, DeploymentDB<N>>::open_testing(path.clone(), transition_store.clone())?;
+        let deployment_store = DeploymentStore::<N, DeploymentDB<N>>::open_testing(path.clone(), fee_store.clone())?;
         // Initialize the execution store.
-        let execution_store = ExecutionStore::<N, ExecutionDB<N>>::open_testing(path.clone(), transition_store)?;
+        let execution_store = ExecutionStore::<N, ExecutionDB<N>>::open_testing(path.clone(), fee_store.clone())?;
         // Return the transaction storage.
-        Ok(Self { id_map: rocksdb::RocksDB::open_map_testing(path, MapID::Transaction(TransactionMap::ID))?, deployment_store, execution_store })
+        Ok(Self { id_map: rocksdb::RocksDB::open_map_testing(path, MapID::Transaction(TransactionMap::ID))?, deployment_store, execution_store, fee_store })
     }
 
     /// Returns the ID map.
@@ -252,9 +254,9 @@ impl<N: Network> ExecutionStorage<N> for ExecutionDB<N> {
     /// Initializes the execution storage for testing.
     fn open_testing(path: Option<std::path::PathBuf>, fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self> {
         Ok(Self {
-            id_map: rocksdb::RocksDB::open_map_testing(path.clone(), N::ID, MapID::Execution(ExecutionMap::ID))?,
-            reverse_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), N::ID, MapID::Execution(ExecutionMap::ReverseID))?,
-            inclusion_map: rocksdb::RocksDB::open_map_testing(path, N::ID, MapID::Execution(ExecutionMap::Inclusion))?,
+            id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Execution(ExecutionMap::ID))?,
+            reverse_id_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Execution(ExecutionMap::ReverseID))?,
+            inclusion_map: rocksdb::RocksDB::open_map_testing(path, MapID::Execution(ExecutionMap::Inclusion))?,
             fee_store,
         })
     }
@@ -313,8 +315,8 @@ impl<N: Network> FeeStorage<N> for FeeDB<N> {
     /// Initializes the execution storage for testing.
     fn open_testing(path: Option<std::path::PathBuf>, transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
         Ok(Self {
-            fee_map: rocksdb::RocksDB::open_map_testing(path.clone(), N::ID, MapID::Fee(FeeMap::Fee))?,
-            reverse_fee_map: rocksdb::RocksDB::open_map_testing(path, N::ID, MapID::Fee(FeeMap::ReverseFee))?,
+            fee_map: rocksdb::RocksDB::open_map_testing(path.clone(), MapID::Fee(FeeMap::Fee))?,
+            reverse_fee_map: rocksdb::RocksDB::open_map_testing(path, MapID::Fee(FeeMap::ReverseFee))?,
             transition_store,
         })
     }
