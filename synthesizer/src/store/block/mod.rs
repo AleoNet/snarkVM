@@ -16,7 +16,7 @@
 
 use crate::{
     atomic_batch_scope,
-    block::{Block, Header, Transaction, Transactions},
+    block::{Block, Header, NumFinalizeSize, Transaction, Transactions},
     coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     cow_to_cloned,
     cow_to_copied,
@@ -62,15 +62,23 @@ fn to_confirmed_tuple<N: Network>(
 ) -> Result<(ConfirmedTxType, Transaction<N>, Vec<u8>)> {
     match confirmed {
         ConfirmedTransaction::AcceptedDeploy(index, tx, finalize) => {
-            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, (u8::try_from(finalize.len())?, finalize).to_bytes_le()?))
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, (num_finalize, finalize).to_bytes_le()?))
         }
         ConfirmedTransaction::AcceptedExecute(index, tx, finalize) => {
-            Ok((ConfirmedTxType::AcceptedExecute(index), tx, (u8::try_from(finalize.len())?, finalize).to_bytes_le()?))
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::AcceptedExecute(index), tx, (num_finalize, finalize).to_bytes_le()?))
         }
         ConfirmedTransaction::RejectedDeploy(index, tx, rejected) => {
+            // Return the confirmed tuple.
             Ok((ConfirmedTxType::RejectedDeploy(index), tx, rejected.to_bytes_le()?))
         }
         ConfirmedTransaction::RejectedExecute(index, tx, rejected) => {
+            // Return the confirmed tuple.
             Ok((ConfirmedTxType::RejectedExecute(index), tx, rejected.to_bytes_le()?))
         }
     }
@@ -86,7 +94,7 @@ fn to_confirmed_transaction<N: Network>(
             // Initialize a cursor.
             let mut cursor = Cursor::new(blob);
             // Read the number of finalize operations.
-            let num_finalize = u8::read_le(&mut cursor)?;
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
             // Read the finalize operations.
             let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
             // Return the confirmed transaction.
@@ -96,7 +104,7 @@ fn to_confirmed_transaction<N: Network>(
             // Initialize a cursor.
             let mut cursor = Cursor::new(blob);
             // Read the number of finalize operations.
-            let num_finalize = u8::read_le(&mut cursor)?;
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
             // Read the finalize operations.
             let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
             // Return the confirmed transaction.

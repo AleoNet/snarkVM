@@ -25,6 +25,8 @@ use crate::{
 };
 use console::network::prelude::*;
 
+pub type NumFinalizeSize = u16;
+
 /// A safety wrapper around a rejected type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rejected<T: Clone + Debug + PartialEq + Eq + ToBytes>(pub T);

@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 // Read the transaction.
                 let transaction = Transaction::<N>::read_le(&mut reader)?;
                 // Read the number of finalize operations.
-                let num_finalize = u8::read_le(&mut reader)?;
+                let num_finalize = NumFinalizeSize::read_le(&mut reader)?;
                 // Read the finalize operations.
                 let finalize =
                     (0..num_finalize).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
@@ -40,7 +40,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 // Read the transaction.
                 let transaction = Transaction::<N>::read_le(&mut reader)?;
                 // Read the number of finalize operations.
-                let num_finalize = u8::read_le(&mut reader)?;
+                let num_finalize = NumFinalizeSize::read_le(&mut reader)?;
                 // Read the finalize operations.
                 let finalize =
                     (0..num_finalize).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
@@ -84,7 +84,7 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the number of finalize operations.
-                u8::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                NumFinalizeSize::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
                 // Write the finalize operations.
                 finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
@@ -96,7 +96,7 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the number of finalize operations.
-                u8::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                NumFinalizeSize::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
                 // Write the finalize operations.
                 finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
