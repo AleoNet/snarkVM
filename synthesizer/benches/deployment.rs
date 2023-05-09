@@ -20,25 +20,20 @@
 extern crate criterion;
 
 mod benchmarks;
-
 use benchmarks::*;
-use std::borrow::BorrowMut;
 
 mod utilities;
 use utilities::*;
 
 use console::network::Testnet3;
-use snarkvm_synthesizer::{ConsensusStorage, Program, Transaction, VM};
+use snarkvm_synthesizer::{ConsensusStorage, Transaction, VM};
 
 use criterion::{BatchSize, Criterion};
 use std::fmt::Display;
 
-// Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
-const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
 const NUM_DEPLOYMENTS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
 // Note: The maximum number of mappings that can be included in a program is 31.
 const NUM_MAPPINGS: &[usize] = &[1, 2, 4, 8, 16, 31];
-const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function to remove programs, from a set of deployment transactions, from the finalize store.
 fn clean_finalize_state<C: ConsensusStorage<Testnet3>>(vm: &VM<Testnet3, C>, transactions: &[Transaction<Testnet3>]) {
@@ -60,31 +55,39 @@ fn clean_finalize_state<C: ConsensusStorage<Testnet3>>(vm: &VM<Testnet3, C>, tra
 }
 
 /// A helper function for benchmarking deployments.
-#[cfg(feature = "testing")]
-#[allow(unused)]
 pub fn bench_deployment<C: ConsensusStorage<Testnet3>>(
     c: &mut Criterion,
     header: impl Display,
     mut workload: Workload,
 ) {
     // Setup the workload.
-    let (vm, private_key, benchmark_transactions, mut rng, temp_dir) = workload.setup::<C>();
+    let (vm, private_key, benchmark_transactions, mut rng) = workload.setup::<C>();
 
     // Run the benchmarks
     for (name, transactions) in benchmark_transactions {
-        assert!(!transactions.is_empty(), "There must be at least one operation to benchmark.");
+        if transactions.is_empty() {
+            println!("Skipping benchmark {} because it has no transactions.", name);
+            continue;
+        }
 
         let mut num_transactions = 0f64;
         let mut num_rejected = 0f64;
 
+        // Benchmark `speculate`.
+        c.bench_function(&format!("{header}/{name}/speculate"), |b| {
+            b.iter_batched(|| {}, |_| vm.speculate(transactions.iter()).unwrap(), BatchSize::SmallInput)
+        });
+
+        // Construct the `Transactions` object.
         let txns = vm.speculate(transactions.iter()).unwrap();
 
+        // Benchmark `finalize`.
         c.bench_function(&format!("{header}/{name}/finalize"), |b| {
             b.iter_batched(
                 || {
                     vm.finalize_store().start_atomic();
                     clean_finalize_state(&vm, &transactions);
-                    vm.finalize_store().finish_atomic();
+                    vm.finalize_store().finish_atomic().unwrap();
                     num_transactions += txns.iter().count() as f64;
                     num_rejected += txns.iter().filter(|t| t.is_rejected()).count() as f64;
                 },
@@ -94,8 +97,46 @@ pub fn bench_deployment<C: ConsensusStorage<Testnet3>>(
                 BatchSize::PerIteration,
             )
         });
+
         // Clean up the VM.
+        vm.finalize_store().start_atomic();
         clean_finalize_state(&vm, &transactions);
+        vm.finalize_store().finish_atomic().unwrap();
+
+        // Construct the next block.
+        let block = construct_next_block(&vm, &private_key, &transactions, &mut rng).unwrap();
+        // Add the block to the VM.
+        // This is done to ensure that there is a block that can be safely removed from the block store at the beginning of each iteration.
+        vm.add_next_block(&block).unwrap();
+
+        // Benchmark `add_next_block`.
+        c.bench_function(&format!("{header}/{name}/add_next_block"), |b| {
+            b.iter_batched(
+                || {
+                    vm.finalize_store().start_atomic();
+                    clean_finalize_state(&vm, &transactions);
+                    vm.finalize_store().finish_atomic().unwrap();
+                    vm.block_store().start_atomic();
+                    vm.block_store().remove_last_n(1).unwrap();
+                    vm.block_store().finish_atomic().unwrap();
+                    num_transactions += block.transactions().iter().count() as f64;
+                    num_rejected += block.transactions().iter().filter(|t| t.is_rejected()).count() as f64;
+                },
+                |_| {
+                    vm.add_next_block(&block).unwrap();
+                },
+                BatchSize::PerIteration,
+            )
+        });
+
+        // Clean up the VM.
+        vm.finalize_store().start_atomic();
+        clean_finalize_state(&vm, &transactions);
+        vm.finalize_store().finish_atomic().unwrap();
+        vm.block_store().start_atomic();
+        vm.block_store().remove_last_n(1).unwrap();
+        vm.block_store().finish_atomic().unwrap();
+
         println!(
             "| {header}/{name}/finalize | Transactions: {} | Rejected: {} | Percent Rejected: {}",
             num_transactions,
