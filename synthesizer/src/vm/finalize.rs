@@ -614,6 +614,94 @@ finalize transfer_public:
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
     }
 
+    #[test]
+    fn test_finalize_catch_halt() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key, view key, and address for the caller.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Deploy a new program.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
+        // Create a program that will always cause a E::halt in the finalize execution.
+        let program_id = "testing.aleo";
+        let program = Program::<CurrentNetwork>::from_str(&format!(
+            "
+program {program_id};
+
+mapping hashes:
+    key preimage as u128.public;
+    value val as field.public;
+
+function ped_hash:
+    input r0 as u128.public;
+    // hash.ped64 r0 into r1; <--- This will cause a E::halt.
+    finalize r0;
+
+finalize ped_hash:
+    input r0 as u128.public;
+    hash.ped64 r0 into r1; <---- However this won't.
+
+    set r1 into hashes[r0];"
+        ))
+        .unwrap();
+
+        let credits = unspent_records.pop().unwrap().decrypt(&caller_view_key).unwrap();
+        let additional_fee = (credits, 10);
+
+        // Deploy the program.
+        let deployment_transaction =
+            Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+
+        // Construct the deployment block.
+        let deployment_block = sample_next_block(
+            &vm,
+            &caller_private_key,
+            &[deployment_transaction.clone()],
+            &genesis,
+            &mut unspent_records,
+            rng,
+        )
+        .unwrap();
+
+        // Add the deployment block to the VM.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Construct a transaction that will cause a E::halt in the finalize execution.
+        let inputs = vec![Value::<CurrentNetwork>::from_str("1u128").unwrap()];
+        let transaction =
+            create_execution(&vm, caller_private_key, program_id, "ped_hash", inputs, &mut unspent_records, rng);
+
+        // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
+        let confirmed_transactions = vm.speculate([transaction.clone()].iter()).unwrap();
+
+        // Ensure that the transaction is rejected.
+        assert_eq!(confirmed_transactions.len(), 1);
+        assert!(transaction.is_execute());
+        if let Transaction::Execute(_, execution, fee) = transaction {
+            let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
+            let expected_confirmed_transaction =
+                ConfirmedTransaction::RejectedExecute(0, fee_transaction, crate::Rejected(execution));
+
+            let confirmed_transaction = confirmed_transactions.iter().next().unwrap();
+            assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
+        }
+    }
+
     // #[test]
     // fn test_atomic_finalize_many() {
     //     let rng = &mut TestRng::default();
