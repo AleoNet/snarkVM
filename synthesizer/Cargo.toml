@@ -23,22 +23,22 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-#[[bench]]
-#name = "add_next_block"
-#path = "benches/add_next_block.rs"
-#harness = false
-#required-features = [ "testing" ]
+[[bench]]
+name = "add_next_block"
+path = "benches/add_next_block.rs"
+harness = false
+required-features = [ "testing" ]
 
-#[[bench]]
-#name = "block"
-#path = "benches/block.rs"
-#harness = false
-#
-#[[bench]]
-#name = "coinbase_puzzle"
-#path = "benches/coinbase_puzzle.rs"
-#harness = false
-#required-features = [ "setup" ]
+[[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
+
+[[bench]]
+name = "coinbase_puzzle"
+path = "benches/coinbase_puzzle.rs"
+harness = false
+required-features = [ "setup" ]
 
 [[bench]]
 name = "deployment"
@@ -46,22 +46,22 @@ path = "benches/deployment.rs"
 harness = false
 required-features = [ "testing" ]
 
-#[[bench]]
-#name = "finalize"
-#path = "benches/finalize.rs"
-#harness = false
-#required-features = [ "testing"]
+[[bench]]
+name = "finalize"
+path = "benches/finalize.rs"
+harness = false
+required-features = [ "testing"]
 
-#[[bench]]
-#name = "speculate"
-#path = "benches/speculate.rs"
-#harness = false
-#required-features = [ "testing"]
+[[bench]]
+name = "speculate"
+path = "benches/speculate.rs"
+harness = false
+required-features = [ "testing"]
 
-#[[bench]]
-#name = "transaction"
-#path = "benches/transaction.rs"
-#harness = false
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
 
 [features]
 default = [ ]

@@ -33,10 +33,7 @@ use std::fmt::Display;
 
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
-const NUM_DEPLOYMENTS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
 const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64];
-// Note: The maximum number of mappings that can be included in a program is 31.
-const NUM_MAPPINGS: &[usize] = &[1, 2, 4, 8, 16, 31];
 const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function for benchmarking `VM::add_next_block`.
@@ -48,11 +45,14 @@ pub fn bench_add_next_block<C: ConsensusStorage<Testnet3>>(
     mut workload: Workload,
 ) {
     // Setup the workload.
-    let (vm, private_key, benchmark_transactions, mut rng, _) = workload.setup::<C>();
+    let (vm, private_key, benchmark_transactions, mut rng) = workload.setup::<C>();
 
     // Run the benchmarks
     for (name, transactions) in benchmark_transactions {
-        assert!(!transactions.is_empty(), "There must be at least one operation to benchmark.");
+        if transactions.is_empty() {
+            println!("Skipping benchmark {} because it has no transactions.", name);
+            continue;
+        }
 
         let mut num_transactions = 0f64;
         let mut num_rejected = 0f64;

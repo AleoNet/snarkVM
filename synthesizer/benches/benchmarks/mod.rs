@@ -20,6 +20,9 @@ pub use credits::*;
 pub mod deploy;
 pub use deploy::*;
 
+pub mod dummy;
+pub use dummy::*;
+
 pub mod get;
 pub use get::*;
 

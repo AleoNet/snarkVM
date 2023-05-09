@@ -33,22 +33,20 @@ use std::fmt::Display;
 
 // Note: The number of commands that can be included in a speculate block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
-const NUM_DEPLOYMENTS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
 const NUM_EXECUTIONS: &[usize] = &[2, 4, 8, 16, 32, 64];
-// Note: The maximum number of mappings that can be included in a program is 31.
-const NUM_MAPPINGS: &[usize] = &[1, 2, 4, 8, 16, 31];
 const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function for benchmarking `VM::speculate`.
-#[cfg(feature = "testing")]
-#[allow(unused)]
 pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: impl Display, mut workload: Workload) {
     // Setup the workload.
-    let (vm, private_key, benchmark_transactions, mut rng, _) = workload.setup::<C>();
+    let (vm, _, benchmark_transactions, _) = workload.setup::<C>();
 
     // Benchmark each of the programs.
     for (name, transactions) in benchmark_transactions {
-        assert!(!transactions.is_empty(), "There must be at least one operation to benchmark.");
+        if transactions.is_empty() {
+            println!("Skipping benchmark {} because it has no transactions.", name);
+            continue;
+        }
 
         // Benchmark speculation.
         c.bench_function(&format!("{header}/{name}/speculate"), |b| {
@@ -57,29 +55,9 @@ pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header:
     }
 }
 
-fn bench_one_deployment(c: &mut Criterion) {
-    // Initialize the workload.
-    let workload = single_deployment_workload(NUM_MAPPINGS);
-
-    #[cfg(not(any(feature = "rocks")))]
-    bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workload);
-    #[cfg(any(feature = "rocks"))]
-    bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
-}
-
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workload.
     let workload = one_execution_workload(NUM_COMMANDS);
-
-    #[cfg(not(any(feature = "rocks")))]
-    bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workload);
-    #[cfg(any(feature = "rocks"))]
-    bench_speculate::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
-}
-
-fn bench_multiple_deployments(c: &mut Criterion) {
-    // Initialize the workload.
-    let workload = multiple_deployments_workload(NUM_DEPLOYMENTS, *NUM_MAPPINGS.last().unwrap());
 
     #[cfg(not(any(feature = "rocks")))]
     bench_speculate::<ConsensusMemory<Testnet3>>(c, "memory", workload);
@@ -114,7 +92,7 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
 criterion_group! {
     name = benchmarks;
     config = Criterion::default().sample_size(10);
-    targets = bench_one_deployment, bench_one_operation, bench_multiple_deployments, bench_multiple_operations,
+    targets = bench_one_operation, bench_multiple_operations,
 }
 criterion_group! {
     name = long_benchmarks;

@@ -75,7 +75,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     object_store: &mut ObjectStore,
     setup_operations: Vec<Vec<Operation<Testnet3>>>,
     benchmark_operations: Vec<(String, Vec<Operation<Testnet3>>)>,
-) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng, Option<std::path::PathBuf>) {
+) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
     println!("Initializing object store...");
 
     // Select a random seed for the RNG.
@@ -92,7 +92,7 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
     let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
 
     // Initialize the VM.
-    let (vm, record, temp_dir) = initialize_vm::<C, _>(&private_key, &mut rng);
+    let (vm, record) = initialize_vm::<C, _>(&private_key, &mut rng);
 
     // Calculate the number of fee records needed for the workload.
     let num_fee_records = setup_operations.iter().flatten().count()
@@ -213,5 +213,5 @@ pub fn initialize_object_store<C: ConsensusStorage<Testnet3>>(
 
     println!("Constructed transactions for the benchmark operations.");
 
-    (vm, private_key, benchmark_transactions, rng, temp_dir)
+    (vm, private_key, benchmark_transactions, rng)
 }

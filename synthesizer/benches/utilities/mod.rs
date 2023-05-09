@@ -41,7 +41,7 @@ use std::borrow::Borrow;
 pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
-) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>, Option<std::path::PathBuf>) {
+) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>) {
     // Initialize the VM.
     // If the `rocks` feature is enabled, then we are benchmarking using the DB backend.
     // In this case, we need to create a temporary directory to store the database.
@@ -54,7 +54,7 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
             Some(temp_dir)
         }
     };
-    let vm = VM::from(ConsensusStore::open_testing(temp_dir.clone()).unwrap()).unwrap();
+    let vm = VM::from(ConsensusStore::open_testing(temp_dir).unwrap()).unwrap();
 
     // Initialize the genesis block.
     let genesis = Block::genesis(&vm, private_key, rng).unwrap();
@@ -69,7 +69,7 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     // Update the VM.
     vm.add_next_block(&genesis).unwrap();
 
-    (vm, record, temp_dir)
+    (vm, record)
 }
 
 #[allow(unused)]

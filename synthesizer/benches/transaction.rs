@@ -32,7 +32,7 @@ fn deploy(c: &mut Criterion) {
     let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
 
     // Initialize the VM.
-    let (vm, record, _) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
+    let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
 
     // Create a sample program.
     let program = Program::<Testnet3>::from_str(
@@ -67,7 +67,7 @@ fn execute(c: &mut Criterion) {
     let address = Address::try_from(&private_key).unwrap();
 
     // Initialize the VM.
-    let (vm, record, _) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
+    let (vm, record) = initialize_vm::<ConsensusMemory<Testnet3>, _>(&private_key, rng);
 
     // Prepare the inputs.
     let inputs = [

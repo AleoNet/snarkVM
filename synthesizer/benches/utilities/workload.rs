@@ -99,7 +99,7 @@ impl Workload {
     /// Note that setup operations are aggregated across all benchmarks.
     pub fn setup<C: ConsensusStorage<Testnet3>>(
         &mut self,
-    ) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng, Option<std::path::PathBuf>) {
+    ) -> (VM<Testnet3, C>, PrivateKey<Testnet3>, BenchmarkBatch, TestRng) {
         println!("Setting up workload: {}", self.name);
         // Check that the seed to the RNG is stored in the object store.
         let mut all_data_is_stored = self.object_store.contains("seed");
@@ -153,7 +153,7 @@ impl Workload {
             let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
 
             // Initialize the VM.
-            let (vm, _, temp_dir) = initialize_vm::<C, _>(&private_key, &mut rng);
+            let (vm, _) = initialize_vm::<C, _>(&private_key, &mut rng);
 
             // Load the blocks.
             let num_blocks: u64 = self.object_store.get("num_blocks").unwrap();
@@ -176,7 +176,7 @@ impl Workload {
                 })
                 .collect_vec();
 
-            (vm, private_key, benchmark_transactions, rng, temp_dir)
+            (vm, private_key, benchmark_transactions, rng)
         }
     }
 }
