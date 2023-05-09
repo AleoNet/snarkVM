@@ -649,12 +649,12 @@ mapping hashes:
 
 function ped_hash:
     input r0 as u128.public;
-    // hash.ped64 r0 into r1; <--- This will cause a E::halt.
+    // hash.ped64 r0 into r1; // <--- This will cause a E::halt.
     finalize r0;
 
 finalize ped_hash:
     input r0 as u128.public;
-    hash.ped64 r0 into r1; <---- However this won't.
+    hash.ped64 r0 into r1;
 
     set r1 into hashes[r0];"
         ))
@@ -668,15 +668,9 @@ finalize ped_hash:
             Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
 
         // Construct the deployment block.
-        let deployment_block = sample_next_block(
-            &vm,
-            &caller_private_key,
-            &[deployment_transaction.clone()],
-            &genesis,
-            &mut unspent_records,
-            rng,
-        )
-        .unwrap();
+        let deployment_block =
+            sample_next_block(&vm, &caller_private_key, &[deployment_transaction], &genesis, &mut unspent_records, rng)
+                .unwrap();
 
         // Add the deployment block to the VM.
         vm.add_next_block(&deployment_block).unwrap();
