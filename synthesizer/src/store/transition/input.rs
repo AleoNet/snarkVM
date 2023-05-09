@@ -306,8 +306,8 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition input store.
+    #[cfg(feature = "testing")]
     pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize a new transition input storage.
         let storage = I::open_testing(path)?;

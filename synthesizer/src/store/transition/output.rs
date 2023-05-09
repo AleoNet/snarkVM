@@ -310,8 +310,8 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transition output store for testing.
+    #[cfg(feature = "testing")]
     pub fn open_testing(path: Option<std::path::PathBuf>) -> Result<Self> {
         // Initialize a new transition output storage.
         let storage = O::open_testing(path)?;

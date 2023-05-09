@@ -250,8 +250,8 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         Ok(Self::from(storage))
     }
 
-    #[cfg(feature = "testing")]
     /// Initializes the transaction store for testing.
+    #[cfg(feature = "testing")]
     pub fn open_testing(
         path: Option<std::path::PathBuf>,
         transition_store: TransitionStore<N, T::TransitionStorage>,
