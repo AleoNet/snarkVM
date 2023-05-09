@@ -572,10 +572,15 @@ finalize transfer_public:
     }
 
     /// A helper method to construct the rejected transaction format for `atomic_finalize`.
-    fn reject(
-        transaction: &Transaction<CurrentNetwork>,
-    ) -> (<CurrentNetwork as Network>::TransactionID, Fee<CurrentNetwork>) {
-        (transaction.id(), transaction.fee_transition().unwrap())
+    fn reject(index: u32, transaction: &Transaction<CurrentNetwork>) -> ConfirmedTransaction<CurrentNetwork> {
+        match transaction {
+            Transaction::Execute(_, execution, fee) => ConfirmedTransaction::RejectedExecute(
+                index,
+                Transaction::from_fee(fee.clone().unwrap()).unwrap(),
+                crate::Rejected(execution.clone()),
+            ),
+            _ => panic!("only reject execution transactions"),
+        }
     }
 
     #[test]
@@ -612,6 +617,170 @@ finalize transfer_public:
         let candidate_transactions = vm.atomic_speculate([deployment_transaction].iter()).unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
+    }
+
+    #[test]
+    fn test_atomic_finalize_many() {
+        let rng = &mut TestRng::default();
+
+        // Sample a private key and address for the caller.
+        let caller_private_key = test_helpers::sample_genesis_private_key(rng);
+        let caller_address = Address::try_from(&caller_private_key).unwrap();
+
+        // Sample a private key and address for the recipient.
+        let recipient_private_key = PrivateKey::new(rng).unwrap();
+        let recipient_address = Address::try_from(&recipient_private_key).unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Deploy a new program.
+        let genesis =
+            vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
+
+        // Get the unspent records.
+        let mut unspent_records = genesis
+            .transitions()
+            .cloned()
+            .flat_map(Transition::into_records)
+            .map(|(_, record)| record)
+            .collect::<Vec<_>>();
+
+        // Construct the deployment block.
+        let (program_id, deployment_block) =
+            new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
+
+        // Add the deployment block to the VM.
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Generate more records to use for the next block.
+        let splits_block =
+            generate_splits(&vm, &caller_private_key, &deployment_block, &mut unspent_records, rng).unwrap();
+
+        // Add the splits block to the VM.
+        vm.add_next_block(&splits_block).unwrap();
+
+        // Construct the initial mint.
+        let initial_mint =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
+        let initial_mint_block =
+            sample_next_block(&vm, &caller_private_key, &[initial_mint], &splits_block, &mut unspent_records, rng)
+                .unwrap();
+
+        // Add the block to the vm.
+        vm.add_next_block(&initial_mint_block).unwrap();
+
+        // Construct a mint and a transfer.
+        let mint_10 =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
+        let mint_20 =
+            sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
+        let transfer_10 = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            10,
+            &mut unspent_records,
+            rng,
+        );
+        let transfer_20 = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            20,
+            &mut unspent_records,
+            rng,
+        );
+        let transfer_30 = sample_transfer_public(
+            &vm,
+            caller_private_key,
+            &program_id,
+            recipient_address,
+            30,
+            &mut unspent_records,
+            rng,
+        );
+
+        // TODO (raychu86): Confirm that the finalize_operations here are correct.
+
+        // Starting Balance = 20
+        // Mint_10 -> Balance = 20 + 10  = 30
+        // Transfer_10 -> Balance = 30 - 10 = 20
+        // Transfer_20 -> Balance = 20 - 20 = 0
+        {
+            let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
+            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+
+            // Assert that all the transactions are accepted.
+            assert_eq!(confirmed_transactions.len(), 3);
+            confirmed_transactions.iter().for_each(|confirmed_tx| assert!(confirmed_tx.is_accepted()));
+
+            assert_eq!(confirmed_transactions[0].transaction(), &mint_10);
+            assert_eq!(confirmed_transactions[1].transaction(), &transfer_10);
+            assert_eq!(confirmed_transactions[2].transaction(), &transfer_20);
+        }
+
+        // Starting Balance = 20
+        // Transfer_20 -> Balance = 20 - 20 = 0
+        // Mint_10 -> Balance = 0 + 10 = 10
+        // Mint_20 -> Balance = 10 + 20 = 30
+        // Transfer_30 -> Balance = 30 - 30 = 0
+        {
+            let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
+            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+
+            // Assert that all the transactions are accepted.
+            assert_eq!(confirmed_transactions.len(), 4);
+            confirmed_transactions.iter().for_each(|confirmed_tx| assert!(confirmed_tx.is_accepted()));
+
+            // Ensure that the transactions are in the correct order.
+            assert_eq!(confirmed_transactions[0].transaction(), &transfer_20);
+            assert_eq!(confirmed_transactions[1].transaction(), &mint_10);
+            assert_eq!(confirmed_transactions[2].transaction(), &mint_20);
+            assert_eq!(confirmed_transactions[3].transaction(), &transfer_30);
+        }
+
+        // Starting Balance = 20
+        // Transfer_20 -> Balance = 20 - 20 = 0
+        // Transfer_10 -> Balance = 0 - 10 = -10 (should be rejected)
+        {
+            let transactions = [transfer_20.clone(), transfer_10.clone()];
+            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+
+            // Assert that the accepted and rejected transactions are correct.
+            assert_eq!(confirmed_transactions.len(), 2);
+
+            assert!(confirmed_transactions[0].is_accepted());
+            assert!(confirmed_transactions[1].is_rejected());
+
+            assert_eq!(confirmed_transactions[0].transaction(), &transfer_20);
+            assert_eq!(confirmed_transactions[1], reject(1, &transfer_10));
+        }
+
+        // Starting Balance = 20
+        // Mint_20 -> Balance = 20 + 20
+        // Transfer_30 -> Balance = 40 - 30 = 10
+        // Transfer_20 -> Balance = 10 - 20 = -10 (should be rejected)
+        // Transfer_10 -> Balance = 10 - 10 = 0
+        {
+            let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
+            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+
+            // Assert that the accepted and rejected transactions are correct.
+            assert_eq!(confirmed_transactions.len(), 4);
+
+            assert!(confirmed_transactions[0].is_accepted());
+            assert!(confirmed_transactions[1].is_accepted());
+            assert!(confirmed_transactions[2].is_rejected());
+            assert!(confirmed_transactions[3].is_accepted());
+
+            assert_eq!(confirmed_transactions[0].transaction(), &mint_20);
+            assert_eq!(confirmed_transactions[1].transaction(), &transfer_30);
+            assert_eq!(confirmed_transactions[2], reject(2, &transfer_20));
+            assert_eq!(confirmed_transactions[3].transaction(), &transfer_10);
+        }
     }
 
     #[test]
@@ -695,149 +864,4 @@ finalize ped_hash:
             assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
         }
     }
-
-    // #[test]
-    // fn test_atomic_finalize_many() {
-    //     let rng = &mut TestRng::default();
-    //
-    //     // Sample a private key and address for the caller.
-    //     let caller_private_key = test_helpers::sample_genesis_private_key(rng);
-    //     let caller_address = Address::try_from(&caller_private_key).unwrap();
-    //
-    //     // Sample a private key and address for the recipient.
-    //     let recipient_private_key = PrivateKey::new(rng).unwrap();
-    //     let recipient_address = Address::try_from(&recipient_private_key).unwrap();
-    //
-    //     // Initialize the vm.
-    //     let vm = test_helpers::sample_vm_with_genesis_block(rng);
-    //
-    //     // Deploy a new program.
-    //     let genesis =
-    //         vm.block_store().get_block(&vm.block_store().get_block_hash(0).unwrap().unwrap()).unwrap().unwrap();
-    //
-    //     // Get the unspent records.
-    //     let mut unspent_records = genesis
-    //         .transitions()
-    //         .cloned()
-    //         .flat_map(Transition::into_records)
-    //         .map(|(_, record)| record)
-    //         .collect::<Vec<_>>();
-    //
-    //     // Construct the deployment block.
-    //     let (program_id, deployment_block) =
-    //         new_program_deployment(&vm, &caller_private_key, &genesis, &mut unspent_records, rng).unwrap();
-    //
-    //     // Add the deployment block to the VM.
-    //     vm.add_next_block(&deployment_block).unwrap();
-    //
-    //     // Generate more records to use for the next block.
-    //     let splits_block =
-    //         generate_splits(&vm, &caller_private_key, &deployment_block, &mut unspent_records, rng).unwrap();
-    //
-    //     // Add the splits block to the VM.
-    //     vm.add_next_block(&splits_block).unwrap();
-    //
-    //     // Construct the initial mint.
-    //     let initial_mint =
-    //         sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
-    //     let initial_mint_block =
-    //         sample_next_block(&vm, &caller_private_key, &[initial_mint], &splits_block, &mut unspent_records, rng)
-    //             .unwrap();
-    //
-    //     // Add the block to the vm.
-    //     vm.add_next_block(&initial_mint_block).unwrap();
-    //
-    //     // Construct a mint and a transfer.
-    //     let mint_10 =
-    //         sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 10, &mut unspent_records, rng);
-    //     let mint_20 =
-    //         sample_mint_public(&vm, caller_private_key, &program_id, caller_address, 20, &mut unspent_records, rng);
-    //     let transfer_10 = sample_transfer_public(
-    //         &vm,
-    //         caller_private_key,
-    //         &program_id,
-    //         recipient_address,
-    //         10,
-    //         &mut unspent_records,
-    //         rng,
-    //     );
-    //     let transfer_20 = sample_transfer_public(
-    //         &vm,
-    //         caller_private_key,
-    //         &program_id,
-    //         recipient_address,
-    //         20,
-    //         &mut unspent_records,
-    //         rng,
-    //     );
-    //     let transfer_30 = sample_transfer_public(
-    //         &vm,
-    //         caller_private_key,
-    //         &program_id,
-    //         recipient_address,
-    //         30,
-    //         &mut unspent_records,
-    //         rng,
-    //     );
-    //
-    //     // TODO (raychu86): Confirm that the finalize_operations here are correct.
-    //
-    //     // Starting Balance = 20
-    //     // Mint_10 -> Balance = 20 + 10  = 30
-    //     // Transfer_10 -> Balance = 30 - 10 = 20
-    //     // Transfer_20 -> Balance = 20 - 20 = 0
-    //     {
-    //         let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
-    //         let (accepted_transactions, rejected_transactions, _) = vm.atomic_speculate(transactions.iter()).unwrap();
-    //
-    //         // Assert that the accepted and rejected transactions are correct.
-    //         assert_eq!(accepted_transactions, vec![mint_10.clone(), transfer_10.clone(), transfer_20.clone()]);
-    //         assert!(rejected_transactions.is_empty());
-    //     }
-    //
-    //     // Starting Balance = 20
-    //     // Transfer_20 -> Balance = 20 - 20 = 0
-    //     // Mint_10 -> Balance = 0 + 10 = 10
-    //     // Mint_20 -> Balance = 10 + 20 = 30
-    //     // Transfer_30 -> Balance = 30 - 30 = 0
-    //     {
-    //         let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
-    //         let (accepted_transactions, rejected_transactions, _) = vm.atomic_speculate(transactions.iter()).unwrap();
-    //
-    //         // Assert that the accepted and rejected transactions are correct.
-    //         assert_eq!(accepted_transactions, vec![
-    //             transfer_20.clone(),
-    //             mint_10.clone(),
-    //             mint_20.clone(),
-    //             transfer_30.clone()
-    //         ]);
-    //         assert!(rejected_transactions.is_empty());
-    //     }
-    //
-    //     // Starting Balance = 20
-    //     // Transfer_20 -> Balance = 20 - 20 = 0
-    //     // Transfer_10 -> Balance = 0 - 10 = -10 (should be rejected)
-    //     {
-    //         let transactions = [transfer_20.clone(), transfer_10.clone()];
-    //         let (accepted_transactions, rejected_transactions, _) = vm.atomic_speculate(transactions.iter()).unwrap();
-    //
-    //         // Assert that the accepted and rejected transactions are correct.
-    //         assert_eq!(accepted_transactions, vec![transfer_20.clone()]);
-    //         assert_eq!(rejected_transactions, vec![reject(&transfer_10)]);
-    //     }
-    //
-    //     // Starting Balance = 20
-    //     // Mint_20 -> Balance = 20 + 20
-    //     // Transfer_30 -> Balance = 40 - 30 = 10
-    //     // Transfer_20 -> Balance = 10 - 20 = -10 (should be rejected)
-    //     // Transfer_10 -> Balance = 10 - 10 = 0
-    //     {
-    //         let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
-    //         let (accepted_transactions, rejected_transactions, _) = vm.atomic_speculate(transactions.iter()).unwrap();
-    //
-    //         // Assert that the accepted and rejected transactions are correct.
-    //         assert_eq!(accepted_transactions, vec![mint_20.clone(), transfer_30.clone(), transfer_10.clone()]);
-    //         assert_eq!(rejected_transactions, vec![reject(&transfer_20)]);
-    //     }
-    // }
 }
