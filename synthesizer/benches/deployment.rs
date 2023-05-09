@@ -36,7 +36,8 @@ use std::fmt::Display;
 // Note: The number of commands that can be included in a finalize block must be within the range [1, 255].
 const NUM_COMMANDS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 255];
 const NUM_DEPLOYMENTS: &[usize] = &[2, 4, 8, 16, 32, 64, 128, 256];
-const NUM_MAPPINGS: &[usize] = &[1, 2, 4, 8, 16, 32, 64, 128, 256];
+// Note: The maximum number of mappings that can be included in a program is 31.
+const NUM_MAPPINGS: &[usize] = &[1, 2, 4, 8, 16, 31];
 const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 
 /// A helper function to remove programs, from a set of deployment transactions, from the finalize store.
