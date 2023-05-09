@@ -128,13 +128,39 @@ impl<N: Network> Process<N> {
 
                     // Evaluate the commands.
                     for command in finalize.commands() {
-                        match command.finalize(stack, store, &mut registers) {
-                            // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Some(finalize_operation)) => finalize_operations.push(finalize_operation),
-                            // If the evaluation succeeds with no operation, continue.
-                            Ok(None) => (),
-                            // If the evaluation fails, bail and return the error.
-                            Err(error) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        // At this level wrapping command.finalize with catch_unwind will catch UNWINDING
+                        // panics and continue onwards. This might be too high a level to do this however.
+                        //
+                        // In detail: UnwindSafe is a panic safety marker auto-trait that's
+                        // auto-implemented for most types except for things with interior mutability
+                        // (full list here: https://doc.rust-lang.org/std/panic/trait.UnwindSafe.html).
+                        // This can be bypassed with the AssertUnwindSafe wrapper, which is what's being done here, but it's
+                        // analogous to unsafe in the sense that you need to ensure you're ensuring a safe contract because
+                        // there are potential footguns with exception safety (discussed in detail here:
+                        // https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md)
+                        // and anyone using this has to ensure their own exception safety.
+                        //
+                        // For us to "ensure exception safety" we should ensure the following:
+                        //
+                        // 1. We're not breaking any of our own invariants. I.E. if we're using any refcell or mutable
+                        // references, we need to ensure that any panics will not leave anything that was mutated
+                        // with a broken invariant that can later be observed. Same goes for checking for
+                        // potential memory leaks, this panic handler cleans up memory, but one can never be too sure.
+                        // 2. Be totally sure that any non-unwinding aborting panics won't be triggered. These type of
+                        // panics in Rust include stack overflows, OOMing, std::panic::abort() calls, double-panics,
+                        // or any code compiled with -C panic=abort (though why would we be so extra?). If we want to be
+                        // doubly sure that we absolutely don't panic here, one can double down on catch_unwind and wrap
+                        // the catch_unwind with a catch_unwind i.e.:
+                        // `catch_unwind(|| {catch_unwind(std::panic::AssertUnwindSafe(|| { ... }))})` but that's probably
+                        // overkill and usually limited to FFI code.
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            command.finalize(stack, store, &mut registers)
+                        }));
+                        match result {
+                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                            Ok(Ok(None)) => (),
+                            Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                            Err(_) => bail!("'finalize' panicked during command ({command})"),
                         }
                     }
 
