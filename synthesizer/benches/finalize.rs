@@ -43,45 +43,40 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 #[allow(unused)]
 pub fn bench_finalize<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: impl Display, mut workload: Workload) {
     // Setup the workload.
-    let (vm, private_key, benchmark_transactions, mut rng) = workload.setup::<C>();
+    let (vm, private_key, benchmark_transactions, mut rng, _) = workload.setup::<C>();
 
     // Benchmark each of the programs.
     for (name, transactions) in benchmark_transactions {
         assert!(!transactions.is_empty(), "There must be at least one operation to benchmark.");
 
-        // Construct a `Transactions` object.
-        let transactions = vm.speculate(transactions.iter()).unwrap();
+        let mut num_transactions = 0f64;
+        let mut num_rejected = 0f64;
 
         // Benchmark speculation.
         c.bench_function(&format!("{header}/{name}/finalize"), |b| {
-            b.iter_batched(|| {}, |_| vm.finalize(&transactions).unwrap(), BatchSize::SmallInput)
+            b.iter_batched(
+                || {
+                    let transactions = vm.speculate(transactions.iter()).unwrap();
+                    num_transactions += transactions.iter().count() as f64;
+                    num_rejected += transactions.iter().filter(|t| t.is_rejected()).count() as f64;
+                    transactions
+                },
+                |transactions| vm.finalize(&transactions).unwrap(),
+                BatchSize::PerIteration,
+            )
         });
+        println!(
+            "| {header}/{name}/add_next_block | Transactions: {} | Rejected: {} | Percent Rejected: {}",
+            num_transactions,
+            num_rejected,
+            (num_rejected / num_transactions) * 100.0
+        );
     }
-}
-
-fn bench_single_deployment(c: &mut Criterion) {
-    // Initialize the workload.
-    let workload = single_deployment_workload(NUM_MAPPINGS);
-
-    #[cfg(not(any(feature = "rocks")))]
-    bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
-    #[cfg(any(feature = "rocks"))]
-    bench_finalize::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
 }
 
 fn bench_one_operation(c: &mut Criterion) {
     // Initialize the workload.
     let workload = one_execution_workload(NUM_COMMANDS);
-
-    #[cfg(not(any(feature = "rocks")))]
-    bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
-    #[cfg(any(feature = "rocks"))]
-    bench_finalize::<snarkvm_synthesizer::helpers::rocksdb::ConsensusDB<Testnet3>>(c, "db", workload);
-}
-
-fn bench_multiple_deployments(c: &mut Criterion) {
-    // Initialize the workload.
-    let workload = multiple_deployments_workload(NUM_DEPLOYMENTS, *NUM_MAPPINGS.last().unwrap());
 
     #[cfg(not(any(feature = "rocks")))]
     bench_finalize::<ConsensusMemory<Testnet3>>(c, "memory", workload);
@@ -116,7 +111,7 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
 criterion_group! {
     name = benchmarks;
     config = Criterion::default().sample_size(10);
-    targets = bench_single_deployment, bench_one_operation, bench_multiple_deployments, bench_multiple_operations,
+    targets = bench_one_operation, bench_multiple_operations
 }
 criterion_group! {
     name = long_benchmarks;

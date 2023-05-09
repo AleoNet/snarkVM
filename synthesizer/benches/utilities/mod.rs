@@ -41,24 +41,20 @@ use std::borrow::Borrow;
 pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
-) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>) {
+) -> (VM<Testnet3, C>, Record<Testnet3, Plaintext<Testnet3>>, Option<std::path::PathBuf>) {
     // Initialize the VM.
-    #[cfg(any(feature = "testing"))]
-    let vm = {
-        // If the `rocks` feature is enabled, then we are benchmarking using the DB backend.
-        // This block creates a temporary directory for the database.
-        let temp_dir = match cfg!(feature = "rocks") {
-            false => None,
-            true => {
-                let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-                println!("Using the following temporary directory {:?}", temp_dir);
-                Some(temp_dir)
-            }
-        };
-        VM::from(ConsensusStore::open_testing(temp_dir).unwrap()).unwrap()
+    // If the `rocks` feature is enabled, then we are benchmarking using the DB backend.
+    // In this case, we need to create a temporary directory to store the database.
+    // Otherwise, we can just use the in-memory backend.
+    let temp_dir = match cfg!(feature = "rocks") {
+        false => None,
+        true => {
+            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
+            println!("Using the following temporary directory {:?}", temp_dir);
+            Some(temp_dir)
+        }
     };
-    #[cfg(not(any(feature = "testing")))]
-    let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
+    let vm = VM::from(ConsensusStore::open_testing(temp_dir.clone()).unwrap()).unwrap();
 
     // Initialize the genesis block.
     let genesis = Block::genesis(&vm, private_key, rng).unwrap();
@@ -73,7 +69,7 @@ pub fn initialize_vm<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
     // Update the VM.
     vm.add_next_block(&genesis).unwrap();
 
-    (vm, record)
+    (vm, record, temp_dir)
 }
 
 #[allow(unused)]

@@ -102,6 +102,14 @@ impl<N: Network> Process<N> {
         Ok(())
     }
 
+    /// Removes a program from the process.
+    #[cfg(feature = "testing")]
+    #[inline]
+    pub fn remove_program(&mut self, program_id: &ProgramID<N>) -> Result<()> {
+        self.stacks.remove(program_id);
+        Ok(())
+    }
+
     /// Adds a new stack to the process.
     /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
     #[inline]

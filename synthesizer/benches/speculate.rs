@@ -43,7 +43,7 @@ const NUM_PROGRAMS: &[usize] = &[2, 4, 8, 16, 32, 64];
 #[allow(unused)]
 pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header: impl Display, mut workload: Workload) {
     // Setup the workload.
-    let (vm, private_key, benchmark_transactions, mut rng) = workload.setup::<C>();
+    let (vm, private_key, benchmark_transactions, mut rng, _) = workload.setup::<C>();
 
     // Benchmark each of the programs.
     for (name, transactions) in benchmark_transactions {
@@ -56,7 +56,7 @@ pub fn bench_speculate<C: ConsensusStorage<Testnet3>>(c: &mut Criterion, header:
     }
 }
 
-fn bench_single_deployment(c: &mut Criterion) {
+fn bench_one_deployment(c: &mut Criterion) {
     // Initialize the workload.
     let workload = single_deployment_workload(NUM_MAPPINGS);
 
@@ -113,7 +113,7 @@ fn bench_multiple_operations_with_multiple_programs(c: &mut Criterion) {
 criterion_group! {
     name = benchmarks;
     config = Criterion::default().sample_size(10);
-    targets = bench_single_deployment, bench_one_operation, bench_multiple_deployments, bench_multiple_operations,
+    targets = bench_one_deployment, bench_one_operation, bench_multiple_deployments, bench_multiple_operations,
 }
 criterion_group! {
     name = long_benchmarks;
