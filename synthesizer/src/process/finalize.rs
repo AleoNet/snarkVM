@@ -128,13 +128,14 @@ impl<N: Network> Process<N> {
 
                     // Evaluate the commands.
                     for command in finalize.commands() {
-                        match command.finalize(stack, store, &mut registers) {
-                            // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Some(finalize_operation)) => finalize_operations.push(finalize_operation),
-                            // If the evaluation succeeds with no operation, continue.
-                            Ok(None) => (),
-                            // If the evaluation fails, bail and return the error.
-                            Err(error) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            command.finalize(stack, store, &mut registers)
+                        }));
+                        match result {
+                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                            Ok(Ok(None)) => (),
+                            Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                            Err(_) => bail!("'finalize' panicked during command ({command})"),
                         }
                     }
 
