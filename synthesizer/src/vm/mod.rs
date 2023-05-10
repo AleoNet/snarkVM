@@ -26,14 +26,13 @@ pub use finalize::FinalizeMode;
 
 use crate::{
     atomic_finalize,
-    block::{Block, Transaction, Transactions, Transition},
+    block::{Block, Transaction, Transition},
     cast_ref,
     process,
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
-    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,
@@ -43,7 +42,7 @@ use console::{
 };
 
 use aleo_std::prelude::{finish, lap, timer};
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -99,7 +98,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize::<{ FinalizeMode::RealRun.to_u8() }>(block.transactions()) {
+        match self.finalize(block.transactions()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
@@ -118,7 +117,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns the finalize store.
     #[inline]
     pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
@@ -443,7 +444,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = Transactions::from(transactions);
+        let transactions = vm.speculate(transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,

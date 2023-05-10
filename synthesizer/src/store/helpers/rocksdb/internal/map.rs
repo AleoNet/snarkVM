@@ -335,8 +335,9 @@ mod tests {
         atomic_batch_scope,
         atomic_finalize,
         store::helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap},
+        FinalizeMode,
     };
-    use console::{account::Address, network::Testnet3, prelude::FromStr};
+    use console::{account::Address, network::Testnet3, prelude::*};
 
     use serial_test::serial;
     use tracing_test::traced_test;
@@ -782,7 +783,7 @@ mod tests {
         assert_eq!(map.checkpoint.lock().back(), None);
 
         // Start an atomic finalize.
-        let outcome = atomic_finalize!(map, {
+        let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
             // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
@@ -797,7 +798,8 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&0));
 
                 Ok(())
-            })?;
+            })
+            .unwrap();
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -820,7 +822,8 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
-            })?;
+            })
+            .unwrap();
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -859,7 +862,7 @@ mod tests {
         assert_eq!(map.checkpoint.lock().back(), None);
 
         // Start an atomic finalize.
-        let outcome = atomic_finalize!(map, {
+        let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
             // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
@@ -874,7 +877,8 @@ mod tests {
                 assert_eq!(map.checkpoint.lock().back(), Some(&0));
 
                 Ok(())
-            })?;
+            })
+            .unwrap();
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -926,7 +930,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_atomic_finalize() -> Result<()> {
+    fn test_atomic_finalize_fails_to_start() {
         // Initialize a map.
         let map: DataMap<usize, String> =
             RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
@@ -935,20 +939,26 @@ mod tests {
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoint.lock().back(), None);
 
-        // Start an atomic finalize.
-        let outcome = atomic_finalize!(map, {
-            // Start a nested atomic finalize. This should return an error.
-            let outcome = atomic_finalize!(map, { Ok(()) });
-
-            // Ensure that the internal atomic finalize failed.
+        // Construct an atomic batch scope.
+        let outcome: Result<()> = atomic_batch_scope!(map, {
+            // Start an atomic finalize.
+            let outcome = atomic_finalize!(map, FinalizeMode::RealRun, { Ok(()) });
+            // Ensure that the atomic finalize fails.
             assert!(outcome.is_err());
 
-            Ok(())
+            unreachable!("The batch scope should fail before we reach this point.");
         });
 
-        // Ensure that the external atomic finalize also fails.
+        // Ensure that the atomic batch scope fails.
         assert!(outcome.is_err());
 
-        Ok(())
+        // Start an atomic operation.
+        map.start_atomic();
+
+        // We need to catch the `atomic_finalize` here, otherwise it will end the test early.
+        let outcome = || atomic_finalize!(map, FinalizeMode::RealRun, { Ok(()) });
+
+        // Ensure that the atomic finalize fails if an atomic batch is in progress.
+        assert!(outcome().is_err());
     }
 }

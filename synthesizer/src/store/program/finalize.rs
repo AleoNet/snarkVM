@@ -18,7 +18,10 @@ use crate::{
     atomic_batch_scope,
     cow_to_cloned,
     cow_to_copied,
-    store::helpers::{Map, MapRead},
+    store::{
+        helpers::{Map, MapRead},
+        FinalizeOperation,
+    },
 };
 use console::{
     network::prelude::*,
@@ -29,24 +32,6 @@ use console::{
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
-
-/// Enum to represent the allowed set of Merkle tree operations.
-#[derive(Clone, Debug)]
-pub enum FinalizeOperation<N: Network> {
-    /// Appends a mapping to the program tree, as (`mapping ID`).
-    InitializeMapping(Field<N>),
-    /// Inserts a key-value leaf into the mapping tree,
-    /// as (`mapping ID`, `key ID`, `value ID`).
-    InsertKeyValue(Field<N>, Field<N>, Field<N>),
-    /// Updates the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`, `key ID`, `value ID`).
-    UpdateKeyValue(Field<N>, usize, Field<N>, Field<N>),
-    /// Removes the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`).
-    RemoveKeyValue(Field<N>, usize),
-    /// Removes a mapping from the program tree, as (`mapping ID`).
-    RemoveMapping(Field<N>),
-}
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///
@@ -284,7 +269,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Retrieve the index of the key ID in the key-value ID map.
         let index = match key_value_ids.get_index_of(&key_id) {
-            Some(index) => index,
+            Some(index) => u64::try_from(index)?,
             None => bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot finalize."),
         };
 
@@ -329,7 +314,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Retrieve the index of the key ID in the key-value ID map.
         let index = match key_value_ids.get_index_of(&key_id) {
-            Some(index) => index,
+            Some(index) => u64::try_from(index)?,
             None => bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot finalize."),
         };
 

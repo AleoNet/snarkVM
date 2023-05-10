@@ -189,6 +189,24 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> Transaction<N> {
+    /// Returns `true` if the transaction is a deploy transaction.
+    #[inline]
+    pub fn is_deploy(&self) -> bool {
+        matches!(self, Self::Deploy(..))
+    }
+
+    /// Returns `true` if the transaction is an execute transaction.
+    #[inline]
+    pub fn is_execute(&self) -> bool {
+        matches!(self, Self::Execute(..))
+    }
+
+    /// Returns `true` if the transaction is a fee transaction.
+    #[inline]
+    pub fn is_fee(&self) -> bool {
+        matches!(self, Self::Fee(..))
+    }
+
     /// Returns `true` if this is a coinbase transaction.
     #[inline]
     pub fn is_coinbase(&self) -> bool {
@@ -270,6 +288,15 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, _, Some(fee)) => fee.amount(),
             Self::Execute(_, _, None) => Ok(U64::zero()),
             Self::Fee(_, fee) => fee.amount(),
+        }
+    }
+
+    /// Returns the fee transition.
+    pub fn fee_transition(&self) -> Option<Fee<N>> {
+        match self {
+            Self::Deploy(_, _, _, fee) => Some(fee.clone()),
+            Self::Execute(_, _, fee) => fee.clone(),
+            Self::Fee(_, fee) => Some(fee.clone()),
         }
     }
 }

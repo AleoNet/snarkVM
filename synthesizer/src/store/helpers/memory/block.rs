@@ -20,6 +20,7 @@ use crate::{
     store::{
         helpers::memory::{MemoryMap, TransactionMemory, TransitionMemory},
         BlockStorage,
+        ConfirmedTxType,
         TransactionStore,
         TransitionStore,
     },
@@ -41,8 +42,8 @@ pub struct BlockMemory<N: Network> {
     header_map: MemoryMap<N::BlockHash, Header<N>>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
-    /// The reverse transactions map.
-    reverse_transactions_map: MemoryMap<N::TransactionID, N::BlockHash>,
+    /// The confirmed transactions map.
+    confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionMemory<N>>,
     /// The coinbase solution map.
@@ -61,7 +62,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
-    type ReverseTransactionsMap = MemoryMap<N::TransactionID, N::BlockHash>;
+    type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
@@ -82,7 +83,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
-            reverse_transactions_map: MemoryMap::default(),
+            confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
@@ -120,9 +121,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.transactions_map
     }
 
-    /// Returns the reverse transactions map.
-    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap {
-        &self.reverse_transactions_map
+    /// Returns the confirmed transactions map.
+    fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap {
+        &self.confirmed_transactions_map
     }
 
     /// Returns the transaction store.
