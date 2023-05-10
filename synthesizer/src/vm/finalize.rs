@@ -119,7 +119,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Construct the accepted deploy transaction.
                         Ok((_, finalize)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
                         // Construct the rejected deploy transaction.
-                        Err(error) => {
+                        Err(_error) => {
                             // Construct the fee transaction.
                             // Note: On failure, this will abort the entire atomic batch.
                             let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
@@ -133,7 +133,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Construct the accepted execute transaction.
                         Ok(finalize) => ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
                         // Construct the rejected execute transaction.
-                        Err(error) => match fee {
+                        Err(_error) => match fee {
                             Some(fee) => {
                                 // Construct the fee transaction.
                                 // Note: On failure, this will abort the entire atomic batch.
