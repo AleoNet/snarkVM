@@ -42,6 +42,13 @@ impl<N: Network> Serialize for Transaction<N> {
                     }
                     transaction.end()
                 }
+                Self::Fee(id, fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
+                    transaction.serialize_field("type", "fee")?;
+                    transaction.serialize_field("id", &id)?;
+                    transaction.serialize_field("fee", &fee)?;
+                    transaction.end()
+                }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
@@ -84,6 +91,12 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         .map_err(de::Error::custom)?;
                         // Construct the transaction.
                         Transaction::from_execution(execution, fee).map_err(de::Error::custom)?
+                    }
+                    Some("fee") => {
+                        // Retrieve the fee.
+                        let fee = DeserializeExt::take_from_value::<D>(&mut transaction, "fee")?;
+                        // Construct the transaction.
+                        Transaction::from_fee(fee).map_err(de::Error::custom)?
                     }
                     _ => return Err(de::Error::custom("Invalid transaction type")),
                 };

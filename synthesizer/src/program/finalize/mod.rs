@@ -102,7 +102,7 @@ impl<N: Network> Finalize<N> {
     #[inline]
     pub fn add_command(&mut self, command: Command<N>) -> Result<()> {
         // Ensure the maximum number of commands has not been exceeded.
-        ensure!(self.commands.len() <= N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
+        ensure!(self.commands.len() < N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
 
         // If the command is an instruction, `get` command, or `get.or_init` command, perform additional checks.
         match &command {

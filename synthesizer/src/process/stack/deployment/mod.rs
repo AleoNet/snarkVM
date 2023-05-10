@@ -98,6 +98,11 @@ impl<N: Network> Deployment<N> {
         Ok(())
     }
 
+    /// Returns the size in bytes.
+    pub fn size_in_bytes(&self) -> Result<u64> {
+        Ok(u64::try_from(self.to_bytes_le()?.len())?)
+    }
+
     /// Returns the edition.
     pub const fn edition(&self) -> u16 {
         self.edition

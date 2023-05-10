@@ -27,6 +27,8 @@ use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
 
+use std::collections::BTreeMap;
+
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
@@ -213,8 +215,26 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     pub fn update(&mut self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<()> {
         let timer = timer!("MerkleTree::update");
 
-        // Ensure the leaf index is valid.
-        ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
+        // Compute the updated Merkle tree with the new leaves.
+        let updated_tree = self.prepare_update(leaf_index, new_leaf)?;
+        // Update the tree at the very end, so the original tree is not altered in case of failure.
+        *self = updated_tree;
+
+        finish!(timer);
+        Ok(())
+    }
+
+    #[inline]
+    /// Returns a new Merkle tree with updates at the location of the given leaf index with the new leaf.
+    pub fn prepare_update(&self, leaf_index: usize, new_leaf: &LH::Leaf) -> Result<Self> {
+        let timer = timer!("MerkleTree::prepare_update");
+
+        // Check that the leaf index is within the bounds of the Merkle tree.
+        ensure!(
+            leaf_index < self.number_of_leaves,
+            "Leaf index must be less than the number of leaves in the Merkle tree {leaf_index} , {}",
+            self.number_of_leaves
+        );
 
         // Allocate a vector to store the path hashes.
         let mut path_hashes = Vec::with_capacity(DEPTH as usize);
@@ -257,47 +277,44 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         }
         lap!(timer, "Hashed {} padding levels", padding_depth);
 
-        // Update the root hash.
-        self.root = root_hash;
+        // Initialize the Merkle tree.
+        let mut tree = Vec::with_capacity(self.tree.len());
+        // Extend the new Merkle tree with the existing leaf hashes.
+        tree.extend(&self.tree);
 
         // Update the rest of the tree with the new path hashes.
         let mut index = Some(start + leaf_index);
         for path_hash in path_hashes {
-            self.tree[index.unwrap()] = path_hash;
+            tree[index.unwrap()] = path_hash;
             index = parent(index.unwrap());
         }
 
         finish!(timer);
-        Ok(())
+
+        Ok(Self {
+            leaf_hasher: self.leaf_hasher.clone(),
+            path_hasher: self.path_hasher.clone(),
+            root: root_hash,
+            tree,
+            empty_hash: self.empty_hash,
+            number_of_leaves: self.number_of_leaves,
+        })
     }
 
     #[inline]
     /// Updates the Merkle tree at the location of the given leaf indices with the new leaves.
-    /// The leaf indices must be sorted in descending order and must be unique.
-    pub fn update_many(&mut self, updates: &[(usize, LH::Leaf)]) -> Result<()> {
+    pub fn update_many(&mut self, updates: &BTreeMap<usize, LH::Leaf>) -> Result<()> {
         let timer = timer!("MerkleTree::update_many");
 
         // Check that there are updates to perform.
         ensure!(!updates.is_empty(), "There must be at least one leaf to update in the Merkle tree");
 
-        // Note that this unwrap is safe since updates is guaranteed to be non-empty.
-        let (first, rest) = updates.split_first().unwrap();
-
-        // Assign to the most recently seen leaf index.
-        let mut latest_leaf_index = first.0;
-
         // Check that the latest leaf index is less than number of leaves in the Merkle tree.
+        // Note: This unwrap is safe since updates is guaranteed to be non-empty.
         ensure!(
-            latest_leaf_index < self.number_of_leaves,
+            *updates.last_key_value().unwrap().0 < self.number_of_leaves,
             "Leaf index must be less than the number of leaves in the Merkle tree"
         );
-
-        // Check that the rest of the leaf hashes are in descending order.
-        for (leaf_index, _) in rest {
-            ensure!(*leaf_index < latest_leaf_index, "Leaf indices must be sorted in strictly descending order");
-            // Update the latest leaf index.
-            latest_leaf_index = *leaf_index;
-        }
 
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
         let start = match self.number_of_leaves.checked_next_power_of_two() {
@@ -306,14 +323,14 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         };
 
         // A helper to compute the leaf hash.
-        let hash_update = |(leaf_index, leaf): &(usize, LH::Leaf)| {
-            self.leaf_hasher.hash_leaf(leaf).map(|hash| (start + leaf_index, hash))
+        let hash_update = |(leaf_index, leaf): &(&usize, &LH::Leaf)| {
+            self.leaf_hasher.hash_leaf(leaf).map(|hash| (start + **leaf_index, hash))
         };
 
         // Hash the leaves and add them to the updated hashes.
         let leaf_hashes: Vec<(usize, LH::Hash)> = match updates.len() {
-            0..=100 => updates.iter().map(|update| hash_update(update)).collect::<Result<Vec<_>>>()?,
-            _ => cfg_iter!(updates).map(|update| hash_update(update)).collect::<Result<Vec<_>>>()?,
+            0..=100 => updates.iter().map(|update| hash_update(&update)).collect::<Result<Vec<_>>>()?,
+            _ => cfg_iter!(updates).map(|update| hash_update(&update)).collect::<Result<Vec<_>>>()?,
         };
         lap!(timer, "Hashed {} new leaves", leaf_hashes.len());
 

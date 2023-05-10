@@ -24,7 +24,7 @@ impl<N: Network> Metadata<N> {
         let round = 0;
         let height = 0;
         let total_supply_in_microcredits = N::STARTING_SUPPLY;
-        let cumulative_proof_target = 0;
+        let cumulative_weight = 0;
         let coinbase_target = N::GENESIS_COINBASE_TARGET;
         let proof_target = N::GENESIS_PROOF_TARGET;
         let last_coinbase_target = N::GENESIS_COINBASE_TARGET;
@@ -37,7 +37,7 @@ impl<N: Network> Metadata<N> {
             round,
             height,
             total_supply_in_microcredits,
-            cumulative_proof_target,
+            cumulative_weight,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -56,8 +56,8 @@ impl<N: Network> Metadata<N> {
             && self.height == 0u32
             // Ensure the total supply in the genesis block is `STARTING_SUPPLY`.
             && self.total_supply_in_microcredits == N::STARTING_SUPPLY
-            // Ensure the cumulative proof target in the genesis block is 0.
-            && self.cumulative_proof_target == 0u128
+            // Ensure the cumulative weight in the genesis block is 0.
+            && self.cumulative_weight == 0u128
             // Ensure the coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.coinbase_target == N::GENESIS_COINBASE_TARGET
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
@@ -82,7 +82,7 @@ mod tests {
     /// Update this method if the contents of the metadata have changed.
     fn get_expected_size() -> usize {
         // Metadata size.
-        2 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
+        1 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
             + 2
     }
@@ -113,7 +113,7 @@ mod tests {
         assert_eq!(metadata.round(), 0);
         assert_eq!(metadata.height(), 0);
         assert_eq!(metadata.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
-        assert_eq!(metadata.cumulative_proof_target(), 0);
+        assert_eq!(metadata.cumulative_weight(), 0);
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);

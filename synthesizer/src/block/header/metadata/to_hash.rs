@@ -20,9 +20,9 @@ impl<N: Network> Metadata<N> {
     /// Returns the metadata hash.
     pub fn to_hash(&self) -> Result<Field<N>> {
         // Construct the metadata bits (the last leaf in the Merkle tree).
-        let metadata_bits = self.to_bits_le(); // 624 bits
+        let metadata_bits = self.to_bits_le(); // 632 bits
         // Ensure the metadata bits is the correct size.
-        ensure!(metadata_bits.len() == 624, "Incorrect metadata size");
+        ensure!(metadata_bits.len() == 632, "Incorrect metadata size");
         // Hash the metadata bits.
         let metadata_hash = N::hash_bhp512(&metadata_bits)?;
         // Return the metadata hash.

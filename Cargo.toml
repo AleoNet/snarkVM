@@ -60,6 +60,7 @@ members = [
   "console/types/string",
   "curves",
   "fields",
+  "ledger",
   "parameters",
   "r1cs",
   "synthesizer",
@@ -82,6 +83,7 @@ default = [
   "console",
   "synthesizer",
   "cli",
+  "ledger",
   "parameters",
   "utilities"
 ]
@@ -91,6 +93,7 @@ full = [
   "console",
   "curves",
   "fields",
+  "ledger",
   "parameters",
   "r1cs",
   "synthesizer",
@@ -114,9 +117,12 @@ circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
+ledger = [ "snarkvm-ledger" ]
 parameters = [ "snarkvm-parameters" ]
 r1cs = [ "snarkvm-r1cs" ]
+rocks = [ "snarkvm-synthesizer/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
+timer = [ "snarkvm-ledger/timer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
 
@@ -142,6 +148,11 @@ optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
+version = "0.10.3"
+optional = true
+
+[dependencies.snarkvm-ledger]
+path = "./ledger"
 version = "0.10.3"
 optional = true
 

@@ -33,7 +33,6 @@ mod string;
 
 use crate::{
     coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
-    process::{Deployment, Execution},
     vm::VM,
 };
 use console::{
@@ -184,9 +183,9 @@ impl<N: Network> Block<N> {
         self.header.total_supply_in_microcredits()
     }
 
-    /// Returns the cumulative proof target for this block.
-    pub const fn cumulative_proof_target(&self) -> u128 {
-        self.header.cumulative_proof_target()
+    /// Returns the cumulative weight for this block.
+    pub const fn cumulative_weight(&self) -> u128 {
+        self.header.cumulative_weight()
     }
 
     /// Returns the coinbase target for this block.
@@ -285,13 +284,13 @@ impl<N: Network> Block<N> {
         self.transactions.transaction_ids()
     }
 
-    /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
+    /// Returns an iterator over all transactions in `self` that are accepted deploy transactions.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.deployments()
     }
 
-    /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
+    /// Returns an iterator over all transactions in `self` that are accepted execute transactions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.executions()
     }
 
@@ -347,13 +346,13 @@ impl<N: Network> Block<N> {
         self.transactions.into_transaction_ids()
     }
 
-    /// Returns a consuming iterator over all transactions in `self` that are deployments.
-    pub fn into_deployments(self) -> impl Iterator<Item = Deployment<N>> {
+    /// Returns a consuming iterator over all transactions in `self` that are accepted deploy transactions.
+    pub fn into_deployments(self) -> impl Iterator<Item = ConfirmedTransaction<N>> {
         self.transactions.into_deployments()
     }
 
-    /// Returns a consuming iterator over all transactions in `self` that are executions.
-    pub fn into_executions(self) -> impl Iterator<Item = Execution<N>> {
+    /// Returns a consuming iterator over all transactions in `self` that are accepted execute transactions.
+    pub fn into_executions(self) -> impl Iterator<Item = ConfirmedTransaction<N>> {
         self.transactions.into_executions()
     }
 
@@ -426,7 +425,10 @@ pub(crate) mod test_helpers {
                 let transaction =
                     Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
-                let transactions = Transactions::from(&[transaction.clone()]);
+                let transactions =
+                    Transactions::from(&[
+                        ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap()
+                    ]);
                 // Construct the block.
                 let block = Block::new(
                     &private_key,

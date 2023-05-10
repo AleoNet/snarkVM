@@ -59,9 +59,9 @@ mod tests {
         // Previous state root, transactions root, finalize root, and accumulator point size.
         (Field::<N>::size_in_bytes() * 4)
             // Metadata size.
-            + 2 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
-            // Add an additional 4 bytes for versioning.
-            + 2 + 2
+            + 1 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
+            // Add an additional 3 bytes for versioning.
+            + 1 + 2
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod tests {
         assert_eq!(header.round(), 0);
         assert_eq!(header.height(), 0);
         assert_eq!(header.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
-        assert_eq!(header.cumulative_proof_target(), 0);
+        assert_eq!(header.cumulative_weight(), 0);
         assert_eq!(header.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(header.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(header.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);

@@ -15,20 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
-    block::{Block, Header, Transactions},
+    atomic_batch_scope,
+    block::{Block, Header, NumFinalizeSize, Transaction, Transactions},
     coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     cow_to_cloned,
     cow_to_copied,
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransactionMemory,
+        helpers::{Map, MapRead},
         TransactionStorage,
         TransactionStore,
-        TransitionMemory,
         TransitionStorage,
         TransitionStore,
     },
+    ConfirmedTransaction,
     Program,
 };
 use console::{
@@ -40,16 +39,84 @@ use console::{
 
 use anyhow::Result;
 use parking_lot::RwLock;
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, io::Cursor, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-macro_rules! bail_with_block {
-    ($message:expr, $self:ident, $hash:expr) => {{
-        let message = format!($message);
-        anyhow::bail!("{message} for block '{:?}' ('{}')", $self.get_block_height(&$hash)?, $hash);
-    }};
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ConfirmedTxType {
+    /// A deploy transaction that was accepted.
+    AcceptedDeploy(u32),
+    /// An execute transaction that was accepted.
+    AcceptedExecute(u32),
+    /// A deploy transaction that was rejected.
+    RejectedDeploy(u32),
+    /// An execute transaction that was rejected.
+    RejectedExecute(u32),
+}
+
+/// Separates the confirmed transaction into a tuple.
+fn to_confirmed_tuple<N: Network>(
+    confirmed: ConfirmedTransaction<N>,
+) -> Result<(ConfirmedTxType, Transaction<N>, Vec<u8>)> {
+    match confirmed {
+        ConfirmedTransaction::AcceptedDeploy(index, tx, finalize) => {
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, (num_finalize, finalize).to_bytes_le()?))
+        }
+        ConfirmedTransaction::AcceptedExecute(index, tx, finalize) => {
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::AcceptedExecute(index), tx, (num_finalize, finalize).to_bytes_le()?))
+        }
+        ConfirmedTransaction::RejectedDeploy(index, tx, rejected) => {
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::RejectedDeploy(index), tx, rejected.to_bytes_le()?))
+        }
+        ConfirmedTransaction::RejectedExecute(index, tx, rejected) => {
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::RejectedExecute(index), tx, rejected.to_bytes_le()?))
+        }
+    }
+}
+
+fn to_confirmed_transaction<N: Network>(
+    confirmed_type: ConfirmedTxType,
+    transaction: Transaction<N>,
+    blob: Vec<u8>,
+) -> Result<ConfirmedTransaction<N>> {
+    match confirmed_type {
+        ConfirmedTxType::AcceptedDeploy(index) => {
+            // Initialize a cursor.
+            let mut cursor = Cursor::new(blob);
+            // Read the number of finalize operations.
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
+            // Read the finalize operations.
+            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+            // Return the confirmed transaction.
+            ConfirmedTransaction::accepted_deploy(index, transaction, finalize)
+        }
+        ConfirmedTxType::AcceptedExecute(index) => {
+            // Initialize a cursor.
+            let mut cursor = Cursor::new(blob);
+            // Read the number of finalize operations.
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
+            // Read the finalize operations.
+            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+            // Return the confirmed transaction.
+            ConfirmedTransaction::accepted_execute(index, transaction, finalize)
+        }
+        ConfirmedTxType::RejectedDeploy(index) => {
+            ConfirmedTransaction::rejected_deploy(index, transaction, FromBytes::read_le(&*blob)?)
+        }
+        ConfirmedTxType::RejectedExecute(index) => {
+            ConfirmedTransaction::rejected_execute(index, transaction, FromBytes::read_le(&*blob)?)
+        }
+    }
 }
 
 /// A trait for block storage.
@@ -66,8 +133,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
-    /// The mapping of `transaction ID` to `block hash`.
-    type ReverseTransactionsMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
+    /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
+    type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     /// The transaction storage.
     type TransactionStorage: TransactionStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The transition storage.
@@ -92,10 +159,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
     /// Returns the header map.
     fn header_map(&self) -> &Self::HeaderMap;
-    /// Returns the transactions map.
+    /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
-    /// Returns the reverse transactions map.
-    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap;
+    /// Returns the confirmed transactions map.
+    fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap;
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
     /// Returns the coinbase solution map.
@@ -123,7 +190,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
         self.transactions_map().start_atomic();
-        self.reverse_transactions_map().start_atomic();
+        self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
@@ -138,11 +205,41 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
-            || self.reverse_transactions_map().is_atomic_in_progress()
+            || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
             || self.signature_map().is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.state_root_map().atomic_checkpoint();
+        self.reverse_state_root_map().atomic_checkpoint();
+        self.id_map().atomic_checkpoint();
+        self.reverse_id_map().atomic_checkpoint();
+        self.header_map().atomic_checkpoint();
+        self.transactions_map().atomic_checkpoint();
+        self.confirmed_transactions_map().atomic_checkpoint();
+        self.transaction_store().atomic_checkpoint();
+        self.coinbase_solution_map().atomic_checkpoint();
+        self.coinbase_puzzle_commitment_map().atomic_checkpoint();
+        self.signature_map().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.state_root_map().atomic_rewind();
+        self.reverse_state_root_map().atomic_rewind();
+        self.id_map().atomic_rewind();
+        self.reverse_id_map().atomic_rewind();
+        self.header_map().atomic_rewind();
+        self.transactions_map().atomic_rewind();
+        self.confirmed_transactions_map().atomic_rewind();
+        self.transaction_store().atomic_rewind();
+        self.coinbase_solution_map().atomic_rewind();
+        self.coinbase_puzzle_commitment_map().atomic_rewind();
+        self.signature_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -153,7 +250,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
         self.transactions_map().abort_atomic();
-        self.reverse_transactions_map().abort_atomic();
+        self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
@@ -168,7 +265,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
-        self.reverse_transactions_map().finish_atomic()?;
+        self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
         self.coinbase_puzzle_commitment_map().finish_atomic()?;
@@ -177,7 +274,15 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Stores the given `(state root, block)` pair into storage.
     fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
-        atomic_write_batch!(self, {
+        // Prepare the confirmed transactions.
+        let confirmed = block
+            .transactions()
+            .iter()
+            .cloned()
+            .map(|confirmed| to_confirmed_tuple(confirmed))
+            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+
+        atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
             // Store the (state root, block height) pair.
@@ -193,12 +298,12 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the transaction IDs.
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
 
-            // Store the block transactions.
-            for transaction in block.transactions().values() {
-                // Store the reverse transaction ID.
-                self.reverse_transactions_map().insert(transaction.id(), block.hash())?;
+            // Store the confirmed transactions.
+            for (confirmed_type, transaction, blob) in confirmed {
+                // Store the block hash and confirmed transaction data.
+                self.confirmed_transactions_map().insert(transaction.id(), (block.hash(), confirmed_type, blob))?;
                 // Store the transaction.
-                self.transaction_store().insert(transaction)?;
+                self.transaction_store().insert(&transaction)?;
             }
 
             // Store the block coinbase solution.
@@ -215,9 +320,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.signature_map().insert(block.hash(), *block.signature())?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the block for the given `block hash`.
@@ -228,24 +331,24 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Failed to remove block: missing block height for block hash '{block_hash}'"),
         };
         // Retrieve the state root.
-        let state_root = match self.state_root_map().get(&block_height)? {
+        let state_root = match self.state_root_map().get_confirmed(&block_height)? {
             Some(state_root) => cow_to_copied!(state_root),
             None => bail!("Failed to remove block: missing state root for block height '{block_height}'"),
         };
         // Retrieve the transaction IDs.
-        let transaction_ids = match self.transactions_map().get(block_hash)? {
+        let transaction_ids = match self.transactions_map().get_confirmed(block_hash)? {
             Some(transaction_ids) => transaction_ids,
             None => bail!("Failed to remove block: missing transactions for block '{block_height}' ('{block_hash}')"),
         };
         // Retrieve the coinbase solution.
-        let coinbase = match self.coinbase_solution_map().get(block_hash)? {
+        let coinbase = match self.coinbase_solution_map().get_confirmed(block_hash)? {
             Some(coinbase_solution) => cow_to_cloned!(coinbase_solution),
             None => {
                 bail!("Failed to remove block: missing coinbase solution for block '{block_height}' ('{block_hash}')")
             }
         };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the (block height, state root) pair.
             self.state_root_map().remove(&block_height)?;
             // Remove the (state root, block height) pair.
@@ -264,7 +367,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove the block transactions.
             for transaction_id in transaction_ids.iter() {
                 // Remove the reverse transaction ID.
-                self.reverse_transactions_map().remove(transaction_id)?;
+                self.confirmed_transactions_map().remove(transaction_id)?;
                 // Remove the transaction.
                 self.transaction_store().remove(transaction_id)?;
             }
@@ -283,14 +386,12 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.signature_map().remove(block_hash)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the block height that contains the given `state root`.
     fn find_block_height_from_state_root(&self, state_root: N::StateRoot) -> Result<Option<u32>> {
-        match self.reverse_state_root_map().get(&state_root)? {
+        match self.reverse_state_root_map().get_confirmed(&state_root)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
             None => Ok(None),
         }
@@ -298,8 +399,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block hash that contains the given `transaction ID`.
     fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
-        match self.reverse_transactions_map().get(transaction_id)? {
-            Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+        match self.confirmed_transactions_map().get_confirmed(transaction_id)? {
+            Some(Cow::Borrowed((block_hash, _, _))) => Ok(Some(*block_hash)),
+            Some(Cow::Owned((block_hash, _, _))) => Ok(Some(block_hash)),
             None => Ok(None),
         }
     }
@@ -309,7 +411,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         &self,
         puzzle_commitment: &PuzzleCommitment<N>,
     ) -> Result<Option<N::BlockHash>> {
-        match self.coinbase_puzzle_commitment_map().get(puzzle_commitment)? {
+        match self.coinbase_puzzle_commitment_map().get_confirmed(puzzle_commitment)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
             None => Ok(None),
         }
@@ -317,7 +419,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the state root that contains the given `block height`.
     fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
-        match self.state_root_map().get(&block_height)? {
+        match self.state_root_map().get_confirmed(&block_height)? {
             Some(state_root) => Ok(Some(cow_to_copied!(state_root))),
             None => Ok(None),
         }
@@ -359,7 +461,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let block_path = block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
 
         // Ensure the global state root exists in storage.
-        if !self.reverse_state_root_map().contains_key(&global_state_root.into())? {
+        if !self.reverse_state_root_map().contains_key_confirmed(&global_state_root.into())? {
             bail!("The global state root '{global_state_root}' for commitment '{commitment}' is missing in storage");
         }
 
@@ -409,7 +511,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn get_previous_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
         match height.is_zero() {
             true => Ok(Some(N::BlockHash::default())),
-            false => match self.id_map().get(&(height - 1))? {
+            false => match self.id_map().get_confirmed(&(height - 1))? {
                 Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
                 None => Ok(None),
             },
@@ -418,7 +520,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block hash for the given `block height`.
     fn get_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
-        match self.id_map().get(&height)? {
+        match self.id_map().get_confirmed(&height)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
             None => Ok(None),
         }
@@ -426,7 +528,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block height for the given `block hash`.
     fn get_block_height(&self, block_hash: &N::BlockHash) -> Result<Option<u32>> {
-        match self.reverse_id_map().get(block_hash)? {
+        match self.reverse_id_map().get_confirmed(block_hash)? {
             Some(height) => Ok(Some(cow_to_copied!(height))),
             None => Ok(None),
         }
@@ -434,7 +536,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block header for the given `block hash`.
     fn get_block_header(&self, block_hash: &N::BlockHash) -> Result<Option<Header<N>>> {
-        match self.header_map().get(block_hash)? {
+        match self.header_map().get_confirmed(block_hash)? {
             Some(header) => Ok(Some(cow_to_cloned!(header))),
             None => Ok(None),
         }
@@ -443,26 +545,37 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the block transactions for the given `block hash`.
     fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         // Retrieve the transaction IDs.
-        let transaction_ids = match self.transactions_map().get(block_hash)? {
+        let transaction_ids = match self.transactions_map().get_confirmed(block_hash)? {
             Some(transaction_ids) => transaction_ids,
             None => return Ok(None),
         };
         // Retrieve the transactions.
-        let transactions = transaction_ids
+        transaction_ids
             .iter()
-            .map(|transaction_id| match self.transaction_store().get_transaction(transaction_id) {
-                Ok(Some(transaction)) => Ok(transaction),
-                Ok(None) => bail_with_block!("Missing transaction '{transaction_id}'", self, block_hash),
-                Err(err) => Err(err),
-            })
-            .collect::<Result<Vec<_>>>()?;
-        // Return the transactions.
-        Ok(Some(Transactions::from(&transactions)))
+            .map(|transaction_id| self.get_confirmed_transaction(*transaction_id))
+            .collect::<Result<Option<Transactions<_>>>>()
+    }
+
+    /// Returns the confirmed transaction for the given `transaction ID`.
+    fn get_confirmed_transaction(&self, transaction_id: N::TransactionID) -> Result<Option<ConfirmedTransaction<N>>> {
+        // Retrieve the transaction.
+        let transaction = match self.transaction_store().get_transaction(&transaction_id) {
+            Ok(Some(transaction)) => transaction,
+            Ok(None) => bail!("Missing transaction '{transaction_id}' in block storage"),
+            Err(err) => return Err(err),
+        };
+        // Retrieve the confirmed attributes.
+        let (_, confirmed_type, blob) = match self.confirmed_transactions_map().get_confirmed(&transaction_id)? {
+            Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
+            None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
+        };
+        // Construct the confirmed transaction.
+        to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
     }
 
     /// Returns the block coinbase solution for the given `block hash`.
     fn get_block_coinbase(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
-        match self.coinbase_solution_map().get(block_hash)? {
+        match self.coinbase_solution_map().get_confirmed(block_hash)? {
             Some(coinbase_solution) => Ok(cow_to_cloned!(coinbase_solution)),
             None => bail!("Missing coinbase solution for block ('{block_hash}')"),
         }
@@ -470,7 +583,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block signature for the given `block hash`.
     fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        match self.signature_map().get(block_hash)? {
+        match self.signature_map().get_confirmed(block_hash)? {
             Some(signature) => Ok(Some(cow_to_cloned!(signature))),
             None => Ok(None),
         }
@@ -520,126 +633,6 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 }
 
-/// An in-memory block storage.
-#[derive(Clone)]
-pub struct BlockMemory<N: Network> {
-    /// The mapping of `block height` to `state root`.
-    state_root_map: MemoryMap<u32, N::StateRoot>,
-    /// The mapping of `state root` to `block height`.
-    reverse_state_root_map: MemoryMap<N::StateRoot, u32>,
-    /// The mapping of `block height` to `block hash`.
-    id_map: MemoryMap<u32, N::BlockHash>,
-    /// The mapping of `block hash` to `block height`.
-    reverse_id_map: MemoryMap<N::BlockHash, u32>,
-    /// The header map.
-    header_map: MemoryMap<N::BlockHash, Header<N>>,
-    /// The transactions map.
-    transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
-    /// The reverse transactions map.
-    reverse_transactions_map: MemoryMap<N::TransactionID, N::BlockHash>,
-    /// The transaction store.
-    transaction_store: TransactionStore<N, TransactionMemory<N>>,
-    /// The coinbase solution map.
-    coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
-    /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, N::BlockHash>,
-    /// The signature map.
-    signature_map: MemoryMap<N::BlockHash, Signature<N>>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> BlockStorage<N> for BlockMemory<N> {
-    type StateRootMap = MemoryMap<u32, N::StateRoot>;
-    type ReverseStateRootMap = MemoryMap<N::StateRoot, u32>;
-    type IDMap = MemoryMap<u32, N::BlockHash>;
-    type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
-    type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
-    type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
-    type ReverseTransactionsMap = MemoryMap<N::TransactionID, N::BlockHash>;
-    type TransactionStorage = TransactionMemory<N>;
-    type TransitionStorage = TransitionMemory<N>;
-    type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, N::BlockHash>;
-    type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
-
-    /// Initializes the block storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(dev)?;
-        // Initialize the transaction store.
-        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
-        // Return the block storage.
-        Ok(Self {
-            state_root_map: MemoryMap::default(),
-            reverse_state_root_map: MemoryMap::default(),
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            header_map: MemoryMap::default(),
-            transactions_map: MemoryMap::default(),
-            reverse_transactions_map: MemoryMap::default(),
-            transaction_store,
-            coinbase_solution_map: MemoryMap::default(),
-            coinbase_puzzle_commitment_map: MemoryMap::default(),
-            signature_map: MemoryMap::default(),
-        })
-    }
-
-    /// Returns the state root map.
-    fn state_root_map(&self) -> &Self::StateRootMap {
-        &self.state_root_map
-    }
-
-    /// Returns the reverse state root map.
-    fn reverse_state_root_map(&self) -> &Self::ReverseStateRootMap {
-        &self.reverse_state_root_map
-    }
-
-    /// Returns the ID map.
-    fn id_map(&self) -> &Self::IDMap {
-        &self.id_map
-    }
-
-    /// Returns the reverse ID map.
-    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
-        &self.reverse_id_map
-    }
-
-    /// Returns the header map.
-    fn header_map(&self) -> &Self::HeaderMap {
-        &self.header_map
-    }
-
-    /// Returns the transactions map.
-    fn transactions_map(&self) -> &Self::TransactionsMap {
-        &self.transactions_map
-    }
-
-    /// Returns the reverse transactions map.
-    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap {
-        &self.reverse_transactions_map
-    }
-
-    /// Returns the transaction store.
-    fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage> {
-        &self.transaction_store
-    }
-
-    /// Returns the coinbase solution map.
-    fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap {
-        &self.coinbase_solution_map
-    }
-
-    /// Returns the coinbase puzzle commitment map.
-    fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap {
-        &self.coinbase_puzzle_commitment_map
-    }
-
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap {
-        &self.signature_map
-    }
-}
-
 /// The block store.
 #[derive(Clone)]
 pub struct BlockStore<N: Network, B: BlockStorage<N>> {
@@ -658,7 +651,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         // Compute the block tree.
         let tree = {
             // Prepare an iterator over the block heights.
-            let heights = storage.id_map().keys();
+            let heights = storage.id_map().keys_confirmed();
             // Prepare the leaves of the block tree.
             let hashes = match heights.max() {
                 Some(height) => cfg_into_iter!(0..=cow_to_copied!(height))
@@ -704,7 +697,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         let mut tree = self.tree.write();
 
         // Determine the block heights to remove.
-        let heights = match self.storage.id_map().keys().max() {
+        let heights = match self.storage.id_map().keys_confirmed().max() {
             Some(height) => {
                 // Determine the end block height to remove.
                 let end_height = cow_to_copied!(height);
@@ -731,13 +724,13 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         // Prepare an updated Merkle tree removing the last 'n' block hashes.
         let updated_tree = tree.prepare_remove_last_n(usize::try_from(n)?)?;
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the blocks, in descending order.
             for block_hash in hashes.iter().rev() {
                 self.storage.remove(block_hash)?;
             }
             Ok(())
-        });
+        })?;
 
         // Update the block tree.
         *tree = updated_tree;
@@ -763,6 +756,16 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -866,50 +869,51 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &N::StateRoot) -> Result<bool> {
-        self.storage.reverse_state_root_map().contains_key(state_root)
+        self.storage.reverse_state_root_map().contains_key_confirmed(state_root)
     }
 
     /// Returns `true` if the given block height exists.
     pub fn contains_block_height(&self, height: u32) -> Result<bool> {
-        self.storage.id_map().contains_key(&height)
+        self.storage.id_map().contains_key_confirmed(&height)
     }
 
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
-        self.storage.reverse_id_map().contains_key(block_hash)
+        self.storage.reverse_id_map().contains_key_confirmed(block_hash)
     }
 
     /// Returns `true` if the given puzzle commitment exists.
     pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
-        self.storage.coinbase_puzzle_commitment_map().contains_key(puzzle_commitment)
+        self.storage.coinbase_puzzle_commitment_map().contains_key_confirmed(puzzle_commitment)
     }
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns an iterator over the state roots, for all blocks in `self`.
     pub fn state_roots(&self) -> impl '_ + Iterator<Item = Cow<'_, N::StateRoot>> {
-        self.storage.reverse_state_root_map().keys()
+        self.storage.reverse_state_root_map().keys_confirmed()
     }
 
     /// Returns an iterator over the block heights, for all blocks in `self`.
     pub fn heights(&self) -> impl '_ + Iterator<Item = Cow<'_, u32>> {
-        self.storage.id_map().keys()
+        self.storage.id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the block hashes, for all blocks in `self`.
     pub fn hashes(&self) -> impl '_ + Iterator<Item = Cow<'_, N::BlockHash>> {
-        self.storage.reverse_id_map().keys()
+        self.storage.reverse_id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the puzzle commitments, for all blocks in `self`.
     pub fn puzzle_commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, PuzzleCommitment<N>>> {
-        self.storage.coinbase_puzzle_commitment_map().keys()
+        self.storage.coinbase_puzzle_commitment_map().keys_confirmed()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::BlockMemory;
 
     #[test]
     fn test_insert_get_remove() {
@@ -948,7 +952,7 @@ mod tests {
         // Sample the block.
         let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         let block_hash = block.hash();
-        assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
+        assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
 
         // Initialize a new block store.
         let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();

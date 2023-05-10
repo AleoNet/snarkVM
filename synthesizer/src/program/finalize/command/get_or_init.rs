@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load as LoadTrait, Opcode, Operand, ProgramStorage, ProgramStore, Stack, Store};
+use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Load as LoadTrait, Opcode, Operand, Stack, Store};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},
@@ -76,14 +76,14 @@ impl<N: Network> GetOrInit<N> {
 impl<N: Network> GetOrInit<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + Store<N>),
-    ) -> Result<()> {
+    ) -> Result<Option<FinalizeOperation<N>>> {
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
+        if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
@@ -91,23 +91,23 @@ impl<N: Network> GetOrInit<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
-            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
+        let (value, finalize_operation) = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
+            Some(Value::Plaintext(plaintext)) => (Value::Plaintext(plaintext), None),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_init' a 'record'"),
             // If a key does not exist, then store the default value into the mapping and return it.
             None => {
                 // Store the default value into the mapping.
                 let default = Value::Plaintext(registers.load_plaintext(stack, &self.default)?);
-                store.update_key_value(stack.program_id(), &self.mapping, key, default.clone())?;
-                // Return the default value.
-                default
+                // Return the default value and finalize operation.
+                (default.clone(), Some(store.update_key_value(stack.program_id(), &self.mapping, key, default)?))
             }
         };
 
         // Assign the value to the destination register.
         registers.store(stack, &self.destination, value)?;
 
-        Ok(())
+        // Return the finalize operation.
+        Ok(finalize_operation)
     }
 }
 

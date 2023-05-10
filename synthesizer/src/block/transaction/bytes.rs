@@ -66,7 +66,18 @@ impl<N: Network> FromBytes for Transaction<N> {
                 // Return the ID and the transaction.
                 (id, transaction)
             }
-            _ => return Err(error("Invalid transaction variant")),
+            2 => {
+                // Read the ID.
+                let id = N::TransactionID::read_le(&mut reader)?;
+                // Read the fee.
+                let fee = Fee::read_le(&mut reader)?;
+
+                // Initialize the transaction.
+                let transaction = Self::from_fee(fee).map_err(|e| error(e.to_string()))?;
+                // Return the ID and the transaction.
+                (id, transaction)
+            }
+            3.. => return Err(error("Invalid transaction variant")),
         };
 
         // Ensure the transaction ID matches.
@@ -114,6 +125,14 @@ impl<N: Network> ToBytes for Transaction<N> {
                         fee.write_le(&mut writer)
                     }
                 }
+            }
+            Self::Fee(id, fee) => {
+                // Write the variant.
+                2u8.write_le(&mut writer)?;
+                // Write the ID.
+                id.write_le(&mut writer)?;
+                // Write the fee.
+                fee.write_le(&mut writer)
             }
         }
     }
