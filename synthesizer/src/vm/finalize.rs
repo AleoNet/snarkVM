@@ -798,8 +798,7 @@ finalize transfer_public:
     set r1 into hashes[r0];",
             "finalize ped_hash:
     input r0 as u128.public;
-    hash.ped64 r0 into r1;
-    set r1 into hashes[r0];",
+    div r0 0u128 into r1;",
         ] {
             // Initialize the vm.
             let vm = test_helpers::sample_vm_with_genesis_block(rng);
