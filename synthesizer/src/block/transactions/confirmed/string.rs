@@ -14,8 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod finalize;
-pub use finalize::*;
+use super::*;
 
-mod finalize_operation;
-pub use finalize_operation::*;
+impl<N: Network> FromStr for ConfirmedTransaction<N> {
+    type Err = Error;
+
+    /// Initializes the confirmed transaction from a JSON-string.
+    fn from_str(status: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(status)?)
+    }
+}
+
+impl<N: Network> Debug for ConfirmedTransaction<N> {
+    /// Prints the confirmed transaction as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for ConfirmedTransaction<N> {
+    /// Displays the confirmed transaction as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    }
+}

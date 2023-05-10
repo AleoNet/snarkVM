@@ -26,6 +26,7 @@ use crate::{
             TransitionDB,
         },
         BlockStorage,
+        ConfirmedTxType,
         TransactionStore,
         TransitionStore,
     },
@@ -47,8 +48,8 @@ pub struct BlockDB<N: Network> {
     header_map: DataMap<N::BlockHash, Header<N>>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
-    /// The reverse transactions map.
-    reverse_transactions_map: DataMap<N::TransactionID, N::BlockHash>,
+    /// The confirmed transactions map.
+    confirmed_transactions_map: DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionDB<N>>,
     /// The coinbase solution map.
@@ -67,7 +68,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type ReverseIDMap = DataMap<N::BlockHash, u32>;
     type HeaderMap = DataMap<N::BlockHash, Header<N>>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
-    type ReverseTransactionsMap = DataMap<N::TransactionID, N::BlockHash>;
+    type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
     type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
@@ -88,7 +89,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             reverse_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ReverseID))?,
             header_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Header))?,
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
-            reverse_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ReverseTransactions))?,
+            confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
             transaction_store,
             coinbase_solution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbaseSolution))?,
             coinbase_puzzle_commitment_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
@@ -126,9 +127,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.transactions_map
     }
 
-    /// Returns the reverse transactions map.
-    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap {
-        &self.reverse_transactions_map
+    /// Returns the confirmed transactions map.
+    fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap {
+        &self.confirmed_transactions_map
     }
 
     /// Returns the transaction store.

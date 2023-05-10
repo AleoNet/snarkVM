@@ -345,7 +345,7 @@ impl<
 mod tests {
     use super::*;
     use crate::{atomic_batch_scope, atomic_finalize, FinalizeMode};
-    use console::{account::Address, network::Testnet3, prelude::*};
+    use console::{account::Address, network::Testnet3};
 
     type CurrentNetwork = Testnet3;
 

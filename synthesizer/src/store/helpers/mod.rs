@@ -225,7 +225,7 @@ macro_rules! atomic_finalize {
 
         // Wrap the operations that should be batched in a closure to be able to abort the entire
         // write batch if any of them fails.
-        let run_atomic_ops = || -> Result<_, &str> { $ops };
+        let run_atomic_ops = || -> Result<_, String> { $ops };
 
         // Run the atomic operations.
         match ($finalize_mode, run_atomic_ops()) {

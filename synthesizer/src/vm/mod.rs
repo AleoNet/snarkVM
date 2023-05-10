@@ -33,7 +33,6 @@ use crate::{
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
-    FinalizeOperation,
 };
 use console::{
     account::PrivateKey,
@@ -99,7 +98,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions().values()) {
+        match self.finalize(block.transactions()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
@@ -157,7 +156,6 @@ pub(crate) mod test_helpers {
         Header,
         Inclusion,
         Metadata,
-        Transactions,
         Transition,
     };
     use console::{
@@ -446,7 +444,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = Transactions::from(transactions);
+        let transactions = vm.speculate(transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,

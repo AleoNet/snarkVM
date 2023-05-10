@@ -16,7 +16,7 @@
 
 use crate::{
     atomic_batch_scope,
-    block::{Block, Header, Transactions},
+    block::{Block, Header, NumFinalizeSize, Transaction, Transactions},
     coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     cow_to_cloned,
     cow_to_copied,
@@ -27,6 +27,7 @@ use crate::{
         TransitionStorage,
         TransitionStore,
     },
+    ConfirmedTransaction,
     Program,
 };
 use console::{
@@ -38,16 +39,84 @@ use console::{
 
 use anyhow::Result;
 use parking_lot::RwLock;
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, io::Cursor, sync::Arc};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-macro_rules! bail_with_block {
-    ($message:expr, $self:ident, $hash:expr) => {{
-        let message = format!($message);
-        anyhow::bail!("{message} for block '{:?}' ('{}')", $self.get_block_height(&$hash)?, $hash);
-    }};
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ConfirmedTxType {
+    /// A deploy transaction that was accepted.
+    AcceptedDeploy(u32),
+    /// An execute transaction that was accepted.
+    AcceptedExecute(u32),
+    /// A deploy transaction that was rejected.
+    RejectedDeploy(u32),
+    /// An execute transaction that was rejected.
+    RejectedExecute(u32),
+}
+
+/// Separates the confirmed transaction into a tuple.
+fn to_confirmed_tuple<N: Network>(
+    confirmed: ConfirmedTransaction<N>,
+) -> Result<(ConfirmedTxType, Transaction<N>, Vec<u8>)> {
+    match confirmed {
+        ConfirmedTransaction::AcceptedDeploy(index, tx, finalize) => {
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::AcceptedDeploy(index), tx, (num_finalize, finalize).to_bytes_le()?))
+        }
+        ConfirmedTransaction::AcceptedExecute(index, tx, finalize) => {
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::AcceptedExecute(index), tx, (num_finalize, finalize).to_bytes_le()?))
+        }
+        ConfirmedTransaction::RejectedDeploy(index, tx, rejected) => {
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::RejectedDeploy(index), tx, rejected.to_bytes_le()?))
+        }
+        ConfirmedTransaction::RejectedExecute(index, tx, rejected) => {
+            // Return the confirmed tuple.
+            Ok((ConfirmedTxType::RejectedExecute(index), tx, rejected.to_bytes_le()?))
+        }
+    }
+}
+
+fn to_confirmed_transaction<N: Network>(
+    confirmed_type: ConfirmedTxType,
+    transaction: Transaction<N>,
+    blob: Vec<u8>,
+) -> Result<ConfirmedTransaction<N>> {
+    match confirmed_type {
+        ConfirmedTxType::AcceptedDeploy(index) => {
+            // Initialize a cursor.
+            let mut cursor = Cursor::new(blob);
+            // Read the number of finalize operations.
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
+            // Read the finalize operations.
+            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+            // Return the confirmed transaction.
+            ConfirmedTransaction::accepted_deploy(index, transaction, finalize)
+        }
+        ConfirmedTxType::AcceptedExecute(index) => {
+            // Initialize a cursor.
+            let mut cursor = Cursor::new(blob);
+            // Read the number of finalize operations.
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
+            // Read the finalize operations.
+            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+            // Return the confirmed transaction.
+            ConfirmedTransaction::accepted_execute(index, transaction, finalize)
+        }
+        ConfirmedTxType::RejectedDeploy(index) => {
+            ConfirmedTransaction::rejected_deploy(index, transaction, FromBytes::read_le(&*blob)?)
+        }
+        ConfirmedTxType::RejectedExecute(index) => {
+            ConfirmedTransaction::rejected_execute(index, transaction, FromBytes::read_le(&*blob)?)
+        }
+    }
 }
 
 /// A trait for block storage.
@@ -64,8 +133,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
-    /// The mapping of `transaction ID` to `block hash`.
-    type ReverseTransactionsMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
+    /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
+    type ConfirmedTransactionsMap: for<'a> Map<'a, N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     /// The transaction storage.
     type TransactionStorage: TransactionStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The transition storage.
@@ -90,10 +159,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
     /// Returns the header map.
     fn header_map(&self) -> &Self::HeaderMap;
-    /// Returns the transactions map.
+    /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
-    /// Returns the reverse transactions map.
-    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap;
+    /// Returns the confirmed transactions map.
+    fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap;
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
     /// Returns the coinbase solution map.
@@ -121,7 +190,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
         self.transactions_map().start_atomic();
-        self.reverse_transactions_map().start_atomic();
+        self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
@@ -136,7 +205,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
-            || self.reverse_transactions_map().is_atomic_in_progress()
+            || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
@@ -151,7 +220,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().atomic_checkpoint();
         self.header_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
-        self.reverse_transactions_map().atomic_checkpoint();
+        self.confirmed_transactions_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
         self.coinbase_solution_map().atomic_checkpoint();
         self.coinbase_puzzle_commitment_map().atomic_checkpoint();
@@ -166,7 +235,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().atomic_rewind();
         self.header_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
-        self.reverse_transactions_map().atomic_rewind();
+        self.confirmed_transactions_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
         self.coinbase_solution_map().atomic_rewind();
         self.coinbase_puzzle_commitment_map().atomic_rewind();
@@ -181,7 +250,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
         self.transactions_map().abort_atomic();
-        self.reverse_transactions_map().abort_atomic();
+        self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
@@ -196,7 +265,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
-        self.reverse_transactions_map().finish_atomic()?;
+        self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
         self.coinbase_puzzle_commitment_map().finish_atomic()?;
@@ -205,6 +274,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Stores the given `(state root, block)` pair into storage.
     fn insert(&self, state_root: N::StateRoot, block: &Block<N>) -> Result<()> {
+        // Prepare the confirmed transactions.
+        let confirmed = block
+            .transactions()
+            .iter()
+            .cloned()
+            .map(|confirmed| to_confirmed_tuple(confirmed))
+            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+
         atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
@@ -221,12 +298,12 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the transaction IDs.
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
 
-            // Store the block transactions.
-            for transaction in block.transactions().values() {
-                // Store the reverse transaction ID.
-                self.reverse_transactions_map().insert(transaction.id(), block.hash())?;
+            // Store the confirmed transactions.
+            for (confirmed_type, transaction, blob) in confirmed {
+                // Store the block hash and confirmed transaction data.
+                self.confirmed_transactions_map().insert(transaction.id(), (block.hash(), confirmed_type, blob))?;
                 // Store the transaction.
-                self.transaction_store().insert(transaction)?;
+                self.transaction_store().insert(&transaction)?;
             }
 
             // Store the block coinbase solution.
@@ -290,7 +367,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove the block transactions.
             for transaction_id in transaction_ids.iter() {
                 // Remove the reverse transaction ID.
-                self.reverse_transactions_map().remove(transaction_id)?;
+                self.confirmed_transactions_map().remove(transaction_id)?;
                 // Remove the transaction.
                 self.transaction_store().remove(transaction_id)?;
             }
@@ -322,8 +399,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns the block hash that contains the given `transaction ID`.
     fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
-        match self.reverse_transactions_map().get_confirmed(transaction_id)? {
-            Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+        match self.confirmed_transactions_map().get_confirmed(transaction_id)? {
+            Some(Cow::Borrowed((block_hash, _, _))) => Ok(Some(*block_hash)),
+            Some(Cow::Owned((block_hash, _, _))) => Ok(Some(block_hash)),
             None => Ok(None),
         }
     }
@@ -472,16 +550,27 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the transactions.
-        let transactions = transaction_ids
+        transaction_ids
             .iter()
-            .map(|transaction_id| match self.transaction_store().get_transaction(transaction_id) {
-                Ok(Some(transaction)) => Ok(transaction),
-                Ok(None) => bail_with_block!("Missing transaction '{transaction_id}'", self, block_hash),
-                Err(err) => Err(err),
-            })
-            .collect::<Result<Vec<_>>>()?;
-        // Return the transactions.
-        Ok(Some(Transactions::from(&transactions)))
+            .map(|transaction_id| self.get_confirmed_transaction(*transaction_id))
+            .collect::<Result<Option<Transactions<_>>>>()
+    }
+
+    /// Returns the confirmed transaction for the given `transaction ID`.
+    fn get_confirmed_transaction(&self, transaction_id: N::TransactionID) -> Result<Option<ConfirmedTransaction<N>>> {
+        // Retrieve the transaction.
+        let transaction = match self.transaction_store().get_transaction(&transaction_id) {
+            Ok(Some(transaction)) => transaction,
+            Ok(None) => bail!("Missing transaction '{transaction_id}' in block storage"),
+            Err(err) => return Err(err),
+        };
+        // Retrieve the confirmed attributes.
+        let (_, confirmed_type, blob) = match self.confirmed_transactions_map().get_confirmed(&transaction_id)? {
+            Some(confirmed_attributes) => cow_to_cloned!(confirmed_attributes),
+            None => bail!("Missing confirmed transaction '{transaction_id}' in block storage"),
+        };
+        // Construct the confirmed transaction.
+        to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
     }
 
     /// Returns the block coinbase solution for the given `block hash`.
@@ -863,7 +952,7 @@ mod tests {
         // Sample the block.
         let block = crate::vm::test_helpers::sample_genesis_block(&mut rng);
         let block_hash = block.hash();
-        assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
+        assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
 
         // Initialize a new block store.
         let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
