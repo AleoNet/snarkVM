@@ -61,7 +61,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
     }
 
-    // TODO (raychu86): Add verification of the transaction `finalize` state.
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
