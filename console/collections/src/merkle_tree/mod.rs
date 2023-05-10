@@ -354,6 +354,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Allocate a vector to store the inputs to the path hasher.
         let mut inputs = Vec::with_capacity(updated_hashes[0].len());
         // For each level in the tree, compute the path hashes.
+        // In the first iteration, we compute the path hashes for the updated leaf hashes.
+        // In the subsequent iterations, we compute the path hashes for the updated path hashes, until we reach the root.
         for level in 0..tree_depth as usize {
             let mut current = 0;
             while current < updated_hashes[level].len() {
@@ -370,6 +372,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
                     false => false,
                 };
                 // Get the sibling hash.
+                // Note: This algorithm assumes that the sibling hash is either the next hash in the vector,
+                // or in the original Merkle tree. Consequently, updates need to be provided in sequential order.
+                // This is enforced by the type of `updates: `BTreeMap<usize, LH::Leaf>`.
+                // If this assumption is violated, then the algorithm will compute incorrect path hashes in the Merkle tree.
                 let sibling_leaf_hash = match sibling_is_next_hash {
                     true => updated_hashes[level][current + 1].1,
                     false => self.tree[sibling_leaf_index],

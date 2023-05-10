@@ -400,10 +400,10 @@ fn test_merkle_tree_bhp_update_and_update_many_match() -> Result<()> {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le())
                 })
-                .collect::<BTreeMap<usize, Vec<bool>>>();
+                .collect::<Vec<(usize, Vec<bool>)>>();
 
-            // Construct the batch updates for the single updates.
-            let batch_updates = single_updates.clone();
+            // Construct the batch updates from the single updates.
+            let batch_updates = single_updates.iter().cloned().collect::<BTreeMap<usize, Vec<bool>>>();
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =
@@ -456,10 +456,10 @@ fn test_merkle_tree_poseidon_update_and_update_many_match() -> Result<()> {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, vec![Uniform::rand(rng)])
                 })
-                .collect::<BTreeMap<usize, Vec<_>>>();
+                .collect::<Vec<(usize, Vec<_>)>>();
 
             // Construct the batch updates for the single updates.
-            let batch_updates = single_updates.clone();
+            let batch_updates = single_updates.iter().cloned().collect::<BTreeMap<usize, Vec<_>>>();
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =
