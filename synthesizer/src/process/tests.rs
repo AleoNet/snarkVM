@@ -1350,12 +1350,13 @@ finalize compute:
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("16u64").unwrap());
+}
 
-    #[test]
-    fn test_execution_order() {
-        // Initialize a new program.
-        let (string, program0) = Program::<CurrentNetwork>::parse(
-            r"
+#[test]
+fn test_execution_order() {
+    // Initialize a new program.
+    let (string, program0) = Program::<CurrentNetwork>::parse(
+        r"
 program zero.aleo;
 
 function c:
@@ -1363,16 +1364,16 @@ function c:
     input r1 as u8.private;
     add r0 r1 into r2;
     output r2 as u8.private;",
-        )
-            .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
-        // Construct the process.
-        let mut process = super::test_helpers::sample_process(&program0);
+    // Construct the process.
+    let mut process = super::test_helpers::sample_process(&program0);
 
-        // Initialize another program.
-        let (string, program1) = Program::<CurrentNetwork>::parse(
-            r"
+    // Initialize another program.
+    let (string, program1) = Program::<CurrentNetwork>::parse(
+        r"
 import zero.aleo;
 
 program one.aleo;
@@ -1382,16 +1383,16 @@ function b:
     input r1 as u8.private;
     call zero.aleo/c r0 r1 into r2;
     output r2 as u8.private;",
-        )
-            .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
-        // Add the program to the process.
-        process.add_program(&program1).unwrap();
+    // Add the program to the process.
+    process.add_program(&program1).unwrap();
 
-        // Initialize another program.
-        let (string, program2) = Program::<CurrentNetwork>::parse(
-            r"
+    // Initialize another program.
+    let (string, program2) = Program::<CurrentNetwork>::parse(
+        r"
 import one.aleo;
 
 program two.aleo;
@@ -1401,55 +1402,227 @@ function a:
     input r1 as u8.private;
     call one.aleo/b r0 r1 into r2;
     output r2 as u8.private;",
-        )
-            .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
-        // Add the program to the process.
-        process.add_program(&program2).unwrap();
+    // Add the program to the process.
+    process.add_program(&program2).unwrap();
 
-        // Initialize the RNG.
-        let rng = &mut TestRng::default();
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
 
-        // Initialize the caller.
-        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    // Initialize the caller.
+    let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
-        // Declare the function name.
-        let function_name = Identifier::from_str("a").unwrap();
+    // Declare the function name.
+    let function_name = Identifier::from_str("a").unwrap();
 
-        // Declare the input value.
-        let r0 = Value::<CurrentNetwork>::from_str("1u8").unwrap();
-        let r1 = Value::<CurrentNetwork>::from_str("2u8").unwrap();
+    // Declare the input value.
+    let r0 = Value::<CurrentNetwork>::from_str("1u8").unwrap();
+    let r1 = Value::<CurrentNetwork>::from_str("2u8").unwrap();
 
-        // Authorize the function call.
-        let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program2.id(), function_name, [r0, r1].iter(), rng)
-            .unwrap();
-        assert_eq!(authorization.len(), 3);
-        println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
+    // Authorize the function call.
+    let authorization = process
+        .authorize::<CurrentAleo, _>(&caller_private_key, program2.id(), function_name, [r0, r1].iter(), rng)
+        .unwrap();
+    assert_eq!(authorization.len(), 3);
+    println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
-        let output = Value::<CurrentNetwork>::from_str("3u8").unwrap();
+    let output = Value::<CurrentNetwork>::from_str("3u8").unwrap();
 
-        // Check again to make sure we didn't modify the authorization before calling `evaluate`.
-        assert_eq!(authorization.len(), 3);
+    // Compute the output value.
+    let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(1, candidate.len());
+    assert_eq!(output, candidate[0]);
 
-        // Compute the output value.
-        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(output, candidate[0]);
+    // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+    assert_eq!(authorization.len(), 3);
 
-        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
-        assert_eq!(authorization.len(), 3);
+    // Execute the request.
+    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(1, candidate.len());
+    assert_eq!(output, candidate[0]);
 
-        // Execute the request.
-        let (response, execution, _inclusion, _metrics) =
-            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(output, candidate[0]);
+    process.verify_execution::<false>(&execution).unwrap();
+}
 
-        process.verify_execution::<false>(&execution).unwrap();
+#[test]
+fn test_complex_execution_order() {
+    // This test checks that the execution order is correct.
+    // The functions are invoked in the following order:
+    // "four::a"
+    //   --> "two::b"
+    //        --> "zero::c"
+    //        --> "one::d"
+    //   --> "three::e"
+    //        --> "two::b"
+    //             --> "zero::c"
+    //             --> "one::d"
+    //        --> "one::d"
+    //        --> "zero::c"
+    // The linearized order is:
+    //  - [a, b, c, d, e, b, c, d, d, c]
+    // The transitions must be included in the `Execution` in the order they finish.
+    // The execution order is:
+    //  - [c, d, b, c, d, b, d, c, e, a]
+
+    // Initialize a new program.
+    let (string, program0) = Program::<CurrentNetwork>::parse(
+        r"
+    program zero.aleo;
+
+    function c:
+        input r0 as u8.private;
+        input r1 as u8.private;
+        add r0 r1 into r2;
+        output r2 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Construct the process.
+    let mut process = super::test_helpers::sample_process(&program0);
+
+    // Initialize another program.
+    let (string, program1) = Program::<CurrentNetwork>::parse(
+        r"
+    program one.aleo;
+
+    function d:
+        input r0 as u8.private;
+        input r1 as u8.private;
+        add r0 r1 into r2;
+        output r2 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Add the program to the process.
+    process.add_program(&program1).unwrap();
+
+    // Initialize another program.
+    let (string, program2) = Program::<CurrentNetwork>::parse(
+        r"
+    import zero.aleo;
+    import one.aleo;
+
+    program two.aleo;
+
+    function b:
+        input r0 as u8.private;
+        input r1 as u8.private;
+        call zero.aleo/c r0 r1 into r2;
+        call one.aleo/d r1 r2 into r3;
+        output r3 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Add the program to the process.
+    process.add_program(&program2).unwrap();
+
+    // Initialize another program.
+    let (string, program3) = Program::<CurrentNetwork>::parse(
+        r"
+    import zero.aleo;
+    import one.aleo;
+    import two.aleo;
+
+    program three.aleo;
+
+    function e:
+        input r0 as u8.private;
+        input r1 as u8.private;
+        call two.aleo/b r0 r1 into r2;
+        call one.aleo/d r1 r2 into r3;
+        call zero.aleo/c r1 r2 into r4;
+        output r4 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Add the program to the process.
+    process.add_program(&program3).unwrap();
+
+    // Initialize another program.
+    let (string, program4) = Program::<CurrentNetwork>::parse(
+        r"
+    import two.aleo;
+    import three.aleo;
+
+    program four.aleo;
+
+    function a:
+        input r0 as u8.private;
+        input r1 as u8.private;
+        call two.aleo/b r0 r1 into r2;
+        call three.aleo/e r1 r2 into r3;
+        output r3 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Add the program to the process.
+    process.add_program(&program4).unwrap();
+
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
+
+    // Initialize caller.
+    let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+    // Declare the function name.
+    let function_name = Identifier::from_str("a").unwrap();
+
+    // Declare the input value.
+    let r0 = Value::<CurrentNetwork>::from_str("1u8").unwrap();
+    let r1 = Value::<CurrentNetwork>::from_str("2u8").unwrap();
+
+    // Authorize the function call.
+    let authorization = process
+        .authorize::<CurrentAleo, _>(&caller_private_key, program4.id(), function_name, [r0, r1].iter(), rng)
+        .unwrap();
+    assert_eq!(authorization.len(), 10);
+    println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
+
+    let output = Value::<CurrentNetwork>::from_str("17u8").unwrap();
+
+    // Compute the output value.
+    let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(1, candidate.len());
+    assert_eq!(output, candidate[0]);
+
+    // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+    assert_eq!(authorization.len(), 10);
+
+    // Execute the request.
+    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(1, candidate.len());
+    assert_eq!(output, candidate[0]);
+
+    // Construct the expected execution order.
+    let expected_order = [
+        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
+        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
+        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
+        (program2.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
+        (program1.id(), Identifier::<Testnet3>::from_str("d").unwrap()),
+        (program0.id(), Identifier::<Testnet3>::from_str("c").unwrap()),
+        (program3.id(), Identifier::<Testnet3>::from_str("e").unwrap()),
+        (program4.id(), Identifier::<Testnet3>::from_str("a").unwrap()),
+    ];
+    for (transition, (expected_program_id, expected_function_name)) in
+        execution.transitions().zip_eq(expected_order.iter())
+    {
+        assert_eq!(transition.program_id(), *expected_program_id);
+        assert_eq!(transition.function_name(), expected_function_name);
     }
 }
 
