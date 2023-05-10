@@ -27,7 +27,15 @@ use crate::{
         account::{PrivateKey, ViewKey},
         program::{Ciphertext, Field, Identifier, Network, Plaintext, ProgramID, Record, Response, Value},
     },
-    synthesizer::{Block, BlockMemory, ConsensusMemory, ConsensusStore, Program, Query, Transaction, VM},
+    synthesizer::{
+        store::helpers::memory::{BlockMemory, ConsensusMemory},
+        Block,
+        ConsensusStore,
+        Program,
+        Query,
+        Transaction,
+        VM,
+    },
 };
 
 #[derive(Clone)]

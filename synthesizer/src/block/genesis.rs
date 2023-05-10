@@ -35,13 +35,17 @@ impl<N: Network> Block<N> {
         let amount = N::STARTING_SUPPLY.saturating_div(Self::NUM_GENESIS_TRANSACTIONS as u64);
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
-        // Execute the mint function.
-        let mint_transactions = (0..Self::NUM_GENESIS_TRANSACTIONS)
-            .map(|_| Transaction::execute(vm, private_key, locator, inputs.iter(), None, None, rng))
-            .collect::<Result<Vec<_>>>()?;
 
-        // Prepare the transactions.
-        let transactions = Transactions::from(&mint_transactions);
+        // Prepare the mint transactions.
+        let transactions = (0u32..Self::NUM_GENESIS_TRANSACTIONS as u32)
+            .map(|index| {
+                // Execute the mint function.
+                let transaction = Transaction::execute(vm, private_key, locator, inputs.iter(), None, None, rng)?;
+                // Prepare the confirmed transaction.
+                ConfirmedTransaction::accepted_execute(index, transaction, vec![])
+            })
+            .collect::<Result<Transactions<_>>>()?;
+
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
@@ -65,8 +69,12 @@ impl<N: Network> Block<N> {
         self.previous_hash == N::BlockHash::default()
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
-            // Ensure there is 1 transaction in the genesis block.
-            && self.transactions.len() == Self::NUM_GENESIS_TRANSACTIONS
+            // Ensure there is the correct number of accepted transaction in the genesis block.
+            && self.transactions.num_accepted() == Self::NUM_GENESIS_TRANSACTIONS
+            // Ensure there is the correct number of rejected transaction in the genesis block.
+            && self.transactions.num_rejected() == 0
+            // Ensure there is the correct number of finalize operations in the genesis block.
+            && self.transactions.num_finalize() == 0
             // Ensure the coinbase solution does not exist.
             && self.coinbase.is_none()
     }

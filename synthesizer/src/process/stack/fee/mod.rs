@@ -42,6 +42,20 @@ impl<N: Network> Fee<N> {
         Self { transition, global_state_root, inclusion_proof }
     }
 
+    /// Returns 'true' if the fee amount is zero.
+    pub fn is_zero(&self) -> Result<bool> {
+        self.amount().map(|amount| amount.is_zero())
+    }
+
+    /// Returns the amount (in microcredits).
+    pub fn amount(&self) -> Result<U64<N>> {
+        // Retrieve the amount (in microcredits) as a plaintext value.
+        match self.transition.inputs().get(1) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
+            _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
+        }
+    }
+
     /// Returns the transition ID.
     pub fn transition_id(&self) -> &N::TransitionID {
         self.transition.id()
@@ -65,15 +79,6 @@ impl<N: Network> Fee<N> {
     /// Returns the inclusion proof.
     pub const fn inclusion_proof(&self) -> Option<&Proof<N>> {
         self.inclusion_proof.as_ref()
-    }
-
-    /// Returns the amount (in microcredits).
-    pub fn amount(&self) -> Result<U64<N>> {
-        // Retrieve the amount (in microcredits) as a plaintext value.
-        match self.transition.inputs().get(1) {
-            Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
-            _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
-        }
     }
 }
 

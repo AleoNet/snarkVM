@@ -39,6 +39,8 @@ pub use snarkvm_console as console;
 pub use snarkvm_curves as curves;
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
+#[cfg(feature = "ledger")]
+pub use snarkvm_ledger as ledger;
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
 #[cfg(feature = "r1cs")]
@@ -79,6 +81,8 @@ pub mod prelude {
     pub use crate::algorithms::prelude::*;
     #[cfg(feature = "console")]
     pub use crate::console::{account::*, network::*, prelude::*, program::*};
+    #[cfg(feature = "ledger")]
+    pub use crate::ledger::*;
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;
     #[cfg(feature = "synthesizer")]

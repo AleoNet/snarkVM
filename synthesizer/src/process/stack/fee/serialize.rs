@@ -63,8 +63,10 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         // Sample the fee.
-        let expected = crate::vm::test_helpers::sample_fee();
+        let expected = crate::vm::test_helpers::sample_fee(rng);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -80,8 +82,10 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         // Sample the fee.
-        let expected = crate::vm::test_helpers::sample_fee();
+        let expected = crate::vm::test_helpers::sample_fee(rng);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

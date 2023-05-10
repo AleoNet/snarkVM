@@ -1,0 +1,59 @@
+[package]
+name = "snarkvm-ledger"
+version = "0.11.0"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "A node ledger for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography", "web-programming" ]
+license = "GPL-3.0"
+edition = "2021"
+
+[features]
+default = [ "rayon" ]
+serial = [ "console/serial", "synthesizer/serial" ]
+timer = [ "aleo-std/timer" ]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../console"
+version = "0.11.0"
+
+[dependencies.synthesizer]
+package = "snarkvm-synthesizer"
+path = "../synthesizer"
+version = "0.11.0"
+
+[dependencies.aleo-std]
+version = "0.1.15"
+default-features = false
+
+[dependencies.anyhow]
+version = "1.0.70"
+
+[dependencies.indexmap]
+version = "1.9"
+features = [ "rayon" ]
+
+[dependencies.once_cell]
+version = "1.13"
+
+[dependencies.parking_lot]
+version = "0.12"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.rayon]
+version = "1"
+optional = true
+
+[dependencies.tracing]
+version = "0.1"

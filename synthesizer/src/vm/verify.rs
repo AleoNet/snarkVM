@@ -112,19 +112,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     bail!("Invalid transaction size (deployment): {error}");
                 }
-                // TODO (howardwu): Remove during Phase 3.
-                {
-                    // Temporarily restrict programs that contain mappings.
-                    if !deployment.program().mappings().is_empty() {
-                        bail!("Cannot deploy a program that contains a mapping (yet)")
-                    }
-                    // Temporarily restrict programs that contain finalize.
-                    for function in deployment.program().functions().values() {
-                        if function.finalize().is_some() {
-                            bail!("Cannot deploy a program that contains a finalize scope (yet)")
-                        }
-                    }
-                }
                 // Verify the signature corresponds to the transaction ID.
                 ensure!(owner.verify(*id), "Invalid signature for the deployment transaction '{id}'");
                 // Verify the fee.
@@ -137,8 +124,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if let Err(error) = Transaction::check_execution_size(execution) {
                     bail!("Invalid transaction size (execution): {error}");
                 }
-                // Ensure the fee is present, if the transaction is not a coinbase.
-                if !transaction.is_coinbase() && fee.is_none() {
+                // TODO (raychu86): Remove `is_split` check once batch executions are supported.
+                // Ensure the fee is present, if the transaction is not a coinbase or split.
+                if !transaction.is_coinbase() && !transaction.is_split() && fee.is_none() {
                     bail!("Transaction is missing a fee (execution)");
                 }
                 // Verify the fee.
@@ -147,6 +135,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the execution.
                 self.check_execution(execution)?;
+            }
+            Transaction::Fee(_, fee) => {
+                // Ensure the fee is nonzero.
+                ensure!(!fee.is_zero()?, "Invalid fee (zero)");
+                // Verify the fee.
+                self.check_fee(fee)?;
             }
         };
 
@@ -235,7 +229,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, Header, Inclusion, Metadata, Transaction, Transactions};
+    use crate::{Block, Header, Inclusion, Metadata, Transaction};
     use console::{
         account::{Address, ViewKey},
         types::Field,
@@ -394,7 +388,8 @@ mod tests {
         let deployment_transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
-        let transactions = Transactions::from(&[deployment_transaction]);
+        let transactions = vm.speculate([deployment_transaction].iter()).unwrap();
+
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
             CurrentNetwork::ID,

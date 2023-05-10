@@ -460,6 +460,15 @@ jobs:
           workspace_member: fields
           cache_key: snarkvm-fields-cache
 
+  ledger:
+    docker:
+      - image: cimg/rust:1.68
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger
+          cache_key: snarkvm-ledger-cache
+
   parameters:
     docker:
       - image: cimg/rust:1.68
@@ -484,6 +493,7 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
+          flags: --features=rocks
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-cache
 
@@ -625,6 +635,7 @@ workflows:
       - console-types-string
       - curves
       - fields
+      - ledger
       - parameters
       - r1cs
       - synthesizer

@@ -46,77 +46,13 @@ pub use store::*;
 pub mod vm;
 pub use vm::*;
 
-#[cfg(test)]
-#[allow(dead_code)]
-pub(crate) mod test_helpers {
-    use crate::{
-        block::Block,
-        store::{ConsensusMemory, ConsensusStore},
-        vm::VM,
-    };
-    use console::{
-        network::Testnet3,
-        prelude::{Network, TestRng},
-        program::StatePath,
-        types::Field,
-    };
-
-    use anyhow::{bail, Result};
-
-    type CurrentNetwork = Testnet3;
-
-    #[derive(Clone)]
-    pub struct TestLedger<N: Network> {
-        /// The VM state.
-        vm: VM<N, ConsensusMemory<N>>,
-    }
-
-    impl TestLedger<CurrentNetwork> {
-        /// Initializes a new instance of the ledger.
-        pub fn new(rng: &mut TestRng) -> Result<Self> {
-            // Initialize the genesis block.
-            let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-            // Initialize the consensus store.
-            let store = ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None)?;
-            // Initialize a new VM.
-            let vm = VM::from(store)?;
-
-            // Initialize the ledger.
-            let mut ledger = Self { vm };
-            // Add the genesis block.
-            ledger.add_next_block(&genesis)?;
-            // Return the ledger.
-            Ok(ledger)
-        }
-    }
-
-    impl<N: Network> TestLedger<N> {
-        /// Adds the given block as the next block in the chain.
-        pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
-            self.vm.add_next_block(block)
-        }
-
-        /// Returns the block for the given block height.
-        pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-            // Retrieve the block hash.
-            let block_hash = match self.vm.block_store().get_block_hash(height)? {
-                Some(block_hash) => block_hash,
-                None => bail!("Block {height} does not exist in storage"),
-            };
-            // Retrieve the block.
-            match self.vm.block_store().get_block(&block_hash)? {
-                Some(block) => Ok(block),
-                None => bail!("Block {height} ('{block_hash}') does not exist in storage"),
-            }
-        }
-
-        /// Returns a state path for the given commitment.
-        pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-            self.vm.block_store().get_state_path_for_commitment(commitment)
-        }
-    }
-}
+// /// Initializes a new **testing-only** instance of the ledger.
+// pub fn new(rng: &mut TestRng) -> Result<Self> {
+//     // Initialize the genesis block.
+//     let genesis = synthesizer::vm::test_helpers::sample_genesis_block(rng);
+//     // Initialize the ledger.
+//     snarkvm_ledger::Ledger::load_unchecked(genesis, None)
+// }
 
 // #[cfg(test)]
 // mod tests {
@@ -147,7 +83,7 @@ pub(crate) mod test_helpers {
 //         for _ in 0..batch_size {
 //             let commitment = genesis.commitments().next().unwrap();
 //             // Construct the console state path.
-//             let console_state_path = ledger.to_state_path(commitment).unwrap();
+//             let console_state_path = ledger.get_state_path_for_commitment(commitment).unwrap();
 //             // Construct the circuit state path.
 //             let circuit_state_path = StatePath::<CurrentAleo>::new(mode, console_state_path.clone());
 //

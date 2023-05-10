@@ -54,6 +54,11 @@ impl<N: Network> Execution<N> {
         Ok(execution)
     }
 
+    /// Returns the size in bytes.
+    pub fn size_in_bytes(&self) -> Result<u64> {
+        Ok(u64::try_from(self.to_bytes_le()?.len())?)
+    }
+
     /// Returns the global state root.
     pub const fn global_state_root(&self) -> N::StateRoot {
         self.global_state_root

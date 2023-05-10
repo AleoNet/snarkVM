@@ -14,39 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
-    fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
-        DensePolynomial,
-        EvaluationDomain,
-        Evaluations as EvaluationsOnDomain,
-    },
-    snark::marlin::{
-        ahp::{indexer::Circuit, verifier},
-        AHPError,
-        MarlinMode,
-    },
+    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    snark::marlin::{ahp::verifier, AHPError, AHPForR1CS, Circuit, MarlinMode},
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::SynthesisError;
+use snarkvm_r1cs::SynthesisResult;
 
-/// State for the AHP prover.
-pub struct State<'a, F: PrimeField, MM: MarlinMode> {
-    pub(super) index: &'a Circuit<F, MM>,
-
-    /// A domain that is sized for the public input.
+/// Circuit Specific State of the Prover
+pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) input_domain: EvaluationDomain<F>,
-
-    /// A domain that is sized for the number of constraints.
     pub(super) constraint_domain: EvaluationDomain<F>,
-
-    /// A domain that is sized for the number of non-zero elements in A.
     pub(super) non_zero_a_domain: EvaluationDomain<F>,
-    /// A domain that is sized for the number of non-zero elements in B.
     pub(super) non_zero_b_domain: EvaluationDomain<F>,
-    /// A domain that is sized for the number of non-zero elements in C.
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
 
     /// The number of instances being proved in this batch.
@@ -70,95 +52,138 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
 
     /// A list of polynomials corresponding to the interpolation of the public input.
     /// The length of this list must be equal to the batch size.
-    pub(super) x_poly: Vec<DensePolynomial<F>>,
-
-    /// The first round oracles sent by the prover.
-    /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
+    pub(super) x_polys: Vec<DensePolynomial<F>>,
 
     /// Randomizers for z_b.
     /// The length of this list must be equal to the batch size.
     pub(super) mz_poly_randomizer: Option<Vec<F>>,
 
-    /// The challenges sent by the verifier in the first round
-    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
-
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
-    /// Polynomials involved in the holographic sumcheck.
-    pub(super) sums: Option<[F; 3]>,
 }
 
+/// State for the AHP prover.
+pub struct State<'a, F: PrimeField, MM: MarlinMode> {
+    /// The state for each circuit in the batch.
+    pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    /// The challenges sent by the verifier in the first round.
+    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
+    /// The first round oracles sent by the prover.
+    /// The length of this list must be equal to the batch size.
+    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
+    /// The largest non_zero domain of all circuits in the batch.
+    pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
+    /// The largest constraint domain of all circuits in the batch.
+    pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
+    /// The total number of instances we're proving in the batch.
+    pub(in crate::snark) total_instances: usize,
+}
+
+/// The public inputs for a single instance.
+type PaddedPubInputs<F> = Vec<F>;
+/// The private inputs for a single instance.
+type PrivateInputs<F> = Vec<F>;
+/// The z_i_j*A_i vector for a single instance.
+type Za<F> = Vec<F>;
+/// The z_i_j*B_i vector for a single instance.
+type Zb<F> = Vec<F>;
+/// Assignments for a single instance.
+pub(super) struct Assignments<F>(
+    pub(super) PaddedPubInputs<F>,
+    pub(super) PrivateInputs<F>,
+    pub(super) Za<F>,
+    pub(super) Zb<F>,
+);
+
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
-    pub fn initialize(
-        padded_public_input: Vec<Vec<F>>,
-        private_variables: Vec<Vec<F>>,
-        index: &'a Circuit<F, MM>,
+    pub(super) fn initialize(
+        indices_and_assignments: BTreeMap<&'a Circuit<F, MM>, Vec<Assignments<F>>>,
     ) -> Result<Self, AHPError> {
-        let index_info = &index.index_info;
-        let constraint_domain =
-            EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
+        let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
+        let mut total_instances = 0;
+        let circuit_specific_states = indices_and_assignments
+            .into_iter()
+            .map(|(circuit, variable_assignments)| {
+                let index_info = &circuit.index_info;
+                let constraint_domains = AHPForR1CS::<_, MM>::max_constraint_domain(index_info, max_constraint_domain)?;
+                max_constraint_domain = constraint_domains.max_constraint_domain;
 
-        let non_zero_a_domain =
-            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_b_domain =
-            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_c_domain =
-            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+                let non_zero_domains = AHPForR1CS::<_, MM>::max_non_zero_domain(index_info, max_non_zero_domain)?;
+                max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
-        let input_domain =
-            EvaluationDomain::new(padded_public_input[0].len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+                let first_padded_public_inputs = &variable_assignments[0].0;
+                let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
+                let batch_size = variable_assignments.len();
+                total_instances += batch_size;
+                let mut z_as = Vec::with_capacity(batch_size);
+                let mut z_bs = Vec::with_capacity(batch_size);
+                let mut x_polys = Vec::with_capacity(batch_size);
+                let mut padded_public_variables = Vec::with_capacity(batch_size);
+                let mut private_variables = Vec::with_capacity(batch_size);
 
-        let x_poly = padded_public_input
-            .iter()
-            .map(|padded_public_input| {
-                EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain).interpolate()
+                for Assignments(padded_public_input, private_input, z_a, z_b) in variable_assignments {
+                    z_as.push(z_a);
+                    z_bs.push(z_b);
+                    let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain)
+                        .interpolate();
+                    x_polys.push(x_poly);
+                    padded_public_variables.push(padded_public_input);
+                    private_variables.push(private_input);
+                }
+
+                let state = CircuitSpecificState {
+                    input_domain,
+                    constraint_domain: constraint_domains.constraint_domain,
+                    non_zero_a_domain: non_zero_domains.domain_a,
+                    non_zero_b_domain: non_zero_domains.domain_b,
+                    non_zero_c_domain: non_zero_domains.domain_c,
+                    batch_size,
+                    padded_public_variables,
+                    x_polys,
+                    private_variables,
+                    z_a: Some(z_as),
+                    z_b: Some(z_bs),
+                    mz_poly_randomizer: None,
+                    lhs_polynomials: None,
+                };
+                Ok((circuit, state))
             })
-            .collect();
-        let batch_size = private_variables.len();
-        assert_eq!(padded_public_input.len(), batch_size);
+            .collect::<SynthesisResult<BTreeMap<_, _>>>()?;
+
+        let max_constraint_domain = max_constraint_domain.ok_or(AHPError::BatchSizeIsZero)?;
+        let max_non_zero_domain = max_non_zero_domain.ok_or(AHPError::BatchSizeIsZero)?;
 
         Ok(Self {
-            index,
-            input_domain,
-            constraint_domain,
-            non_zero_a_domain,
-            non_zero_b_domain,
-            non_zero_c_domain,
-            batch_size,
-            padded_public_variables: padded_public_input,
-            x_poly,
-            private_variables,
-            z_a: None,
-            z_b: None,
+            max_constraint_domain,
+            max_non_zero_domain,
+            circuit_specific_states,
+            total_instances,
             first_round_oracles: None,
-            mz_poly_randomizer: None,
             verifier_first_message: None,
-            lhs_polynomials: None,
-            sums: None,
         })
     }
 
-    /// Get the batch size.
-    pub fn batch_size(&self) -> usize {
-        self.batch_size
+    /// Get the batch size for a given circuit.
+    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
+        self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 
     /// Get the public inputs for the entire batch.
-    pub fn public_inputs(&self) -> Vec<Vec<F>> {
-        self.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect()
+    pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+        // We need to export inputs as they live longer than prover_state
+        self.circuit_specific_states.get(circuit).map(|s| {
+            s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect()
+        })
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self) -> Vec<Vec<F>> {
-        self.padded_public_variables.clone()
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
+        self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
     }
 
-    pub fn fft_precomputation(&self) -> &FFTPrecomputation<F> {
-        &self.index.fft_precomputation
-    }
-
-    pub fn ifft_precomputation(&self) -> &IFFTPrecomputation<F> {
-        &self.index.ifft_precomputation
+    /// Iterate over the lhs_polynomials
+    pub fn lhs_polys_into_iter(self) -> impl Iterator<Item = DensePolynomial<F>> + 'a {
+        self.circuit_specific_states.into_values().flat_map(|s| s.lhs_polynomials.unwrap().into_iter())
     }
 }

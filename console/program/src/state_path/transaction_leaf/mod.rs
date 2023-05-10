@@ -40,12 +40,12 @@ impl<N: Network> TransactionLeaf<N> {
     }
 
     /// Initializes a new instance of `TransactionLeaf`.
-    pub const fn new_deployment_fee(index: u16, id: Field<N>) -> Self {
+    pub const fn new_execution(index: u16, id: Field<N>) -> Self {
         Self { variant: 1, index, id }
     }
 
     /// Initializes a new instance of `TransactionLeaf`.
-    pub const fn new_execution(index: u16, id: Field<N>) -> Self {
+    pub const fn new_fee(index: u16, id: Field<N>) -> Self {
         Self { variant: 1, index, id }
     }
 

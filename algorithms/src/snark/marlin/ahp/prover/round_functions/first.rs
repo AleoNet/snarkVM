@@ -29,6 +29,8 @@ use crate::{
         ahp::{AHPError, AHPForR1CS},
         prover,
         witness_label,
+        Circuit,
+        CircuitId,
         MarlinMode,
     },
 };
@@ -43,19 +45,25 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
-    pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        3 * batch_size + (MM::ZK as usize)
+    pub fn num_first_round_oracles(total_batch_size: usize) -> usize {
+        3 * total_batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
-    pub fn first_round_polynomial_info(batch_size: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let mut polynomials = Vec::new();
-
-        for i in 0..batch_size {
-            polynomials.push(PolynomialInfo::new(witness_label("w", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("z_a", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
-        }
+    pub fn first_round_polynomial_info<'a>(
+        circuits: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
+    ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let mut polynomials = circuits
+            .flat_map(|(&circuit_id, &batch_size)| {
+                (0..batch_size).flat_map(move |i| {
+                    [
+                        PolynomialInfo::new(witness_label(circuit_id, "w", i), None, Self::zk_bound()),
+                        PolynomialInfo::new(witness_label(circuit_id, "z_a", i), None, Self::zk_bound()),
+                        PolynomialInfo::new(witness_label(circuit_id, "z_b", i), None, Self::zk_bound()),
+                    ]
+                })
+            })
+            .collect::<Vec<_>>();
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
         }
@@ -69,32 +77,41 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
-        let constraint_domain = state.constraint_domain;
-        let batch_size = state.batch_size;
+        let mut r_b_s = Vec::with_capacity(state.circuit_specific_states.len());
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * state.total_instances);
+        for (circuit, circuit_state) in state.circuit_specific_states.iter_mut() {
+            let batch_size = circuit_state.batch_size;
 
-        let z_a = state.z_a.take().unwrap();
-        let z_b = state.z_b.take().unwrap();
-        let private_variables = core::mem::take(&mut state.private_variables);
-        assert_eq!(z_a.len(), batch_size);
-        assert_eq!(z_b.len(), batch_size);
-        assert_eq!(private_variables.len(), batch_size);
-        let mut r_b_s = Vec::with_capacity(batch_size);
+            let z_a = circuit_state.z_a.take().unwrap();
+            let z_b = circuit_state.z_b.take().unwrap();
+            let private_variables = core::mem::take(&mut circuit_state.private_variables);
+            let x_polys = circuit_state.x_polys.clone();
+            assert_eq!(z_a.len(), batch_size);
+            assert_eq!(z_b.len(), batch_size);
+            assert_eq!(private_variables.len(), batch_size);
+            assert_eq!(x_polys.len(), batch_size);
 
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
-        let state_ref = &state;
-        for (i, (z_a, z_b, private_variables, x_poly)) in
-            itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
-        {
-            job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
-            let r_b = F::rand(rng);
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b, true, state_ref, Some(r_b)));
-            if MM::ZK {
-                r_b_s.push(r_b);
+            let c_domain = circuit_state.constraint_domain;
+            let i_domain = circuit_state.input_domain;
+
+            let mut circuit_r_b_s = Vec::with_capacity(batch_size);
+            for (j, (z_a, z_b, private_vars, x_poly)) in
+                itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
+            {
+                let w_label = witness_label(circuit.id, "w", j);
+                let za_label = witness_label(circuit.id, "z_a", j);
+                let zb_label = witness_label(circuit.id, "z_b", j);
+                job_pool.add_job(move || Self::calc_w(w_label, private_vars, x_poly, c_domain, i_domain, circuit));
+                job_pool.add_job(move || Self::calc_z_m(za_label, z_a, c_domain, circuit, None));
+                let r_b = F::rand(rng);
+                job_pool.add_job(move || Self::calc_z_m(zb_label, z_b, c_domain, circuit, Some(r_b)));
+                if MM::ZK {
+                    circuit_r_b_s.push(r_b);
+                }
             }
+            r_b_s.push(circuit_r_b_s);
         }
-
-        let batches = job_pool
+        let mut batches = job_pool
             .execute_all()
             .into_iter()
             .tuples()
@@ -106,16 +123,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
             })
             .collect::<Vec<_>>();
-        assert_eq!(batches.len(), batch_size);
+        assert_eq!(batches.len(), state.total_instances);
 
-        let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
-
-        let oracles = prover::FirstOracles { batches, mask_poly };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_size)));
+        let mut circuit_specific_batches = BTreeMap::new();
+        for ((circuit, state), r_b_s) in state.circuit_specific_states.iter_mut().zip(r_b_s) {
+            let batches = batches.drain(0..state.batch_size).collect_vec();
+            circuit_specific_batches.insert(circuit.id, batches);
+            state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
+            end_timer!(round_time);
+        }
+        let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
+        let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(
+            state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
+        )));
         state.first_round_oracles = Some(Arc::new(oracles));
-        state.mz_poly_randomizer = MM::ZK.then_some(r_b_s);
-        end_timer!(round_time);
-
         Ok(state)
     }
 
@@ -150,23 +172,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None))
     }
 
-    fn calculate_w(
+    fn calc_w(
         label: String,
         private_variables: Vec<F>,
-        x_poly: &DensePolynomial<F>,
-        state: &prover::State<F, MM>,
+        x_poly: DensePolynomial<F>,
+        constraint_domain: EvaluationDomain<F>,
+        input_domain: EvaluationDomain<F>,
+        circuit: &Circuit<F, MM>,
     ) -> PoolResult<F> {
-        let constraint_domain = state.constraint_domain;
-        let input_domain = state.input_domain;
-
         let mut w_extended = private_variables;
         let ratio = constraint_domain.size() / input_domain.size();
         w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
 
         let x_evals = {
-            let mut coeffs = x_poly.coeffs.clone();
+            let mut coeffs = x_poly.coeffs;
             coeffs.resize(constraint_domain.size(), F::zero());
-            constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, state.fft_precomputation());
+            constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, &circuit.fft_precomputation);
             coeffs
         };
 
@@ -178,7 +199,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect();
         let w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain)
-            .interpolate_with_pc(state.ifft_precomputation());
+            .interpolate_with_pc(&circuit.ifft_precomputation);
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(input_domain).unwrap();
         assert!(remainder.is_zero());
 
@@ -187,22 +208,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         PoolResult::Witness(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
     }
 
-    fn calculate_z_m(
+    fn calc_z_m(
         label: impl ToString,
         evaluations: Vec<F>,
-        will_be_evaluated: bool,
-        state: &prover::State<'_, F, MM>,
+        constraint_domain: EvaluationDomain<F>,
+        circuit: &Circuit<F, MM>,
         r: Option<F>,
     ) -> PoolResult<F> {
-        let constraint_domain = state.constraint_domain;
+        let should_randomize = MM::ZK && r.is_some();
         let v_H = constraint_domain.vanishing_polynomial();
-        let should_randomize = MM::ZK && will_be_evaluated;
         let label = label.to_string();
         let poly_time = start_timer!(|| format!("Computing {label}"));
 
         let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
 
-        let mut poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
+        let mut poly = evals.interpolate_with_pc_by_ref(&circuit.ifft_precomputation);
         if should_randomize {
             poly += &(&v_H * r.unwrap());
         }

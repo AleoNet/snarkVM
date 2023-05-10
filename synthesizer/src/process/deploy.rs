@@ -64,49 +64,10 @@ impl<N: Network> Process<N> {
         verification
     }
 
-    /// Finalizes the deployment.
-    /// This method assumes the given deployment **is valid**.
-    #[inline]
-    pub fn finalize_deployment<P: ProgramStorage<N>>(
-        &mut self,
-        store: &ProgramStore<N, P>,
-        deployment: &Deployment<N>,
-    ) -> Result<()> {
-        let timer = timer!("Process::finalize_deployment");
-
-        // TODO (howardwu): Make this function atomic.
-        // TODO (howardwu): Check the program ID and all mappings don't exist in the 'store'. (add this to verify_deployment too)
-
-        // Compute the program stack.
-        let stack = Stack::new(self, deployment.program())?;
-        lap!(timer, "Compute the stack");
-
-        // Insert the verifying keys.
-        for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-            stack.insert_verifying_key(function_name, verifying_key.clone())?;
-        }
-        lap!(timer, "Insert the verifying keys");
-
-        // Retrieve the program ID.
-        let program_id = deployment.program_id();
-        // Iterate through the program mappings.
-        for mapping in deployment.program().mappings().values() {
-            store.initialize_mapping(program_id, mapping.name())?;
-        }
-        lap!(timer, "Initialize the program mappings");
-
-        // Add the stack to the process.
-        self.stacks.insert(*deployment.program_id(), stack);
-
-        finish!(timer);
-
-        Ok(())
-    }
-
     /// Adds the newly-deployed program.
     /// This method assumes the given deployment **is valid**.
     #[inline]
-    pub(crate) fn load_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
+    pub fn load_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
         let timer = timer!("Process::load_deployment");
 
         // Compute the program stack.
@@ -120,40 +81,10 @@ impl<N: Network> Process<N> {
         lap!(timer, "Insert the verifying keys");
 
         // Add the stack to the process.
-        self.stacks.insert(*deployment.program_id(), stack);
+        self.add_stack(stack);
 
         finish!(timer);
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_utilities::TestRng;
-
-    type CurrentAleo = circuit::network::AleoV0;
-
-    #[test]
-    fn test_finalize_deployment() {
-        let rng = &mut TestRng::default();
-
-        // Fetch the program from the deployment.
-        let program = crate::vm::test_helpers::sample_program();
-        // Initialize a new process.
-        let mut process = Process::load().unwrap();
-        // Deploy the program.
-        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
-
-        // Initialize a new VM.
-        let vm = crate::vm::test_helpers::sample_vm();
-
-        // Ensure the program does not exist.
-        assert!(!process.contains_program(program.id()));
-        // Finalize the deployment.
-        process.finalize_deployment(vm.program_store(), &deployment).unwrap();
-        // Ensure the program exists.
-        assert!(process.contains_program(program.id()));
     }
 }

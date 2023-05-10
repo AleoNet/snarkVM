@@ -22,20 +22,22 @@ mod execute;
 mod finalize;
 mod verify;
 
+pub use finalize::FinalizeMode;
+
 use crate::{
-    atomic_write_batch,
-    block::{Block, Transaction, Transactions, Transition},
+    atomic_finalize,
+    block::{Block, Transaction, Transition},
     cast_ref,
     process,
     process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
-    store::{BlockStore, ConsensusStorage, ConsensusStore, ProgramStore, TransactionStore, TransitionStore},
+    store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Response, Value},
     types::Field,
 };
 
@@ -57,6 +59,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn from(store: ConsensusStore<N, C>) -> Result<Self> {
         // Initialize a new process.
         let mut process = Process::load()?;
+
+        // Initialize the store for 'credits.aleo'.
+        let credits = Program::<N>::credits()?;
+        for mapping in credits.mappings().values() {
+            // Ensure that all mappings are initialized.
+            if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
+                // Initialize the mappings for 'credits.aleo'.
+                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
+            }
+        }
 
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
@@ -87,7 +99,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(block.transactions()) {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
+                Ok(())
+            }
             Err(error) => {
                 // Rollback the block.
                 self.block_store().remove_last_n(1)?;
@@ -102,11 +117,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
         self.process.clone()
     }
+}
 
-    /// Returns the program store.
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns the finalize store.
     #[inline]
-    pub fn program_store(&self) -> &ProgramStore<N, C::ProgramStorage> {
-        self.store.program_store()
+    pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
+        self.store.finalize_store()
     }
 
     /// Returns the block store.
@@ -126,32 +143,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
         self.store.transition_store()
     }
-
-    /// Starts an atomic batch write operation.
-    pub fn start_atomic(&self) {
-        self.store.start_atomic();
-    }
-
-    /// Checks if an atomic batch is in progress.
-    pub fn is_atomic_in_progress(&self) -> bool {
-        self.store.is_atomic_in_progress()
-    }
-
-    /// Aborts an atomic batch write operation.
-    pub fn abort_atomic(&self) {
-        self.store.abort_atomic();
-    }
-
-    /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) -> Result<()> {
-        self.store.finish_atomic()
-    }
 }
 
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, Block, ConsensusMemory, Fee, Inclusion, Transition};
+    use crate::{
+        program::Program,
+        store::helpers::memory::ConsensusMemory,
+        Block,
+        Fee,
+        Header,
+        Inclusion,
+        Metadata,
+        Transition,
+    };
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -160,6 +166,7 @@ pub(crate) mod test_helpers {
 
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
+    use std::borrow::Borrow;
 
     pub(crate) type CurrentNetwork = Testnet3;
 
@@ -214,6 +221,10 @@ program testing.aleo;
 
 struct message:
     amount as u128;
+
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
 
 record token:
     owner as address.private;
@@ -374,12 +385,10 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_fee() -> Fee<CurrentNetwork> {
+    pub(crate) fn sample_fee(rng: &mut TestRng) -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                let rng = &mut TestRng::default();
-
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
@@ -409,5 +418,210 @@ function compute:
                 fee
             })
             .clone()
+    }
+
+    pub(crate) fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a fee.
+                let fee = crate::vm::test_helpers::sample_fee(rng);
+                // Return the fee transaction.
+                Transaction::from_fee(fee).unwrap()
+            })
+            .clone()
+    }
+
+    pub fn sample_next_block<R: Rng + CryptoRng>(
+        vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
+        private_key: &PrivateKey<Testnet3>,
+        transactions: &[Transaction<Testnet3>],
+        rng: &mut R,
+    ) -> Result<Block<Testnet3>> {
+        // Get the most recent block.
+        let block_hash =
+            vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
+        let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
+
+        // Construct the new block header.
+        let transactions = vm.speculate(transactions.iter())?;
+        // Construct the metadata associated with the block.
+        let metadata = Metadata::new(
+            Testnet3::ID,
+            previous_block.round() + 1,
+            previous_block.height() + 1,
+            Testnet3::STARTING_SUPPLY,
+            0,
+            Testnet3::GENESIS_COINBASE_TARGET,
+            Testnet3::GENESIS_PROOF_TARGET,
+            previous_block.last_coinbase_target(),
+            previous_block.last_coinbase_timestamp(),
+            Testnet3::GENESIS_TIMESTAMP + 1,
+        )?;
+
+        let header = Header::from(
+            *vm.block_store().current_state_root(),
+            transactions.to_root().unwrap(),
+            Field::zero(),
+            // TODO (howardwu): Revisit this.
+            // vm.finalize_store().current_finalize_root(),
+            Field::zero(),
+            metadata,
+        )?;
+
+        // Construct the new block.
+        Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
+    }
+
+    #[test]
+    fn test_multiple_deployments_and_multiple_executions() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Split once.
+        let transaction = Transaction::execute(
+            &vm,
+            &caller_private_key,
+            ("credits.aleo", "split"),
+            [Value::Record(record), Value::from_str("1000000000u64").unwrap()].iter(), // 1000 credits
+            None,
+            None,
+            rng,
+        )
+        .unwrap();
+        let records = transaction.records().collect_vec();
+        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+        vm.add_next_block(&block).unwrap();
+
+        // Split again.
+        let mut transactions = Vec::new();
+        let transaction = Transaction::execute(
+            &vm,
+            &caller_private_key,
+            ("credits.aleo", "split"),
+            [Value::Record(first_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
+            None,
+            None,
+            rng,
+        )
+        .unwrap();
+        let records = transaction.records().collect_vec();
+        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let third_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        transactions.push(transaction);
+        // Split again.
+        let transaction = Transaction::execute(
+            &vm,
+            &caller_private_key,
+            ("credits.aleo", "split"),
+            [Value::Record(second_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
+            None,
+            None,
+            rng,
+        )
+        .unwrap();
+        let records = transaction.records().collect_vec();
+        let second_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let fourth_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        transactions.push(transaction);
+        // Add the split transactions to a block and update the VM.
+        let fee_block = sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
+        vm.add_next_block(&fee_block).unwrap();
+
+        // Deploy the programs.
+        let first_program = r"
+program test_1.aleo;
+mapping map_0:
+    key left as field.public;
+    value right as field.public;
+function init:
+    finalize;
+finalize init:
+    set 0field into map_0[0field];
+function getter:
+    finalize;
+finalize getter:
+    get map_0[0field] into r0;
+        ";
+        let second_program = r"
+program test_2.aleo;
+mapping map_0:
+    key left as field.public;
+    value right as field.public;
+function init:
+    finalize;
+finalize init:
+    set 0field into map_0[0field];
+function getter:
+    finalize;
+finalize getter:
+    get map_0[0field] into r0;
+        ";
+        let first_deployment = Transaction::deploy(
+            &vm,
+            &caller_private_key,
+            &Program::from_str(first_program).unwrap(),
+            (first_record, 1),
+            None,
+            rng,
+        )
+        .unwrap();
+        let second_deployment = Transaction::deploy(
+            &vm,
+            &caller_private_key,
+            &Program::from_str(second_program).unwrap(),
+            (second_record, 1),
+            None,
+            rng,
+        )
+        .unwrap();
+        let deployment_block =
+            sample_next_block(&vm, &caller_private_key, &[first_deployment, second_deployment], rng).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Execute the programs.
+        let first_execution = Transaction::execute(
+            &vm,
+            &caller_private_key,
+            ("test_1.aleo", "init"),
+            Vec::<Value<Testnet3>>::new().iter(),
+            Some((third_record, 1)),
+            None,
+            rng,
+        )
+        .unwrap();
+        let second_execution = Transaction::execute(
+            &vm,
+            &caller_private_key,
+            ("test_2.aleo", "init"),
+            Vec::<Value<Testnet3>>::new().iter(),
+            Some((fourth_record, 1)),
+            None,
+            rng,
+        )
+        .unwrap();
+        let execution_block =
+            sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
+        vm.add_next_block(&execution_block).unwrap();
     }
 }

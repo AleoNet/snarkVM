@@ -219,7 +219,6 @@ fn test_isomorphism() {
         let r = fq_element;
 
         // Let u = D.
-        // TODO (howardwu): change to 5.
         let u = <EdwardsParameters as TwistedEdwardsParameters>::EDWARDS_D;
 
         // Let ur2 = u * r^2;
@@ -352,7 +351,6 @@ fn test_isomorphism() {
     let fq_element_reconstructed = {
         let x = u_reconstructed;
 
-        // TODO (howardwu): change to 5.
         // Let u = D.
         let u = <EdwardsParameters as TwistedEdwardsParameters>::EDWARDS_D;
 
