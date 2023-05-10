@@ -46,7 +46,7 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
                     type Value = Vec<ConfirmedTransaction<N>>;
 
                     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-                        formatter.write_str("Vec<Status(Transaction)> sequence.")
+                        formatter.write_str("Vec<ConfirmedTransaction> sequence.")
                     }
 
                     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
