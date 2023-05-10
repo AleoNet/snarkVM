@@ -374,7 +374,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
                 // Get the sibling hash.
                 // Note: This algorithm assumes that the sibling hash is either the next hash in the vector,
                 // or in the original Merkle tree. Consequently, updates need to be provided in sequential order.
-                // This is enforced by the type of `updates: `BTreeMap<usize, LH::Leaf`.
+                // This is enforced by the type of `updates: `BTreeMap<usize, LH::Leaf>`.
                 // If this assumption is violated, then the algorithm will compute incorrect path hashes in the Merkle tree.
                 let sibling_leaf_hash = match sibling_is_next_hash {
                     true => updated_hashes[level][current + 1].1,
