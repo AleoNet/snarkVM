@@ -1447,6 +1447,21 @@ function a:
     assert_eq!(output, candidate[0]);
 
     process.verify_execution::<false>(&execution).unwrap();
+
+    // Construct the expected transition order.
+    let expected_order = [
+        (program0.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
+        (program1.id(), Identifier::from_str("c").unwrap()),
+        (program2.id(), Identifier::from_str("a").unwrap()),
+    ];
+
+    // Check the expected transition order.
+    for (transition, (expected_program_id, expected_function_name)) in
+        execution.transitions().zip_eq(expected_order.iter())
+    {
+        assert_eq!(transition.program_id(), *expected_program_id);
+        assert_eq!(transition.function_name(), expected_function_name);
+    }
 }
 
 #[test]
@@ -1604,6 +1619,8 @@ fn test_complex_execution_order() {
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
+
+    process.verify_execution::<false>(&execution).unwrap();
 
     // Construct the expected execution order.
     let expected_order = [
