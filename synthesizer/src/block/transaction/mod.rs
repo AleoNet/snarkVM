@@ -48,10 +48,12 @@ use console::{
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
-    /// The transaction deployment publishes an Aleo program to the network.
+    /// The deploy transaction publishes an Aleo program to the network.
     Deploy(N::TransactionID, ProgramOwner<N>, Box<Deployment<N>>, Fee<N>),
-    /// The transaction execution represents a call to an Aleo program.
+    /// The execute transaction represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
+    /// The fee transaction represents a fee paid to the network, used for rejected transactions.
+    Fee(N::TransactionID, Fee<N>),
 }
 
 impl<N: Network> Transaction<N> {
@@ -76,6 +78,16 @@ impl<N: Network> Transaction<N> {
         // Construct the execution transaction.
         Ok(Self::Execute(id.into(), execution, fee))
     }
+
+    /// Initializes a new fee transaction.
+    pub fn from_fee(fee: Fee<N>) -> Result<Self> {
+        // Ensure the fee is nonzero.
+        ensure!(!fee.is_zero()?, "Attempted to create a zero fee transaction");
+        // Compute the transaction ID.
+        let id = *Self::fee_tree(&fee)?.root();
+        // Construct the execution transaction.
+        Ok(Self::Fee(id.into(), fee))
+    }
 }
 
 impl<N: Network> Transaction<N> {
@@ -83,11 +95,13 @@ impl<N: Network> Transaction<N> {
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
     /// Initializes a new deployment transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
-        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -95,8 +109,17 @@ impl<N: Network> Transaction<N> {
         let deployment = vm.deploy(program, rng)?;
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+
+        // Determine the fee.
+        let fee_in_microcredits = deployment
+            .size_in_bytes()?
+            .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
+            .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
+            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
+
         // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
+        let (_, fee, _) = vm.execute_fee(private_key, fee_record, fee_in_microcredits, query, rng)?;
+
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
         let owner = ProgramOwner::new(private_key, id.into(), rng)?;
@@ -106,6 +129,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
         private_key: &PrivateKey<N>,
@@ -122,7 +147,13 @@ impl<N: Network> Transaction<N> {
         // Compute the fee.
         let fee = match fee {
             None => None,
-            Some((credits, fee_in_microcredits)) => {
+            Some((credits, priority_fee_in_microcredits)) => {
+                // Determine the fee.
+                let fee_in_microcredits = execution
+                    .size_in_bytes()?
+                    .checked_add(priority_fee_in_microcredits)
+                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the fee.
                 Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
             }
         };
@@ -158,6 +189,24 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> Transaction<N> {
+    /// Returns `true` if the transaction is a deploy transaction.
+    #[inline]
+    pub fn is_deploy(&self) -> bool {
+        matches!(self, Self::Deploy(..))
+    }
+
+    /// Returns `true` if the transaction is an execute transaction.
+    #[inline]
+    pub fn is_execute(&self) -> bool {
+        matches!(self, Self::Execute(..))
+    }
+
+    /// Returns `true` if the transaction is a fee transaction.
+    #[inline]
+    pub fn is_fee(&self) -> bool {
+        matches!(self, Self::Fee(..))
+    }
+
     /// Returns `true` if this is a coinbase transaction.
     #[inline]
     pub fn is_coinbase(&self) -> bool {
@@ -204,18 +253,20 @@ impl<N: Network> Transaction<N> {
 }
 
 /// A helper enum for iterators and consuming iterators over a transaction.
-enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
+enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> {
     Deploy(I1),
     Execute(I2),
+    Fee(I3),
 }
 
-impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
+impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2, I3> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Deploy(iter) => iter.next(),
             Self::Execute(iter) => iter.next(),
+            Self::Fee(iter) => iter.next(),
         }
     }
 }
@@ -226,6 +277,7 @@ impl<N: Network> Transaction<N> {
         match self {
             Self::Deploy(id, ..) => *id,
             Self::Execute(id, ..) => *id,
+            Self::Fee(id, ..) => *id,
         }
     }
 
@@ -235,6 +287,16 @@ impl<N: Network> Transaction<N> {
             Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
             Self::Execute(_, _, None) => Ok(U64::zero()),
+            Self::Fee(_, fee) => fee.amount(),
+        }
+    }
+
+    /// Returns the fee transition.
+    pub fn fee_transition(&self) -> Option<Fee<N>> {
+        match self {
+            Self::Deploy(_, _, _, fee) => Some(fee.clone()),
+            Self::Execute(_, _, fee) => fee.clone(),
+            Self::Fee(_, fee) => Some(fee.clone()),
         }
     }
 }
@@ -250,6 +312,8 @@ impl<N: Network> Transaction<N> {
                 execution.contains_transition(transition_id)
                     || fee.as_ref().map_or(false, |fee| fee.id() == transition_id)
             }
+            // Check the fee.
+            Self::Fee(_, fee) => fee.id() == transition_id,
         }
     }
 
@@ -280,6 +344,11 @@ impl<N: Network> Transaction<N> {
                     false => None,
                 })
             }),
+            // Check the fee.
+            Self::Fee(_, fee) => match fee.id() == transition_id {
+                true => Some(fee.transition()),
+                false => None,
+            },
         }
     }
 
@@ -312,6 +381,7 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.transitions().chain(fee.as_ref().map(|fee| fee.transition())))
             }
+            Self::Fee(_, fee) => IterWrap::Fee(Some(fee.transition()).into_iter()),
         }
     }
 
@@ -378,6 +448,7 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.into_transitions().chain(fee.map(|fee| fee.into_transition())))
             }
+            Self::Fee(_, fee) => IterWrap::Fee(Some(fee.into_transition()).into_iter()),
         }
     }
 

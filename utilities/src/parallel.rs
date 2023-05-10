@@ -201,7 +201,7 @@ macro_rules! cfg_values {
 /// Finds the first element that satisfies the predicate function
 #[macro_export]
 macro_rules! cfg_find {
-    ($self:ident, $object:expr, $func:ident) => {{
+    ($self:expr, $object:expr, $func:ident) => {{
         #[cfg(not(feature = "serial"))]
         let result = $self.par_values().find_any(|tx| tx.$func($object));
 
@@ -215,7 +215,7 @@ macro_rules! cfg_find {
 /// Applies a function and returns the first value that is not None
 #[macro_export]
 macro_rules! cfg_find_map {
-    ($self:ident, $object:expr, $func:ident) => {{
+    ($self:expr, $object:expr, $func:ident) => {{
         #[cfg(not(feature = "serial"))]
         let result = $self.par_values().filter_map(|tx| tx.$func($object)).find_any(|_| true);
 
@@ -231,9 +231,11 @@ macro_rules! cfg_find_map {
 macro_rules! cfg_zip_fold {
     ($self: expr, $other: expr, $init: expr, $op: expr, $type: ty) => {{
         let default = $init;
+
         #[cfg(feature = "serial")]
         let default = $init();
         let result = $self.zip_eq($other).fold(default, $op);
+
         #[cfg(not(feature = "serial"))]
         let result = result.sum::<$type>();
 

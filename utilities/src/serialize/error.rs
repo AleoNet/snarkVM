@@ -21,6 +21,9 @@ pub enum SerializationError {
     /// During serialization with bincode, we encountered a serialization issue
     #[error(transparent)]
     BincodeError(#[from] bincode::Error),
+    /// During serialization we could not serialize to the right sized int
+    #[error(transparent)]
+    IntError(#[from] std::num::TryFromIntError),
     /// During serialization, the data was invalid.
     #[error("the input buffer contained invalid data")]
     InvalidData,

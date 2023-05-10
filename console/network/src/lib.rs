@@ -97,6 +97,8 @@ pub trait Network:
 
     /// The starting supply of Aleo credits.
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
+    /// The cost in microcredits per byte for the deployment transaction.
+    const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
 
     /// The anchor time per block in seconds, which must be greater than the round time per block.
     const ANCHOR_TIME: u16 = 25;
@@ -126,6 +128,8 @@ pub trait Network:
     /// The maximum number of entries in a record.
     const MAX_RECORD_ENTRIES: usize = Self::MIN_RECORD_ENTRIES.saturating_add(Self::MAX_DATA_ENTRIES);
 
+    /// The maximum number of mappings in a program.
+    const MAX_MAPPINGS: usize = 31;
     /// The maximum number of functions in a program.
     const MAX_FUNCTIONS: usize = 31;
     /// The maximum number of operands in an instruction.
@@ -133,7 +137,7 @@ pub trait Network:
     /// The maximum number of instructions in a closure or function.
     const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
     /// The maximum number of commands in finalize.
-    const MAX_COMMANDS: usize = u8::MAX as usize;
+    const MAX_COMMANDS: usize = u16::MAX as usize;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 16;

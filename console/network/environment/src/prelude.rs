@@ -22,6 +22,7 @@ pub use snarkvm_utilities::{
     cfg_into_iter,
     cfg_iter,
     cfg_iter_mut,
+    cfg_values,
     error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},

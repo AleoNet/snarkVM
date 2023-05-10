@@ -43,10 +43,10 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
                 struct TransactionsDeserializer<N: Network>(PhantomData<N>);
 
                 impl<'de, N: Network> Visitor<'de> for TransactionsDeserializer<N> {
-                    type Value = Vec<Transaction<N>>;
+                    type Value = Vec<ConfirmedTransaction<N>>;
 
                     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-                        formatter.write_str("Vec<Transaction> sequence.")
+                        formatter.write_str("Vec<ConfirmedTransaction> sequence.")
                     }
 
                     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
@@ -72,7 +72,55 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u32 = 6;
+
+    fn sample_transactions(index: u32, rng: &mut TestRng) -> Transactions<CurrentNetwork> {
+        if index == 0 {
+            [
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_deploy(0, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_deploy(1, rng),
+            ]
+            .into_iter()
+            .collect()
+        } else if index == 1 {
+            [
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(0, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(1, rng),
+            ]
+            .into_iter()
+            .collect()
+        } else if index == 2 {
+            [
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_deploy(0, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(1, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(2, rng),
+            ]
+            .into_iter()
+            .collect()
+        } else if index == 3 {
+            [
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(0, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_deploy(1, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_rejected_execute(2, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_rejected_deploy(3, rng),
+            ]
+            .into_iter()
+            .collect()
+        } else {
+            [
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(0, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_rejected_deploy(1, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_deploy(2, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_rejected_execute(3, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(4, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_rejected_execute(5, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_accepted_execute(6, rng),
+                crate::block::transactions::confirmed::test_helpers::sample_rejected_deploy(7, rng),
+            ]
+            .into_iter()
+            .collect()
+        }
+    }
 
     #[test]
     fn test_serde_json() {
@@ -92,14 +140,8 @@ mod tests {
         check_serde_json(crate::vm::test_helpers::sample_genesis_block(rng).transactions());
 
         for i in 0..ITERATIONS {
-            let transaction = if i % 2 == 0 {
-                crate::vm::test_helpers::sample_deployment_transaction(rng)
-            } else {
-                crate::vm::test_helpers::sample_execution_transaction_with_fee(rng)
-            };
-
             // Construct the transactions.
-            let expected: Transactions<CurrentNetwork> = [transaction.clone(), transaction].into_iter().collect();
+            let expected: Transactions<CurrentNetwork> = sample_transactions(i, rng);
             // Check the serialization.
             check_serde_json(&expected);
         }
@@ -123,16 +165,11 @@ mod tests {
         // Check the serialization.
         check_bincode(crate::vm::test_helpers::sample_genesis_block(rng).transactions());
 
-        for transaction in [
-            crate::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
-        ] {
-            for i in 0..ITERATIONS {
-                // Construct the transactions.
-                let expected: Transactions<CurrentNetwork> = vec![transaction.clone(); i].into_iter().collect();
-                // Check the serialization.
-                check_bincode(&expected);
-            }
+        for i in 0..ITERATIONS {
+            // Construct the transactions.
+            let expected: Transactions<CurrentNetwork> = sample_transactions(i, rng);
+            // Check the serialization.
+            check_bincode(&expected);
         }
     }
 }

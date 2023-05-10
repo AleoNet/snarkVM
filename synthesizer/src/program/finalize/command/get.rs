@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load as LoadTrait, Opcode, Operand, ProgramStorage, ProgramStore, Stack, Store};
+use crate::{FinalizeStorage, FinalizeStore, Load as LoadTrait, Opcode, Operand, Stack, Store};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},
@@ -67,14 +67,14 @@ impl<N: Network> Get<N> {
 impl<N: Network> Get<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: ProgramStorage<N>>(
+    pub fn finalize<P: FinalizeStorage<N>>(
         &self,
         stack: &Stack<N>,
-        store: &ProgramStore<N, P>,
+        store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + Store<N>),
     ) -> Result<()> {
         // Ensure the mapping exists in storage.
-        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
+        if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
@@ -82,7 +82,7 @@ impl<N: Network> Get<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let value = match store.get_value(stack.program_id(), &self.mapping, &key)? {
+        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get' a 'record'"),
             // If a key does not exist, then bail.

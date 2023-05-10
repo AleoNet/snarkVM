@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod memory_map;
+pub mod memory;
+#[cfg(feature = "rocks")]
+pub mod rocksdb;
 
 use console::network::prelude::*;
 
@@ -52,6 +54,18 @@ pub trait Map<
     fn is_atomic_in_progress(&self) -> bool;
 
     ///
+    /// Saves the current list of pending operations, so that if `atomic_rewind` is called,
+    /// we roll back all future operations, and return to the start of this checkpoint.
+    ///
+    fn atomic_checkpoint(&self);
+
+    ///
+    /// Removes all pending operations to the last `atomic_checkpoint`
+    /// (or to `start_atomic` if no checkpoints have been created).
+    ///
+    fn atomic_rewind(&self);
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self);
@@ -69,6 +83,7 @@ pub trait MapRead<
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
 >
 {
+    type PendingIterator: Iterator<Item = (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Iterator: Iterator<Item = (Cow<'a, K>, Cow<'a, V>)>;
     type Keys: Iterator<Item = Cow<'a, K>>;
     type Values: Iterator<Item = Cow<'a, V>>;
@@ -76,7 +91,16 @@ pub trait MapRead<
     ///
     /// Returns `true` if the given key exists in the map.
     ///
-    fn contains_key<Q>(&self, key: &Q) -> Result<bool>
+    fn contains_key_confirmed<Q>(&self, key: &Q) -> Result<bool>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Returns `true` if the given key exists in the map.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the map.
+    ///
+    fn contains_key_speculative<Q>(&self, key: &Q) -> Result<bool>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
@@ -84,7 +108,7 @@ pub trait MapRead<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
+    fn get_confirmed<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
@@ -97,7 +121,7 @@ pub trait MapRead<
     /// If the key is removed in the batch, returns `Some(None)`.
     /// If the key is inserted in the batch, returns `Some(Some(value))`.
     ///
-    fn get_batched<Q>(&self, key: &Q) -> Option<Option<V>>
+    fn get_pending<Q>(&self, key: &Q) -> Option<Option<V>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
@@ -112,10 +136,10 @@ pub trait MapRead<
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         // Return early in case of errors in order to not conceal them.
-        let map_value = self.get(key)?;
+        let map_value = self.get_confirmed(key)?;
 
         // Retrieve the atomic batch value, if it exists.
-        let atomic_batch_value = self.get_batched(key);
+        let atomic_batch_value = self.get_pending(key);
 
         // Return the atomic batch value, if it exists, or the map value, otherwise.
         match atomic_batch_value {
@@ -126,19 +150,24 @@ pub trait MapRead<
     }
 
     ///
+    /// Returns an iterator visiting each key-value pair in the atomic batch.
+    ///
+    fn iter_pending(&'a self) -> Self::PendingIterator;
+
+    ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
-    fn iter(&'a self) -> Self::Iterator;
+    fn iter_confirmed(&'a self) -> Self::Iterator;
 
     ///
     /// Returns an iterator over each key in the map.
     ///
-    fn keys(&'a self) -> Self::Keys;
+    fn keys_confirmed(&'a self) -> Self::Keys;
 
     ///
     /// Returns an iterator over each value in the map.
     ///
-    fn values(&'a self) -> Self::Values;
+    fn values_confirmed(&'a self) -> Self::Values;
 }
 
 /// This macro executes the given block of operations as a new atomic write batch IFF there is no
@@ -146,32 +175,80 @@ pub trait MapRead<
 /// multiple lower-level operations - which might also need to be atomic if executed individually -
 /// are executed as a single large atomic operation regardless.
 #[macro_export]
-macro_rules! atomic_write_batch {
-    ($self:expr, $ops:block) => {
+macro_rules! atomic_batch_scope {
+    ($self:expr, $ops:block) => {{
         // Check if an atomic batch write is already in progress. If there isn't one, this means
         // this operation is a "top-level" one and is the one to start and finalize the batch.
-        let is_part_of_atomic_batch = $self.is_atomic_in_progress();
+        let is_atomic_in_progress = $self.is_atomic_in_progress();
 
         // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            $self.start_atomic();
+        match is_atomic_in_progress {
+            true => $self.atomic_checkpoint(),
+            false => $self.start_atomic(),
         }
+
+        // Wrap the operations that should be batched in a closure to be able to rewind the batch on error.
+        let run_atomic_ops = || -> Result<_> { $ops };
+
+        // Run the atomic operations.
+        match run_atomic_ops() {
+            // Save this atomic batch scope and return.
+            Ok(result) => match is_atomic_in_progress {
+                // A 'true' implies this is a nested atomic batch scope.
+                true => Ok(result),
+                // A 'false' implies this is the top-level calling scope.
+                // Commit the atomic batch IFF it's the top-level calling scope.
+                false => $self.finish_atomic().map(|_| result),
+            },
+            // Rewind this atomic batch scope.
+            Err(err) => {
+                $self.atomic_rewind();
+                Err(err)
+            }
+        }
+    }};
+}
+
+/// A top-level helper macro to perform the finalize operation on a list of transactions.
+#[macro_export]
+macro_rules! atomic_finalize {
+    ($self:expr, $finalize_mode:expr, $ops:block) => {{
+        // Ensure that there is no atomic batch write in progress.
+        if $self.is_atomic_in_progress() {
+            // We intentionally 'bail!' here instead of passing an Err() to the caller because
+            // this is a top-level operation and the caller must fix the issue.
+            bail!("Cannot start an atomic batch write operation while another one is already in progress.")
+        }
+
+        // Start the atomic batch.
+        $self.start_atomic();
 
         // Wrap the operations that should be batched in a closure to be able to abort the entire
         // write batch if any of them fails.
-        let run_atomic_ops = || -> Result<()> { $ops };
+        let run_atomic_ops = || -> Result<_, String> { $ops };
 
-        // Abort the batch if any of the associated operations has failed. It's crucial that there
-        // is an early return (via `?`) here, in order for any higher-level atomic write batch to
-        // also abort, cascading to all the owned storage objects.
-        run_atomic_ops().map_err(|err| {
-            $self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of a larger one.
-        if !is_part_of_atomic_batch {
-            $self.finish_atomic()?;
+        // Run the atomic operations.
+        match ($finalize_mode, run_atomic_ops()) {
+            // If this is a successful real run, commit the atomic batch.
+            (FinalizeMode::RealRun, Ok(result)) => {
+                $self.finish_atomic()?;
+                Ok(result)
+            }
+            // If this is a failed real run, abort the atomic batch.
+            (FinalizeMode::RealRun, Err(error_msg)) => {
+                $self.abort_atomic();
+                Err(anyhow!("Failed to finalize transactions: {error_msg}"))
+            }
+            // If this is a successful dry run, abort the atomic batch.
+            (FinalizeMode::DryRun, Ok(result)) => {
+                $self.abort_atomic();
+                Ok(result)
+            }
+            // If this is a failed dry run, abort the atomic batch.
+            (FinalizeMode::DryRun, Err(error_msg)) => {
+                $self.abort_atomic();
+                Err(anyhow!("Failed to finalize transactions: {error_msg}"))
+            }
         }
-    };
+    }};
 }

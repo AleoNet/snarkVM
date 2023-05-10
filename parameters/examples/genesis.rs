@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_console::{account::PrivateKey, network::Testnet3, prelude::*};
-use snarkvm_synthesizer::{Block, ConsensusMemory, ConsensusStore, VM};
+use snarkvm_synthesizer::{store::helpers::memory::ConsensusMemory, Block, ConsensusStore, VM};
 
 use rand::thread_rng;
 use std::{

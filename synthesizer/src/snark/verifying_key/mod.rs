@@ -19,6 +19,7 @@ use super::*;
 mod bytes;
 mod parse;
 mod serialize;
+use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct VerifyingKey<N: Network> {
@@ -40,7 +41,7 @@ impl<N: Network> VerifyingKey<N> {
         let timer = std::time::Instant::now();
 
         // Verify the proof.
-        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), self, std::slice::from_ref(&inputs), proof) {
+        match Marlin::<N>::verify(N::marlin_fs_parameters(), self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {
@@ -64,7 +65,9 @@ impl<N: Network> VerifyingKey<N> {
         let timer = std::time::Instant::now();
 
         // Verify the batch proof.
-        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), self, inputs, proof) {
+        let mut keys_to_inputs = BTreeMap::new();
+        keys_to_inputs.insert(self.deref(), inputs);
+        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {

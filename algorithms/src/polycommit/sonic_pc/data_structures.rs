@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
@@ -312,11 +312,46 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
 }
 
 impl<E: PairingEngine> CommitterKey<E> {
+    fn len(&self) -> usize {
+        if self.shifted_powers_of_beta_g.is_some() { self.shifted_powers_of_beta_g.as_ref().unwrap().len() } else { 0 }
+    }
+}
+
+/// `CommitterUnionKey` is a union of `CommitterKey`s, useful for multi-circuit batch proofs.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct CommitterUnionKey<'a, E: PairingEngine> {
+    /// The key used to commit to polynomials.
+    pub powers_of_beta_g: Option<&'a Vec<E::G1Affine>>,
+
+    /// The key used to commit to polynomials in Lagrange basis.
+    pub lagrange_bases_at_beta_g: BTreeMap<usize, &'a Vec<E::G1Affine>>,
+
+    /// The key used to commit to hiding polynomials.
+    pub powers_of_beta_times_gamma_g: Option<&'a Vec<E::G1Affine>>,
+
+    /// The powers used to commit to shifted polynomials.
+    /// This is `None` if `self` does not support enforcing any degree bounds.
+    pub shifted_powers_of_beta_g: Option<&'a Vec<E::G1Affine>>,
+
+    /// The powers used to commit to shifted hiding polynomials.
+    /// This is `None` if `self` does not support enforcing any degree bounds.
+    pub shifted_powers_of_beta_times_gamma_g: Option<BTreeMap<usize, &'a Vec<E::G1Affine>>>,
+
+    /// The degree bounds that are supported by `self`.
+    /// Sorted in ascending order from smallest bound to largest bound.
+    /// This is `None` if `self` does not support enforcing any degree bounds.
+    pub enforced_degree_bounds: Option<Vec<usize>>,
+
+    /// The maximum degree supported by the `UniversalParams` from which `self` was derived
+    pub max_degree: usize,
+}
+
+impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
     /// Obtain powers for the underlying KZG10 construction
     pub fn powers(&self) -> kzg10::Powers<E> {
         kzg10::Powers {
-            powers_of_beta_g: self.powers_of_beta_g.as_slice().into(),
-            powers_of_beta_times_gamma_g: self.powers_of_beta_times_gamma_g.as_slice().into(),
+            powers_of_beta_g: self.powers_of_beta_g.unwrap().as_slice().into(),
+            powers_of_beta_times_gamma_g: self.powers_of_beta_times_gamma_g.unwrap().as_slice().into(),
         }
     }
 
@@ -349,19 +384,64 @@ impl<E: PairingEngine> CommitterKey<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Option<kzg10::LagrangeBasis<E>> {
         self.lagrange_bases_at_beta_g.get(&domain.size()).map(|basis| kzg10::LagrangeBasis {
             lagrange_basis_at_beta_g: Cow::Borrowed(basis),
-            powers_of_beta_times_gamma_g: Cow::Borrowed(&self.powers_of_beta_times_gamma_g),
+            powers_of_beta_times_gamma_g: Cow::Borrowed(self.powers_of_beta_times_gamma_g.unwrap()),
             domain,
         })
     }
-}
 
-impl<E: PairingEngine> CommitterKey<E> {
     pub fn max_degree(&self) -> usize {
         self.max_degree
     }
 
     pub fn supported_degree(&self) -> usize {
-        self.powers_of_beta_g.len() - 1
+        self.powers_of_beta_g.unwrap().len() - 1
+    }
+
+    pub fn union<T: IntoIterator<Item = &'a CommitterKey<E>>>(committer_keys: T) -> Self {
+        let mut ck_union = CommitterUnionKey::<E> {
+            powers_of_beta_g: None,
+            lagrange_bases_at_beta_g: BTreeMap::new(),
+            powers_of_beta_times_gamma_g: None,
+            shifted_powers_of_beta_g: None,
+            shifted_powers_of_beta_times_gamma_g: None,
+            enforced_degree_bounds: None,
+            max_degree: 0,
+        };
+        let mut enforced_degree_bounds = vec![];
+        let mut biggest_ck: Option<&CommitterKey<E>> = None;
+        let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
+        for ck in committer_keys {
+            if biggest_ck.is_none() || biggest_ck.unwrap().len() < ck.len() {
+                biggest_ck = Some(ck);
+            }
+            let lagrange_bases = &ck.lagrange_bases_at_beta_g;
+            for (bound_base, bases) in lagrange_bases.iter() {
+                ck_union.lagrange_bases_at_beta_g.entry(*bound_base).or_insert(bases);
+            }
+            if let Some(shifted_powers) = ck.shifted_powers_of_beta_times_gamma_g.as_ref() {
+                for (bound_power, powers) in shifted_powers.iter() {
+                    shifted_powers_of_beta_times_gamma_g.entry(*bound_power).or_insert(powers);
+                }
+            }
+            if let Some(degree_bounds) = &ck.enforced_degree_bounds {
+                enforced_degree_bounds.append(&mut degree_bounds.clone());
+            }
+        }
+
+        let biggest_ck = biggest_ck.unwrap();
+        ck_union.powers_of_beta_g = Some(&biggest_ck.powers_of_beta_g);
+        ck_union.powers_of_beta_times_gamma_g = Some(&biggest_ck.powers_of_beta_times_gamma_g);
+        ck_union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.as_ref();
+        ck_union.max_degree = biggest_ck.max_degree;
+
+        if !enforced_degree_bounds.is_empty() {
+            enforced_degree_bounds.sort();
+            enforced_degree_bounds.dedup();
+            ck_union.enforced_degree_bounds = Some(enforced_degree_bounds);
+            ck_union.shifted_powers_of_beta_times_gamma_g = Some(shifted_powers_of_beta_times_gamma_g);
+        }
+
+        ck_union
     }
 }
 
@@ -463,9 +543,31 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> VerifierKey<E> {
+/// `VerifierKey` is used to check evaluation proofs for a given commitment.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerifierUnionKey<'a, E: PairingEngine> {
+    /// The verification key for the underlying KZG10 scheme.
+    pub vk: &'a kzg10::VerifierKey<E>,
+
+    /// Pairs a degree_bound with its corresponding G2 element.
+    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
+    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, &'a E::G2Affine)>>,
+
+    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
+    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
+
+    /// The maximum degree supported by the trimmed parameters that `self` is
+    /// a part of.
+    pub supported_degree: usize,
+
+    /// The maximum degree supported by the `UniversalParams` `self` was derived
+    /// from.
+    pub max_degree: usize,
+}
+
+impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
     /// Find the appropriate shift for the degree bound.
-    pub fn get_shift_power(&self, degree_bound: usize) -> Option<E::G2Affine> {
+    pub fn get_shift_power(&self, degree_bound: usize) -> Option<&E::G2Affine> {
         self.degree_bounds_and_neg_powers_of_h
             .as_ref()
             .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1))
@@ -476,15 +578,52 @@ impl<E: PairingEngine> VerifierKey<E> {
             .as_ref()
             .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1.clone()))
     }
-}
 
-impl<E: PairingEngine> VerifierKey<E> {
     pub fn max_degree(&self) -> usize {
         self.max_degree
     }
 
-    pub fn supported_degree(&self) -> usize {
-        self.supported_degree
+    pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
+        let mut bounds_seen = HashSet::<usize>::new();
+        let mut bounds_and_neg_powers = vec![];
+        let mut bounds_and_prepared_neg_powers = vec![];
+        let mut biggest_vk: Option<&VerifierKey<E>> = None;
+        for vk in verifier_keys {
+            if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree < vk.supported_degree {
+                biggest_vk = Some(vk);
+            }
+            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.as_ref().unwrap();
+            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
+            assert_eq!(new_bounds.len(), new_prep_bounds.len());
+            for ((bound, neg_powers), (bound2, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
+                assert_eq!(bound, bound2);
+                if bounds_seen.insert(*bound) {
+                    bounds_and_neg_powers.push((*bound, neg_powers));
+                    bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers));
+                }
+            }
+        }
+
+        let biggest_vk = biggest_vk.unwrap();
+        let mut vk_union = VerifierUnionKey::<E> {
+            vk: &biggest_vk.vk,
+            degree_bounds_and_neg_powers_of_h: None,
+            degree_bounds_and_prepared_neg_powers_of_h: None,
+            supported_degree: biggest_vk.supported_degree,
+            max_degree: biggest_vk.max_degree,
+        };
+
+        if !bounds_and_neg_powers.is_empty() {
+            bounds_and_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
+            bounds_and_neg_powers.dedup_by(|a, b| a.0 <= b.0);
+            vk_union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
+        }
+        if !bounds_and_prepared_neg_powers.is_empty() {
+            bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
+            bounds_and_prepared_neg_powers.dedup_by(|a, b| a.0 <= b.0);
+            vk_union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
+        }
+        vk_union
     }
 }
 
@@ -794,19 +933,19 @@ impl<F: Field> MulAssign<F> for LinearCombination<F> {
 /// that `p[label]` is to be queried at.
 ///
 /// Added the third field: the point name.
-pub type QuerySet<'a, T> = BTreeSet<(String, (String, T))>;
+pub type QuerySet<T> = BTreeSet<(String, (String, T))>;
 
 /// `Evaluations` is the result of querying a set of labeled polynomials or equations
 /// `p` at a `QuerySet` `Q`. It maps each element of `Q` to the resulting evaluation.
 /// That is, if `(label, query)` is an element of `Q`, then `evaluation.get((label, query))`
 /// should equal `p[label].evaluate(query)`.
-pub type Evaluations<'a, F> = BTreeMap<(String, F), F>;
+pub type Evaluations<F> = BTreeMap<(String, F), F>;
 
 /// Evaluate the given polynomials at `query_set`.
 pub fn evaluate_query_set<'a, F: PrimeField>(
     polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
-    query_set: &QuerySet<'a, F>,
-) -> Evaluations<'a, F> {
+    query_set: &QuerySet<F>,
+) -> Evaluations<F> {
     let polys: HashMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
     let mut evaluations = Evaluations::new();
     for (label, (_point_name, point)) in query_set {

@@ -124,9 +124,9 @@ impl<N: Network> Header<N> {
         self.metadata.total_supply_in_microcredits()
     }
 
-    /// Returns the cumulative proof target for this block.
-    pub const fn cumulative_proof_target(&self) -> u128 {
-        self.metadata.cumulative_proof_target()
+    /// Returns the cumulative weight for this block.
+    pub const fn cumulative_weight(&self) -> u128 {
+        self.metadata.cumulative_weight()
     }
 
     /// Returns the coinbase target for this block.

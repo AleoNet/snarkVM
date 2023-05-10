@@ -15,18 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    atomic_write_batch,
+    atomic_batch_scope,
     block::Transaction,
     cow_to_cloned,
     cow_to_copied,
     process::{Deployment, Fee},
     program::Program,
-    snark::{Certificate, Proof, VerifyingKey},
+    snark::{Certificate, VerifyingKey},
     store::{
-        helpers::{memory_map::MemoryMap, Map, MapRead},
-        TransitionMemory,
-        TransitionStorage,
-        TransitionStore,
+        helpers::{Map, MapRead},
+        FeeStorage,
+        FeeStore,
     },
 };
 use console::{
@@ -54,16 +53,11 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     type VerifyingKeyMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
     /// The mapping of `(program ID, function name, edition)` to `certificate`.
     type CertificateMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
-    /// The mapping of `transaction ID` to `(fee transition ID, global state root, inclusion proof)`.
-    type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
-    /// The mapping of `fee transition ID` to `transaction ID`.
-    type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-
-    /// The transition storage.
-    type TransitionStorage: TransitionStorage<N>;
+    /// The fee storage.
+    type FeeStorage: FeeStorage<N>;
 
     /// Initializes the deployment storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open(fee_store: FeeStore<N, Self::FeeStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -71,24 +65,20 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     fn edition_map(&self) -> &Self::EditionMap;
     /// Returns the reverse ID map.
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
+    /// Returns the owner map.
+    fn owner_map(&self) -> &Self::OwnerMap;
     /// Returns the program map.
     fn program_map(&self) -> &Self::ProgramMap;
     /// Returns the verifying key map.
     fn verifying_key_map(&self) -> &Self::VerifyingKeyMap;
     /// Returns the certificate map.
     fn certificate_map(&self) -> &Self::CertificateMap;
-    /// Returns the fee map.
-    fn fee_map(&self) -> &Self::FeeMap;
-    /// Returns the reverse fee map.
-    fn reverse_fee_map(&self) -> &Self::ReverseFeeMap;
-    /// Returns the owner map.
-    fn owner_map(&self) -> &Self::OwnerMap;
-    /// Returns the transition storage.
-    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
+    /// Returns the fee storage.
+    fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage>;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16> {
-        self.transition_store().dev()
+        self.fee_store().dev()
     }
 
     /// Starts an atomic batch write operation.
@@ -100,9 +90,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.program_map().start_atomic();
         self.verifying_key_map().start_atomic();
         self.certificate_map().start_atomic();
-        self.fee_map().start_atomic();
-        self.reverse_fee_map().start_atomic();
-        self.transition_store().start_atomic();
+        self.fee_store().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -114,9 +102,31 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             || self.program_map().is_atomic_in_progress()
             || self.verifying_key_map().is_atomic_in_progress()
             || self.certificate_map().is_atomic_in_progress()
-            || self.fee_map().is_atomic_in_progress()
-            || self.reverse_fee_map().is_atomic_in_progress()
-            || self.transition_store().is_atomic_in_progress()
+            || self.fee_store().is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.id_map().atomic_checkpoint();
+        self.edition_map().atomic_checkpoint();
+        self.reverse_id_map().atomic_checkpoint();
+        self.owner_map().atomic_checkpoint();
+        self.program_map().atomic_checkpoint();
+        self.verifying_key_map().atomic_checkpoint();
+        self.certificate_map().atomic_checkpoint();
+        self.fee_store().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.id_map().atomic_rewind();
+        self.edition_map().atomic_rewind();
+        self.reverse_id_map().atomic_rewind();
+        self.owner_map().atomic_rewind();
+        self.program_map().atomic_rewind();
+        self.verifying_key_map().atomic_rewind();
+        self.certificate_map().atomic_rewind();
+        self.fee_store().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -128,9 +138,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.program_map().abort_atomic();
         self.verifying_key_map().abort_atomic();
         self.certificate_map().abort_atomic();
-        self.fee_map().abort_atomic();
-        self.reverse_fee_map().abort_atomic();
-        self.transition_store().abort_atomic();
+        self.fee_store().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -142,9 +150,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.program_map().finish_atomic()?;
         self.verifying_key_map().finish_atomic()?;
         self.certificate_map().finish_atomic()?;
-        self.fee_map().finish_atomic()?;
-        self.reverse_fee_map().finish_atomic()?;
-        self.transition_store().finish_atomic()
+        self.fee_store().finish_atomic()
     }
 
     /// Stores the given `deployment transaction` pair into storage.
@@ -152,9 +158,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         // Ensure the transaction is a deployment.
         let (transaction_id, owner, deployment, fee) = match transaction {
             Transaction::Deploy(transaction_id, owner, deployment, fee) => (transaction_id, owner, deployment, fee),
-            Transaction::Execute(..) => {
-                bail!("Attempted to insert non-deployment transaction into deployment storage.")
-            }
+            Transaction::Execute(..) => bail!("Attempted to insert an execute transaction into deployment storage."),
+            Transaction::Fee(..) => bail!("Attempted to insert fee transaction into deployment storage."),
         };
 
         // Ensure the deployment is ordered.
@@ -169,7 +174,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the program ID.
         let program_id = *program.id();
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Store the program ID.
             self.id_map().insert(*transaction_id, program_id)?;
             // Store the edition.
@@ -190,20 +195,11 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 self.certificate_map().insert((program_id, *function_name, edition), certificate.clone())?;
             }
 
-            // Store the fee.
-            self.fee_map().insert(
-                *transaction_id,
-                (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
-            )?;
-            self.reverse_fee_map().insert(*fee.transition_id(), *transaction_id)?;
-
             // Store the fee transition.
-            self.transition_store().insert(fee)?;
+            self.fee_store().insert(*transaction_id, fee)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Removes the deployment transaction for the given `transaction ID`.
@@ -219,17 +215,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to locate the edition for program '{program_id}'"),
         };
         // Retrieve the program.
-        let program = match self.program_map().get(&(program_id, edition))? {
+        let program = match self.program_map().get_confirmed(&(program_id, edition))? {
             Some(program) => cow_to_cloned!(program),
             None => bail!("Failed to locate program '{program_id}' for transaction '{transaction_id}'"),
         };
-        // Retrieve the fee transition ID.
-        let (transition_id, _, _) = match self.fee_map().get(transaction_id)? {
-            Some(fee_id) => cow_to_cloned!(fee_id),
-            None => bail!("Failed to locate the fee transition ID for transaction '{transaction_id}'"),
-        };
 
-        atomic_write_batch!(self, {
+        atomic_batch_scope!(self, {
             // Remove the program ID.
             self.id_map().remove(transaction_id)?;
             // Remove the edition.
@@ -250,17 +241,11 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
                 self.certificate_map().remove(&(program_id, *function_name, edition))?;
             }
 
-            // Remove the fee.
-            self.fee_map().remove(transaction_id)?;
-            self.reverse_fee_map().remove(&transition_id)?;
-
             // Remove the fee transition.
-            self.transition_store().remove(&transition_id)?;
+            self.fee_store().remove(transaction_id)?;
 
             Ok(())
-        });
-
-        Ok(())
+        })
     }
 
     /// Returns the transaction ID that contains the given `program ID`.
@@ -271,7 +256,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the transaction ID.
-        match self.reverse_id_map().get(&(*program_id, edition))? {
+        match self.reverse_id_map().get_confirmed(&(*program_id, edition))? {
             Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
             None => bail!("Failed to find the transaction ID for program '{program_id}' (edition {edition})"),
         }
@@ -282,16 +267,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         &self,
         transition_id: &N::TransitionID,
     ) -> Result<Option<N::TransactionID>> {
-        match self.reverse_fee_map().get(transition_id)? {
-            Some(transaction_id) => Ok(Some(cow_to_copied!(transaction_id))),
-            None => Ok(None),
-        }
+        self.fee_store().find_transaction_id_from_transition_id(transition_id)
     }
 
     /// Returns the program ID for the given `transaction ID`.
     fn get_program_id(&self, transaction_id: &N::TransactionID) -> Result<Option<ProgramID<N>>> {
         // Retrieve the program ID.
-        match self.id_map().get(transaction_id)? {
+        match self.id_map().get_confirmed(transaction_id)? {
             Some(program_id) => Ok(Some(cow_to_copied!(program_id))),
             None => Ok(None),
         }
@@ -299,7 +281,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the edition for the given `program ID`.
     fn get_edition(&self, program_id: &ProgramID<N>) -> Result<Option<u16>> {
-        match self.edition_map().get(program_id)? {
+        match self.edition_map().get_confirmed(program_id)? {
             Some(edition) => Ok(Some(cow_to_copied!(edition))),
             None => Ok(None),
         }
@@ -313,7 +295,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the program.
-        match self.program_map().get(&(*program_id, edition))? {
+        match self.program_map().get_confirmed(&(*program_id, edition))? {
             Some(program) => Ok(Some(cow_to_cloned!(program))),
             None => bail!("Failed to get program '{program_id}' (edition {edition})"),
         }
@@ -331,7 +313,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the verifying key.
-        match self.verifying_key_map().get(&(*program_id, *function_name, edition))? {
+        match self.verifying_key_map().get_confirmed(&(*program_id, *function_name, edition))? {
             Some(verifying_key) => Ok(Some(cow_to_cloned!(verifying_key))),
             None => bail!("Failed to get the verifying key for '{program_id}/{function_name}' (edition {edition})"),
         }
@@ -349,7 +331,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
         // Retrieve the certificate.
-        match self.certificate_map().get(&(*program_id, *function_name, edition))? {
+        match self.certificate_map().get_confirmed(&(*program_id, *function_name, edition))? {
             Some(certificate) => Ok(Some(cow_to_cloned!(certificate))),
             None => bail!("Failed to get the certificate for '{program_id}/{function_name}' (edition {edition})"),
         }
@@ -368,7 +350,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
             None => bail!("Failed to get the edition for program '{program_id}'"),
         };
         // Retrieve the program.
-        let program = match self.program_map().get(&(program_id, edition))? {
+        let program = match self.program_map().get_confirmed(&(program_id, edition))? {
             Some(program) => cow_to_cloned!(program),
             None => bail!("Failed to get the deployed program '{program_id}' (edition {edition})"),
         };
@@ -379,12 +361,12 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the verifying keys and certificates.
         for function_name in program.functions().keys() {
             // Retrieve the verifying key.
-            let verifying_key = match self.verifying_key_map().get(&(program_id, *function_name, edition))? {
+            let verifying_key = match self.verifying_key_map().get_confirmed(&(program_id, *function_name, edition))? {
                 Some(verifying_key) => cow_to_cloned!(verifying_key),
                 None => bail!("Failed to get the verifying key for '{program_id}/{function_name}' (edition {edition})"),
             };
             // Retrieve the certificate.
-            let certificate = match self.certificate_map().get(&(program_id, *function_name, edition))? {
+            let certificate = match self.certificate_map().get_confirmed(&(program_id, *function_name, edition))? {
                 Some(certificate) => cow_to_cloned!(certificate),
                 None => bail!("Failed to get the certificate for '{program_id}/{function_name}' (edition {edition})"),
             };
@@ -398,16 +380,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the fee for the given `transaction ID`.
     fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
-        // Retrieve the fee transition ID.
-        let (fee_transition_id, global_state_root, inclusion_proof) = match self.fee_map().get(transaction_id)? {
-            Some(fee) => cow_to_cloned!(fee),
-            None => return Ok(None),
-        };
-        // Retrieve the fee transition.
-        match self.transition_store().get_transition(&fee_transition_id)? {
-            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, inclusion_proof))),
-            None => bail!("Failed to locate the fee transition for transaction '{transaction_id}'"),
-        }
+        self.fee_store().get_fee(transaction_id)
     }
 
     /// Returns the owner for the given `program ID`.
@@ -420,7 +393,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Retrieve the owner.
-        match self.owner_map().get(&(*program_id, edition))? {
+        match self.owner_map().get_confirmed(&(*program_id, edition))? {
             Some(owner) => Ok(Some(cow_to_copied!(owner))),
             None => bail!("Failed to find the Owner for program '{program_id}' (edition {edition})"),
         }
@@ -455,112 +428,6 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
     }
 }
 
-/// An in-memory deployment storage.
-#[derive(Clone)]
-#[allow(clippy::type_complexity)]
-pub struct DeploymentMemory<N: Network> {
-    /// The ID map.
-    id_map: MemoryMap<N::TransactionID, ProgramID<N>>,
-    /// The edition map.
-    edition_map: MemoryMap<ProgramID<N>, u16>,
-    /// The reverse ID map.
-    reverse_id_map: MemoryMap<(ProgramID<N>, u16), N::TransactionID>,
-    /// The owner map.
-    owner_map: MemoryMap<(ProgramID<N>, u16), ProgramOwner<N>>,
-    /// The program map.
-    program_map: MemoryMap<(ProgramID<N>, u16), Program<N>>,
-    /// The verifying key map.
-    verifying_key_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>,
-    /// The certificate map.
-    certificate_map: MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>,
-    /// The fee map.
-    fee_map: MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>,
-    /// The reverse fee map.
-    reverse_fee_map: MemoryMap<N::TransitionID, N::TransactionID>,
-    /// The transition store.
-    transition_store: TransitionStore<N, TransitionMemory<N>>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, ProgramID<N>>;
-    type EditionMap = MemoryMap<ProgramID<N>, u16>;
-    type ReverseIDMap = MemoryMap<(ProgramID<N>, u16), N::TransactionID>;
-    type OwnerMap = MemoryMap<(ProgramID<N>, u16), ProgramOwner<N>>;
-    type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
-    type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
-    type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
-    type FeeMap = MemoryMap<N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
-    type ReverseFeeMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type TransitionStorage = TransitionMemory<N>;
-
-    /// Initializes the deployment storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
-        Ok(Self {
-            id_map: MemoryMap::default(),
-            edition_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            owner_map: MemoryMap::default(),
-            program_map: MemoryMap::default(),
-            verifying_key_map: MemoryMap::default(),
-            certificate_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
-            reverse_fee_map: MemoryMap::default(),
-            transition_store,
-        })
-    }
-
-    /// Returns the ID map.
-    fn id_map(&self) -> &Self::IDMap {
-        &self.id_map
-    }
-
-    /// Returns the edition map.
-    fn edition_map(&self) -> &Self::EditionMap {
-        &self.edition_map
-    }
-
-    /// Returns the reverse ID map.
-    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
-        &self.reverse_id_map
-    }
-
-    /// Returns the owner map.
-    fn owner_map(&self) -> &Self::OwnerMap {
-        &self.owner_map
-    }
-
-    /// Returns the program map.
-    fn program_map(&self) -> &Self::ProgramMap {
-        &self.program_map
-    }
-
-    /// Returns the verifying key map.
-    fn verifying_key_map(&self) -> &Self::VerifyingKeyMap {
-        &self.verifying_key_map
-    }
-
-    /// Returns the certificate map.
-    fn certificate_map(&self) -> &Self::CertificateMap {
-        &self.certificate_map
-    }
-
-    /// Returns the fee map.
-    fn fee_map(&self) -> &Self::FeeMap {
-        &self.fee_map
-    }
-
-    /// Returns the reverse fee map.
-    fn reverse_fee_map(&self) -> &Self::ReverseFeeMap {
-        &self.reverse_fee_map
-    }
-
-    /// Returns the transition store.
-    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
-        &self.transition_store
-    }
-}
-
 /// The deployment store.
 #[derive(Clone)]
 pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
@@ -572,9 +439,9 @@ pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Initializes the deployment store.
-    pub fn open(transition_store: TransitionStore<N, D::TransitionStorage>) -> Result<Self> {
+    pub fn open(fee_store: FeeStore<N, D::FeeStorage>) -> Result<Self> {
         // Initialize the deployment storage.
-        let storage = D::open(transition_store)?;
+        let storage = D::open(fee_store)?;
         // Return the deployment store.
         Ok(Self { storage, _phantom: PhantomData })
     }
@@ -602,6 +469,16 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -688,19 +565,19 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns `true` if the given program ID exists.
     pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
-        self.storage.edition_map().contains_key(program_id)
+        self.storage.edition_map().contains_key_confirmed(program_id)
     }
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
     pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        self.storage.id_map().keys()
+        self.storage.id_map().keys_confirmed()
     }
 
     /// Returns an iterator over the program IDs, for all deployments.
     pub fn program_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, ProgramID<N>>> {
-        self.storage.id_map().values().map(|id| match id {
+        self.storage.id_map().values_confirmed().map(|id| match id {
             Cow::Borrowed(id) => Cow::Borrowed(id),
             Cow::Owned(id) => Cow::Owned(id),
         })
@@ -708,7 +585,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 
     /// Returns an iterator over the programs, for all deployments.
     pub fn programs(&self) -> impl '_ + Iterator<Item = Cow<'_, Program<N>>> {
-        self.storage.program_map().values().map(|program| match program {
+        self.storage.program_map().values_confirmed().map(|program| match program {
             Cow::Borrowed(program) => Cow::Borrowed(program),
             Cow::Owned(program) => Cow::Owned(program),
         })
@@ -718,20 +595,21 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     pub fn verifying_keys(
         &self,
     ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, VerifyingKey<N>>)> {
-        self.storage.verifying_key_map().iter()
+        self.storage.verifying_key_map().iter_confirmed()
     }
 
     /// Returns an iterator over the `((program ID, function name, edition), certificate)`, for all deployments.
     pub fn certificates(
         &self,
     ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, Certificate<N>>)> {
-        self.storage.certificate_map().iter()
+        self.storage.certificate_map().iter_confirmed()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::{helpers::memory::DeploymentMemory, TransitionStore};
 
     #[test]
     fn test_insert_get_remove() {
@@ -743,8 +621,10 @@ mod tests {
 
         // Initialize a new transition store.
         let transition_store = TransitionStore::open(None).unwrap();
+        // Initialize a new fee store.
+        let fee_store = FeeStore::open(transition_store).unwrap();
         // Initialize a new deployment store.
-        let deployment_store = DeploymentMemory::open(transition_store).unwrap();
+        let deployment_store = DeploymentMemory::open(fee_store).unwrap();
 
         // Ensure the deployment transaction does not exist.
         let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
@@ -779,8 +659,10 @@ mod tests {
 
         // Initialize a new transition store.
         let transition_store = TransitionStore::open(None).unwrap();
+        // Initialize a new fee store.
+        let fee_store = FeeStore::open(transition_store).unwrap();
         // Initialize a new deployment store.
-        let deployment_store = DeploymentMemory::open(transition_store).unwrap();
+        let deployment_store = DeploymentMemory::open(fee_store).unwrap();
 
         // Ensure the deployment transaction does not exist.
         let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
