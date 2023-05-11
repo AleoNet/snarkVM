@@ -95,16 +95,16 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Outpu
             (Mode::Constant, _) | (_, Mode::Constant) => {
                 match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
                     (true, true) => Count::less_than(5 * I::BITS + 1, 0, (9 * I::BITS) + 6, (9 * I::BITS) + 12),
-                    (true, false) => Count::less_than(5 * I::BITS + 1, 0, 1611, 1814),
+                    (true, false) => Count::less_than(5 * I::BITS + 1, 0, 1802, 1812),
                     (false, true) => Count::less_than(I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
-                    (false, false) => Count::less_than(I::BITS + 1, 0, 839, 1039),
+                    (false, false) => Count::less_than(I::BITS + 1, 0, 1033, 1037),
                 }
             }
             (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
                 (true, true) => Count::is(4 * I::BITS, 0, (9 * I::BITS) + 6, (9 * I::BITS) + 12),
-                (true, false) => Count::is(4 * I::BITS, 0, 1611, 1814),
+                (true, false) => Count::is(4 * I::BITS, 0, 1802, 1812),
                 (false, true) => Count::is(I::BITS, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
-                (false, false) => Count::is(I::BITS, 0, 839, 1039),
+                (false, false) => Count::is(I::BITS, 0, 1033, 1037),
             },
         }
     }
@@ -149,6 +149,7 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = a.div_wrapped(&b);
                     assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                 }),
             }
         } else {
@@ -159,6 +160,7 @@ mod tests {
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+                assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
             })
         }
         Circuit::reset();
