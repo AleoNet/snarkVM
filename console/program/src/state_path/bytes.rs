@@ -23,7 +23,7 @@ impl<N: Network> FromBytes for StatePath<N> {
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid block version"));
+            return Err(error("Invalid state path version"));
         }
 
         // Read the state path.

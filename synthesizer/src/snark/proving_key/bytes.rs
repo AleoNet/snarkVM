@@ -23,7 +23,7 @@ impl<N: Network> FromBytes for ProvingKey<N> {
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid verifying key version"));
+            return Err(error("Invalid proving key version"));
         }
         // Read the proving key.
         let proving_key = Arc::new(FromBytes::read_le(&mut reader)?);
