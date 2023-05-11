@@ -94,7 +94,6 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                         negated_quotient,
                         &(negated_quotient).sub_wrapped(&Self::one()),
                     );
-
                     Self::ternary(self.msb(), &rounded_negated_quotient, &quotient)
                 } else {
                     self.div_wrapped(&shift_as_divisor)
