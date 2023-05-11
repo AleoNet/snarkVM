@@ -175,6 +175,8 @@ impl Environment for Circuit {
                         }
                     }
                 });
+            } else {
+                Self::halt("Tried to add a new constraint in witness mode")
             }
         })
     }
