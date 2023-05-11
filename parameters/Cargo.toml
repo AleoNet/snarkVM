@@ -50,8 +50,9 @@ version = "1.0"
 version = "2"
 optional = true
 
-[dependencies]
-encoding = "0.2"
+[dependencies.encoding]
+version = "0.2"
+optional = true
 
 [dependencies.hex]
 version = "0.4.3"
@@ -124,4 +125,4 @@ version = "0.8"
 default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [ "js-sys", "web-sys" ]
+wasm = [ "encoding", "js-sys", "web-sys" ]
