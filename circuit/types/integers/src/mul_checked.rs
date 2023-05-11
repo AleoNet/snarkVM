@@ -136,8 +136,10 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 let (product, carry) = Self::mul_with_carry(self, other);
 
                 // For unsigned multiplication, check that none of the carry bits are set.
-                let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
-                E::assert_eq(overflow, E::zero());
+                // TODO: Optimize in field.
+                for bit in carry.iter() {
+                    E::assert_eq(bit, E::zero());
+                }
 
                 // Return the product of `self` and `other`.
                 product
