@@ -121,16 +121,27 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             // Return the product of `self` and `other` with the appropriate sign.
             Self::ternary(operands_same_sign, &product, &Self::zero().sub_wrapped(&product))
         } else {
-            // Compute the product of `self` and `other`.
-            let (product, carry) = Self::mul_with_carry(self, other);
+            if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
+                // Witness the product of `self` and `other`.
+                let product: Self = witness!(|self, other| {
+                    console::Integer::new(self.wrapping_mul(&other))
+                });
+                // Check that the field representation of the `product` is equal to the product of the field representations of `self` and `other`.
+                E::assert_eq(product.to_field(), self.to_field() * other.to_field());
 
-            // For unsigned multiplication, check that none of the carry bits are set.
-            for bit in carry.iter() {
-                E::assert_eq(bit, E::zero());
+                // Return the product of `self` and `other`.
+                product
+            } else {
+                // Compute the product of `self` and `other`.
+                let (product, carry) = Self::mul_with_carry(self, other);
+
+                // For unsigned multiplication, check that none of the carry bits are set.
+                let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
+                E::assert_eq(overflow, E::zero());
+
+                // Return the product of `self` and `other`.
+                product
             }
-
-            // Return the product of `self` and `other`.
-            product
         }
     }
 }
@@ -205,8 +216,8 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (3 * I::BITS) + 1),
-                    (_, _) => Count::is(0, 0, 2 * I::BITS + 1, (3 * I::BITS) + 2),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, I::BITS, I::BITS + 1),
+                    (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 2),
                 },
             }
         }
