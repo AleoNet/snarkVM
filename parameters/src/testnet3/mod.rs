@@ -96,7 +96,7 @@ macro_rules! insert_key {
         // Load the circuit key bytes.
         let key_bytes: Vec<u8> = $circuit_key.expect(&format!("Failed to load {} bytes", $string));
         // Recover the circuit key.
-        let key = $type::<$network>::from_bytes_le(&key_bytes[2..]).expect(&format!("Failed to recover {}", $string));
+        let key = $type::<$network>::from_bytes_le(&key_bytes[1..]).expect(&format!("Failed to recover {}", $string));
         // Insert the circuit key.
         $map.insert($name.to_string(), std::sync::Arc::new(key));
     }};
