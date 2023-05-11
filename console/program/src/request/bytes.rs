@@ -23,7 +23,7 @@ impl<N: Network> FromBytes for Request<N> {
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid verifying key version"));
+            return Err(error("Invalid request version"));
         }
 
         // Read the caller.

@@ -24,7 +24,7 @@ impl<N: Network> FromBytes for Transactions<N> {
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid header version"));
+            return Err(error("Invalid transactions version"));
         }
         // Read the number of transactions.
         let num_txs: u32 = FromBytes::read_le(&mut reader)?;
