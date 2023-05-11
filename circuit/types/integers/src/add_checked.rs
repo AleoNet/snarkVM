@@ -76,36 +76,45 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on addition of two constants"),
             }
         } else {
-            // Instead of adding the bits of `self` and `other` directly, the integers are
-            // converted into a field elements, and summed, before converting back to integers.
-            // Note: This is safe as the field is larger than the maximum integer type supported.
-            let sum = self.to_field() + other.to_field();
-
-            // Extract the integer bits from the field element, with a carry bit.
-            let (sum, carry) = match sum.to_lower_bits_le(I::BITS as usize + 1).split_last() {
-                Some((carry, bits_le)) => (Integer::from_bits_le(bits_le), carry.clone()),
-                // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
-                None => E::halt("Malformed sum detected during integer addition"),
-            };
-
-            // Check for overflow.
             match I::is_signed() {
-                // For signed addition, overflow and underflow conditions are:
-                //   - a > 0 && b > 0 && a + b < 0 (Overflow)
-                //   - a < 0 && b < 0 && a + b > 0 (Underflow)
-                //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
-                //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
                 true => {
+                    // Instead of adding the bits of `self` and `other` directly, the integers are
+                    // converted into a field elements, and summed, before converting back to integers.
+                    // Note: This is safe as the field is larger than the maximum integer type supported.
+                    let sum = self.to_field() + other.to_field();
+
+                    // Extract the integer bits from the field element, with a carry bit.
+                    let (sum, _) = match sum.to_lower_bits_le(I::BITS as usize + 1).split_last() {
+                        Some((carry, bits_le)) => (Integer::from_bits_le(bits_le), carry.clone()),
+                        // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
+                        None => E::halt("Malformed sum detected during integer addition"),
+                    };
+
+                    // Check for overflow.
+                    // For signed addition, overflow and underflow conditions are:
+                    //   - a > 0 && b > 0 && a + b < 0 (Overflow)
+                    //   - a < 0 && b < 0 && a + b > 0 (Underflow)
+                    //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
+                    //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
                     let is_same_sign = self.msb().is_equal(other.msb());
                     let is_overflow = is_same_sign & sum.msb().is_not_equal(self.msb());
                     E::assert_eq(is_overflow, E::zero());
-                }
-                // For unsigned addition, ensure the carry bit is zero.
-                false => E::assert_eq(carry, E::zero()),
-            }
 
-            // Return the sum of `self` and `other`.
-            sum
+                    // Return the sum of `self` and `other`.
+                    sum
+                }
+                false => {
+                    // Witness the sum of `self` and `other`.
+                    let sum: Self = witness!(|self, other| {
+                        console::Integer::new(self.wrapping_add(&other))
+                    });
+                    // Check that the field representation of `sum` is equal to the sum of the field representations of `self` and `other`.
+                    E::assert_eq(sum.to_field(), self.to_field() + other.to_field());
+
+                    // Return the sum of `self` and `other`.
+                    sum
+                },
+            }
         }
     }
 }
@@ -139,7 +148,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn AddChecked<Integer<E, I>, Outpu
             },
             false => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
+                (_, _) => Count::is(0, 0, I::BITS, I::BITS + 1),
             },
         }
     }
