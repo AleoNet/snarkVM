@@ -161,9 +161,9 @@ impl Network for Testnet3 {
     fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
         static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            // Skipping the first 2 bytes, which is the encoded version.
+            // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[1..])
                     .expect("Failed to load inclusion proving key."),
             )
         })
@@ -173,9 +173,9 @@ impl Network for Testnet3 {
     fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
         static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            // Skipping the first 2 bytes, which is the encoded version.
+            // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[2..])
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[1..])
                     .expect("Failed to load inclusion verifying key."),
             )
         })
