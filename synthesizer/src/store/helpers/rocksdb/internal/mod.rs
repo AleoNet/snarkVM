@@ -56,7 +56,7 @@ pub trait Database {
 #[derive(Clone)]
 pub struct RocksDB {
     /// The RocksDB instance.
-    rocksdb: Arc<rocksdb::DB>,
+    pub(crate) rocksdb: Arc<rocksdb::DB>,
     /// The network ID.
     network_id: u16,
     /// The optional development ID.

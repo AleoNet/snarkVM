@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(test), forbid(unsafe_code))]
 #![allow(clippy::too_many_arguments)]
 // #![warn(clippy::cast_possible_truncation)]
 #![allow(clippy::single_element_loop)]

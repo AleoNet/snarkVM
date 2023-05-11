@@ -184,10 +184,11 @@ pub enum TestMap {
 // Note: the order of these variants can NOT be changed once the database is populated:
 // - any new variant MUST be added as the last one (ignoring the Test one)
 // - any deprecated variant MUST remain in its position (it can't be removed)
+#[cfg_attr(test, derive(enum_iterator::Sequence))]
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
-enum DataID {
+pub(crate) enum DataID {
     // Block
     BlockStateRootMap,
     BlockReverseStateRootMap,
@@ -252,4 +253,18 @@ enum DataID {
     // Testing
     #[cfg(test)]
     Test,
+}
+
+#[cfg(test)]
+impl TryFrom<u16> for DataID {
+    type Error = String;
+
+    fn try_from(raw_id: u16) -> Result<Self, Self::Error> {
+        let data_id = match raw_id {
+            0..=51 => unsafe { std::mem::transmute(raw_id) },
+            id => return Err(format!("Invalid DataID: {}", id)),
+        };
+
+        Ok(data_id)
+    }
 }
