@@ -127,13 +127,21 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlChecked<Intege
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-            (Mode::Constant, _) | (_, _) => {
-                let wrapped_count = count!(Integer<E, I>, ShlWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
-                wrapped_count + Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS))
+        if I::is_signed() {
+            match (case.0, case.1) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+                (Mode::Constant, _) | (_, _) => {
+                    let wrapped_count = count!(Integer<E, I>, ShlWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
+                    wrapped_count + Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS))
+                }
             }
+        } else {
+            let pow_count = count!(Integer<E, I>, PowChecked<Integer<E, M>, Output=Integer<E, I>>, case);
+            println!("pow_count: {:?}", pow_count);
+            let mul_count = count!(Integer<E, I>, MulChecked<Integer<E, I>, Output=Integer<E, I>>, case);
+            println!("mul_count: {:?}", mul_count);
+            pow_count + mul_count
         }
     }
 }

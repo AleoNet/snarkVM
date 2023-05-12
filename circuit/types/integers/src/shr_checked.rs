@@ -81,9 +81,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
             let trailing_zeros_index = I::BITS.trailing_zeros() as usize;
 
             // Check that the upper bits of the RHS are nonzero.
-            for bit in &rhs.bits_le[trailing_zeros_index..] {
-                E::assert_eq(E::zero(), bit);
-            }
+            Field::check_bits_are_zero(&rhs.bits_le[trailing_zeros_index..]);
 
             // Perform a wrapping shift right.
             self.shr_wrapped(rhs)
@@ -112,6 +110,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
 {
     type Case = (Mode, Mode);
 
+    #[rustfmt::skip]
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
         let index = |num_bits: u64| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
@@ -122,10 +121,20 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
             (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-            (Mode::Constant, _) | (_, _) => {
-                let wrapped_count = count!(Integer<E, I>, ShrWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
-                wrapped_count + Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS))
+            (Mode::Constant, _) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(5 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 20),
+                    (true, false) => Count::less_than(5 * I::BITS, 0, 1751, 1764),
+                    (false, true) => Count::less_than(I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 6, (4 * I::BITS) + (2 * index(I::BITS)) + 11),
+                    (false, false) => Count::less_than(I::BITS, 0, 978, 987),
+                }
             }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(4 * I::BITS, 0, (10 * I::BITS) + (2 * index(I::BITS)) + 11, (10 * I::BITS) + (2 * index(I::BITS)) + 20),
+                (true, false) => Count::is(4 * I::BITS, 0, 1751, 1764),
+                (false, true) => Count::is(I::BITS, 0, (4 * I::BITS) + (2 * index(I::BITS)) + 6, (4 * I::BITS) + (2 * index(I::BITS)) + 11),
+                (false, false) => Count::is(I::BITS, 0, 978, 987),
+            },
         }
     }
 }

@@ -16,11 +16,14 @@
 
 use super::*;
 
-pub mod check_bits_are_zero;
-pub mod from_bits;
-pub mod from_boolean;
-pub mod one;
-pub mod to_bits;
-pub mod to_lower_bits;
-pub mod to_upper_bits;
-pub mod zero;
+impl<E: Environment> Field<E> {
+    /// Enforces that all bits are zero.
+    #[doc(hidden)]
+    pub fn check_bits_are_zero(bits: &[Boolean<E>]) {
+        let mut sum = Self::zero();
+        for bit in bits {
+            sum += Field::from_boolean(bit);
+        }
+        E::assert_eq(sum, E::zero());
+    }
+}

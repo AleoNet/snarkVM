@@ -45,13 +45,9 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowWrapped<Intege
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => {
-                let mul_count = count!(Integer<E, I>, MulWrapped<Integer<E, I>, Output=Integer<E, I>>, case);
-                (2 * M::BITS * mul_count) + Count::is(2 * I::BITS, 0, I::BITS, I::BITS)
-            }
             (_, _) => {
                 let mul_count = count!(Integer<E, I>, MulWrapped<Integer<E, I>, Output=Integer<E, I>>, case);
-                (2 * M::BITS * mul_count) + Count::is(2 * I::BITS, 0, I::BITS, I::BITS)
+                (2 * M::BITS * mul_count) + M::BITS * Count::less_than(I::BITS, 0, I::BITS, I::BITS)
             }
         }
     }

@@ -98,9 +98,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
 
             // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
             // We do this by checking that none of the carry bits are set.
-            for bit in carry.iter() {
-                E::assert_eq(bit, E::zero());
-            }
+            Field::check_bits_are_zero(&carry);
 
             // If the product should be positive, then it cannot exceed the signed maximum.
             let operands_same_sign = &self.msb().is_equal(other.msb());
@@ -136,10 +134,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 let (product, carry) = Self::mul_with_carry(self, other);
 
                 // For unsigned multiplication, check that none of the carry bits are set.
-                // TODO: Optimize in field.
-                for bit in carry.iter() {
-                    E::assert_eq(bit, E::zero());
-                }
+                Field::check_bits_are_zero(&carry);
 
                 // Return the product of `self` and `other`.
                 product
@@ -211,9 +206,9 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (7 * I::BITS) + 4, (8 * I::BITS) + 9)
+                        Count::is(4 * I::BITS, 0, (7 * I::BITS) + 4, (7 * I::BITS) + 10)
                     }
-                    (_, _) => Count::is(3 * I::BITS, 0, (9 * I::BITS) + 7, (10 * I::BITS) + 13),
+                    (_, _) => Count::is(3 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 14),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
@@ -229,14 +224,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 // Signed case
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(4 * I::BITS, 0, 965, 1164),
-                    (_, _) => Count::is(3 * I::BITS, 0, 1227, 1427),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(4 * I::BITS, 0, 965, 972),
+                    (_, _) => Count::is(3 * I::BITS, 0, 1227, 1235),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 321, 516),
-                    (_, _) => Count::is(0, 0, 325, 520),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 321, 324),
+                    (_, _) => Count::is(0, 0, 325, 328),
                 },
             }
         } else {

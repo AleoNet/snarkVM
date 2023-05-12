@@ -128,18 +128,21 @@ impl<E: Environment, I: IntegerType> Metrics<dyn RemChecked<Integer<E, I>, Outpu
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        match I::is_signed() {
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(9 * I::BITS, 0, (8 * I::BITS) + 2, (8 * I::BITS) + 12)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(7 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 19),
+                    (true, false) => Count::less_than(7 * I::BITS, 0, 1614, 1627),
+                    (false, true) => Count::less_than(I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                    (false, false) => Count::less_than(I::BITS + 1, 0, 838, 845),
                 }
-                (_, _) => Count::is(8 * I::BITS, 0, (10 * I::BITS) + 15, (10 * I::BITS) + 27),
-            },
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 1, (3 * I::BITS) + 4),
-                (Mode::Constant, _) | (_, _) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 4, (3 * I::BITS) + 9),
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(6 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 19),
+                (true, false) => Count::is(6 * I::BITS, 0, 1614, 1627),
+                (false, true) => Count::is(I::BITS, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                (false, false) => Count::is(I::BITS, 0, 838, 845),
             },
         }
     }
