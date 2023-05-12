@@ -1354,6 +1354,11 @@ finalize compute:
     add r1.data r2.data into r4;
     cast r3 r4 into r5 as entry;
     set r5 into entries[r0];
+    get entries[r0] into r6;
+    add r6.count r1.count into r7;
+    add r6.data r1.data into r8;
+    cast r7 r8 into r9 as entry;
+    set r9 into entries[r0];
 ",
     )
     .unwrap();
@@ -1423,10 +1428,10 @@ finalize compute:
     // Now, finalize the execution.
     process.finalize_execution(&store, &execution).unwrap();
 
-    // Check that the account balance is now 8.
+    // Check that the struct is stored as expected.
     let candidate = store
         .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
-    assert_eq!(candidate, Value::from_str("{ count: 2u8, data: 4u8 }").unwrap());
+    assert_eq!(candidate, Value::from_str("{ count: 3u8, data: 6u8 }").unwrap());
 }
