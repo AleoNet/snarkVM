@@ -17,25 +17,23 @@
 mod utilities;
 use utilities::*;
 
-use snarkvm_synthesizer::Instruction;
-
 use console::network::{prelude::*, Testnet3};
+use snarkvm_synthesizer::Instruction;
 
 use std::{marker::PhantomData, path::Path};
 
-/// Defines a test that runs a parser on a given input.
-/// The test is defined at the granularity of a single line in a file.
-pub struct LineParserTest<F: Parser> {
+/// Defines a test that runs a parser on a given instruction.
+pub struct TestParserInstruction<F: Parser> {
     inputs: Vec<String>,
     expectation: LineExpectation,
     phantom: PhantomData<F>,
 }
 
-impl<F: Parser> Test for LineParserTest<F> {
+impl<F: Parser> Test for TestParserInstruction<F> {
     fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Read the test file.
         let inputs = std::fs::read_to_string(&path)
-            .expect("Failed to read input file.")
+            .expect("Failed to read instruction file.")
             .lines()
             .map(|l| l.to_string())
             .collect();
@@ -56,6 +54,6 @@ impl<F: Parser> Test for LineParserTest<F> {
 
 #[test]
 fn test_instruction_parser() {
-    let runner = Runner::<LineParserTest<Instruction<Testnet3>>>::initialize("./tests/parser/instruction");
+    let runner = Runner::<TestParserInstruction<Instruction<Testnet3>>>::initialize("./tests/parser/instruction");
     runner.run();
 }

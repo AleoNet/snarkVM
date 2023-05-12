@@ -17,24 +17,22 @@
 mod utilities;
 use utilities::*;
 
-use snarkvm_synthesizer::Program;
-
 use console::network::{prelude::*, Testnet3};
+use snarkvm_synthesizer::Program;
 
 use std::{marker::PhantomData, path::Path};
 
-/// Defines a test that runs a parser on a given input.
-/// The test is defined at the granularity of a single file.
-pub struct FileParserTest<F: Parser> {
+/// Defines a test that runs a parser on a given program.
+pub struct TestParserProgram<F: Parser> {
     input: String,
     expectation: FileExpectation,
     phantom: PhantomData<F>,
 }
 
-impl<F: Parser> Test for FileParserTest<F> {
+impl<F: Parser> Test for TestParserProgram<F> {
     fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Read the test file.
-        let input = std::fs::read_to_string(&path).expect("Failed to read input file.");
+        let input = std::fs::read_to_string(&path).expect("Failed to read program file.");
         // Load the expectation file.
         let expectation = FileExpectation::load(get_expectation_path(&path))?;
 
@@ -53,6 +51,6 @@ impl<F: Parser> Test for FileParserTest<F> {
 
 #[test]
 fn test_program_parser() {
-    let runner = Runner::<FileParserTest<Program<Testnet3>>>::initialize("./tests/parser/program");
+    let runner = Runner::<TestParserProgram<Program<Testnet3>>>::initialize("./tests/parser/program");
     runner.run();
 }

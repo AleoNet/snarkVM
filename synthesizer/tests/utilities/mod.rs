@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// This module defines a set of utilities for testing Aleo programs.
+///
 /// Users define tests in the `tests/tests` directory, and the expected output in the `tests/expectations` directory.
 /// Users should separate their tests into different files, and name the expectation files with the same name as the test files.
 /// Tests should also be separated into different directories depending on the type of test.
@@ -28,9 +29,6 @@ pub use expectations::*;
 pub mod runners;
 pub use runners::*;
 
-pub mod traits;
-pub use traits::*;
-
 use console::network::prelude::*;
 
 use std::{
@@ -38,3 +36,27 @@ use std::{
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
+
+/// A general interface for a test.
+pub trait Test: Sized {
+    /// Loads the test from the given path.
+    fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
+
+    /// Runs the test.
+    fn run(&self);
+}
+
+/// A general interface for an expectation.
+pub trait Expectation: Sized {
+    type Test;
+    type Output;
+
+    /// Loads the expectation from the given path.
+    fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
+
+    /// Checks the expectation against the given output.
+    fn check(&self, test: &Self::Test, output: &Self::Output) -> Result<()>;
+
+    /// Saves the test output.
+    fn save(&self, output: &Self::Output) -> Result<()>;
+}
