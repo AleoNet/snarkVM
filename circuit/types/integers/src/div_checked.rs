@@ -130,18 +130,21 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivChecked<Integer<E, I>, Outpu
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        match I::is_signed() {
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(9 * I::BITS, 0, (8 * I::BITS) + 2, (8 * I::BITS) + 12)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(6 * I::BITS + 1, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 13),
+                    (true, false) => Count::less_than(6 * I::BITS + 1, 0, 17413, 17544),
+                    (false, true) => Count::less_than(2 * I::BITS + 1, 0, (3 * I::BITS) + 3, (3 * I::BITS) + 6),
+                    (false, false) => Count::less_than(2 * I::BITS + 1, 0, 16641, 16769),
                 }
-                (_, _) => Count::is(8 * I::BITS, 0, (10 * I::BITS) + 15, (10 * I::BITS) + 27),
-            },
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 1, (3 * I::BITS) + 4),
-                (Mode::Constant, _) | (_, _) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 4, (3 * I::BITS) + 9),
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::less_than(5 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 13),
+                (true, false) => Count::less_than(5 * I::BITS, 0, 17413, 17544),
+                (false, true) => Count::less_than(2 * I::BITS, 0, (3 * I::BITS) + 3, (3 * I::BITS) + 6),
+                (false, false) => Count::less_than(2 * I::BITS, 0, 16641, 16769),
             },
         }
     }
@@ -185,7 +188,7 @@ mod tests {
                 Mode::Constant => check_operation_halts(&a, &b, Integer::div_checked),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.div_checked(&b);
-                    // assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                     assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                 }),
             }
@@ -195,15 +198,15 @@ mod tests {
                     let candidate = a.div_checked(&b);
                     assert_eq!(expected, *candidate.eject_value());
                     assert_eq!(console::Integer::new(expected), candidate.eject_value());
-                    // assert_count!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                    // assert_output_mode!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+                    assert_count!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert_output_mode!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
                     assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
                 }),
                 None => match (mode_a, mode_b) {
                     (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::div_checked),
                     _ => Circuit::scope(name, || {
                         let _candidate = a.div_checked(&b);
-                        // assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                        assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                         assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                     }),
                 },

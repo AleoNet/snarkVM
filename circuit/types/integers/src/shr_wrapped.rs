@@ -199,8 +199,8 @@ mod tests {
             let candidate = a.shr_wrapped(&b);
             assert_eq!(expected, *candidate.eject_value());
             assert_eq!(console::Integer::new(expected), candidate.eject_value());
-            // assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-            // assert_output_mode!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
+            assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+            assert_output_mode!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
             assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
         });
         Circuit::reset();

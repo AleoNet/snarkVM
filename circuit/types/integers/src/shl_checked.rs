@@ -178,8 +178,8 @@ mod tests {
                 let candidate = a.shl_checked(&b);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
-                // assert_count!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_mode!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
+                assert_count!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
                 assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
             }),
             None => match (mode_a, mode_b) {
@@ -192,14 +192,14 @@ mod tests {
                     } else {
                         Circuit::scope(name, || {
                             let _candidate = a.shl_checked(&b);
-                            // assert_count_fails!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+                            assert_count_fails!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                             assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                         })
                     }
                 }
                 _ => Circuit::scope(name, || {
                     let _candidate = a.shl_checked(&b);
-                    // assert_count_fails!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+                    assert_count_fails!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                     assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                 }),
             },

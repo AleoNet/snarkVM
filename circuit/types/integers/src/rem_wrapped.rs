@@ -120,7 +120,7 @@ mod tests {
                 Mode::Constant => check_operation_halts(&a, &b, Integer::rem_wrapped),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.rem_wrapped(&b);
-                    // assert_count_fails!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert_count_fails!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                     assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                 }),
             }
@@ -130,8 +130,8 @@ mod tests {
                 let candidate = a.rem_wrapped(&b);
                 assert_eq!(expected, *candidate.eject_value());
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
-                // assert_count!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_mode!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+                assert_count!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(RemWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
                 assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
             })
         }
