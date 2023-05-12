@@ -340,7 +340,7 @@ mod tests {
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_a, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, &[(literal_a, None), (literal_a, None)]).unwrap();
             operation.evaluate(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -362,7 +362,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers =
-                sample_registers(&stack, &fn_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+                sample_registers(&stack, &fn_name, &[(literal_a, Some(*mode_a)), (literal_a, Some(*mode_a))]).unwrap();
             operation.execute::<CurrentAleo>(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -404,7 +404,7 @@ mod tests {
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_b, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, &[(literal_a, None), (literal_b, None)]).unwrap();
             operation.evaluate(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -426,7 +426,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers =
-                sample_registers(&stack, &fn_name, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
+                sample_registers(&stack, &fn_name, &[(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))]).unwrap();
             operation.execute::<CurrentAleo>(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
