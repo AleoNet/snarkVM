@@ -159,21 +159,21 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
-    /// Initializes a new process without downloading the credits.aleo proving keys for web contexts
+    /// Initializes a new process without downloading the 'credits.aleo' circuit keys (for web contexts).
     #[inline]
     #[cfg(feature = "wasm")]
     pub fn load_web() -> Result<Self> {
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
 
-        // Initialize the 'credits.aleo' program so that a conflicting program named `credits.aleo` can't be added
+        // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
 
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
 
         // Add the stack to the process.
-        process.stacks.insert(*program.id(), stack);
+        process.add_stack(stack);
 
         // Return the process.
         Ok(process)
