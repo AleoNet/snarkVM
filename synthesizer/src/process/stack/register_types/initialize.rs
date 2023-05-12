@@ -65,7 +65,7 @@ impl<N: Network> RegisterTypes<N> {
             // TODO (howardwu): In order to support constant inputs, update `Self::deploy()` to allow
             //  the caller to provide optional constant inputs (instead of sampling random constants).
             //  Then, this check can be removed to enable support for constant inputs in functions.
-            ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported (yet)");
+            ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported");
 
             // Check the input register type.
             register_types.check_input(stack, input.register(), &RegisterType::from(*input.value_type()))?;
@@ -96,18 +96,11 @@ impl<N: Network> RegisterTypes<N> {
             for operand in command.operands() {
                 // Retrieve the register type from the operand.
                 let register_type = register_types.get_type_from_operand(stack, operand)?;
-                // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
-                //  See `Stack::execute_function()` for the same set of checks.
-                // Ensure the register type is a literal (for now).
+                // Ensure the register type is a literal or a struct.
+                // See `Stack::execute_function()` for the same set of checks.
                 match register_type {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Struct(..)) => {
-                        bail!(
-                            "'{}/{}' attempts to pass an 'struct' into 'finalize'",
-                            stack.program_id(),
-                            function.name()
-                        );
-                    }
+                    RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
                     RegisterType::Record(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'record' into 'finalize'",
