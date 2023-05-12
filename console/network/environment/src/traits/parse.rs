@@ -23,7 +23,7 @@ use nom::{
 /// The `nom`-compatible parser return type.
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-/// Convert's a parser result into a useful message.
+/// Converts a `ParserResult` into a human-readable message.
 pub fn convert_result<'a, O>(result: ParserResult<'a, O>, input: &'a str) -> String {
     match result {
         Ok(_) => "Parsing was successful.".to_string(),
