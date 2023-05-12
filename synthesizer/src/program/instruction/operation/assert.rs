@@ -241,7 +241,6 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::{program::test_helpers::sample_registers, ProvingKey, VerifyingKey};
 
     use circuit::AleoV0;
@@ -318,12 +317,12 @@ mod tests {
         // Initialize the operation.
         let operation = operation(operands);
         // Construct the function name.
-        let function_name = Identifier::from_str("run").unwrap();
+        let fn_name = Identifier::from_str("run").unwrap();
 
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &function_name, literal_a, literal_a, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_a, None, None).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -337,8 +336,7 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers =
-                sample_registers(&stack, &function_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -373,7 +371,7 @@ mod tests {
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &function_name, literal_a, literal_b, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_b, None, None).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -388,7 +386,7 @@ mod tests {
 
             // Attempt to compute the valid operand case.
             let mut registers =
-                sample_registers(&stack, &function_name, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
+                sample_registers(&stack, &fn_name, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.

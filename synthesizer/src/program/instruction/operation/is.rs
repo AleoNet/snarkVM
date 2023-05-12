@@ -253,7 +253,6 @@ impl<N: Network, const VARIANT: u8> ToBytes for IsInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::{program::test_helpers::sample_registers, ProvingKey, VerifyingKey};
 
     use circuit::AleoV0;
