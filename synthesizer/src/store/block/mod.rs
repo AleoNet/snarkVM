@@ -860,6 +860,14 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block(block_hash)
     }
 
+    /// Returns the confirmed transaction for the given `transaction ID`.
+    pub fn get_confirmed_transaction(
+        &self,
+        transaction_id: &N::TransactionID,
+    ) -> Result<Option<ConfirmedTransaction<N>>> {
+        self.storage.get_confirmed_transaction(*transaction_id)
+    }
+
     /// Returns the program for the given `program ID`.
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Option<Program<N>>> {
         self.storage.transaction_store().get_program(program_id)
