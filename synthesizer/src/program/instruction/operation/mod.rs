@@ -822,6 +822,7 @@ pub(crate) mod test_helpers {
         stack: &Stack<CurrentNetwork>,
         literals: &[&Literal<CurrentNetwork>],
     ) -> Result<FinalizeRegisters<CurrentNetwork>> {
+
         // Initialize the function name.
         let function_name = Identifier::from_str("run")?;
 
