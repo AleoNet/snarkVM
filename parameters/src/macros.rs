@@ -92,22 +92,11 @@ macro_rules! impl_store_and_remote_fetch {
         #[cfg(feature = "wasm")]
         fn remote_fetch(url: &str) -> Result<Vec<u8>, $crate::errors::ParameterError> {
             // Use the browser's XmlHttpRequest object to download the parameter file synchronously.
-            // Synchronous requests in browsers are dated, but in this case required because the
-            // Aleo function execution and key synthesis flow is synchronous. Using an asynchronous
-            // request in wasm would require that execution interrupt to allow the javascript event
-            // loop to process the http request (which is why the spawn_local approach doesnt work).
-            // This would require significant changes to the key synthesis process & function
-            // execution.
             //
-            // This method blocks the event loop while the parameters are downloaded. As a result,
-            // it will freeze the browser until the download is complete. However, the Aleo function
-            // execution is also a long, blocking process and will similarly block the browser event
-            // loop. As a result, function execution should always be executed within a web worker
-            // when possible to prevent the main browser window from freezing.
+            // This method blocks the event loop while the parameters are downloaded, and should be
+            // executed in a web worker to prevent the main browser window from freezing.
             let xhr = web_sys::XmlHttpRequest::new().map_err(|_| {
-                $crate::errors::ParameterError::Wasm(
-                    "Parameter downloads failed - XMLHttpRequest object could not be found".to_string(),
-                )
+                $crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest object not found".to_string())
             })?;
 
             // XmlHttpRequest if specified as synchronous cannot use the responseType property. It
@@ -115,19 +104,19 @@ macro_rules! impl_store_and_remote_fetch {
             // original binary, a charset that does not corrupt the original bytes must be used.
             xhr.override_mime_type("octet/binary; charset=ISO-8859-5").unwrap();
 
-            // Initialize and send the request
+            // Initialize and send the request.
             xhr.open_with_async("GET", url, false).map_err(|_| {
                 $crate::errors::ParameterError::Wasm(
-                    "Parameter downloads failed - The given browser does not support synchronous requests".to_string(),
+                    "Download failed - This browser does not support synchronous requests".to_string(),
                 )
             })?;
             xhr.send().map_err(|_| {
-                $crate::errors::ParameterError::Wasm("Parameter downloads failed - XMLHttpRequest failed".to_string())
+                $crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string())
             })?;
 
-            // Wait for the response in a blocking fashion
+            // Wait for the response in a blocking fashion.
             if xhr.response().is_ok() && xhr.status().unwrap() == 200 {
-                // Get the text from the response
+                // Get the text from the response.
                 let rust_text = xhr
                     .response_text()
                     .map_err(|_| $crate::errors::ParameterError::Wasm("XMLHttpRequest failed".to_string()))?
@@ -135,16 +124,13 @@ macro_rules! impl_store_and_remote_fetch {
                         "The request was successful but no parameters were received".to_string(),
                     ))?;
 
-                // Re-encode the text back into bytes using the chosen encoding
+                // Re-encode the text back into bytes using the chosen encoding.
                 use encoding::Encoding;
-                let rust_bytes = encoding::all::ISO_8859_5
+                encoding::all::ISO_8859_5
                     .encode(&rust_text, encoding::EncoderTrap::Strict)
-                    .map_err(|_| $crate::errors::ParameterError::Wasm("Parameter decoding failed".to_string()))?;
-                Ok(rust_bytes)
+                    .map_err(|_| $crate::errors::ParameterError::Wasm("Parameter decoding failed".to_string()))
             } else {
-                Err($crate::errors::ParameterError::Wasm(
-                    "Parameter downloads failed - XMLHttpRequest failed".to_string(),
-                ))
+                Err($crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string()))
             }
         }
     };
