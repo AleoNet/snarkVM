@@ -338,7 +338,7 @@ impl<N: Network> Stack<N> {
                     let value = registers.load_circuit(self, operand)?;
                     // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
                     //  See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    // Ensure the value is a literal (for now).
+                    // Ensure the value is a literal or a struct.
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
                         circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => (),
