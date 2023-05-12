@@ -305,7 +305,6 @@ mod tests {
         cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
         use crate::{Process, Program};
-        use console::program::Identifier;
 
         // Initialize the opcode.
         let opcode = opcode.to_string();
