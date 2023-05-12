@@ -67,7 +67,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
-            _ => bail!("Synchronous API calls not supported from WASM"),
+            _ => bail!("Synchronous API calls are not supported from WASM"),
         }
     }
 
@@ -103,6 +103,10 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<ureq::Response> {
         let response = ureq::get(url).call()?;
-        if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {}", url) }
+        if response.status() == 200 {
+            Ok(response)
+        } else {
+            bail!("Failed to fetch from {}", url)
+        }
     }
 }
