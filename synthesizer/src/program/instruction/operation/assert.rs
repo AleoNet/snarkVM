@@ -336,7 +336,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+            let mut registers =
+                sample_registers(&stack, &fn_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
