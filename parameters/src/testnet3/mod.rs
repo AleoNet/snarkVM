@@ -20,7 +20,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://aleotestcors.s3.us-east-2.amazonaws.com";
+const REMOTE_URL: &str = "https://testnet3.parameters.aleo.org";
 
 // Degrees
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
