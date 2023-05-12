@@ -773,7 +773,7 @@ crate::operation!(
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Authorization, CallStack, Registers, Stack, Store, StoreCircuit};
+    use crate::{Authorization, CallStack, FinalizeRegisters, Registers, Stack, Store, StoreCircuit};
 
     use circuit::AleoV0;
     use console::{
@@ -815,5 +815,32 @@ pub(crate) mod test_helpers {
             }
         }
         Ok(registers)
+    }
+
+    /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
+    pub(crate) fn sample_finalize_registers(
+        stack: &Stack<CurrentNetwork>,
+        literals: &[&Literal<CurrentNetwork>],
+    ) -> Result<FinalizeRegisters<CurrentNetwork>> {
+        use console::program::{Identifier, Plaintext, Value};
+
+        // Initialize the function name.
+        let function_name = Identifier::from_str("run")?;
+
+        // Initialize the registers.
+        let mut finalize_registers =
+            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(&function_name)?.clone());
+
+        // For each literal,
+        for (index, literal) in literals.iter().enumerate() {
+            // Initialize the register
+            let register = Register::Locator(index as u64);
+            // Initialize the console value.
+            let value = Value::Plaintext(Plaintext::from(*literal));
+            // Store the value in the console registers.
+            finalize_registers.store(stack, &register, value)?;
+        }
+
+        Ok(finalize_registers)
     }
 }
