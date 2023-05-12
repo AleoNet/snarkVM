@@ -341,13 +341,7 @@ impl<N: Network> Stack<N> {
                     // Ensure the value is a literal (for now).
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
-                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => {
-                            bail!(
-                                "'{}/{}' attempts to pass an 'struct' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
+                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => (),
                         circuit::Value::Record(..) => {
                             bail!(
                                 "'{}/{}' attempts to pass a 'record' into 'finalize'",

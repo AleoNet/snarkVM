@@ -101,13 +101,7 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type is a literal (for now).
                 match register_type {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Struct(..)) => {
-                        bail!(
-                            "'{}/{}' attempts to pass an 'struct' into 'finalize'",
-                            stack.program_id(),
-                            function.name()
-                        );
-                    }
+                    RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
                     RegisterType::Record(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'record' into 'finalize'",
