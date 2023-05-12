@@ -9,16 +9,16 @@ edition = "2021"
 [dependencies.console]
 package = "snarkvm-console-collections"
 path = "../../console/collections"
-version = "0.11.2"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-circuit-algorithms]
 path = "../algorithms"
-version = "0.11.2"
+version = "=0.11.2"
 
 [dependencies.snarkvm-circuit-types]
 path = "../types"
-version = "0.11.2"
+version = "=0.11.2"
 
 [dev-dependencies.snarkvm-circuit-network]
 path = "../network"

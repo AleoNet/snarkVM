@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies.snarkvm-console-network-environment]
 path = "../../network/environment"
-version = "0.11.2"
+version = "=0.11.2"
 
 [dev-dependencies.bincode]
 version = "1.3"
