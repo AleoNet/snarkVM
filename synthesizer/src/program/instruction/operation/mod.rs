@@ -769,3 +769,61 @@ crate::operation!(
         (U128, U128) => U128,
     }
 );
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+
+    use crate::{Authorization, CallStack, Registers, Stack, Store, StoreCircuit};
+
+    use circuit::AleoV0;
+    use console::{
+        network::Testnet3,
+        program::{Identifier, Literal, Plaintext, Register, Value},
+    };
+
+    type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
+
+    /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.
+    pub fn sample_registers(
+        stack: &Stack<CurrentNetwork>,
+        function_name: &Identifier<CurrentNetwork>,
+        literal_a: &Literal<CurrentNetwork>,
+        literal_b: &Literal<CurrentNetwork>,
+        mode_a: Option<circuit::Mode>,
+        mode_b: Option<circuit::Mode>,
+    ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
+        // Initialize the registers.
+        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
+            CallStack::evaluate(Authorization::new(&[]))?,
+            stack.get_register_types(function_name)?.clone(),
+        );
+
+        // Initialize the registers.
+        let r0 = Register::Locator(0);
+        let r1 = Register::Locator(1);
+
+        // Initialize the console values.
+        let value_a = Value::Plaintext(Plaintext::from(literal_a));
+        let value_b = Value::Plaintext(Plaintext::from(literal_b));
+
+        // Store the values in the console registers.
+        registers.store(stack, &r0, value_a.clone())?;
+        registers.store(stack, &r1, value_b.clone())?;
+
+        if let (Some(mode_a), Some(mode_b)) = (mode_a, mode_b) {
+            use circuit::Inject;
+
+            // Initialize the circuit values.
+            let circuit_a = circuit::Value::new(mode_a, value_a);
+            let circuit_b = circuit::Value::new(mode_b, value_b);
+
+            // Store the values in the circuit registers.
+            registers.store_circuit(stack, &r0, circuit_a)?;
+            registers.store_circuit(stack, &r1, circuit_b)?;
+        }
+
+        Ok(registers)
+    }
+}
