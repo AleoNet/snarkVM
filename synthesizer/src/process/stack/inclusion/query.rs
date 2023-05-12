@@ -81,7 +81,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
-            _ => bail!("Synchronous external API calls not supported from WASM"),
+            _ => bail!("Synchronous external API calls are not supported from WASM"),
         }
     }
 
@@ -95,7 +95,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
-            _ => bail!("Synchronous external API calls not supported from WASM"),
+            _ => bail!("Synchronous external API calls are not supported from WASM"),
         }
     }
 
