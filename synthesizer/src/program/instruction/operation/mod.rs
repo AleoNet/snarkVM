@@ -823,7 +823,6 @@ pub(crate) mod test_helpers {
         function_name: &Identifier<CurrentNetwork>,
         literals: &[&Literal<CurrentNetwork>],
     ) -> Result<FinalizeRegisters<CurrentNetwork>> {
-
         // Initialize the registers.
         let mut finalize_registers =
             FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(function_name)?.clone());
