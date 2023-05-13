@@ -61,13 +61,23 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             Self::VM(block_store) => {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
-            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
-            #[cfg(feature = "wasm")]
-            _ => bail!("Synchronous API calls are not supported from WASM"),
+        }
+    }
+
+    /// Returns the program for the given program ID.
+    pub async fn get_program_async(&self, program_id: &ProgramID<N>) -> Result<Program<N>> {
+        match self {
+            Self::VM(block_store) => {
+                block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
+            }
+            Self::REST(url) => match N::ID {
+                3 => Ok(Self::get_request_async(&format!("{url}/testnet3/program/{program_id}")).await?.json().await?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
         }
     }
 
@@ -75,13 +85,21 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn current_state_root(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
-            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
-            #[cfg(feature = "wasm")]
-            _ => bail!("Synchronous external API calls are not supported from WASM"),
+        }
+    }
+
+    /// Returns the current state root.
+    pub async fn current_state_root_async(&self) -> Result<N::StateRoot> {
+        match self {
+            Self::VM(block_store) => Ok(block_store.current_state_root()),
+            Self::REST(url) => match N::ID {
+                3 => Ok(Self::get_request_async(&format!("{url}/testnet3/latest/stateRoot")).await?.json().await?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
         }
     }
 
@@ -89,20 +107,35 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
-            #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
-            #[cfg(feature = "wasm")]
-            _ => bail!("Synchronous external API calls are not supported from WASM"),
+        }
+    }
+
+    /// Returns a state path for the given `commitment`.
+    pub async fn get_state_path_for_commitment_async(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        match self {
+            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            Self::REST(url) => match N::ID {
+                3 => {
+                    Ok(Self::get_request_async(&format!("{url}/testnet3/statePath/{commitment}")).await?.json().await?)
+                }
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
         }
     }
 
     /// Performs a GET request to the given URL.
-    #[cfg(not(feature = "wasm"))]
     fn get_request(url: &str) -> Result<ureq::Response> {
         let response = ureq::get(url).call()?;
+        if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {url}") }
+    }
+
+    /// Performs a GET request to the given URL.
+    async fn get_request_async(url: &str) -> Result<reqwest::Response> {
+        let response = reqwest::get(url).await?;
         if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {url}") }
     }
 }

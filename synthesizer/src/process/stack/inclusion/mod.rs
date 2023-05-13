@@ -17,11 +17,6 @@
 pub mod query;
 pub use query::*;
 
-#[cfg(feature = "wasm")]
-pub mod wasm;
-#[cfg(feature = "wasm")]
-pub use wasm::*;
-
 #[cfg(debug_assertions)]
 use crate::Stack;
 use crate::{
@@ -110,20 +105,15 @@ impl<N: Network> Inclusion<N> {
 
         Ok(())
     }
+}
 
-    /// Returns the inclusion assignments for the given execution.
-    pub fn prepare_execution<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
-        &self,
-        execution: &Execution<N>,
-        query: Q,
-    ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        let query = query.into();
-
+macro_rules! prepare_execution_impl {
+    ($self:ident, $execution:ident, $query:ident, $current_state_root:ident, $get_state_path_for_commitment:ident $(, $await:ident)?) => {{
         // Ensure the number of leaves is within the Merkle tree size.
-        Transaction::check_execution_size(execution)?;
+        Transaction::check_execution_size($execution)?;
 
         // Ensure the inclusion proof in the execution is 'None'.
-        if execution.inclusion_proof().is_some() {
+        if $execution.inclusion_proof().is_some() {
             bail!("Inclusion proof in the execution should not be set in 'Inclusion::prepare_execution'")
         }
 
@@ -133,19 +123,22 @@ impl<N: Network> Inclusion<N> {
         let mut assignments = vec![];
 
         // Retrieve the global state root.
-        let global_state_root = query.current_state_root()?;
+        let global_state_root = {
+            $query.$current_state_root()
+            $(.$await)?
+        }?;
 
         // Ensure the global state root is not zero.
         if *global_state_root == Field::zero() {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
-        for (transition_index, transition) in execution.transitions().enumerate() {
+        for (transition_index, transition) in $execution.transitions().enumerate() {
             // Construct the transaction leaf.
             let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
 
             // Process the input tasks.
-            match self.input_tasks.get(transition.id()) {
+            match $self.input_tasks.get(transition.id()) {
                 Some(tasks) => {
                     for task in tasks {
                         // Retrieve the local state root.
@@ -171,7 +164,10 @@ impl<N: Network> Inclusion<N> {
                                     transition_leaf,
                                 )?
                             }
-                            false => query.get_state_path_for_commitment(&task.commitment)?,
+                            false => {
+                                $query.$get_state_path_for_commitment(&task.commitment)
+                                $(.$await)?
+                            }?
                         };
 
                         // Ensure the global state root is the same across iterations.
@@ -201,8 +197,32 @@ impl<N: Network> Inclusion<N> {
         }
 
         Ok((assignments, global_state_root))
+    }};
+}
+
+impl<N: Network> Inclusion<N> {
+    /// Returns the inclusion assignments for the given execution.
+    pub fn prepare_execution<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+        &self,
+        execution: &Execution<N>,
+        query: Q,
+    ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
+        let query = query.into();
+        prepare_execution_impl!(self, execution, query, current_state_root, get_state_path_for_commitment)
     }
 
+    /// Returns the inclusion assignments for the given execution.
+    pub async fn prepare_execution_async<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+        &self,
+        execution: &Execution<N>,
+        query: Q,
+    ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
+        let query = query.into();
+        prepare_execution_impl!(self, execution, query, current_state_root_async, get_state_path_for_commitment_async, await)
+    }
+}
+
+impl<N: Network> Inclusion<N> {
     /// Returns a new execution with an inclusion proof, for the given execution.
     pub fn prove_execution<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
@@ -236,20 +256,17 @@ impl<N: Network> Inclusion<N> {
             }
         }
     }
+}
 
-    /// Returns the inclusion assignments for the given fee transition.
-    pub fn prepare_fee<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
-        &self,
-        fee_transition: &Transition<N>,
-        query: Q,
-    ) -> Result<Vec<InclusionAssignment<N>>> {
+macro_rules! prepare_fee_impl {
+    ($self:ident, $fee_transition:ident, $query:ident, $get_state_path_for_commitment:ident $(, $await:ident)?) => {{
         // Ensure the fee has the correct program ID.
         let fee_program_id = ProgramID::from_str("credits.aleo")?;
-        ensure!(*fee_transition.program_id() == fee_program_id, "Incorrect program ID for fee");
+        ensure!(*$fee_transition.program_id() == fee_program_id, "Incorrect program ID for fee");
 
         // Ensure the fee has the correct function.
         let fee_function = Identifier::from_str("fee")?;
-        ensure!(*fee_transition.function_name() == fee_function, "Incorrect function name for fee");
+        ensure!(*$fee_transition.function_name() == fee_function, "Incorrect function name for fee");
 
         // Initialize an empty transaction tree.
         let transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
@@ -259,15 +276,16 @@ impl<N: Network> Inclusion<N> {
         let mut assignments = vec![];
 
         // Process the input tasks.
-        match self.input_tasks.get(fee_transition.id()) {
+        match $self.input_tasks.get($fee_transition.id()) {
             Some(tasks) => {
-                let query = query.into();
-
                 for task in tasks {
                     // Retrieve the local state root.
                     let local_state_root = (*transaction_tree.root()).into();
                     // Construct the state path.
-                    let state_path = query.get_state_path_for_commitment(&task.commitment)?;
+                    let state_path = {
+                        $query.$get_state_path_for_commitment(&task.commitment)
+                        $(.$await)?
+                    }?;
 
                     // Ensure the global state root is the same across iterations.
                     if *global_state_root != Field::zero() && global_state_root != state_path.global_state_root() {
@@ -291,7 +309,7 @@ impl<N: Network> Inclusion<N> {
                     assignments.push(assignment);
                 }
             }
-            None => bail!("Missing input state for fee transition {} in inclusion", fee_transition.id()),
+            None => bail!("Missing input state for fee transition {} in inclusion", $fee_transition.id()),
         }
 
         // Ensure the global state root is not zero.
@@ -304,6 +322,28 @@ impl<N: Network> Inclusion<N> {
         }
         // Return the assignments.
         Ok(assignments)
+    }};
+}
+
+impl<N: Network> Inclusion<N> {
+    /// Returns the inclusion assignments for the given fee transition.
+    pub fn prepare_fee<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+        &self,
+        fee_transition: &Transition<N>,
+        query: Q,
+    ) -> Result<Vec<InclusionAssignment<N>>> {
+        let query = query.into();
+        prepare_fee_impl!(self, fee_transition, query, get_state_path_for_commitment)
+    }
+
+    /// Returns the inclusion assignments for the given fee transition.
+    pub async fn prepare_fee_async<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+        &self,
+        fee_transition: &Transition<N>,
+        query: Q,
+    ) -> Result<Vec<InclusionAssignment<N>>> {
+        let query = query.into();
+        prepare_fee_impl!(self, fee_transition, query, get_state_path_for_commitment_async, await)
     }
 
     /// Returns a new fee with an inclusion proof, for the given transition.
