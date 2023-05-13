@@ -106,7 +106,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<(Response<N>, Fee<N>, Vec<CallMetrics<N>>)> {
-        let timer = timer!("VM::execute_fee");
+        let timer = timer!("VM::execute_fee_raw");
 
         // Prepare the query.
         let query = match query {

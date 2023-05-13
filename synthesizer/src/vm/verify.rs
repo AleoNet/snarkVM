@@ -264,7 +264,7 @@ mod tests {
         let program = crate::vm::test_helpers::sample_program();
 
         // Deploy the program.
-        let deployment = vm.deploy(&program, rng).unwrap();
+        let deployment = vm.deploy_raw(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
         assert!(vm.check_deployment(&deployment).is_ok());
@@ -385,7 +385,7 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
+        let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
         let transactions = vm.speculate([deployment_transaction].iter()).unwrap();

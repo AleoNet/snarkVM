@@ -313,7 +313,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let fee = (fee_record, priority_fee_in_microcredits);
 
         // Create a new deploy transaction.
-        Transaction::deploy(&self.vm, private_key, program, fee, query, rng)
+        self.vm.deploy(private_key, program, fee, query, rng)
     }
 
     /// Creates a transfer transaction.

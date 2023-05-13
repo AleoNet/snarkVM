@@ -405,7 +405,7 @@ finalize transfer_public:
         let additional_fee = (credits, 10);
 
         // Deploy.
-        let transaction = Transaction::deploy(vm, private_key, &program, additional_fee, None, rng)?;
+        let transaction = vm.deploy(private_key, &program, additional_fee, None, rng)?;
 
         // Construct the new block.
         let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, unspent_records, rng)?;
@@ -838,8 +838,7 @@ function ped_hash:
             let additional_fee = (credits, 10);
 
             // Deploy the program.
-            let deployment_transaction =
-                Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+            let deployment_transaction = vm.deploy(&caller_private_key, &program, additional_fee, None, rng).unwrap();
 
             // Construct the deployment block.
             let deployment_block = sample_next_block(

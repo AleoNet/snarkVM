@@ -28,7 +28,7 @@ mod merkle;
 mod serialize;
 mod string;
 
-use crate::{block::Transition, process::Authorization, program::Program, vm::VM, ConsensusStorage, Query};
+use crate::{block::Transition, process::Authorization, vm::VM, ConsensusStorage, Query};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -95,40 +95,6 @@ impl<N: Network> Transaction<N> {
 impl<N: Network> Transaction<N> {
     /// The maximum number of transitions allowed in a transaction.
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
-
-    /// Initializes a new deployment transaction.
-    ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        program: &Program<N>,
-        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the deployment.
-        let deployment = vm.deploy(program, rng)?;
-        // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
-
-        // Determine the fee.
-        let fee_in_microcredits = deployment
-            .size_in_bytes()?
-            .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
-            .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
-            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
-
-        // Compute the fee.
-        let (_, fee, _) = vm.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?;
-
-        // Construct the owner.
-        let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
-
-        // Initialize the transaction.
-        Self::from_deployment(owner, deployment, fee)
-    }
 
     /// Initializes a new execution transaction.
     ///

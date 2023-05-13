@@ -83,12 +83,11 @@ function hello:
     .unwrap();
 
     c.bench_function("Transaction - deploy", |b| {
-        b.iter(|| Transaction::deploy(&vm, &private_key, &program, (record.clone(), 600000), None, rng).unwrap())
+        b.iter(|| vm.deploy(&private_key, &program, (record.clone(), 600000), None, rng).unwrap())
     });
 
     c.bench_function("Transaction verify - deployment", |b| {
-        let transaction =
-            Transaction::deploy(&vm, &private_key, &program, (record.clone(), 600000), None, rng).unwrap();
+        let transaction = vm.deploy(&private_key, &program, (record.clone(), 600000), None, rng).unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction)))
     });
 }

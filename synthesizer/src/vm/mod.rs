@@ -37,7 +37,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
 };
 
@@ -280,7 +280,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
-                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
+                let transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.
@@ -578,24 +578,12 @@ function getter:
 finalize getter:
     get map_0[0field] into r0;
         ";
-        let first_deployment = Transaction::deploy(
-            &vm,
-            &caller_private_key,
-            &Program::from_str(first_program).unwrap(),
-            (first_record, 1),
-            None,
-            rng,
-        )
-        .unwrap();
-        let second_deployment = Transaction::deploy(
-            &vm,
-            &caller_private_key,
-            &Program::from_str(second_program).unwrap(),
-            (second_record, 1),
-            None,
-            rng,
-        )
-        .unwrap();
+        let first_deployment = vm
+            .deploy(&caller_private_key, &Program::from_str(first_program).unwrap(), (first_record, 1), None, rng)
+            .unwrap();
+        let second_deployment = vm
+            .deploy(&caller_private_key, &Program::from_str(second_program).unwrap(), (second_record, 1), None, rng)
+            .unwrap();
         let deployment_block =
             sample_next_block(&vm, &caller_private_key, &[first_deployment, second_deployment], rng).unwrap();
         vm.add_next_block(&deployment_block).unwrap();
