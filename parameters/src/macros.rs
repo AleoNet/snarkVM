@@ -29,6 +29,20 @@ macro_rules! checksum_error {
     };
 }
 
+#[macro_export]
+macro_rules! remove_file {
+    ($filepath:expr) => {
+        // Safely remove the corrupt file, if it exists.
+        #[cfg(not(feature = "wasm"))]
+        if std::path::PathBuf::from(&$filepath).exists() {
+            match std::fs::remove_file(&$filepath) {
+                Ok(()) => println!("Removed {:?}. Please retry the command.", $filepath),
+                Err(err) => eprintln!("Failed to remove {:?}: {err}", $filepath),
+            }
+        }
+    };
+}
+
 macro_rules! impl_store_and_remote_fetch {
     () => {
         #[cfg(not(feature = "wasm"))]
@@ -137,9 +151,10 @@ macro_rules! impl_store_and_remote_fetch {
 }
 
 macro_rules! impl_load_bytes_logic_local {
-    ($buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
+    ($filepath: expr, $buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
         // Ensure the size matches.
         if $expected_size != $buffer.len() {
+            remove_file!($filepath);
             return Err($crate::errors::ParameterError::SizeMismatch($expected_size, $buffer.len()));
         }
 
@@ -162,7 +177,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
         let buffer = if file_path.exists() {
             // Attempts to load the parameter file locally with an absolute path.
-            std::fs::read(file_path)?
+            std::fs::read(&file_path)?
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
              #[cfg(not(feature = "no_std_out"))]
@@ -218,6 +233,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
         // Ensure the size matches.
         if $expected_size != buffer.len() {
+            remove_file!(file_path);
             return Err($crate::errors::ParameterError::SizeMismatch($expected_size, buffer.len()));
         }
 
@@ -248,9 +264,10 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
 
+                let _filepath = concat!($local_dir, $fname, ".", "usrs");
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", "usrs"));
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_local!(_filepath, buffer, expected_size, expected_checksum);
             }
         }
 
@@ -277,9 +294,10 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
 
+                let _filepath = concat!($local_dir, $fname, ".", $ftype);
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype));
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_local!(_filepath, buffer, expected_size, expected_checksum);
             }
         }
 
