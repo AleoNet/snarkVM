@@ -115,3 +115,23 @@ lazy_static! {
     pub static ref INCLUSION_VERIFYING_KEY: Vec<u8> =
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifying key");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn test_transfer_flow() {
+        Degree16::load_bytes().expect("Failed to load degree 16");
+        Degree17::load_bytes().expect("Failed to load degree 17");
+        Degree18::load_bytes().expect("Failed to load degree 18");
+        Degree19::load_bytes().expect("Failed to load degree 19");
+        TransferVerifier::load_bytes().expect("Failed to load transfer verifier");
+        FeeProver::load_bytes().expect("Failed to load fee prover");
+        FeeVerifier::load_bytes().expect("Failed to load fee verifier");
+        InclusionProver::load_bytes().expect("Failed to load inclusion prover");
+        InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
+    }
+}

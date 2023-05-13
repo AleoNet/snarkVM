@@ -159,6 +159,26 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
+    /// Initializes a new process without downloading the 'credits.aleo' circuit keys (for web contexts).
+    #[inline]
+    #[cfg(feature = "wasm")]
+    pub fn load_web() -> Result<Self> {
+        // Initialize the process.
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+
+        // Add the stack to the process.
+        process.add_stack(stack);
+
+        // Return the process.
+        Ok(process)
+    }
+
     /// Initializes a new process with a cache of previously used keys. This version is suitable for tests
     /// (which often use nested loops that keep reusing those), as their deserialization is slow.
     #[cfg(test)]

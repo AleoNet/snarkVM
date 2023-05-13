@@ -67,18 +67,18 @@ pub fn max_available_threads() -> usize {
 }
 
 #[inline(always)]
-#[cfg(not(feature = "serial"))]
+#[cfg(not(any(feature = "serial", feature = "wasm")))]
 pub fn execute_with_max_available_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send) -> T {
     execute_with_threads(f, max_available_threads())
 }
 
 #[inline(always)]
-#[cfg(feature = "serial")]
+#[cfg(any(feature = "serial", feature = "wasm"))]
 pub fn execute_with_max_available_threads<T>(f: impl FnOnce() -> T + Send) -> T {
     f()
 }
 
-#[cfg(not(feature = "serial"))]
+#[cfg(not(any(feature = "serial", feature = "wasm")))]
 #[inline(always)]
 fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_threads: usize) -> T {
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();

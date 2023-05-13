@@ -53,7 +53,11 @@ serial = [
 ]
 setup = [ ]
 timer = [ "aleo-std/timer" ]
-wasm = [ ]
+wasm = [
+  "console/wasm",
+  "snarkvm-algorithms/wasm",
+  "snarkvm-utilities/wasm"
+]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
@@ -126,6 +130,10 @@ version = "0.21"
 default-features = false
 features = [ "lz4" ]
 optional = true
+
+[dependencies.reqwest]
+version = "0.11.16"
+features = [ "json" ]
 
 [dependencies.serde]
 version = "1.0"

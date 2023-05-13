@@ -90,20 +90,48 @@ macro_rules! impl_store_and_remote_fetch {
         }
 
         #[cfg(feature = "wasm")]
-        fn remote_fetch(
-            buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>,
-            url: &'static str,
-        ) -> Result<(), $crate::errors::ParameterError> {
-            // NOTE(julesdesmit): We spawn a local thread here in order to be
-            // able to accommodate the async syntax from reqwest.
-            wasm_bindgen_futures::spawn_local(async move {
-                let content = reqwest::get(url).await.unwrap().text().await.unwrap();
+        fn remote_fetch(url: &str) -> Result<Vec<u8>, $crate::errors::ParameterError> {
+            // Use the browser's XmlHttpRequest object to download the parameter file synchronously.
+            //
+            // This method blocks the event loop while the parameters are downloaded, and should be
+            // executed in a web worker to prevent the main browser window from freezing.
+            let xhr = web_sys::XmlHttpRequest::new().map_err(|_| {
+                $crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest object not found".to_string())
+            })?;
 
-                let buffer = buffer.upgrade().unwrap();
-                buffer.write().extend_from_slice(content.as_bytes());
-                drop(buffer);
-            });
-            Ok(())
+            // XmlHttpRequest if specified as synchronous cannot use the responseType property. It
+            // cannot thus download bytes directly and enforces a text encoding. To get back the
+            // original binary, a charset that does not corrupt the original bytes must be used.
+            xhr.override_mime_type("octet/binary; charset=ISO-8859-5").unwrap();
+
+            // Initialize and send the request.
+            xhr.open_with_async("GET", url, false).map_err(|_| {
+                $crate::errors::ParameterError::Wasm(
+                    "Download failed - This browser does not support synchronous requests".to_string(),
+                )
+            })?;
+            xhr.send().map_err(|_| {
+                $crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string())
+            })?;
+
+            // Wait for the response in a blocking fashion.
+            if xhr.response().is_ok() && xhr.status().unwrap() == 200 {
+                // Get the text from the response.
+                let rust_text = xhr
+                    .response_text()
+                    .map_err(|_| $crate::errors::ParameterError::Wasm("XMLHttpRequest failed".to_string()))?
+                    .ok_or($crate::errors::ParameterError::Wasm(
+                        "The request was successful but no parameters were received".to_string(),
+                    ))?;
+
+                // Re-encode the text back into bytes using the chosen encoding.
+                use encoding::Encoding;
+                encoding::all::ISO_8859_5
+                    .encode(&rust_text, encoding::EncoderTrap::Strict)
+                    .map_err(|_| $crate::errors::ParameterError::Wasm("Parameter decoding failed".to_string()))
+            } else {
+                Err($crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string()))
+            }
         }
     };
 }
@@ -173,19 +201,7 @@ macro_rules! impl_load_bytes_logic_remote {
                         }
                     }
                 } else if #[cfg(feature = "wasm")] {
-                    let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
-
-                    // NOTE(julesdesmit): I'm leaking memory here so that I can get a
-                    // static reference to the url, which is needed to pass it into
-                    // the local thread which downloads the file.
-                    let url = Box::leak(url.into_boxed_str());
-
-                    let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
-                    Self::remote_fetch(buffer_clone, url)?;
-
-                    // Recover the bytes.
-                    let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
-                    let buffer = buffer.write().clone();
+                    let buffer = Self::remote_fetch(&url)?;
 
                     // Ensure the checksum matches.
                     let candidate_checksum = checksum!(&buffer);

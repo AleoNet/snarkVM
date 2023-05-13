@@ -35,6 +35,9 @@ pub use finalize_types::*;
 mod inclusion;
 pub use inclusion::*;
 
+mod query;
+pub use query::*;
+
 mod register_types;
 pub use register_types::*;
 

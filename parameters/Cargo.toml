@@ -50,6 +50,10 @@ version = "1.0"
 version = "2"
 optional = true
 
+[dependencies.encoding]
+version = "0.2"
+optional = true
+
 [dependencies.hex]
 version = "0.4.3"
 
@@ -58,6 +62,10 @@ version = "1.9"
 
 [dependencies.itertools]
 version = "0.10.3"
+
+[dependencies.js-sys]
+version = "0.3.61"
+optional = true
 
 [dependencies.lazy_static]
 version = "1.4"
@@ -71,10 +79,6 @@ version = "1"
 [dependencies.rand]
 version = "0.8"
 
-[dependencies.reqwest]
-version = "0.11"
-optional = true
-
 [dependencies.serde_json]
 version = "1"
 features = [ "preserve_order" ]
@@ -86,8 +90,9 @@ default-features = false
 [dependencies.thiserror]
 version = "1.0"
 
-[dependencies.wasm-bindgen-futures]
-version = "0.4"
+[dependencies.web-sys]
+version = "0.3.61"
+features = [ "XmlHttpRequest" ]
 optional = true
 
 [target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
@@ -107,8 +112,8 @@ path = "../console"
 [dev-dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
 
-[dev-dependencies.curl]
-version = "0.4.34"
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3.34"
 
 [dev-dependencies.hex]
 version = "0.4.3"
@@ -120,4 +125,4 @@ version = "0.8"
 default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [ "reqwest", "wasm-bindgen-futures" ]
+wasm = [ "encoding", "js-sys", "web-sys" ]
