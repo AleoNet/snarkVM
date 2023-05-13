@@ -429,7 +429,7 @@ mod tests {
         let fee_in_microcredits = 10;
 
         // Execute the fee.
-        let fee = Transaction::execute_fee(&vm, &caller_private_key, credits, fee_in_microcredits, None, rng).unwrap();
+        let fee = vm.execute_fee_raw(&caller_private_key, credits, fee_in_microcredits, None, rng).unwrap().1;
 
         // Prepare the inputs.
         let inputs = [

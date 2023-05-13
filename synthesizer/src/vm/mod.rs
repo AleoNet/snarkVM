@@ -373,7 +373,7 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute the fee.
-                let fee = Transaction::execute_fee(&vm, &caller_private_key, record, 100, None, rng).unwrap();
+                let fee = vm.execute_fee_raw(&caller_private_key, record, 100, None, rng).unwrap().1;
 
                 // Execute.
                 let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
@@ -410,7 +410,8 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee, _metrics) = vm.execute_fee(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_response, fee, _metrics) =
+                    vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee));
                 assert!(Inclusion::verify_fee(&fee).is_ok());

@@ -79,8 +79,26 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
+    /// Returns the fee transaction.
     #[inline]
     pub fn execute_fee<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        fee_record: Record<N, Plaintext<N>>,
+        fee_in_microcredits: u64,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Transaction<N>> {
+        // Compute the fee.
+        let fee = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?.1;
+        // Return the fee transaction.
+        Transaction::from_fee(fee)
+    }
+
+    /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
+    /// Returns the response, fee, and call metrics.
+    #[inline]
+    pub fn execute_fee_raw<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         fee_record: Record<N, Plaintext<N>>,
@@ -348,7 +366,7 @@ mod tests {
         let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
 
         // Execute.
-        let (_, fee, _) = vm.execute_fee(&caller_private_key, record, 1, None, rng).unwrap();
+        let (_, fee, _) = vm.execute_fee_raw(&caller_private_key, record, 1, None, rng).unwrap();
 
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();

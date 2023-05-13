@@ -120,7 +120,7 @@ impl<N: Network> Transaction<N> {
             .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
 
         // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, fee_record, fee_in_microcredits, query, rng)?;
+        let (_, fee, _) = vm.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?;
 
         // Construct the owner.
         let id = *Self::deployment_tree(&deployment, &fee)?.root();
@@ -156,23 +156,11 @@ impl<N: Network> Transaction<N> {
                     .checked_add(priority_fee_in_microcredits)
                     .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
                 // Compute the fee.
-                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
+                Some(vm.execute_fee_raw(private_key, credits, fee_in_microcredits, query, rng)?.1)
             }
         };
         // Initialize the transaction.
         Self::from_execution(execution, fee)
-    }
-
-    /// Initializes a new fee.
-    pub fn execute_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Fee<N>> {
-        Ok(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
     }
 
     /// Initializes a new execution transaction from an authorization.
