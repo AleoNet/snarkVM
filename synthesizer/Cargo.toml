@@ -44,6 +44,8 @@ serial = [
   "snarkvm-algorithms/serial",
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
+  "snarkvm-synthesizer-coinbase/serial",
+  "snarkvm-synthesizer-snark/serial",
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
@@ -52,6 +54,8 @@ timer = [ "aleo-std/timer" ]
 wasm = [
   "console/wasm",
   "snarkvm-algorithms/wasm",
+  "snarkvm-synthesizer-coinbase/wasm",
+  "snarkvm-synthesizer-snark/wasm",
   "snarkvm-utilities/wasm"
 ]
 
