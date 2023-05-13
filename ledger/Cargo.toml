@@ -24,12 +24,12 @@ timer = [ "aleo-std/timer" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.11.2"
+version = "=0.11.2"
 
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
 path = "../synthesizer"
-version = "0.11.2"
+version = "=0.11.2"
 
 [dependencies.aleo-std]
 version = "0.1.15"
