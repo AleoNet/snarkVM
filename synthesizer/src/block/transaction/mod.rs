@@ -14,19 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod fee;
+pub use fee::*;
+
 mod bytes;
 mod merkle;
 mod serialize;
 mod string;
 
-use crate::{
-    block::Transition,
-    process::{Authorization, Deployment, Execution, Fee},
-    program::Program,
-    vm::VM,
-    ConsensusStorage,
-    Query,
-};
+use crate::{block::Transition, process::Authorization, program::Program, vm::VM, ConsensusStorage, Query};
 use console::{
     account::PrivateKey,
     network::prelude::*,

@@ -19,8 +19,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    block::Transaction,
-    process::{Deployment, Execution},
+    block::{Deployment, Execution, Transaction},
     store::FinalizeOperation,
 };
 use console::network::prelude::*;

@@ -25,9 +25,8 @@ pub use fee::*;
 
 use crate::{
     atomic_batch_scope,
-    block::Transaction,
+    block::{Deployment, Execution, Transaction},
     cow_to_copied,
-    process::{Deployment, Execution},
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{
