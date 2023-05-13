@@ -279,7 +279,6 @@ impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::{
         program::test_helpers::{sample_finalize_registers, sample_registers},
         ProvingKey,
