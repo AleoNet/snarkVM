@@ -1324,3 +1324,114 @@ finalize compute:
         .unwrap();
     assert_eq!(candidate, Value::from_str("16u64").unwrap());
 }
+
+#[test]
+fn test_process_execute_and_finalize_get_set_with_struct() {
+    // Initialize a new program.
+    let (string, program) = Program::<CurrentNetwork>::parse(
+        r"
+program testing.aleo;
+
+struct entry:
+    count as u8;
+    data as u8;
+
+mapping entries:
+    key owner as address.public;
+    value entry as entry.public;
+
+function compute:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    cast r0 r1 into r2 as entry;
+    finalize self.caller r2;
+
+finalize compute:
+    input r0 as address.public;
+    input r1 as entry.public;
+    get.or_init entries[r0] r1 into r2;
+    add r1.count r2.count into r3;
+    add r1.data r2.data into r4;
+    cast r3 r4 into r5 as entry;
+    set r5 into entries[r0];
+    get entries[r0] into r6;
+    add r6.count r1.count into r7;
+    add r6.data r1.data into r8;
+    cast r7 r8 into r9 as entry;
+    set r9 into entries[r0];
+",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Declare the program ID.
+    let program_id = program.id();
+    // Declare the mapping.
+    let mapping_name = Identifier::from_str("entries").unwrap();
+    // Declare the function name.
+    let function_name = Identifier::from_str("compute").unwrap();
+
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = super::test_helpers::sample_process(&program);
+    // Check that the circuit key can be synthesized.
+    process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+    // Reset the process.
+    let mut process = Process::load().unwrap();
+
+    // Initialize a new finalize store.
+    let store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Add the program to the process.
+    let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+    // Check that the deployment verifies.
+    process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Finalize the deployment.
+    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
+
+    // Initialize a new caller account.
+    let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+    let caller = Address::try_from(&caller_private_key).unwrap();
+
+    // Declare the input value.
+    let r0 = Value::<CurrentNetwork>::from_str("1u8").unwrap();
+    let r1 = Value::<CurrentNetwork>::from_str("2u8").unwrap();
+
+    // Authorize the function call.
+    let authorization = process
+        .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1].iter(), rng)
+        .unwrap();
+    assert_eq!(authorization.len(), 1);
+
+    // Compute the output value.
+    let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(0, candidate.len());
+
+    // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+    assert_eq!(authorization.len(), 1);
+
+    // Execute the request.
+    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(0, candidate.len());
+
+    // Verify the execution.
+    process.verify_execution::<true>(&execution).unwrap();
+
+    // Now, finalize the execution.
+    process.finalize_execution(&store, &execution).unwrap();
+
+    // Check that the struct is stored as expected.
+    let candidate = store
+        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .unwrap()
+        .unwrap();
+    assert_eq!(candidate, Value::from_str("{ count: 3u8, data: 6u8 }").unwrap());
+}

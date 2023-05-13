@@ -14,10 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use nom::{error::VerboseError, IResult};
+use nom::{
+    error::{convert_error, VerboseError},
+    Err as NomErr,
+    IResult,
+};
 
 /// The `nom`-compatible parser return type.
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
+
+/// Converts a `ParserResult` into a human-readable message.
+pub fn convert_result<'a, O>(result: ParserResult<'a, O>, input: &'a str) -> String {
+    match result {
+        Ok(_) => "Parsing was successful.".to_string(),
+        Err(error) => match error {
+            NomErr::Incomplete(_) => "Parsing failed to consume the entire input.".to_string(),
+            NomErr::Error(err) | NomErr::Failure(err) => convert_error(input, err),
+        },
+    }
+}
 
 /// Operations to parse a string literal into an object.
 pub trait Parser: core::fmt::Display + core::str::FromStr {

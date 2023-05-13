@@ -336,18 +336,11 @@ impl<N: Network> Stack<N> {
                 for operand in command.operands() {
                     // Retrieve the finalize input.
                     let value = registers.load_circuit(self, operand)?;
-                    // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
-                    //  See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    // Ensure the value is a literal (for now).
+                    // Ensure the value is a literal or a struct.
+                    // See `RegisterTypes::initialize_function_types()` for the same set of checks.
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
-                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => {
-                            bail!(
-                                "'{}/{}' attempts to pass an 'struct' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
+                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => (),
                         circuit::Value::Record(..) => {
                             bail!(
                                 "'{}/{}' attempts to pass a 'record' into 'finalize'",
