@@ -285,7 +285,6 @@ impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::{
         program::test_helpers::{sample_finalize_registers, sample_registers},
         ProvingKey,
@@ -380,14 +379,13 @@ mod tests {
         let destination_operand = Operand::Register(destination);
 
         // Attempt to evaluate the valid operand case.
-        let mut evaluate_registers =
-            sample_registers(&stack, &function_name, &[(literal_a, None), (literal_b, None)]).unwrap();
+        let values = [(literal_a, None), (literal_b, None)];
+        let mut evaluate_registers = sample_registers(&stack, &function_name, &values).unwrap();
         let result_a = operation.evaluate(&stack, &mut evaluate_registers);
 
         // Attempt to execute the valid operand case.
-        let mut execute_registers =
-            sample_registers(&stack, &function_name, &[(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))])
-                .unwrap();
+        let values = [(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))];
+        let mut execute_registers = sample_registers(&stack, &function_name, &values).unwrap();
         let result_b = operation.execute::<CurrentAleo>(&stack, &mut execute_registers);
 
         // Attempt to finalize the valid operand case.
