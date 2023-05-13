@@ -241,11 +241,12 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ProvingKey, Registers, Store, StoreCircuit, VerifyingKey};
+    use crate::{program::test_helpers::sample_registers, ProvingKey, VerifyingKey};
+
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
-        program::{Literal, LiteralType},
+        program::{Identifier, Literal, LiteralType},
     };
 
     use std::collections::HashMap;
@@ -263,7 +264,6 @@ mod tests {
         cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>)> {
         use crate::{Process, Program};
-        use console::program::Identifier;
 
         // Initialize the opcode.
         let opcode = opcode.to_string();
@@ -296,53 +296,6 @@ mod tests {
         Ok((stack, operands))
     }
 
-    /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.
-    fn sample_registers(
-        stack: &Stack<CurrentNetwork>,
-        literal_a: &Literal<CurrentNetwork>,
-        literal_b: &Literal<CurrentNetwork>,
-        mode_a: Option<circuit::Mode>,
-        mode_b: Option<circuit::Mode>,
-    ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
-        use crate::{Authorization, CallStack};
-        use console::program::{Identifier, Plaintext, Value};
-
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
-        // Initialize the registers.
-        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
-            CallStack::evaluate(Authorization::new(&[]))?,
-            stack.get_register_types(&function_name)?.clone(),
-        );
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-        let r1 = Register::Locator(1);
-
-        // Initialize the console values.
-        let value_a = Value::Plaintext(Plaintext::from(literal_a));
-        let value_b = Value::Plaintext(Plaintext::from(literal_b));
-
-        // Store the values in the console registers.
-        registers.store(stack, &r0, value_a.clone())?;
-        registers.store(stack, &r1, value_b.clone())?;
-
-        if let (Some(mode_a), Some(mode_b)) = (mode_a, mode_b) {
-            use circuit::Inject;
-
-            // Initialize the circuit values.
-            let circuit_a = circuit::Value::new(mode_a, value_a);
-            let circuit_b = circuit::Value::new(mode_b, value_b);
-
-            // Store the values in the circuit registers.
-            registers.store_circuit(stack, &r0, circuit_a)?;
-            registers.store_circuit(stack, &r1, circuit_b)?;
-        }
-
-        Ok(registers)
-    }
-
     fn check_assert<const VARIANT: u8>(
         operation: impl FnOnce(Vec<Operand<CurrentNetwork>>) -> AssertInstruction<CurrentNetwork, VARIANT>,
         opcode: Opcode,
@@ -363,11 +316,13 @@ mod tests {
         let (stack, operands) = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b, cache).unwrap();
         // Initialize the operation.
         let operation = operation(operands);
+        // Construct the function name.
+        let fn_name = Identifier::from_str("run").unwrap();
 
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_a, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_a, None, None).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -381,7 +336,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+            let mut registers =
+                sample_registers(&stack, &fn_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -416,7 +372,7 @@ mod tests {
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_b, None, None).unwrap();
+            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_b, None, None).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -430,7 +386,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
+            let mut registers =
+                sample_registers(&stack, &fn_name, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
