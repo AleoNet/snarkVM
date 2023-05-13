@@ -317,12 +317,13 @@ mod tests {
         // Initialize the operation.
         let operation = operation(operands);
         // Construct the function name.
-        let fn_name = Identifier::from_str("run").unwrap();
+        let function_name = Identifier::from_str("run").unwrap();
 
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, &[(literal_a, None), (literal_a, None)]).unwrap();
+            let values = [(literal_a, None), (literal_a, None)];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -336,8 +337,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers =
-                sample_registers(&stack, &fn_name, &[(literal_a, Some(*mode_a)), (literal_a, Some(*mode_a))]).unwrap();
+            let values = [(literal_a, Some(*mode_a)), (literal_a, Some(*mode_a))];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -372,7 +373,8 @@ mod tests {
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, &[(literal_a, None), (literal_b, None)]).unwrap();
+            let values = [(literal_a, None), (literal_b, None)];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -386,8 +388,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers =
-                sample_registers(&stack, &fn_name, &[(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))]).unwrap();
+            let values = [(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
