@@ -212,7 +212,7 @@ impl<N: Network> Process<N> {
             let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
             // Ensure the transition proof is valid.
             ensure!(
-                verifying_key.verify(function.name(), &inputs, transition.proof()),
+                verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
                 "Transition is invalid - failed to verify transition proof"
             );
 

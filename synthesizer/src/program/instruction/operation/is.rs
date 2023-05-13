@@ -253,10 +253,10 @@ impl<N: Network, const VARIANT: u8> ToBytes for IsInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{program::test_helpers::sample_registers, ProvingKey, VerifyingKey};
-
+    use crate::program::test_helpers::sample_registers;
     use circuit::AleoV0;
     use console::{network::Testnet3, program::Identifier};
+    use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
 
     use std::collections::HashMap;
 

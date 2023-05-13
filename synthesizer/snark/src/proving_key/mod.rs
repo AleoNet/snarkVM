@@ -30,16 +30,14 @@ pub struct ProvingKey<N: Network> {
 
 impl<N: Network> ProvingKey<N> {
     /// Initializes a new proving key.
-    pub(crate) const fn new(
-        proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
-    ) -> Self {
+    pub const fn new(proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>) -> Self {
         Self { proving_key }
     }
 
     /// Returns a proof for the given assignment on the circuit.
     pub fn prove<R: Rng + CryptoRng>(
         &self,
-        function_name: &Identifier<N>,
+        function_name: &str,
         assignment: &circuit::Assignment<N::Field>,
         rng: &mut R,
     ) -> Result<Proof<N>> {

@@ -16,7 +16,6 @@
 
 use crate::{
     block::Header,
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     store::{
         helpers::rocksdb::{
             internal::{self, DataMap, Database},
@@ -32,6 +31,7 @@ use crate::{
     },
 };
 use console::{account::Signature, prelude::*};
+use snarkvm_synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.
 #[derive(Clone)]

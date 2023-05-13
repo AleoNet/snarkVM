@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         // Sample the certificate.
-        let expected = certificate::tests::sample_certificate();
+        let expected = crate::test_helpers::sample_certificate();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

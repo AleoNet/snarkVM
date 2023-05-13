@@ -14,33 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
+use super::*;
 
-use console::{
-    network::{prelude::*, FiatShamir},
-    program::Identifier,
-};
-use snarkvm_algorithms::{snark::marlin, traits::SNARK};
+mod bytes;
+mod parse;
+mod serialize;
 
-use once_cell::sync::OnceCell;
-use std::sync::Arc;
+#[derive(Clone, PartialEq, Eq)]
+pub struct Proof<N: Network> {
+    /// The proof.
+    proof: marlin::Proof<N::PairingCurve>,
+}
 
-#[cfg(feature = "aleo-cli")]
-use colored::Colorize;
+impl<N: Network> Proof<N> {
+    /// Initializes a new proof.
+    pub(super) const fn new(proof: marlin::Proof<N::PairingCurve>) -> Self {
+        Self { proof }
+    }
+}
 
-type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode>;
+impl<N: Network> Deref for Proof<N> {
+    type Target = marlin::Proof<N::PairingCurve>;
 
-mod certificate;
-pub use certificate::Certificate;
-
-mod proof;
-pub use proof::Proof;
-
-mod proving_key;
-pub use proving_key::ProvingKey;
-
-mod universal_srs;
-pub use universal_srs::UniversalSRS;
-
-mod verifying_key;
-pub use verifying_key::VerifyingKey;
+    fn deref(&self) -> &Self::Target {
+        &self.proof
+    }
+}

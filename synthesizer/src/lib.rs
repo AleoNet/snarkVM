@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
+// #![warn(clippy::cast_possible_truncation)]
 #![allow(clippy::single_element_loop)]
 // TODO (howardwu): Remove me after tracing.
 #![allow(clippy::print_in_format_impl)]
@@ -25,20 +26,20 @@
 #[macro_use]
 extern crate tracing;
 
+#[cfg(feature = "coinbase")]
+pub use snarkvm_synthesizer_coinbase as coinbase;
+
+#[cfg(feature = "snark")]
+pub use snarkvm_synthesizer_snark as snark;
+
 pub mod block;
 pub use block::*;
-
-pub mod coinbase_puzzle;
-pub use coinbase_puzzle::*;
 
 pub mod process;
 pub use process::*;
 
 pub mod program;
 pub use program::*;
-
-pub mod snark;
-pub use snark::*;
 
 pub mod store;
 pub use store::*;
@@ -102,8 +103,8 @@ pub use vm::*;
 //
 //         // Construct the proving and verifying keys.
 //         let universal_srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
-//         let function_name = console::Identifier::<CurrentNetwork>::from_str(&format!("state_paths_{batch_size}")).unwrap();
-//         let (proving_key, verifying_key) = universal_srs.to_circuit_key(&function_name, &assignments[0]).unwrap();
+//         let function_name = format!("state_paths_{batch_size}");
+//         let (proving_key, verifying_key) = universal_srs.to_circuit_key(function_name, &assignments[0]).unwrap();
 //
 //         // Generate the batch proof.
 //         let batch_proof = proving_key.prove_batch(&function_name, &assignments, rng).unwrap();

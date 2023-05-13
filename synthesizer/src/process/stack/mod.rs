@@ -53,20 +53,7 @@ mod evaluate;
 mod execute;
 mod helpers;
 
-use crate::{
-    CallOperator,
-    Certificate,
-    Closure,
-    Function,
-    Instruction,
-    Operand,
-    Process,
-    Program,
-    ProvingKey,
-    Transition,
-    UniversalSRS,
-    VerifyingKey,
-};
+use crate::{CallOperator, Closure, Function, Instruction, Operand, Process, Program, Transition};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -90,6 +77,7 @@ use console::{
     },
     types::{Field, Group},
 };
+use snarkvm_synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;

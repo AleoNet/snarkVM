@@ -20,7 +20,7 @@
 extern crate criterion;
 
 use console::{account::*, network::Testnet3};
-use snarkvm_synthesizer::{CoinbasePuzzle, EpochChallenge, PuzzleConfig};
+use snarkvm_synthesizer_coinbase::{CoinbasePuzzle, EpochChallenge, PuzzleConfig};
 
 use criterion::Criterion;
 use rand::{self, thread_rng, CryptoRng, RngCore};

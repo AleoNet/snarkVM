@@ -1,0 +1,104 @@
+[package]
+name = "snarkvm-synthesizer-coinbase"
+version = "0.11.2"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Coinbase puzzle for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "GPL-3.0"
+edition = "2021"
+
+[[bench]]
+name = "coinbase_puzzle"
+path = "benches/coinbase_puzzle.rs"
+harness = false
+required-features = [ "setup" ]
+
+[features]
+default = [ ]
+cuda = [ "snarkvm-algorithms/cuda" ]
+serial = [
+  "console/serial",
+  "snarkvm-algorithms/serial",
+  "snarkvm-curves/serial",
+  "snarkvm-fields/serial",
+  "snarkvm-utilities/serial"
+]
+setup = [ ]
+wasm = [
+  "console/wasm",
+  "snarkvm-algorithms/wasm",
+  "snarkvm-utilities/wasm"
+]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.11.2"
+
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "=0.11.2"
+
+[dependencies.snarkvm-curves]
+path = "../../curves"
+version = "=0.11.2"
+
+[dependencies.snarkvm-fields]
+path = "../../fields"
+version = "=0.11.2"
+
+[dependencies.snarkvm-synthesizer-snark]
+path = "../snark"
+version = "=0.11.2"
+
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "=0.11.2"
+default-features = false
+
+[dependencies.anyhow]
+version = "1.0.71"
+
+[dependencies.bincode]
+version = "1"
+
+[dependencies.blake2]
+version = "0.10"
+default-features = false
+
+[dependencies.itertools]
+version = "0.10.1"
+
+[dependencies.rayon]
+version = "1"
+
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+features = [ "test" ]
+
+[dev-dependencies.criterion]
+version = "0.4.0"
+
+[dev-dependencies.rand]
+version = "0.8"

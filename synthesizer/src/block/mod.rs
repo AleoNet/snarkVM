@@ -31,16 +31,14 @@ mod genesis;
 mod serialize;
 mod string;
 
-use crate::{
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
-    vm::VM,
-};
+use crate::vm::VM;
 use console::{
     account::{Address, PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
+use snarkvm_synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {

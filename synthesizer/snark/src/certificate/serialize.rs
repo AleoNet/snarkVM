@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn test_serde_json() -> Result<()> {
         // Sample the certificate.
-        let expected = certificate::tests::sample_certificate();
+        let expected = crate::test_helpers::sample_certificate();
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn test_bincode() -> Result<()> {
         // Sample the certificate.
-        let expected = certificate::tests::sample_certificate();
+        let expected = crate::test_helpers::sample_certificate();
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

@@ -87,7 +87,7 @@ mod tests {
         assert!(Certificate::<CurrentNetwork>::parse("").is_err());
 
         // Sample the certificate.
-        let certificate = certificate::tests::sample_certificate();
+        let certificate = crate::test_helpers::sample_certificate();
 
         // Check the certificate parsing.
         let expected = format!("{certificate}");
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_string() -> Result<()> {
         // Sample the certificate.
-        let expected = certificate::tests::sample_certificate();
+        let expected = crate::test_helpers::sample_certificate();
 
         // Check the string representation.
         let candidate = format!("{expected}");
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         // Sample the certificate.
-        let expected = certificate::tests::sample_certificate();
+        let expected = crate::test_helpers::sample_certificate();
 
         let candidate = expected.to_string();
         assert_eq!(format!("{expected}"), candidate);
