@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::{BlockStorage, BlockStore, Program};
+use console::{
+    network::prelude::*,
+    program::{ProgramID, StatePath},
+    types::Field,
+};
 
 #[derive(Clone)]
 pub enum Query<N: Network, B: BlockStorage<N>> {

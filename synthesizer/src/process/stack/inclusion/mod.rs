@@ -14,21 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod query;
-pub use query::*;
-
 #[cfg(debug_assertions)]
 use crate::Stack;
 use crate::{
     BlockStorage,
-    BlockStore,
     Execution,
     Fee,
     Input,
     Output,
-    Program,
     Proof,
     ProvingKey,
+    Query,
     Transaction,
     Transition,
     VerifyingKey,
