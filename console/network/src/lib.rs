@@ -177,20 +177,11 @@ pub trait Network:
     /// Returns the sponge parameters for Marlin.
     fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
 
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self>;
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 
     /// Returns the graph key domain as a constant field element.
     fn graph_key_domain() -> Field<Self>;
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self>;
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self>;
 
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
