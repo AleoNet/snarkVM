@@ -19,6 +19,7 @@ mod helpers;
 mod authorize;
 mod deploy;
 mod execute;
+mod execute_fee;
 mod finalize;
 mod verify;
 
