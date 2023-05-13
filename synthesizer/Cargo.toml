@@ -52,6 +52,8 @@ setup = [ ]
 test = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [
+  "coinbase",
+  "snark",
   "console/wasm",
   "snarkvm-algorithms/wasm",
   "snarkvm-synthesizer-coinbase/wasm",
