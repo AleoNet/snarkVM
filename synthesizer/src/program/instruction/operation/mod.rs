@@ -796,9 +796,9 @@ pub(crate) mod test_helpers {
             stack.get_register_types(function_name)?.clone(),
         );
 
-        // For each value,
+        // For each value, store the register and value.
         for (index, (literal, mode)) in values.iter().enumerate() {
-            // Initialize the register
+            // Initialize the register.
             let register = Register::Locator(index as u64);
             // Initialize the console value.
             let value = Value::Plaintext(Plaintext::from(*literal));
