@@ -27,6 +27,8 @@ use crate::{
     RegistersStore,
     RegistersStoreCircuit,
     Stack,
+    StackEvaluate,
+    StackMatches,
     StackProgram,
 };
 use console::{
@@ -179,7 +181,7 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
@@ -463,7 +465,11 @@ impl<N: Network> Call<N> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, _stack: &Stack<N>, _registers: &mut impl RegistersLoad<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        _stack: &(impl StackMatches<N> + StackProgram<N>),
+        _registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         bail!("Forbidden operation: Finalize cannot invoke a 'call'")
     }
 

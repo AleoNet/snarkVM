@@ -26,7 +26,7 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{FinalizeRegisters, Registers, Stack, StackProgram};
+use crate::{FinalizeRegisters, Registers, Stack, StackEvaluate, StackMatches, StackProgram};
 use console::{
     network::{
         prelude::{
@@ -356,7 +356,7 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(stack, registers))
@@ -374,7 +374,11 @@ impl<N: Network> Instruction<N> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut FinalizeRegisters<N>,
+    ) -> Result<()> {
         instruction!(self, |instruction| instruction.finalize(stack, registers))
     }
 

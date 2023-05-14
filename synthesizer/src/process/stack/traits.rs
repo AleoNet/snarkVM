@@ -16,6 +16,27 @@
 
 use super::*;
 
+pub trait StackEvaluate<N: Network>: Clone {
+    /// Evaluates a program closure on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    fn evaluate_closure<A: circuit::Aleo<Network = N>>(
+        &self,
+        closure: &Closure<N>,
+        inputs: &[Value<N>],
+        call_stack: CallStack<N>,
+        caller: Address<N>,
+        tvk: Field<N>,
+    ) -> Result<Vec<Value<N>>>;
+
+    /// Evaluates a program function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
+}
+
 pub trait StackMatches<N: Network> {
     /// Checks that the given value matches the layout of the value type.
     fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()>;
