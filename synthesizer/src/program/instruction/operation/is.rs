@@ -253,7 +253,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for IsInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::test_helpers::sample_registers;
+    use crate::program::test_helpers::{sample_finalize_registers, sample_registers};
     use circuit::AleoV0;
     use console::{network::Testnet3, program::Identifier};
     use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
@@ -262,6 +262,8 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
+
+    const ITERATIONS: usize = 100;
 
     /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
     #[allow(clippy::type_complexity)]
@@ -292,6 +294,12 @@ mod tests {
             function {function_name}:
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
+                {opcode} {r0} {r1} into {r2};
+                finalize {r0} {r1};
+
+            finalize {function_name}:
+                input {r0} as {type_a}.public;
+                input {r1} as {type_b}.public;
                 {opcode} {r0} {r1} into {r2};
         "
         ))?;
@@ -333,14 +341,15 @@ mod tests {
         // Initialize the operation.
         let operation = operation(operands, destination.clone());
         // Initialize the function name.
-        let fn_name = Identifier::from_str("run").unwrap();
+        let function_name = Identifier::from_str("run").unwrap();
         // Initialize a destination operand.
         let destination_operand = Operand::Register(destination);
 
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_a, None, None).unwrap();
+            let values = [(literal_a, None), (literal_a, None)];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             operation.evaluate(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -361,8 +370,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers =
-                sample_registers(&stack, &fn_name, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+            let values = [(literal_a, Some(*mode_a)), (literal_a, Some(*mode_a))];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             operation.execute::<CurrentAleo>(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -400,11 +409,33 @@ mod tests {
 
             // Reset the circuit.
             <CurrentAleo as circuit::Environment>::reset();
+
+            // Attempt to finalize the valid operand case.
+            let mut registers = sample_finalize_registers(&stack, &function_name, &[literal_a, literal_a]).unwrap();
+            operation.finalize(&stack, &mut registers).unwrap();
+
+            // Retrieve the output.
+            let output_c = registers.load_literal(&stack, &destination_operand).unwrap();
+
+            // Ensure the output is correct.
+            if let Literal::Boolean(output_c) = output_c {
+                match VARIANT {
+                    0 => assert!(*output_c, "Instruction '{operation}' failed (finalize): {literal_a} {literal_a}"),
+                    1 => assert!(
+                        !*output_c,
+                        "Instruction '{operation}' should have failed (finalize): {literal_a} {literal_a}"
+                    ),
+                    _ => panic!("Found an invalid 'is' variant in the test"),
+                }
+            } else {
+                panic!("The output must be a boolean (finalize)");
+            }
         }
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, &fn_name, literal_a, literal_b, None, None).unwrap();
+            let values = [(literal_a, None), (literal_b, None)];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             operation.evaluate(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -425,8 +456,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers =
-                sample_registers(&stack, &fn_name, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
+            let values = [(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             operation.execute::<CurrentAleo>(&stack, &mut registers).unwrap();
 
             // Retrieve the output.
@@ -464,6 +495,27 @@ mod tests {
 
             // Reset the circuit.
             <CurrentAleo as circuit::Environment>::reset();
+
+            // Attempt to finalize the valid operand case.
+            let mut registers = sample_finalize_registers(&stack, &function_name, &[literal_a, literal_b]).unwrap();
+            operation.finalize(&stack, &mut registers).unwrap();
+
+            // Retrieve the output.
+            let output_c = registers.load_literal(&stack, &destination_operand).unwrap();
+
+            // Ensure the output is correct.
+            if let Literal::Boolean(output_c) = output_c {
+                match VARIANT {
+                    0 => assert!(
+                        !*output_c,
+                        "Instruction '{operation}' should have failed (finalize): {literal_a} {literal_b}"
+                    ),
+                    1 => assert!(*output_c, "Instruction '{operation}' failed (finalize): {literal_a} {literal_b}"),
+                    _ => panic!("Found an invalid 'is' variant in the test"),
+                }
+            } else {
+                panic!("The output must be a boolean (finalize)");
+            }
         }
     }
 
@@ -499,19 +551,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
-            for mode_a in &modes_a {
-                for mode_b in &modes_b {
-                    // Check the operation.
-                    check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
+                for mode_a in &modes_a {
+                    for mode_b in &modes_b {
+                        // Check the operation.
+                        check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    }
                 }
             }
         }
@@ -526,21 +580,23 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                            }
                         }
                     }
                 }
@@ -559,19 +615,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
-            for mode_a in &modes_a {
-                for mode_b in &modes_b {
-                    // Check the operation.
-                    check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
+                for mode_a in &modes_a {
+                    for mode_b in &modes_b {
+                        // Check the operation.
+                        check_is(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    }
                 }
             }
         }
@@ -586,21 +644,23 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_is_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                            }
                         }
                     }
                 }

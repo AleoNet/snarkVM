@@ -15,11 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
+
 use console::{
     network::prelude::*,
     program::{
         Entry,
         EntryType,
+        Identifier,
         Literal,
         LiteralType,
         Owner,
@@ -87,48 +89,7 @@ impl<N: Network> Cast<N> {
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the operands length is at least the minimum.
-                if inputs.len() < N::MIN_STRUCT_ENTRIES {
-                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
-                }
-
-                // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_name)?;
-
-                // Ensure that the number of operands is equal to the number of struct members.
-                if inputs.len() != struct_.members().len() {
-                    bail!(
-                        "Casting to the struct {} requires {} operands, but {} were provided",
-                        struct_.name(),
-                        struct_.members().len(),
-                        inputs.len()
-                    )
-                }
-
-                // Initialize the struct members.
-                let mut members = IndexMap::new();
-                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
-                    // Compute the register type.
-                    let register_type = RegisterType::Plaintext(*member_type);
-                    // Retrieve the plaintext value from the entry.
-                    let plaintext = match member {
-                        Value::Plaintext(plaintext) => {
-                            // Ensure the member matches the register type.
-                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
-                            // Output the plaintext.
-                            plaintext.clone()
-                        }
-                        // Ensure the struct member is not a record.
-                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
-                    };
-                    // Append the member to the struct members.
-                    members.insert(*member_name, plaintext);
-                }
-
-                // Construct the struct.
-                let struct_ = Plaintext::Struct(members, Default::default());
-                // Store the struct.
-                registers.store(stack, &self.destination, Value::Plaintext(struct_))
+                self.cast_to_struct(stack, registers, struct_name, inputs)
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least the minimum.
@@ -361,48 +322,7 @@ impl<N: Network> Cast<N> {
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the operands length is at least the minimum.
-                if inputs.len() < N::MIN_STRUCT_ENTRIES {
-                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
-                }
-
-                // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_name)?;
-
-                // Ensure that the number of operands is equal to the number of struct members.
-                if inputs.len() != struct_.members().len() {
-                    bail!(
-                        "Casting to the struct {} requires {} operands, but {} were provided",
-                        struct_.name(),
-                        struct_.members().len(),
-                        inputs.len()
-                    )
-                }
-
-                // Initialize the struct members.
-                let mut members = IndexMap::new();
-                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
-                    // Compute the register type.
-                    let register_type = RegisterType::Plaintext(*member_type);
-                    // Retrieve the plaintext value from the entry.
-                    let plaintext = match member {
-                        Value::Plaintext(plaintext) => {
-                            // Ensure the member matches the register type.
-                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
-                            // Output the plaintext.
-                            plaintext.clone()
-                        }
-                        // Ensure the struct member is not a record.
-                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
-                    };
-                    // Append the member to the struct members.
-                    members.insert(*member_name, plaintext);
-                }
-
-                // Construct the struct.
-                let struct_ = Plaintext::Struct(members, Default::default());
-                // Store the struct.
-                registers.store(stack, &self.destination, Value::Plaintext(struct_))
+                self.cast_to_struct(stack, registers, struct_name, inputs)
             }
             RegisterType::Record(_record_name) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
@@ -523,6 +443,58 @@ impl<N: Network> Cast<N> {
         }
 
         Ok(vec![self.register_type])
+    }
+}
+
+impl<N: Network> Cast<N> {
+    /// A helper method to handle casting to a struct.
+    fn cast_to_struct(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut impl Store<N>,
+        struct_name: Identifier<N>,
+        inputs: Vec<Value<N>>,
+    ) -> Result<()> {
+        // Ensure the operands length is at least the minimum.
+        if inputs.len() < N::MIN_STRUCT_ENTRIES {
+            bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+        }
+
+        // Retrieve the struct and ensure it is defined in the program.
+        let struct_ = stack.program().get_struct(&struct_name)?;
+
+        // Ensure that the number of operands is equal to the number of struct members.
+        if inputs.len() != struct_.members().len() {
+            bail!(
+                "Casting to the struct {} requires {} operands, but {} were provided",
+                struct_.name(),
+                struct_.members().len(),
+                inputs.len()
+            )
+        }
+
+        // Initialize the struct members.
+        let mut members = IndexMap::new();
+        for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
+            // Retrieve the plaintext value from the entry.
+            let plaintext = match member {
+                Value::Plaintext(plaintext) => {
+                    // Ensure the plaintext matches the member type.
+                    stack.matches_plaintext(plaintext, member_type)?;
+                    // Output the plaintext.
+                    plaintext.clone()
+                }
+                // Ensure the struct member is not a record.
+                Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
+            };
+            // Append the member to the struct members.
+            members.insert(*member_name, plaintext);
+        }
+
+        // Construct the struct.
+        let struct_ = Plaintext::Struct(members, Default::default());
+        // Store the struct.
+        registers.store(stack, &self.destination, Value::Plaintext(struct_))
     }
 }
 
