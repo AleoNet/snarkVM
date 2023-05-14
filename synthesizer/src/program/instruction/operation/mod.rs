@@ -820,14 +820,12 @@ pub(crate) mod test_helpers {
     /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
     pub(crate) fn sample_finalize_registers(
         stack: &Stack<CurrentNetwork>,
+        function_name: &Identifier<CurrentNetwork>,
         literals: &[&Literal<CurrentNetwork>],
     ) -> Result<FinalizeRegisters<CurrentNetwork>> {
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
         // Initialize the registers.
         let mut finalize_registers =
-            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(&function_name)?.clone());
+            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(function_name)?.clone());
 
         // For each literal,
         for (index, literal) in literals.iter().enumerate() {

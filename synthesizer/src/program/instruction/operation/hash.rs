@@ -371,7 +371,7 @@ mod tests {
         let result_b = operation.execute::<CurrentAleo>(&stack, &mut execute_registers);
 
         // Attempt to finalize the valid operand case.
-        let mut finalize_registers = sample_finalize_registers(&stack, &[literal]).unwrap();
+        let mut finalize_registers = sample_finalize_registers(&stack, &function_name, &[literal]).unwrap();
         let result_c = operation.finalize(&stack, &mut finalize_registers);
 
         // Check that either all operations failed, or all operations succeeded.
