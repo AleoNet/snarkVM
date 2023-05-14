@@ -16,13 +16,13 @@
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network> StackExecute<N> for Stack<N> {
     /// Executes a program closure on the given inputs.
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_closure<A: circuit::Aleo<Network = N>>(
+    fn execute_closure<A: circuit::Aleo<Network = N>>(
         &self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
@@ -122,7 +122,7 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         mut call_stack: CallStack<N>,
         rng: &mut R,
@@ -460,7 +460,9 @@ impl<N: Network> Stack<N> {
         // Return the response.
         Ok(response)
     }
+}
 
+impl<N: Network> Stack<N> {
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
     pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {

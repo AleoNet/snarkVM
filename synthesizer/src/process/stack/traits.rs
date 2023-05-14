@@ -37,6 +37,33 @@ pub trait StackEvaluate<N: Network>: Clone {
     fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
 }
 
+pub trait StackExecute<N: Network> {
+    /// Executes a program closure on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    fn execute_closure<A: circuit::Aleo<Network = N>>(
+        &self,
+        closure: &Closure<N>,
+        inputs: &[circuit::Value<A>],
+        call_stack: CallStack<N>,
+        caller: circuit::Address<A>,
+        tvk: circuit::Field<A>,
+    ) -> Result<Vec<circuit::Value<A>>>;
+
+    /// Executes a program function on the given inputs.
+    ///
+    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        call_stack: CallStack<N>,
+        rng: &mut R,
+    ) -> Result<Response<N>>;
+}
+
 pub trait StackMatches<N: Network> {
     /// Checks that the given value matches the layout of the value type.
     fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()>;

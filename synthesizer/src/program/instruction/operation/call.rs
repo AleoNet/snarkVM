@@ -26,8 +26,8 @@ use crate::{
     RegistersLoadCircuit,
     RegistersStore,
     RegistersStoreCircuit,
-    Stack,
     StackEvaluate,
+    StackExecute,
     StackMatches,
     StackProgram,
 };
@@ -249,7 +249,7 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
                  + RegistersCallerCircuit<N, A>

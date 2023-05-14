@@ -26,7 +26,7 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{FinalizeRegisters, Registers, Stack, StackEvaluate, StackMatches, StackProgram};
+use crate::{FinalizeRegisters, Registers, StackEvaluate, StackExecute, StackMatches, StackProgram};
 use console::{
     network::{
         prelude::{
@@ -366,7 +366,7 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
