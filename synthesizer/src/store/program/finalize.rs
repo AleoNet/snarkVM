@@ -16,12 +16,10 @@
 
 use crate::{
     atomic_batch_scope,
+    block::FinalizeOperation,
     cow_to_cloned,
     cow_to_copied,
-    store::{
-        helpers::{Map, MapRead},
-        FinalizeOperation,
-    },
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
