@@ -16,6 +16,55 @@
 
 use super::*;
 
+pub trait StackMatches<N: Network> {
+    /// Checks that the given value matches the layout of the value type.
+    fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()>;
+
+    /// Checks that the given stack value matches the layout of the register type.
+    fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()>;
+
+    /// Checks that the given record matches the layout of the external record type.
+    fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()>;
+
+    /// Checks that the given record matches the layout of the record type.
+    fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()>;
+
+    /// Checks that the given plaintext matches the layout of the plaintext type.
+    fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()>;
+}
+
+pub trait StackProgram<N: Network> {
+    /// Returns the program.
+    fn program(&self) -> &Program<N>;
+
+    /// Returns the program ID.
+    fn program_id(&self) -> &ProgramID<N>;
+
+    /// Returns `true` if the stack contains the external record.
+    fn contains_external_record(&self, locator: &Locator<N>) -> bool;
+
+    /// Returns the external stack for the given program ID.
+    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Self>;
+
+    /// Returns the external program for the given program ID.
+    fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>>;
+
+    /// Returns `true` if the stack contains the external record.
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>>;
+
+    /// Returns the function with the given function name.
+    fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>>;
+
+    /// Returns the expected number of calls for the given function name.
+    fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;
+
+    /// Returns the register types for the given closure or function name.
+    fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>>;
+
+    /// Returns the register types for the given finalize name.
+    fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>>;
+}
+
 pub trait RegistersCall<N: Network> {
     /// Returns the current call stack.
     fn call_stack(&self) -> CallStack<N>;
@@ -55,7 +104,7 @@ pub trait RegistersLoad<N: Network> {
     /// # Errors
     /// This method should halt if the register locator is not found.
     /// In the case of register members, this method should halt if the member is not found.
-    fn load(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Value<N>>;
+    fn load(&self, stack: &(impl StackMatches<N> + StackProgram<N>), operand: &Operand<N>) -> Result<Value<N>>;
 
     /// Loads the literal of a given operand.
     ///

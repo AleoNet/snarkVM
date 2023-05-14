@@ -27,6 +27,7 @@ use crate::{
     RegistersStore,
     RegistersStoreCircuit,
     Stack,
+    StackProgram,
 };
 use console::{
     network::prelude::*,

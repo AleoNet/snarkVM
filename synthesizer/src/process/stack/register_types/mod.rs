@@ -17,7 +17,18 @@
 mod initialize;
 mod matches;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, Stack};
+use crate::{
+    CallOperator,
+    Closure,
+    Function,
+    Instruction,
+    Opcode,
+    Operand,
+    Program,
+    Stack,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{
@@ -83,7 +94,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given register.
-    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<RegisterType<N>> {
+    pub fn get_type(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+    ) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.

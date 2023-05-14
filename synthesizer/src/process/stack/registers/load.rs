@@ -23,7 +23,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    fn load(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Value<N>> {
+    fn load(&self, stack: &(impl StackMatches<N> + StackProgram<N>), operand: &Operand<N>) -> Result<Value<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.

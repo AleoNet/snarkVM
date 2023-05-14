@@ -14,7 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FinalizeStorage, FinalizeStore, Opcode, Operand, RegistersLoad as LoadTrait, RegistersStore, Stack};
+use crate::{
+    FinalizeStorage,
+    FinalizeStore,
+    Opcode,
+    Operand,
+    RegistersLoad as LoadTrait,
+    RegistersStore,
+    Stack,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},

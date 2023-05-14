@@ -23,6 +23,7 @@ use crate::{
     RegistersLoad as LoadTrait,
     RegistersStore,
     Stack,
+    StackProgram,
 };
 use console::{
     network::prelude::*,

@@ -31,6 +31,8 @@ use crate::{
     RegistersStore,
     RegistersStoreCircuit,
     Stack,
+    StackMatches,
+    StackProgram,
 };
 use console::{
     network::prelude::*,

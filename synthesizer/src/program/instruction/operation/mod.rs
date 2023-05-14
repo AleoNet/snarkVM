@@ -773,7 +773,7 @@ crate::operation!(
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Authorization, CallStack, Registers, RegistersStore, RegistersStoreCircuit, Stack};
+    use crate::{Authorization, CallStack, Registers, RegistersStore, RegistersStoreCircuit, Stack, StackProgram};
 
     use circuit::AleoV0;
     use console::{

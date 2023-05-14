@@ -18,7 +18,7 @@ mod initialize;
 mod matches;
 
 use crate::{
-    process::Stack,
+    process::{Stack, StackMatches, StackProgram},
     program::{
         finalize::{Command, Finalize},
         Instruction,
@@ -77,7 +77,11 @@ impl<N: Network> FinalizeTypes<N> {
     }
 
     /// Returns the type of the given register.
-    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<PlaintextType<N>> {
+    pub fn get_type(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+    ) -> Result<PlaintextType<N>> {
         // Initialize a tracker for the type of the register.
         let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
