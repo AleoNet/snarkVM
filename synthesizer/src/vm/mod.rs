@@ -27,7 +27,7 @@ pub use finalize::FinalizeMode;
 
 use crate::{
     atomic_finalize,
-    block::{Block, Deployment, Execution, Fee, Transaction, Transition},
+    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions, Transition},
     cast_ref,
     process,
     process::{Authorization, Inclusion, InclusionAssignment, Process, Query},
@@ -36,7 +36,7 @@ use crate::{
     CallMetrics,
 };
 use console::{
-    account::PrivateKey,
+    account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
@@ -93,26 +93,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.process.read().contains_program(program_id)
     }
 
-    /// Adds the given block into the VM.
-    #[inline]
-    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
-        // First, insert the block.
-        self.block_store().insert(block)?;
-        // Next, finalize the transactions.
-        match self.finalize(block.transactions()) {
-            Ok(_) => {
-                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
-                Ok(())
-            }
-            Err(error) => {
-                // Rollback the block.
-                self.block_store().remove_last_n(1)?;
-                // Return the error.
-                Err(error)
-            }
-        }
-    }
-
     /// Returns the process.
     #[inline]
     pub fn process(&self) -> Arc<RwLock<Process<N>>> {
@@ -143,6 +123,66 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn transition_store(&self) -> &TransitionStore<N, C::TransitionStorage> {
         self.store.transition_store()
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns a new genesis block.
+    pub fn genesis<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        // Prepare the caller.
+        let caller = Address::try_from(private_key)?;
+        // Prepare the locator.
+        let locator = ("credits.aleo", "mint");
+        // Prepare the amount for each call to the mint function.
+        let amount = N::STARTING_SUPPLY.saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS as u64);
+        // Prepare the function inputs.
+        let inputs = [caller.to_string(), format!("{amount}_u64")];
+
+        // Prepare the mint transactions.
+        let transactions = (0u32..Block::<N>::NUM_GENESIS_TRANSACTIONS as u32)
+            .map(|index| {
+                // Execute the mint function.
+                let transaction = self.execute(private_key, locator, inputs.iter(), None, None, rng)?;
+                // Prepare the confirmed transaction.
+                ConfirmedTransaction::accepted_execute(index, transaction, vec![])
+            })
+            .collect::<Result<Transactions<_>>>()?;
+
+        // Prepare the block header.
+        let header = Header::genesis(&transactions)?;
+        // Prepare the previous block hash.
+        let previous_hash = N::BlockHash::default();
+
+        // Prepare the coinbase solution.
+        let coinbase_solution = None; // The genesis block does not require a coinbase solution.
+
+        // Construct the block.
+        let block = Block::new(private_key, previous_hash, header, transactions, coinbase_solution, rng)?;
+        // Ensure the block is valid genesis block.
+        match block.is_genesis() {
+            true => Ok(block),
+            false => bail!("Failed to initialize a genesis block"),
+        }
+    }
+
+    /// Adds the given block into the VM.
+    #[inline]
+    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // First, insert the block.
+        self.block_store().insert(block)?;
+        // Next, finalize the transactions.
+        match self.finalize(block.transactions()) {
+            Ok(_) => {
+                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
+                Ok(())
+            }
+            Err(error) => {
+                // Rollback the block.
+                self.block_store().remove_last_n(1)?;
+                // Return the error.
+                Err(error)
+            }
+        }
     }
 }
 
@@ -193,7 +233,7 @@ pub(crate) mod test_helpers {
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 // Return the block.
-                Block::genesis(&vm, &caller_private_key, rng).unwrap()
+                vm.genesis(&caller_private_key, rng).unwrap()
             })
             .clone()
     }
