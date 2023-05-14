@@ -443,7 +443,7 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
+        let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());

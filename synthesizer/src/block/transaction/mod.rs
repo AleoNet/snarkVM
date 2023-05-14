@@ -28,7 +28,7 @@ mod merkle;
 mod serialize;
 mod string;
 
-use crate::{block::Transition, process::Authorization, vm::VM, ConsensusStorage, Query};
+use crate::block::Transition;
 use console::{
     network::prelude::*,
     program::{Ciphertext, ProgramOwner, Record, TransactionLeaf, TransactionPath, TransactionTree, TRANSACTION_DEPTH},
@@ -76,25 +76,6 @@ impl<N: Network> Transaction<N> {
         let id = *Self::fee_tree(&fee)?.root();
         // Construct the execution transaction.
         Ok(Self::Fee(id.into(), fee))
-    }
-}
-
-impl<N: Network> Transaction<N> {
-    /// The maximum number of transitions allowed in a transaction.
-    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
-
-    /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        authorization: Authorization<N>,
-        fee: Option<Fee<N>>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute_authorization(authorization, query, rng)?;
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
     }
 }
 

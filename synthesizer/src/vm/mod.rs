@@ -328,7 +328,7 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let transaction = Transaction::execute_authorization(&vm, authorization, None, None, rng).unwrap();
+                let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
                 assert!(!vm.verify_transaction(&transaction));
                 // Return the transaction.
@@ -377,7 +377,7 @@ function compute:
                 let fee = vm.execute_fee_raw(&caller_private_key, record, 100, None, rng).unwrap().1;
 
                 // Execute.
-                let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
+                let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction));
                 // Return the transaction.

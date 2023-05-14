@@ -32,7 +32,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the authorization.
         let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Compute the execution.
-        let (_response, execution, _metrics) = self.execute_authorization(authorization, query.clone(), rng)?;
+        let (_response, execution, _metrics) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
         // Compute the fee.
         let fee = match fee {
             None => None,
@@ -50,10 +50,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         Transaction::from_execution(execution, fee)
     }
 
+    /// Returns a new execute transaction for the given authorization.
+    pub fn execute_authorization<R: Rng + CryptoRng>(
+        &self,
+        authorization: Authorization<N>,
+        fee: Option<Fee<N>>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Transaction<N>> {
+        // Compute the execution.
+        let (_response, execution, _metrics) = self.execute_authorization_raw(authorization, query, rng)?;
+        // Return the execute transaction.
+        Transaction::from_execution(execution, fee)
+    }
+
     /// Executes a call to the program function for the given authorization.
     /// Returns the response, execution, and metrics.
     #[inline]
-    pub fn execute_authorization<R: Rng + CryptoRng>(
+    pub fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,

@@ -115,8 +115,7 @@ fn execute(c: &mut Criterion) {
 
     c.bench_function("Transaction - execution (transfer)", |b| {
         b.iter(|| {
-            Transaction::execute_authorization(
-                &vm,
+            vm.execute_authorization(
                 Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
                 None,
                 None,
@@ -127,14 +126,14 @@ fn execute(c: &mut Criterion) {
     });
 
     c.bench_function("Transaction verify - execution (transfer)", |b| {
-        let transaction = Transaction::execute_authorization(
-            &vm,
-            Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
-            None,
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute_authorization(
+                Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction)))
     });
 }
