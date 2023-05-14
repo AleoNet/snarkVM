@@ -113,7 +113,11 @@ pub trait RegistersLoad<N: Network> {
     /// This method should halt if the register locator is not found.
     /// In the case of register members, this method should halt if the member is not found.
     #[inline]
-    fn load_literal(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Literal<N>> {
+    fn load_literal(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<Literal<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
             Value::Plaintext(Plaintext::Struct(..)) => bail!("Operand must be a literal"),
@@ -128,7 +132,11 @@ pub trait RegistersLoad<N: Network> {
     /// This method should halt if the register locator is not found.
     /// In the case of register members, this method should halt if the member is not found.
     #[inline]
-    fn load_plaintext(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Plaintext<N>> {
+    fn load_plaintext(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<Plaintext<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(plaintext) => Ok(plaintext),
             Value::Record(..) => bail!("Operand must be a plaintext"),
@@ -142,7 +150,11 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// # Errors
     /// This method should halt if the register locator is not found.
     /// In the case of register members, this method should halt if the member is not found.
-    fn load_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Value<A>>;
+    fn load_circuit(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<circuit::Value<A>>;
 
     /// Loads the literal of a given operand.
     ///
@@ -151,7 +163,11 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// This method should halt if the register locator is not found.
     /// In the case of register members, this method should halt if the member is not found.
     #[inline]
-    fn load_literal_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Literal<A>> {
+    fn load_literal_circuit(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<circuit::Literal<A>> {
         match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
             circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => bail!("Operand must be a literal"),
@@ -166,7 +182,11 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// This method should halt if the register locator is not found.
     /// In the case of register members, this method should halt if the member is not found.
     #[inline]
-    fn load_plaintext_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Plaintext<A>> {
+    fn load_plaintext_circuit(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<circuit::Plaintext<A>> {
         match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(plaintext) => Ok(plaintext),
             circuit::Value::Record(..) => bail!("Operand must be a plaintext"),

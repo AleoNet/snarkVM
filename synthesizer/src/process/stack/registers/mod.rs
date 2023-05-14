@@ -30,7 +30,6 @@ use crate::{
     RegistersLoadCircuit,
     RegistersStore,
     RegistersStoreCircuit,
-    Stack,
     StackMatches,
     StackProgram,
 };

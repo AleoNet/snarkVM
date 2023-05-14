@@ -80,7 +80,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    fn load_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Value<A>> {
+    fn load_circuit(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<circuit::Value<A>> {
         use circuit::Inject;
 
         // Retrieve the register.
