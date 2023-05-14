@@ -499,16 +499,16 @@ function compute:
         vm.add_next_block(&genesis).unwrap();
 
         // Split once.
-        let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
-            ("credits.aleo", "split"),
-            [Value::Record(record), Value::from_str("1000000000u64").unwrap()].iter(), // 1000 credits
-            None,
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "split"),
+                [Value::Record(record), Value::from_str("1000000000u64").unwrap()].iter(), // 1000 credits
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
         let records = transaction.records().collect_vec();
         let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
         let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
@@ -517,31 +517,31 @@ function compute:
 
         // Split again.
         let mut transactions = Vec::new();
-        let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
-            ("credits.aleo", "split"),
-            [Value::Record(first_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
-            None,
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "split"),
+                [Value::Record(first_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
         let records = transaction.records().collect_vec();
         let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
         let third_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
         transactions.push(transaction);
         // Split again.
-        let transaction = Transaction::execute(
-            &vm,
-            &caller_private_key,
-            ("credits.aleo", "split"),
-            [Value::Record(second_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
-            None,
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "split"),
+                [Value::Record(second_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
         let records = transaction.records().collect_vec();
         let second_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
         let fourth_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
@@ -590,26 +590,26 @@ finalize getter:
         vm.add_next_block(&deployment_block).unwrap();
 
         // Execute the programs.
-        let first_execution = Transaction::execute(
-            &vm,
-            &caller_private_key,
-            ("test_1.aleo", "init"),
-            Vec::<Value<Testnet3>>::new().iter(),
-            Some((third_record, 1)),
-            None,
-            rng,
-        )
-        .unwrap();
-        let second_execution = Transaction::execute(
-            &vm,
-            &caller_private_key,
-            ("test_2.aleo", "init"),
-            Vec::<Value<Testnet3>>::new().iter(),
-            Some((fourth_record, 1)),
-            None,
-            rng,
-        )
-        .unwrap();
+        let first_execution = vm
+            .execute(
+                &caller_private_key,
+                ("test_1.aleo", "init"),
+                Vec::<Value<Testnet3>>::new().iter(),
+                Some((third_record, 1)),
+                None,
+                rng,
+            )
+            .unwrap();
+        let second_execution = vm
+            .execute(
+                &caller_private_key,
+                ("test_2.aleo", "init"),
+                Vec::<Value<Testnet3>>::new().iter(),
+                Some((fourth_record, 1)),
+                None,
+                rng,
+            )
+            .unwrap();
         let execution_block =
             sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
         vm.add_next_block(&execution_block).unwrap();

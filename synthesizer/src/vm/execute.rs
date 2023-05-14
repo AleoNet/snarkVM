@@ -17,15 +17,49 @@
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Executes a call to the program function for the given inputs.
-    #[inline]
+    /// Returns a new execute transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn execute<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
+        fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Transaction<N>> {
+        // Compute the authorization.
+        let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
+        // Compute the execution.
+        let (_response, execution, _metrics) = self.execute_authorization(authorization, query.clone(), rng)?;
+        // Compute the fee.
+        let fee = match fee {
+            None => None,
+            Some((credits, priority_fee_in_microcredits)) => {
+                // Determine the fee.
+                let fee_in_microcredits = execution
+                    .size_in_bytes()?
+                    .checked_add(priority_fee_in_microcredits)
+                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the fee.
+                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, query, rng)?.1)
+            }
+        };
+        // Return the execute transaction.
+        Transaction::from_execution(execution, fee)
+    }
+
+    /// Executes a call to the program function for the given authorization.
+    /// Returns the response, execution, and metrics.
+    #[inline]
+    pub fn execute_authorization<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
-        let timer = timer!("VM::execute");
+        let timer = timer!("VM::execute_authorization");
 
         // Prepare the query.
         let query = match query {
@@ -135,8 +169,7 @@ mod tests {
         .into_iter();
 
         // Execute.
-        let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -175,8 +208,7 @@ mod tests {
 
         // Execute.
         let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "transfer"), inputs, None, None, rng)
-                .unwrap();
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -210,8 +242,7 @@ mod tests {
         let inputs = [Value::<CurrentNetwork>::Record(record_1), Value::<CurrentNetwork>::Record(record_2)].into_iter();
 
         // Execute.
-        let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "join"), inputs, None, None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "join"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -244,8 +275,7 @@ mod tests {
             [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("1u64").unwrap()].into_iter();
 
         // Execute.
-        let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();

@@ -40,7 +40,7 @@ impl<N: Network> Block<N> {
         let transactions = (0u32..Self::NUM_GENESIS_TRANSACTIONS as u32)
             .map(|index| {
                 // Execute the mint function.
-                let transaction = Transaction::execute(vm, private_key, locator, inputs.iter(), None, None, rng)?;
+                let transaction = vm.execute(private_key, locator, inputs.iter(), None, None, rng)?;
                 // Prepare the confirmed transaction.
                 ConfirmedTransaction::accepted_execute(index, transaction, vec![])
             })

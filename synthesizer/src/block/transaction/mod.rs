@@ -30,21 +30,8 @@ mod string;
 
 use crate::{block::Transition, process::Authorization, vm::VM, ConsensusStorage, Query};
 use console::{
-    account::PrivateKey,
     network::prelude::*,
-    program::{
-        Ciphertext,
-        Identifier,
-        Plaintext,
-        ProgramID,
-        ProgramOwner,
-        Record,
-        TransactionLeaf,
-        TransactionPath,
-        TransactionTree,
-        Value,
-        TRANSACTION_DEPTH,
-    },
+    program::{Ciphertext, ProgramOwner, Record, TransactionLeaf, TransactionPath, TransactionTree, TRANSACTION_DEPTH},
     types::{Field, Group, U64},
 };
 
@@ -96,39 +83,6 @@ impl<N: Network> Transaction<N> {
     /// The maximum number of transitions allowed in a transaction.
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
-    /// Initializes a new execution transaction.
-    ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: Option<(Record<N, Plaintext<N>>, u64)>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the authorization.
-        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
-        // Compute the fee.
-        let fee = match fee {
-            None => None,
-            Some((credits, priority_fee_in_microcredits)) => {
-                // Determine the fee.
-                let fee_in_microcredits = execution
-                    .size_in_bytes()?
-                    .checked_add(priority_fee_in_microcredits)
-                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
-                // Compute the fee.
-                Some(vm.execute_fee_raw(private_key, credits, fee_in_microcredits, query, rng)?.1)
-            }
-        };
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
-    }
-
     /// Initializes a new execution transaction from an authorization.
     pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
@@ -138,7 +92,7 @@ impl<N: Network> Transaction<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
+        let (_response, execution, _metrics) = vm.execute_authorization(authorization, query, rng)?;
         // Initialize the transaction.
         Self::from_execution(execution, fee)
     }

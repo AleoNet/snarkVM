@@ -347,6 +347,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let fee = Some((fee_record, priority_fee_in_microcredits));
 
         // Create a new execute transaction.
-        Transaction::execute(&self.vm, private_key, ("credits.aleo", "transfer"), inputs.iter(), fee, query, rng)
+        self.vm.execute(private_key, ("credits.aleo", "transfer"), inputs.iter(), fee, query, rng)
     }
 }

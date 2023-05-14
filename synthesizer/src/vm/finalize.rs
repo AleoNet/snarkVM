@@ -490,8 +490,7 @@ finalize transfer_public:
             .into_iter();
 
             // Execute.
-            let transaction =
-                Transaction::execute(vm, private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+            let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
 
             transactions.push(transaction);
         }
@@ -518,16 +517,16 @@ finalize transfer_public:
         let additional_fee = (credits, 1);
 
         // Execute.
-        let transaction = Transaction::execute(
-            vm,
-            &caller_private_key,
-            (program_id, function_name),
-            inputs.into_iter(),
-            Some(additional_fee),
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                (program_id, function_name),
+                inputs.into_iter(),
+                Some(additional_fee),
+                None,
+                rng,
+            )
+            .unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction));
 
