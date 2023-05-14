@@ -161,7 +161,7 @@ impl<N: Network> Call<N> {
 impl<N: Network> Call<N> {
     /// Returns `true` if the instruction is a function call.
     #[inline]
-    pub fn is_function_call(&self, stack: &Stack<N>) -> Result<bool> {
+    pub fn is_function_call(&self, stack: &impl StackProgram<N>) -> Result<bool> {
         match self.operator() {
             // Check if the locator is for a function.
             CallOperator::Locator(locator) => {

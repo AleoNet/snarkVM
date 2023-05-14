@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, Stack, StackProgram};
+use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
@@ -67,7 +67,11 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut impl RegistersLoad<N>) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -98,7 +102,7 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut impl RegistersLoadCircuit<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
@@ -121,7 +125,11 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut impl RegistersLoad<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         self.evaluate(stack, registers)
     }
 
@@ -245,7 +253,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::test_helpers::sample_registers;
+    use crate::{process::Stack, program::test_helpers::sample_registers};
     use circuit::AleoV0;
     use console::{
         network::Testnet3,

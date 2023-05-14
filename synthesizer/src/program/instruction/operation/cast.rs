@@ -23,7 +23,6 @@ use crate::{
     RegistersLoadCircuit,
     RegistersStore,
     RegistersStoreCircuit,
-    Stack,
     StackMatches,
     StackProgram,
 };
@@ -90,7 +89,7 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn evaluate(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Load the operands values.
@@ -221,7 +220,7 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{Eject, Inject};
@@ -368,7 +367,7 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn finalize(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Load the operands values.

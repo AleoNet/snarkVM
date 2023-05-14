@@ -21,7 +21,7 @@ use crate::{
     RegistersLoadCircuit,
     RegistersStore,
     RegistersStoreCircuit,
-    Stack,
+    StackMatches,
     StackProgram,
 };
 use console::{
@@ -81,7 +81,7 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
     #[inline]
     pub fn evaluate(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
@@ -107,7 +107,7 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
@@ -135,7 +135,7 @@ impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {
     #[inline]
     pub fn finalize(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         self.evaluate(stack, registers)
@@ -274,7 +274,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for IsInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::test_helpers::sample_registers;
+    use crate::{process::Stack, program::test_helpers::sample_registers};
     use circuit::AleoV0;
     use console::{network::Testnet3, program::Identifier};
     use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
