@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::Test;
+
+use std::path::Path;
+use walkdir::WalkDir;
 
 /// A `StandardRunner` walks the test directory, loads the tests, and runs them in order.
-pub struct StandardRunner<T: Test> {
+pub struct StandardRunner<T: Test<Config = ()>> {
     tests: Vec<T>,
 }
 
-impl<T: Test> StandardRunner<T> {
+impl<T: Test<Config = ()>> StandardRunner<T> {
     /// Initializes the test runner by recursively reading all files in the `dir` directory.
     /// Note that `dir` must be a relative path from `[...]/snarkVM/synthesizer/tests`.
     pub fn initialize<P: AsRef<Path>>(dir: P) -> Self {
@@ -59,7 +62,7 @@ impl<T: Test> StandardRunner<T> {
     /// Runs all tests.
     pub fn run(&self) {
         for test in &self.tests {
-            test.run();
+            test.run(&());
         }
     }
 }

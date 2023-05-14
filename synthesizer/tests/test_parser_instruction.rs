@@ -30,6 +30,8 @@ pub struct TestParserInstruction<F: Parser> {
 }
 
 impl<F: Parser> Test for TestParserInstruction<F> {
+    type Config = ();
+
     fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Read the test file.
         let inputs = std::fs::read_to_string(&path)
@@ -43,7 +45,7 @@ impl<F: Parser> Test for TestParserInstruction<F> {
         Ok(Self { inputs, expectation, phantom: Default::default() })
     }
 
-    fn run(&self) {
+    fn run(&self, _: &Self::Config) {
         let outputs = self.inputs.iter().map(|input| convert_result(F::parse(input), input)).collect();
         // Check the results against the expectations.
         self.expectation.check(&self.inputs, &outputs).expect("Failed to check expectation.");

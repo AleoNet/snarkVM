@@ -19,9 +19,11 @@ use std::path::Path;
 
 /// A general interface for a test.
 pub trait Test: Sized {
+    type Config;
+
     /// Loads the test from the given path.
     fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
 
     /// Runs the test.
-    fn run(&self);
+    fn run(&self, config: &Self::Config);
 }
