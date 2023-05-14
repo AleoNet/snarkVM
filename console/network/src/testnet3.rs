@@ -35,16 +35,10 @@ lazy_static! {
     /// The Marlin sponge parameters.
     pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
 
-    /// The balance commitment domain as a constant field element.
-    pub static ref BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
     /// The graph key domain as a constant field element.
     pub static ref GRAPH_KEY_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoGraphKey0");
-    /// The randomizer domain as a constant field element.
-    pub static ref RANDOMIZER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoRandomizer0");
-    /// The balance commitment randomizer domain as a constant field element.
-    pub static ref R_BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceRandomizer0");
     /// The serial number domain as a constant field element.
     pub static ref SERIAL_NUMBER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSerialNumber0");
 
@@ -203,11 +197,6 @@ impl Network for Testnet3 {
         &MARLIN_FS_PARAMETERS
     }
 
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self> {
-        *BCM_DOMAIN
-    }
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {
         *ENCRYPTION_DOMAIN
@@ -216,16 +205,6 @@ impl Network for Testnet3 {
     /// Returns the graph key domain as a constant field element.
     fn graph_key_domain() -> Field<Self> {
         *GRAPH_KEY_DOMAIN
-    }
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self> {
-        *RANDOMIZER_DOMAIN
-    }
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self> {
-        *R_BCM_DOMAIN
     }
 
     /// Returns the serial number domain as a constant field element.
