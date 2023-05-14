@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Store<N> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStore<N> for Registers<N, A> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -58,7 +58,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Store<N> for Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> StoreCircuit<N, A> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStoreCircuit<N, A> for Registers<N, A> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors

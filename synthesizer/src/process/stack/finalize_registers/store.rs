@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Store<N> for FinalizeRegisters<N> {
+impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors

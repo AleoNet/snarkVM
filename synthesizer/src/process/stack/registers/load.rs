@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Load<N> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N, A> {
     /// Loads the value of a given operand from the registers.
     ///
     /// # Errors
@@ -73,7 +73,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Load<N> for Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> LoadCircuit<N, A> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for Registers<N, A> {
     /// Loads the value of a given operand from the registers.
     ///
     /// # Errors

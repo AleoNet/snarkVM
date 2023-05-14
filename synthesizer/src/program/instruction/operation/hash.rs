@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load, LoadCircuit, Opcode, Operand, Stack, Store, StoreCircuit};
+use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, RegistersStore, RegistersStoreCircuit, Stack};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
@@ -99,7 +99,11 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 1 {
             bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -128,7 +132,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut (impl LoadCircuit<N, A> + StoreCircuit<N, A>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{ToBits, ToFields};
 
@@ -160,7 +164,11 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         self.evaluate(stack, registers)
     }
 

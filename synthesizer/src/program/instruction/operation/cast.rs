@@ -14,7 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
+use crate::{
+    Opcode,
+    Operand,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    Stack,
+};
 use console::{
     network::prelude::*,
     program::{
@@ -76,10 +86,10 @@ impl<N: Network> Cast<N> {
 impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate(
         &self,
         stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
@@ -210,7 +220,7 @@ impl<N: Network> Cast<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{Eject, Inject};
 
@@ -354,7 +364,11 @@ impl<N: Network> Cast<N> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 

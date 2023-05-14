@@ -14,32 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod load;
-mod store;
+use super::*;
 
-use crate::{
-    process::{FinalizeTypes, RegistersLoad, RegistersStore, Stack},
-    program::Operand,
-};
-use console::{
-    network::prelude::*,
-    program::{Literal, Plaintext, Register, Value},
-};
-
-use indexmap::IndexMap;
-
-#[derive(Clone)]
-pub struct FinalizeRegisters<N: Network> {
-    /// The mapping of all registers to their defined types.
-    finalize_types: FinalizeTypes<N>,
-    /// The mapping of assigned registers to their values.
-    registers: IndexMap<u64, Plaintext<N>>,
-}
-
-impl<N: Network> FinalizeRegisters<N> {
-    /// Initializes a new set of registers, given the finalize types.
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCall<N> for Registers<N, A> {
+    /// Returns the current call stack.
     #[inline]
-    pub fn new(finalize_types: FinalizeTypes<N>) -> Self {
-        Self { finalize_types, registers: IndexMap::new() }
+    fn call_stack(&self) -> CallStack<N> {
+        self.call_stack.clone()
     }
 }

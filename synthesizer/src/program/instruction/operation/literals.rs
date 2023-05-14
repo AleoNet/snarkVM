@@ -14,7 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load, LoadCircuit, Opcode, Operand, Operation, Stack, Store, StoreCircuit};
+use crate::{
+    Opcode,
+    Operand,
+    Operation,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    Stack,
+};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
@@ -66,7 +75,11 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
@@ -105,7 +118,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut (impl LoadCircuit<N, A> + StoreCircuit<N, A>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
@@ -137,7 +150,11 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         self.evaluate(stack, registers)
     }
 

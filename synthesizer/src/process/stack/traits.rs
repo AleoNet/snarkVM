@@ -16,7 +16,40 @@
 
 use super::*;
 
-pub trait Load<N: Network> {
+pub trait RegistersCall<N: Network> {
+    /// Returns the current call stack.
+    fn call_stack(&self) -> CallStack<N>;
+}
+
+pub trait RegistersCaller<N: Network> {
+    /// Returns the transition caller.
+    fn caller(&self) -> Result<Address<N>>;
+
+    /// Sets the transition caller.
+    fn set_caller(&mut self, caller: Address<N>);
+
+    /// Returns the transition view key.
+    fn tvk(&self) -> Result<Field<N>>;
+
+    /// Sets the transition view key.
+    fn set_tvk(&mut self, tvk: Field<N>);
+}
+
+pub trait RegistersCallerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
+    /// Returns the transition caller, as a circuit.
+    fn caller_circuit(&self) -> Result<circuit::Address<A>>;
+
+    /// Sets the transition caller, as a circuit.
+    fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>);
+
+    /// Returns the transition view key, as a circuit.
+    fn tvk_circuit(&self) -> Result<circuit::Field<A>>;
+
+    /// Sets the transition view key, as a circuit.
+    fn set_tvk_circuit(&mut self, tvk_circuit: circuit::Field<A>);
+}
+
+pub trait RegistersLoad<N: Network> {
     /// Loads the value of a given operand.
     ///
     /// # Errors
@@ -54,7 +87,7 @@ pub trait Load<N: Network> {
     }
 }
 
-pub trait LoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
+pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// Loads the value of a given operand.
     ///
     /// # Errors
@@ -92,7 +125,7 @@ pub trait LoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     }
 }
 
-pub trait Store<N: Network> {
+pub trait RegistersStore<N: Network> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -113,7 +146,7 @@ pub trait Store<N: Network> {
     }
 }
 
-pub trait StoreCircuit<N: Network, A: circuit::Aleo<Network = N>> {
+pub trait RegistersStoreCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors

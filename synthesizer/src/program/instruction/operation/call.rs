@@ -14,7 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CallStack, FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
+use crate::{
+    CallStack,
+    Opcode,
+    Operand,
+    Registers,
+    RegistersCall,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    Stack,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
@@ -234,7 +247,12 @@ impl<N: Network> Call<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        registers: &mut (
+                 impl RegistersCall<N>
+                 + RegistersCallerCircuit<N, A>
+                 + RegistersLoadCircuit<N, A>
+                 + RegistersStoreCircuit<N, A>
+             ),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> =
@@ -444,7 +462,7 @@ impl<N: Network> Call<N> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, _stack: &Stack<N>, _registers: &mut FinalizeRegisters<N>) -> Result<()> {
+    pub fn finalize(&self, _stack: &Stack<N>, _registers: &mut impl RegistersLoad<N>) -> Result<()> {
         bail!("Forbidden operation: Finalize cannot invoke a 'call'")
     }
 

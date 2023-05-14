@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Load<N> for FinalizeRegisters<N> {
+impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
     /// Loads the value of a given operand from the registers.
     ///
     /// # Errors
