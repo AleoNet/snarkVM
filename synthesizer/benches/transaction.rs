@@ -25,7 +25,6 @@ use console::{
 use snarkvm_synthesizer::{
     store::helpers::memory::ConsensusMemory,
     Authorization,
-    Block,
     ConsensusStore,
     Program,
     Transition,

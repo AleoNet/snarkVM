@@ -26,7 +26,6 @@ use snarkvm_console::{
 use snarkvm_synthesizer::{
     snark::UniversalSRS,
     store::helpers::memory::ConsensusMemory,
-    Block,
     ConsensusStore,
     InclusionAssignment,
     VM,
