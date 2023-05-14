@@ -51,6 +51,6 @@ impl<F: Parser> Test for TestParserProgram<F> {
 
 #[test]
 fn test_program_parser() {
-    let runner = Runner::<TestParserProgram<Program<Testnet3>>>::initialize("./tests/parser/program");
+    let runner = StandardRunner::<TestParserProgram<Program<Testnet3>>>::initialize("./tests/parser/program");
     runner.run();
 }

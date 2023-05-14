@@ -16,12 +16,12 @@
 
 use super::*;
 
-/// A `StandardRunner` walks the test directory, loads the tests, and runs them in order.
-pub struct StandardRunner<T: Test> {
+/// A utility for loading an running tests of type `T`.
+pub struct Runner<T: Test> {
     tests: Vec<T>,
 }
 
-impl<T: Test> StandardRunner<T> {
+impl<T: Test> Runner<T> {
     /// Initializes the test runner by recursively reading all files in the `dir` directory.
     /// Note that `dir` must be a relative path from `[...]/snarkVM/synthesizer/tests`.
     pub fn initialize<P: AsRef<Path>>(dir: P) -> Self {

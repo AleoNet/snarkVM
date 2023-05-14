@@ -54,6 +54,7 @@ impl<F: Parser> Test for TestParserInstruction<F> {
 
 #[test]
 fn test_instruction_parser() {
-    let runner = Runner::<TestParserInstruction<Instruction<Testnet3>>>::initialize("./tests/parser/instruction");
+    let runner =
+        StandardRunner::<TestParserInstruction<Instruction<Testnet3>>>::initialize("./tests/parser/instruction");
     runner.run();
 }
