@@ -69,6 +69,7 @@ use console::{
         ProgramID,
         Record,
         RecordType,
+        Register,
         RegisterType,
         Request,
         Response,
