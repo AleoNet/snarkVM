@@ -14,14 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::Test;
 
-/// A utility for loading an running tests of type `T`.
-pub struct Runner<T: Test> {
+use console::network::Network;
+use snarkvm_synthesizer::Process;
+
+use std::path::Path;
+use walkdir::WalkDir;
+
+/// A `ProcessRunner` walks the test directory, loads the tests, and runs them in order.
+/// For each test, the runner provides a reference to a `Process`, used to run the test.
+pub struct ProcessRunner<N: Network, T: Test<Config = Process<N>>> {
     tests: Vec<T>,
+    process: Process<N>,
 }
 
-impl<T: Test> Runner<T> {
+impl<N: Network, T: Test<Config = Process<N>>> ProcessRunner<N, T> {
     /// Initializes the test runner by recursively reading all files in the `dir` directory.
     /// Note that `dir` must be a relative path from `[...]/snarkVM/synthesizer/tests`.
     pub fn initialize<P: AsRef<Path>>(dir: P) -> Self {
@@ -53,13 +61,15 @@ impl<T: Test> Runner<T> {
             .into_iter()
             .map(|path| T::load(path).unwrap_or_else(|_| panic!("Failed to load test")))
             .collect::<Vec<_>>();
-        Self { tests }
+        // Initialize the process.
+        let process = Process::load().unwrap();
+        Self { tests, process }
     }
 
     /// Runs all tests.
     pub fn run(&self) {
         for test in &self.tests {
-            test.run();
+            test.run(&self.process);
         }
     }
 }
