@@ -27,20 +27,11 @@ pub trait Aleo: Environment {
     /// The maximum number of field elements in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = <Self::Network as console::Network>::MAX_DATA_SIZE_IN_FIELDS;
 
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self>;
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 
     /// Returns the graph key domain as a constant field element.
     fn graph_key_domain() -> Field<Self>;
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self>;
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self>;
 
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;

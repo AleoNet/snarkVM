@@ -36,7 +36,7 @@ impl<N: Network> FromBytes for CoinbaseSolution<N> {
 impl<N: Network> ToBytes for CoinbaseSolution<N> {
     /// Writes the coinbase solution to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.partial_solutions.len() as u32).write_le(&mut writer)?;
+        (u32::try_from(self.partial_solutions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
 
         for individual_puzzle_solution in &self.partial_solutions {
             individual_puzzle_solution.write_le(&mut writer)?;
