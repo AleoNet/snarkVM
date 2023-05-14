@@ -28,7 +28,6 @@ use snarkvm_synthesizer::{
     Block,
     ConsensusStore,
     Program,
-    Transaction,
     Transition,
     VM,
 };
