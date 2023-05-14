@@ -26,7 +26,7 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{FinalizeRegisters, Registers, Stack};
+use crate::{FinalizeRegisters, Registers, Stack, StackProgram};
 use console::{
     network::{
         prelude::{
@@ -380,7 +380,11 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         instruction!(self, |instruction| instruction.output_types(stack, input_types))
     }
 }

@@ -18,7 +18,7 @@ mod load;
 mod store;
 
 use crate::{
-    process::{FinalizeTypes, RegistersLoad, RegistersStore, Stack, StackMatches, StackProgram},
+    process::{FinalizeTypes, RegistersLoad, RegistersStore, StackMatches, StackProgram},
     program::Operand,
 };
 use console::{

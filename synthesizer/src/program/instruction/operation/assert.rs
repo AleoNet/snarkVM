@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, Stack};
+use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, Stack, StackProgram};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
@@ -127,7 +127,11 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
             bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())

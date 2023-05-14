@@ -23,6 +23,7 @@ use crate::{
     RegistersStore,
     RegistersStoreCircuit,
     Stack,
+    StackProgram,
 };
 use console::{
     network::prelude::*,
@@ -160,7 +161,11 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())

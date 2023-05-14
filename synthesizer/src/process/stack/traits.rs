@@ -181,7 +181,12 @@ pub trait RegistersStore<N: Network> {
     /// This method should halt if the given register is a register member.
     /// This method should halt if the given register is an input register.
     /// This method should halt if the register is already used.
-    fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()>;
+    fn store(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        stack_value: Value<N>,
+    ) -> Result<()>;
 
     /// Assigns the given literal to the given register, assuming the register is not already assigned.
     ///
@@ -190,7 +195,12 @@ pub trait RegistersStore<N: Network> {
     /// This method should halt if the given register is an input register.
     /// This method should halt if the register is already used.
     #[inline]
-    fn store_literal(&mut self, stack: &Stack<N>, register: &Register<N>, literal: Literal<N>) -> Result<()> {
+    fn store_literal(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        literal: Literal<N>,
+    ) -> Result<()> {
         self.store(stack, register, Value::Plaintext(Plaintext::from(literal)))
     }
 }
@@ -202,8 +212,12 @@ pub trait RegistersStoreCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     /// This method should halt if the given register is a register member.
     /// This method should halt if the given register is an input register.
     /// This method should halt if the register is already used.
-    fn store_circuit(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: circuit::Value<A>)
-    -> Result<()>;
+    fn store_circuit(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        stack_value: circuit::Value<A>,
+    ) -> Result<()>;
 
     /// Assigns the given literal to the given register, assuming the register is not already assigned.
     ///
@@ -214,7 +228,7 @@ pub trait RegistersStoreCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     #[inline]
     fn store_literal_circuit(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
         literal: circuit::Literal<A>,
     ) -> Result<()> {

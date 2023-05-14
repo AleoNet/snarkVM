@@ -469,7 +469,11 @@ impl<N: Network> Call<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the program and resource.
         let (is_external, program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.

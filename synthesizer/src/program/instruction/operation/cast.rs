@@ -431,7 +431,11 @@ impl<N: Network> Cast<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
