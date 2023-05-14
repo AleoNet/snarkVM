@@ -16,6 +16,7 @@
 
 use crate::Test;
 
+use crate::utilities::load_tests;
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -25,37 +26,10 @@ pub struct StandardRunner<T: Test<Config = ()>> {
 }
 
 impl<T: Test<Config = ()>> StandardRunner<T> {
-    /// Initializes the test runner by recursively reading all files in the `dir` directory.
-    /// Note that `dir` must be a relative path from `[...]/snarkVM/synthesizer/tests`.
+    /// Initializes the test runner.
     pub fn initialize<P: AsRef<Path>>(dir: P) -> Self {
-        let test_dir =
-            std::env::current_dir().expect("Failed to retrieve the current directory.").join("tests").join(dir);
-        // Read the `TEST_FILTER` environment variable.
-        let test_filter = std::env::var("TEST_FILTER").ok();
-        // Recursively read all files in the `root` directory, filtering out directories and files without sufficient permissions.
-        let paths = WalkDir::new(test_dir)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .map(|e| e.into_path())
-            .filter(|path| path.is_file());
-        // Filter the test file names by the `TEST_FILTER` environment variable.
-        let filtered_paths = match test_filter {
-            Some(ref filter) => paths
-                .filter(|path| {
-                    path.file_name()
-                        .expect("Failed to get filename.")
-                        .to_str()
-                        .expect("Filename is not valid Unicode.")
-                        .contains(filter)
-                })
-                .collect::<Vec<_>>(),
-            None => paths.collect::<Vec<_>>(),
-        };
         // Initialize the test files.
-        let tests = filtered_paths
-            .into_iter()
-            .map(|path| T::load(path).unwrap_or_else(|_| panic!("Failed to load test")))
-            .collect::<Vec<_>>();
+        let tests = load_tests(dir);
         Self { tests }
     }
 
