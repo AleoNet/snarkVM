@@ -419,7 +419,7 @@ impl<N: Network> Stack<N> {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Add the assignment to the assignments.
-            assignments.write().push(assignment);
+            assignments.write().push_back(assignment);
             lap!(timer, "Save the circuit assignment");
 
             // Construct the transition.
@@ -444,7 +444,7 @@ impl<N: Network> Stack<N> {
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
         else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Add the assignment to the assignments.
-            assignments.write().push(assignment);
+            assignments.write().push_back(assignment);
             lap!(timer, "Save the circuit assignment");
         }
 

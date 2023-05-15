@@ -404,18 +404,19 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, mut execution, _inclusion, _metrics, function_assignments) =
+                let (_response, mut execution, _inclusion, _metrics, mut function_assignments) =
                     process.prepare_function::<CurrentAleo>(authorization).unwrap();
+                assert_eq!(function_assignments.len(), execution.transitions().len());
                 let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-                for (i, transition) in execution.transitions().enumerate() {
+                for transition in execution.transitions() {
                     let pk_id = ProvingKeyId {
                         program_id: *transition.program_id(),
                         function_name: *transition.function_name(),
                     };
                     transition_assignments
                         .entry(pk_id)
-                        .and_modify(|assignments| assignments.push(&function_assignments[i]))
-                        .or_insert(vec![&function_assignments[i]]);
+                        .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+                        .or_insert(vec![function_assignments.pop_front().unwrap()]);
                 }
                 process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
                 assert_eq!(execution.len(), 1);

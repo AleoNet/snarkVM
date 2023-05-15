@@ -369,7 +369,7 @@ where
     /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[&C]>,
+        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[C]>,
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
@@ -966,7 +966,7 @@ pub mod test {
             // Test native proof and verification.
             let fs_parameters = FS::sample_parameters();
 
-            let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
+            let proof = TestSNARK::prove(&fs_parameters, &pk, circ, &mut rng).unwrap();
 
             assert!(
                 TestSNARK::verify(&fs_parameters, &vk.clone(), public_inputs.as_slice(), &proof).unwrap(),

@@ -81,15 +81,16 @@ fn test_process_execute_mint() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -237,15 +238,16 @@ fn test_process_multirecords() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -330,15 +332,16 @@ fn test_process_self_caller() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -402,15 +405,16 @@ fn test_process_program_id() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -453,16 +457,17 @@ fn test_process_output_operand() {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, mut execution, _inclusion, _metrics, function_assignments) =
+        let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
             process.prepare_function::<CurrentAleo>(authorization).unwrap();
         let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-        for (i, transition) in execution.transitions().enumerate() {
+        assert_eq!(function_assignments.len(), execution.transitions().len());
+        for transition in execution.transitions() {
             let pk_id =
                 ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
             transition_assignments
                 .entry(pk_id)
-                .and_modify(|assignments| assignments.push(&function_assignments[i]))
-                .or_insert(vec![&function_assignments[i]]);
+                .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+                .or_insert(vec![function_assignments.pop_front().unwrap()]);
         }
         process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
         let candidate = response.outputs();
@@ -627,15 +632,16 @@ function compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -789,15 +795,16 @@ function transfer:
     assert_eq!(authorization.len(), 5);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -906,15 +913,16 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -1019,15 +1027,16 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -1150,15 +1159,16 @@ finalize mint_public:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -1302,15 +1312,16 @@ function mint:
     assert_eq!(authorization.len(), 2);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
@@ -1417,15 +1428,16 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, mut execution, _inclusion, _metrics, function_assignments) =
+    let (response, mut execution, _inclusion, _metrics, mut function_assignments) =
         process.prepare_function::<CurrentAleo>(authorization).unwrap();
     let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-    for (i, transition) in execution.transitions().enumerate() {
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    for transition in execution.transitions() {
         let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
         transition_assignments
             .entry(pk_id)
-            .and_modify(|assignments| assignments.push(&function_assignments[i]))
-            .or_insert(vec![&function_assignments[i]]);
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
     }
     process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();

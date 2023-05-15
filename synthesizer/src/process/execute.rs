@@ -24,8 +24,8 @@ impl<N: Network> Process<N> {
     pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         execution: &mut Execution<N>,
-        transition_assignments: BTreeMap<ProvingKeyId<N>, Vec<&Assignment<N::Field>>>,
-        inclusion_assignments: Option<Vec<&Assignment<N::Field>>>,
+        transition_assignments: BTreeMap<ProvingKeyId<N>, Vec<Assignment<N::Field>>>,
+        inclusion_assignments: Option<Vec<Assignment<N::Field>>>,
         rng: &mut R,
     ) -> Result<()> {
         let timer = timer!("Process::execute");
@@ -38,7 +38,7 @@ impl<N: Network> Process<N> {
             let proving_key = self.get_proving_key(proving_key_id.program_id, proving_key_id.function_name)?;
             // NOTE: consistent ordering of keys and assignments is crucial
             batch.add(Key::ProvingKey(proving_key))?;
-            assignments.push(transition_assignments);
+            assignments.push(transition_assignments.as_slice());
             function_names.push(&proving_key_id.function_name);
         }
 

@@ -28,7 +28,6 @@ use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, TestRng};
 
 use criterion::Criterion;
 
-use itertools::Itertools;
 use std::collections::BTreeMap;
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
@@ -74,8 +73,11 @@ fn snark_prove(c: &mut Criterion) {
 
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
-        let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-        b.iter(|| MarlinInst::prove(&fs_parameters, &params.0, &circuit, rng).unwrap())
+        let (pk, _) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        let mut keys_to_constraints = BTreeMap::new();
+        let constraints = [circuit];
+        keys_to_constraints.insert(&pk, &constraints[..]);
+        b.iter(move || MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap())
     });
 }
 
@@ -110,14 +112,10 @@ fn snark_batch_prove(c: &mut Criterion) {
             pks.push(pk);
             all_circuits.push(circuits);
         }
-        // We need to create references to the circuits we just created
-        let all_circuit_refs = (0..circuit_batch_size)
-            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
-            .collect_vec();
-
         for i in 0..circuit_batch_size {
-            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+            keys_to_constraints.insert(&pks[i], all_circuits[i].as_slice());
         }
+
         b.iter(|| MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap())
     });
 }
@@ -137,7 +135,7 @@ fn snark_verify(c: &mut Criterion) {
 
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-        let proof = MarlinInst::prove(&fs_parameters, &pk, &circuit, rng).unwrap();
+        let proof = MarlinInst::prove(&fs_parameters, &pk, circuit, rng).unwrap();
         b.iter(|| {
             let verification = MarlinInst::verify(&fs_parameters, &vk, public_inputs.as_slice(), &proof).unwrap();
             assert!(verification);
@@ -181,13 +179,8 @@ fn snark_batch_verify(c: &mut Criterion) {
             all_circuits.push(circuits);
             all_inputs.push(inputs);
         }
-        // We need to create references to the circuits and inputs we just created
-        let all_circuit_refs = (0..circuit_batch_size)
-            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
-            .collect_vec();
-
         for i in 0..circuit_batch_size {
-            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+            keys_to_constraints.insert(&pks[i], all_circuits[i].as_slice());
             keys_to_inputs.insert(&vks[i], all_inputs[i].as_slice());
         }
 

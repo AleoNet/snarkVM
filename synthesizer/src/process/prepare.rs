@@ -17,6 +17,7 @@
 use circuit::Assignment;
 
 use super::*;
+use std::collections::VecDeque;
 
 impl<N: Network> Process<N> {
     /// Prepares a call to the program function for the given inputs.
@@ -24,7 +25,7 @@ impl<N: Network> Process<N> {
     pub fn prepare_function<A: circuit::Aleo<Network = N>>(
         &self,
         authorization: Authorization<N>,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>, Vec<Assignment<N::Field>>)> {
+    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>, VecDeque<Assignment<N::Field>>)> {
         let timer = timer!("Process::prepare");
 
         // Retrieve the main request (without popping it).
@@ -76,7 +77,7 @@ impl<N: Network> Process<N> {
         credits: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<Assignment<N::Field>>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, VecDeque<Assignment<N::Field>>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::prepare_fee");
 
         // Ensure the fee has the correct program ID.

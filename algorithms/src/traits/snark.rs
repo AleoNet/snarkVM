@@ -95,7 +95,7 @@ pub trait SNARK {
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
+        keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[C]>,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         Self::prove_batch_with_terminator(fs_parameters, keys_to_constraints, &AtomicBool::new(false), rng)
@@ -104,7 +104,7 @@ pub trait SNARK {
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
-        constraints: &C,
+        constraints: C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let mut keys_to_constraints = BTreeMap::new();
@@ -115,23 +115,10 @@ pub trait SNARK {
 
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[&C]>,
+        keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[C]>,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
-
-    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
-        fs_parameters: &Self::FSParameters,
-        proving_key: &Self::ProvingKey,
-        constraints: &C,
-        terminator: &AtomicBool,
-        rng: &mut R,
-    ) -> Result<Self::Proof, SNARKError> {
-        let mut keys_to_constraints = BTreeMap::new();
-        let constraints = [constraints];
-        keys_to_constraints.insert(proving_key, &constraints[..]);
-        Self::prove_batch_with_terminator(fs_parameters, &keys_to_constraints, terminator, rng)
-    }
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         fs_parameters: &Self::FSParameters,

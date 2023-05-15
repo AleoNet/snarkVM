@@ -23,8 +23,8 @@ impl<N: Network> Process<N> {
     pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         fee: &mut Fee<N>,
-        fee_assignments: &Vec<&Assignment<N::Field>>,
-        inclusion_assignments: Option<Vec<&Assignment<N::Field>>>,
+        fee_assignments: &[Assignment<N::Field>],
+        inclusion_assignments: Option<Vec<Assignment<N::Field>>>,
         rng: &mut R,
     ) -> Result<()> {
         let timer = timer!("Process::execute_fee");

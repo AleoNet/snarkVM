@@ -91,7 +91,7 @@ impl<N: Network> Fee<N> {
     pub fn prove<R: Rng + CryptoRng>(
         &mut self,
         batch: KeyBatch<N>,
-        assignments: &[&Vec<&Assignment<N::Field>>],
+        assignments: &[&[Assignment<N::Field>]],
         function_names: Vec<&Identifier<N>>,
         rng: &mut R,
     ) -> Result<()> {

@@ -116,7 +116,7 @@ impl<N: Network> Stack<N> {
             let _response = self.execute_function::<A>(call_stack)?;
             lap!(timer, "Synthesize the circuit");
             // Check the certificate.
-            match assignments.read().last() {
+            match assignments.read().back() {
                 None => {
                     bail!("The assignment for function '{}' is missing in '{program_id}'", function.name())
                 }

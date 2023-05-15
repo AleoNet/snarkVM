@@ -69,7 +69,7 @@ impl<N: Network> KeyBatch<N> {
     pub fn prove<R: Rng + CryptoRng>(
         &self,
         function_names: &[&Identifier<N>],
-        assignments: &[&Vec<&Assignment<N::Field>>],
+        assignments: &[&[Assignment<N::Field>]],
         proves_inclusion: bool,
         rng: &mut R,
     ) -> Result<Proof<N>> {
@@ -83,7 +83,7 @@ impl<N: Network> KeyBatch<N> {
                     bail!("Cannot use a verifying key to prove a batch")
                 }
                 Key::ProvingKey(pk) => {
-                    keys_to_constraints.insert(pk.deref(), circuit_assignments.as_slice());
+                    keys_to_constraints.insert(pk.deref(), circuit_assignments);
                 }
             }
         }

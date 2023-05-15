@@ -94,9 +94,9 @@ use console::{
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
-pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
+pub type Assignments<N> = Arc<RwLock<VecDeque<circuit::Assignment<<N as Environment>::Field>>>>;
 
 #[derive(Copy, Clone, Debug)]
 pub struct CallMetrics<N: Network> {

@@ -299,7 +299,7 @@ mod tests {
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &assignment).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&fs_pp, &index_pk, &assignment, rng).unwrap();
+        let proof = MarlinInst::prove(&fs_pp, &index_pk, assignment, rng).unwrap();
         println!("Called prover");
 
         let one = <Circuit as Environment>::BaseField::one();

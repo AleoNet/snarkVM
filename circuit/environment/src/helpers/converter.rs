@@ -234,7 +234,7 @@ mod tests {
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&fs_pp, &index_pk, &Circuit, rng).unwrap();
+        let proof = MarlinInst::prove(&fs_pp, &index_pk, Circuit, rng).unwrap();
         println!("Called prover");
 
         assert!(MarlinInst::verify(&fs_pp, &index_vk, [*one, *one], &proof).unwrap());

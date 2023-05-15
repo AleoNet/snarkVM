@@ -46,20 +46,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Call prepare
-                let (response, mut execution, inclusion, metrics, function_assignments) =
+                let (response, mut execution, inclusion, metrics, mut function_assignments) =
                     $process.prepare_function::<$aleo>(authorization.clone())?;
                 lap!(timer, "Prepare the execution");
 
+                if function_assignments.len() != execution.transitions().len() {
+                    bail!("expected to have as many function assignments as transitions");
+                }
+
                 let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
-                for (i, transition) in execution.transitions().enumerate() {
+                for transition in execution.transitions() {
                     let pk_id = ProvingKeyId{
                         program_id: *transition.program_id(),
                         function_name: *transition.function_name(),
                     };
                     transition_assignments
                     .entry(pk_id)
-                    .and_modify(|assignments| assignments.push(&function_assignments[i]))
-                    .or_insert(vec![&function_assignments[i]]);
+                    .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+                    .or_insert(vec![function_assignments.pop_front().unwrap()]);
                 }
 
                 let (inclusion_assignments, global_state_root) = {
@@ -73,8 +77,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 let inclusion_assignments = cast_ref!(inclusion_assignments as Vec<InclusionAssignment<$network>>);
                 let inclusion_assignments = inclusion_assignments.into_iter().map(|a| a.to_circuit_assignment::<AleoV0>().unwrap()).collect_vec();
-                // TODO: we're passing every single circuit by reference, we should try adjusting the function signature of prove_batch and verify_batch
-                let inclusion_assignments = inclusion_assignments.iter().collect::<Vec<_>>();
                 let inclusion_assignments = if inclusion_assignments.len() == 0 { None } else {
                     // TODO: do we have to check if any of the transitions is exactly the inclusion circuit? By function_name, assignments and/or proving key.
                     Some(inclusion_assignments)
@@ -138,12 +140,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, fee_transition, inclusion, fee_assignments, metrics) =
+                let (response, fee_transition, inclusion, mut fee_assignments, metrics) =
                     $process.prepare_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
                 lap!(timer, "Execute the call to fee");
-
-                // TODO: this is because we're passing every single circuit by reference, we should try adjusting the function signature of prove_batch and verify_batch
-                let fee_assignments = fee_assignments.iter().collect::<Vec<_>>();
 
                 // Prepare the assignments.
                 let inclusion_assignments = {
@@ -155,18 +154,23 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 let global_state_root = Inclusion::fee_global_state_root(inclusion_assignments)?;
 
-                let inclusion_assignments = inclusion_assignments.into_iter().map(|ia|ia.to_circuit_assignment::<AleoV0>().unwrap()).collect_vec();
-                // TODO: we're passing every single circuit by reference, we should try adjusting the function signature of prove_batch and verify_batch
-                let inclusion_assignments = inclusion_assignments.iter().collect::<Vec<_>>();
-                let inclusion_assignments = if inclusion_assignments.len() == 0 { None } else {
-                    Some(inclusion_assignments)
-                };
+                let inclusion_assignments = inclusion_assignments
+                    .into_iter()
+                    .map(|ia| ia.to_circuit_assignment::<AleoV0>().unwrap())
+                    .collect_vec();
+                let inclusion_assignments =
+                    if inclusion_assignments.len() == 0 { None } else { Some(inclusion_assignments) };
                 lap!(timer, "Prepare the assignments");
 
                 let mut fee = Fee::from(fee_transition, global_state_root, None);
 
                 // Execute the call.
-                $process.execute_fee::<$aleo, _>(&mut fee, &fee_assignments, inclusion_assignments, rng)?;
+                $process.execute_fee::<$aleo, _>(
+                    &mut fee,
+                    fee_assignments.make_contiguous(),
+                    inclusion_assignments,
+                    rng,
+                )?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the return.

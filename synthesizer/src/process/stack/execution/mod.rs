@@ -86,7 +86,7 @@ impl<N: Network> Execution<N> {
     pub fn prove<R: Rng + CryptoRng>(
         &mut self,
         batch: KeyBatch<N>,
-        assignments: &[&Vec<&Assignment<N::Field>>],
+        assignments: &[&[Assignment<N::Field>]],
         function_names: &[&Identifier<N>],
         rng: &mut R,
     ) -> Result<()> {

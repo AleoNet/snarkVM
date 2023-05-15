@@ -127,7 +127,7 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     let (proving_key, verifying_key) = universal_srs.to_circuit_key(&inclusion_function_name, &assignment)?;
 
     // Ensure the proving key and verifying keys are valid.
-    let proof = proving_key.prove(&inclusion_function_name, &assignment, &mut thread_rng())?;
+    let proof = proving_key.prove(&inclusion_function_name, assignment, &mut thread_rng())?;
     assert!(verifying_key.verify(
         &inclusion_function_name,
         &[N::Field::one(), **state_path.global_state_root(), *Field::<N>::zero(), *serial_number],

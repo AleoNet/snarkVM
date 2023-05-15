@@ -38,7 +38,7 @@ impl<N: Network> ProvingKey<N> {
     pub fn prove<R: Rng + CryptoRng>(
         &self,
         function_name: &Identifier<N>,
-        assignment: &circuit::Assignment<N::Field>,
+        assignment: circuit::Assignment<N::Field>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]

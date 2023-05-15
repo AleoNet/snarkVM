@@ -54,7 +54,7 @@ mod marlin {
                         let certificate = $marlin_inst::prove_vk(&fs_parameters, &index_vk, &index_pk).unwrap();
                         assert!($marlin_inst::verify_vk(&fs_parameters, &circ, &index_vk, &certificate).unwrap());
 
-                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, rng).unwrap();
+                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, circ, rng).unwrap();
                         println!("Called prover");
 
                         assert!($marlin_inst::verify(&fs_parameters, &index_vk, public_inputs, &proof).unwrap());
@@ -88,19 +88,11 @@ mod marlin {
 
                             let mut pks_to_constraints = BTreeMap::new();
                             let mut vks_to_inputs = BTreeMap::new();
-                            let mut constraint_refs = Vec::with_capacity(index_keys.len());
                             for (index_pk, index_vk) in index_keys.iter() {
                                 let circuit_constraints = &constraints[&index_pk.circuit.id];
-                                let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
-                                for constraint in circuit_constraints.iter() {
-                                    circuit_constraint_refs.push(constraint)
-                                }
-                                constraint_refs.push(circuit_constraint_refs);
+                                pks_to_constraints.insert(index_pk, circuit_constraints.as_slice());
                                 let circuit_inputs = &inputs[&index_pk.circuit.id];
                                 vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
-                            }
-                            for (i, (index_pk, _)) in index_keys.iter().enumerate() {
-                                pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
                             }
 
                             let proof =
@@ -304,7 +296,7 @@ mod marlin_hiding {
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
+            let proof = MarlinInst::prove(&fs_parameters, &index_pk, circuit, rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&fs_parameters, &index_vk, public_inputs, &proof).unwrap());
@@ -434,13 +426,12 @@ mod marlin_hiding {
         let fs_parameters = FS::sample_parameters();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-        println!("Called circuit setup");
-
-        let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
-        println!("Called prover");
 
         universal_srs.download_powers_for(0..2usize.pow(18)).unwrap();
         let (new_pk, new_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+
+        let proof = MarlinInst::prove(&fs_parameters, &index_pk, circuit, rng).unwrap();
+
         assert_eq!(index_pk, new_pk);
         assert_eq!(index_vk, new_vk);
         assert!(MarlinInst::verify(&fs_parameters, &index_vk, public_inputs.clone(), &proof).unwrap());
@@ -461,10 +452,8 @@ mod marlin_hiding {
         let num_variables = 2usize.pow(15) - 10;
         let (circuit1, public_inputs1) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         let (pk1, vk1) = MarlinInst::circuit_setup(&universal_srs, &circuit1).unwrap();
-        println!("Called circuit setup");
 
-        let proof1 = MarlinInst::prove(&fs_parameters, &pk1, &circuit1, rng).unwrap();
-        println!("Called prover");
+        let proof1 = MarlinInst::prove(&fs_parameters, &pk1, circuit1, rng).unwrap();
         assert!(MarlinInst::verify(&fs_parameters, &vk1, public_inputs1.clone(), &proof1).unwrap());
 
         /*****************************************************************************/
@@ -475,10 +464,9 @@ mod marlin_hiding {
         let num_variables = 2usize.pow(19) - 10;
         let (circuit2, public_inputs2) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         let (pk2, vk2) = MarlinInst::circuit_setup(&universal_srs, &circuit2).unwrap();
-        println!("Called circuit setup");
 
-        let proof2 = MarlinInst::prove(&fs_parameters, &pk2, &circuit2, rng).unwrap();
-        println!("Called prover");
+        let proof2 = MarlinInst::prove(&fs_parameters, &pk2, circuit2, rng).unwrap();
+
         assert!(MarlinInst::verify(&fs_parameters, &vk2, public_inputs2, &proof2).unwrap());
         /*****************************************************************************/
         assert!(MarlinInst::verify(&fs_parameters, &vk1, public_inputs1, &proof1).unwrap());

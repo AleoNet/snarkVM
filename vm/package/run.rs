@@ -97,16 +97,19 @@ impl<N: Network> Package<N> {
         // Adds the verifying key to the process.
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
-        let (response, mut execution, inclusion, metrics, function_assignments) =
+        let (response, mut execution, inclusion, metrics, mut function_assignments) =
             process.prepare_function::<A>(authorization)?;
+        if function_assignments.len() != execution.transitions().len() {
+            bail!("expected to have as many function_assignments as transitions");
+        }
         let mut transition_assignments: BTreeMap<ProvingKeyId<N>, Vec<_>> = BTreeMap::new();
-        for (i, transition) in execution.transitions().enumerate() {
+        for transition in execution.transitions() {
             let pk_id =
                 ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
             transition_assignments
                 .entry(pk_id)
-                .and_modify(|assignments| assignments.push(&function_assignments[i]))
-                .or_insert(vec![&function_assignments[i]]);
+                .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+                .or_insert(vec![function_assignments.pop_front().unwrap()]);
         }
 
         // Execute the circuit.
