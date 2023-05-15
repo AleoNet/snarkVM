@@ -18,15 +18,16 @@ use super::*;
 
 const PROVING: u8 = 0;
 const VERIFYING: u8 = 1;
+const BATCH_VERSION_0: u8 = 0;
 
 impl<N: Network> FromBytes for KeyBatch<N> {
     /// Reads the proving key batch from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
-        let version = u16::read_le(&mut reader)?;
+        let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
-            return Err(error("Invalid verifying key version"));
+        if version != BATCH_VERSION_0 {
+            return Err(error("Invalid key version"));
         }
         // Read the mode.
         let mode = u8::read_le(&mut reader)?;
@@ -62,7 +63,7 @@ impl<N: Network> ToBytes for KeyBatch<N> {
     /// Writes the proving key to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u16.write_le(&mut writer)?;
+        BATCH_VERSION_0.write_le(&mut writer)?;
         // Write the key types
         match self.mode {
             KeyMode::Proving => PROVING.write_le(&mut writer)?,
