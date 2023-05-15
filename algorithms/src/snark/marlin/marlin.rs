@@ -887,7 +887,7 @@ where
                 }
                 let eval = proof
                     .evaluations
-                    .get(circuit_index as usize, &label)?
+                    .get(usize::try_from(circuit_index)?, &label)?
                     .ok_or_else(|| AHPError::MissingEval(label.clone()))?;
                 evaluations.insert((label, q), eval);
             }

@@ -131,6 +131,8 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     }
 }
 
+// It is safe to cast `supported_degree_bounds.len()` and individual bounds to a `u32` because they are read and used as u32
+#[allow(clippy::cast_possible_truncation)]
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize powers.
@@ -352,7 +354,7 @@ impl<E: PairingEngine> ToBytes for KZGCommitment<E> {
 }
 
 impl<E: PairingEngine> ToMinimalBits for KZGCommitment<E> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> Result<Vec<bool>, std::num::TryFromIntError> {
         self.0.to_minimal_bits()
     }
 }

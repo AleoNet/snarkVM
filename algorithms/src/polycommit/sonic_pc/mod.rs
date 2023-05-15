@@ -158,7 +158,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
             enforced_degree_bounds,
-            max_degree,
+            max_degree: u32::try_from(max_degree)?,
         };
 
         let g = pp.power_of_beta_g(0)?;
@@ -246,7 +246,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
-                ck.max_degree,
+                usize::try_from(ck.max_degree)?,
                 ck.enforced_degree_bounds.as_deref(),
                 p.clone(),
             )?;
@@ -329,16 +329,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
+        let max_degree = usize::try_from(ck.max_degree)?;
         Ok(Self::combine_polynomials(labeled_polynomials.into_iter().zip_eq(rands).map(|(p, r)| {
             let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
-            kzg10::KZG10::<E>::check_degrees_and_bounds(
-                ck.supported_degree(),
-                ck.max_degree,
-                enforced_degree_bounds,
-                p,
-            )
-            .unwrap();
+            kzg10::KZG10::<E>::check_degrees_and_bounds(ck.supported_degree(), max_degree, enforced_degree_bounds, p)
+                .unwrap();
             let challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
             (challenge, p.polynomial().to_dense(), r)
         })))

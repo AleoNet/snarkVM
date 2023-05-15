@@ -374,6 +374,7 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
 }
 
 #[cfg(test)]
+#[allow(clippy::cast_possible_truncation)]
 mod test {
     #![allow(non_camel_case_types)]
 

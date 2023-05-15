@@ -172,6 +172,8 @@ fn batch_add_write<G: AffineCurve>(
 }
 
 #[inline]
+// It is safe to cast num_buckets to u32 because it was small enough earlier in the callchain
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn batch_add<G: AffineCurve>(
     num_buckets: usize,
     bases: &[G],
@@ -325,6 +327,8 @@ pub(super) fn batch_add<G: AffineCurve>(
 }
 
 #[inline]
+// It is safe to cast w_start and c to u32 because they were small enough earlier in the callchain
+#[allow(clippy::cast_possible_truncation)]
 fn batched_window<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
