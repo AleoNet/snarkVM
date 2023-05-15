@@ -377,6 +377,8 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_bigint(), optimization_type)
     }
 
+    // params.bits_per_limb is safe to cast as u32 because it will be less than `max_limb_size`
+    #[allow(clippy::cast_possible_truncation)]
     /// Obtain the limbs directly from a big int
     pub fn get_limbs_representations_from_big_integer<TargetField: PrimeField>(
         elem: &<TargetField as PrimeField>::BigInteger,

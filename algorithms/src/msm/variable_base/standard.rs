@@ -19,6 +19,9 @@ use snarkvm_utilities::{cfg_into_iter, BigInteger};
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
+// It is safe to cast w_start to u32 because it was small enough earlier in the callchain
+// It is safe to cast scalar to usize because it is mod c, which is usize
+#[allow(clippy::cast_possible_truncation)]
 fn update_buckets<G: AffineCurve>(
     base: &G,
     mut scalar: <G::ScalarField as PrimeField>::BigInteger,

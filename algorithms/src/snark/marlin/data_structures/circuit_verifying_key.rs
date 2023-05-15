@@ -95,7 +95,7 @@ impl<E: PairingEngine, MM: MarlinMode> From<PreparedCircuitVerifyingKey<E, MM>> 
 }
 
 impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, MM> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> Result<Vec<bool>, std::num::TryFromIntError> {
         let constraint_domain = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
@@ -109,15 +109,10 @@ impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, 
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
 
-        assert!(constraint_domain.size() < u64::MAX as usize);
-        assert!(non_zero_domain_a.size() < u64::MAX as usize);
-        assert!(non_zero_domain_b.size() < u64::MAX as usize);
-        assert!(non_zero_domain_c.size() < u64::MAX as usize);
-
-        let constraint_domain_size = constraint_domain.size() as u64;
-        let non_zero_domain_a_size = non_zero_domain_a.size() as u64;
-        let non_zero_domain_b_size = non_zero_domain_b.size() as u64;
-        let non_zero_domain_c_size = non_zero_domain_c.size() as u64;
+        let constraint_domain_size = u64::try_from(constraint_domain.size())?;
+        let non_zero_domain_a_size = u64::try_from(non_zero_domain_a.size())?;
+        let non_zero_domain_b_size = u64::try_from(non_zero_domain_b.size())?;
+        let non_zero_domain_c_size = u64::try_from(non_zero_domain_c.size())?;
 
         let constraint_domain_size_bits = constraint_domain_size
             .to_le_bytes()
@@ -140,16 +135,16 @@ impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, 
             .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
             .collect::<Vec<bool>>();
 
-        let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
+        let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits()?;
 
-        [
+        Ok([
             constraint_domain_size_bits,
             non_zero_domain_size_a_bits,
             non_zero_domain_size_b_bits,
             non_zero_domain_size_c_bits,
             circuit_commitments_bits,
         ]
-        .concat()
+        .concat())
     }
 }
 

@@ -34,16 +34,16 @@ pub trait FromBits: Sized {
 
 pub trait ToMinimalBits: Sized {
     /// Returns `self` as a minimal boolean array.
-    fn to_minimal_bits(&self) -> Vec<bool>;
+    fn to_minimal_bits(&self) -> Result<Vec<bool>, std::num::TryFromIntError>;
 }
 
 impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn to_minimal_bits(&self) -> Result<Vec<bool>, std::num::TryFromIntError> {
         let mut res_bits = vec![];
         for elem in self.iter() {
-            res_bits.extend(elem.to_minimal_bits());
+            res_bits.extend(elem.to_minimal_bits()?);
         }
-        res_bits
+        Ok(res_bits)
     }
 }
 

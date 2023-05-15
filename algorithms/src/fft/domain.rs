@@ -114,7 +114,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// having `num_coeffs` coefficients.
     pub fn new(num_coeffs: usize) -> Option<Self> {
         // Compute the size of our evaluation domain
-        let size = num_coeffs.checked_next_power_of_two()? as u64;
+        let size = num_coeffs.checked_next_power_of_two()?;
         let log_size_of_group = size.trailing_zeros();
 
         // libfqfft uses > https://github.com/scipr-lab/libfqfft/blob/e0183b2cef7d4c5deb21a6eaf3fe3b586d738fe0/libfqfft/evaluation_domain/domains/basic_radix2_domain.tcc#L33
@@ -124,7 +124,8 @@ impl<F: FftField> EvaluationDomain<F> {
 
         // Compute the generator for the multiplicative subgroup.
         // It should be the 2^(log_size_of_group) root of unity.
-        let group_gen = F::get_root_of_unity(size as usize)?;
+        let group_gen = F::get_root_of_unity(size)?;
+        let size = size as u64;
 
         // Check that it is indeed the 2^(log_size_of_group) root of unity.
         debug_assert_eq!(group_gen.pow([size]), F::one());
@@ -150,6 +151,8 @@ impl<F: FftField> EvaluationDomain<F> {
         if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY { Some(size) } else { None }
     }
 
+    // casting to usize is safe because it is originally a usize in self.new()
+    #[allow(clippy::cast_possible_truncation)]
     /// Return the size of `self`.
     pub fn size(&self) -> usize {
         self.size as usize
@@ -254,7 +257,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// `tau`.
     pub fn evaluate_all_lagrange_coefficients(&self, tau: F) -> Vec<F> {
         // Evaluate all Lagrange polynomials
-        let size = self.size as usize;
+        let size = self.size();
         let t_size = tau.pow([self.size]);
         let one = F::one();
         if t_size.is_one() {
@@ -373,7 +376,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold and check that the type is Fr
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Forward,
@@ -402,7 +405,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -423,7 +426,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -450,7 +453,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Forward,
@@ -481,7 +484,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -515,7 +518,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -583,17 +586,17 @@ impl<F: FftField> EvaluationDomain<F> {
     // [1, g, g^2, ..., g^{(n/2) - 1}]
     #[cfg(feature = "serial")]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
-        compute_powers_serial((self.size as usize) / 2, root)
+        compute_powers_serial((self.size()) / 2, root)
     }
 
     /// Computes the first `self.size / 2` roots of unity.
     #[cfg(not(feature = "serial"))]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         // TODO: check if this method can replace parallel compute powers.
-        let log_size = log2(self.size as usize);
+        let log_size = log2(self.size());
         // early exit for short inputs
         if log_size <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
-            compute_powers_serial((self.size as usize) / 2, root)
+            compute_powers_serial((self.size()) / 2, root)
         } else {
             let mut temp = root;
             // w, w^2, w^4, w^8, ..., w^(2^(log_size - 1))
@@ -791,6 +794,8 @@ pub(crate) fn derange<T>(xi: &mut [T]) {
     derange_helper(xi, log2(xi.len()))
 }
 
+// casting to usize is safe because xi.len() is at most domain.size() which uses usize in self.new()
+#[allow(clippy::cast_possible_truncation)]
 fn derange_helper<T>(xi: &mut [T], log_len: u32) {
     for idx in 1..(xi.len() as u64 - 1) {
         let ridx = bitrev(idx, log_len);
