@@ -24,11 +24,8 @@
 //! When the `REWRITE_EXPECTATIONS` environment variable is set, then the expectation files are rewritten.
 //! Otherwise, the output is compared against the expectation files.
 
-pub mod expectations;
-pub use expectations::*;
-
-// pub mod runners;
-// pub use runners::*;
+pub mod expectation;
+pub use expectation::*;
 
 pub mod tests;
 pub use tests::*;
