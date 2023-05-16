@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Test;
+use crate::{get_expectation_path, print_difference, ExpectedTest};
 
+use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
 /// A test for a parser, where the entire file is the test input.
 pub struct FileParseTest {
-    path: PathBuf,
     test_string: String,
+    expectation: String,
+    expectation_path: PathBuf,
+    rewrite: bool,
 }
 
 impl FileParseTest {
@@ -31,17 +34,39 @@ impl FileParseTest {
     }
 }
 
-impl Test for FileParseTest {
+impl ExpectedTest for FileParseTest {
+    type Output = String;
+    type Test = String;
+
     /// Loads the test from a given path.
-    fn load<P: AsRef<Path>>(path: P) -> Self {
-        let path = path.as_ref().to_path_buf();
+    fn load<P: AsRef<Path>>(test_path: P, expectation_dir: P) -> Self {
         // Read the contents of the test file.
-        let test_string = std::fs::read_to_string(&path).expect("Failed to read test file.");
-        Self { path, test_string }
+        let test_string = std::fs::read_to_string(&test_path).expect("Failed to read test file.");
+        // Check if the expectation file should be rewritten.
+        let rewrite = std::env::var("REWRITE_EXPECTATIONS").is_ok();
+        // Construct the path the expectation file.
+        let expectation_path = get_expectation_path(&test_path, &expectation_dir);
+        // If the expectation file should be rewritten, then there is no need to read the expectation file.
+        let expectation = match rewrite {
+            true => String::new(),
+            false => std::fs::read_to_string(&expectation_path).expect("Failed to read expectation file."),
+        };
+        Self { test_string, expectation, expectation_path, rewrite }
     }
 
-    /// Returns the path to the test file.
-    fn path(&self) -> PathBuf {
-        self.path.clone()
+    fn check(&self, output: &Self::Output) -> Result<()> {
+        match self.rewrite {
+            false if self.expectation != *output => {
+                bail!("{}", print_difference(&self.test_string, &self.expectation, output))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn save(&self, output: &Self::Output) -> Result<()> {
+        if self.rewrite {
+            std::fs::write(&self.expectation_path, output)?;
+        }
+        Ok(())
     }
 }
