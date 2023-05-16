@@ -42,9 +42,7 @@ impl<N: Network> Process<N> {
         ensure!(fee_function_name == fee_function, "Incorrect function name for fee");
 
         // Ensure the assignments are not empty.
-        if fee_assignments.is_empty() {
-            bail!("Expected the assignments for the fee to *not* be empty")
-        }
+        ensure!(!fee_assignments.is_empty(), "Expected assignments");
 
         let mut batch = KeyBatch::new(2, KeyMode::Proving);
         let mut assignments = Vec::with_capacity(2);

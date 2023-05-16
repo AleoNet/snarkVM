@@ -112,9 +112,8 @@ impl<N: Network> Fee<N> {
 
     /// Verifies the fee.
     pub fn verify(&self, batch: KeyBatch<N>, inputs: &[Vec<Vec<N::Field>>]) -> Result<bool> {
-        if self.proof.is_none() {
-            bail!("Proof missing!")
-        }
+        ensure!(self.proof.is_some(), "proof missing!");
+
         let mut function_names = vec![self.transition().function_name()];
         let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
         if inputs.len() > 1 {

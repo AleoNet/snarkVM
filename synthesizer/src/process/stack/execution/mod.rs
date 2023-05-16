@@ -90,15 +90,10 @@ impl<N: Network> Execution<N> {
         function_names: &[&Identifier<N>],
         rng: &mut R,
     ) -> Result<()> {
-        if self.proof.is_some() {
-            bail!("Proof already exists!")
-        }
-        if assignments.len() != function_names.len() {
-            bail!("Number of assignments and function names must be equal!")
-        }
-        if assignments.is_empty() {
-            bail!("Number of assignments must be greater than zero!")
-        }
+        ensure!(self.proof.is_none(), "Proof already exists!");
+        ensure!(assignments.len() == function_names.len(), "Need to have equal assignments and names");
+        ensure!(!assignments.is_empty(), "Number of assignments must be greater than zero!");
+
         let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
         let proves_inclusion = *function_names[function_names.len() - 1] == inclusion_name;
         let proof = batch.prove(function_names, assignments, proves_inclusion, rng)?;
@@ -110,9 +105,8 @@ impl<N: Network> Execution<N> {
 
     /// Verifies the execution.
     pub fn verify(&self, batch: KeyBatch<N>, inputs: &[Vec<Vec<N::Field>>]) -> Result<bool> {
-        if self.proof.is_none() {
-            bail!("Proof missing!")
-        }
+        ensure!(self.proof.is_some(), "proof missing!");
+
         let mut function_names = self.transitions.values().map(|t| t.function_name()).collect::<Vec<_>>();
         let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
         function_names.push(&inclusion_name);
