@@ -23,12 +23,9 @@ use snarkvm_synthesizer::Instruction;
 #[test]
 fn test_instruction_parser() {
     // Load the tests.
-    let tests = load_tests::<_, LineParseTest>("./tests/parser/instruction");
-    // For each test, load the corresponding expectation file.
-    let expectations =
-        tests.iter().map(|test| LineExpectation::load(get_expectation_path(test.path())).unwrap()).collect::<Vec<_>>();
+    let tests = load_tests::<_, LineParseTest>("./tests/parser/instruction", "./expectations/parser/instruction");
     // Run each test and compare it against its corresponding expectation.
-    for (test, expectation) in tests.iter().zip_eq(expectations.iter()) {
+    for test in &tests {
         // Run the parser on each of the test strings.
         let outputs = test
             .test_strings()
@@ -36,8 +33,8 @@ fn test_instruction_parser() {
             .map(|test_string| convert_result(Instruction::<Testnet3>::parse(test_string), test_string))
             .collect::<Vec<_>>();
         // Check against the expected output.
-        expectation.check(test.test_strings(), &outputs).unwrap();
+        test.check(&outputs).unwrap();
         // Save the output.
-        expectation.save(&outputs).unwrap();
+        test.save(&outputs).unwrap();
     }
 }
