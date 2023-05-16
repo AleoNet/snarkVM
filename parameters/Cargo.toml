@@ -113,7 +113,7 @@ path = "../console"
 path = "../synthesizer"
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.34"
+version = "0.3.36"
 
 [dev-dependencies.hex]
 version = "0.4.3"
