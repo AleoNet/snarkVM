@@ -20,39 +20,21 @@ use utilities::*;
 use console::network::{prelude::*, Testnet3};
 use snarkvm_synthesizer::Program;
 
-use std::{marker::PhantomData, path::Path};
-
-/// Defines a test that runs a parser on a given program.
-pub struct TestParserProgram<F: Parser> {
-    input: String,
-    expectation: FileExpectation,
-    phantom: PhantomData<F>,
-}
-
-impl<F: Parser> Test for TestParserProgram<F> {
-    type Config = ();
-
-    fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
-        // Read the test file.
-        let input = std::fs::read_to_string(&path).expect("Failed to read program file.");
-        // Load the expectation file.
-        let expectation = FileExpectation::load(get_expectation_path(&path))?;
-
-        Ok(Self { input, expectation, phantom: Default::default() })
-    }
-
-    fn run(&self, _: &Self::Config) {
-        // Run the parser and convert the result into a readable format.
-        let output = convert_result(F::parse(&self.input), &self.input);
-        // Check the result against the expectation.
-        self.expectation.check(&self.input, &output).expect("Failed to check expectation.");
-        // Save the result to the expectation file.
-        self.expectation.save(&output).expect("Failed to save expectation.");
-    }
-}
-
 #[test]
 fn test_program_parser() {
-    let runner = StandardRunner::<TestParserProgram<Program<Testnet3>>>::initialize("./tests/parser/program");
-    runner.run();
+    // Load the tests.
+    let tests = load_tests::<_, FileParseTest>("./tests/parser/instruction");
+    // For each test, load the corresponding expectation file.
+    let expectations =
+        tests.iter().map(|test| FileExpectation::load(get_expectation_path(test.path())).unwrap()).collect::<Vec<_>>();
+    // Run each test and compare it against its corresponding expectation.
+    for (test, expectation) in tests.iter().zip_eq(expectations.iter()) {
+        // Run the parser on the test string.
+        let test_string = test.test_string();
+        let output = convert_result(Program::<Testnet3>::parse(test_string), test_string);
+        // Check against the expected output.
+        expectation.check(test_string, &output).unwrap();
+        // Save the output.
+        expectation.save(&output).unwrap();
+    }
 }
