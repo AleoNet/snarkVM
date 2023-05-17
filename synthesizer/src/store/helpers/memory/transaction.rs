@@ -185,8 +185,8 @@ pub struct ExecutionMemory<N: Network> {
     id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, bool)>,
     /// The reverse ID map.
     reverse_id_map: MemoryMap<N::TransitionID, N::TransactionID>,
-    /// The inclusion map.
-    inclusion_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
+    /// The execution map.
+    execution_map: MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
     /// The fee store.
     fee_store: FeeStore<N, FeeMemory<N>>,
 }
@@ -195,7 +195,7 @@ pub struct ExecutionMemory<N: Network> {
 impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, bool)>;
     type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type InclusionMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
+    type ExecutionMap = MemoryMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
     type FeeStorage = FeeMemory<N>;
 
     /// Initializes the execution storage.
@@ -203,7 +203,7 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
         Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
-            inclusion_map: MemoryMap::default(),
+            execution_map: MemoryMap::default(),
             fee_store
         })
     }
@@ -218,9 +218,9 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
         &self.reverse_id_map
     }
 
-    /// Returns the inclusion map.
-    fn inclusion_map(&self) -> &Self::InclusionMap {
-        &self.inclusion_map
+    /// Returns the execution map.
+    fn execution_map(&self) -> &Self::ExecutionMap {
+        &self.execution_map
     }
 
     /// Returns the fee store.

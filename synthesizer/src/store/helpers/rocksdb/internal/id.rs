@@ -80,7 +80,7 @@ pub enum DeploymentMap {
 pub enum ExecutionMap {
     ID = DataID::ExecutionIDMap as u16,
     ReverseID = DataID::ExecutionReverseIDMap as u16,
-    Inclusion = DataID::ExecutionInclusionMap as u16,
+    Execution = DataID::ExecutionExecutionMap as u16,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -177,7 +177,7 @@ enum DataID {
     // Execution
     ExecutionIDMap,
     ExecutionReverseIDMap,
-    ExecutionInclusionMap,
+    ExecutionExecutionMap,
     // Fee
     FeeFeeMap,
     FeeReverseFeeMap,

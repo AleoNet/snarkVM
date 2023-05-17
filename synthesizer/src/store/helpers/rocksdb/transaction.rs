@@ -197,8 +197,8 @@ pub struct ExecutionDB<N: Network> {
     id_map: DataMap<N::TransactionID, (Vec<N::TransitionID>, bool)>,
     /// The reverse ID map.
     reverse_id_map: DataMap<N::TransitionID, N::TransactionID>,
-    /// The inclusion map.
-    inclusion_map: DataMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
+    /// The execution map.
+    execution_map: DataMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>,
     /// The fee store.
     fee_store: FeeStore<N, FeeDB<N>>,
 }
@@ -207,7 +207,7 @@ pub struct ExecutionDB<N: Network> {
 impl<N: Network> ExecutionStorage<N> for ExecutionDB<N> {
     type IDMap = DataMap<N::TransactionID, (Vec<N::TransitionID>, bool)>;
     type ReverseIDMap = DataMap<N::TransitionID, N::TransactionID>;
-    type InclusionMap = DataMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
+    type ExecutionMap = DataMap<N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
     type FeeStorage = FeeDB<N>;
 
     /// Initializes the execution storage.
@@ -217,7 +217,7 @@ impl<N: Network> ExecutionStorage<N> for ExecutionDB<N> {
         Ok(Self {
             id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::ID))?,
             reverse_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::ReverseID))?,
-            inclusion_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::Inclusion))?,
+            execution_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Execution(ExecutionMap::Execution))?,
             fee_store,
         })
     }
@@ -232,9 +232,9 @@ impl<N: Network> ExecutionStorage<N> for ExecutionDB<N> {
         &self.reverse_id_map
     }
 
-    /// Returns the inclusion map.
-    fn inclusion_map(&self) -> &Self::InclusionMap {
-        &self.inclusion_map
+    /// Returns the execution map.
+    fn execution_map(&self) -> &Self::ExecutionMap {
+        &self.execution_map
     }
 
     /// Returns the fee store.

@@ -41,7 +41,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     /// The mapping of `transition ID` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
     /// The mapping of `transaction ID` to `(global state root, (optional) proof)`.
-    type InclusionMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
+    type ExecutionMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
     /// The fee storage
     type FeeStorage: FeeStorage<N>;
 
@@ -52,8 +52,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn id_map(&self) -> &Self::IDMap;
     /// Returns the reverse ID map.
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
-    /// Returns the inclusion map.
-    fn inclusion_map(&self) -> &Self::InclusionMap;
+    /// Returns the execution map.
+    fn execution_map(&self) -> &Self::ExecutionMap;
     /// Returns the fee store.
     fn fee_store(&self) -> &FeeStore<N, Self::FeeStorage>;
     /// Returns the transition store.
@@ -70,7 +70,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn start_atomic(&self) {
         self.id_map().start_atomic();
         self.reverse_id_map().start_atomic();
-        self.inclusion_map().start_atomic();
+        self.execution_map().start_atomic();
         self.fee_store().start_atomic();
     }
 
@@ -78,7 +78,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn is_atomic_in_progress(&self) -> bool {
         self.id_map().is_atomic_in_progress()
             || self.reverse_id_map().is_atomic_in_progress()
-            || self.inclusion_map().is_atomic_in_progress()
+            || self.execution_map().is_atomic_in_progress()
             || self.fee_store().is_atomic_in_progress()
     }
 
@@ -86,7 +86,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn atomic_checkpoint(&self) {
         self.id_map().atomic_checkpoint();
         self.reverse_id_map().atomic_checkpoint();
-        self.inclusion_map().atomic_checkpoint();
+        self.execution_map().atomic_checkpoint();
         self.fee_store().atomic_checkpoint();
     }
 
@@ -94,7 +94,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
         self.reverse_id_map().atomic_rewind();
-        self.inclusion_map().atomic_rewind();
+        self.execution_map().atomic_rewind();
         self.fee_store().atomic_rewind();
     }
 
@@ -102,7 +102,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
         self.reverse_id_map().abort_atomic();
-        self.inclusion_map().abort_atomic();
+        self.execution_map().abort_atomic();
         self.fee_store().abort_atomic();
     }
 
@@ -110,7 +110,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     fn finish_atomic(&self) -> Result<()> {
         self.id_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
-        self.inclusion_map().finish_atomic()?;
+        self.execution_map().finish_atomic()?;
         self.fee_store().finish_atomic()
     }
 
@@ -145,7 +145,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             }
 
             // Store the global state root and proof.
-            self.inclusion_map().insert(*transaction_id, (global_state_root, proof))?;
+            self.execution_map().insert(*transaction_id, (global_state_root, proof))?;
 
             // Store the fee.
             if let Some(fee) = fee {
@@ -178,7 +178,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             }
 
             // Remove the global state root and inclusion proof.
-            self.inclusion_map().remove(transaction_id)?;
+            self.execution_map().remove(transaction_id)?;
 
             // Remove the fee.
             if has_fee {
@@ -215,8 +215,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Retrieve the global state root and proof.
-        let (global_state_root, proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
-            Some(inclusion) => cow_to_cloned!(inclusion),
+        let (global_state_root, proof) = match self.execution_map().get_confirmed(transaction_id)? {
+            Some(execution) => cow_to_cloned!(execution),
             None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
         };
 
@@ -244,8 +244,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         };
 
         // Retrieve the global state root and proof.
-        let (global_state_root, proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
-            Some(inclusion) => cow_to_cloned!(inclusion),
+        let (global_state_root, proof) = match self.execution_map().get_confirmed(transaction_id)? {
+            Some(execution) => cow_to_cloned!(execution),
             None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
         };
 

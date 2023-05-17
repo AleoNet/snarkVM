@@ -78,7 +78,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let inclusion_assignments = cast_ref!(inclusion_assignments as Vec<InclusionAssignment<$network>>);
                 let inclusion_assignments = inclusion_assignments.into_iter().map(|a| a.to_circuit_assignment::<AleoV0>().unwrap()).collect_vec();
                 let inclusion_assignments = if inclusion_assignments.len() == 0 { None } else {
-                    // TODO: do we have to check if any of the transitions is exactly the inclusion circuit? By function_name, assignments and/or proving key.
+                    // NOTE: the inclusion circuit will always be different from any transition circuit because
+                    //       in execute_function() we add some constraints unique to transitions
                     Some(inclusion_assignments)
                 };
 

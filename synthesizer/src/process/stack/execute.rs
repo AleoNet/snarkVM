@@ -54,7 +54,7 @@ impl<N: Network> Stack<N> {
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-            // If the circuit is in execute mode, then store the console input.
+            // If the circuit is in prepare mode, then store the console input.
             if let CallStack::Prepare(..) = registers.call_stack() {
                 use circuit::Eject;
                 // Assign the console input to the register.
@@ -67,7 +67,7 @@ impl<N: Network> Stack<N> {
 
         // Execute the instructions.
         for instruction in closure.instructions() {
-            // If the circuit is in execute mode, then evaluate the instructions.
+            // If the circuit is in prepare mode, then evaluate the instructions.
             if let CallStack::Prepare(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = instruction.evaluate(self, &mut registers) {
@@ -202,7 +202,7 @@ impl<N: Network> Stack<N> {
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
-            // If the circuit is in execute mode, then store the console input.
+            // If the circuit is in prepare mode, then store the console input.
             if let CallStack::Prepare(..) = registers.call_stack() {
                 // Assign the console input to the register.
                 registers.store(self, register, input.eject_value())?;
@@ -217,7 +217,7 @@ impl<N: Network> Stack<N> {
 
         // Execute the instructions.
         for instruction in function.instructions() {
-            // If the circuit is in execute mode, then evaluate the instructions.
+            // If the circuit is in prepare mode, then evaluate the instructions.
             if let CallStack::Prepare(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = instruction.evaluate(self, &mut registers) {
@@ -307,7 +307,7 @@ impl<N: Network> Stack<N> {
         let num_response_constraints =
             A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
 
-        // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
+        // If the circuit is in `Synthesize`, `CheckDeployment` or `Prepare`  mode, then prepare the 'finalize' scope if it exists.
         let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
             || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
             || matches!(registers.call_stack(), CallStack::Prepare(..))
