@@ -68,7 +68,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 let (inclusion_assignments, global_state_root) = {
                     let execution = cast_ref!(&mut execution as Execution<N>);
-                    // TODO: it may be more efficient if we can cast query into $network land, but C is not a concrete type...
                     let inclusion = cast_ref!(inclusion as Inclusion<N>);
                     inclusion.prepare_execution(&execution, query)?
                 };
