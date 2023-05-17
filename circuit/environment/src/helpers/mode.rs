@@ -65,8 +65,11 @@ impl Mode {
         //   - If `current_mode == Mode::Public` && `next_mode == Mode::Private`, then `current_mode = next_mode`.
         //   - Otherwise, do nothing.
         for next_mode in modes {
+            if current_mode.is_private() {
+                break;
+            }
             // Check if the current mode matches the next mode.
-            if !current_mode.is_private() && current_mode != next_mode {
+            if current_mode != next_mode {
                 match (current_mode, next_mode) {
                     (Mode::Constant, Mode::Public)
                     | (Mode::Constant, Mode::Private)
