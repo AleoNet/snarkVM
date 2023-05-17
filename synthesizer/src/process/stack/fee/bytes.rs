@@ -29,8 +29,6 @@ impl<N: Network> FromBytes for Fee<N> {
         let transition = Transition::read_le(&mut reader)?;
         // Read the global state root.
         let global_state_root = N::StateRoot::read_le(&mut reader)?;
-        // Read whether we prove inclusion.
-        // let proves_inclusion = bool::read_le(&mut reader)?;
         // Read the proof variant.
         let proof_variant = u8::read_le(&mut reader)?;
         // Read the proof.
