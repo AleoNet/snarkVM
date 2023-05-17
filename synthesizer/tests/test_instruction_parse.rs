@@ -18,20 +18,23 @@ mod utilities;
 use utilities::*;
 
 use console::network::{prelude::*, Testnet3};
-use snarkvm_synthesizer::Program;
+use snarkvm_synthesizer::Instruction;
 
 #[test]
-fn test_program_parser() {
+fn test_instruction_parse() {
     // Load the tests.
-    let tests = load_tests::<_, FileParseTest>("./tests/parser/program", "./expectations/parser/program");
+    let tests = load_tests::<_, LineParseTest>("./tests/parser/instruction", "./expectations/parser/instruction");
     // Run each test and compare it against its corresponding expectation.
     for test in &tests {
-        // Run the parser on the test string.
-        let test_string = test.test_string();
-        let output = convert_result(Program::<Testnet3>::parse(test_string), test_string);
+        // Run the parser on each of the test strings.
+        let outputs = test
+            .test_strings()
+            .iter()
+            .map(|test_string| convert_result(Instruction::<Testnet3>::parse(test_string), test_string))
+            .collect::<Vec<_>>();
         // Check against the expected output.
-        test.check(&output).unwrap();
+        test.check(&outputs).unwrap();
         // Save the output.
-        test.save(&output).unwrap();
+        test.save(&outputs).unwrap();
     }
 }
