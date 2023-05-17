@@ -63,17 +63,23 @@ impl ExpectedTest for LineParseTest {
     }
 
     fn check(&self, output: &Self::Output) -> Result<()> {
+        // Initialize space to accumulate errors.
+        let mut errors = Vec::new();
+        // If the expectation file should be rewritten, then there is no need to check the output.
         if !self.rewrite {
-            self.test_strings.iter().zip_eq(self.expectations.iter().zip_eq(output.iter())).try_for_each(
+            self.test_strings.iter().zip_eq(self.expectations.iter().zip_eq(output.iter())).for_each(
                 |(test, (expected, actual))| {
                     if expected != actual {
-                        bail!("{}", print_difference(test, expected, actual));
+                        errors.push(print_difference(test, expected, actual));
                     }
-                    Ok(())
                 },
-            )?;
+            );
+        };
+        // Write the errors, if any.
+        match errors.is_empty() {
+            true => Ok(()),
+            false => bail!("{}", errors.iter().join("\n\n")),
         }
-        Ok(())
     }
 
     fn save(&self, output: &Self::Output) -> Result<()> {

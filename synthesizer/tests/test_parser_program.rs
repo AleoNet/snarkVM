@@ -23,7 +23,7 @@ use snarkvm_synthesizer::Program;
 #[test]
 fn test_program_parser() {
     // Load the tests.
-    let tests = load_tests::<_, FileParseTest>("./tests/parser/instruction", "./expectations/parser/instruction");
+    let tests = load_tests::<_, FileParseTest>("./tests/parser/program", "./expectations/parser/program");
     // Run each test and compare it against its corresponding expectation.
     for test in &tests {
         // Run the parser on the test string.

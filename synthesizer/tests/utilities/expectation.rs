@@ -26,10 +26,8 @@ pub fn get_expectation_path<P: AsRef<Path>>(test_path: P, expectation_dir: P) ->
     let current_dir = current_dir().expect("Failed to get current directory.");
     // Construct the path to the directory containing the expectation file.
     let expectation_dir = current_dir.join("tests").join(expectation_dir);
-    // Construct the path to the directory containing the test file.
-    let test_dir = current_dir.join("tests/tests");
     // Construct the path to the expectation file.
-    expectation_dir.join(test_path.as_ref().to_path_buf().strip_prefix(test_dir).unwrap().with_extension("out"))
+    expectation_dir.join(Path::new(test_path.as_ref().file_name().unwrap()).with_extension("out"))
 }
 
 /// Helper function to print the difference between the expected and actual output.
