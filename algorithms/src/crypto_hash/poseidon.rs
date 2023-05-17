@@ -385,6 +385,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         optimization_type: OptimizationType,
     ) -> SmallVec<[F; 10]> {
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), optimization_type);
+        assert!(params.bits_per_limb <= u32::MAX as usize);
 
         // Push the lower limbs first
         let mut limbs: SmallVec<[F; 10]> = SmallVec::new();
