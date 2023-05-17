@@ -66,7 +66,13 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-                    let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
+                    let carry_bits_nonzero = {
+                        let mut sum = Field::zero();
+                        for bit in carry.iter() {
+                            sum += Field::from_boolean(bit);
+                        }
+                        sum.is_equal(&Field::zero())
+                    };
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
                     let operands_same_sign = &result.msb().is_equal(self.msb());
@@ -91,7 +97,13 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     let (product, carry) = Self::mul_with_carry(&result, self);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
-                    let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
+                    let overflow = {
+                        let mut sum = Field::zero();
+                        for bit in carry.iter() {
+                            sum += Field::from_boolean(bit);
+                        }
+                        sum.is_equal(&Field::zero())
+                    };
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Return the product of `self` and `other`.
@@ -118,6 +130,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowChecked<Intege
                 (2 * M::BITS * mul_count) + Count::is(2 * I::BITS, 0, I::BITS, I::BITS)
             }
             (_, _) => {
+                let mut count = Count::is(I::BITS, 0, 0, 0);
                 let mul_count = count!(Integer<E, I>, MulWrapped<Integer<E, I>, Output=Integer<E, I>>, case);
                 (2 * M::BITS * mul_count) + Count::is(2 * I::BITS, 0, I::BITS, I::BITS)
             }
