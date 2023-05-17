@@ -31,6 +31,7 @@ fn update_buckets<G: AffineCurve>(
     c: usize,
     buckets: &mut [G::Projective],
 ) {
+    assert!(w_start <= u32::MAX as usize);
     // We right-shift by w_start, thus getting rid of the lower bits.
     scalar.divn(w_start as u32);
 

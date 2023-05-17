@@ -181,6 +181,7 @@ pub(super) fn batch_add<G: AffineCurve>(
 ) -> Vec<G> {
     // assert_eq!(bases.len(), bucket_positions.len());
     assert!(!bases.is_empty());
+    assert!(num_buckets <= u32::MAX as usize);
 
     // Fetch the ideal batch size for the number of bases.
     let batch_size = batch_size(bases.len());
@@ -335,6 +336,8 @@ fn batched_window<G: AffineCurve>(
     w_start: usize,
     c: usize,
 ) -> (G::Projective, usize) {
+    assert!(w_start <= u32::MAX as usize);
+    assert!(c <= u32::MAX as usize);
     // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
     let window_size = if (w_start % c) != 0 { w_start % c } else { c };
     let num_buckets = (1 << window_size) - 1;
