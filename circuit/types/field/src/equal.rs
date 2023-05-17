@@ -22,7 +22,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 2 constraints.
     ///
     fn is_equal(&self, other: &Self) -> Self::Output {
         !self.is_not_equal(other)
@@ -34,7 +34,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
     /// This method constructs a boolean that indicates if
     /// `self` and `other ` are *not* equal to each other.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 2 constraints.
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         match (self.is_constant(), other.is_constant()) {
