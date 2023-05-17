@@ -40,7 +40,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-
                 // Prepare the authorization.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
                 lap!(timer, "Prepare the authorization");
@@ -56,14 +55,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
                 for transition in execution.transitions() {
-                    let pk_id = ProvingKeyId{
+                    let pk_id = ProvingKeyId {
                         program_id: *transition.program_id(),
                         function_name: *transition.function_name(),
                     };
                     transition_assignments
-                    .entry(pk_id)
-                    .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
-                    .or_insert(vec![function_assignments.pop_front().unwrap()]);
+                        .entry(pk_id)
+                        .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+                        .or_insert(vec![function_assignments.pop_front().unwrap()]);
                 }
 
                 let (inclusion_assignments, global_state_root) = {
@@ -75,8 +74,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the assignments");
 
                 let inclusion_assignments = cast_ref!(inclusion_assignments as Vec<InclusionAssignment<$network>>);
-                let inclusion_assignments = inclusion_assignments.into_iter().map(|a| a.to_circuit_assignment::<AleoV0>().unwrap()).collect_vec();
-                let inclusion_assignments = if inclusion_assignments.len() == 0 { None } else {
+                let inclusion_assignments = inclusion_assignments
+                    .into_iter()
+                    .map(|a| a.to_circuit_assignment::<AleoV0>().unwrap())
+                    .collect_vec();
+                let inclusion_assignments = if inclusion_assignments.len() == 0 {
+                    None
+                } else {
                     // NOTE: the inclusion circuit will always be different from any transition circuit because
                     //       in execute_function() we add some constraints unique to transitions
                     Some(inclusion_assignments)
