@@ -19,18 +19,7 @@ mod fee;
 
 #[cfg(debug_assertions)]
 use crate::Stack;
-use crate::{
-    BlockStorage,
-    Execution,
-    Fee,
-    Input,
-    Output,
-    ProvingKey,
-    Query,
-    Transaction,
-    Transition,
-    VerifyingKey,
-};
+use crate::{BlockStorage, Execution, Fee, Input, Output, Query, Transaction, Transition, VerifyingKey};
 use console::{
     network::prelude::*,
     program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},

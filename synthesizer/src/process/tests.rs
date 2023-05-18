@@ -1550,12 +1550,23 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (_response, mut execution, _inclusion, _metrics, mut function_assignments) =
+        process.prepare_function::<CurrentAleo>(authorization).unwrap();
+    assert_eq!(function_assignments.len(), execution.transitions().len());
+    let mut transition_assignments = BTreeMap::<_, Vec<_>>::new();
+    for transition in execution.transitions() {
+        let pk_id = ProvingKeyId { program_id: *transition.program_id(), function_name: *transition.function_name() };
+        transition_assignments
+            .entry(pk_id)
+            .and_modify(|assignments| assignments.push(function_assignments.pop_front().unwrap()))
+            .or_insert(vec![function_assignments.pop_front().unwrap()]);
+    }
+    process.execute::<CurrentAleo, _>(&mut execution, transition_assignments, None, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 
     // Verify the execution.
-    process.verify_execution::<true>(&execution).unwrap();
+    process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
     process.finalize_execution(&store, &execution).unwrap();
