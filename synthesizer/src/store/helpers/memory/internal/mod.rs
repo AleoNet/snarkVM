@@ -949,4 +949,148 @@ mod tests {
         // Ensure that the atomic finalize fails if an atomic batch is in progress.
         assert!(outcome().is_err());
     }
+
+    #[test]
+    fn test_atomic_checkpoint_truncation() {
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Insert the key.
+        map.insert(0, "0".to_string()).unwrap();
+
+        // Start an atomic finalize.
+        let outcome = atomic_batch_scope!(map, {
+            // Insert the key.
+            map.insert(0, "1".to_string()).unwrap();
+
+            // Create a failing atomic batch scope that will reset the checkpoint.
+            let result: Result<()> = atomic_batch_scope!(map, {
+                // Make sure the checkpoint index is 1.
+                assert_eq!(map.checkpoint.lock().back(), Some(&1));
+
+                // Update the key.
+                map.insert(0, "2".to_string()).unwrap();
+
+                bail!("This batch scope should fail.")
+            });
+
+            // Ensure that the batch scope failed.
+            assert!(result.is_err());
+            // The map should still contain no items.
+            assert_eq!(map.iter_confirmed().count(), 1);
+            // The pending batch should contain 1 item.
+            assert_eq!(map.iter_pending().count(), 1);
+            // Ensure the pending operations still has the initial insertion.
+            assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+            // Ensure the confirmed value has not changed.
+            assert_eq!(*map.iter_confirmed().next().unwrap().1, "0");
+
+            Ok(())
+        });
+
+        assert!(outcome.is_ok());
+        // The map should contain 1 item.
+        assert_eq!(map.iter_confirmed().count(), 1);
+        // The pending batch should contain no items.
+        assert!(map.iter_pending().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Ensure that the map value is correct.
+        assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
+    }
+
+    #[test]
+    fn test_atomic_checkpoint_nested() -> Result<()> {
+        // Initialize a map.
+        let map: MemoryMap<usize, String> = Default::default();
+        // Sanity check.
+        assert!(map.iter_confirmed().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Insert the key.
+        map.insert(0, "0".to_string()).unwrap();
+
+        // Start an atomic finalize.
+        let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
+            // Create an atomic batch scope that will complete correctly.
+            // Simulates an accepted transaction.
+            let result: Result<()> = atomic_batch_scope!(map, {
+                // Make sure the checkpoint index is 0.
+                assert_eq!(map.checkpoint.lock().back(), Some(&0));
+
+                // Insert the key.
+                map.insert(0, "1".to_string()).unwrap();
+
+                Ok(())
+            });
+
+            // The atomic finalize should have succeeded.
+            assert!(result.is_ok());
+            // The map should still contain no items.
+            assert_eq!(map.iter_confirmed().count(), 1);
+            // The pending batch should contain 1 item.
+            assert_eq!(map.iter_pending().count(), 1);
+            // Make sure the pending operations is correct.
+            assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+
+            // Create a failing atomic batch scope that will reset the checkpoint.
+            // Simulates a rejected transaction.
+            let result: Result<()> = atomic_batch_scope!(map, {
+                // Make sure the checkpoint index is 1.
+                assert_eq!(map.checkpoint.lock().back(), Some(&1));
+
+                // Simulate an instruction
+                let result: Result<()> = atomic_batch_scope!(map, {
+                    // Update the key.
+                    map.insert(0, "2".to_string()).unwrap();
+
+                    Ok(())
+                });
+                assert!(result.is_ok());
+
+                let result: Result<()> = atomic_batch_scope!(map, {
+                    // Make sure the checkpoint index is 1.
+                    assert_eq!(map.checkpoint.lock().back(), Some(&1));
+
+                    // Update the key.
+                    map.insert(0, "3".to_string()).unwrap();
+
+                    Ok(())
+                });
+                assert!(result.is_ok());
+
+                bail!("This batch scope should fail.")
+            });
+
+            // Ensure that the batch scope failed.
+            assert!(result.is_err());
+            // The map should still contain no items.
+            assert_eq!(map.iter_confirmed().count(), 1);
+            // The pending batch should contain 1 item.
+            assert_eq!(map.iter_pending().count(), 1);
+            // Make sure the pending operations still has the initial insertion.
+            assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+
+            Ok(())
+        });
+
+        assert!(outcome.is_ok());
+        // The map should contain 1 item.
+        assert_eq!(map.iter_confirmed().count(), 1);
+        // The pending batch should contain no items.
+        assert!(map.iter_pending().next().is_none());
+        // Make sure the checkpoint index is None.
+        assert_eq!(map.checkpoint.lock().back(), None);
+
+        // Ensure that the map value is correct.
+        assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
+
+        Ok(())
+    }
 }
