@@ -27,6 +27,9 @@ use std::{
     str::FromStr,
 };
 
+// TODO: Handle tests where the execution panics or fails.
+//  One approach is to create an enum `ExpectedOutput` which can be `Ok(Vec<Value>)` or `Err(String)`.
+
 /// A test for a program, containing the program definition and a set of test cases.
 pub struct ProgramTest {
     test_program: Program<CurrentNetwork>,
