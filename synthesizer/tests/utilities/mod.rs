@@ -24,6 +24,8 @@
 //! When the `REWRITE_EXPECTATIONS` environment variable is set, then the expectation files are rewritten.
 //! Otherwise, the output is compared against the expectation files.
 
+#![allow(unused)]
+
 pub mod expectation;
 pub use expectation::*;
 
