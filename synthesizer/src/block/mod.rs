@@ -31,9 +31,8 @@ mod genesis;
 mod serialize;
 mod string;
 
-use crate::vm::VM;
 use console::{
-    account::{Address, PrivateKey, Signature},
+    account::{PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
@@ -399,7 +398,8 @@ impl<N: Network> Block<N> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::vm::test_helpers::CurrentNetwork;
-    use console::account::ViewKey;
+    use console::account::{Address, ViewKey};
+
     use once_cell::sync::OnceCell;
 
     /// Samples a random block,

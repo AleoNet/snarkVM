@@ -26,7 +26,6 @@ use snarkvm_console::{
 use snarkvm_synthesizer::{
     snark::UniversalSRS,
     store::helpers::memory::ConsensusMemory,
-    Block,
     ConsensusStore,
     InclusionAssignment,
     VM,
@@ -88,7 +87,7 @@ pub fn sample_assignment<N: Network, A: Aleo<Network = N>>() -> Result<(Assignme
     // Initialize a new caller.
     let caller_private_key = PrivateKey::<N>::new(rng).unwrap();
     // Return the block.
-    let genesis_block = Block::genesis(&vm, &caller_private_key, rng)?;
+    let genesis_block = vm.genesis(&caller_private_key, rng)?;
 
     // Update the VM.
     vm.add_next_block(&genesis_block)?;

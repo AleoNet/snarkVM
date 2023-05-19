@@ -25,7 +25,6 @@ use console::{
 use snarkvm_synthesizer::{
     store::helpers::memory::ConsensusMemory,
     Authorization,
-    Block,
     ConsensusStore,
     Program,
     Transition,
@@ -43,7 +42,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = Block::genesis(&vm, private_key, rng).unwrap();
+    let genesis = vm.genesis(private_key, rng).unwrap();
 
     // Fetch the unspent records.
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();

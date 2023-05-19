@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use console::program::Register;
 
 pub trait Load<N: Network> {
     /// Loads the value of a given operand.

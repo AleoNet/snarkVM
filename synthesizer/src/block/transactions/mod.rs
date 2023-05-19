@@ -17,6 +17,9 @@
 pub mod confirmed;
 pub use confirmed::*;
 
+mod finalize_operation;
+pub use finalize_operation::*;
+
 mod bytes;
 mod merkle;
 mod serialize;

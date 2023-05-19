@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-
 use crate::finalize::{Get, GetOrInit, Set};
 
 impl<N: Network> FinalizeTypes<N> {

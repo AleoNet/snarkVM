@@ -18,12 +18,14 @@ mod initialize;
 mod matches;
 
 use crate::{
-    finalize::{Command, Finalize},
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    Stack,
+    process::Stack,
+    program::{
+        finalize::{Command, Finalize},
+        Instruction,
+        Opcode,
+        Operand,
+        Program,
+    },
 };
 use console::{
     network::prelude::*,
