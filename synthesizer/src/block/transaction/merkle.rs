@@ -17,6 +17,9 @@
 use super::*;
 
 impl<N: Network> Transaction<N> {
+    /// The maximum number of transitions allowed in a transaction.
+    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
+
     /// Returns the transaction root, by computing the root for a Merkle tree of the transition IDs.
     pub fn to_root(&self) -> Result<Field<N>> {
         Ok(*self.to_tree()?.root())
@@ -97,7 +100,7 @@ impl<N: Network> Transaction<N> {
 
 impl<N: Network> Transaction<N> {
     /// Returns the Merkle tree for the given deployment.
-    pub(super) fn deployment_tree(deployment: &Deployment<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
+    pub fn deployment_tree(deployment: &Deployment<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_deployment_size(deployment)?;
         // Retrieve the program.

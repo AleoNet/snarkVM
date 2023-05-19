@@ -420,8 +420,7 @@ pub(crate) mod test_helpers {
                 let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
 
                 // Construct the transaction.
-                let transaction =
-                    Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+                let transaction = vm.execute(&private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
                 let transactions =
                     Transactions::from(&[
