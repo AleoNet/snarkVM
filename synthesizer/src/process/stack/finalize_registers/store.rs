@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Store<N> for FinalizeRegisters<N> {
+impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -24,7 +24,12 @@ impl<N: Network> Store<N> for FinalizeRegisters<N> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
+    fn store(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        stack_value: Value<N>,
+    ) -> Result<()> {
         // Ensure that the stack value is a plaintext value.
         let plaintext_value = match stack_value {
             Value::Plaintext(plaintext) => plaintext,

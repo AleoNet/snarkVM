@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Store<N> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStore<N> for Registers<N, A> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -24,7 +24,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Store<N> for Registers<N, A> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
+    fn store(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        stack_value: Value<N>,
+    ) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
@@ -58,7 +63,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Store<N> for Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> StoreCircuit<N, A> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStoreCircuit<N, A> for Registers<N, A> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -68,7 +73,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> StoreCircuit<N, A> for Registers
     #[inline]
     fn store_circuit(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
         circuit_value: circuit::Value<A>,
     ) -> Result<()> {
