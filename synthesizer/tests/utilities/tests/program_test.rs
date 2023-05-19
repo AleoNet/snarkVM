@@ -122,9 +122,8 @@ impl ExpectedTest for ProgramTest {
             self.test_cases.iter().zip_eq(self.expected_results.iter().zip_eq(output.iter())).for_each(
                 |((function_name, args), (expected, actual))| {
                     if expected != actual {
-                        let mut test = vec![function_name.to_string()];
-                        test.extend(args.iter().map(|value| value.to_string()));
-                        let test = test.join(",");
+                        let mut test = format!("Function: {}\nInputs: ", function_name);
+                        test.push_str(&args.iter().map(|value| value.to_string()).join(", "));
                         let expected = expected.iter().map(|value| value.to_string()).join(",");
                         let actual = actual.iter().map(|value| value.to_string()).join(",");
                         errors.push(print_difference(test, expected, actual));
