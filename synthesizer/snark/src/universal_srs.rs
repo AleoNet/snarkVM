@@ -31,7 +31,7 @@ impl<N: Network> UniversalSRS<N> {
     /// Returns the circuit proving and verifying key.
     pub fn to_circuit_key(
         &self,
-        function_name: &Identifier<N>,
+        function_name: &str,
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         #[cfg(feature = "aleo-cli")]

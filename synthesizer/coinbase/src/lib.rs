@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod helpers;
 pub use helpers::*;
 
@@ -23,7 +27,6 @@ use hash::*;
 #[cfg(test)]
 mod tests;
 
-use crate::UniversalSRS;
 use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, has_duplicates, Network, Result, ToBytes},
@@ -36,6 +39,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_synthesizer_snark::UniversalSRS;
 use snarkvm_utilities::cfg_zip_fold;
 
 use std::sync::Arc;

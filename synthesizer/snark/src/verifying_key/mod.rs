@@ -19,6 +19,7 @@ use super::*;
 mod bytes;
 mod parse;
 mod serialize;
+
 use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -29,14 +30,14 @@ pub struct VerifyingKey<N: Network> {
 
 impl<N: Network> VerifyingKey<N> {
     /// Initializes a new verifying key.
-    pub(crate) const fn new(
+    pub const fn new(
         verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
     ) -> Self {
         Self { verifying_key }
     }
 
     /// Returns `true` if the proof is valid for the given public inputs.
-    pub fn verify(&self, function_name: &Identifier<N>, inputs: &[N::Field], proof: &Proof<N>) -> bool {
+    pub fn verify(&self, function_name: &str, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 

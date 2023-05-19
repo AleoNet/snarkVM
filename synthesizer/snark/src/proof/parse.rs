@@ -85,7 +85,7 @@ mod tests {
         assert!(Proof::<CurrentNetwork>::parse("").is_err());
 
         // Sample the proof.
-        let proof = proof::tests::sample_proof();
+        let proof = crate::test_helpers::sample_proof();
 
         // Check the proof parsing.
         let expected = format!("{proof}");
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn test_string() -> Result<()> {
         // Sample the proof.
-        let expected = proof::tests::sample_proof();
+        let expected = crate::test_helpers::sample_proof();
 
         // Check the string representation.
         let candidate = format!("{expected}");
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         // Sample the proof.
-        let expected = proof::tests::sample_proof();
+        let expected = crate::test_helpers::sample_proof();
 
         let candidate = expected.to_string();
         assert_eq!(format!("{expected}"), candidate);

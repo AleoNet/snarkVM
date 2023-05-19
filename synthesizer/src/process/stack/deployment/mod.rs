@@ -18,11 +18,12 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{Certificate, Program, VerifyingKey};
+use crate::program::Program;
 use console::{
     network::prelude::*,
     program::{Identifier, ProgramID},
 };
+use snarkvm_synthesizer_snark::{Certificate, VerifyingKey};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Deployment<N: Network> {

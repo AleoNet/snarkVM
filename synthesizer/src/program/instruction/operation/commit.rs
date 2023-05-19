@@ -285,14 +285,10 @@ impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        program::test_helpers::{sample_finalize_registers, sample_registers},
-        ProvingKey,
-        VerifyingKey,
-    };
-
+    use crate::program::test_helpers::{sample_finalize_registers, sample_registers};
     use circuit::{AleoV0, Eject};
     use console::{network::Testnet3, program::Identifier};
+    use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
 
     use std::collections::HashMap;
 

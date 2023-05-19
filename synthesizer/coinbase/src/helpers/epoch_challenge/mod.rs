@@ -16,10 +16,9 @@
 
 mod bytes;
 
-use snarkvm_algorithms::fft::Evaluations as EvaluationsOnDomain;
-
 use super::*;
-use crate::coinbase_puzzle::hash_to_polynomial;
+use crate::hash_to_polynomial;
+use snarkvm_algorithms::fft::Evaluations as EvaluationsOnDomain;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EpochChallenge<N: Network> {

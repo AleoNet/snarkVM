@@ -29,7 +29,7 @@ pub use prover_solution::*;
 mod puzzle_commitment;
 pub use puzzle_commitment::*;
 
-use crate::coinbase_puzzle::{hash_commitment, hash_commitments, CoinbasePuzzle};
+use crate::{hash_commitment, hash_commitments, CoinbasePuzzle};
 use console::{account::Address, prelude::*, types::Field};
 use snarkvm_algorithms::{
     fft::{domain::FFTPrecomputation, DensePolynomial, EvaluationDomain},

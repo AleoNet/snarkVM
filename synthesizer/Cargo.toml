@@ -29,18 +29,13 @@ path = "benches/block.rs"
 harness = false
 
 [[bench]]
-name = "coinbase_puzzle"
-path = "benches/coinbase_puzzle.rs"
-harness = false
-required-features = [ "setup" ]
-
-[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ ]
+default = [ "coinbase", "snark" ]
+
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 rocks = [ "rocksdb" ]
@@ -49,15 +44,35 @@ serial = [
   "snarkvm-algorithms/serial",
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
+  "snarkvm-synthesizer-coinbase/serial",
+  "snarkvm-synthesizer-snark/serial",
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
+test = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [
+  "coinbase",
+  "snark",
   "console/wasm",
   "snarkvm-algorithms/wasm",
+  "snarkvm-synthesizer-coinbase/wasm",
+  "snarkvm-synthesizer-snark/wasm",
   "snarkvm-utilities/wasm"
 ]
+
+coinbase = [ "snarkvm-synthesizer-coinbase" ]
+snark = [ "snarkvm-synthesizer-snark" ]
+
+[dependencies.snarkvm-synthesizer-coinbase]
+path = "./coinbase"
+version = "=0.11.2"
+optional = true
+
+[dependencies.snarkvm-synthesizer-snark]
+path = "./snark"
+version = "=0.11.2"
+optional = true
 
 [dependencies.circuit]
 package = "snarkvm-circuit"

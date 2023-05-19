@@ -35,7 +35,7 @@ use console::{
 };
 use synthesizer::{
     block::{Block, ConfirmedTransaction, Header, Transaction, Transactions},
-    coinbase_puzzle::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
+    coinbase::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
     process::Query,
     program::Program,
     store::{ConsensusStorage, ConsensusStore},

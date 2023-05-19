@@ -34,7 +34,7 @@ impl<N: Network> Certificate<N> {
 
     /// Returns the certificate from the proving and verifying key.
     pub fn certify(
-        function_name: &Identifier<N>,
+        function_name: &str,
         proving_key: &ProvingKey<N>,
         verifying_key: &VerifyingKey<N>,
     ) -> Result<Certificate<N>> {
@@ -53,7 +53,7 @@ impl<N: Network> Certificate<N> {
     /// Returns the certificate from the proving and verifying key.
     pub fn verify(
         &self,
-        function_name: &Identifier<N>,
+        function_name: &str,
         assignment: &circuit::Assignment<N::Field>,
         verifying_key: &VerifyingKey<N>,
     ) -> bool {
@@ -85,27 +85,5 @@ impl<N: Network> Deref for Certificate<N> {
 
     fn deref(&self) -> &Self::Target {
         &self.certificate
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use console::network::Testnet3;
-
-    use once_cell::sync::OnceCell;
-
-    type CurrentNetwork = Testnet3;
-
-    pub(super) fn sample_certificate() -> Certificate<CurrentNetwork> {
-        static INSTANCE: OnceCell<Certificate<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Sample a circuit.
-                let (function_name, proving_key, verifying_key) = crate::process::test_helpers::sample_key();
-                // Return the certificate.
-                Certificate::certify(&function_name, &proving_key, &verifying_key).unwrap()
-            })
-            .clone()
     }
 }

@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         // Sample the proof.
-        let expected = proof::tests::sample_proof();
+        let expected = crate::test_helpers::sample_proof();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
