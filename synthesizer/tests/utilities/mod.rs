@@ -26,6 +26,8 @@
 
 #![allow(unused)]
 
+pub type CurrentNetwork = console::network::Testnet3;
+
 pub mod expectation;
 pub use expectation::*;
 

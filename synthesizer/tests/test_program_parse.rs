@@ -17,7 +17,7 @@
 mod utilities;
 use utilities::*;
 
-use console::network::{prelude::*, Testnet3};
+use console::network::prelude::*;
 use snarkvm_synthesizer::Program;
 
 #[test]
@@ -28,7 +28,7 @@ fn test_program_parse() {
     for test in &tests {
         // Run the parser on the test string.
         let test_string = test.test_string();
-        let output = convert_result(Program::<Testnet3>::parse(test_string), test_string);
+        let output = convert_result(Program::<CurrentNetwork>::parse(test_string), test_string);
         // Check against the expected output.
         test.check(&output).unwrap();
         // Save the output.

@@ -17,7 +17,7 @@
 mod utilities;
 use utilities::*;
 
-use console::network::{prelude::*, Testnet3};
+use console::network::prelude::*;
 use snarkvm_synthesizer::Instruction;
 
 #[test]
@@ -30,7 +30,7 @@ fn test_instruction_parse() {
         let outputs = test
             .test_strings()
             .iter()
-            .map(|test_string| convert_result(Instruction::<Testnet3>::parse(test_string), test_string))
+            .map(|test_string| convert_result(Instruction::<CurrentNetwork>::parse(test_string), test_string))
             .collect::<Vec<_>>();
         // Check against the expected output.
         test.check(&outputs).unwrap();
