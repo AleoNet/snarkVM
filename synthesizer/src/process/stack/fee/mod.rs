@@ -102,7 +102,7 @@ impl<N: Network> Fee<N> {
         if assignments.len() == 2 && *function_names[1] != inclusion_name {
             bail!("Expected 2nd assignment to belong to inclusion")
         }
-        let proves_inclusion = *function_names[function_names.len() - 1] == inclusion_name;
+        let proves_inclusion = **function_names.last().unwrap() == inclusion_name;
         let proof = batch.prove(function_names.as_slice(), assignments, proves_inclusion, rng)?;
 
         self.proof = Some(proof);

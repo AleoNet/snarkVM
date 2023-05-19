@@ -131,7 +131,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Execute the circuit");
 
         // Extract the execution.
-        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
+        let mut execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution contains 1 transition.
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
         // Extract the inclusion.
@@ -140,9 +140,11 @@ impl<N: Network> Process<N> {
         let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
         // Extract the assignments
         let assignments = Arc::try_unwrap(assignments).unwrap_or_default().into_inner();
+        // Extract the transition
+        let transition = execution.pop()?;
 
         finish!(timer);
 
-        Ok((response, execution.peek()?.clone(), inclusion, assignments, metrics))
+        Ok((response, transition, inclusion, assignments, metrics))
     }
 }

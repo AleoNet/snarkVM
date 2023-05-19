@@ -95,7 +95,7 @@ impl<N: Network> Execution<N> {
         ensure!(!assignments.is_empty(), "Number of assignments must be greater than zero!");
 
         let inclusion_name = Identifier::<N>::from_str(N::INCLUSION_FUNCTION_NAME)?;
-        let proves_inclusion = *function_names[function_names.len() - 1] == inclusion_name;
+        let proves_inclusion = **function_names.last().unwrap() == inclusion_name;
         let proof = batch.prove(function_names, assignments, proves_inclusion, rng)?;
 
         self.proof = Some(proof);
