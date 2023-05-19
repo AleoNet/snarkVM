@@ -20,7 +20,10 @@ impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
     /// Checks that the given closure is well-formed for the given stack.
     #[inline]
-    pub(super) fn initialize_closure_types(stack: &Stack<N>, closure: &Closure<N>) -> Result<Self> {
+    pub(super) fn initialize_closure_types(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        closure: &Closure<N>,
+    ) -> Result<Self> {
         // Initialize a map of registers to their types.
         let mut register_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
@@ -56,7 +59,10 @@ impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given function.
     /// Checks that the given function is well-formed for the given stack.
     #[inline]
-    pub(super) fn initialize_function_types(stack: &Stack<N>, function: &Function<N>) -> Result<Self> {
+    pub(super) fn initialize_function_types(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        function: &Function<N>,
+    ) -> Result<Self> {
         // Initialize a map of registers to their types.
         let mut register_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
@@ -176,7 +182,12 @@ impl<N: Network> RegisterTypes<N> {
 impl<N: Network> RegisterTypes<N> {
     /// Ensure the given input register is well-formed.
     #[inline]
-    fn check_input(&mut self, stack: &Stack<N>, register: &Register<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_input(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        register_type: &RegisterType<N>,
+    ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
@@ -212,7 +223,12 @@ impl<N: Network> RegisterTypes<N> {
 
     /// Ensure the given output register is well-formed.
     #[inline]
-    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_output(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+        register_type: &RegisterType<N>,
+    ) -> Result<()> {
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
@@ -264,7 +280,7 @@ impl<N: Network> RegisterTypes<N> {
     #[inline]
     fn check_instruction(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {
@@ -299,7 +315,7 @@ impl<N: Network> RegisterTypes<N> {
     #[inline]
     fn check_instruction_opcode(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {

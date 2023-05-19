@@ -64,6 +64,8 @@ members = [
   "parameters",
   "r1cs",
   "synthesizer",
+  "synthesizer/coinbase",
+  "synthesizer/snark",
   "utilities",
   "utilities/derives",
   "wasm"

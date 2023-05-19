@@ -14,7 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Load as LoadTrait, Opcode, Operand, Stack, Store};
+use crate::{
+    FinalizeOperation,
+    FinalizeStorage,
+    FinalizeStore,
+    Opcode,
+    Operand,
+    RegistersLoad as LoadTrait,
+    RegistersStore,
+    Stack,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},
@@ -80,7 +90,7 @@ impl<N: Network> GetOrInit<N> {
         &self,
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
-        registers: &mut (impl LoadTrait<N> + Store<N>),
+        registers: &mut (impl LoadTrait<N> + RegistersStore<N>),
     ) -> Result<Option<FinalizeOperation<N>>> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {

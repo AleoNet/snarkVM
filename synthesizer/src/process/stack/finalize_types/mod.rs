@@ -18,12 +18,14 @@ mod initialize;
 mod matches;
 
 use crate::{
-    finalize::{Command, Finalize},
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    Stack,
+    process::{StackMatches, StackProgram},
+    program::{
+        finalize::{Command, Finalize},
+        Instruction,
+        Opcode,
+        Operand,
+        Program,
+    },
 };
 use console::{
     network::prelude::*,
@@ -46,7 +48,7 @@ impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
     /// Checks that the given finalize is well-formed for the given stack.
     #[inline]
-    pub fn from_finalize(stack: &Stack<N>, finalize: &Finalize<N>) -> Result<Self> {
+    pub fn from_finalize(stack: &(impl StackMatches<N> + StackProgram<N>), finalize: &Finalize<N>) -> Result<Self> {
         Self::initialize_finalize_types(stack, finalize)
     }
 
@@ -65,7 +67,11 @@ impl<N: Network> FinalizeTypes<N> {
     }
 
     /// Returns the type of the given operand.
-    pub fn get_type_from_operand(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<PlaintextType<N>> {
+    pub fn get_type_from_operand(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<PlaintextType<N>> {
         Ok(match operand {
             Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
             Operand::Register(register) => self.get_type(stack, register)?,
@@ -75,7 +81,11 @@ impl<N: Network> FinalizeTypes<N> {
     }
 
     /// Returns the type of the given register.
-    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<PlaintextType<N>> {
+    pub fn get_type(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+    ) -> Result<PlaintextType<N>> {
         // Initialize a tracker for the type of the register.
         let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.

@@ -16,7 +16,10 @@
 
 use super::*;
 
-use crate::{Key, KeyBatch, KeyMode, ProvingKeyId};
+use crate::{
+    snark::{Key, KeyBatch, KeyMode},
+    ProvingKeyId,
+};
 
 impl<N: Network> Process<N> {
     /// Executes the given authorization.

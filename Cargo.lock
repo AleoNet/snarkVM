@@ -2889,12 +2889,47 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
  "tempfile",
  "tracing",
  "tracing-test",
  "ureq",
  "walkdir",
+]
+
+[[package]]
+name = "snarkvm-synthesizer-coinbase"
+version = "0.11.2"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "blake2",
+ "criterion",
+ "itertools",
+ "rand",
+ "rayon",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-synthesizer-snark",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-synthesizer-snark"
+version = "0.11.2"
+dependencies = [
+ "bincode",
+ "colored",
+ "once_cell",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-console",
 ]
 
 [[package]]

@@ -40,7 +40,7 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Retrieve the keys for {function_name}");
 
             // Certify the circuit.
-            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
+            let certificate = Certificate::certify(&function_name.to_string(), &proving_key, &verifying_key)?;
             lap!(timer, "Certify the circuit");
 
             // Add the verifying key and certificate to the bundle.
@@ -122,7 +122,7 @@ impl<N: Network> Stack<N> {
                 }
                 Some(assignment) => {
                     // Ensure the certificate is valid.
-                    if !certificate.verify(function.name(), assignment, verifying_key) {
+                    if !certificate.verify(&function.name().to_string(), assignment, verifying_key) {
                         bail!("The certificate for function '{}' is invalid in '{program_id}'", function.name())
                     }
                     lap!(timer, "Ensure the certificate is valid");

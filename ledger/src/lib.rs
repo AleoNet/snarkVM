@@ -35,7 +35,7 @@ use console::{
 };
 use synthesizer::{
     block::{Block, ConfirmedTransaction, Header, Transaction, Transactions},
-    coinbase_puzzle::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
+    coinbase::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
     process::Query,
     program::Program,
     store::{ConsensusStorage, ConsensusStore},
@@ -313,7 +313,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let fee = (fee_record, priority_fee_in_microcredits);
 
         // Create a new deploy transaction.
-        Transaction::deploy(&self.vm, private_key, program, fee, query, rng)
+        self.vm.deploy(private_key, program, fee, query, rng)
     }
 
     /// Creates a transfer transaction.
@@ -347,6 +347,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let fee = Some((fee_record, priority_fee_in_microcredits));
 
         // Create a new execute transaction.
-        Transaction::execute(&self.vm, private_key, ("credits.aleo", "transfer"), inputs.iter(), fee, query, rng)
+        self.vm.execute(private_key, ("credits.aleo", "transfer"), inputs.iter(), fee, query, rng)
     }
 }

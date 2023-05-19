@@ -15,53 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ConsensusStorage;
 
 impl<N: Network> Block<N> {
     /// Specifies the number of genesis transactions.
-    const NUM_GENESIS_TRANSACTIONS: usize = 4;
-
-    /// Initializes a new genesis block.
-    pub fn genesis<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Prepare the caller.
-        let caller = Address::try_from(private_key)?;
-        // Prepare the locator.
-        let locator = ("credits.aleo", "mint");
-        // Prepare the amount for each call to the mint function.
-        let amount = N::STARTING_SUPPLY.saturating_div(Self::NUM_GENESIS_TRANSACTIONS as u64);
-        // Prepare the function inputs.
-        let inputs = [caller.to_string(), format!("{amount}_u64")];
-
-        // Prepare the mint transactions.
-        let transactions = (0u32..Self::NUM_GENESIS_TRANSACTIONS as u32)
-            .map(|index| {
-                // Execute the mint function.
-                let transaction = Transaction::execute(vm, private_key, locator, inputs.iter(), None, None, rng)?;
-                // Prepare the confirmed transaction.
-                ConfirmedTransaction::accepted_execute(index, transaction, vec![])
-            })
-            .collect::<Result<Transactions<_>>>()?;
-
-        // Prepare the block header.
-        let header = Header::genesis(&transactions)?;
-        // Prepare the previous block hash.
-        let previous_hash = N::BlockHash::default();
-
-        // Prepare the coinbase solution.
-        let coinbase_solution = None; // The genesis block does not require a coinbase solution.
-
-        // Construct the block.
-        let block = Self::new(private_key, previous_hash, header, transactions, coinbase_solution, rng)?;
-        // Ensure the block is valid genesis block.
-        match block.is_genesis() {
-            true => Ok(block),
-            false => bail!("Failed to initialize a genesis block"),
-        }
-    }
+    pub const NUM_GENESIS_TRANSACTIONS: usize = 4;
 
     /// Returns `true` if the block is a genesis block.
     pub fn is_genesis(&self) -> bool {

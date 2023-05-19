@@ -14,7 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load, LoadCircuit, Opcode, Operand, Stack, Store, StoreCircuit};
+use crate::{
+    Opcode,
+    Operand,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
@@ -99,7 +108,11 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 1 {
             bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -127,8 +140,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut (impl LoadCircuit<N, A> + StoreCircuit<N, A>),
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{ToBits, ToFields};
 
@@ -160,13 +173,21 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         self.evaluate(stack, registers)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 1 {
             bail!("Instruction '{}' expects 1 inputs, found {} inputs", Self::opcode(), input_types.len())
@@ -280,13 +301,12 @@ impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
 mod tests {
     use super::*;
     use crate::{
+        process::Stack,
         program::test_helpers::{sample_finalize_registers, sample_registers},
-        ProvingKey,
-        VerifyingKey,
     };
-
     use circuit::{AleoV0, Eject};
     use console::{network::Testnet3, program::Identifier};
+    use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
 
     use std::collections::HashMap;
 

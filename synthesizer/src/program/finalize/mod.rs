@@ -26,10 +26,9 @@ mod parse;
 use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{Identifier, PlaintextType, Register},
+    program::{Identifier, PlaintextType, Register, RegisterType},
 };
 
-use console::program::RegisterType;
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
