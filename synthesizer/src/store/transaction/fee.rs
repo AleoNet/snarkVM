@@ -16,9 +16,9 @@
 
 use crate::{
     atomic_batch_scope,
+    block::Fee,
     cow_to_cloned,
     cow_to_copied,
-    process::Fee,
     snark::Proof,
     store::{
         helpers::{Map, MapRead},

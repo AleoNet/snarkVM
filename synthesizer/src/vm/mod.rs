@@ -26,10 +26,10 @@ pub use finalize::FinalizeMode;
 
 use crate::{
     atomic_finalize,
-    block::{Block, Transaction, Transition},
+    block::{Block, Deployment, Execution, Fee, Transaction, Transition},
     cast_ref,
     process,
-    process::{Authorization, Deployment, Execution, Fee, Inclusion, InclusionAssignment, Process, Query},
+    process::{Authorization, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     CallMetrics,

@@ -29,7 +29,7 @@ mod tests;
 
 use crate::{
     atomic_batch_scope,
-    block::{Input, Transition},
+    block::{Deployment, Execution, Fee, Input, Transition},
     program::{Instruction, Program},
     store::{FinalizeOperation, FinalizeStorage, FinalizeStore},
 };

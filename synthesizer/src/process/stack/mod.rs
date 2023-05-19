@@ -17,15 +17,6 @@
 mod authorization;
 pub use authorization::*;
 
-mod deployment;
-pub use deployment::*;
-
-mod execution;
-pub use execution::*;
-
-mod fee;
-pub use fee::*;
-
 mod finalize_registers;
 pub use finalize_registers::*;
 
@@ -53,7 +44,16 @@ mod evaluate;
 mod execute;
 mod helpers;
 
-use crate::{CallOperator, Closure, Function, Instruction, Operand, Process, Program, Transition};
+use crate::{
+    block::{Deployment, Execution, Transition},
+    CallOperator,
+    Closure,
+    Function,
+    Instruction,
+    Operand,
+    Process,
+    Program,
+};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
