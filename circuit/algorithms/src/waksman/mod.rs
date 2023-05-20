@@ -181,7 +181,7 @@ impl<E: Environment> ASWaksman<E> {
     }
 }
 
-#[cfg(all(test, console))]
+#[cfg(test)]
 mod test {
     use super::*;
 

@@ -40,11 +40,11 @@ mod tests {
     fn check_switch(
         expected: (<CurrentEnvironment as Environment>::Field, <CurrentEnvironment as Environment>::Field),
         selector: Boolean<CurrentEnvironment>,
-        a: Field<CurrentEnvironment>,
-        b: Field<CurrentEnvironment>,
+        a: &Field<CurrentEnvironment>,
+        b: &Field<CurrentEnvironment>,
     ) {
         let case = format!("switch({}, {}, {})", selector, a, b);
-        let candidate = ASWaksman::switch(&selector, &a, &b);
+        let candidate = ASWaksman::switch(&selector, a, b);
         assert_eq!(expected.0, *candidate.0, "Unexpected first output for {}", case);
         assert_eq!(expected.1, *candidate.1, "Unexpected second output for {}", case);
     }
@@ -57,19 +57,18 @@ mod tests {
             let first = Uniform::rand(&mut rng);
             let second = Uniform::rand(&mut rng);
 
+            let a = Field::<CurrentEnvironment>::new(first);
+            let b = Field::<CurrentEnvironment>::new(second);
+
             // switch(false)
             let expected = (first, second);
             let condition = Boolean::<CurrentEnvironment>::new(false);
-            let a = Field::<CurrentEnvironment>::new(first);
-            let b = Field::<CurrentEnvironment>::new(second);
-            check_switch(expected, condition, a, b);
+            check_switch(expected, condition, &a, &b);
 
             // switch(true)
             let expected = (second, first);
             let condition = Boolean::<CurrentEnvironment>::new(true);
-            let a = Field::<CurrentEnvironment>::new(first);
-            let b = Field::<CurrentEnvironment>::new(second);
-            check_switch(expected, condition, a, b);
+            check_switch(expected, condition, &a, &b);
         }
     }
 }
